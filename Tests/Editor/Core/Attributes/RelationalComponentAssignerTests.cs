@@ -1,39 +1,26 @@
 #if UNITY_EDITOR
 namespace WallstopStudios.UnityHelpers.Tests.Core.Attributes
 {
+    using System;
     using System.Collections.Generic;
     using NUnit.Framework;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Tags;
-    using WallstopStudios.UnityHelpers.Tests.Editor.Utils;
+    using WallstopStudios.UnityHelpers.Tests.Core;
+    using WallstopStudios.UnityHelpers.Tests.Core.TestTypes;
 
     public sealed class RelationalComponentAssignerTests : CommonTestBase
     {
-        private sealed class RelationalConsumer : MonoBehaviour
-        {
-            [SiblingComponent]
-            private SpriteRenderer _spriteRenderer;
-
-            public SpriteRenderer SR => _spriteRenderer;
-        }
-
-        private sealed class NonRelational : MonoBehaviour
-        {
-            public int x;
-        }
-
-        [Test]
-        public void HasRelationalAssignmentsRespectsMetadata()
+        private AttributeMetadataCache CreateCacheWithSiblingSelfInclusionMetadata()
         {
             AttributeMetadataCache cache = CreateScriptableObject<AttributeMetadataCache>();
-
             AttributeMetadataCache.RelationalTypeMetadata relationalMetadata = new(
-                typeof(RelationalConsumer).AssemblyQualifiedName,
+                typeof(SiblingSelfInclusionTester).AssemblyQualifiedName,
                 new[]
                 {
                     new AttributeMetadataCache.RelationalFieldMetadata(
-                        "_spriteRenderer",
+                        "siblingRenderer",
                         AttributeMetadataCache.RelationalAttributeKind.Sibling,
                         AttributeMetadataCache.FieldKind.Single,
                         typeof(SpriteRenderer).AssemblyQualifiedName,
@@ -43,73 +30,231 @@ namespace WallstopStudios.UnityHelpers.Tests.Core.Attributes
             );
 
             cache.SetMetadata(
-                System.Array.Empty<string>(),
-                System.Array.Empty<AttributeMetadataCache.TypeFieldMetadata>(),
-                new[] { relationalMetadata }
+                Array.Empty<string>(),
+                Array.Empty<AttributeMetadataCache.TypeFieldMetadata>(),
+                new[] { relationalMetadata },
+                Array.Empty<AttributeMetadataCache.AutoLoadSingletonEntry>()
             );
             cache.ForceRebuildForTests();
+            return cache;
+        }
 
+        [Test]
+        public void HasRelationalAssignmentsRespectsMetadata()
+        {
+            AttributeMetadataCache cache = CreateCacheWithSiblingSelfInclusionMetadata();
             RelationalComponentAssigner assigner = new(cache);
 
             Assert.IsTrue(
-                assigner.HasRelationalAssignments(typeof(RelationalConsumer)),
-                "Expected HasRelationalAssignments to be true for type with relational metadata"
+                assigner.HasRelationalAssignments(typeof(SiblingSelfInclusionTester)),
+                $"Expected HasRelationalAssignments to be true for {nameof(SiblingSelfInclusionTester)} with relational metadata"
             );
             Assert.IsFalse(
-                assigner.HasRelationalAssignments(typeof(NonRelational)),
-                "Expected HasRelationalAssignments to be false for type without relational metadata"
+                assigner.HasRelationalAssignments(typeof(EnabledProbe)),
+                $"Expected HasRelationalAssignments to be false for {nameof(EnabledProbe)} without relational metadata"
+            );
+        }
+
+        [Test]
+        public void HasRelationalAssignmentsReturnsFalseForNullType()
+        {
+            AttributeMetadataCache cache = CreateCacheWithSiblingSelfInclusionMetadata();
+            RelationalComponentAssigner assigner = new(cache);
+
+            Assert.IsFalse(
+                assigner.HasRelationalAssignments(null),
+                "Expected HasRelationalAssignments to be false for null type"
             );
         }
 
         [Test]
         public void AssignIEnumerableAssignsOnlyRelationalTypesAndSkipsNulls()
         {
-            AttributeMetadataCache cache = CreateScriptableObject<AttributeMetadataCache>();
-
-            AttributeMetadataCache.RelationalTypeMetadata relationalMetadata = new(
-                typeof(RelationalConsumer).AssemblyQualifiedName,
-                new[]
-                {
-                    new AttributeMetadataCache.RelationalFieldMetadata(
-                        "_spriteRenderer",
-                        AttributeMetadataCache.RelationalAttributeKind.Sibling,
-                        AttributeMetadataCache.FieldKind.Single,
-                        typeof(SpriteRenderer).AssemblyQualifiedName,
-                        false
-                    ),
-                }
-            );
-
-            cache.SetMetadata(
-                System.Array.Empty<string>(),
-                System.Array.Empty<AttributeMetadataCache.TypeFieldMetadata>(),
-                new[] { relationalMetadata }
-            );
-            cache.ForceRebuildForTests();
-
+            AttributeMetadataCache cache = CreateCacheWithSiblingSelfInclusionMetadata();
             RelationalComponentAssigner assigner = new(cache);
 
             GameObject go1 = NewGameObject("Relational");
+            Assert.IsNotNull(go1, "Failed to create Relational GameObject");
+
             SpriteRenderer sr1 = go1.AddComponent<SpriteRenderer>();
-            RelationalConsumer consumer = go1.AddComponent<RelationalConsumer>();
+            Assert.IsTrue(sr1 != null, "Failed to add SpriteRenderer to Relational GameObject");
+
+            SiblingSelfInclusionTester consumer = go1.AddComponent<SiblingSelfInclusionTester>();
+            Assert.IsTrue(
+                consumer != null,
+                "Failed to add SiblingSelfInclusionTester to Relational GameObject"
+            );
 
             GameObject go2 = NewGameObject("NonRelational");
-            NonRelational non = go2.AddComponent<NonRelational>();
+            Assert.IsNotNull(go2, "Failed to create NonRelational GameObject");
 
-            Assert.IsTrue(consumer.SR == null, "Precondition: relational field should start null");
+            EnabledProbe non = go2.AddComponent<EnabledProbe>();
+            Assert.IsTrue(non != null, "Failed to add EnabledProbe to NonRelational GameObject");
+
+            Assert.IsTrue(
+                consumer.siblingRenderer == null,
+                $"Precondition: {nameof(SiblingSelfInclusionTester)}.siblingRenderer should start null, was: {consumer.siblingRenderer}"
+            );
 
             List<Component> items = new() { consumer, null, non.transform };
             assigner.Assign(items);
 
             Assert.IsTrue(
-                consumer.SR != null,
-                "Relational field should be assigned by Assign(IEnumerable<Component>)"
+                consumer.siblingRenderer != null,
+                $"Expected {nameof(SiblingSelfInclusionTester)}.siblingRenderer to be assigned by Assign(IEnumerable<Component>), but it was null"
             );
 
-            // Sanity: ensure non-relational type was not modified by the assigner
-            Assert.AreEqual(0, non.x);
+            Assert.IsTrue(
+                non != null,
+                $"{nameof(EnabledProbe)} component should still be valid after Assign"
+            );
+        }
 
-            // Cleanup handled by UnityTestBase
+        [Test]
+        public void AssignSingleComponentAssignsRelationalFields()
+        {
+            AttributeMetadataCache cache = CreateCacheWithSiblingSelfInclusionMetadata();
+            RelationalComponentAssigner assigner = new(cache);
+
+            GameObject go = NewGameObject("SingleComponent");
+            SpriteRenderer sr = go.AddComponent<SpriteRenderer>();
+            SiblingSelfInclusionTester consumer = go.AddComponent<SiblingSelfInclusionTester>();
+
+            Assert.IsTrue(
+                consumer.siblingRenderer == null,
+                $"Precondition: {nameof(SiblingSelfInclusionTester)}.siblingRenderer should start null"
+            );
+
+            assigner.Assign(consumer);
+
+            Assert.IsTrue(
+                consumer.siblingRenderer != null,
+                $"Expected {nameof(SiblingSelfInclusionTester)}.siblingRenderer to be assigned by Assign(Component)"
+            );
+        }
+
+        [Test]
+        public void AssignSingleNullComponentDoesNotThrow()
+        {
+            AttributeMetadataCache cache = CreateCacheWithSiblingSelfInclusionMetadata();
+            RelationalComponentAssigner assigner = new(cache);
+
+            Assert.DoesNotThrow(
+                () => assigner.Assign((Component)null),
+                "Assign(null) should not throw"
+            );
+        }
+
+        [Test]
+        public void AssignNullEnumerableDoesNotThrow()
+        {
+            AttributeMetadataCache cache = CreateCacheWithSiblingSelfInclusionMetadata();
+            RelationalComponentAssigner assigner = new(cache);
+
+            Assert.DoesNotThrow(
+                () => assigner.Assign((IEnumerable<Component>)null),
+                "Assign(null IEnumerable) should not throw"
+            );
+        }
+
+        [Test]
+        public void AssignEmptyEnumerableDoesNotThrow()
+        {
+            AttributeMetadataCache cache = CreateCacheWithSiblingSelfInclusionMetadata();
+            RelationalComponentAssigner assigner = new(cache);
+
+            Assert.DoesNotThrow(
+                () => assigner.Assign(new List<Component>()),
+                "Assign(empty IEnumerable) should not throw"
+            );
+        }
+
+        [Test]
+        public void AssignEnumerableWithOnlyNullsDoesNotThrow()
+        {
+            AttributeMetadataCache cache = CreateCacheWithSiblingSelfInclusionMetadata();
+            RelationalComponentAssigner assigner = new(cache);
+
+            List<Component> items = new() { null, null, null };
+
+            Assert.DoesNotThrow(
+                () => assigner.Assign(items),
+                "Assign(IEnumerable with only nulls) should not throw"
+            );
+        }
+
+        [Test]
+        public void AssignNonRelationalComponentDoesNotModifyComponent()
+        {
+            AttributeMetadataCache cache = CreateCacheWithSiblingSelfInclusionMetadata();
+            RelationalComponentAssigner assigner = new(cache);
+
+            GameObject go = NewGameObject("NonRelational");
+            EnabledProbe probe = go.AddComponent<EnabledProbe>();
+            Transform originalTransform = probe.transform;
+
+            assigner.Assign(probe);
+
+            Assert.IsTrue(
+                probe != null,
+                $"{nameof(EnabledProbe)} should still be valid after Assign"
+            );
+            Assert.AreEqual(
+                originalTransform,
+                probe.transform,
+                "Transform should be unchanged after Assign on non-relational component"
+            );
+        }
+
+        [Test]
+        public void AssignHierarchyAssignsAllRelationalComponentsInHierarchy()
+        {
+            AttributeMetadataCache cache = CreateCacheWithSiblingSelfInclusionMetadata();
+            RelationalComponentAssigner assigner = new(cache);
+
+            GameObject root = NewGameObject("Root");
+            GameObject child = NewGameObject("Child");
+            child.transform.SetParent(root.transform);
+
+            SpriteRenderer rootRenderer = root.AddComponent<SpriteRenderer>();
+            SiblingSelfInclusionTester rootConsumer =
+                root.AddComponent<SiblingSelfInclusionTester>();
+
+            SpriteRenderer childRenderer = child.AddComponent<SpriteRenderer>();
+            SiblingSelfInclusionTester childConsumer =
+                child.AddComponent<SiblingSelfInclusionTester>();
+
+            Assert.IsTrue(
+                rootConsumer.siblingRenderer == null,
+                "Precondition: root siblingRenderer should start null"
+            );
+            Assert.IsTrue(
+                childConsumer.siblingRenderer == null,
+                "Precondition: child siblingRenderer should start null"
+            );
+
+            assigner.AssignHierarchy(root);
+
+            Assert.IsTrue(
+                rootConsumer.siblingRenderer != null,
+                "Root siblingRenderer should be assigned after AssignHierarchy"
+            );
+            Assert.IsTrue(
+                childConsumer.siblingRenderer != null,
+                "Child siblingRenderer should be assigned after AssignHierarchy"
+            );
+        }
+
+        [Test]
+        public void AssignHierarchyWithNullRootDoesNotThrow()
+        {
+            AttributeMetadataCache cache = CreateCacheWithSiblingSelfInclusionMetadata();
+            RelationalComponentAssigner assigner = new(cache);
+
+            Assert.DoesNotThrow(
+                () => assigner.AssignHierarchy(null),
+                "AssignHierarchy(null) should not throw"
+            );
         }
     }
 }

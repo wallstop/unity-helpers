@@ -5,8 +5,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
     using NUnit.Framework;
     using ProtoBuf;
     using WallstopStudios.UnityHelpers.Core.Extension;
+    using WallstopStudios.UnityHelpers.Tests.Core;
 
-    public sealed class ProtoEqualityExtensionsTests
+    public sealed class ProtoEqualityExtensionsTests : CommonTestBase
     {
         [ProtoContract]
         private sealed class SimpleMessage

@@ -1,6 +1,7 @@
 namespace WallstopStudios.UnityHelpers.Core.Helper
 {
     using System;
+    using System.IO;
     using System.Linq;
     using System.Threading.Tasks;
     using Extension;
@@ -77,6 +78,11 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         )
             where T : Object
         {
+            if (!SceneAssetExists(scenePath))
+            {
+                return new DeferredDisposalResult<T>(default, () => new ValueTask());
+            }
+
             DeferredDisposalResult<T[]> result = await GetAllObjectsOfTypeInScene<T>(scenePath);
             T value = result.result.Length == 0 ? default : result.result[0];
             return new DeferredDisposalResult<T>(value, result.DisposeAsync);
@@ -90,6 +96,11 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         )
             where T : Object
         {
+            if (!SceneAssetExists(scenePath))
+            {
+                return new DeferredDisposalResult<T[]>(Array.Empty<T>(), () => new ValueTask());
+            }
+
             // Ensure singleton is created
             _ = UnityMainThreadDispatcher.Instance;
             TaskCompletionSource<T[]> taskCompletionSource = new();
@@ -101,8 +112,18 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 result,
                 async () =>
                 {
+                    if (
+                        !UnityMainThreadDispatcher.TryGetInstance(
+                            out UnityMainThreadDispatcher dispatcher
+                        )
+                    )
+                    {
+                        await sceneScope.DisposeAsync();
+                        return;
+                    }
+
                     TaskCompletionSource<bool> disposalComplete = new();
-                    UnityMainThreadDispatcher.Instance.RunOnMainThread(() =>
+                    dispatcher.RunOnMainThread(() =>
                         _ = sceneScope
                             .DisposeAsync()
                             .WithContinuation(() => disposalComplete.SetResult(true))
@@ -246,6 +267,29 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 await SceneManager.UnloadSceneAsync(openedScene, UnloadSceneOptions.None);
 #endif
             }
+        }
+
+        private static bool SceneAssetExists(string scenePath)
+        {
+            if (string.IsNullOrWhiteSpace(scenePath))
+            {
+                return false;
+            }
+
+            string normalized = scenePath.SanitizePath();
+            if (Path.IsPathRooted(normalized))
+            {
+                return File.Exists(normalized);
+            }
+
+            string projectRoot = Path.GetDirectoryName(Application.dataPath);
+            if (string.IsNullOrEmpty(projectRoot))
+            {
+                return false;
+            }
+
+            string absolutePath = Path.Combine(projectRoot, normalized);
+            return File.Exists(absolutePath);
         }
     }
 }

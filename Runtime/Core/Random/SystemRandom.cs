@@ -44,6 +44,12 @@ namespace WallstopStudios.UnityHelpers.Core.Random
     /// double d = compatible.NextDouble();
     /// </code>
     /// </example>
+    [RandomGeneratorMetadata(
+        RandomQuality.Poor,
+        "Thin wrapper over System.Random; inherits same LCG weaknesses and fails modern statistical batteries.",
+        "System.Random considered harmful",
+        "https://nullprogram.com/blog/2017/09/21/"
+    )]
     [Serializable]
     [DataContract]
     [ProtoContract(SkipConstructor = true)]

@@ -14,6 +14,7 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
     using System.Threading.Tasks;
     using JsonConverters;
     using ProtoBuf;
+    using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
     using WallstopStudios.UnityHelpers.Core.Helper;
     using TypeConverter = JsonConverters.TypeConverter;
 
@@ -41,6 +42,7 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
                 AllowTrailingCommas = true,
                 Converters =
                 {
+                    WGuidConverter.Instance,
                     RangeConverterFactory.Instance,
                     FastVector2IntConverter.Instance,
                     FastVector3IntConverter.Instance,
@@ -84,10 +86,11 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
                     ImmutableBitSetConverter.Instance,
                     DequeConverterFactory.Instance,
                     CyclicBufferConverterFactory.Instance,
-                    KVector2Converter.Instance,
+                    SerializableSetConverterFactory.Instance,
+                    SerializableDictionaryConverterFactory.Instance,
+                    SerializableSortedDictionaryConverterFactory.Instance,
                 },
             };
-            ;
         }
 
         public static JsonSerializerOptions GetPrettyJsonOptions()
@@ -106,6 +109,7 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
                 AllowTrailingCommas = true,
                 Converters =
                 {
+                    WGuidConverter.Instance,
                     RangeConverterFactory.Instance,
                     FastVector2IntConverter.Instance,
                     FastVector3IntConverter.Instance,
@@ -149,7 +153,9 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
                     ImmutableBitSetConverter.Instance,
                     DequeConverterFactory.Instance,
                     CyclicBufferConverterFactory.Instance,
-                    KVector2Converter.Instance,
+                    SerializableSetConverterFactory.Instance,
+                    SerializableDictionaryConverterFactory.Instance,
+                    SerializableSortedDictionaryConverterFactory.Instance,
                 },
                 WriteIndented = true,
             };
@@ -169,6 +175,7 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
                 AllowTrailingCommas = false,
                 Converters =
                 {
+                    WGuidConverter.Instance,
                     RangeConverterFactory.Instance,
                     FastVector2IntConverter.Instance,
                     FastVector3IntConverter.Instance,
@@ -211,7 +218,9 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
                     ImmutableBitSetConverter.Instance,
                     DequeConverterFactory.Instance,
                     CyclicBufferConverterFactory.Instance,
-                    KVector2Converter.Instance,
+                    SerializableSetConverterFactory.Instance,
+                    SerializableDictionaryConverterFactory.Instance,
+                    SerializableSortedDictionaryConverterFactory.Instance,
                 },
             };
         }
@@ -498,6 +507,467 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
             }
 
             return false;
+        }
+
+        /// <summary>
+        /// Checks if the type is a serializable collection type that needs wrapper-based protobuf serialization.
+        /// Returns true for SerializableHashSet, SerializableSortedSet, SerializableDictionary, SerializableSortedDictionary.
+        /// </summary>
+        private static bool IsSerializableCollectionType(Type type)
+        {
+            if (type == null || !type.IsGenericType)
+            {
+                return false;
+            }
+
+            Type genericDef = type.GetGenericTypeDefinition();
+            return genericDef == typeof(SerializableHashSet<>)
+                || genericDef == typeof(SerializableSortedSet<>)
+                || genericDef == typeof(SerializableDictionary<,>)
+                || genericDef == typeof(SerializableSortedDictionary<,>);
+        }
+
+        /// <summary>
+        /// Cached reflection accessors for protobuf collection wrapper serialization.
+        /// Uses ReflectionHelpers for cached delegate generation and nameof() for compile-time safety.
+        /// </summary>
+        private static class CollectionProtoAccessors
+        {
+            // Field names using nameof() for compile-time safety via internal access
+            internal const string ItemsFieldName = SerializableHashSetSerializedPropertyNames.Items;
+            internal const string KeysFieldName =
+                SerializableDictionarySerializedPropertyNames.Keys;
+            internal const string ValuesFieldName =
+                SerializableDictionarySerializedPropertyNames.Values;
+
+            // Use nameof() directly for fields accessible within this assembly
+            internal const string PreserveSerializedEntriesFieldName = nameof(
+                SerializableHashSet<int>._preserveSerializedEntries
+            );
+            internal const string OnBeforeSerializeMethodName = nameof(
+                SerializableHashSet<int>.OnBeforeSerialize
+            );
+            internal const string OnAfterDeserializeMethodName = nameof(
+                SerializableHashSet<int>.OnAfterDeserialize
+            );
+
+            // Wrapper field names (public fields, nameof() safe)
+            internal const string WrapperItemsFieldName = nameof(
+                SerializableHashSetProtoWrapper<int>.Items
+            );
+            internal const string WrapperKeysFieldName = nameof(
+                SerializableDictionaryProtoWrapper<int, int>.Keys
+            );
+            internal const string WrapperValuesFieldName = nameof(
+                SerializableDictionaryProtoWrapper<int, int>.Values
+            );
+
+            // Binding flags for field/method lookup
+            private const BindingFlags InstanceFieldFlags =
+                BindingFlags.NonPublic
+                | BindingFlags.Public
+                | BindingFlags.Instance
+                | BindingFlags.FlattenHierarchy;
+            private const BindingFlags InstanceMethodFlags =
+                BindingFlags.Public | BindingFlags.Instance;
+
+            // Cached accessors per closed generic type
+            private static readonly ConcurrentDictionary<
+                Type,
+                (
+                    Func<object, object> GetItems,
+                    Action<object, object> SetItems,
+                    Func<object, object> GetKeys,
+                    Action<object, object> SetKeys,
+                    Func<object, object> GetValues,
+                    Action<object, object> SetValues,
+                    Action<object, object> SetPreserve,
+                    Action<object> OnBeforeSerialize,
+                    Action<object> OnAfterDeserialize
+                )
+            > TypeAccessors = new();
+
+            /// <summary>
+            /// Gets or creates cached accessors for the specified collection type.
+            /// </summary>
+            internal static (
+                Func<object, object> GetItems,
+                Action<object, object> SetItems,
+                Func<object, object> GetKeys,
+                Action<object, object> SetKeys,
+                Func<object, object> GetValues,
+                Action<object, object> SetValues,
+                Action<object, object> SetPreserve,
+                Action<object> OnBeforeSerialize,
+                Action<object> OnAfterDeserialize
+            ) GetAccessors(Type collectionType)
+            {
+                return TypeAccessors.GetOrAdd(collectionType, CreateAccessors);
+            }
+
+            private static (
+                Func<object, object> GetItems,
+                Action<object, object> SetItems,
+                Func<object, object> GetKeys,
+                Action<object, object> SetKeys,
+                Func<object, object> GetValues,
+                Action<object, object> SetValues,
+                Action<object, object> SetPreserve,
+                Action<object> OnBeforeSerialize,
+                Action<object> OnAfterDeserialize
+            ) CreateAccessors(Type type)
+            {
+                Type genericDef = type.GetGenericTypeDefinition();
+                bool isSet =
+                    genericDef == typeof(SerializableHashSet<>)
+                    || genericDef == typeof(SerializableSortedSet<>);
+
+                // Items field (for sets)
+                Func<object, object> getItems = null;
+                Action<object, object> setItems = null;
+                if (isSet)
+                {
+                    FieldInfo itemsField = type.GetField(ItemsFieldName, InstanceFieldFlags);
+                    if (itemsField != null)
+                    {
+                        getItems = ReflectionHelpers.GetFieldGetter(itemsField);
+                        setItems = ReflectionHelpers.GetFieldSetter(itemsField);
+                    }
+                }
+
+                // Keys/Values fields (for dictionaries)
+                Func<object, object> getKeys = null;
+                Action<object, object> setKeys = null;
+                Func<object, object> getValues = null;
+                Action<object, object> setValues = null;
+                if (!isSet)
+                {
+                    FieldInfo keysField = type.GetField(KeysFieldName, InstanceFieldFlags);
+                    FieldInfo valuesField = type.GetField(ValuesFieldName, InstanceFieldFlags);
+                    if (keysField != null)
+                    {
+                        getKeys = ReflectionHelpers.GetFieldGetter(keysField);
+                        setKeys = ReflectionHelpers.GetFieldSetter(keysField);
+                    }
+                    if (valuesField != null)
+                    {
+                        getValues = ReflectionHelpers.GetFieldGetter(valuesField);
+                        setValues = ReflectionHelpers.GetFieldSetter(valuesField);
+                    }
+                }
+
+                // PreserveSerializedEntries field
+                Action<object, object> setPreserve = null;
+                FieldInfo preserveField = type.GetField(
+                    PreserveSerializedEntriesFieldName,
+                    InstanceFieldFlags
+                );
+                if (preserveField != null)
+                {
+                    setPreserve = ReflectionHelpers.GetFieldSetter(preserveField);
+                }
+
+                // Lifecycle methods
+                Action<object> onBeforeSerialize = null;
+                Action<object> onAfterDeserialize = null;
+
+                MethodInfo beforeMethod = type.GetMethod(
+                    OnBeforeSerializeMethodName,
+                    InstanceMethodFlags
+                );
+                if (beforeMethod != null)
+                {
+                    onBeforeSerialize = obj => beforeMethod.Invoke(obj, null);
+                }
+
+                MethodInfo afterMethod = type.GetMethod(
+                    OnAfterDeserializeMethodName,
+                    InstanceMethodFlags
+                );
+                if (afterMethod != null)
+                {
+                    onAfterDeserialize = obj => afterMethod.Invoke(obj, null);
+                }
+
+                return (
+                    getItems,
+                    setItems,
+                    getKeys,
+                    setKeys,
+                    getValues,
+                    setValues,
+                    setPreserve,
+                    onBeforeSerialize,
+                    onAfterDeserialize
+                );
+            }
+
+            /// <summary>
+            /// Gets cached accessors for protobuf wrapper types.
+            /// </summary>
+            private static readonly ConcurrentDictionary<
+                Type,
+                (
+                    Func<object, object> GetItems,
+                    Action<object, object> SetItems,
+                    Func<object, object> GetKeys,
+                    Action<object, object> SetKeys,
+                    Func<object, object> GetValues,
+                    Action<object, object> SetValues
+                )
+            > WrapperAccessors = new();
+
+            internal static (
+                Func<object, object> GetItems,
+                Action<object, object> SetItems,
+                Func<object, object> GetKeys,
+                Action<object, object> SetKeys,
+                Func<object, object> GetValues,
+                Action<object, object> SetValues
+            ) GetWrapperAccessors(Type wrapperType, bool isSet)
+            {
+                return WrapperAccessors.GetOrAdd(
+                    wrapperType,
+                    t => CreateWrapperAccessors(t, isSet)
+                );
+            }
+
+            private static (
+                Func<object, object> GetItems,
+                Action<object, object> SetItems,
+                Func<object, object> GetKeys,
+                Action<object, object> SetKeys,
+                Func<object, object> GetValues,
+                Action<object, object> SetValues
+            ) CreateWrapperAccessors(Type wrapperType, bool isSet)
+            {
+                Func<object, object> getItems = null;
+                Action<object, object> setItems = null;
+                Func<object, object> getKeys = null;
+                Action<object, object> setKeys = null;
+                Func<object, object> getValues = null;
+                Action<object, object> setValues = null;
+
+                if (isSet)
+                {
+                    FieldInfo itemsField = wrapperType.GetField(WrapperItemsFieldName);
+                    if (itemsField != null)
+                    {
+                        getItems = ReflectionHelpers.GetFieldGetter(itemsField);
+                        setItems = ReflectionHelpers.GetFieldSetter(itemsField);
+                    }
+                }
+                else
+                {
+                    FieldInfo keysField = wrapperType.GetField(WrapperKeysFieldName);
+                    FieldInfo valuesField = wrapperType.GetField(WrapperValuesFieldName);
+                    if (keysField != null)
+                    {
+                        getKeys = ReflectionHelpers.GetFieldGetter(keysField);
+                        setKeys = ReflectionHelpers.GetFieldSetter(keysField);
+                    }
+                    if (valuesField != null)
+                    {
+                        getValues = ReflectionHelpers.GetFieldGetter(valuesField);
+                        setValues = ReflectionHelpers.GetFieldSetter(valuesField);
+                    }
+                }
+
+                return (getItems, setItems, getKeys, setKeys, getValues, setValues);
+            }
+        }
+
+        /// <summary>
+        /// Serializes a serializable collection to a protobuf wrapper and then to bytes.
+        /// Uses cached reflection accessors for performance.
+        /// </summary>
+        private static byte[] SerializeCollectionWithWrapper<T>(T input)
+        {
+            Type type = typeof(T);
+            Type genericDef = type.GetGenericTypeDefinition();
+            bool isSet =
+                genericDef == typeof(SerializableHashSet<>)
+                || genericDef == typeof(SerializableSortedSet<>);
+
+            // Get cached accessors for the collection type
+            (
+                Func<object, object> getItems,
+                Action<object, object> _,
+                Func<object, object> getKeys,
+                Action<object, object> __,
+                Func<object, object> getValues,
+                Action<object, object> ___,
+                Action<object, object> ____,
+                Action<object> onBeforeSerialize,
+                Action<object> _____
+            ) = CollectionProtoAccessors.GetAccessors(type);
+
+            // Determine wrapper type
+            Type wrapperType;
+            if (genericDef == typeof(SerializableHashSet<>))
+            {
+                wrapperType = typeof(SerializableHashSetProtoWrapper<>).MakeGenericType(
+                    type.GetGenericArguments()
+                );
+            }
+            else if (genericDef == typeof(SerializableSortedSet<>))
+            {
+                wrapperType = typeof(SerializableSortedSetProtoWrapper<>).MakeGenericType(
+                    type.GetGenericArguments()
+                );
+            }
+            else if (genericDef == typeof(SerializableDictionary<,>))
+            {
+                wrapperType = typeof(SerializableDictionaryProtoWrapper<,>).MakeGenericType(
+                    type.GetGenericArguments()
+                );
+            }
+            else if (genericDef == typeof(SerializableSortedDictionary<,>))
+            {
+                wrapperType = typeof(SerializableSortedDictionaryProtoWrapper<,>).MakeGenericType(
+                    type.GetGenericArguments()
+                );
+            }
+            else
+            {
+                throw new InvalidOperationException(
+                    $"Type {type} is not a supported serializable collection type."
+                );
+            }
+
+            // Get cached wrapper accessors
+            (
+                Func<object, object> _______,
+                Action<object, object> setWrapperItems,
+                Func<object, object> ________,
+                Action<object, object> setWrapperKeys,
+                Func<object, object> _________,
+                Action<object, object> setWrapperValues
+            ) = CollectionProtoAccessors.GetWrapperAccessors(wrapperType, isSet);
+
+            // Call OnBeforeSerialize to ensure arrays are populated
+            onBeforeSerialize?.Invoke(input);
+
+            // Create wrapper and copy data
+            object wrapper = Activator.CreateInstance(wrapperType);
+            if (isSet)
+            {
+                object items = getItems?.Invoke(input);
+                setWrapperItems?.Invoke(wrapper, items);
+            }
+            else
+            {
+                object keys = getKeys?.Invoke(input);
+                object values = getValues?.Invoke(input);
+                setWrapperKeys?.Invoke(wrapper, keys);
+                setWrapperValues?.Invoke(wrapper, values);
+            }
+
+            // Serialize wrapper
+            using Utils.PooledResource<PooledBufferStream> lease = PooledBufferStream.Rent(
+                out PooledBufferStream stream
+            );
+            ProtoBuf.Serializer.NonGeneric.Serialize(stream, wrapper);
+
+            byte[] buffer = null;
+            stream.ToArrayExact(ref buffer);
+            return buffer;
+        }
+
+        /// <summary>
+        /// Deserializes a protobuf wrapper and constructs the serializable collection.
+        /// Uses cached reflection accessors for performance.
+        /// </summary>
+        private static T DeserializeCollectionFromWrapper<T>(byte[] data)
+        {
+            Type type = typeof(T);
+            Type genericDef = type.GetGenericTypeDefinition();
+            bool isSet =
+                genericDef == typeof(SerializableHashSet<>)
+                || genericDef == typeof(SerializableSortedSet<>);
+
+            // Get cached accessors for the collection type
+            (
+                Func<object, object> _,
+                Action<object, object> setItems,
+                Func<object, object> __,
+                Action<object, object> setKeys,
+                Func<object, object> ___,
+                Action<object, object> setValues,
+                Action<object, object> setPreserve,
+                Action<object> ____,
+                Action<object> onAfterDeserialize
+            ) = CollectionProtoAccessors.GetAccessors(type);
+
+            // Determine wrapper type
+            Type wrapperType;
+            if (genericDef == typeof(SerializableHashSet<>))
+            {
+                wrapperType = typeof(SerializableHashSetProtoWrapper<>).MakeGenericType(
+                    type.GetGenericArguments()
+                );
+            }
+            else if (genericDef == typeof(SerializableSortedSet<>))
+            {
+                wrapperType = typeof(SerializableSortedSetProtoWrapper<>).MakeGenericType(
+                    type.GetGenericArguments()
+                );
+            }
+            else if (genericDef == typeof(SerializableDictionary<,>))
+            {
+                wrapperType = typeof(SerializableDictionaryProtoWrapper<,>).MakeGenericType(
+                    type.GetGenericArguments()
+                );
+            }
+            else if (genericDef == typeof(SerializableSortedDictionary<,>))
+            {
+                wrapperType = typeof(SerializableSortedDictionaryProtoWrapper<,>).MakeGenericType(
+                    type.GetGenericArguments()
+                );
+            }
+            else
+            {
+                throw new InvalidOperationException(
+                    $"Type {type} is not a supported serializable collection type."
+                );
+            }
+
+            // Get cached wrapper accessors
+            (
+                Func<object, object> getWrapperItems,
+                Action<object, object> _____,
+                Func<object, object> getWrapperKeys,
+                Action<object, object> ______,
+                Func<object, object> getWrapperValues,
+                Action<object, object> _______
+            ) = CollectionProtoAccessors.GetWrapperAccessors(wrapperType, isSet);
+
+            // Deserialize wrapper
+            using MemoryStream ms = new(data, writable: false);
+            object wrapper = ProtoBuf.Serializer.NonGeneric.Deserialize(wrapperType, ms);
+
+            // Create result and copy data from wrapper
+            object result = Activator.CreateInstance(type);
+            if (isSet)
+            {
+                object items = getWrapperItems?.Invoke(wrapper);
+                setItems?.Invoke(result, items);
+            }
+            else
+            {
+                object keys = getWrapperKeys?.Invoke(wrapper);
+                object values = getWrapperValues?.Invoke(wrapper);
+                setKeys?.Invoke(result, keys);
+                setValues?.Invoke(result, values);
+            }
+
+            // Set preserve flag to prevent clearing during OnAfterDeserialize
+            setPreserve?.Invoke(result, true);
+
+            // Call OnAfterDeserialize to populate the backing collection
+            onAfterDeserialize?.Invoke(result);
+
+            return (T)result;
         }
 
         private static readonly Utils.WallstopGenericPool<BinaryFormatter> BinaryFormatterPool =
@@ -825,13 +1295,21 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
             {
                 throw new ProtoException("No data provided for Protobuf deserialization.");
             }
+
+            // Intercept serializable collection types to use wrapper-based deserialization
+            // This bypasses protobuf-net's collection detection which ignores IgnoreListHandling
+            Type declared = typeof(T);
+            if (IsSerializableCollectionType(declared))
+            {
+                return DeserializeCollectionFromWrapper<T>(data);
+            }
+
             try
             {
                 // Prefer zero-copy ROM/ROS overloads when available
                 if (ProtoDeserializeTypeFromROMFast != null)
                 {
                     ReadOnlyMemory<byte> rom = new(data);
-                    Type declared = typeof(T);
                     if (
                         ShouldUseRuntimeTypeForProtobuf<T>(
                             declared,
@@ -857,7 +1335,6 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
                 if (ProtoDeserializeTypeFromROSFast != null)
                 {
                     ReadOnlySequence<byte> ros = new(data);
-                    Type declared = typeof(T);
                     if (
                         ShouldUseRuntimeTypeForProtobuf<T>(
                             declared,
@@ -884,7 +1361,6 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
                 if (data.Length <= ProtobufMemoryStreamThreshold)
                 {
                     using MemoryStream ms = new(data, writable: false);
-                    Type declared = typeof(T);
                     if (
                         ShouldUseRuntimeTypeForProtobuf<T>(
                             declared,
@@ -1111,10 +1587,18 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
         /// </example>
         public static byte[] ProtoSerialize<T>(T input, bool forceRuntimeType = false)
         {
+            Type declared = typeof(T);
+
+            // Intercept serializable collection types to use wrapper-based serialization
+            // This bypasses protobuf-net's collection detection which ignores IgnoreListHandling
+            if (IsSerializableCollectionType(declared))
+            {
+                return SerializeCollectionWithWrapper(input);
+            }
+
             using Utils.PooledResource<PooledBufferStream> lease = PooledBufferStream.Rent(
                 out PooledBufferStream stream
             );
-            Type declared = typeof(T);
             bool useRuntime = ShouldUseRuntimeTypeForProtobuf(declared, input, forceRuntimeType);
 
             if (useRuntime)
@@ -1145,10 +1629,23 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
             bool forceRuntimeType = false
         )
         {
+            Type declared = typeof(T);
+
+            // Intercept serializable collection types to use wrapper-based serialization
+            if (IsSerializableCollectionType(declared))
+            {
+                byte[] result = SerializeCollectionWithWrapper(input);
+                if (buffer == null || buffer.Length < result.Length)
+                {
+                    buffer = new byte[result.Length];
+                }
+                Array.Copy(result, buffer, result.Length);
+                return result.Length;
+            }
+
             using Utils.PooledResource<PooledBufferStream> lease = PooledBufferStream.Rent(
                 out PooledBufferStream stream
             );
-            Type declared = typeof(T);
             bool useRuntime = ShouldUseRuntimeTypeForProtobuf(declared, input, forceRuntimeType);
 
             if (useRuntime)

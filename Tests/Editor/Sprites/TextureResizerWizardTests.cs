@@ -1,4 +1,4 @@
-namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
+namespace WallstopStudios.UnityHelpers.Tests.Sprites
 {
 #if UNITY_EDITOR
     using System.IO;
@@ -6,8 +6,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
     using UnityEditor;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Helper;
+    using WallstopStudios.UnityHelpers.Editor.AssetProcessors;
     using WallstopStudios.UnityHelpers.Editor.Sprites;
-    using WallstopStudios.UnityHelpers.Tests.Editor.Utils;
+    using WallstopStudios.UnityHelpers.Tests.Core;
 
     public sealed class TextureResizerWizardTests : CommonTestBase
     {
@@ -15,8 +16,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
         private const string OutRoot = "Assets/Temp/TextureResizerWizardTests/Out";
 
         [SetUp]
-        public void SetUp()
+        public override void BaseSetUp()
         {
+            base.BaseSetUp();
             EnsureFolder(Root);
             EnsureFolder(OutRoot);
         }
@@ -25,8 +27,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
         public override void TearDown()
         {
             base.TearDown();
-            AssetDatabase.DeleteAsset("Assets/Temp");
-            AssetDatabase.Refresh();
+            // Reset DetectAssetChangeProcessor to avoid triggering loop protection
+            // when multiple assets are deleted during cleanup
+            DetectAssetChangeProcessor.ResetForTesting();
+            CleanupTrackedFoldersAndAssets();
         }
 
         [Test]
@@ -201,22 +205,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             Assert.IsFalse(importer.isReadable, "Importer readability should be restored");
         }
 
-        private static void EnsureFolder(string relPath)
-        {
-            string[] parts = relPath.Split('/');
-            string cur = parts[0];
-            for (int i = 1; i < parts.Length; i++)
-            {
-                string next = cur + "/" + parts[i];
-                if (!AssetDatabase.IsValidFolder(next))
-                {
-                    AssetDatabase.CreateFolder(cur, parts[i]);
-                }
-                cur = next;
-            }
-        }
-
-        private static void CreatePng(string relPath, int w, int h, Color c)
+        private void CreatePng(string relPath, int w, int h, Color c)
         {
             string dir = Path.GetDirectoryName(relPath).SanitizePath();
             EnsureFolder(dir);

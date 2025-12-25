@@ -1,20 +1,23 @@
-namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
+namespace WallstopStudios.UnityHelpers.Tests.Sprites
 {
 #if UNITY_EDITOR
     using System.IO;
     using NUnit.Framework;
     using UnityEditor;
     using UnityEngine;
+    using WallstopStudios.UnityHelpers.Core.Helper;
+    using WallstopStudios.UnityHelpers.Editor.AssetProcessors;
     using WallstopStudios.UnityHelpers.Editor.Sprites;
-    using WallstopStudios.UnityHelpers.Tests.Editor.Utils;
+    using WallstopStudios.UnityHelpers.Tests.Core;
 
     public sealed class TextureSettingsApplierWizardTests : CommonTestBase
     {
         private const string Root = "Assets/Temp/TextureSettingsApplierWizardTests";
 
         [SetUp]
-        public void SetUp()
+        public override void BaseSetUp()
         {
+            base.BaseSetUp();
             EnsureFolder(Root);
         }
 
@@ -22,16 +25,18 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
         public override void TearDown()
         {
             base.TearDown();
-            AssetDatabase.DeleteAsset("Assets/Temp");
-            AssetDatabase.Refresh();
+            // Reset DetectAssetChangeProcessor to avoid triggering loop protection
+            // when multiple assets are deleted during cleanup
+            DetectAssetChangeProcessor.ResetForTesting();
+            CleanupTrackedFoldersAndAssets();
         }
 
         [Test]
         public void AppliesImporterSettingsToTexturesAndDirectories()
         {
-            string a = Path.Combine(Root, "a.png").Replace('\\', '/');
-            string bdir = Path.Combine(Root, "Dir").Replace('\\', '/');
-            string b = Path.Combine(bdir, "b.png").Replace('\\', '/');
+            string a = Path.Combine(Root, "a.png").SanitizePath();
+            string bdir = Path.Combine(Root, "Dir").SanitizePath();
+            string b = Path.Combine(bdir, "b.png").SanitizePath();
             EnsureFolder(bdir);
             CreatePng(a, 16, 16, Color.white);
             CreatePng(b, 32, 32, Color.white);
@@ -86,24 +91,163 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             Assert.That(impB.maxTextureSize, Is.EqualTo(128));
         }
 
-        private static void EnsureFolder(string relPath)
+        [Test]
+        public void ApplySettingsWithEmptyDirectoriesListSucceeds()
         {
-            string[] parts = relPath.Split('/');
-            string cur = parts[0];
-            for (int i = 1; i < parts.Length; i++)
+            // This tests the edge case where directories is empty
+            string a = Path.Combine(Root, "solo.png").SanitizePath();
+            CreatePng(a, 16, 16, Color.white);
+            AssetDatabase.Refresh();
+
+            TextureSettingsApplierWindow window = Track(
+                ScriptableObject.CreateInstance<TextureSettingsApplierWindow>()
+            );
+
+            window.textures = new System.Collections.Generic.List<Texture2D>
             {
-                string next = cur + "/" + parts[i];
-                if (!AssetDatabase.IsValidFolder(next))
-                {
-                    AssetDatabase.CreateFolder(cur, parts[i]);
-                }
-                cur = next;
-            }
+                AssetDatabase.LoadAssetAtPath<Texture2D>(a),
+            };
+            window.directories = new System.Collections.Generic.List<Object>(); // Explicitly empty
+
+            window.applyWrapMode = true;
+            window.wrapMode = TextureWrapMode.Clamp;
+
+            // This should not throw
+            Assert.DoesNotThrow(() => window.ApplySettings());
+
+            AssetDatabase.Refresh();
+            TextureImporter imp = AssetImporter.GetAtPath(a) as TextureImporter;
+            Assert.IsTrue(imp != null, $"Expected importer at path '{a}' to not be null");
+            Assert.That(imp.wrapMode, Is.EqualTo(TextureWrapMode.Clamp));
         }
 
-        private static void CreatePng(string relPath, int w, int h, Color c)
+        [Test]
+        public void ApplySettingsWithMultipleNestedDirectoriesSucceeds()
         {
-            string dir = Path.GetDirectoryName(relPath).Replace('\\', '/');
+            // Tests multiple directories at different levels to ensure array pooling works correctly
+            string dirA = Path.Combine(Root, "DirA").SanitizePath();
+            string dirB = Path.Combine(Root, "DirB").SanitizePath();
+            string dirNested = Path.Combine(dirA, "Nested").SanitizePath();
+
+            EnsureFolder(dirA);
+            EnsureFolder(dirB);
+            EnsureFolder(dirNested);
+
+            string texA = Path.Combine(dirA, "texA.png").SanitizePath();
+            string texB = Path.Combine(dirB, "texB.png").SanitizePath();
+            string texNested = Path.Combine(dirNested, "texNested.png").SanitizePath();
+
+            CreatePng(texA, 8, 8, Color.red);
+            CreatePng(texB, 8, 8, Color.green);
+            CreatePng(texNested, 8, 8, Color.blue);
+            AssetDatabase.Refresh();
+
+            TextureSettingsApplierWindow window = Track(
+                ScriptableObject.CreateInstance<TextureSettingsApplierWindow>()
+            );
+
+            window.textures = new System.Collections.Generic.List<Texture2D>();
+            window.directories = new System.Collections.Generic.List<Object>
+            {
+                AssetDatabase.LoadAssetAtPath<Object>(dirA),
+                AssetDatabase.LoadAssetAtPath<Object>(dirB),
+            };
+
+            window.applyFilterMode = true;
+            window.filterMode = FilterMode.Point;
+
+            // Should not throw - this was the bug where SystemArrayPool returned larger arrays
+            Assert.DoesNotThrow(
+                () => window.ApplySettings(),
+                "ApplySettings with multiple directories should not throw"
+            );
+
+            AssetDatabase.Refresh();
+
+            TextureImporter impA = AssetImporter.GetAtPath(texA) as TextureImporter;
+            TextureImporter impB = AssetImporter.GetAtPath(texB) as TextureImporter;
+            TextureImporter impNested = AssetImporter.GetAtPath(texNested) as TextureImporter;
+
+            Assert.IsTrue(impA != null, $"Expected importer at path '{texA}' to not be null");
+            Assert.IsTrue(impB != null, $"Expected importer at path '{texB}' to not be null");
+            Assert.IsTrue(
+                impNested != null,
+                $"Expected importer at path '{texNested}' to not be null"
+            );
+
+            Assert.That(impA.filterMode, Is.EqualTo(FilterMode.Point));
+            Assert.That(impB.filterMode, Is.EqualTo(FilterMode.Point));
+            Assert.That(impNested.filterMode, Is.EqualTo(FilterMode.Point));
+        }
+
+        [Test]
+        public void ApplySettingsWithEmptyDirectorySucceeds()
+        {
+            // Tests a directory that contains no textures
+            string emptyDir = Path.Combine(Root, "EmptyDir").SanitizePath();
+            EnsureFolder(emptyDir);
+            AssetDatabase.Refresh();
+
+            TextureSettingsApplierWindow window = Track(
+                ScriptableObject.CreateInstance<TextureSettingsApplierWindow>()
+            );
+
+            window.textures = new System.Collections.Generic.List<Texture2D>();
+            window.directories = new System.Collections.Generic.List<Object>
+            {
+                AssetDatabase.LoadAssetAtPath<Object>(emptyDir),
+            };
+
+            window.applyFilterMode = true;
+            window.filterMode = FilterMode.Point;
+
+            // Should not throw even with no textures found
+            Assert.DoesNotThrow(
+                () => window.ApplySettings(),
+                "ApplySettings with empty directory should not throw"
+            );
+        }
+
+        [Test]
+        public void ApplySettingsWithNullDirectoryEntriesIgnoresThem()
+        {
+            // Tests that null entries in the directories list are handled gracefully
+            string validDir = Path.Combine(Root, "ValidDir").SanitizePath();
+            EnsureFolder(validDir);
+            string tex = Path.Combine(validDir, "valid.png").SanitizePath();
+            CreatePng(tex, 8, 8, Color.white);
+            AssetDatabase.Refresh();
+
+            TextureSettingsApplierWindow window = Track(
+                ScriptableObject.CreateInstance<TextureSettingsApplierWindow>()
+            );
+
+            window.textures = new System.Collections.Generic.List<Texture2D>();
+            window.directories = new System.Collections.Generic.List<Object>
+            {
+                null, // Intentionally null
+                AssetDatabase.LoadAssetAtPath<Object>(validDir),
+                null, // Another null
+            };
+
+            window.applyWrapMode = true;
+            window.wrapMode = TextureWrapMode.MirrorOnce;
+
+            // Should not throw - nulls should be skipped
+            Assert.DoesNotThrow(
+                () => window.ApplySettings(),
+                "ApplySettings with null directory entries should not throw"
+            );
+
+            AssetDatabase.Refresh();
+            TextureImporter imp = AssetImporter.GetAtPath(tex) as TextureImporter;
+            Assert.IsTrue(imp != null, $"Expected importer at path '{tex}' to not be null");
+            Assert.That(imp.wrapMode, Is.EqualTo(TextureWrapMode.MirrorOnce));
+        }
+
+        private void CreatePng(string relPath, int w, int h, Color c)
+        {
+            string dir = Path.GetDirectoryName(relPath).SanitizePath();
             EnsureFolder(dir);
             Texture2D t = new(w, h, TextureFormat.RGBA32, false);
             Color[] pix = new Color[w * h];
@@ -127,7 +271,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
                     ),
                     rel
                 )
-                .Replace('\\', '/');
+                .SanitizePath();
         }
     }
 #endif

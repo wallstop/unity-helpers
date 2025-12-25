@@ -5,6 +5,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
     using System.Linq;
     using NUnit.Framework;
     using ProtoBuf;
+    using WallstopStudios.UnityHelpers.Core.Random;
     using Serializer = WallstopStudios.UnityHelpers.Core.Serialization.Serializer;
 
     public sealed class ProtoSerializationCorrectnessTests
@@ -186,7 +187,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
         public void ManySequentialSerializeDeserializeMixedMessagesNoStateLeakage()
         {
             // This stresses the pooled streams by doing many back-to-back operations with different payload sizes
-            Random rng = new(12345);
+            IRandom rng = new PcgRandom(12345);
             for (int i = 0; i < 2_000; ++i)
             {
                 EdgeCaseMessage msg = new()

@@ -88,7 +88,9 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             textureSourcePaths ??= new List<Object>();
 
             // Discover textures from provided folders using a pooled set to avoid duplicates.
-            using (Buffers<string>.HashSet.Get(out HashSet<string> sourcePaths))
+            using PooledResource<HashSet<string>> sourcePathsResource = Buffers<string>.HashSet.Get(
+                out HashSet<string> sourcePaths
+            );
             {
                 foreach (Object pathObj in textureSourcePaths)
                 {
@@ -124,28 +126,27 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             }
 
             // Remove nulls, de-dupe, and order by name without LINQ
-            using (Buffers<Texture2D>.HashSet.Get(out HashSet<Texture2D> distinct))
-            using (Buffers<Texture2D>.List.Get(out List<Texture2D> ordered))
+            using PooledResource<HashSet<Texture2D>> distinctResource =
+                Buffers<Texture2D>.HashSet.Get(out HashSet<Texture2D> distinct);
+            using PooledResource<List<Texture2D>> orderedResource = Buffers<Texture2D>.List.Get(
+                out List<Texture2D> ordered
+            );
+            for (int i = 0; i < textures.Count; i++)
             {
-                for (int i = 0; i < textures.Count; i++)
+                Texture2D t = textures[i];
+                if (t == null)
                 {
-                    Texture2D t = textures[i];
-                    if (t == null)
-                    {
-                        continue;
-                    }
-                    if (distinct.Add(t))
-                    {
-                        ordered.Add(t);
-                    }
+                    continue;
                 }
-
-                ordered.Sort(
-                    static (a, b) => string.Compare(a.name, b.name, StringComparison.Ordinal)
-                );
-                textures.Clear();
-                textures.AddRange(ordered);
+                if (distinct.Add(t))
+                {
+                    ordered.Add(t);
+                }
             }
+
+            ordered.Sort(static (a, b) => string.Compare(a.name, b.name, StringComparison.Ordinal));
+            textures.Clear();
+            textures.AddRange(ordered);
 
             if (textures.Count <= 0 || numResizes <= 0)
             {

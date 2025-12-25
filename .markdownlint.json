@@ -17,5 +17,7 @@
   // Allow exactly one blank line between blocks (Prettier’s behavior)
   "MD012": { "maximum": 1 },
   // Don’t flag the two trailing spaces used for hard line breaks in Markdown
-  "MD009": { "strict": false }
+  "MD009": { "strict": false },
+  // Emoji/wide-character tables break MD060 alignment heuristics; disable to avoid noise
+  "MD060": false
 }

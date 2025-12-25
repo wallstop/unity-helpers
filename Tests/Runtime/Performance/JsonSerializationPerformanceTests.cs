@@ -1,4 +1,4 @@
-namespace WallstopStudios.UnityHelpers.Tests.Performance
+namespace WallstopStudios.UnityHelpers.Tests.Runtime.Performance
 {
     using System;
     using System.Diagnostics;
@@ -202,17 +202,15 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
             _ = JsonSerializer.SerializeToUtf8Bytes(sample);
 
             T value = factory();
-            long allocStart;
-            long allocEnd;
             // Pooled - Normal
             Stopwatch sw = Stopwatch.StartNew();
-            allocStart = GetAlloc();
+            long allocStart = GetAlloc();
             for (int i = 0; i < Iterations; ++i)
             {
                 _ = SerializerAlias.JsonSerialize(value, normal, ref buffer);
             }
             sw.Stop();
-            allocEnd = GetAlloc();
+            long allocEnd = GetAlloc();
             long pooledNormalMs = sw.ElapsedMilliseconds;
             long pooledNormalKB = (allocEnd - allocStart) / 1024;
 
@@ -262,16 +260,14 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
             _ = JsonSerializer.Deserialize<T>(data);
 
             Stopwatch sw = Stopwatch.StartNew();
-            long allocStart;
-            long allocEnd;
             // Pooled - Normal
-            allocStart = GetAlloc();
+            long allocStart = GetAlloc();
             for (int i = 0; i < Iterations; ++i)
             {
                 _ = SerializerAlias.JsonDeserialize<T>(data, null, normal);
             }
             sw.Stop();
-            allocEnd = GetAlloc();
+            long allocEnd = GetAlloc();
             long pooledNormalMs = sw.ElapsedMilliseconds;
             long pooledNormalKB = (allocEnd - allocStart) / 1024;
 
@@ -329,8 +325,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
 
             // Measure JsonStringify (returns string)
             Stopwatch sw = Stopwatch.StartNew();
-            long allocStart;
-            long allocEnd;
             for (int i = 0; i < Iterations; ++i)
             {
                 _ = SerializerAlias.JsonStringify(payload, normal);
@@ -347,13 +341,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
             long stringifyFastMs = sw.ElapsedMilliseconds;
 
             sw.Restart();
-            allocStart = GetAlloc();
+            long allocStart = GetAlloc();
             for (int i = 0; i < Iterations; ++i)
             {
                 _ = SerializerAlias.JsonSerialize(payload, normal, ref buffer);
             }
             sw.Stop();
-            allocEnd = GetAlloc();
+            long allocEnd = GetAlloc();
             long serializeNormalMs = sw.ElapsedMilliseconds;
             long serializeNormalKB = (allocEnd - allocStart) / 1024;
 

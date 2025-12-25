@@ -144,7 +144,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Math
         public void IsPointInsidePolygonEmptyPolygonReturnsFalse()
         {
             Vector2 point = new(5f, 5f);
-            Vector2[] polygon = new Vector2[0];
+            Vector2[] polygon = Array.Empty<Vector2>();
 
             bool result = PointPolygonCheck.IsPointInsidePolygon(point, polygon);
 
@@ -414,7 +414,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Math
         public void IsPointInsidePolygonVector3EmptyPolygonReturnsFalse()
         {
             Vector3 point = new(5f, 5f, 5f);
-            Vector3[] polygon = new Vector3[0];
+            Vector3[] polygon = Array.Empty<Vector3>();
             Vector3 planeNormal = Vector3.forward;
 
             bool result = PointPolygonCheck.IsPointInsidePolygon(point, polygon, planeNormal);

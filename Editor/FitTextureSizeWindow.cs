@@ -130,15 +130,18 @@ namespace WallstopStudios.UnityHelpers.Editor
                 return;
             }
 
-            _textureSourcePaths = new List<Object>();
-            Object defaultFolder = AssetDatabase.LoadAssetAtPath<Object>("Assets/Sprites");
-            if (defaultFolder == null)
+            _textureSourcePaths ??= new List<Object>();
+            if (_textureSourcePaths.Count == 0)
             {
-                return;
-            }
+                Object defaultFolder = AssetDatabase.LoadAssetAtPath<Object>("Assets/Sprites");
+                if (defaultFolder == null)
+                {
+                    return;
+                }
 
-            _textureSourcePaths.Add(defaultFolder);
-            _serializedObject.Update();
+                _textureSourcePaths.Add(defaultFolder);
+                _serializedObject.Update();
+            }
         }
 
         private void OnGUI()
@@ -340,8 +343,14 @@ namespace WallstopStudios.UnityHelpers.Editor
             _serializedObject.ApplyModifiedProperties();
         }
 
-        private List<string> CollectAssetGuids()
+        private void CollectAssetGuids(List<string> destination)
         {
+            if (destination == null)
+            {
+                throw new ArgumentNullException(nameof(destination));
+            }
+
+            destination.Clear();
             _textureSourcePaths ??= new List<Object>();
 
             using PooledResource<HashSet<string>> uniqRes = Buffers<string>.HashSet.Get(
@@ -352,9 +361,6 @@ namespace WallstopStudios.UnityHelpers.Editor
             );
             using PooledResource<HashSet<string>> guidSetRes = Buffers<string>.HashSet.Get(
                 out HashSet<string> guidSet
-            );
-            using PooledResource<List<string>> resultRes = Buffers<string>.List.Get(
-                out List<string> result
             );
             // legacy flag no longer used (replaced by _labelQueryGuids)
 
@@ -455,17 +461,22 @@ namespace WallstopStudios.UnityHelpers.Editor
             }
 
             // Output consolidated GUID list.
-            foreach (string g in guidSet)
+            if (destination.Capacity < guidSet.Count)
             {
-                result.Add(g);
+                destination.Capacity = guidSet.Count;
             }
-
-            return new List<string>(result);
+            foreach (string guid in guidSet)
+            {
+                destination.Add(guid);
+            }
         }
 
         internal int CalculateTextureChanges(bool applyChanges)
         {
-            List<string> textureGuids = CollectAssetGuids();
+            using PooledResource<List<string>> textureGuidLease = Buffers<string>.List.Get(
+                out List<string> textureGuids
+            );
+            CollectAssetGuids(textureGuids);
 
             if (textureGuids.Count <= 0)
             {

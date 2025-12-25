@@ -116,7 +116,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         {
             if (sprites == null)
             {
-                return Color.black;
+                return method == ColorAveragingMethod.Weighted ? Color.clear : Color.black;
             }
 
             switch (method)
@@ -363,6 +363,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                         out Dictionary<FastVector3Int, int> buckets
                     );
                 const int bucketSize = 32;
+                bool hasSamples = false;
 
                 foreach (Sprite sprite in sprites)
                 {
@@ -395,6 +396,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                                 Mathf.RoundToInt(c.b / (float)bucketSize)
                             );
                             buckets.AddOrUpdate(bucket, _ => 0, (_, value) => value + 1);
+                            hasSamples = true;
                         }
                     }
                     else
@@ -413,6 +415,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                                 Mathf.RoundToInt(c.b / (float)bucketSize)
                             );
                             buckets.AddOrUpdate(bucket, _ => 0, (_, value) => value + 1);
+                            hasSamples = true;
                         }
                     }
                 }
@@ -426,15 +429,16 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                         largest = kv;
                     }
                 }
-                if (largest == null)
+                if (!hasSamples || largest == null)
                 {
-                    return default;
+                    return Color.black;
                 }
                 FastVector3Int dominant = largest.Value.Key;
                 return new Color(
                     (dominant.x * bucketSize) / 255f,
                     (dominant.y * bucketSize) / 255f,
-                    (dominant.z * bucketSize) / 255f
+                    (dominant.z * bucketSize) / 255f,
+                    1f
                 );
             }
         }
@@ -735,6 +739,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                     out Dictionary<FastVector3Int, int> cache
                 );
             const int bucketSize = 32; // Adjust for different precision
+            bool hasSamples = false;
 
             switch (pixels)
             {
@@ -755,6 +760,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                         );
 
                         cache.AddOrUpdate(bucket, _ => 0, (_, value) => value + 1);
+                        hasSamples = true;
                     }
 
                     break;
@@ -775,6 +781,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                         );
 
                         cache.AddOrUpdate(bucket, _ => 0, (_, value) => value + 1);
+                        hasSamples = true;
                     }
 
                     break;
@@ -795,6 +802,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                         );
 
                         cache.AddOrUpdate(bucket, _ => 0, (_, value) => value + 1);
+                        hasSamples = true;
                     }
 
                     break;
@@ -814,16 +822,17 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 }
             }
 
-            if (largest == null)
+            if (!hasSamples || largest == null)
             {
-                return default;
+                return Color.black;
             }
 
             FastVector3Int dominantBucket = largest.Value.Key;
             return new Color(
                 dominantBucket.x * bucketSize / 255f,
                 dominantBucket.y * bucketSize / 255f,
-                dominantBucket.z * bucketSize / 255f
+                dominantBucket.z * bucketSize / 255f,
+                1f
             );
         }
 
@@ -968,9 +977,9 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 }
                 else
                 {
-                    inputColor.r *= random.NextFloat(1 / inputColor.r);
-                    inputColor.g *= random.NextFloat(1 / inputColor.g);
-                    inputColor.b *= random.NextFloat(1 / inputColor.b);
+                    inputColor.r *= GetRandomScale(random, inputColor.r);
+                    inputColor.g *= GetRandomScale(random, inputColor.g);
+                    inputColor.b *= GetRandomScale(random, inputColor.b);
                 }
             }
 
@@ -978,6 +987,22 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             h = h < 0.5f ? h + 0.5f : h - 0.5f;
             Color result = Color.HSVToRGB(h, s, v);
             return result;
+
+            static float GetRandomScale(IRandom rng, float component)
+            {
+                if (component <= 0f || float.IsNaN(component))
+                {
+                    return rng.NextFloat();
+                }
+
+                float maxScale = 1f / component;
+                if (maxScale <= 0f || float.IsInfinity(maxScale))
+                {
+                    return rng.NextFloat();
+                }
+
+                return rng.NextFloat(maxScale);
+            }
         }
     }
 }

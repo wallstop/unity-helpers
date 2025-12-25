@@ -8,8 +8,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
     using UnityEngine;
     using UnityEngine.TestTools;
     using WallstopStudios.UnityHelpers.Core.Extension;
+    using WallstopStudios.UnityHelpers.Tests.Core;
 
-    public sealed class AsyncOperationExtensionsTests
+    public sealed class AsyncOperationExtensionsTests : CommonTestBase
     {
         [Test]
         public void WithContinuationOnValueTaskExecutesAction()

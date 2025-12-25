@@ -158,7 +158,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             FastOneOf<int, string, bool> oneOf = 42;
             int called = -1;
 
-            oneOf.Switch(i => called = 0, s => called = 1, b => called = 2);
+            oneOf.Switch(i => called = 0, _ => called = 1, _ => called = 2);
 
             Assert.AreEqual(0, called);
         }
@@ -169,7 +169,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             FastOneOf<int, string, bool> oneOf = "hello";
             int called = -1;
 
-            oneOf.Switch(i => called = 0, s => called = 1, b => called = 2);
+            oneOf.Switch(i => called = 0, _ => called = 1, _ => called = 2);
 
             Assert.AreEqual(1, called);
         }
@@ -180,7 +180,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             FastOneOf<int, string, bool> oneOf = true;
             int called = -1;
 
-            oneOf.Switch(i => called = 0, s => called = 1, b => called = 2);
+            oneOf.Switch(i => called = 0, _ => called = 1, _ => called = 2);
 
             Assert.AreEqual(2, called);
         }
@@ -538,7 +538,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             FastOneOf<int, string> oneOf = 42;
             int called = -1;
 
-            oneOf.Switch(i => called = 0, s => called = 1);
+            oneOf.Switch(_ => called = 0, _ => called = 1);
 
             Assert.AreEqual(0, called);
         }
@@ -549,7 +549,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             FastOneOf<int, string> oneOf = "hello";
             int called = -1;
 
-            oneOf.Switch(i => called = 0, s => called = 1);
+            oneOf.Switch(_ => called = 0, _ => called = 1);
 
             Assert.AreEqual(1, called);
         }
@@ -743,7 +743,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             FastOneOf<int, string, bool, double> oneOf = 3.14;
             int called = -1;
 
-            oneOf.Switch(i => called = 0, s => called = 1, b => called = 2, d => called = 3);
+            oneOf.Switch(_ => called = 0, _ => called = 1, _ => called = 2, _ => called = 3);
 
             Assert.AreEqual(3, called);
         }
@@ -918,7 +918,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void NoneCanBeUsedInCollections()
         {
-            HashSet<None> set = new() { default, None.Default, default(None) };
+            HashSet<None> set = new() { default, None.Default, default };
 
             Assert.AreEqual(1, set.Count);
         }
@@ -926,7 +926,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void NoneCanBeUsedInDictionary()
         {
-            Dictionary<None, int> dict = new() { [default(None)] = 1 };
+            Dictionary<None, int> dict = new() { [default] = 1 };
 
             Assert.AreEqual(1, dict[None.Default]);
         }
@@ -957,7 +957,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             FastOneOf<int, None> maybeInt = None.Default;
 
             bool hasValue = maybeInt.TryGetT0(out _);
-            bool hasNone = maybeInt.TryGetT1(out None none);
+            bool hasNone = maybeInt.TryGetT1(out None _);
 
             Assert.IsFalse(hasValue);
             Assert.IsTrue(hasNone);

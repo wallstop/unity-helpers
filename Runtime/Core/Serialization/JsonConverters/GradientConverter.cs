@@ -32,8 +32,8 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization.JsonConverters
                 throw new JsonException($"Invalid token type {reader.TokenType}");
             }
 
-            List<GradientColorKey> cks = null;
-            List<GradientAlphaKey> aks = null;
+            GradientColorKey[] colorKeys = null;
+            GradientAlphaKey[] alphaKeys = null;
             GradientMode mode = GradientMode.Blend;
             bool haveMode = false;
 
@@ -42,14 +42,14 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization.JsonConverters
                 if (reader.TokenType == JsonTokenType.EndObject)
                 {
                     Gradient g = new();
-                    if (cks != null)
+                    if (colorKeys != null)
                     {
-                        g.colorKeys = cks.ToArray();
+                        g.colorKeys = colorKeys;
                     }
 
-                    if (aks != null)
+                    if (alphaKeys != null)
                     {
-                        g.alphaKeys = aks.ToArray();
+                        g.alphaKeys = alphaKeys;
                     }
 
                     g.mode = haveMode ? mode : GradientMode.Blend;
@@ -70,23 +70,19 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization.JsonConverters
                         {
                             throw new JsonException("colorKeys must be an array");
                         }
-                        using (
-                            PooledResource<List<GradientColorKey>> pooled =
-                                Buffers<GradientColorKey>.List.Get(out List<GradientColorKey> list)
-                        )
+                        using PooledResource<List<GradientColorKey>> pooled =
+                            Buffers<GradientColorKey>.List.Get(out List<GradientColorKey> list);
+                        while (reader.Read())
                         {
-                            while (reader.Read())
+                            if (reader.TokenType == JsonTokenType.EndArray)
                             {
-                                if (reader.TokenType == JsonTokenType.EndArray)
-                                {
-                                    break;
-                                }
-
-                                list.Add(ReadColorKey(ref reader, options));
+                                break;
                             }
-                            cks = new List<GradientColorKey>(list.Count);
-                            cks.AddRange(list);
+
+                            list.Add(ReadColorKey(ref reader, options));
                         }
+                        colorKeys =
+                            list.Count == 0 ? Array.Empty<GradientColorKey>() : list.ToArray();
                     }
                     else if (reader.ValueTextEquals("alphaKeys"))
                     {
@@ -95,23 +91,19 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization.JsonConverters
                         {
                             throw new JsonException("alphaKeys must be an array");
                         }
-                        using (
-                            PooledResource<List<GradientAlphaKey>> pooled =
-                                Buffers<GradientAlphaKey>.List.Get(out List<GradientAlphaKey> list)
-                        )
+                        using PooledResource<List<GradientAlphaKey>> pooled =
+                            Buffers<GradientAlphaKey>.List.Get(out List<GradientAlphaKey> list);
+                        while (reader.Read())
                         {
-                            while (reader.Read())
+                            if (reader.TokenType == JsonTokenType.EndArray)
                             {
-                                if (reader.TokenType == JsonTokenType.EndArray)
-                                {
-                                    break;
-                                }
-
-                                list.Add(ReadAlphaKey(ref reader));
+                                break;
                             }
-                            aks = new List<GradientAlphaKey>(list.Count);
-                            aks.AddRange(list);
+
+                            list.Add(ReadAlphaKey(ref reader));
                         }
+                        alphaKeys =
+                            list.Count == 0 ? Array.Empty<GradientAlphaKey>() : list.ToArray();
                     }
                     else
                     {

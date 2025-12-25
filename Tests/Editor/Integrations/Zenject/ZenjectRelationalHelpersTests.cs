@@ -6,7 +6,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.Zenject
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Integrations.Zenject;
-    using WallstopStudios.UnityHelpers.Tests.Editor.Utils;
+    using WallstopStudios.UnityHelpers.Tests.Core;
 
     public sealed class ZenjectRelationalHelpersTests : CommonTestBase
     {

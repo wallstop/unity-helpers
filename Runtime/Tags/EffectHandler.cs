@@ -8,6 +8,7 @@ namespace WallstopStudios.UnityHelpers.Tags
     using UnityEngine;
     using Utils;
 
+    // ReSharper disable once GrammarMistakeInComment
     /// <summary>
     /// Manages the application and removal of AttributeEffects on a GameObject.
     /// Handles effect duration tracking, tag application, cosmetic effects, and attribute modifications.
@@ -24,7 +25,7 @@ namespace WallstopStudios.UnityHelpers.Tags
     /// <para>
     /// Example usage:
     /// <code>
-    /// EffectHandler effectHandler = gameObject.GetComponent&lt;EffectHandler&gt;();
+    /// var effectHandler = gameObject.GetComponent&lt;EffectHandler&gt;();
     ///
     /// // Apply an effect
     /// AttributeEffect poisonEffect = ...;
@@ -56,7 +57,9 @@ namespace WallstopStudios.UnityHelpers.Tags
         public event Action<EffectHandle> OnEffectRemoved;
 
         [SiblingComponent]
+#pragma warning disable CS0649 // Field is never assigned to, and will always have its default value
         private TagHandler _tagHandler;
+#pragma warning restore CS0649 // Field is never assigned to, and will always have its default value
 
         [SiblingComponent(Optional = true)]
         private HashSet<AttributesComponent> _attributes;
@@ -64,10 +67,13 @@ namespace WallstopStudios.UnityHelpers.Tags
         // Stores instanced cosmetic effect data for associated effects.
         private readonly Dictionary<
             EffectHandle,
-            List<CosmeticEffectData>
+            PooledResource<List<CosmeticEffectData>>
         > _instancedCosmeticEffects = new();
 
-        private readonly Dictionary<EffectStackKey, List<EffectHandle>> _handlesByStackKey = new();
+        private readonly Dictionary<
+            EffectStackKey,
+            PooledResource<List<EffectHandle>>
+        > _handlesByStackKey = new();
         private readonly Dictionary<long, EffectStackKey> _stackKeyByHandleId = new();
 
         // Stores expiration time of duration effects (We store by Id because it's much cheaper to iterate Guids than it is EffectHandles
@@ -77,9 +83,14 @@ namespace WallstopStudios.UnityHelpers.Tags
         // Used only to save allocations in Update()
         private readonly List<long> _expiredEffectIds = new();
         private readonly List<EffectHandle> _appliedEffects = new();
-        private readonly Dictionary<long, List<PeriodicEffectRuntimeState>> _periodicEffectStates =
-            new();
-        private readonly Dictionary<long, List<EffectBehavior>> _behaviorsByHandleId = new();
+        private readonly Dictionary<
+            long,
+            PooledResource<List<PeriodicEffectRuntimeState>>
+        > _periodicEffectStates = new();
+        private readonly Dictionary<
+            long,
+            PooledResource<List<EffectBehavior>>
+        > _behaviorsByHandleId = new();
 
         private bool _initialized;
 
@@ -174,9 +185,9 @@ namespace WallstopStudios.UnityHelpers.Tags
                         using PooledResource<List<EffectHandle>> handleBufferResource =
                             Buffers<EffectHandle>.List.Get(out List<EffectHandle> handleBuffer);
                         handleBuffer.AddRange(existingHandles);
-                        for (int i = 0; i < handleBuffer.Count; ++i)
+                        foreach (EffectHandle handle in handleBuffer)
                         {
-                            RemoveEffect(handleBuffer[i]);
+                            RemoveEffect(handle);
                         }
                     }
 
@@ -211,8 +222,12 @@ namespace WallstopStudios.UnityHelpers.Tags
 
         private List<EffectHandle> TryGetStackHandles(EffectStackKey stackKey)
         {
-            _ = _handlesByStackKey.TryGetValue(stackKey, out List<EffectHandle> handles);
-            return handles;
+            return _handlesByStackKey.TryGetValue(
+                stackKey,
+                out PooledResource<List<EffectHandle>> lease
+            )
+                ? lease.resource
+                : null;
         }
 
         private void RegisterStackHandle(EffectStackKey stackKey, EffectHandle handle)
@@ -220,10 +235,20 @@ namespace WallstopStudios.UnityHelpers.Tags
             long handleId = handle.id;
             _stackKeyByHandleId[handleId] = stackKey;
 
-            if (!_handlesByStackKey.TryGetValue(stackKey, out List<EffectHandle> handles))
+            List<EffectHandle> handles;
+            if (
+                !_handlesByStackKey.TryGetValue(
+                    stackKey,
+                    out PooledResource<List<EffectHandle>> handlesLease
+                )
+            )
             {
-                handles = new List<EffectHandle>();
-                _handlesByStackKey.Add(stackKey, handles);
+                handlesLease = RentHandleList(out handles);
+                _handlesByStackKey.Add(stackKey, handlesLease);
+            }
+            else
+            {
+                handles = handlesLease.resource;
             }
 
             handles.Add(handle);
@@ -252,31 +277,115 @@ namespace WallstopStudios.UnityHelpers.Tags
             _appliedEffects.Clear();
         }
 
+        private void OnDestroy()
+        {
+            RemoveAllEffects();
+
+            if (_handlesByStackKey.Count > 0)
+            {
+                using PooledResource<List<EffectStackKey>> stackKeysResource =
+                    Buffers<EffectStackKey>.List.Get(out List<EffectStackKey> stackKeys);
+                stackKeys.AddRange(_handlesByStackKey.Keys);
+                foreach (EffectStackKey stackKey in stackKeys)
+                {
+                    if (
+                        _handlesByStackKey.TryGetValue(
+                            stackKey,
+                            out PooledResource<List<EffectHandle>> lease
+                        )
+                    )
+                    {
+                        ClearAndDispose(lease);
+                    }
+                }
+                _handlesByStackKey.Clear();
+                _stackKeyByHandleId.Clear();
+            }
+
+            foreach (
+                KeyValuePair<
+                    EffectHandle,
+                    PooledResource<List<CosmeticEffectData>>
+                > cosmetic in _instancedCosmeticEffects
+            )
+            {
+                RecycleCosmeticDataList(cosmetic.Value);
+            }
+            _instancedCosmeticEffects.Clear();
+
+            foreach (
+                KeyValuePair<
+                    long,
+                    PooledResource<List<PeriodicEffectRuntimeState>>
+                > periodic in _periodicEffectStates
+            )
+            {
+                RecyclePeriodicStateList(periodic.Value);
+            }
+            _periodicEffectStates.Clear();
+
+            foreach (
+                KeyValuePair<
+                    long,
+                    PooledResource<List<EffectBehavior>>
+                > behavior in _behaviorsByHandleId
+            )
+            {
+                RecycleBehaviorList(behavior.Value);
+            }
+            _behaviorsByHandleId.Clear();
+
+            _effectExpirations.Clear();
+            _effectHandlesById.Clear();
+            _expiredEffectIds.Clear();
+            _appliedEffects.Clear();
+        }
+
         private void DeregisterHandle(EffectHandle handle)
         {
             long handleId = handle.id;
             if (_stackKeyByHandleId.TryGetValue(handleId, out EffectStackKey stackKey))
             {
-                if (_handlesByStackKey.TryGetValue(stackKey, out List<EffectHandle> handles))
+                if (
+                    _handlesByStackKey.TryGetValue(
+                        stackKey,
+                        out PooledResource<List<EffectHandle>> handlesLease
+                    )
+                )
                 {
+                    List<EffectHandle> handles = handlesLease.resource;
                     handles.Remove(handle);
                     if (handles.Count == 0)
                     {
                         _handlesByStackKey.Remove(stackKey);
+                        ClearAndDispose(handlesLease);
                     }
                 }
 
                 _stackKeyByHandleId.Remove(handleId);
             }
 
-            _periodicEffectStates.Remove(handleId);
-
-            if (_behaviorsByHandleId.Remove(handleId, out List<EffectBehavior> behaviorInstances))
+            if (
+                _periodicEffectStates.Remove(
+                    handleId,
+                    out PooledResource<List<PeriodicEffectRuntimeState>> periodicLease
+                )
+            )
             {
+                RecyclePeriodicStateList(periodicLease);
+            }
+
+            if (
+                _behaviorsByHandleId.Remove(
+                    handleId,
+                    out PooledResource<List<EffectBehavior>> behaviorLease
+                )
+            )
+            {
+                List<EffectBehavior> behaviorInstances = behaviorLease.resource;
                 EffectBehaviorContext context = new(this, handle, 0f);
-                for (int i = 0; i < behaviorInstances.Count; ++i)
+                foreach (EffectBehavior behavior in behaviorInstances)
                 {
-                    EffectBehavior behavior = behaviorInstances[i];
                     if (behavior == null)
                     {
                         continue;
@@ -285,6 +394,7 @@ namespace WallstopStudios.UnityHelpers.Tags
                     behavior.OnRemove(context);
                     Destroy(behavior);
                 }
+                RecycleBehaviorList(behaviorLease);
             }
         }
 
@@ -300,9 +410,8 @@ namespace WallstopStudios.UnityHelpers.Tags
                 return false;
             }
 
-            for (int i = 0; i < _appliedEffects.Count; ++i)
+            foreach (EffectHandle handle in _appliedEffects)
             {
-                EffectHandle handle = _appliedEffects[i];
                 if (handle.effect == effect)
                 {
                     return true;
@@ -325,9 +434,8 @@ namespace WallstopStudios.UnityHelpers.Tags
             }
 
             int count = 0;
-            for (int i = 0; i < _appliedEffects.Count; ++i)
+            foreach (EffectHandle handle in _appliedEffects)
             {
-                EffectHandle handle = _appliedEffects[i];
                 if (handle.effect == effect)
                 {
                     ++count;
@@ -402,9 +510,8 @@ namespace WallstopStudios.UnityHelpers.Tags
                 return null;
             }
 
-            for (int i = 0; i < _appliedEffects.Count; ++i)
+            foreach (EffectHandle handle in _appliedEffects)
             {
-                EffectHandle handle = _appliedEffects[i];
                 if (handle.effect == effect)
                 {
                     if (refreshDuration)
@@ -469,9 +576,12 @@ namespace WallstopStudios.UnityHelpers.Tags
 
         private void InternalRemoveEffect(EffectHandle handle)
         {
-            foreach (AttributesComponent attributesComponent in _attributes)
+            if (_attributes != null)
             {
-                attributesComponent.ForceRemoveAttributeModifications(handle);
+                foreach (AttributesComponent attributesComponent in _attributes)
+                {
+                    attributesComponent.ForceRemoveAttributeModifications(handle);
+                }
             }
 
             if (!_initialized && _tagHandler == null)
@@ -586,6 +696,7 @@ namespace WallstopStudios.UnityHelpers.Tags
             }
 
             List<PeriodicEffectRuntimeState> runtimeStates = null;
+            PooledResource<List<PeriodicEffectRuntimeState>> runtimeStatesLease = default;
             float startTime = Time.time;
 
             foreach (PeriodicEffectDefinition definition in effect.periodicEffects)
@@ -595,14 +706,21 @@ namespace WallstopStudios.UnityHelpers.Tags
                     continue;
                 }
 
-                (runtimeStates ??= new List<PeriodicEffectRuntimeState>()).Add(
-                    new PeriodicEffectRuntimeState(definition, startTime)
-                );
+                if (runtimeStates == null)
+                {
+                    runtimeStatesLease = RentPeriodicStateList(out runtimeStates);
+                }
+
+                runtimeStates.Add(new PeriodicEffectRuntimeState(definition, startTime));
             }
 
             if (runtimeStates is { Count: > 0 })
             {
-                _periodicEffectStates[handle.id] = runtimeStates;
+                _periodicEffectStates[handle.id] = runtimeStatesLease;
+            }
+            else if (runtimeStates != null)
+            {
+                RecyclePeriodicStateList(runtimeStatesLease);
             }
         }
 
@@ -615,6 +733,7 @@ namespace WallstopStudios.UnityHelpers.Tags
             }
 
             List<EffectBehavior> instances = null;
+            PooledResource<List<EffectBehavior>> instancesLease = default;
             foreach (EffectBehavior behavior in effect.behaviors)
             {
                 if (behavior == null)
@@ -623,18 +742,25 @@ namespace WallstopStudios.UnityHelpers.Tags
                 }
 
                 EffectBehavior clone = Instantiate(behavior);
-                (instances ??= new List<EffectBehavior>()).Add(clone);
+                if (instances == null)
+                {
+                    instancesLease = RentBehaviorList(out instances);
+                }
+                instances.Add(clone);
             }
 
             if (instances is not { Count: > 0 })
             {
+                if (instances != null)
+                {
+                    RecycleBehaviorList(instancesLease);
+                }
                 return;
             }
 
             EffectBehaviorContext context = new(this, handle, 0f);
-            for (int i = 0; i < instances.Count; ++i)
+            foreach (EffectBehavior instance in instances)
             {
-                EffectBehavior instance = instances[i];
                 if (instance == null)
                 {
                     continue;
@@ -643,7 +769,7 @@ namespace WallstopStudios.UnityHelpers.Tags
                 instance.OnApply(context);
             }
 
-            _behaviorsByHandleId[handle.id] = instances;
+            _behaviorsByHandleId[handle.id] = instancesLease;
         }
 
         private void ApplyPeriodicTick(
@@ -663,10 +789,18 @@ namespace WallstopStudios.UnityHelpers.Tags
             }
 
             if (
-                _behaviorsByHandleId.TryGetValue(handle.id, out List<EffectBehavior> behaviors)
-                && behaviors.Count > 0
+                _behaviorsByHandleId.TryGetValue(
+                    handle.id,
+                    out PooledResource<List<EffectBehavior>> behaviorLease
+                )
             )
             {
+                List<EffectBehavior> behaviors = behaviorLease.resource;
+                if (behaviors.Count == 0)
+                {
+                    return;
+                }
+
                 EffectBehaviorContext context = new(this, handle, deltaTime);
                 PeriodicEffectTickContext tickContext = new(
                     definition,
@@ -674,9 +808,8 @@ namespace WallstopStudios.UnityHelpers.Tags
                     currentTime
                 );
 
-                for (int i = 0; i < behaviors.Count; ++i)
+                foreach (EffectBehavior behavior in behaviors)
                 {
-                    EffectBehavior behavior = behaviors[i];
                     if (behavior == null)
                     {
                         continue;
@@ -695,6 +828,7 @@ namespace WallstopStudios.UnityHelpers.Tags
             }
 
             List<CosmeticEffectData> instancedCosmeticData = null;
+            PooledResource<List<CosmeticEffectData>> instancedCosmeticLease = default;
             AttributeEffect effect = handle.effect;
             foreach (CosmeticEffectData cosmeticEffectData in effect.cosmeticEffects)
             {
@@ -715,13 +849,17 @@ namespace WallstopStudios.UnityHelpers.Tags
                         Quaternion.identity
                     );
                     cosmeticEffect.transform.SetParent(transform, true);
-                    (instancedCosmeticData ??= new List<CosmeticEffectData>()).Add(cosmeticEffect);
+                    if (instancedCosmeticData == null)
+                    {
+                        instancedCosmeticLease = RentCosmeticDataList(out instancedCosmeticData);
+                    }
+                    instancedCosmeticData.Add(cosmeticEffect);
                 }
 
                 using PooledResource<List<CosmeticEffectComponent>> cosmeticEffectsResource =
-                    Buffers<CosmeticEffectComponent>.List.Get();
-                List<CosmeticEffectComponent> cosmeticEffectsBuffer =
-                    cosmeticEffectsResource.resource;
+                    Buffers<CosmeticEffectComponent>.List.Get(
+                        out List<CosmeticEffectComponent> cosmeticEffectsBuffer
+                    );
                 cosmeticEffect.GetComponents(cosmeticEffectsBuffer);
                 foreach (CosmeticEffectComponent cosmeticComponent in cosmeticEffectsBuffer)
                 {
@@ -731,7 +869,14 @@ namespace WallstopStudios.UnityHelpers.Tags
 
             if (instancedCosmeticData != null)
             {
-                _instancedCosmeticEffects.Add(handle, instancedCosmeticData);
+                if (instancedCosmeticData.Count > 0)
+                {
+                    _instancedCosmeticEffects.Add(handle, instancedCosmeticLease);
+                }
+                else
+                {
+                    RecycleCosmeticDataList(instancedCosmeticLease);
+                }
             }
         }
 
@@ -756,9 +901,9 @@ namespace WallstopStudios.UnityHelpers.Tags
                 }
 
                 using PooledResource<List<CosmeticEffectComponent>> cosmeticEffectsResource =
-                    Buffers<CosmeticEffectComponent>.List.Get();
-                List<CosmeticEffectComponent> cosmeticEffectsBuffer =
-                    cosmeticEffectsResource.resource;
+                    Buffers<CosmeticEffectComponent>.List.Get(
+                        out List<CosmeticEffectComponent> cosmeticEffectsBuffer
+                    );
                 cosmeticEffectData.GetComponents(cosmeticEffectsBuffer);
                 foreach (CosmeticEffectComponent cosmeticComponent in cosmeticEffectsBuffer)
                 {
@@ -772,7 +917,7 @@ namespace WallstopStudios.UnityHelpers.Tags
             if (
                 !_instancedCosmeticEffects.TryGetValue(
                     handle,
-                    out List<CosmeticEffectData> cosmeticDatas
+                    out PooledResource<List<CosmeticEffectData>> cosmeticLease
                 )
             )
             {
@@ -793,9 +938,9 @@ namespace WallstopStudios.UnityHelpers.Tags
                     }
 
                     using PooledResource<List<CosmeticEffectComponent>> cosmeticEffectsResource =
-                        Buffers<CosmeticEffectComponent>.List.Get();
-                    List<CosmeticEffectComponent> cosmeticEffectsBuffer =
-                        cosmeticEffectsResource.resource;
+                        Buffers<CosmeticEffectComponent>.List.Get(
+                            out List<CosmeticEffectComponent> cosmeticEffectsBuffer
+                        );
                     cosmeticEffectData.GetComponents(cosmeticEffectsBuffer);
                     foreach (CosmeticEffectComponent cosmeticComponent in cosmeticEffectsBuffer)
                     {
@@ -806,12 +951,13 @@ namespace WallstopStudios.UnityHelpers.Tags
                 return;
             }
 
+            List<CosmeticEffectData> cosmeticDatas = cosmeticLease.resource;
             foreach (CosmeticEffectData cosmeticData in cosmeticDatas)
             {
                 using PooledResource<List<CosmeticEffectComponent>> cosmeticEffectsResource =
-                    Buffers<CosmeticEffectComponent>.List.Get();
-                List<CosmeticEffectComponent> cosmeticEffectsBuffer =
-                    cosmeticEffectsResource.resource;
+                    Buffers<CosmeticEffectComponent>.List.Get(
+                        out List<CosmeticEffectComponent> cosmeticEffectsBuffer
+                    );
                 cosmeticData.GetComponents(cosmeticEffectsBuffer);
                 foreach (CosmeticEffectComponent cosmeticComponent in cosmeticEffectsBuffer)
                 {
@@ -823,9 +969,9 @@ namespace WallstopStudios.UnityHelpers.Tags
             {
                 bool shouldDestroyGameObject = true;
                 using PooledResource<List<CosmeticEffectComponent>> cosmeticEffectsResource =
-                    Buffers<CosmeticEffectComponent>.List.Get();
-                List<CosmeticEffectComponent> cosmeticEffectsBuffer =
-                    cosmeticEffectsResource.resource;
+                    Buffers<CosmeticEffectComponent>.List.Get(
+                        out List<CosmeticEffectComponent> cosmeticEffectsBuffer
+                    );
                 data.GetComponents(cosmeticEffectsBuffer);
                 foreach (CosmeticEffectComponent cosmeticEffect in cosmeticEffectsBuffer)
                 {
@@ -845,6 +991,72 @@ namespace WallstopStudios.UnityHelpers.Tags
             }
 
             _ = _instancedCosmeticEffects.Remove(handle);
+            RecycleCosmeticDataList(cosmeticLease);
+        }
+
+        private static PooledResource<List<EffectHandle>> RentHandleList(
+            out List<EffectHandle> handles
+        )
+        {
+            return Buffers<EffectHandle>.List.Get(out handles);
+        }
+
+        private static PooledResource<List<EffectBehavior>> RentBehaviorList(
+            out List<EffectBehavior> behaviors
+        )
+        {
+            return Buffers<EffectBehavior>.List.Get(out behaviors);
+        }
+
+        private static PooledResource<List<PeriodicEffectRuntimeState>> RentPeriodicStateList(
+            out List<PeriodicEffectRuntimeState> states
+        )
+        {
+            return Buffers<PeriodicEffectRuntimeState>.List.Get(out states);
+        }
+
+        private static PooledResource<List<CosmeticEffectData>> RentCosmeticDataList(
+            out List<CosmeticEffectData> cosmeticData
+        )
+        {
+            return Buffers<CosmeticEffectData>.List.Get(out cosmeticData);
+        }
+
+        private static void ClearAndDispose<T>(PooledResource<List<T>> lease)
+        {
+            List<T> list = lease.resource;
+            list?.Clear();
+            lease.Dispose();
+        }
+
+        private static void RecycleBehaviorList(PooledResource<List<EffectBehavior>> lease)
+        {
+            ClearAndDispose(lease);
+        }
+
+        private static void RecyclePeriodicStateList(
+            PooledResource<List<PeriodicEffectRuntimeState>> lease
+        )
+        {
+            ClearAndDispose(lease);
+        }
+
+        private static void RecycleCosmeticDataList(
+            PooledResource<List<CosmeticEffectData>> cosmeticLease
+        )
+        {
+            List<CosmeticEffectData> cosmeticData = cosmeticLease.resource;
+            if (cosmeticData != null)
+            {
+                for (int i = cosmeticData.Count - 1; i >= 0; --i)
+                {
+                    cosmeticData[i] = null;
+                }
+
+                cosmeticData.Clear();
+            }
+
+            cosmeticLease.Dispose();
         }
 
         private void Update()
@@ -871,9 +1083,8 @@ namespace WallstopStudios.UnityHelpers.Tags
                 }
             }
 
-            for (int i = 0; i < _expiredEffectIds.Count; ++i)
+            foreach (long expiredHandleId in _expiredEffectIds)
             {
-                long expiredHandleId = _expiredEffectIds[i];
                 if (_effectHandlesById.TryGetValue(expiredHandleId, out EffectHandle expiredHandle))
                 {
                     RemoveEffect(expiredHandle);
@@ -896,23 +1107,27 @@ namespace WallstopStudios.UnityHelpers.Tags
             behaviorHandleIdsBuffer.AddRange(_behaviorsByHandleId.Keys);
             float deltaTime = Time.deltaTime;
 
-            for (int i = 0; i < behaviorHandleIdsBuffer.Count; ++i)
+            foreach (long handleId in behaviorHandleIdsBuffer)
             {
-                long handleId = behaviorHandleIdsBuffer[i];
                 if (!_effectHandlesById.TryGetValue(handleId, out EffectHandle handle))
                 {
                     continue;
                 }
 
-                if (!_behaviorsByHandleId.TryGetValue(handleId, out List<EffectBehavior> behaviors))
+                if (
+                    !_behaviorsByHandleId.TryGetValue(
+                        handleId,
+                        out PooledResource<List<EffectBehavior>> behaviorLease
+                    )
+                )
                 {
                     continue;
                 }
 
+                List<EffectBehavior> behaviors = behaviorLease.resource;
                 EffectBehaviorContext context = new(this, handle, deltaTime);
-                for (int j = 0; j < behaviors.Count; ++j)
+                foreach (EffectBehavior behavior in behaviors)
                 {
-                    EffectBehavior behavior = behaviors[j];
                     if (behavior == null)
                     {
                         continue;
@@ -940,9 +1155,8 @@ namespace WallstopStudios.UnityHelpers.Tags
             );
             periodicHandleIdsBuffer.AddRange(_periodicEffectStates.Keys);
 
-            for (int handleIndex = 0; handleIndex < periodicHandleIdsBuffer.Count; ++handleIndex)
+            foreach (long handleId in periodicHandleIdsBuffer)
             {
-                long handleId = periodicHandleIdsBuffer[handleIndex];
                 if (!_effectHandlesById.TryGetValue(handleId, out EffectHandle handle))
                 {
                     periodicRemovalBuffer.Add(handleId);
@@ -952,18 +1166,18 @@ namespace WallstopStudios.UnityHelpers.Tags
                 if (
                     !_periodicEffectStates.TryGetValue(
                         handleId,
-                        out List<PeriodicEffectRuntimeState> runtimes
+                        out PooledResource<List<PeriodicEffectRuntimeState>> runtimesLease
                     )
                 )
                 {
                     continue;
                 }
 
+                List<PeriodicEffectRuntimeState> runtimes = runtimesLease.resource;
                 bool hasActive = false;
 
-                for (int i = 0; i < runtimes.Count; ++i)
+                foreach (PeriodicEffectRuntimeState runtimeState in runtimes)
                 {
-                    PeriodicEffectRuntimeState runtimeState = runtimes[i];
                     if (runtimeState == null)
                     {
                         continue;
@@ -986,9 +1200,17 @@ namespace WallstopStudios.UnityHelpers.Tags
                 }
             }
 
-            for (int i = 0; i < periodicRemovalBuffer.Count; ++i)
+            foreach (long periodicHandleId in periodicRemovalBuffer)
             {
-                _periodicEffectStates.Remove(periodicRemovalBuffer[i]);
+                if (
+                    _periodicEffectStates.Remove(
+                        periodicHandleId,
+                        out PooledResource<List<PeriodicEffectRuntimeState>> lease
+                    )
+                )
+                {
+                    RecyclePeriodicStateList(lease);
+                }
             }
         }
     }

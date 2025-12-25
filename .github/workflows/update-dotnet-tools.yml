@@ -14,12 +14,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6.0.1
         with:
           fetch-depth: 0
 
       - name: Setup .NET SDK
-        uses: actions/setup-dotnet@v5
+        uses: actions/setup-dotnet@v5.0.1
         with:
           dotnet-version: '8.0.x'
 
@@ -62,7 +62,7 @@ jobs:
 
       - name: Create Pull Request
         if: steps.git_changes.outputs.changed == 'true'
-        uses: peter-evans/create-pull-request@v7
+        uses: peter-evans/create-pull-request@v7.0.11
         with:
           branch: chore/update-dotnet-tools
           title: "chore: update .NET local tools"
@@ -76,5 +76,4 @@ jobs:
       - name: No changes summary
         if: steps.git_changes.outputs.changed != 'true'
         run: |
-          echo "## .NET tools are up to date" >> $GITHUB_STEP_SUMMARY
-
+          echo "## .NET tools are up to date" >> "$GITHUB_STEP_SUMMARY"

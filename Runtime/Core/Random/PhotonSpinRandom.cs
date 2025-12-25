@@ -13,7 +13,7 @@ namespace WallstopStudios.UnityHelpers.Core.Random
     /// </summary>
     /// <remarks>
     /// <para>
-    /// https://github.com/wileylooper/photonspin
+    /// Reference: Will Stafford Parsons (wileylooper/photonspin, repository offline).
     /// Ported from <c>wileylooper/photonspin</c>, this generator produces batches of 20 new 32-bit values per round,
     /// offering a huge period (~2<sup>512</sup>) and robust statistical performance. It shines when large streams are
     /// required, while still supporting deterministic state capture and serialization.
@@ -47,6 +47,12 @@ namespace WallstopStudios.UnityHelpers.Core.Random
     /// Guid guid = rng.NextGuid();
     /// </code>
     /// </example>
+    [RandomGeneratorMetadata(
+        RandomQuality.Excellent,
+        "SHISHUA-inspired generator; independent testing (PractRand 128GB) by author indicates excellent distribution properties.",
+        "Will Stafford Parsons",
+        "" // Original repository wileylooper/photonspin is offline
+    )]
     [Serializable]
     [DataContract]
     [ProtoContract(SkipConstructor = true)]
@@ -66,7 +72,7 @@ namespace WallstopStudios.UnityHelpers.Core.Random
         {
             get
             {
-                using PooledResource<byte[]> payloadLease = WallstopArrayPool<byte>.Get(
+                using PooledArray<byte> payloadLease = WallstopArrayPool<byte>.Get(
                     ElementByteSize,
                     out byte[] buffer
                 );

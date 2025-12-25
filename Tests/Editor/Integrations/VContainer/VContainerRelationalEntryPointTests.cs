@@ -8,14 +8,16 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.VContainer
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Integrations.VContainer;
     using WallstopStudios.UnityHelpers.Tags;
-    using WallstopStudios.UnityHelpers.Tests.Editor.Utils;
+    using WallstopStudios.UnityHelpers.Tests.Core;
 
     public sealed class VContainerRelationalEntryPointTests : CommonTestBase
     {
         private sealed class Consumer : MonoBehaviour
         {
             [SiblingComponent]
+#pragma warning disable CS0649 // Field is never assigned to, and will always have its default value
             private SpriteRenderer _spriteRenderer;
+#pragma warning restore CS0649 // Field is never assigned to, and will always have its default value
 
             public SpriteRenderer SR => _spriteRenderer;
         }
@@ -51,7 +53,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.VContainer
             cache.SetMetadata(
                 System.Array.Empty<string>(),
                 System.Array.Empty<AttributeMetadataCache.TypeFieldMetadata>(),
-                new[] { relationalMetadata }
+                new[] { relationalMetadata },
+                System.Array.Empty<AttributeMetadataCache.AutoLoadSingletonEntry>()
             );
             cache.ForceRebuildForTests();
             yield return null;

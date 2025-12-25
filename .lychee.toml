@@ -1,26 +1,29 @@
-verbosity = "info"
+verbose = "info"
 no_progress = true
 max_concurrency = 4
-exclude_mail = true
+include_mail = false
 
 # Network tuning
 timeout = 20            # seconds per request
-retries = 3             # retry transient failures
+max_retries = 3         # retry transient failures
 retry_wait_time = 2     # seconds between retries
 max_redirects = 10
 user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36"
 
 # Treat successes and rate-limiting as acceptable in CI
 # Accept all 2xx as valid plus 429 (rate limited)
-accept = ["200..=299", 429]
+accept = ["200..=299", "429"]
 
 # Only check web links
 scheme = ["https", "http"]
 
-# Ignore common local/test URLs
+# Ignore common local/test URLs and sites with bot protection
 exclude = [
   "^https?://localhost",
   "^http://127\\.0\\.0\\.1",
   "^https?://0\\.0\\.0\\.0",
-  "^file://"
+  "^file://",
+  # Sites with aggressive bot protection that return 403 but links are valid
+  "^https?://www\\.npmjs\\.com",
+  "^https?://doi\\.org"
 ]

@@ -312,6 +312,7 @@ namespace WallstopStudios.UnityHelpers.Editor
             {
                 SetupReorderableList();
             }
+            // ReSharper disable once PossibleNullReferenceException
             _pathsList.DoLayoutList();
         }
 
@@ -333,6 +334,12 @@ namespace WallstopStudios.UnityHelpers.Editor
 
         internal bool TryAddFolderFromAbsolute(string absolutePath)
         {
+            // Early return for obviously invalid input without logging an error
+            if (string.IsNullOrWhiteSpace(absolutePath))
+            {
+                return false;
+            }
+
             if (!TryGetUnityFolderFromAbsolute(absolutePath, out string relativePath))
             {
                 this.LogError(
@@ -389,7 +396,11 @@ namespace WallstopStudios.UnityHelpers.Editor
             }
 
             // Normalize slashes and casing for consistency
-            rel = rel.Replace('\\', '/');
+            rel = rel.SanitizePath();
+
+            // Strip trailing slash(es) for consistent path handling (both forward and back slashes)
+            rel = rel.TrimEnd('/', '\\');
+
             if (rel.StartsWith("assets/", StringComparison.OrdinalIgnoreCase))
             {
                 rel = "Assets/" + rel.Substring("assets/".Length);
@@ -416,12 +427,14 @@ namespace WallstopStudios.UnityHelpers.Editor
             using PooledResource<List<string>> validPathBuffer = Buffers<string>.List.Get(
                 out List<string> validPaths
             );
-            for (int i = 0; i < _assetPaths.Count; i++)
+            foreach (string assetPath in _assetPaths)
             {
-                string p = _assetPaths[i];
-                if (!string.IsNullOrEmpty(p) && (p == "Assets" || AssetDatabase.IsValidFolder(p)))
+                if (
+                    !string.IsNullOrEmpty(assetPath)
+                    && (assetPath == "Assets" || AssetDatabase.IsValidFolder(assetPath))
+                )
                 {
-                    validPaths.Add(p);
+                    validPaths.Add(assetPath);
                 }
             }
 
@@ -439,15 +452,11 @@ namespace WallstopStudios.UnityHelpers.Editor
                 TryRecordHistory(p);
             }
 
-            using PooledResource<string[]> folderArrayLease = WallstopFastArrayPool<string>.Get(
-                validPaths.Count,
-                out string[] folderArray
-            );
-            for (int i = 0; i < validPaths.Count; i++)
-            {
-                folderArray[i] = validPaths[i];
-            }
-
+            // Use ToArray() to create an exact-sized array for AssetDatabase.FindAssets.
+            // SystemArrayPool returns arrays larger than requested (power-of-2 bucketing),
+            // and Unity's FindAssets iterates over the entire array, causing NullReferenceException
+            // from null elements when passed to Paths.ConvertSeparatorsToUnity.
+            string[] folderArray = validPaths.ToArray();
             string[] guids = AssetDatabase.FindAssets("t:prefab", folderArray);
             int totalPrefabsChecked = 0;
             int totalIssuesFound = 0;
@@ -455,26 +464,22 @@ namespace WallstopStudios.UnityHelpers.Editor
             using PooledResource<HashSet<string>> includeSetLease = Buffers<string>.HashSet.Get(
                 out HashSet<string> includeSet
             );
-            includeSet.Clear();
-            for (int i = 0; i < _includeLabels.Count; i++)
+            foreach (string label in _includeLabels)
             {
-                string s = _includeLabels[i];
-                if (!string.IsNullOrWhiteSpace(s))
+                if (!string.IsNullOrWhiteSpace(label))
                 {
-                    includeSet.Add(s.Trim());
+                    includeSet.Add(label.Trim());
                 }
             }
 
             using PooledResource<HashSet<string>> excludeSetLease = Buffers<string>.HashSet.Get(
                 out HashSet<string> excludeSet
             );
-            excludeSet.Clear();
-            for (int i = 0; i < _excludeLabels.Count; i++)
+            foreach (string label in _excludeLabels)
             {
-                string s = _excludeLabels[i];
-                if (!string.IsNullOrWhiteSpace(s))
+                if (!string.IsNullOrWhiteSpace(label))
                 {
-                    excludeSet.Add(s.Trim());
+                    excludeSet.Add(label.Trim());
                 }
             }
             using PooledResource<Stopwatch> stopwatchBuffer = StopwatchBuffers.Stopwatch.Get(
@@ -508,9 +513,9 @@ namespace WallstopStudios.UnityHelpers.Editor
                 if (includeSet.Count > 0)
                 {
                     bool anyIncluded = false;
-                    for (int li = 0; li < labels.Length; li++)
+                    foreach (string label in labels)
                     {
-                        if (includeSet.Contains(labels[li]))
+                        if (includeSet.Contains(label))
                         {
                             anyIncluded = true;
                             break;
@@ -525,9 +530,9 @@ namespace WallstopStudios.UnityHelpers.Editor
                 if (excludeSet.Count > 0)
                 {
                     bool anyExcluded = false;
-                    for (int li = 0; li < labels.Length; li++)
+                    foreach (string label in labels)
                     {
-                        if (excludeSet.Contains(labels[li]))
+                        if (excludeSet.Contains(label))
                         {
                             anyExcluded = true;
                             break;
@@ -553,8 +558,7 @@ namespace WallstopStudios.UnityHelpers.Editor
                 }
 
                 using PooledResource<List<MonoBehaviour>> componentBufferResource =
-                    Buffers<MonoBehaviour>.List.Get();
-                List<MonoBehaviour> componentBuffer = componentBufferResource.resource;
+                    Buffers<MonoBehaviour>.List.Get(out List<MonoBehaviour> componentBuffer);
                 prefab.GetComponentsInChildren(true, componentBuffer);
 
                 using PooledResource<Dictionary<GameObject, HashSet<Type>>> typeMapLease =
@@ -568,30 +572,6 @@ namespace WallstopStudios.UnityHelpers.Editor
                     Buffers<PooledResource<HashSet<Type>>>.List.Get(
                         out List<PooledResource<HashSet<Type>>> createdSets
                     );
-
-                HashSet<Type> GetOrBuildTypeSet(GameObject go)
-                {
-                    if (typeMap.TryGetValue(go, out HashSet<Type> cached))
-                    {
-                        return cached;
-                    }
-                    PooledResource<HashSet<Type>> setLease = Buffers<Type>.HashSet.Get(
-                        out HashSet<Type> set
-                    );
-                    createdSets.Add(setLease);
-                    go.GetComponents(comps);
-                    for (int ci = 0; ci < comps.Count; ci++)
-                    {
-                        Component c = comps[ci];
-                        if (c != null)
-                        {
-                            set.Add(c.GetType());
-                        }
-                    }
-                    comps.Clear();
-                    typeMap[go] = set;
-                    return set;
-                }
 
                 foreach (MonoBehaviour script in componentBuffer)
                 {
@@ -615,9 +595,9 @@ namespace WallstopStudios.UnityHelpers.Editor
                         string typeName = script.GetType().Name;
                         string fullName = script.GetType().FullName;
                         string[] tokens = _componentTypeDenyListCsv.Split(',');
-                        for (int ti = 0; ti < tokens.Length; ti++)
+                        foreach (string token in tokens)
                         {
-                            string t = tokens[ti].Trim();
+                            string t = token.Trim();
                             if (t.Length == 0)
                             {
                                 continue;
@@ -693,12 +673,35 @@ namespace WallstopStudios.UnityHelpers.Editor
                 }
 
                 // Release pooled type sets created for this prefab
-                for (int si = 0; si < createdSets.Count; si++)
+                foreach (PooledResource<HashSet<Type>> setLease in createdSets)
                 {
-                    PooledResource<HashSet<Type>> setLease = createdSets[si];
                     setLease.Dispose();
                 }
                 createdSets.Clear();
+                continue;
+
+                HashSet<Type> GetOrBuildTypeSet(GameObject go)
+                {
+                    if (typeMap.TryGetValue(go, out HashSet<Type> cached))
+                    {
+                        return cached;
+                    }
+                    PooledResource<HashSet<Type>> setLease = Buffers<Type>.HashSet.Get(
+                        out HashSet<Type> set
+                    );
+                    createdSets.Add(setLease);
+                    go.GetComponents(comps);
+                    foreach (Component comp in comps)
+                    {
+                        if (comp != null)
+                        {
+                            set.Add(comp.GetType());
+                        }
+                    }
+                    comps.Clear();
+                    typeMap[go] = set;
+                    return set;
+                }
             }
 
             if (totalIssuesFound > 0)
@@ -726,14 +729,12 @@ namespace WallstopStudios.UnityHelpers.Editor
         )
         {
             using PooledResource<List<Transform>> transformBufferResource =
-                Buffers<Transform>.List.Get();
-            List<Transform> transforms = transformBufferResource.resource;
+                Buffers<Transform>.List.Get(out List<Transform> transforms);
             prefabRoot.GetComponentsInChildren(true, transforms);
             foreach (Transform transform in transforms)
             {
                 using PooledResource<List<MonoBehaviour>> componentBuffer =
-                    Buffers<MonoBehaviour>.List.Get();
-                List<MonoBehaviour> components = componentBuffer.resource;
+                    Buffers<MonoBehaviour>.List.Get(out List<MonoBehaviour> components);
                 transform.GetComponents(components);
                 int bufferCount = 0;
                 foreach (MonoBehaviour c in components)
@@ -769,8 +770,9 @@ namespace WallstopStudios.UnityHelpers.Editor
                 }
 
                 using PooledResource<HashSet<GameObject>> setResource =
-                    Buffers<GameObject>.HashSet.Get();
-                HashSet<GameObject> gameObjectsWithComponentsInBuffer = setResource.resource;
+                    Buffers<GameObject>.HashSet.Get(
+                        out HashSet<GameObject> gameObjectsWithComponentsInBuffer
+                    );
                 foreach (MonoBehaviour c in buffer)
                 {
                     if (c != null)
@@ -897,27 +899,35 @@ namespace WallstopStudios.UnityHelpers.Editor
                 return issueCount;
             }
 
-            for (int i = 0; i < required.Length; i++)
+            foreach (RequireComponent requiredComponent in required)
             {
-                RequireComponent rc = required[i];
-                if (rc.m_Type0 != null && !presentTypes.Contains(rc.m_Type0))
+                if (
+                    requiredComponent.m_Type0 != null
+                    && !presentTypes.Contains(requiredComponent.m_Type0)
+                )
                 {
                     context.LogError(
-                        $"Component '{componentType.Name}' requires component '{rc.m_Type0.Name}', but it is missing."
+                        $"Component '{componentType.Name}' requires component '{requiredComponent.m_Type0.Name}', but it is missing."
                     );
                     issueCount++;
                 }
-                if (rc.m_Type1 != null && !presentTypes.Contains(rc.m_Type1))
+                if (
+                    requiredComponent.m_Type1 != null
+                    && !presentTypes.Contains(requiredComponent.m_Type1)
+                )
                 {
                     context.LogError(
-                        $"Component '{componentType.Name}' requires component '{rc.m_Type1.Name}', but it is missing."
+                        $"Component '{componentType.Name}' requires component '{requiredComponent.m_Type1.Name}', but it is missing."
                     );
                     issueCount++;
                 }
-                if (rc.m_Type2 != null && !presentTypes.Contains(rc.m_Type2))
+                if (
+                    requiredComponent.m_Type2 != null
+                    && !presentTypes.Contains(requiredComponent.m_Type2)
+                )
                 {
                     context.LogError(
-                        $"Component '{componentType.Name}' requires component '{rc.m_Type2.Name}', but it is missing."
+                        $"Component '{componentType.Name}' requires component '{requiredComponent.m_Type2.Name}', but it is missing."
                     );
                     issueCount++;
                 }
@@ -1015,8 +1025,7 @@ namespace WallstopStudios.UnityHelpers.Editor
         )
         {
             using PooledResource<List<Transform>> transformBufferResource =
-                Buffers<Transform>.List.Get();
-            List<Transform> transforms = transformBufferResource.resource;
+                Buffers<Transform>.List.Get(out List<Transform> transforms);
             prefabRoot.GetComponentsInChildren(true, transforms);
             if (transforms.Count > MaxTransformScanForMissingOwner)
             {
@@ -1252,9 +1261,9 @@ namespace WallstopStudios.UnityHelpers.Editor
             foreach (string folder in _assetPaths)
             {
                 string[] guids = AssetDatabase.FindAssets("t:prefab", new[] { folder });
-                for (int i = 0; i < guids.Length; i++)
+                foreach (string guid in guids)
                 {
-                    string path = AssetDatabase.GUIDToAssetPath(guids[i]);
+                    string path = AssetDatabase.GUIDToAssetPath(guid);
                     GameObject go = AssetDatabase.LoadAssetAtPath<GameObject>(path);
                     if (go == null)
                     {
@@ -1283,14 +1292,15 @@ namespace WallstopStudios.UnityHelpers.Editor
                     return;
                 }
                 // Manual copy to avoid LINQ
-                using (Buffers<string>.List.Get(out List<string> list))
+                using PooledResource<List<string>> folderBuffer = Buffers<string>.List.Get(
+                    out List<string> list
+                );
+
+                foreach (string s in folders)
                 {
-                    foreach (string s in folders)
-                    {
-                        list.Add(s);
-                    }
-                    this.folders = list.ToArray();
+                    list.Add(s);
                 }
+                this.folders = list.ToArray();
             }
 
             [Serializable]
@@ -1302,10 +1312,9 @@ namespace WallstopStudios.UnityHelpers.Editor
 
             public void Add(string path, List<string> messages)
             {
-                string[] arr =
-                    messages != null && messages.Count > 0
-                        ? messages.ToArray()
-                        : Array.Empty<string>();
+                string[] arr = messages is { Count: > 0 }
+                    ? messages.ToArray()
+                    : Array.Empty<string>();
                 items.Add(new Item { path = path, messages = arr });
             }
         }

@@ -6,9 +6,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
     using System.Reflection;
     using NUnit.Framework;
     using WallstopStudios.UnityHelpers.Core.Helper;
+    using WallstopStudios.UnityHelpers.Tests.Core;
 
     [TestFixture]
-    public sealed class ReflectionHelperCapabilityMatrixTests
+    public sealed class ReflectionHelperCapabilityMatrixTests : CommonTestBase
     {
         public enum CapabilityMode
         {
@@ -27,8 +28,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         };
 
         [SetUp]
-        public void ResetCaches()
+        public override void BaseSetUp()
         {
+            base.BaseSetUp();
             ReflectionHelpers.ClearFieldGetterCache();
             ReflectionHelpers.ClearFieldSetterCache();
             ReflectionHelpers.ClearPropertyCache();
@@ -229,19 +231,25 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
                 reflectionGetter = ReflectionHelpers.GetFieldGetter(field);
             }
 
-            ReflectionHelpers.ReflectionDelegateStrategy expressionStrategy;
             Assert.That(
-                ReflectionHelpers.TryGetDelegateStrategy(expressionGetter, out expressionStrategy),
+                ReflectionHelpers.TryGetDelegateStrategy(
+                    expressionGetter,
+                    out ReflectionHelpers.ReflectionDelegateStrategy expressionStrategy
+                ),
                 Is.True
             );
-            ReflectionHelpers.ReflectionDelegateStrategy dynamicStrategy;
             Assert.That(
-                ReflectionHelpers.TryGetDelegateStrategy(dynamicGetter, out dynamicStrategy),
+                ReflectionHelpers.TryGetDelegateStrategy(
+                    dynamicGetter,
+                    out ReflectionHelpers.ReflectionDelegateStrategy dynamicStrategy
+                ),
                 Is.True
             );
-            ReflectionHelpers.ReflectionDelegateStrategy reflectionStrategy;
             Assert.That(
-                ReflectionHelpers.TryGetDelegateStrategy(reflectionGetter, out reflectionStrategy),
+                ReflectionHelpers.TryGetDelegateStrategy(
+                    reflectionGetter,
+                    out ReflectionHelpers.ReflectionDelegateStrategy reflectionStrategy
+                ),
                 Is.True
             );
 
@@ -311,19 +319,25 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
                 reflectionSetter = ReflectionHelpers.GetFieldSetter(field);
             }
 
-            ReflectionHelpers.ReflectionDelegateStrategy expressionStrategy;
             Assert.That(
-                ReflectionHelpers.TryGetDelegateStrategy(expressionSetter, out expressionStrategy),
+                ReflectionHelpers.TryGetDelegateStrategy(
+                    expressionSetter,
+                    out ReflectionHelpers.ReflectionDelegateStrategy expressionStrategy
+                ),
                 Is.True
             );
-            ReflectionHelpers.ReflectionDelegateStrategy dynamicStrategy;
             Assert.That(
-                ReflectionHelpers.TryGetDelegateStrategy(dynamicSetter, out dynamicStrategy),
+                ReflectionHelpers.TryGetDelegateStrategy(
+                    dynamicSetter,
+                    out ReflectionHelpers.ReflectionDelegateStrategy dynamicStrategy
+                ),
                 Is.True
             );
-            ReflectionHelpers.ReflectionDelegateStrategy reflectionStrategy;
             Assert.That(
-                ReflectionHelpers.TryGetDelegateStrategy(reflectionSetter, out reflectionStrategy),
+                ReflectionHelpers.TryGetDelegateStrategy(
+                    reflectionSetter,
+                    out ReflectionHelpers.ReflectionDelegateStrategy reflectionStrategy
+                ),
                 Is.True
             );
 
@@ -395,19 +409,25 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
                 reflectionGetter = ReflectionHelpers.GetFieldGetter<TestClass, int>(field);
             }
 
-            ReflectionHelpers.ReflectionDelegateStrategy expressionStrategy;
             Assert.That(
-                ReflectionHelpers.TryGetDelegateStrategy(expressionGetter, out expressionStrategy),
+                ReflectionHelpers.TryGetDelegateStrategy(
+                    expressionGetter,
+                    out ReflectionHelpers.ReflectionDelegateStrategy expressionStrategy
+                ),
                 Is.True
             );
-            ReflectionHelpers.ReflectionDelegateStrategy dynamicStrategy;
             Assert.That(
-                ReflectionHelpers.TryGetDelegateStrategy(dynamicGetter, out dynamicStrategy),
+                ReflectionHelpers.TryGetDelegateStrategy(
+                    dynamicGetter,
+                    out ReflectionHelpers.ReflectionDelegateStrategy dynamicStrategy
+                ),
                 Is.True
             );
-            ReflectionHelpers.ReflectionDelegateStrategy reflectionStrategy;
             Assert.That(
-                ReflectionHelpers.TryGetDelegateStrategy(reflectionGetter, out reflectionStrategy),
+                ReflectionHelpers.TryGetDelegateStrategy(
+                    reflectionGetter,
+                    out ReflectionHelpers.ReflectionDelegateStrategy reflectionStrategy
+                ),
                 Is.True
             );
 
@@ -480,19 +500,25 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
                 reflectionSetter = ReflectionHelpers.GetFieldSetter<TestClass, int>(field);
             }
 
-            ReflectionHelpers.ReflectionDelegateStrategy expressionStrategy;
             Assert.That(
-                ReflectionHelpers.TryGetDelegateStrategy(expressionSetter, out expressionStrategy),
+                ReflectionHelpers.TryGetDelegateStrategy(
+                    expressionSetter,
+                    out ReflectionHelpers.ReflectionDelegateStrategy expressionStrategy
+                ),
                 Is.True
             );
-            ReflectionHelpers.ReflectionDelegateStrategy dynamicStrategy;
             Assert.That(
-                ReflectionHelpers.TryGetDelegateStrategy(dynamicSetter, out dynamicStrategy),
+                ReflectionHelpers.TryGetDelegateStrategy(
+                    dynamicSetter,
+                    out ReflectionHelpers.ReflectionDelegateStrategy dynamicStrategy
+                ),
                 Is.True
             );
-            ReflectionHelpers.ReflectionDelegateStrategy reflectionStrategy;
             Assert.That(
-                ReflectionHelpers.TryGetDelegateStrategy(reflectionSetter, out reflectionStrategy),
+                ReflectionHelpers.TryGetDelegateStrategy(
+                    reflectionSetter,
+                    out ReflectionHelpers.ReflectionDelegateStrategy reflectionStrategy
+                ),
                 Is.True
             );
 
@@ -568,24 +594,24 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
                     reflectionGetter = ReflectionHelpers.GetStaticFieldGetter(field);
                 }
 
-                ReflectionHelpers.ReflectionDelegateStrategy expressionStrategy;
                 Assert.That(
                     ReflectionHelpers.TryGetDelegateStrategy(
                         expressionGetter,
-                        out expressionStrategy
+                        out ReflectionHelpers.ReflectionDelegateStrategy expressionStrategy
                     ),
                     Is.True
                 );
-                ReflectionHelpers.ReflectionDelegateStrategy dynamicStrategy;
                 Assert.That(
-                    ReflectionHelpers.TryGetDelegateStrategy(dynamicGetter, out dynamicStrategy),
+                    ReflectionHelpers.TryGetDelegateStrategy(
+                        dynamicGetter,
+                        out ReflectionHelpers.ReflectionDelegateStrategy dynamicStrategy
+                    ),
                     Is.True
                 );
-                ReflectionHelpers.ReflectionDelegateStrategy reflectionStrategy;
                 Assert.That(
                     ReflectionHelpers.TryGetDelegateStrategy(
                         reflectionGetter,
-                        out reflectionStrategy
+                        out ReflectionHelpers.ReflectionDelegateStrategy reflectionStrategy
                     ),
                     Is.True
                 );
@@ -667,24 +693,24 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
                     reflectionSetter = ReflectionHelpers.GetStaticFieldSetter(field);
                 }
 
-                ReflectionHelpers.ReflectionDelegateStrategy expressionStrategy;
                 Assert.That(
                     ReflectionHelpers.TryGetDelegateStrategy(
                         expressionSetter,
-                        out expressionStrategy
+                        out ReflectionHelpers.ReflectionDelegateStrategy expressionStrategy
                     ),
                     Is.True
                 );
-                ReflectionHelpers.ReflectionDelegateStrategy dynamicStrategy;
                 Assert.That(
-                    ReflectionHelpers.TryGetDelegateStrategy(dynamicSetter, out dynamicStrategy),
+                    ReflectionHelpers.TryGetDelegateStrategy(
+                        dynamicSetter,
+                        out ReflectionHelpers.ReflectionDelegateStrategy dynamicStrategy
+                    ),
                     Is.True
                 );
-                ReflectionHelpers.ReflectionDelegateStrategy reflectionStrategy;
                 Assert.That(
                     ReflectionHelpers.TryGetDelegateStrategy(
                         reflectionSetter,
-                        out reflectionStrategy
+                        out ReflectionHelpers.ReflectionDelegateStrategy reflectionStrategy
                     ),
                     Is.True
                 );
@@ -767,24 +793,24 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
                     reflectionGetter = ReflectionHelpers.GetStaticFieldGetter<int>(field);
                 }
 
-                ReflectionHelpers.ReflectionDelegateStrategy expressionStrategy;
                 Assert.That(
                     ReflectionHelpers.TryGetDelegateStrategy(
                         expressionGetter,
-                        out expressionStrategy
+                        out ReflectionHelpers.ReflectionDelegateStrategy expressionStrategy
                     ),
                     Is.True
                 );
-                ReflectionHelpers.ReflectionDelegateStrategy dynamicStrategy;
                 Assert.That(
-                    ReflectionHelpers.TryGetDelegateStrategy(dynamicGetter, out dynamicStrategy),
+                    ReflectionHelpers.TryGetDelegateStrategy(
+                        dynamicGetter,
+                        out ReflectionHelpers.ReflectionDelegateStrategy dynamicStrategy
+                    ),
                     Is.True
                 );
-                ReflectionHelpers.ReflectionDelegateStrategy reflectionStrategy;
                 Assert.That(
                     ReflectionHelpers.TryGetDelegateStrategy(
                         reflectionGetter,
-                        out reflectionStrategy
+                        out ReflectionHelpers.ReflectionDelegateStrategy reflectionStrategy
                     ),
                     Is.True
                 );
@@ -866,24 +892,24 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
                     reflectionSetter = ReflectionHelpers.GetStaticFieldSetter<int>(field);
                 }
 
-                ReflectionHelpers.ReflectionDelegateStrategy expressionStrategy;
                 Assert.That(
                     ReflectionHelpers.TryGetDelegateStrategy(
                         expressionSetter,
-                        out expressionStrategy
+                        out ReflectionHelpers.ReflectionDelegateStrategy expressionStrategy
                     ),
                     Is.True
                 );
-                ReflectionHelpers.ReflectionDelegateStrategy dynamicStrategy;
                 Assert.That(
-                    ReflectionHelpers.TryGetDelegateStrategy(dynamicSetter, out dynamicStrategy),
+                    ReflectionHelpers.TryGetDelegateStrategy(
+                        dynamicSetter,
+                        out ReflectionHelpers.ReflectionDelegateStrategy dynamicStrategy
+                    ),
                     Is.True
                 );
-                ReflectionHelpers.ReflectionDelegateStrategy reflectionStrategy;
                 Assert.That(
                     ReflectionHelpers.TryGetDelegateStrategy(
                         reflectionSetter,
-                        out reflectionStrategy
+                        out ReflectionHelpers.ReflectionDelegateStrategy reflectionStrategy
                     ),
                     Is.True
                 );
@@ -1015,19 +1041,25 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
                 reflectionGetter = ReflectionHelpers.GetPropertyGetter(property);
             }
 
-            ReflectionHelpers.ReflectionDelegateStrategy expressionStrategy;
             Assert.That(
-                ReflectionHelpers.TryGetDelegateStrategy(expressionGetter, out expressionStrategy),
+                ReflectionHelpers.TryGetDelegateStrategy(
+                    expressionGetter,
+                    out ReflectionHelpers.ReflectionDelegateStrategy expressionStrategy
+                ),
                 Is.True
             );
-            ReflectionHelpers.ReflectionDelegateStrategy dynamicStrategy;
             Assert.That(
-                ReflectionHelpers.TryGetDelegateStrategy(dynamicGetter, out dynamicStrategy),
+                ReflectionHelpers.TryGetDelegateStrategy(
+                    dynamicGetter,
+                    out ReflectionHelpers.ReflectionDelegateStrategy dynamicStrategy
+                ),
                 Is.True
             );
-            ReflectionHelpers.ReflectionDelegateStrategy reflectionStrategy;
             Assert.That(
-                ReflectionHelpers.TryGetDelegateStrategy(reflectionGetter, out reflectionStrategy),
+                ReflectionHelpers.TryGetDelegateStrategy(
+                    reflectionGetter,
+                    out ReflectionHelpers.ReflectionDelegateStrategy reflectionStrategy
+                ),
                 Is.True
             );
 
@@ -1100,19 +1132,25 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
                 reflectionSetter = ReflectionHelpers.GetPropertySetter(property);
             }
 
-            ReflectionHelpers.ReflectionDelegateStrategy expressionStrategy;
             Assert.That(
-                ReflectionHelpers.TryGetDelegateStrategy(expressionSetter, out expressionStrategy),
+                ReflectionHelpers.TryGetDelegateStrategy(
+                    expressionSetter,
+                    out ReflectionHelpers.ReflectionDelegateStrategy expressionStrategy
+                ),
                 Is.True
             );
-            ReflectionHelpers.ReflectionDelegateStrategy dynamicStrategy;
             Assert.That(
-                ReflectionHelpers.TryGetDelegateStrategy(dynamicSetter, out dynamicStrategy),
+                ReflectionHelpers.TryGetDelegateStrategy(
+                    dynamicSetter,
+                    out ReflectionHelpers.ReflectionDelegateStrategy dynamicStrategy
+                ),
                 Is.True
             );
-            ReflectionHelpers.ReflectionDelegateStrategy reflectionStrategy;
             Assert.That(
-                ReflectionHelpers.TryGetDelegateStrategy(reflectionSetter, out reflectionStrategy),
+                ReflectionHelpers.TryGetDelegateStrategy(
+                    reflectionSetter,
+                    out ReflectionHelpers.ReflectionDelegateStrategy reflectionStrategy
+                ),
                 Is.True
             );
 
@@ -1168,8 +1206,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         [Test]
         public void IndexerGetterCachesRemainStrategyScoped()
         {
-            IndexerClass instance = new();
-            instance[3] = 42;
+            IndexerClass instance = new() { [3] = 42 };
             PropertyInfo indexer = typeof(IndexerClass).GetProperty("Item");
             Func<object, object[], object> expressionGetter;
             using (ReflectionHelpers.OverrideReflectionCapabilities(true, false))
@@ -1189,19 +1226,25 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
                 reflectionGetter = ReflectionHelpers.GetIndexerGetter(indexer);
             }
 
-            ReflectionHelpers.ReflectionDelegateStrategy expressionStrategy;
             Assert.That(
-                ReflectionHelpers.TryGetDelegateStrategy(expressionGetter, out expressionStrategy),
+                ReflectionHelpers.TryGetDelegateStrategy(
+                    expressionGetter,
+                    out ReflectionHelpers.ReflectionDelegateStrategy expressionStrategy
+                ),
                 Is.True
             );
-            ReflectionHelpers.ReflectionDelegateStrategy dynamicStrategy;
             Assert.That(
-                ReflectionHelpers.TryGetDelegateStrategy(dynamicGetter, out dynamicStrategy),
+                ReflectionHelpers.TryGetDelegateStrategy(
+                    dynamicGetter,
+                    out ReflectionHelpers.ReflectionDelegateStrategy dynamicStrategy
+                ),
                 Is.True
             );
-            ReflectionHelpers.ReflectionDelegateStrategy reflectionStrategy;
             Assert.That(
-                ReflectionHelpers.TryGetDelegateStrategy(reflectionGetter, out reflectionStrategy),
+                ReflectionHelpers.TryGetDelegateStrategy(
+                    reflectionGetter,
+                    out ReflectionHelpers.ReflectionDelegateStrategy reflectionStrategy
+                ),
                 Is.True
             );
 
@@ -1273,19 +1316,25 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
                 reflectionSetter = ReflectionHelpers.GetIndexerSetter(indexer);
             }
 
-            ReflectionHelpers.ReflectionDelegateStrategy expressionStrategy;
             Assert.That(
-                ReflectionHelpers.TryGetDelegateStrategy(expressionSetter, out expressionStrategy),
+                ReflectionHelpers.TryGetDelegateStrategy(
+                    expressionSetter,
+                    out ReflectionHelpers.ReflectionDelegateStrategy expressionStrategy
+                ),
                 Is.True
             );
-            ReflectionHelpers.ReflectionDelegateStrategy dynamicStrategy;
             Assert.That(
-                ReflectionHelpers.TryGetDelegateStrategy(dynamicSetter, out dynamicStrategy),
+                ReflectionHelpers.TryGetDelegateStrategy(
+                    dynamicSetter,
+                    out ReflectionHelpers.ReflectionDelegateStrategy dynamicStrategy
+                ),
                 Is.True
             );
-            ReflectionHelpers.ReflectionDelegateStrategy reflectionStrategy;
             Assert.That(
-                ReflectionHelpers.TryGetDelegateStrategy(reflectionSetter, out reflectionStrategy),
+                ReflectionHelpers.TryGetDelegateStrategy(
+                    reflectionSetter,
+                    out ReflectionHelpers.ReflectionDelegateStrategy reflectionStrategy
+                ),
                 Is.True
             );
 
@@ -1361,19 +1410,25 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
                 reflectionInvoker = ReflectionHelpers.GetConstructor(ctor);
             }
 
-            ReflectionHelpers.ReflectionDelegateStrategy expressionStrategy;
             Assert.That(
-                ReflectionHelpers.TryGetDelegateStrategy(expressionInvoker, out expressionStrategy),
+                ReflectionHelpers.TryGetDelegateStrategy(
+                    expressionInvoker,
+                    out ReflectionHelpers.ReflectionDelegateStrategy expressionStrategy
+                ),
                 Is.True
             );
-            ReflectionHelpers.ReflectionDelegateStrategy dynamicStrategy;
             Assert.That(
-                ReflectionHelpers.TryGetDelegateStrategy(dynamicInvoker, out dynamicStrategy),
+                ReflectionHelpers.TryGetDelegateStrategy(
+                    dynamicInvoker,
+                    out ReflectionHelpers.ReflectionDelegateStrategy dynamicStrategy
+                ),
                 Is.True
             );
-            ReflectionHelpers.ReflectionDelegateStrategy reflectionStrategy;
             Assert.That(
-                ReflectionHelpers.TryGetDelegateStrategy(reflectionInvoker, out reflectionStrategy),
+                ReflectionHelpers.TryGetDelegateStrategy(
+                    reflectionInvoker,
+                    out ReflectionHelpers.ReflectionDelegateStrategy reflectionStrategy
+                ),
                 Is.True
             );
 
@@ -1455,19 +1510,25 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
                 );
             }
 
-            ReflectionHelpers.ReflectionDelegateStrategy expressionStrategy;
             Assert.That(
-                ReflectionHelpers.TryGetDelegateStrategy(expressionCreator, out expressionStrategy),
+                ReflectionHelpers.TryGetDelegateStrategy(
+                    expressionCreator,
+                    out ReflectionHelpers.ReflectionDelegateStrategy expressionStrategy
+                ),
                 Is.True
             );
-            ReflectionHelpers.ReflectionDelegateStrategy dynamicStrategy;
             Assert.That(
-                ReflectionHelpers.TryGetDelegateStrategy(dynamicCreator, out dynamicStrategy),
+                ReflectionHelpers.TryGetDelegateStrategy(
+                    dynamicCreator,
+                    out ReflectionHelpers.ReflectionDelegateStrategy dynamicStrategy
+                ),
                 Is.True
             );
-            ReflectionHelpers.ReflectionDelegateStrategy reflectionStrategy;
             Assert.That(
-                ReflectionHelpers.TryGetDelegateStrategy(reflectionCreator, out reflectionStrategy),
+                ReflectionHelpers.TryGetDelegateStrategy(
+                    reflectionCreator,
+                    out ReflectionHelpers.ReflectionDelegateStrategy reflectionStrategy
+                ),
                 Is.True
             );
 
@@ -1541,19 +1602,25 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
                     ReflectionHelpers.GetParameterlessConstructor<TestConstructorClass>();
             }
 
-            ReflectionHelpers.ReflectionDelegateStrategy expressionStrategy;
             Assert.That(
-                ReflectionHelpers.TryGetDelegateStrategy(expressionCreator, out expressionStrategy),
+                ReflectionHelpers.TryGetDelegateStrategy(
+                    expressionCreator,
+                    out ReflectionHelpers.ReflectionDelegateStrategy expressionStrategy
+                ),
                 Is.True
             );
-            ReflectionHelpers.ReflectionDelegateStrategy dynamicStrategy;
             Assert.That(
-                ReflectionHelpers.TryGetDelegateStrategy(dynamicCreator, out dynamicStrategy),
+                ReflectionHelpers.TryGetDelegateStrategy(
+                    dynamicCreator,
+                    out ReflectionHelpers.ReflectionDelegateStrategy dynamicStrategy
+                ),
                 Is.True
             );
-            ReflectionHelpers.ReflectionDelegateStrategy reflectionStrategy;
             Assert.That(
-                ReflectionHelpers.TryGetDelegateStrategy(reflectionCreator, out reflectionStrategy),
+                ReflectionHelpers.TryGetDelegateStrategy(
+                    reflectionCreator,
+                    out ReflectionHelpers.ReflectionDelegateStrategy reflectionStrategy
+                ),
                 Is.True
             );
 
@@ -1626,19 +1693,25 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
                 reflectionInvoker = ReflectionHelpers.GetMethodInvoker(method);
             }
 
-            ReflectionHelpers.ReflectionDelegateStrategy expressionStrategy;
             Assert.That(
-                ReflectionHelpers.TryGetDelegateStrategy(expressionInvoker, out expressionStrategy),
+                ReflectionHelpers.TryGetDelegateStrategy(
+                    expressionInvoker,
+                    out ReflectionHelpers.ReflectionDelegateStrategy expressionStrategy
+                ),
                 Is.True
             );
-            ReflectionHelpers.ReflectionDelegateStrategy dynamicStrategy;
             Assert.That(
-                ReflectionHelpers.TryGetDelegateStrategy(dynamicInvoker, out dynamicStrategy),
+                ReflectionHelpers.TryGetDelegateStrategy(
+                    dynamicInvoker,
+                    out ReflectionHelpers.ReflectionDelegateStrategy dynamicStrategy
+                ),
                 Is.True
             );
-            ReflectionHelpers.ReflectionDelegateStrategy reflectionStrategy;
             Assert.That(
-                ReflectionHelpers.TryGetDelegateStrategy(reflectionInvoker, out reflectionStrategy),
+                ReflectionHelpers.TryGetDelegateStrategy(
+                    reflectionInvoker,
+                    out ReflectionHelpers.ReflectionDelegateStrategy reflectionStrategy
+                ),
                 Is.True
             );
 
@@ -1713,19 +1786,25 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
                 reflectionInvoker = ReflectionHelpers.GetStaticMethodInvoker(method);
             }
 
-            ReflectionHelpers.ReflectionDelegateStrategy expressionStrategy;
             Assert.That(
-                ReflectionHelpers.TryGetDelegateStrategy(expressionInvoker, out expressionStrategy),
+                ReflectionHelpers.TryGetDelegateStrategy(
+                    expressionInvoker,
+                    out ReflectionHelpers.ReflectionDelegateStrategy expressionStrategy
+                ),
                 Is.True
             );
-            ReflectionHelpers.ReflectionDelegateStrategy dynamicStrategy;
             Assert.That(
-                ReflectionHelpers.TryGetDelegateStrategy(dynamicInvoker, out dynamicStrategy),
+                ReflectionHelpers.TryGetDelegateStrategy(
+                    dynamicInvoker,
+                    out ReflectionHelpers.ReflectionDelegateStrategy dynamicStrategy
+                ),
                 Is.True
             );
-            ReflectionHelpers.ReflectionDelegateStrategy reflectionStrategy;
             Assert.That(
-                ReflectionHelpers.TryGetDelegateStrategy(reflectionInvoker, out reflectionStrategy),
+                ReflectionHelpers.TryGetDelegateStrategy(
+                    reflectionInvoker,
+                    out ReflectionHelpers.ReflectionDelegateStrategy reflectionStrategy
+                ),
                 Is.True
             );
 
@@ -1836,9 +1915,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
                 using (ReflectionHelpers.OverrideReflectionCapabilities(true, false))
                 {
                     Func<object, object> getter = ReflectionHelpers.GetPropertyGetter(property);
-                    ReflectionHelpers.ReflectionDelegateStrategy strategy;
                     Assert.That(
-                        ReflectionHelpers.TryGetDelegateStrategy(getter, out strategy),
+                        ReflectionHelpers.TryGetDelegateStrategy(
+                            getter,
+                            out ReflectionHelpers.ReflectionDelegateStrategy strategy
+                        ),
                         Is.True
                     );
                     Assume.That(
@@ -1876,9 +1957,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
                 using (ReflectionHelpers.OverrideReflectionCapabilities(false, true))
                 {
                     Func<object, object> getter = ReflectionHelpers.GetPropertyGetter(property);
-                    ReflectionHelpers.ReflectionDelegateStrategy strategy;
                     Assert.That(
-                        ReflectionHelpers.TryGetDelegateStrategy(getter, out strategy),
+                        ReflectionHelpers.TryGetDelegateStrategy(
+                            getter,
+                            out ReflectionHelpers.ReflectionDelegateStrategy strategy
+                        ),
                         Is.True
                     );
                     Assume.That(
@@ -1911,9 +1994,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
                 using (ReflectionHelpers.OverrideReflectionCapabilities(false, false))
                 {
                     Func<object, object> getter = ReflectionHelpers.GetPropertyGetter(property);
-                    ReflectionHelpers.ReflectionDelegateStrategy strategy;
                     Assert.That(
-                        ReflectionHelpers.TryGetDelegateStrategy(getter, out strategy),
+                        ReflectionHelpers.TryGetDelegateStrategy(
+                            getter,
+                            out ReflectionHelpers.ReflectionDelegateStrategy strategy
+                        ),
                         Is.True
                     );
                     Assert.That(
@@ -2019,8 +2104,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
                 mode,
                 () =>
                 {
-                    IndexerClass instance = new();
-                    instance[5] = 99;
+                    IndexerClass instance = new() { [5] = 99 };
                     PropertyInfo indexer = typeof(IndexerClass).GetProperty("Item");
                     Func<object, object[], object> getter = ReflectionHelpers.GetIndexerGetter(
                         indexer

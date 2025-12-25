@@ -1,4 +1,4 @@
-namespace WallstopStudios.UnityHelpers.Tests.Performance
+namespace WallstopStudios.UnityHelpers.Tests.Runtime.Performance
 {
     using System;
     using System.Collections;
@@ -10,10 +10,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
     using UnityEngine;
     using UnityEngine.TestTools;
     using WallstopStudios.UnityHelpers.Core.DataStructure;
+    using WallstopStudios.UnityHelpers.Core.Extension;
 
     public sealed class SpatialTree2DPerformanceTests
     {
         private const float PointBoundsSize = 0.001f;
+        private const int BenchmarkTimeoutMilliseconds = 180_000;
+        private const int WarmupIterations = 3;
 
         private static readonly TimeSpan BenchmarkDuration = TimeSpan.FromSeconds(1);
 
@@ -113,7 +116,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
         }
 
         [UnityTest]
-        [Timeout(0)]
+        [Timeout(BenchmarkTimeoutMilliseconds)]
         public IEnumerator Benchmark()
         {
             TreeSpec[] treeSpecs = BuildTreeSpecs();
@@ -294,7 +297,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
             BenchmarkReadmeUpdater.UpdateSection(
                 "SPATIAL_TREE_BENCHMARKS",
                 finalReadmeLines,
-                "Docs/SPATIAL_TREE_2D_PERFORMANCE.md"
+                "docs/performance/spatial-tree-2d-performance.md"
             );
 
             yield break;
@@ -483,6 +486,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
             List<Vector2> buffer
         )
         {
+            for (int i = 0; i < WarmupIterations; ++i)
+            {
+                tree.GetElementsInRange(center, radius, buffer);
+            }
+
             Stopwatch timer = Stopwatch.StartNew();
             int iterations = 0;
             do
@@ -500,6 +508,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
             List<Vector2> buffer
         )
         {
+            for (int i = 0; i < WarmupIterations; ++i)
+            {
+                tree.GetElementsInBounds(bounds, buffer);
+            }
+
             Stopwatch timer = Stopwatch.StartNew();
             int iterations = 0;
             do
@@ -518,6 +531,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
             List<Vector2> buffer
         )
         {
+            for (int i = 0; i < WarmupIterations; ++i)
+            {
+                tree.GetApproximateNearestNeighbors(center, count, buffer);
+            }
+
             Stopwatch timer = Stopwatch.StartNew();
             int iterations = 0;
             do
@@ -541,11 +559,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
         {
             string key = $"{group}::{label}";
 
-            if (!groupRows.TryGetValue(group, out List<string> rows))
-            {
-                rows = new List<string>();
-                groupRows[group] = rows;
-            }
+            List<string> rows = groupRows.GetOrAdd(group);
 
             if (!rowValues.TryGetValue(key, out Dictionary<string, string> row))
             {

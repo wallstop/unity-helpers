@@ -2,8 +2,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
 {
     using NUnit.Framework;
     using WallstopStudios.UnityHelpers.Core.Helper;
+    using WallstopStudios.UnityHelpers.Tests.Core;
 
-    public sealed class PathHelperTests
+    public sealed class PathHelperTests : CommonTestBase
     {
         [Test]
         public void SanitizePathWithNullReturnsNull()
@@ -15,7 +16,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         [Test]
         public void SanitizePathWithEmptyStringReturnsEmpty()
         {
-            string result = PathHelper.SanitizePath(string.Empty);
+            string result = string.Empty.SanitizePath();
             Assert.AreEqual(string.Empty, result);
         }
 
@@ -23,7 +24,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         public void SanitizePathWithForwardSlashesReturnsUnchanged()
         {
             string path = "Assets/Scripts/Test.cs";
-            string result = PathHelper.SanitizePath(path);
+            string result = path.SanitizePath();
             Assert.AreEqual(path, result);
         }
 
@@ -31,7 +32,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         public void SanitizePathConvertsBackslashesToForwardSlashes()
         {
             string path = "Assets\\Scripts\\Test.cs";
-            string result = PathHelper.SanitizePath(path);
+            string result = path.SanitizePath();
             Assert.AreEqual("Assets/Scripts/Test.cs", result);
         }
 
@@ -39,7 +40,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         public void SanitizePathHandlesMixedSlashes()
         {
             string path = "Assets\\Scripts/Test\\File.cs";
-            string result = PathHelper.SanitizePath(path);
+            string result = path.SanitizePath();
             Assert.AreEqual("Assets/Scripts/Test/File.cs", result);
         }
 
@@ -47,7 +48,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         public void SanitizePathWithMultipleBackslashesConvertsAll()
         {
             string path = "C:\\\\Users\\\\Test\\\\Documents\\\\File.txt";
-            string result = PathHelper.SanitizePath(path);
+            string result = path.SanitizePath();
             Assert.That(result, Does.Not.Contain("\\"));
             Assert.That(result, Does.Contain("/"));
         }
@@ -56,7 +57,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         public void SanitizePathWithOnlyBackslashesConvertsAll()
         {
             string path = "\\\\\\\\";
-            string result = PathHelper.SanitizePath(path);
+            string result = path.SanitizePath();
             Assert.AreEqual("////", result);
         }
 
@@ -64,7 +65,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         public void SanitizePathWithTrailingBackslashConverts()
         {
             string path = "Assets\\Scripts\\";
-            string result = PathHelper.SanitizePath(path);
+            string result = path.SanitizePath();
             Assert.AreEqual("Assets/Scripts/", result);
         }
 
@@ -72,7 +73,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         public void SanitizePathWithLeadingBackslashConverts()
         {
             string path = "\\Assets\\Scripts\\Test.cs";
-            string result = PathHelper.SanitizePath(path);
+            string result = path.SanitizePath();
             Assert.AreEqual("/Assets/Scripts/Test.cs", result);
         }
 
@@ -80,7 +81,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         public void SanitizePathWithSingleBackslashConverts()
         {
             string path = "\\";
-            string result = PathHelper.SanitizePath(path);
+            string result = path.SanitizePath();
             Assert.AreEqual("/", result);
         }
 
@@ -88,7 +89,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         public void SanitizePathWithNoSlashesReturnsUnchanged()
         {
             string path = "Test.cs";
-            string result = PathHelper.SanitizePath(path);
+            string result = path.SanitizePath();
             Assert.AreEqual(path, result);
         }
 
@@ -96,7 +97,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         public void SanitizePathWithWindowsDriveLetterConvertsSlashes()
         {
             string path = "C:\\Windows\\System32";
-            string result = PathHelper.SanitizePath(path);
+            string result = path.SanitizePath();
             Assert.AreEqual("C:/Windows/System32", result);
         }
 
@@ -104,7 +105,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         public void SanitizePathWithUncPathConvertsSlashes()
         {
             string path = "\\\\Server\\Share\\Folder\\File.txt";
-            string result = PathHelper.SanitizePath(path);
+            string result = path.SanitizePath();
             Assert.AreEqual("//Server/Share/Folder/File.txt", result);
         }
 
@@ -112,7 +113,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         public void SanitizePathWithSpecialCharactersPreservesThemButConvertsSlashes()
         {
             string path = "Assets\\Test (Copy)\\File [1].cs";
-            string result = PathHelper.SanitizePath(path);
+            string result = path.SanitizePath();
             Assert.AreEqual("Assets/Test (Copy)/File [1].cs", result);
         }
 
@@ -120,7 +121,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         public void SanitizePathWithWhitespacePreservesItButConvertsSlashes()
         {
             string path = "Assets\\Folder With Spaces\\File.cs";
-            string result = PathHelper.SanitizePath(path);
+            string result = path.SanitizePath();
             Assert.AreEqual("Assets/Folder With Spaces/File.cs", result);
         }
 
@@ -128,7 +129,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         public void SanitizePathWithUnicodeCharactersPreservesThemButConvertsSlashes()
         {
             string path = "Assets\\日本語\\ファイル.txt";
-            string result = PathHelper.SanitizePath(path);
+            string result = path.SanitizePath();
             Assert.AreEqual("Assets/日本語/ファイル.txt", result);
         }
 
@@ -142,7 +143,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             }
             longPath += "File.txt";
 
-            string result = PathHelper.SanitizePath(longPath);
+            string result = longPath.SanitizePath();
             Assert.That(result, Does.Not.Contain("\\"));
             Assert.That(result, Does.StartWith("C:/"));
         }
@@ -151,7 +152,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         public void SanitizePathWithRelativePathConvertsBackslashes()
         {
             string path = "..\\..\\Assets\\Test.cs";
-            string result = PathHelper.SanitizePath(path);
+            string result = path.SanitizePath();
             Assert.AreEqual("../../Assets/Test.cs", result);
         }
 
@@ -159,7 +160,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         public void SanitizePathWithCurrentDirectoryReferenceConvertsBackslashes()
         {
             string path = ".\\Assets\\Test.cs";
-            string result = PathHelper.SanitizePath(path);
+            string result = path.SanitizePath();
             Assert.AreEqual("./Assets/Test.cs", result);
         }
 
@@ -167,8 +168,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         public void SanitizePathIdempotent()
         {
             string path = "Assets\\Scripts\\Test.cs";
-            string result1 = PathHelper.SanitizePath(path);
-            string result2 = PathHelper.SanitizePath(result1);
+            string result1 = path.SanitizePath();
+            string result2 = result1.SanitizePath();
             Assert.AreEqual(result1, result2);
         }
 
@@ -176,7 +177,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         public void SanitizePathWithOnlyForwardSlashesReturnsIdentical()
         {
             string path = "Assets/Scripts/Test.cs";
-            string result = PathHelper.SanitizePath(path);
+            string result = path.SanitizePath();
             Assert.AreSame(path, result);
         }
     }

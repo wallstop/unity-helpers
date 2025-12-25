@@ -6,22 +6,26 @@ if command -v dotnet >/dev/null 2>&1; then
   dotnet tool restore >/dev/null 2>&1 || true
 fi
 
-# 1) Lint Markdown link text style (PowerShell script)
-run_pwsh() {
-  pwsh -NoProfile -File scripts/lint-doc-links.ps1
-}
-
-run_windows_ps() {
-  powershell -NoProfile -ExecutionPolicy Bypass -File scripts/lint-doc-links.ps1
-}
-
-if command -v pwsh >/dev/null 2>&1; then
-  run_pwsh
-elif command -v powershell >/dev/null 2>&1; then
-  run_windows_ps
+# 1) Lint Markdown link text style (via Node wrapper -> PowerShell script)
+if command -v node >/dev/null 2>&1; then
+  node ./scripts/run-doc-link-lint.js
 else
-  echo "PowerShell not found. Please install pwsh or powershell to run docs linter." >&2
-  exit 1
+  run_pwsh() {
+    pwsh -NoProfile -File scripts/lint-doc-links.ps1
+  }
+
+  run_windows_ps() {
+    powershell -NoProfile -ExecutionPolicy Bypass -File scripts/lint-doc-links.ps1
+  }
+
+  if command -v pwsh >/dev/null 2>&1; then
+    run_pwsh
+  elif command -v powershell >/dev/null 2>&1; then
+    run_windows_ps
+  else
+    echo "PowerShell not found. Please install Node.js (preferred) or pwsh/powershell to run docs linter." >&2
+    exit 1
+  fi
 fi
 
 # 2) Format staged Markdown/JSON/YAML with Prettier and re-stage
@@ -55,10 +59,14 @@ fi
 
 # 3) Format staged C# files with CSharpier (if available) and re-stage
 CS_FILES=$(echo "$STAGED_FILES" | grep -E '\\.cs$' || true)
-if [ -n "$CS_FILES" ] && command -v dotnet >/dev/null 2>&1; then
-  # Use local tool version to format paths; fall back to repo-wide if necessary
-  dotnet tool run csharpier $CS_FILES >/dev/null 2>&1 || dotnet tool run csharpier . >/dev/null 2>&1 || true
-  echo "$CS_FILES" | xargs git add
+if [ -n "$CS_FILES" ]; then
+  if command -v pwsh >/dev/null 2>&1; then
+    pwsh -NoProfile -File scripts/format-staged-csharp.ps1
+  elif command -v powershell >/dev/null 2>&1; then
+    powershell -NoProfile -ExecutionPolicy Bypass -File scripts/format-staged-csharp.ps1
+  else
+    echo "PowerShell not found. Skipping CSharpier formatting." >&2
+  fi
 fi
 
 # 4) Markdown lint for staged Markdown files

@@ -12,6 +12,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
     using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Core.Random;
     using WallstopStudios.UnityHelpers.Core.Serialization;
+    using WallstopStudios.UnityHelpers.Tests.Core;
 
     [DataContract]
     public sealed class TestDataObject
@@ -29,20 +30,20 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
         public List<Type> TypeProperties { get; set; } = new();
     }
 
-    public sealed class JsonSerializationTest
+    public sealed class JsonSerializationTest : CommonTestBase
     {
         [Test]
         public void UnityEngineObjectSerializationWorks()
         {
-            GameObject testGo = new("Test GameObject", typeof(SpriteRenderer));
+            GameObject testGo = Track(new GameObject("Test GameObject", typeof(SpriteRenderer)));
             int expectedId = testGo.GetInstanceID();
             string json = testGo.ToJson();
             Assert.IsFalse(string.IsNullOrWhiteSpace(json), json);
             Assert.AreNotEqual("{}", json);
 
-            using System.Text.Json.JsonDocument doc = System.Text.Json.JsonDocument.Parse(json);
-            System.Text.Json.JsonElement root = doc.RootElement;
-            Assert.AreEqual(System.Text.Json.JsonValueKind.Object, root.ValueKind);
+            using JsonDocument doc = JsonDocument.Parse(json);
+            JsonElement root = doc.RootElement;
+            Assert.AreEqual(JsonValueKind.Object, root.ValueKind);
             Assert.True(root.TryGetProperty("name", out JsonElement name));
             Assert.True(root.TryGetProperty("type", out JsonElement type));
             Assert.True(root.TryGetProperty("instanceId", out JsonElement id));
@@ -58,7 +59,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
             string json = testGo.ToJson();
             Assert.AreEqual("null", json);
 
-            testGo = new GameObject();
+            testGo = Track(new GameObject());
             testGo.Destroy();
             yield return null; // allow Unity to nullify destroyed object
             Assert.IsTrue(testGo == null);
@@ -69,7 +70,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
         [Test]
         public void TransformSerializationWorks()
         {
-            GameObject testGo = new("Test GameObject", typeof(SpriteRenderer));
+            GameObject testGo = Track(new GameObject("Test GameObject", typeof(SpriteRenderer)));
             Transform transform = testGo.transform;
             string json = transform.ToJson();
             Assert.AreEqual("[]", json);

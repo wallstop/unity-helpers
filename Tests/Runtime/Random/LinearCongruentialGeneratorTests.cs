@@ -1,4 +1,4 @@
-namespace WallstopStudios.UnityHelpers.Tests.Random
+namespace WallstopStudios.UnityHelpers.Tests.Runtime.Random
 {
     using WallstopStudios.UnityHelpers.Core.Random;
 
@@ -6,7 +6,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Random
     {
         protected override IRandom NewRandom()
         {
-            return new LinearCongruentialGenerator();
+            return new LinearCongruentialGenerator(DeterministicSeedInt);
         }
     }
 }

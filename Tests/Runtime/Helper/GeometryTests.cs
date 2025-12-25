@@ -6,8 +6,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
     using NUnit.Framework;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Helper;
+    using WallstopStudios.UnityHelpers.Tests.Core;
 
-    public sealed class GeometryTests
+    public sealed class GeometryTests : CommonTestBase
     {
         [Test]
         public void AccumulateSingleRect()
@@ -258,6 +259,63 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             Vector2 p = new(5, 5);
             float result = Geometry.IsAPointLeftOfVectorOrOnTheLine(a, b, p);
             Assert.AreEqual(0, result, "Collinear points should return 0.");
+        }
+
+        [Test]
+        public void IsAPointLeftOfVectorOrOnTheLineVector2HighMagnitudeRotationStaysColinear()
+        {
+            const int minX = -1700;
+            const int maxX = 1700;
+            const int minY = -850;
+            float angle = 22.5f * Mathf.Deg2Rad;
+            float cos = Mathf.Cos(angle);
+            float sin = Mathf.Sin(angle);
+
+            Vector2 a = RotateAndQuantize(minX, minY, cos, sin);
+            Vector2 b = RotateAndQuantize(maxX, minY, cos, sin);
+            Vector2 p = RotateAndQuantize(0, minY, cos, sin);
+
+            double result = Geometry.IsAPointLeftOfVectorOrOnTheLineDouble(a, b, p);
+            double tolerance = ComputeAreaTolerance(a, b, p);
+            Assert.LessOrEqual(
+                Math.Abs(result),
+                tolerance,
+                $"Cross product should be ~0 within tolerance {tolerance} (was {result})."
+            );
+        }
+
+        [Test]
+        public void IsAPointLeftOfVectorOrOnTheLineVector2HighMagnitudeRotationDetectsLeft()
+        {
+            const int minX = -1700;
+            const int minY = -850;
+            float angle = 22.5f * Mathf.Deg2Rad;
+            float cos = Mathf.Cos(angle);
+            float sin = Mathf.Sin(angle);
+
+            Vector2 a = RotateAndQuantize(minX, minY, cos, sin);
+            Vector2 b = RotateAndQuantize(minX + 1, minY, cos, sin);
+            Vector2 p = RotateAndQuantize(minX + 1, minY + 10, cos, sin);
+
+            double result = Geometry.IsAPointLeftOfVectorOrOnTheLineDouble(a, b, p);
+            Assert.Greater(result, 0d);
+        }
+
+        [Test]
+        public void IsAPointLeftOfVectorOrOnTheLineVector2HighMagnitudeRotationDetectsRight()
+        {
+            const int minX = -1700;
+            const int minY = -850;
+            float angle = -18.75f * Mathf.Deg2Rad;
+            float cos = Mathf.Cos(angle);
+            float sin = Mathf.Sin(angle);
+
+            Vector2 a = RotateAndQuantize(minX, minY, cos, sin);
+            Vector2 b = RotateAndQuantize(minX + 1, minY, cos, sin);
+            Vector2 p = RotateAndQuantize(minX + 1, minY - 10, cos, sin);
+
+            double result = Geometry.IsAPointLeftOfVectorOrOnTheLineDouble(a, b, p);
+            Assert.Less(result, 0d);
         }
 
         [Test]
@@ -512,6 +570,30 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             Vector2Int p = new(15000, 15001);
             int result = Geometry.IsAPointLeftOfVectorOrOnTheLine(a, b, p);
             Assert.IsTrue(result > 0, "Should handle large values without overflow.");
+        }
+
+        private static Vector2 RotateAndQuantize(int x, int y, float cos, float sin)
+        {
+            float fx = x;
+            float fy = y;
+            float rotatedX = fx * cos - fy * sin;
+            float rotatedY = fx * sin + fy * cos;
+            rotatedX = Mathf.Round(rotatedX * 1000f) * 0.001f;
+            rotatedY = Mathf.Round(rotatedY * 1000f) * 0.001f;
+            return new Vector2(rotatedX, rotatedY);
+        }
+
+        private static double ComputeAreaTolerance(Vector2 a, Vector2 b, Vector2 c)
+        {
+            double maxComponent = Math.Max(
+                Math.Max(
+                    Math.Max(Math.Abs(a.x), Math.Abs(a.y)),
+                    Math.Max(Math.Abs(b.x), Math.Abs(b.y))
+                ),
+                Math.Max(Math.Abs(c.x), Math.Abs(c.y))
+            );
+            double scale = Math.Max(1d, maxComponent);
+            return 1e-5d * scale * scale;
         }
     }
 }

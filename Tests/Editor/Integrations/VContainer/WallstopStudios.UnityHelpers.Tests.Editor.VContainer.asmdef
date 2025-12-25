@@ -7,6 +7,7 @@
     "WallstopStudios.UnityHelpers",
     "WallstopStudios.UnityHelpers.Integration.VContainer",
     "WallstopStudios.UnityHelpers.Tests.Editor",
+    "WallstopStudios.UnityHelpers.Tests.Core",
     "VContainer"
   ],
   "includePlatforms": ["Editor"],

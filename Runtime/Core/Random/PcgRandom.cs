@@ -3,6 +3,7 @@ namespace WallstopStudios.UnityHelpers.Core.Random
     using System;
     using System.Runtime.Serialization;
     using System.Text.Json.Serialization;
+    using Helper;
     using ProtoBuf;
 
     /// <summary>
@@ -93,6 +94,12 @@ namespace WallstopStudios.UnityHelpers.Core.Random
     /// // var index = rng.NextWeightedIndex(new float[] { 0.1f, 0.3f, 0.6f });
     /// </code>
     /// </example>
+    [RandomGeneratorMetadata(
+        RandomQuality.Excellent,
+        "PCG XSH RR 64/32 variant; passes TestU01 BigCrush and PractRand in published results.",
+        "O'Neill 2014",
+        "https://www.pcg-random.org/paper.html"
+    )]
     [Serializable]
     [DataContract]
     [ProtoContract]
@@ -227,7 +234,7 @@ namespace WallstopStudios.UnityHelpers.Core.Random
 
         public override int GetHashCode()
         {
-            return _increment.GetHashCode();
+            return Objects.HashCode(_increment, _state, _cachedGaussian);
         }
 
         public override string ToString()

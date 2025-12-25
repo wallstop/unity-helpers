@@ -2,6 +2,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 {
     using System.Collections.Generic;
     using UnityEngine;
+    using WallstopStudios.UnityHelpers.Utils;
 
     /// <summary>
     /// Polyline simplification and distance helpers.
@@ -65,16 +66,11 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             int firstPoint = 0;
             int lastPoint = points.Count - 1;
 
-            //Add the first and last index to the keepers
-            List<int> pointIndexsToKeep = new() { firstPoint, lastPoint };
-
-            //The first and the last point cannot be the same
             while (lastPoint > firstPoint && points[firstPoint] == points[lastPoint])
             {
                 lastPoint--;
             }
 
-            // If all points are the same, return just the first point
             if (lastPoint <= firstPoint)
             {
                 buffer ??= new List<Vector2>(1);
@@ -83,22 +79,27 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 return buffer;
             }
 
+            using PooledResource<List<int>> keepersLease = Buffers<int>.List.Get(
+                out List<int> pointIndexesToKeep
+            );
+            pointIndexesToKeep.Add(firstPoint);
+            pointIndexesToKeep.Add(lastPoint);
+
             DouglasPeuckerReductionRecursive(
                 points,
                 firstPoint,
                 lastPoint,
                 tolerance,
-                ref pointIndexsToKeep
+                ref pointIndexesToKeep
             );
 
-            buffer ??= new List<Vector2>(pointIndexsToKeep.Count);
+            buffer ??= new List<Vector2>(pointIndexesToKeep.Count);
             buffer.Clear();
-            pointIndexsToKeep.Sort();
-            foreach (int index in pointIndexsToKeep)
+            pointIndexesToKeep.Sort();
+            for (int i = 0; i < pointIndexesToKeep.Count; ++i)
             {
-                buffer.Add(points[index]);
+                buffer.Add(points[pointIndexesToKeep[i]]);
             }
-
             return buffer;
         }
 
@@ -196,21 +197,26 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             List<Vector2> buffer = null
         )
         {
-            buffer ??= new List<Vector2>();
+            int pointCount = points?.Count ?? 0;
+            buffer ??= new List<Vector2>(pointCount);
             buffer.Clear();
+            if (pointCount > 0 && buffer.Capacity < pointCount)
+            {
+                buffer.Capacity = pointCount;
+            }
             if (points == null)
             {
                 return buffer;
             }
 
-            if (points.Count < 3 || epsilon <= 0)
+            if (pointCount < 3 || epsilon <= 0)
             {
                 buffer.AddRange(points);
                 return buffer;
             }
 
-            SimplifyRecursive(points, 0, points.Count - 1, epsilon, buffer);
-            buffer.Add(points[points.Count - 1]);
+            SimplifyRecursive(points, 0, pointCount - 1, epsilon, buffer);
+            buffer.Add(points[pointCount - 1]);
             return buffer;
         }
 

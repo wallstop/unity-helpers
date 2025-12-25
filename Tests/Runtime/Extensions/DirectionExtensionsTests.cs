@@ -5,8 +5,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Extension;
     using WallstopStudios.UnityHelpers.Core.Model;
+    using WallstopStudios.UnityHelpers.Tests.Core;
 
-    public sealed class DirectionExtensionsTests
+    public sealed class DirectionExtensionsTests : CommonTestBase
     {
         [Test]
         public void OppositeReturnsExpectedValues()

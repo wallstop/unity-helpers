@@ -1,4 +1,4 @@
-namespace WallstopStudios.UnityHelpers.Tests.Performance
+namespace WallstopStudios.UnityHelpers.Tests.Runtime.Performance
 {
     using System;
     using System.Collections.Generic;
@@ -11,22 +11,23 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
     public sealed class ReflectionPerformanceTests
     {
         private const int BatchSize = 256;
+        private const int BenchmarkTimeoutMilliseconds = 120_000;
         private static readonly TimeSpan BenchmarkDuration = TimeSpan.FromMilliseconds(250);
         private static int sink;
 
         [Test]
-        [Timeout(0)]
+        [Timeout(BenchmarkTimeoutMilliseconds)]
         public void Benchmark()
         {
             StrategyConfig[] strategies =
             {
-                new StrategyConfig("Default (auto)", null, null),
-                new StrategyConfig("Expressions", true, false),
-                new StrategyConfig("Dynamic IL", false, true),
-                new StrategyConfig("Reflection Fallback", false, false),
+                new("Default (auto)", null, null),
+                new("Expressions", true, false),
+                new("Dynamic IL", false, true),
+                new("Reflection Fallback", false, false),
             };
 
-            List<StrategyRunResult> supportedRuns = new List<StrategyRunResult>();
+            List<StrategyRunResult> supportedRuns = new();
 
             foreach (StrategyConfig config in strategies)
             {
@@ -42,7 +43,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
                 supportedRuns.Add(result);
             }
 
-            List<string> outputLines = new List<string>
+            List<string> outputLines = new()
             {
                 string.Format(
                     System.Globalization.CultureInfo.InvariantCulture,
@@ -98,10 +99,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
                     "| -------- | ---------------- | --------------------------- | --------------------------- | ------------------- | -------------------- |"
                 );
 
-                Dictionary<string, double> reflectionBaselineLookup = new Dictionary<
-                    string,
-                    double
-                >(StringComparer.Ordinal);
+                Dictionary<string, double> reflectionBaselineLookup = new(StringComparer.Ordinal);
                 foreach (ScenarioResult boxed in run.BoxedResults)
                 {
                     reflectionBaselineLookup[GetScenarioKey(boxed.Name)] =
@@ -110,12 +108,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
 
                 foreach (ScenarioResult result in run.TypedResults)
                 {
-                    double reflectionOps = reflectionBaselineLookup.TryGetValue(
+                    double reflectionOps = reflectionBaselineLookup.GetValueOrDefault(
                         GetScenarioKey(result.Name),
-                        out double value
-                    )
-                        ? value
-                        : double.NaN;
+                        double.NaN
+                    );
                     double speedupVsReflection =
                         reflectionOps <= 0.0
                             ? double.PositiveInfinity
@@ -157,17 +153,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
             BenchmarkReadmeUpdater.UpdateSection(
                 token,
                 outputLines,
-                "Docs/REFLECTION_PERFORMANCE.md"
+                "docs/performance/reflection-performance.md"
             );
         }
 
         private static ReflectionPerfTarget CreateTargetInstance()
         {
-            ReflectionPerfTarget instance = new ReflectionPerfTarget
-            {
-                InstanceField = 5,
-                InstanceProperty = 7,
-            };
+            ReflectionPerfTarget instance = new() { InstanceField = 5, InstanceProperty = 7 };
             ReflectionPerfTarget.StaticField = 11;
             ReflectionPerfTarget.StaticProperty = 13;
             return instance;
@@ -220,7 +212,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
 
         private static List<ScenarioResult> RunScenarios(IEnumerable<Scenario> scenarios)
         {
-            List<ScenarioResult> results = new List<ScenarioResult>();
+            List<ScenarioResult> results = new();
             foreach (Scenario scenario in scenarios)
             {
                 results.Add(RunScenario(scenario));
@@ -717,6 +709,52 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
             Action<int> staticFieldSetter = ReflectionHelpers.GetStaticFieldSetter<int>(
                 staticField
             );
+
+            // Diagnostic: log strategy info for typed field delegates
+            UnityEngine.Debug.Log(
+                $"[ReflectionPerf][Diag] instanceFieldGetter type: {instanceFieldGetter.GetType().FullName}, Method: {instanceFieldGetter.Method?.Name ?? "null"}, Target: {instanceFieldGetter.Target?.GetType().FullName ?? "null"}"
+            );
+            UnityEngine.Debug.Log(
+                $"[ReflectionPerf][Diag] staticFieldGetter type: {staticFieldGetter.GetType().FullName}, Method: {staticFieldGetter.Method?.Name ?? "null"}, Target: {staticFieldGetter.Target?.GetType().FullName ?? "null"}"
+            );
+            if (
+                ReflectionHelpers.TryGetDelegateStrategy(
+                    instanceFieldGetter,
+                    out ReflectionHelpers.ReflectionDelegateStrategy instanceFieldStrategy
+                )
+            )
+            {
+                UnityEngine.Debug.Log(
+                    $"[ReflectionPerf][Diag] instanceFieldGetter strategy: {instanceFieldStrategy}"
+                );
+            }
+            else
+            {
+                UnityEngine.Debug.Log(
+                    "[ReflectionPerf][Diag] instanceFieldGetter strategy: NOT TRACKED"
+                );
+            }
+            if (
+                ReflectionHelpers.TryGetDelegateStrategy(
+                    staticFieldGetter,
+                    out ReflectionHelpers.ReflectionDelegateStrategy staticFieldStrategy
+                )
+            )
+            {
+                UnityEngine.Debug.Log(
+                    $"[ReflectionPerf][Diag] staticFieldGetter strategy: {staticFieldStrategy}"
+                );
+            }
+            else
+            {
+                UnityEngine.Debug.Log(
+                    "[ReflectionPerf][Diag] staticFieldGetter strategy: NOT TRACKED"
+                );
+            }
+            UnityEngine.Debug.Log(
+                $"[ReflectionPerf][Diag] ExpressionsEnabled: {ReflectionHelpers.ExpressionsEnabled}, DynamicIlEnabled: {ReflectionHelpers.DynamicIlEnabled}"
+            );
+
             Func<ReflectionPerfTarget, int> instancePropertyGetter =
                 ReflectionHelpers.GetPropertyGetter<ReflectionPerfTarget, int>(instanceProperty);
             Action<ReflectionPerfTarget, int> instancePropertySetter =

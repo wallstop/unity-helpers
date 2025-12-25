@@ -10,7 +10,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
     using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
     using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Core.Random;
-    using WallstopStudios.UnityHelpers.Tests.TestUtils;
+    using WallstopStudios.UnityHelpers.Tests.Core;
+    using WallstopStudios.UnityHelpers.Tests.TestDoubles;
     using Object = UnityEngine.Object;
 
     public sealed class HelpersTests : CommonTestBase
@@ -26,53 +27,73 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         [Test]
         public void IsRunningInContinuousIntegrationRespectsEnvironmentVariables()
         {
-            string originalGitHub = Environment.GetEnvironmentVariable("GITHUB_ACTIONS");
-            string originalCi = Environment.GetEnvironmentVariable("CI");
-            string originalJenkins = Environment.GetEnvironmentVariable("JENKINS_URL");
-            string originalGitlab = Environment.GetEnvironmentVariable("GITLAB_CI");
+            // Store original values for all CI environment variables
+            Dictionary<string, string> originalValues = new Dictionary<string, string>();
+            foreach (string envVar in Helpers.CiEnvironmentVariables.All)
+            {
+                originalValues[envVar] = Environment.GetEnvironmentVariable(envVar);
+            }
 
             try
             {
-                Environment.SetEnvironmentVariable("GITHUB_ACTIONS", null);
-                Environment.SetEnvironmentVariable("CI", null);
-                Environment.SetEnvironmentVariable("JENKINS_URL", null);
-                Environment.SetEnvironmentVariable("GITLAB_CI", null);
+                // Clear all CI environment variables
+                foreach (string envVar in Helpers.CiEnvironmentVariables.All)
+                {
+                    Environment.SetEnvironmentVariable(envVar, null);
+                }
 
                 Assert.IsFalse(Helpers.IsRunningInContinuousIntegration);
 
-                Environment.SetEnvironmentVariable("CI", "true");
+                // Test CI (generic)
+                Environment.SetEnvironmentVariable(Helpers.CiEnvironmentVariables.Ci, "true");
                 Assert.IsTrue(Helpers.IsRunningInContinuousIntegration);
+                Environment.SetEnvironmentVariable(Helpers.CiEnvironmentVariables.Ci, null);
 
-                Environment.SetEnvironmentVariable("CI", null);
-                Environment.SetEnvironmentVariable("GITHUB_ACTIONS", "1");
+                // Test GITHUB_ACTIONS
+                Environment.SetEnvironmentVariable(
+                    Helpers.CiEnvironmentVariables.GitHubActions,
+                    "1"
+                );
                 Assert.IsTrue(Helpers.IsRunningInContinuousIntegration);
+                Environment.SetEnvironmentVariable(
+                    Helpers.CiEnvironmentVariables.GitHubActions,
+                    null
+                );
 
-                Environment.SetEnvironmentVariable("GITHUB_ACTIONS", null);
-                Environment.SetEnvironmentVariable("JENKINS_URL", "http://localhost");
+                // Test JENKINS_URL
+                Environment.SetEnvironmentVariable(
+                    Helpers.CiEnvironmentVariables.JenkinsUrl,
+                    "http://localhost"
+                );
                 Assert.IsTrue(Helpers.IsRunningInContinuousIntegration);
+                Environment.SetEnvironmentVariable(Helpers.CiEnvironmentVariables.JenkinsUrl, null);
 
-                Environment.SetEnvironmentVariable("JENKINS_URL", null);
-                Environment.SetEnvironmentVariable("GITLAB_CI", "true");
+                // Test GITLAB_CI
+                Environment.SetEnvironmentVariable(Helpers.CiEnvironmentVariables.GitLabCi, "true");
                 Assert.IsTrue(Helpers.IsRunningInContinuousIntegration);
+                Environment.SetEnvironmentVariable(Helpers.CiEnvironmentVariables.GitLabCi, null);
             }
             finally
             {
-                Environment.SetEnvironmentVariable("GITHUB_ACTIONS", originalGitHub);
-                Environment.SetEnvironmentVariable("CI", originalCi);
-                Environment.SetEnvironmentVariable("JENKINS_URL", originalJenkins);
-                Environment.SetEnvironmentVariable("GITLAB_CI", originalGitlab);
+                // Restore all original values
+                foreach (KeyValuePair<string, string> kvp in originalValues)
+                {
+                    Environment.SetEnvironmentVariable(kvp.Key, kvp.Value);
+                }
             }
         }
 
         [Test]
         public void GetAllSpriteLabelNamesReturnsEmptyWhenBatchOrCi()
         {
-            string originalCi = Environment.GetEnvironmentVariable("CI");
+            string originalCi = Environment.GetEnvironmentVariable(
+                Helpers.CiEnvironmentVariables.Ci
+            );
             string[] cached = Helpers.AllSpriteLabels.ToArray();
 
             try
             {
-                Environment.SetEnvironmentVariable("CI", "true");
+                Environment.SetEnvironmentVariable(Helpers.CiEnvironmentVariables.Ci, "true");
                 Helpers.ResetSpriteLabelCache();
 
                 string[] labels = Helpers.GetAllSpriteLabelNames();
@@ -85,7 +106,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             }
             finally
             {
-                Environment.SetEnvironmentVariable("CI", originalCi);
+                Environment.SetEnvironmentVariable(Helpers.CiEnvironmentVariables.Ci, originalCi);
                 Helpers.SetSpriteLabelCache(cached, alreadySorted: false);
             }
         }
@@ -204,6 +225,24 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             yield break;
         }
 
+        [Test]
+        public void GetComponentsReturnsEmptyArrayForNullTargets()
+        {
+            Component[] result = Helpers.GetComponents<Component>(null);
+            Assert.AreSame(Array.Empty<Component>(), result);
+        }
+
+        [UnityTest]
+        public IEnumerator GetComponentsReturnsEmptyArrayForNonGameObjects()
+        {
+            ScriptableObject asset = Track(ScriptableObject.CreateInstance<ScriptableObject>());
+            Component[] result = asset.GetComponents<Component>();
+            Assert.IsNotNull(result);
+            Assert.IsEmpty(result);
+            Assert.AreSame(Array.Empty<Component>(), result);
+            yield break;
+        }
+
         [UnityTest]
         public IEnumerator TryGetComponentWrapsUnityImplementation()
         {
@@ -307,6 +346,194 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         }
 
         [UnityTest]
+        public IEnumerator StartFunctionAsCoroutineAppliesJitterBeforeFirstInvocation()
+        {
+            CoroutineHost host = CreateHost();
+            host.ResetState();
+            Helpers.JitterSampler = _ => 0.02f;
+
+            Coroutine coroutine = host.StartFunctionAsCoroutine(
+                host.Increment,
+                0.05f,
+                useJitter: true
+            );
+
+            try
+            {
+                yield return null;
+                Assert.AreEqual(
+                    0,
+                    host.InvocationCount,
+                    "Jitter should delay the first invocation."
+                );
+
+                float timeout = Time.time + 0.5f;
+                while (host.InvocationCount == 0 && Time.time < timeout)
+                {
+                    yield return null;
+                }
+
+                Assert.Greater(
+                    host.InvocationCount,
+                    0,
+                    "Invocation never occurred after jitter delay elapsed."
+                );
+            }
+            finally
+            {
+                host.StopCoroutine(coroutine);
+                Helpers.ResetJitterSampler();
+            }
+        }
+
+        [UnityTest]
+        public IEnumerator StartFunctionAsCoroutineHandlesZeroIntervalWithJitter()
+        {
+            CoroutineHost host = CreateHost();
+            host.ResetState();
+            Helpers.JitterSampler = _ => 0f;
+
+            Coroutine coroutine = host.StartFunctionAsCoroutine(
+                host.Increment,
+                0f,
+                useJitter: true
+            );
+
+            try
+            {
+                yield return null;
+                Assert.Greater(
+                    host.InvocationCount,
+                    0,
+                    "Zero interval should still execute at least once per frame."
+                );
+            }
+            finally
+            {
+                host.StopCoroutine(coroutine);
+                Helpers.ResetJitterSampler();
+            }
+        }
+
+        [UnityTest]
+        public IEnumerator StartFunctionAsCoroutineIgnoresInvalidJitterValues()
+        {
+            CoroutineHost host = CreateHost();
+            host.ResetState();
+
+            Helpers.JitterSampler = _ => float.NaN;
+            Coroutine coroutine = host.StartFunctionAsCoroutine(
+                host.Increment,
+                0.01f,
+                useJitter: true
+            );
+
+            try
+            {
+                yield return null;
+                Assert.Greater(host.InvocationCount, 0, "NaN jitter should be treated as zero.");
+            }
+            finally
+            {
+                host.StopCoroutine(coroutine);
+            }
+
+            Helpers.JitterSampler = _ => -5f;
+            coroutine = host.StartFunctionAsCoroutine(host.Increment, 0.01f, useJitter: true);
+
+            try
+            {
+                yield return null;
+                Assert.Greater(
+                    host.InvocationCount,
+                    0,
+                    "Negative jitter should be clamped to zero."
+                );
+            }
+            finally
+            {
+                host.StopCoroutine(coroutine);
+                Helpers.ResetJitterSampler();
+            }
+        }
+
+        [UnityTest]
+        public IEnumerator StartFunctionAsCoroutineHandlesNegativeIntervals()
+        {
+            CoroutineHost host = CreateHost();
+
+            Coroutine coroutine = host.StartFunctionAsCoroutine(host.Increment, -0.5f);
+            yield return null;
+            Assert.Greater(host.InvocationCount, 0);
+            host.StopCoroutine(coroutine);
+        }
+
+        [UnityTest]
+        public IEnumerator ExecuteFunctionAfterFrameHandlesMultipleCallbacks()
+        {
+            CoroutineHost host = CreateHost();
+            int executed = 0;
+
+            Coroutine first = host.ExecuteFunctionAfterFrame(() => executed++);
+            Coroutine second = host.ExecuteFunctionAfterFrame(() => executed++);
+
+            yield return new WaitForEndOfFrame();
+            yield return null;
+
+            Assert.AreEqual(2, executed);
+            host.StopCoroutine(first);
+            host.StopCoroutine(second);
+        }
+
+        [UnityTest]
+        public IEnumerator CoroutineHelpersThrowOnNullActions()
+        {
+            CoroutineHost host = CreateHost();
+
+            Assert.Throws<ArgumentNullException>(() => host.StartFunctionAsCoroutine(null, 0.1f));
+            Assert.Throws<ArgumentNullException>(() => host.ExecuteFunctionAfterDelay(null, 0.1f));
+            Assert.Throws<ArgumentNullException>(() => host.ExecuteFunctionNextFrame(null));
+            Assert.Throws<ArgumentNullException>(() => host.ExecuteFunctionAfterFrame(null));
+
+            yield break;
+        }
+
+        [UnityTest]
+        public IEnumerator StartFunctionAsCoroutineClampsExcessiveJitter()
+        {
+            CoroutineHost host = CreateHost();
+            host.ResetState();
+            Helpers.JitterSampler = delay => delay * 4f;
+
+            Coroutine coroutine = host.StartFunctionAsCoroutine(
+                host.Increment,
+                0.05f,
+                useJitter: true
+            );
+
+            try
+            {
+                float start = Time.time;
+                while (host.InvocationCount == 0 && Time.time - start < 0.2f)
+                {
+                    yield return null;
+                }
+
+                Assert.Greater(host.InvocationCount, 0, "Invocation never occurred.");
+                Assert.Less(
+                    Time.time - start,
+                    0.15f,
+                    "Jitter should have been clamped to the base interval."
+                );
+            }
+            finally
+            {
+                host.StopCoroutine(coroutine);
+                Helpers.ResetJitterSampler();
+            }
+        }
+
+        [UnityTest]
         public IEnumerator ExecuteFunctionAfterDelayInvokesOnce()
         {
             CoroutineHost host = CreateHost();
@@ -365,6 +592,33 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
                 3 <= totalInvocations,
                 $"Expecteed total invocations of at least 3, got {totalInvocations}"
             );
+        }
+
+        [UnityTest]
+        public IEnumerator ExecuteOverTimeDoesNothingWhenCountIsZero()
+        {
+            CoroutineHost host = CreateHost();
+            IEnumerator routine = Helpers.ExecuteOverTime(host.Increment, 0, 0.1f);
+            host.StartCoroutine(routine);
+
+            yield return new WaitForSeconds(0.2f);
+            Assert.AreEqual(0, host.InvocationCount);
+        }
+
+        [UnityTest]
+        public IEnumerator ExecuteOverTimeInvokesRemainingIterationsAtEnd()
+        {
+            CoroutineHost host = CreateHost();
+            IEnumerator routine = Helpers.ExecuteOverTime(host.Increment, 5, 0.05f, delay: true);
+            host.StartCoroutine(routine);
+
+            float timeout = Time.time + 1f;
+            while (host.InvocationCount < 5 && Time.time < timeout)
+            {
+                yield return null;
+            }
+
+            Assert.AreEqual(5, host.InvocationCount);
         }
 
         [UnityTest]
@@ -438,6 +692,99 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             Vector2 point = Helpers.GetRandomPointInCircle(new Vector2(1f, 1f), 2f, random);
             Assert.AreEqual(2f, point.x, 1e-4f);
             Assert.AreEqual(1f, point.y, 1e-4f);
+        }
+
+        [Test]
+        public void GetRandomPointInCircleZeroRadiusReturnsCenter()
+        {
+            DeterministicRandom random = new(Array.Empty<double>());
+            Vector2 center = new(3.5f, -2f);
+            Assert.AreEqual(center, Helpers.GetRandomPointInCircle(center, 0f, random));
+        }
+
+        [Test]
+        public void GetRandomPointInCircleNegativeRadiusUsesAbsolute()
+        {
+            DeterministicRandom random = new(new[] { 0.25, 0.0 });
+            Vector2 center = new(-1f, 0.5f);
+
+            Vector2 result = Helpers.GetRandomPointInCircle(center, -4f, random);
+
+            Assert.AreEqual(center + new Vector2(2f, 0f), result);
+        }
+
+        [Test]
+        public void GetRandomPointInSphereZeroRadiusReturnsCenter()
+        {
+            DeterministicRandom random = new(Array.Empty<double>());
+            Vector3 center = new(1f, 2f, 3f);
+            Assert.AreEqual(center, Helpers.GetRandomPointInSphere(center, 0f, random));
+        }
+
+        [Test]
+        public void GetRandomPointInSphereNegativeRadiusUsesAbsolute()
+        {
+            DeterministicRandom random = new(new[] { 0.25, 0.5, 0.125 });
+            Vector3 center = new(1f, 2f, 3f);
+
+            Vector3 result = Helpers.GetRandomPointInSphere(center, -3f, random);
+
+            Assert.AreEqual(1f, result.x, 1e-4f);
+            Assert.AreEqual(3.5f, result.y, 1e-4f);
+            Assert.AreEqual(3f, result.z, 1e-4f);
+        }
+
+        [Test]
+        public void GetRandomPointInCircleAlwaysWithinRadius()
+        {
+            const float radius = 3f;
+            Vector2 center = new(2f, -1.5f);
+            DeterministicRandom random = new(Enumerable.Repeat(0.5, 400).ToArray());
+
+            for (int i = 0; i < 100; ++i)
+            {
+                Vector2 point = Helpers.GetRandomPointInCircle(center, radius, random);
+                Assert.LessOrEqual(Vector2.Distance(center, point), radius + 1e-5f);
+            }
+        }
+
+        [Test]
+        public void GetRandomPointInSphereAlwaysWithinRadius()
+        {
+            const float radius = 4f;
+            Vector3 center = new(-3f, 0.25f, 5f);
+            DeterministicRandom random = new(Enumerable.Repeat(0.75, 600).ToArray());
+
+            for (int i = 0; i < 100; ++i)
+            {
+                Vector3 point = Helpers.GetRandomPointInSphere(center, radius, random);
+                Assert.LessOrEqual(Vector3.Distance(center, point), radius + 1e-5f);
+            }
+        }
+
+        [TestCaseSource(nameof(RandomCircleSampleData))]
+        public void GetRandomPointInCircleHandlesPathologicalSamples(double[] samples)
+        {
+            EdgeCaseRandom random = new(doubleSequence: samples, doubleFallback: 0.5d);
+            Vector2 center = new(1.25f, -3.5f);
+            const float radius = 2.5f;
+            Vector2 point = Helpers.GetRandomPointInCircle(center, radius, random);
+            Assert.IsTrue(float.IsFinite(point.x));
+            Assert.IsTrue(float.IsFinite(point.y));
+            Assert.LessOrEqual(Vector2.Distance(center, point), radius + 1e-4f);
+        }
+
+        [TestCaseSource(nameof(RandomSphereSampleData))]
+        public void GetRandomPointInSphereHandlesPathologicalSamples(double[] samples)
+        {
+            EdgeCaseRandom random = new(doubleSequence: samples, doubleFallback: 0.5d);
+            Vector3 center = new(-0.5f, 2.25f, 4f);
+            const float radius = 3.75f;
+            Vector3 point = Helpers.GetRandomPointInSphere(center, radius, random);
+            Assert.IsTrue(float.IsFinite(point.x));
+            Assert.IsTrue(float.IsFinite(point.y));
+            Assert.IsTrue(float.IsFinite(point.z));
+            Assert.LessOrEqual(Vector3.Distance(center, point), radius + 1e-4f);
         }
 
         [UnityTest]
@@ -585,6 +932,32 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             yield break;
         }
 
+        [UnityTest]
+        public IEnumerator NameEqualsTrimsWhitespaceAndNestedCloneSuffixes()
+        {
+            GameObject original = Track(new GameObject(" Helper "));
+            GameObject doubleClone = Track(Object.Instantiate(original));
+            doubleClone.name = $"{original.name}(Clone) (Clone)  ";
+
+            Assert.IsTrue(Helpers.NameEquals(original, doubleClone));
+
+            GameObject renamed = Track(Object.Instantiate(original));
+            renamed.name = "Helper( Clone )";
+            Assert.IsFalse(Helpers.NameEquals(original, renamed));
+            yield break;
+        }
+
+        [TestCase("Player", "Player(Clone)", true)]
+        [TestCase(" Player ", "Player (Clone)", true)]
+        [TestCase("Enemy(Clone)", "Enemy(Clone) (Clone)", true)]
+        [TestCase("Boss", "MiniBoss(Clone)", false)]
+        public void NameEqualsHandlesCloneVariations(string lhsName, string rhsName, bool expected)
+        {
+            GameObject lhs = Track(new GameObject(lhsName));
+            GameObject rhs = Track(new GameObject(rhsName));
+            Assert.AreEqual(expected, Helpers.NameEquals(lhs, rhs));
+        }
+
         [Test]
         public void ChangeColorBrightnessAdjustsChannels()
         {
@@ -636,6 +1009,32 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             Assert.AreEqual(2, bounds.xMax);
             Assert.AreEqual(-1, bounds.yMin);
             Assert.AreEqual(1, bounds.yMax);
+        }
+
+        private static IEnumerable<TestCaseData> RandomCircleSampleData()
+        {
+            yield return new TestCaseData(new[] { double.NaN, double.NaN }).SetName(
+                "Circle NaNSamples"
+            );
+            yield return new TestCaseData(new[] { 1d + double.Epsilon, 0.25d }).SetName(
+                "Circle GreaterThanOne"
+            );
+            yield return new TestCaseData(new[] { -10d, 1d + 1e-6 }).SetName(
+                "Circle NegativeAndTooLarge"
+            );
+        }
+
+        private static IEnumerable<TestCaseData> RandomSphereSampleData()
+        {
+            yield return new TestCaseData(
+                new[] { 1d + double.Epsilon, 1d + double.Epsilon, 0d }
+            ).SetName("Sphere ClampPhiAndTheta");
+            yield return new TestCaseData(new[] { double.NaN, double.NaN, double.NaN }).SetName(
+                "Sphere AllNaN"
+            );
+            yield return new TestCaseData(new[] { -5d, 0.75d, 1d + double.Epsilon }).SetName(
+                "Sphere NegativeRadiusSample"
+            );
         }
 
         private CoroutineHost CreateHost()

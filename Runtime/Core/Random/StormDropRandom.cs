@@ -13,7 +13,7 @@ namespace WallstopStudios.UnityHelpers.Core.Random
     /// </summary>
     /// <remarks>
     /// <para>
-    /// https://github.com/wileylooper/stormdrop
+    /// Reference: Will Stafford Parsons (wileylooper/stormdrop, repository offline).
     /// Ported from <c>wileylooper/stormdrop</c>. The 32-bit variant maintains a 1024-element ring buffer and two 32-bit
     /// accumulators. Each step mixes the current index with the accumulators, rotates, and feeds the buffer to provide
     /// high-quality sequences suitable for heavy simulation workloads.
@@ -48,6 +48,12 @@ namespace WallstopStudios.UnityHelpers.Core.Random
     /// Vector3 point = rng.NextVector3InSphere(10f); // via RandomExtensions
     /// </code>
     /// </example>
+    [RandomGeneratorMetadata(
+        RandomQuality.Excellent,
+        "20-word ARX generator derived from SHISHUA; author reports excellent PractRand performance and long periods.",
+        "Will Stafford Parsons",
+        "" // Original repository wileylooper/stormdrop is offline
+    )]
     [Serializable]
     [DataContract]
     [ProtoContract(SkipConstructor = true)]
@@ -69,7 +75,7 @@ namespace WallstopStudios.UnityHelpers.Core.Random
         {
             get
             {
-                using PooledResource<byte[]> payloadLease = WallstopArrayPool<byte>.Get(
+                using PooledArray<byte> payloadLease = WallstopArrayPool<byte>.Get(
                     ElementByteSize,
                     out byte[] buffer
                 );

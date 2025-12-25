@@ -78,7 +78,16 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
         /// Maximum depth to search down the hierarchy. 0 means unlimited. Default: 0.
         /// Depth 1 = immediate children only, depth 2 = children and grandchildren, etc.
         /// </summary>
-        public int MaxDepth { get; set; } = 0;
+        /// <remarks>
+        /// Negative values are treated as 0 (unlimited). The search is breadth-first, so closer
+        /// descendants are found before distant ones regardless of depth limit.
+        /// </remarks>
+        public int MaxDepth
+        {
+            get => _maxDepth;
+            set => _maxDepth = value < 0 ? 0 : value;
+        }
+        private int _maxDepth;
     }
 
     public static class ChildComponentExtensions
@@ -89,10 +98,10 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
         > FieldsByType = new();
 
 #if UNITY_EDITOR && UNITY_2020_2_OR_NEWER
-        private static readonly ProfilerMarker ChildFastPathMarker = new ProfilerMarker(
+        private static readonly ProfilerMarker ChildFastPathMarker = new(
             "RelationalComponents.Child.FastPath"
         );
-        private static readonly ProfilerMarker ChildFallbackMarker = new ProfilerMarker(
+        private static readonly ProfilerMarker ChildFallbackMarker = new(
             "RelationalComponents.Child.Fallback"
         );
 #endif
@@ -477,6 +486,10 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                 Transform,
                 int
             >.Dictionary.Get(out Dictionary<Transform, int> positions);
+            using PooledResource<List<PooledResource<List<Component>>>> groupedLeaseTracker =
+                Buffers<PooledResource<List<Component>>>.List.Get(
+                    out List<PooledResource<List<Component>>> groupedListLeases
+                );
 
             for (int i = 0; i < length; ++i)
             {
@@ -489,7 +502,8 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                 Transform key = candidate.transform;
                 if (!grouped.TryGetValue(key, out List<Component> list))
                 {
-                    list = new List<Component>();
+                    PooledResource<List<Component>> lease = Buffers<Component>.List.Get(out list);
+                    groupedListLeases.Add(lease);
                     grouped.Add(key, list);
                     positions.Add(key, 0);
                 }
@@ -546,17 +560,36 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
 
             if (writeIndex >= length)
             {
+                DisposeGroupLeases(groupedListLeases);
                 return ordered;
             }
 
             if (writeIndex == 0)
             {
+                DisposeGroupLeases(groupedListLeases);
                 return Array.CreateInstance(elementType, 0);
             }
 
             Array trimmed = Array.CreateInstance(elementType, writeIndex);
             Array.Copy(ordered, 0, trimmed, 0, writeIndex);
+            DisposeGroupLeases(groupedListLeases);
             return trimmed;
+        }
+
+        private static void DisposeGroupLeases(
+            List<PooledResource<List<Component>>> groupedListLeases
+        )
+        {
+            if (groupedListLeases == null)
+            {
+                return;
+            }
+
+            for (int i = groupedListLeases.Count - 1; i >= 0; --i)
+            {
+                groupedListLeases[i].Dispose();
+            }
+            groupedListLeases.Clear();
         }
 
         private static bool AssignChildComponentsFromArray(

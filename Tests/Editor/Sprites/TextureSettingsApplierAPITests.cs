@@ -1,4 +1,4 @@
-namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
+namespace WallstopStudios.UnityHelpers.Tests.Sprites
 {
 #if UNITY_EDITOR
     using System.IO;
@@ -6,16 +6,18 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
     using UnityEditor;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Helper;
+    using WallstopStudios.UnityHelpers.Editor.AssetProcessors;
     using WallstopStudios.UnityHelpers.Editor.Sprites;
-    using WallstopStudios.UnityHelpers.Tests.Editor.Utils;
+    using WallstopStudios.UnityHelpers.Tests.Core;
 
     public sealed class TextureSettingsApplierAPITests : CommonTestBase
     {
         private const string Root = "Assets/Temp/TextureSettingsApplierAPITests";
 
         [SetUp]
-        public void SetUp()
+        public override void BaseSetUp()
         {
+            base.BaseSetUp();
             EnsureFolder(Root);
         }
 
@@ -23,11 +25,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
         public override void TearDown()
         {
             base.TearDown();
-            if (AssetDatabase.IsValidFolder("Assets/Temp"))
-            {
-                AssetDatabase.DeleteAsset("Assets/Temp");
-                AssetDatabase.Refresh();
-            }
+            // Reset DetectAssetChangeProcessor to avoid triggering loop protection
+            // when multiple assets are deleted during cleanup
+            DetectAssetChangeProcessor.ResetForTesting();
+            CleanupTrackedFoldersAndAssets();
         }
 
         [Test]
@@ -68,7 +69,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
         [Test]
         public void AppliesNamedPlatformOverrideStandalone()
         {
-            string texPath = (Root + "/api_tex_platform.png").Replace('\\', '/');
+            string texPath = (Root + "/api_tex_platform.png").SanitizePath();
             CreatePng(texPath, 32, 32, Color.white);
             AssetDatabase.Refresh();
 
@@ -100,7 +101,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
         [Test]
         public void UnknownPlatformOverrideDoesNotCrashAndIsApplied()
         {
-            string texPath = (Root + "/api_tex_unknown.png").Replace('\\', '/');
+            string texPath = (Root + "/api_tex_unknown.png").SanitizePath();
             CreatePng(texPath, 32, 32, Color.white);
             AssetDatabase.Refresh();
 
@@ -131,28 +132,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             Assert.IsTrue(ops.overridden);
         }
 
-        private static void EnsureFolder(string relPath)
+        private void CreatePng(string relPath, int w, int h, Color c)
         {
-            if (AssetDatabase.IsValidFolder(relPath))
-            {
-                return;
-            }
-            string[] parts = relPath.Split('/');
-            string cur = parts[0];
-            for (int i = 1; i < parts.Length; i++)
-            {
-                string next = cur + "/" + parts[i];
-                if (!AssetDatabase.IsValidFolder(next))
-                {
-                    AssetDatabase.CreateFolder(cur, parts[i]);
-                }
-                cur = next;
-            }
-        }
-
-        private static void CreatePng(string relPath, int w, int h, Color c)
-        {
-            EnsureFolder(Path.GetDirectoryName(relPath).Replace('\\', '/'));
+            EnsureFolder(Path.GetDirectoryName(relPath).SanitizePath());
             Texture2D t = new(w, h, TextureFormat.RGBA32, false);
             Color[] pix = new Color[w * h];
             for (int i = 0; i < pix.Length; i++)
@@ -174,7 +156,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
                     ),
                     rel
                 )
-                .Replace('\\', '/');
+                .SanitizePath();
         }
     }
 #endif

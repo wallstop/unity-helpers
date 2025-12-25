@@ -1,6 +1,7 @@
 namespace WallstopStudios.UnityHelpers.Core.Extension
 {
     using System;
+    using System.Collections;
     using System.Collections.Generic;
     using System.Linq;
     using Random;
@@ -242,8 +243,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 }
             }
 
-            using PooledResource<List<T>> buffer = Buffers<T>.List.Get();
-            List<T> bufferList = buffer.resource;
+            using PooledResource<List<T>> buffer = Buffers<T>.List.Get(out List<T> bufferList);
             foreach (T element in enumerable)
             {
                 bufferList.Add(element);
@@ -315,26 +315,115 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             int size
         )
         {
+            if (items == null)
+            {
+                throw new ArgumentNullException(nameof(items));
+            }
             if (size <= 0)
             {
                 throw new ArgumentOutOfRangeException(nameof(size), size, "Size must be positive.");
             }
-            using IEnumerator<T> enumerator = items.GetEnumerator();
 
-            while (enumerator.MoveNext())
+            return new PartitionPooledEnumerable<T>(items, size);
+        }
+
+        private sealed class PartitionPooledEnumerable<T> : IEnumerable<PooledResource<List<T>>>
+        {
+            private readonly IEnumerable<T> _items;
+            private readonly int _size;
+
+            public PartitionPooledEnumerable(IEnumerable<T> items, int size)
             {
-                using PooledResource<List<T>> pooled = Buffers<T>.GetList(
-                    size,
-                    out List<T> partition
-                );
-                int count = 0;
-                do
-                {
-                    partition.Add(enumerator.Current);
-                } while (++count < size && enumerator.MoveNext());
+                _items = items;
+                _size = size;
+            }
 
-                // Transfer ownership to the caller by yielding without disposing here.
-                yield return pooled;
+            public IEnumerator<PooledResource<List<T>>> GetEnumerator()
+            {
+                return new PartitionPooledEnumerator<T>(_items.GetEnumerator(), _size);
+            }
+
+            IEnumerator IEnumerable.GetEnumerator()
+            {
+                return GetEnumerator();
+            }
+        }
+
+        private sealed class PartitionPooledEnumerator<T> : IEnumerator<PooledResource<List<T>>>
+        {
+            private readonly IEnumerator<T> _source;
+            private readonly int _size;
+            private readonly Dictionary<List<T>, PooledResource<List<T>>> _leases = new();
+            private readonly Action<List<T>> _returnLeaseAction;
+            private bool _disposed;
+
+            public PartitionPooledEnumerator(IEnumerator<T> source, int size)
+            {
+                _source = source;
+                _size = size;
+                _returnLeaseAction = ReturnLease;
+            }
+
+            public PooledResource<List<T>> Current { get; private set; }
+
+            object IEnumerator.Current => Current;
+
+            public bool MoveNext()
+            {
+                if (_disposed)
+                {
+                    return false;
+                }
+
+                if (!_source.MoveNext())
+                {
+                    Current = default;
+                    return false;
+                }
+
+                PooledResource<List<T>> pooled = Buffers<T>.GetList(_size, out List<T> partition);
+                partition.Add(_source.Current);
+                int count = 1;
+                while (count < _size && _source.MoveNext())
+                {
+                    partition.Add(_source.Current);
+                    count++;
+                }
+
+                _leases[partition] = pooled;
+                Current = new PooledResource<List<T>>(partition, _returnLeaseAction);
+                return true;
+            }
+
+            public void Reset()
+            {
+                throw new NotSupportedException();
+            }
+
+            public void Dispose()
+            {
+                if (_disposed)
+                {
+                    return;
+                }
+
+                _disposed = true;
+                _source.Dispose();
+
+                foreach (KeyValuePair<List<T>, PooledResource<List<T>>> lease in _leases)
+                {
+                    lease.Value.Dispose();
+                }
+
+                _leases.Clear();
+            }
+
+            private void ReturnLease(List<T> partition)
+            {
+                if (_leases.Remove(partition, out PooledResource<List<T>> pooled))
+                {
+                    pooled.Dispose();
+                }
             }
         }
     }

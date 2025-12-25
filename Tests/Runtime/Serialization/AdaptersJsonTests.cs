@@ -1,5 +1,7 @@
 namespace WallstopStudios.UnityHelpers.Tests.Serialization
 {
+    using System;
+    using System.Buffers.Binary;
     using System.Text.Json;
     using NUnit.Framework;
     using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
@@ -26,21 +28,50 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
         }
 
         [Test]
-        public void KVector2RoundTrips()
+        public void WGuidRoundTrips()
         {
-            KVector2 v = new(1.25f, -2.5f);
-            string json = Serializer.JsonStringify(v);
-            KVector2 again = Serializer.JsonDeserialize<KVector2>(json);
-            Assert.AreEqual(v, again, "KVector2 should round-trip by value");
+            WGuid id = WGuid.NewGuid();
+            string json = Serializer.JsonStringify(id);
+            WGuid again = Serializer.JsonDeserialize<WGuid>(json);
+            Assert.AreEqual(id, again, "WGuid should round-trip by value");
         }
 
         [Test]
-        public void KGuidRoundTrips()
+        public void WGuidLegacyObjectPayloadRoundTrips()
         {
-            KGuid id = KGuid.NewGuid();
-            string json = Serializer.JsonStringify(id);
-            KGuid again = Serializer.JsonDeserialize<KGuid>(json);
-            Assert.AreEqual(id, again, "KGuid should round-trip by value");
+            WGuid id = WGuid.NewGuid();
+            Span<byte> buffer = stackalloc byte[16];
+            bool success = id.TryWriteBytes(buffer);
+            Assert.IsTrue(success);
+
+            long low = (long)BinaryPrimitives.ReadUInt64LittleEndian(buffer.Slice(0, 8));
+            long high = (long)BinaryPrimitives.ReadUInt64LittleEndian(buffer.Slice(8, 8));
+            string legacy = FormattableString.Invariant(
+                $"{{\"{WGuid.LowFieldName}\":{low},\"{WGuid.HighFieldName}\":{high},\"{WGuid.GuidPropertyName}\":\"{id}\"}}"
+            );
+
+            WGuid roundTripped = Serializer.JsonDeserialize<WGuid>(legacy);
+            Assert.AreEqual(id, roundTripped, "WGuid legacy object should round-trip by value");
+        }
+
+        [Test]
+        public void WGuidEmptyStringDeserializesToEmpty()
+        {
+            WGuid result = Serializer.JsonDeserialize<WGuid>("\"\"");
+            Assert.IsTrue(result.IsEmpty);
+        }
+
+        [Test]
+        public void WGuidNullDeserializesToEmpty()
+        {
+            WGuid result = Serializer.JsonDeserialize<WGuid>("null");
+            Assert.IsTrue(result.IsEmpty);
+        }
+
+        [Test]
+        public void WGuidInvalidStringThrows()
+        {
+            Assert.Throws<JsonException>(() => Serializer.JsonDeserialize<WGuid>("\"not-a-guid\""));
         }
 
         [Test]
@@ -48,20 +79,16 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
         {
             FastVector2Int v2 = new(9, -4);
             FastVector3Int v3 = new(5, 6, -7);
-            KVector2 kv = new(-3.5f, 8.25f);
             JsonSerializerOptions options = Serializer.CreateFastJsonOptions();
 
             string j2 = Serializer.JsonStringify(v2, options);
             string j3 = Serializer.JsonStringify(v3, options);
-            string jk = Serializer.JsonStringify(kv, options);
 
             FastVector2Int v2b = Serializer.JsonDeserialize<FastVector2Int>(j2, null, options);
             FastVector3Int v3b = Serializer.JsonDeserialize<FastVector3Int>(j3, null, options);
-            KVector2 kvb = Serializer.JsonDeserialize<KVector2>(jk, null, options);
 
             Assert.AreEqual(v2, v2b, "FastVector2Int should round-trip with fast options");
             Assert.AreEqual(v3, v3b, "FastVector3Int should round-trip with fast options");
-            Assert.AreEqual(kv, kvb, "KVector2 should round-trip with fast options");
         }
     }
 }

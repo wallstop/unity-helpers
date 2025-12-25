@@ -9,8 +9,16 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
     using Utils;
 
     /// <summary>
-    /// Immutable 2D R-Tree for efficient spatial indexing of rectangular bounds.
+    /// Immutable 2D R-tree for efficient spatial indexing of rectangular bounds.
     /// </summary>
+    /// <example>
+    /// <code><![CDATA[
+    /// RTree2D<Collider>.Entry[] entries = colliders.Select(c => new RTree2D<Collider>.Entry(c, c.bounds)).ToArray();
+    /// RTree2D<Collider> tree = RTree2D<Collider>.Build(entries);
+    /// List<Collider> results = new List<Collider>();
+    /// tree.GetElementsInBounds(searchBounds, results);
+    /// ]]></code>
+    /// </example>
     /// <typeparam name="T">Element type.</typeparam>
     /// <remarks>
     /// Pros: Great for sized objects (sprites, colliders) with area; supports fast rectangle and radius queries.
@@ -262,8 +270,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             }
 
             using PooledResource<Stack<RTreeNode>> nodeBufferResource =
-                Buffers<RTreeNode>.Stack.Get();
-            Stack<RTreeNode> nodesToVisit = nodeBufferResource.resource;
+                Buffers<RTreeNode>.Stack.Get(out Stack<RTreeNode> nodesToVisit);
             nodesToVisit.Push(_head);
 
             while (nodesToVisit.TryPop(out RTreeNode currentNode))
@@ -576,8 +583,10 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             const int BucketCount = 1 << BitsPerPass;
             Span<int> counts = stackalloc int[BucketCount];
 
-            using PooledResource<ElementData[]> scratchResource =
-                WallstopFastArrayPool<ElementData>.Get(length, out ElementData[] scratch);
+            using PooledArray<ElementData> scratchResource = SystemArrayPool<ElementData>.Get(
+                length,
+                out ElementData[] scratch
+            );
             ElementData[] source = elements;
             ElementData[] destination = scratch;
             bool dataInScratch = false;

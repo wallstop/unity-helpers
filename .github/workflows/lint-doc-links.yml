@@ -11,14 +11,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6.0.1
 
       - name: Run Markdown link linter
         shell: pwsh
         run: ./scripts/lint-doc-links.ps1 -VerboseOutput
 
       - name: Check dead links (lychee)
-        uses: lycheeverse/lychee-action@v2
+        uses: lycheeverse/lychee-action@v2.7.0
         with:
           args: >-
             -c .lychee.toml
@@ -28,3 +28,4 @@ jobs:
             "./**/*.md"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+

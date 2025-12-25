@@ -1,6 +1,14 @@
 repos:
   - repo: local
     hooks:
+      - id: sync-banner-version
+        name: Sync banner version from package.json
+        entry: pwsh -NoProfile -File scripts/sync-banner-version.ps1 -StagedOnly
+        language: system
+        files: 'package\.json$'
+        pass_filenames: false
+        require_serial: true
+        description: Updates the version in the SVG banner when package.json version changes.
       - id: dotnet-tool-restore
         name: Install .NET tools
         entry: dotnet tool restore
@@ -15,33 +23,63 @@ repos:
         description: Install the .NET tools listed at .config/dotnet-tools.json.
       - id: csharpier
         name: Run CSharpier on C# files
-        entry: dotnet tool run csharpier format
+        entry: pwsh -NoProfile -File scripts/format-staged-csharp.ps1
         language: system
         types:
           - c#
+        pass_filenames: false
+        require_serial: true
         description: CSharpier is an opinionated C# formatter inspired by Prettier.
-
-  - repo: local
-    hooks:
+      - id: csharp-naming
+        name: Lint C# method naming (no underscores)
+        entry: pwsh -NoProfile -File scripts/lint-csharp-naming.ps1 -StagedOnly -Fix
+        language: system
+        types:
+          - c#
+        pass_filenames: false
+        require_serial: true
+        description: Enforce PascalCase method names without underscores. Auto-renames when run locally.
+      - id: csharp-no-regions
+        name: "Lint C# files for #region directives"
+        entry: pwsh -NoProfile -File scripts/lint-no-regions.ps1 -StagedOnly -Fix
+        language: system
+        types:
+          - c#
+        pass_filenames: false
+        require_serial: true
+        description: "Prevent #region directives from being checked in. Auto-removes when run locally."
+      - id: unity-file-naming
+        name: Lint Unity Object file naming
+        entry: pwsh -NoProfile -File scripts/lint-unity-file-naming.ps1 -StagedOnly
+        language: system
+        types:
+          - c#
+        pass_filenames: false
+        require_serial: true
+        description: Ensure MonoBehaviour/ScriptableObject classes are in correctly named files.
       - id: prettier
         name: Prettier (Markdown, JSON, asmdef, asmref, YAML)
-        entry: npx --yes prettier --write
+        entry: pwsh -NoProfile -File scripts/format-staged-prettier.ps1
         language: system
         files: '(?i)\.(md|markdown|json|asmdef|asmref|ya?ml)$'
         description: Use the repo's Prettier version from package.json.
-
-  - repo: local
-    hooks:
+        require_serial: true
       - id: markdownlint
         name: markdownlint (respect repo config)
-        entry: npx --yes markdownlint --config .markdownlint.json --ignore-path .markdownlintignore
+        entry: pwsh -NoProfile -File scripts/lint-staged-markdown.ps1
         language: system
         files: '(?i)\.(md|markdown)$'
-
-  - repo: local
-    hooks:
+        require_serial: true
       - id: yamllint
         name: yamllint (if available)
         entry: bash -c 'if command -v yamllint >/dev/null 2>&1; then yamllint -c .yamllint.yaml "$@"; else echo "yamllint not installed; skipping"; fi' --
         language: system
         files: '(?i)\.(ya?ml)$'
+      - id: lychee
+        name: Check markdown links (lychee)
+        entry: pwsh -NoProfile -File scripts/lint-staged-links.ps1
+        language: system
+        files: '(?i)\.(md|markdown)$'
+        pass_filenames: false
+        require_serial: true
+        description: Check for broken links in staged markdown files using lychee.

@@ -17,22 +17,42 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
     /// for finding and assigning components based on hierarchy relationships.
     /// </summary>
     /// <remarks>
+    /// <para>
     /// Used by <see cref="ParentComponentAttribute"/>, <see cref="SiblingComponentAttribute"/>, and
     /// <see cref="ChildComponentAttribute"/> to control search behavior, filtering, and assignment.
+    /// </para>
     ///
-    /// Properties on this base attribute let you:
-    /// - Treat fields as required or optional (<see cref="Optional"/>)
-    /// - Include/exclude disabled components or inactive GameObjects (<see cref="IncludeInactive"/>)
-    /// - Skip assigning when a field is already populated (<see cref="SkipIfAssigned"/>)
-    /// - Limit results for collections (<see cref="MaxCount"/>)
-    /// - Filter by tag (<see cref="TagFilter"/>) or name substring (<see cref="NameFilter"/>)
-    /// - Allow interface/base-type searches (<see cref="AllowInterfaces"/>)
+    /// <para><b>Available Properties</b></para>
+    /// <list type="bullet">
+    /// <item><see cref="Optional"/> - Treat fields as required (false) or optional (true)</item>
+    /// <item><see cref="IncludeInactive"/> - Include/exclude disabled components or inactive GameObjects</item>
+    /// <item><see cref="SkipIfAssigned"/> - Skip assigning when a field is already populated</item>
+    /// <item><see cref="MaxCount"/> - Limit results for collections (ignored for single fields)</item>
+    /// <item><see cref="TagFilter"/> - Filter by tag (exact match)</item>
+    /// <item><see cref="NameFilter"/> - Filter by name (substring match)</item>
+    /// <item><see cref="AllowInterfaces"/> - Allow interface/base-type searches</item>
+    /// </list>
     ///
-    /// Notes:
-    /// - Tag filtering uses <see cref="GameObject.CompareTag(string)"/> for efficient exact matches.
-    /// - Name filtering performs a case-sensitive substring match on <see cref="Object.name"/>.
-    /// - When <see cref="IncludeInactive"/> is false, only enabled components on active-in-hierarchy GameObjects are considered.
-    /// - For single fields, <see cref="MaxCount"/> is ignored.
+    /// <para><b>Filter Interactions</b></para>
+    /// <list type="bullet">
+    /// <item><c>TagFilter</c> and <c>NameFilter</c> can be combined - both must match (AND logic)</item>
+    /// <item>When <c>IncludeInactive</c> is false, filters are applied AFTER excluding inactive components</item>
+    /// <item><c>MaxCount</c> is applied last, after all other filters</item>
+    /// </list>
+    ///
+    /// <para><b>Parameter Validation</b></para>
+    /// <list type="bullet">
+    /// <item><c>MaxCount</c>: Negative values are treated as 0 (unlimited)</item>
+    /// <item><c>MaxDepth</c> (Parent/Child only): Negative values are treated as 0 (unlimited)</item>
+    /// </list>
+    ///
+    /// <para><b>Notes</b></para>
+    /// <list type="bullet">
+    /// <item>Tag filtering uses <see cref="GameObject.CompareTag(string)"/> for efficient exact matches</item>
+    /// <item>Name filtering performs a case-sensitive substring match on <see cref="UnityEngine.Object.name"/></item>
+    /// <item>When <see cref="IncludeInactive"/> is false, only enabled components on active-in-hierarchy GameObjects are considered</item>
+    /// <item>For single fields, <see cref="MaxCount"/> has no effect</item>
+    /// </list>
     /// </remarks>
     public abstract class BaseRelationalComponentAttribute : System.Attribute
     {
@@ -59,7 +79,16 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
         /// Maximum number of components to assign to collection fields. 0 means unlimited (default).
         /// Applies to arrays, lists, and hash sets. Ignored for single component fields.
         /// </summary>
-        public int MaxCount { get; set; } = 0;
+        /// <remarks>
+        /// Negative values are treated as 0 (unlimited). For single-field assignments, this property
+        /// has no effect since only one component can be assigned.
+        /// </remarks>
+        public int MaxCount
+        {
+            get => _maxCount;
+            set => _maxCount = value < 0 ? 0 : value;
+        }
+        private int _maxCount;
 
         /// <summary>
         /// If set, only finds components on GameObjects with this tag.
@@ -214,20 +243,20 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                 this.isInterface = isInterface;
             }
 
-            public bool HasFilters => this.filters.RequiresPostProcessing;
+            public bool HasFilters => filters.RequiresPostProcessing;
 
-            public FilterParameters Filters => this.filters;
+            public FilterParameters Filters => filters;
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public object GetValue(Component component)
             {
-                return this.accessor.Get(component);
+                return accessor.Get(component);
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public void SetValue(Component component, object value)
             {
-                this.accessor.Set(component, value);
+                accessor.Set(component, value);
             }
         }
 
@@ -257,8 +286,8 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
 
             public FieldAccessor(FieldInfo field)
             {
-                this.setter = ReflectionHelpers.GetFieldSetter<TComponent, TValue>(field);
-                this.getter = ReflectionHelpers.GetFieldGetter<TComponent, TValue>(field);
+                setter = ReflectionHelpers.GetFieldSetter<TComponent, TValue>(field);
+                getter = ReflectionHelpers.GetFieldGetter<TComponent, TValue>(field);
             }
 
             public override object Get(Component component)
@@ -269,7 +298,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                 }
 
                 TComponent typedComponent = (TComponent)component;
-                return this.getter(typedComponent);
+                return getter(typedComponent);
             }
 
             public override void Set(Component component, object value)
@@ -281,7 +310,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
 
                 TComponent typedComponent = (TComponent)component;
                 TValue typedValue = value != null ? (TValue)value : default;
-                this.setter(ref typedComponent, typedValue);
+                setter(ref typedComponent, typedValue);
             }
         }
 

@@ -9,6 +9,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Core.Random;
+    using WallstopStudios.UnityHelpers.Tests.Core;
+    using WallstopStudios.UnityHelpers.Tests.Core.TestTypes;
     using CategoryAttribute = System.ComponentModel.CategoryAttribute;
     using DescriptionAttribute = System.ComponentModel.DescriptionAttribute;
 
@@ -235,13 +237,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
 
     public sealed class TestPropertyClass
     {
-        private static int _StaticValue = 50;
+        private static int _staticValue = 50;
         private int _instanceValue = 25;
 
         public static int StaticProperty
         {
-            get => _StaticValue;
-            set => _StaticValue = value;
+            get => _staticValue;
+            set => _staticValue = value;
         }
 
         public int InstanceProperty
@@ -263,7 +265,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
     {
         public object ObjectProperty { get; set; } = "instance";
         public static object StaticObjectProperty { get; set; } = "static";
-        public object ObjectField = "instance-field";
+        public object objectField = "instance-field";
         public static object StaticObjectField = "static-field";
     }
 
@@ -283,11 +285,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
 
     public sealed class IndexerClass
     {
-        private readonly int[] data = new int[10];
+        private readonly int[] _data = new int[10];
         public int this[int i]
         {
-            get => data[i];
-            set => data[i] = value;
+            get => _data[i];
+            set => _data[i] = value;
         }
     }
 
@@ -350,7 +352,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         }
     }
 
-    public sealed class ReflectionHelperTests
+    public sealed class ReflectionHelperTests : CommonTestBase
     {
         private const int NumTries = 1_000;
 
@@ -363,8 +365,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
                 V = v;
             }
         }
-
-        public sealed class EnabledProbe : MonoBehaviour { }
 
         [Test]
         public void GetFieldGetterClassMemberField()
@@ -1415,7 +1415,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             addStr(strSetObj, "a");
             addStr(strSetObj, "a");
             Assert.IsTrue(((HashSet<string>)strSetObj).Contains(null));
-            Assert.That((HashSet<string>)strSetObj, Is.EquivalentTo(new string[] { null, "a" }));
+            Assert.That((HashSet<string>)strSetObj, Is.EquivalentTo(new[] { null, "a" }));
         }
 
         [Test]
@@ -1495,21 +1495,14 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         [Test]
         public void IsComponentEnabledCoversMonoBehaviourAndScriptableObject()
         {
-            GameObject go = new("probe");
-            try
-            {
-                EnabledProbe probe = go.AddComponent<EnabledProbe>();
-                Assert.IsTrue(probe.IsComponentEnabled());
-                probe.enabled = false;
-                Assert.IsFalse(probe.IsComponentEnabled());
+            GameObject go = Track(new GameObject("probe"));
+            EnabledProbe probe = go.AddComponent<EnabledProbe>();
+            Assert.IsTrue(probe.IsComponentEnabled());
+            probe.enabled = false;
+            Assert.IsFalse(probe.IsComponentEnabled());
 
-                ScriptableObject so = ScriptableObject.CreateInstance<ScriptableObject>();
-                Assert.IsTrue(so.IsComponentEnabled());
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(go);
-            }
+            ScriptableObject so = Track(ScriptableObject.CreateInstance<ScriptableObject>());
+            Assert.IsTrue(so.IsComponentEnabled());
         }
 
         [Test]
@@ -1630,6 +1623,73 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             Assert.IsNull(
                 ReflectionHelpers.GetAttributeSafe(null, typeof(ReflectionTestAttribute))
             );
+        }
+
+        [Test]
+        public void TryGetAttributeSafeGeneric()
+        {
+            Type testType = typeof(TestAttributeClass);
+
+            bool found = ReflectionHelpers.TryGetAttributeSafe(
+                testType,
+                out ReflectionTestAttribute attribute
+            );
+            Assert.IsTrue(found);
+            Assert.IsNotNull(attribute);
+            Assert.AreEqual("ClassLevel", attribute.Name);
+
+            bool missing = ReflectionHelpers.TryGetAttributeSafe(
+                testType,
+                out ObsoleteAttribute missingAttribute
+            );
+            Assert.IsFalse(missing);
+            Assert.IsNull(missingAttribute);
+
+            bool nullProvider = ReflectionHelpers.TryGetAttributeSafe(
+                null,
+                out ReflectionTestAttribute nullAttribute
+            );
+            Assert.IsFalse(nullProvider);
+            Assert.IsNull(nullAttribute);
+        }
+
+        [Test]
+        public void TryGetAttributeSafeNonGeneric()
+        {
+            Type testType = typeof(TestAttributeClass);
+
+            bool found = ReflectionHelpers.TryGetAttributeSafe(
+                testType,
+                typeof(ReflectionTestAttribute),
+                out Attribute attribute
+            );
+            Assert.IsTrue(found);
+            Assert.IsNotNull(attribute);
+            Assert.IsInstanceOf<ReflectionTestAttribute>(attribute);
+
+            bool missing = ReflectionHelpers.TryGetAttributeSafe(
+                testType,
+                typeof(ObsoleteAttribute),
+                out Attribute missingAttribute
+            );
+            Assert.IsFalse(missing);
+            Assert.IsNull(missingAttribute);
+
+            bool nullProvider = ReflectionHelpers.TryGetAttributeSafe(
+                null,
+                typeof(ReflectionTestAttribute),
+                out Attribute nullAttribute
+            );
+            Assert.IsFalse(nullProvider);
+            Assert.IsNull(nullAttribute);
+
+            bool nullType = ReflectionHelpers.TryGetAttributeSafe(
+                testType,
+                null,
+                out Attribute nullTypeAttribute
+            );
+            Assert.IsFalse(nullType);
+            Assert.IsNull(nullTypeAttribute);
         }
 
         [Test]
@@ -2322,9 +2382,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         [Test]
         public void TypedFieldGetterCastsReferenceTypes()
         {
-            VariantPropertyClass instance = new() { ObjectField = "hello" };
+            VariantPropertyClass instance = new() { objectField = "hello" };
             FieldInfo field = typeof(VariantPropertyClass).GetField(
-                nameof(VariantPropertyClass.ObjectField)
+                nameof(VariantPropertyClass.objectField)
             );
             Func<VariantPropertyClass, string> getter = ReflectionHelpers.GetFieldGetter<
                 VariantPropertyClass,
@@ -2404,14 +2464,14 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         {
             VariantPropertyClass instance = new();
             FieldInfo field = typeof(VariantPropertyClass).GetField(
-                nameof(VariantPropertyClass.ObjectField)
+                nameof(VariantPropertyClass.objectField)
             );
             FieldSetter<VariantPropertyClass, string> setter = ReflectionHelpers.GetFieldSetter<
                 VariantPropertyClass,
                 string
             >(field);
             setter(ref instance, "updated");
-            Assert.AreEqual("updated", instance.ObjectField);
+            Assert.AreEqual("updated", instance.objectField);
         }
 
         [Test]
@@ -2754,22 +2814,15 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         [Test]
         public void IsActiveAndEnabledChecksGameObjectState()
         {
-            GameObject go = new("probe2");
-            try
-            {
-                EnabledProbe probe = go.AddComponent<EnabledProbe>();
-                go.SetActive(false);
-                Assert.IsFalse(probe.IsActiveAndEnabled());
-                go.SetActive(true);
-                probe.enabled = true;
-                Assert.IsTrue(probe.IsActiveAndEnabled());
-                probe.enabled = false;
-                Assert.IsFalse(probe.IsActiveAndEnabled());
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(go);
-            }
+            GameObject go = Track(new GameObject("probe2"));
+            EnabledProbe probe = go.AddComponent<EnabledProbe>();
+            go.SetActive(false);
+            Assert.IsFalse(probe.IsActiveAndEnabled());
+            go.SetActive(true);
+            probe.enabled = true;
+            Assert.IsTrue(probe.IsActiveAndEnabled());
+            probe.enabled = false;
+            Assert.IsFalse(probe.IsActiveAndEnabled());
         }
 
         [Test]

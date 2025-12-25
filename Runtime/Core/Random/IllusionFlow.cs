@@ -9,6 +9,8 @@
 namespace WallstopStudios.UnityHelpers.Core.Random
 {
     using System;
+    using System.Buffers.Binary;
+    using System.Collections.Generic;
     using System.Runtime.Serialization;
     using System.Text.Json.Serialization;
     using ProtoBuf;
@@ -57,12 +59,19 @@ namespace WallstopStudios.UnityHelpers.Core.Random
     /// var replay = new IllusionFlow(state);
     /// </code>
     /// </example>
+    [RandomGeneratorMetadata(
+        RandomQuality.Excellent,
+        "Hybridized PCG + xorshift design; upstream PractRand 64GB passes with no anomalies per author.",
+        "Will Stafford Parsons",
+        "" // Original repository wileylooper/illusionflow is offline
+    )]
     [Serializable]
     [DataContract]
     [ProtoContract]
     public sealed class IllusionFlow : AbstractRandom
     {
         private const int UintByteCount = sizeof(uint) * 8;
+        private const int StatePayloadLength = sizeof(uint);
 
         public static IllusionFlow Instance => ThreadLocalRandom<IllusionFlow>.Instance;
 
@@ -72,18 +81,8 @@ namespace WallstopStudios.UnityHelpers.Core.Random
             {
                 ulong stateA = ((ulong)_a << UintByteCount) | _b;
                 ulong stateB = ((ulong)_c << UintByteCount) | _d;
-                // Pack _e into the low 32 bits of a double's bit pattern without allocations
-                double packedE = BitConverter.Int64BitsToDouble(_e);
-                return new RandomState(
-                    stateA,
-                    stateB,
-                    packedE,
-                    payload: null,
-                    bitBuffer: _bitBuffer,
-                    bitCount: _bitCount,
-                    byteBuffer: _byteBuffer,
-                    byteCount: _byteCount
-                );
+                BinaryPrimitives.WriteUInt32LittleEndian(_payload, _e);
+                return BuildState(stateA, stateB, payload: _payload);
             }
         }
 
@@ -101,6 +100,9 @@ namespace WallstopStudios.UnityHelpers.Core.Random
 
         [ProtoMember(10)]
         private uint _e;
+
+        // Cached space for RandomState
+        private readonly byte[] _payload = new byte[StatePayloadLength];
 
         public IllusionFlow()
             : this(Guid.NewGuid()) { }
@@ -125,20 +127,28 @@ namespace WallstopStudios.UnityHelpers.Core.Random
                 _b = (uint)internalState.State1;
                 _c = (uint)(internalState.State2 >> UintByteCount);
                 _d = (uint)internalState.State2;
-                double? gaussian = internalState.Gaussian;
-                if (gaussian != null)
+                uint legacyE = 0;
+                bool hasPayload = TryReadStatePayload(internalState, out uint payloadE);
+                bool legacyPackedE =
+                    !hasPayload && TryExtractLegacyPackedValue(internalState, out legacyE);
+                if (hasPayload)
                 {
-                    long bits = BitConverter.DoubleToInt64Bits(gaussian.Value);
-                    _e = (uint)(unchecked((ulong)bits) & 0xFFFFFFFFUL);
+                    _e = payloadE;
+                }
+                else if (legacyPackedE)
+                {
+                    _e = legacyE;
                 }
                 else
                 {
-                    throw new InvalidOperationException(
-                        $"{nameof(IllusionFlow)} requires a Gaussian state."
-                    );
+                    _e = DeriveFallbackE(internalState.State1, internalState.State2);
                 }
+
+                RandomState stateToRestore = legacyPackedE
+                    ? StripLegacyGaussian(internalState)
+                    : internalState;
+                RestoreCommonState(stateToRestore);
             }
-            RestoreCommonState(internalState);
         }
 
         public override uint NextUint()
@@ -166,6 +176,65 @@ namespace WallstopStudios.UnityHelpers.Core.Random
         public override IRandom Copy()
         {
             return new IllusionFlow(InternalState);
+        }
+
+        private static bool TryReadStatePayload(RandomState state, out uint value)
+        {
+            IReadOnlyList<byte> payload = state.PayloadBytes;
+            if (payload is not { Count: >= StatePayloadLength })
+            {
+                value = 0;
+                return false;
+            }
+
+            Span<byte> buffer = stackalloc byte[StatePayloadLength];
+            for (int i = 0; i < StatePayloadLength; ++i)
+            {
+                buffer[i] = payload[i];
+            }
+
+            value = BinaryPrimitives.ReadUInt32LittleEndian(buffer);
+            return true;
+        }
+
+        private static bool TryExtractLegacyPackedValue(RandomState state, out uint value)
+        {
+            double? gaussian = state.Gaussian;
+            if (gaussian == null)
+            {
+                value = 0;
+                return false;
+            }
+
+            long bits = BitConverter.DoubleToInt64Bits(gaussian.Value);
+            if ((bits & unchecked((long)0xFFFFFFFF00000000L)) != 0)
+            {
+                value = 0;
+                return false;
+            }
+
+            value = (uint)(bits & 0xFFFFFFFFL);
+            return true;
+        }
+
+        private static RandomState StripLegacyGaussian(RandomState state)
+        {
+            return new RandomState(
+                state.State1,
+                state.State2,
+                gaussian: null,
+                payload: state.PayloadBytes,
+                bitBuffer: state.BitBuffer,
+                bitCount: state.BitCount,
+                byteBuffer: state.ByteBuffer,
+                byteCount: state.ByteCount
+            );
+        }
+
+        private static uint DeriveFallbackE(ulong state1, ulong state2)
+        {
+            uint candidate = unchecked((uint)(state1 ^ state2 ^ 0xA5A5A5A5UL));
+            return candidate != 0 ? candidate : 0x1F123BB5U;
         }
     }
 }

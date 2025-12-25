@@ -41,17 +41,35 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         /// Returns signed area indicating where point p lies relative to vector a→b in 2D.
         /// &lt; 0 → right, 0 → on line, &gt; 0 → left.
         /// </summary>
+        public static double IsAPointLeftOfVectorOrOnTheLineDouble(Vector2 a, Vector2 b, Vector2 p)
+        {
+            double abx = b.x - a.x;
+            double aby = b.y - a.y;
+            double apx = p.x - a.x;
+            double apy = p.y - a.y;
+            return abx * apy - aby * apx;
+        }
+
         public static float IsAPointLeftOfVectorOrOnTheLine(Vector2 a, Vector2 b, Vector2 p)
         {
-            return (b.x - a.x) * (p.y - a.y) - (b.y - a.y) * (p.x - a.x);
+            return (float)IsAPointLeftOfVectorOrOnTheLineDouble(a, b, p);
         }
 
         /// <summary>
         /// Returns signed area indicating where point p lies relative to vector a→b in 2D (using Vector3 x/y).
         /// </summary>
+        public static double IsAPointLeftOfVectorOrOnTheLineDouble(Vector3 a, Vector3 b, Vector3 p)
+        {
+            double abx = b.x - a.x;
+            double aby = b.y - a.y;
+            double apx = p.x - a.x;
+            double apy = p.y - a.y;
+            return abx * apy - aby * apx;
+        }
+
         public static float IsAPointLeftOfVectorOrOnTheLine(Vector3 a, Vector3 b, Vector3 p)
         {
-            return (b.x - a.x) * (p.y - a.y) - (b.y - a.y) * (p.x - a.x);
+            return (float)IsAPointLeftOfVectorOrOnTheLineDouble(a, b, p);
         }
 
         /// <summary>

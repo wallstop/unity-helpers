@@ -2,6 +2,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
 {
     using System;
     using NUnit.Framework;
+    using WallstopStudios.UnityHelpers.Core.Random;
     using WallstopStudios.UnityHelpers.Utils;
 
     public sealed class LZMATests
@@ -9,7 +10,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         [Test]
         public void CompressDecompressRoundtrip()
         {
-            Random random = new(42);
+            IRandom random = new PcgRandom(42);
             foreach (int length in new[] { 0, 1, 5, 64, 257 })
             {
                 byte[] data = new byte[length];

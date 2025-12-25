@@ -7,8 +7,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
     using NUnit.Framework;
     using WallstopStudios.UnityHelpers.Core.DataStructure;
     using WallstopStudios.UnityHelpers.Core.Extension;
+    using WallstopStudios.UnityHelpers.Tests.Core;
 
-    public sealed class IReadonlyListExtensionTests
+    public sealed class IReadonlyListExtensionTests : CommonTestBase
     {
         [Test]
         public void IndexOfArrayUsesOptimizedPath()

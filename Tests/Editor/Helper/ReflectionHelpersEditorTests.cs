@@ -1,4 +1,4 @@
-namespace WallstopStudios.UnityHelpers.Tests.Editor.Helper
+namespace WallstopStudios.UnityHelpers.Tests.Helper
 {
 #if UNITY_EDITOR
     using System;
@@ -8,7 +8,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Helper
     using NUnit.Framework;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Helper;
-    using WallstopStudios.UnityHelpers.Tests.Editor.TestComponents;
+    using WallstopStudios.UnityHelpers.Tests.TestComponents;
 
     [AttributeUsage(
         AttributeTargets.Class

@@ -4,8 +4,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
     using NUnit.Framework;
     using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Core.Random;
+    using WallstopStudios.UnityHelpers.Tests.Core;
 
-    public sealed class ArrayConverterTests
+    public sealed class ArrayConverterTests : CommonTestBase
     {
         [Test]
         public void IntToByteArray()

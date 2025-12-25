@@ -3,6 +3,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
     using System;
     using System.Linq;
     using NUnit.Framework;
+    using WallstopStudios.UnityHelpers.Core.Random;
     using WallstopStudios.UnityHelpers.Utils;
 
     public sealed class Ascii85Tests
@@ -35,7 +36,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         [Test]
         public void RoundtripVariousLengths()
         {
-            Random random = new(123);
+            IRandom random = new PcgRandom(123);
             foreach (int length in new[] { 1, 2, 3, 4, 5, 7, 11, 16, 31 })
             {
                 byte[] data = new byte[length];

@@ -11,6 +11,14 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
     /// <summary>
     /// Immutable 2D spatial tree that partitions space into quadrants for efficient range and area queries.
     /// </summary>
+    /// <example>
+    /// <code><![CDATA[
+    /// QuadTree2D<Vector2>.Entry[] entries = points.Select(p => new QuadTree2D<Vector2>.Entry(p, p)).ToArray();
+    /// QuadTree2D<Vector2> tree = QuadTree2D<Vector2>.Build(entries);
+    /// List<Vector2> results = new List<Vector2>();
+    /// tree.GetElementsInRange(playerPosition, 6f, results);
+    /// ]]></code>
+    /// </example>
     /// <typeparam name="T">Element type contained in the tree.</typeparam>
     /// <remarks>
     /// Pros: Excellent query performance for static data, low allocations for repeated queries, deterministic iteration.
@@ -418,7 +426,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
         /// <returns>The destination list, for chaining.</returns>
         /// <example>
         /// <code><![CDATA[
-        /// var tree = new QuadTree2D<Enemy>(enemies, e => e.transform.position);
+        /// QuadTree2D<Enemy> tree = new QuadTree2D<Enemy>(enemies, e => e.transform.position);
         /// tree.GetElementsInRange(playerPos, 10f, results);
         /// ]]></code>
         /// </example>

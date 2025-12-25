@@ -1,18 +1,22 @@
 namespace WallstopStudios.UnityHelpers.Tests.Extensions
 {
     using System;
+    using System.Diagnostics.CodeAnalysis;
     using System.Text.RegularExpressions;
+    using System.Threading;
     using NUnit.Framework;
     using UnityEngine;
     using UnityEngine.TestTools;
     using WallstopStudios.UnityHelpers.Core.Extension;
     using WallstopStudios.UnityHelpers.Core.Helper.Logging;
-    using WallstopStudios.UnityHelpers.Tests.TestUtils;
+    using WallstopStudios.UnityHelpers.Tests.Core;
 
+    [SuppressMessage("ReSharper", "AccessToModifiedClosure")]
     public sealed class UnityLogTagFormatterEdgeTests : CommonTestBase
     {
-        [Test]
-        public void UnknownTagFallsBack()
+        [TestCase(true)]
+        [TestCase(false)]
+        public void UnknownTagFallsBack(bool pretty)
         {
             GameObject go = Track(
                 new GameObject(nameof(UnknownTagFallsBack), typeof(SpriteRenderer))
@@ -26,26 +30,23 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             try
             {
                 int expectedLogCount = 0;
-                foreach (bool pretty in new[] { true, false })
+                assertion = message =>
                 {
-                    assertion = message =>
+                    if (pretty)
                     {
-                        if (pretty)
-                        {
-                            Assert.IsTrue(message.Contains(nameof(UnknownTagFallsBack)), message);
-                            Assert.IsTrue(message.Contains(nameof(GameObject)), message);
-                            Assert.IsTrue(message.Contains("Hello world"), message);
-                        }
-                        else
-                        {
-                            Assert.AreEqual("Hello world", message);
-                        }
-                    };
+                        Assert.IsTrue(message.Contains(nameof(UnknownTagFallsBack)), message);
+                        Assert.IsTrue(message.Contains(nameof(GameObject)), message);
+                        Assert.IsTrue(message.Contains("Hello world"), message);
+                    }
+                    else
+                    {
+                        Assert.AreEqual("Hello world", message);
+                    }
+                };
 
-                    go.Log($"Hello {"world":does_not_exist}", pretty: pretty);
-                    Assert.AreEqual(++expectedLogCount, logCount);
-                    Assert.IsNull(exception, exception?.ToString());
-                }
+                go.Log($"Hello {"world":does_not_exist}", pretty: pretty);
+                Assert.AreEqual(++expectedLogCount, logCount);
+                Assert.IsNull(exception, exception?.ToString());
             }
             finally
             {
@@ -69,8 +70,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             }
         }
 
-        [Test]
-        public void RepeatedSeparatorsAreIgnored()
+        [TestCase(true)]
+        [TestCase(false)]
+        public void RepeatedSeparatorsAreIgnored(bool pretty)
         {
             GameObject go = Track(
                 new GameObject(nameof(RepeatedSeparatorsAreIgnored), typeof(SpriteRenderer))
@@ -84,29 +86,26 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             try
             {
                 int expectedLogCount = 0;
-                foreach (bool pretty in new[] { true, false })
+                assertion = message =>
                 {
-                    assertion = message =>
+                    if (pretty)
                     {
-                        if (pretty)
-                        {
-                            Assert.IsTrue(
-                                message.Contains(nameof(RepeatedSeparatorsAreIgnored)),
-                                message
-                            );
-                            Assert.IsTrue(message.Contains(nameof(GameObject)), message);
-                            Assert.IsTrue(message.Contains("<b>value</b>"), message);
-                        }
-                        else
-                        {
-                            Assert.AreEqual("<b>value</b>", message);
-                        }
-                    };
+                        Assert.IsTrue(
+                            message.Contains(nameof(RepeatedSeparatorsAreIgnored)),
+                            message
+                        );
+                        Assert.IsTrue(message.Contains(nameof(GameObject)), message);
+                        Assert.IsTrue(message.Contains("<b>value</b>"), message);
+                    }
+                    else
+                    {
+                        Assert.AreEqual("<b>value</b>", message);
+                    }
+                };
 
-                    go.Log($"{"value":b,,,,,}", pretty: pretty);
-                    Assert.AreEqual(++expectedLogCount, logCount);
-                    Assert.IsNull(exception, exception?.ToString());
-                }
+                go.Log($"{"value":b,,,,,}", pretty: pretty);
+                Assert.AreEqual(++expectedLogCount, logCount);
+                Assert.IsNull(exception, exception?.ToString());
             }
             finally
             {
@@ -326,19 +325,100 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
                 force: true
             );
 
-            (
-                string tag,
-                bool editorOnly,
-                Func<string, bool> predicate,
-                Func<string, object, string> formatterDelegate
-            ) removedDecoration;
-            bool removed = formatter.RemoveDecoration("Demo", out removedDecoration);
+            bool removed = formatter.RemoveDecoration(
+                "Demo",
+                out DecorationEntry removedDecoration
+            );
 
             Assert.IsTrue(removed);
-            Assert.AreEqual("Demo", removedDecoration.tag);
+            Assert.AreEqual("Demo", removedDecoration.Tag);
 
             string formatted = formatter.Log($"{"value":demo}", pretty: false);
             Assert.AreEqual("value", formatted);
+        }
+
+        [Test]
+        public void PrettyLogOmitsMainThreadMetadata()
+        {
+            UnityLogTagFormatter formatter = new();
+
+            int logCount = 0;
+            Exception exception = null;
+            Action<string> assertion = null;
+            Application.logMessageReceived += HandleMessageReceived;
+
+            try
+            {
+                int expectedLogCount = 0;
+                assertion = message =>
+                {
+                    StringAssert.DoesNotMatch(@"\|(unity|editor)-main#\d+\|", message);
+                    StringAssert.IsMatch(@"^\d+(\.\d+)?\|NO_NAME\[NO_TYPE\]\|Hello$", message);
+                };
+
+                formatter.Log($"Hello", pretty: true);
+                Assert.AreEqual(++expectedLogCount, logCount);
+                Assert.IsNull(exception, exception?.ToString());
+            }
+            finally
+            {
+                Application.logMessageReceived -= HandleMessageReceived;
+            }
+
+            return;
+
+            void HandleMessageReceived(string message, string stackTrace, LogType type)
+            {
+                ++logCount;
+                try
+                {
+                    assertion?.Invoke(message);
+                }
+                catch (Exception e)
+                {
+                    exception = e;
+                    throw;
+                }
+            }
+        }
+
+        [Test]
+        public void PrettyLogIncludesWorkerThreadMetadata()
+        {
+            using ManualResetEventSlim completed = new(false);
+
+            string loggedMessage = null;
+            int workerThreadId = -1;
+            Thread worker = new(() =>
+            {
+                UnityLogTagFormatter workerFormatter = new();
+                workerThreadId = Thread.CurrentThread.ManagedThreadId;
+                loggedMessage = workerFormatter.Log($"Worker", pretty: true);
+                completed.Set();
+            })
+            {
+                IsBackground = true,
+            };
+
+            try
+            {
+                worker.Start();
+                Assert.IsTrue(
+                    completed.Wait(TimeSpan.FromSeconds(5)),
+                    "Timed out waiting for worker thread log."
+                );
+                worker.Join();
+
+                Assert.IsNotNull(loggedMessage, "Worker log was not captured.");
+                StringAssert.Contains($"worker#{workerThreadId}", loggedMessage);
+            }
+            finally
+            {
+                if (worker.IsAlive)
+                {
+                    worker.Join();
+                }
+            }
         }
     }
 }

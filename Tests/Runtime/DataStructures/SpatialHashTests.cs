@@ -2,12 +2,33 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
 {
     using System;
     using System.Collections.Generic;
+    using System.Linq;
     using NUnit.Framework;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.DataStructure;
 
     public sealed class SpatialHashTests
     {
+        private readonly List<IDisposable> _trackedResources = new();
+
+        [TearDown]
+        public void TearDown()
+        {
+            for (int i = 0; i < _trackedResources.Count; i++)
+            {
+                _trackedResources[i]?.Dispose();
+            }
+
+            _trackedResources.Clear();
+        }
+
+        private T Track<T>(T disposable)
+            where T : IDisposable
+        {
+            _trackedResources.Add(disposable);
+            return disposable;
+        }
+
         [Test]
         public void ConstructorWithZeroCellSizeThrowsArgumentOutOfRangeException()
         {
@@ -25,11 +46,11 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void ConstructorWithValidCellSizeSucceeds()
         {
-            SpatialHash2D<string> hash2D = new(1.0f);
+            SpatialHash2D<string> hash2D = Track(new SpatialHash2D<string>(1.0f));
             Assert.AreEqual(1.0f, hash2D.CellSize);
             Assert.AreEqual(0, hash2D.CellCount);
 
-            SpatialHash3D<string> hash3D = new(2.5f);
+            SpatialHash3D<string> hash3D = Track(new SpatialHash3D<string>(2.5f));
             Assert.AreEqual(2.5f, hash3D.CellSize);
             Assert.AreEqual(0, hash3D.CellCount);
         }
@@ -38,7 +59,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         public void ConstructorWithCustomComparerUsesComparer()
         {
             StringComparer comparer = StringComparer.OrdinalIgnoreCase;
-            SpatialHash2D<string> hash = new(1.0f, comparer);
+            SpatialHash2D<string> hash = Track(new SpatialHash2D<string>(1.0f, comparer));
 
             hash.Insert(new Vector2(0, 0), "ABC");
             hash.Insert(new Vector2(1, 1), "abc");
@@ -52,7 +73,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void InsertSingleItemIncrementsCellCount()
         {
-            SpatialHash2D<string> hash = new(1.0f);
+            SpatialHash2D<string> hash = Track(new SpatialHash2D<string>(1.0f));
             Assert.AreEqual(0, hash.CellCount);
 
             hash.Insert(new Vector2(0.5f, 0.5f), "a");
@@ -62,7 +83,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void InsertMultipleItemsSameCellKeepsCellCountOne()
         {
-            SpatialHash2D<string> hash = new(1.0f);
+            SpatialHash2D<string> hash = Track(new SpatialHash2D<string>(1.0f));
             hash.Insert(new Vector2(0.1f, 0.1f), "a");
             hash.Insert(new Vector2(0.2f, 0.2f), "b");
             hash.Insert(new Vector2(0.3f, 0.3f), "c");
@@ -73,7 +94,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void InsertDuplicateItemsAllowsMultipleInstances()
         {
-            SpatialHash2D<string> hash = new(1.0f);
+            SpatialHash2D<string> hash = Track(new SpatialHash2D<string>(1.0f));
             hash.Insert(new Vector2(0.5f, 0.5f), "a");
             hash.Insert(new Vector2(0.5f, 0.5f), "a");
             hash.Insert(new Vector2(0.5f, 0.5f), "a");
@@ -90,7 +111,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void InsertNullItemAllowsNull()
         {
-            SpatialHash2D<string> hash = new(1.0f);
+            SpatialHash2D<string> hash = Track(new SpatialHash2D<string>(1.0f));
             hash.Insert(new Vector2(0, 0), null);
 
             List<string> results = new();
@@ -103,7 +124,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void InsertNegativeCoordinatesWorks()
         {
-            SpatialHash2D<string> hash = new(1.0f);
+            SpatialHash2D<string> hash = Track(new SpatialHash2D<string>(1.0f));
             hash.Insert(new Vector2(-5.5f, -3.2f), "negative");
 
             List<string> results = new();
@@ -116,7 +137,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void InsertVeryLargeCoordinatesWorks()
         {
-            SpatialHash2D<string> hash = new(1.0f);
+            SpatialHash2D<string> hash = Track(new SpatialHash2D<string>(1.0f));
             hash.Insert(new Vector2(100000f, 100000f), "far");
 
             List<string> results = new();
@@ -129,7 +150,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void InsertOnCellBoundaryWorks()
         {
-            SpatialHash2D<string> hash = new(1.0f);
+            SpatialHash2D<string> hash = Track(new SpatialHash2D<string>(1.0f));
             hash.Insert(new Vector2(0f, 0f), "origin");
             hash.Insert(new Vector2(1f, 1f), "boundary");
 
@@ -147,7 +168,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void Insert3DWorks()
         {
-            SpatialHash3D<string> hash = new(1.0f);
+            SpatialHash3D<string> hash = Track(new SpatialHash3D<string>(1.0f));
             hash.Insert(new Vector3(0.5f, 0.5f, 0.5f), "a");
             hash.Insert(new Vector3(1.5f, 1.5f, 1.5f), "b");
 
@@ -161,7 +182,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void RemoveExistingItemReturnsTrue()
         {
-            SpatialHash2D<string> hash = new(1.0f);
+            SpatialHash2D<string> hash = Track(new SpatialHash2D<string>(1.0f));
             hash.Insert(new Vector2(0.5f, 0.5f), "a");
 
             Assert.IsTrue(hash.Remove(new Vector2(0.5f, 0.5f), "a"));
@@ -170,7 +191,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void RemoveNonExistentItemReturnsFalse()
         {
-            SpatialHash2D<string> hash = new(1.0f);
+            SpatialHash2D<string> hash = Track(new SpatialHash2D<string>(1.0f));
             hash.Insert(new Vector2(0.5f, 0.5f), "a");
 
             Assert.IsFalse(hash.Remove(new Vector2(0.5f, 0.5f), "b"));
@@ -179,7 +200,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void RemoveFromWrongPositionReturnsFalse()
         {
-            SpatialHash2D<string> hash = new(1.0f);
+            SpatialHash2D<string> hash = Track(new SpatialHash2D<string>(1.0f));
             hash.Insert(new Vector2(0.5f, 0.5f), "a");
 
             Assert.IsFalse(hash.Remove(new Vector2(5.5f, 5.5f), "a"));
@@ -188,14 +209,14 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void RemoveFromEmptyHashReturnsFalse()
         {
-            SpatialHash2D<string> hash = new(1.0f);
+            SpatialHash2D<string> hash = Track(new SpatialHash2D<string>(1.0f));
             Assert.IsFalse(hash.Remove(new Vector2(0, 0), "anything"));
         }
 
         [Test]
         public void RemoveLastItemInCellDecrementsCellCount()
         {
-            SpatialHash2D<string> hash = new(1.0f);
+            SpatialHash2D<string> hash = Track(new SpatialHash2D<string>(1.0f));
             hash.Insert(new Vector2(0.5f, 0.5f), "a");
             Assert.AreEqual(1, hash.CellCount);
 
@@ -206,7 +227,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void RemoveOneOfMultipleInCellKeepsCellCount()
         {
-            SpatialHash2D<string> hash = new(1.0f);
+            SpatialHash2D<string> hash = Track(new SpatialHash2D<string>(1.0f));
             hash.Insert(new Vector2(0.1f, 0.1f), "a");
             hash.Insert(new Vector2(0.2f, 0.2f), "b");
             Assert.AreEqual(1, hash.CellCount);
@@ -218,7 +239,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void RemoveDuplicateItemsRemovesOnlyOne()
         {
-            SpatialHash2D<string> hash = new(1.0f);
+            SpatialHash2D<string> hash = Track(new SpatialHash2D<string>(1.0f));
             hash.Insert(new Vector2(0.5f, 0.5f), "a");
             hash.Insert(new Vector2(0.5f, 0.5f), "a");
             hash.Insert(new Vector2(0.5f, 0.5f), "a");
@@ -233,9 +254,33 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
+        public void RemoveUsesCustomComparerAtCellBoundary()
+        {
+            SpatialHash2D<string> hash = Track(
+                new SpatialHash2D<string>(1.0f, StringComparer.OrdinalIgnoreCase)
+            );
+            Vector2 boundaryPosition = new(2f, -1f); // Lies exactly on a cell edge
+
+            hash.Insert(boundaryPosition, "Player");
+            Assert.AreEqual(1, hash.CellCount);
+
+            bool removed = hash.Remove(boundaryPosition, "player");
+
+            Assert.IsTrue(
+                removed,
+                "Case-insensitive comparer should allow removal of differently-cased values."
+            );
+            Assert.AreEqual(0, hash.CellCount, "Removing last entry in cell should shrink grid.");
+
+            List<string> results = new();
+            hash.Query(boundaryPosition, 0.25f, results);
+            Assert.AreEqual(0, results.Count);
+        }
+
+        [Test]
         public void RemoveNullItemWorks()
         {
-            SpatialHash2D<string> hash = new(1.0f);
+            SpatialHash2D<string> hash = Track(new SpatialHash2D<string>(1.0f));
             hash.Insert(new Vector2(0, 0), null);
 
             Assert.IsTrue(hash.Remove(new Vector2(0, 0), null));
@@ -248,7 +293,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void Remove3DWorks()
         {
-            SpatialHash3D<string> hash = new(1.0f);
+            SpatialHash3D<string> hash = Track(new SpatialHash3D<string>(1.0f));
             hash.Insert(new Vector3(0.5f, 0.5f, 0.5f), "a");
 
             Assert.IsTrue(hash.Remove(new Vector3(0.5f, 0.5f, 0.5f), "a"));
@@ -256,19 +301,32 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
+        public void Remove3DUsesCustomComparerAtCellBoundary()
+        {
+            SpatialHash3D<string> hash = Track(
+                new SpatialHash3D<string>(1.0f, StringComparer.OrdinalIgnoreCase)
+            );
+            Vector3 boundary = new(2f, -3f, 4f);
+
+            hash.Insert(boundary, "Enemy");
+            Assert.IsTrue(hash.Remove(boundary, "enemy"));
+            Assert.AreEqual(0, hash.CellCount);
+        }
+
+        [Test]
         public void QueryWithNullResultsListThrowsArgumentNullException()
         {
-            SpatialHash2D<string> hash = new(1.0f);
+            SpatialHash2D<string> hash = Track(new SpatialHash2D<string>(1.0f));
             Assert.Throws<ArgumentNullException>(() => hash.Query(Vector2.zero, 1.0f, null));
 
-            SpatialHash3D<string> hash3D = new(1.0f);
+            SpatialHash3D<string> hash3D = Track(new SpatialHash3D<string>(1.0f));
             Assert.Throws<ArgumentNullException>(() => hash3D.Query(Vector3.zero, 1.0f, null));
         }
 
         [Test]
         public void QueryEmptyHashReturnsEmptyResults()
         {
-            SpatialHash2D<string> hash = new(1.0f);
+            SpatialHash2D<string> hash = Track(new SpatialHash2D<string>(1.0f));
             List<string> results = new();
             hash.Query(new Vector2(0, 0), 10.0f, results);
 
@@ -278,7 +336,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void QueryZeroRadiusReturnsOnlyItemsInSameCell()
         {
-            SpatialHash2D<string> hash = new(1.0f);
+            SpatialHash2D<string> hash = Track(new SpatialHash2D<string>(1.0f));
             hash.Insert(new Vector2(0.5f, 0.5f), "same");
             hash.Insert(new Vector2(1.5f, 1.5f), "different");
 
@@ -292,7 +350,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void QueryNegativeRadiusTreatsAsZero()
         {
-            SpatialHash2D<string> hash = new(1.0f);
+            SpatialHash2D<string> hash = Track(new SpatialHash2D<string>(1.0f));
             hash.Insert(new Vector2(0.5f, 0.5f), "item");
 
             List<string> results = new();
@@ -304,7 +362,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void QueryVeryLargeRadiusReturnsAllItems()
         {
-            SpatialHash2D<string> hash = new(1.0f);
+            SpatialHash2D<string> hash = Track(new SpatialHash2D<string>(1.0f));
             hash.Insert(new Vector2(0, 0), "a");
             hash.Insert(new Vector2(100, 100), "b");
             hash.Insert(new Vector2(-50, -50), "c");
@@ -316,9 +374,98 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
+        public void QueryCoarseModeReturnsSupersetAndDeduplicates()
+        {
+            SpatialHash2D<string> hash = Track(new SpatialHash2D<string>(1.0f));
+            hash.Insert(Vector2.zero, "origin");
+            hash.Insert(new Vector2(0.9f, 0f), "close");
+            hash.Insert(new Vector2(1.8f, 0f), "far");
+            hash.Insert(new Vector2(1.8f, 0.1f), "far");
+
+            List<string> exactResults = new();
+            List<string> coarseResults = new();
+
+            hash.Query(Vector2.zero, 1.0f, exactResults, distinct: true, exactDistance: true);
+            hash.Query(Vector2.zero, 1.0f, coarseResults, distinct: true, exactDistance: false);
+
+            CollectionAssert.IsSubsetOf(exactResults, coarseResults);
+            Assert.IsFalse(exactResults.Contains("far"));
+            Assert.IsTrue(coarseResults.Contains("far"));
+
+            int farCount = 0;
+            foreach (string entry in coarseResults)
+            {
+                if (entry == "far")
+                {
+                    farCount++;
+                }
+            }
+
+            Assert.AreEqual(
+                1,
+                farCount,
+                "Distinct coarse query should deduplicate identical entries."
+            );
+        }
+
+        [Test]
+        public void QueryCoarseModeWithoutDistinctKeepsDuplicates()
+        {
+            SpatialHash3D<int> hash = Track(new SpatialHash3D<int>(1.0f));
+            hash.Insert(Vector3.zero, 0);
+            hash.Insert(new Vector3(1.9f, 0f, 0f), 1);
+            hash.Insert(new Vector3(1.9f, 0.2f, 0f), 1);
+            hash.Insert(new Vector3(-1.9f, 0f, 0f), 2);
+
+            List<int> exactResults = new();
+            List<int> coarseResults = new();
+
+            hash.Query(Vector3.zero, 1.0f, exactResults, distinct: false, exactDistance: true);
+            hash.Query(Vector3.zero, 1.0f, coarseResults, distinct: false, exactDistance: false);
+
+            Assert.AreEqual(
+                1,
+                exactResults.Count,
+                "Exact distance query should only include the origin entry."
+            );
+            Assert.AreEqual(
+                3,
+                coarseResults.Count,
+                "Coarse query should include entries from intersecting cells even without distance checks."
+            );
+
+            int duplicateOnes = 0;
+            foreach (int entry in coarseResults)
+            {
+                if (entry == 1)
+                {
+                    duplicateOnes++;
+                }
+            }
+
+            Assert.AreEqual(2, duplicateOnes, "Non-distinct coarse query should keep duplicates.");
+        }
+
+        [Test]
+        public void CoarseQuerySkipsCellsBeyondRadiusExtent()
+        {
+            SpatialHash3D<int> hash = Track(new SpatialHash3D<int>(1.0f));
+            hash.Insert(new Vector3(2.5f, 0f, 0f), 99);
+
+            List<int> coarseResults = new();
+            hash.Query(Vector3.zero, 1.0f, coarseResults, distinct: false, exactDistance: false);
+
+            CollectionAssert.DoesNotContain(
+                coarseResults,
+                99,
+                "Cells more than one cell radius away should not be considered in coarse queries."
+            );
+        }
+
+        [Test]
         public void QueryClearsResultsListBeforeAdding()
         {
-            SpatialHash2D<string> hash = new(1.0f);
+            SpatialHash2D<string> hash = Track(new SpatialHash2D<string>(1.0f));
             hash.Insert(new Vector2(0, 0), "new");
 
             List<string> results = new() { "old1", "old2" };
@@ -331,7 +478,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void QueryDeduplicatesItemsAcrossCells()
         {
-            SpatialHash2D<string> hash = new(1.0f);
+            SpatialHash2D<string> hash = Track(new SpatialHash2D<string>(1.0f));
             string item = "shared";
             hash.Insert(new Vector2(0.5f, 0.5f), item);
             hash.Insert(new Vector2(1.5f, 1.5f), item);
@@ -345,8 +492,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void QueryWithDifferentCellSizesWorks()
         {
-            SpatialHash2D<string> hashSmall = new(0.5f);
-            SpatialHash2D<string> hashLarge = new(10.0f);
+            SpatialHash2D<string> hashSmall = Track(new SpatialHash2D<string>(0.5f));
+            SpatialHash2D<string> hashLarge = Track(new SpatialHash2D<string>(10.0f));
 
             hashSmall.Insert(new Vector2(0.5f, 0.5f), "a");
             hashLarge.Insert(new Vector2(0.5f, 0.5f), "a");
@@ -364,7 +511,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void QueryItemsNearCellBoundariesFoundCorrectly()
         {
-            SpatialHash2D<string> hash = new(1.0f);
+            SpatialHash2D<string> hash = Track(new SpatialHash2D<string>(1.0f));
             hash.Insert(new Vector2(0.99f, 0.99f), "nearBoundary");
             hash.Insert(new Vector2(1.01f, 1.01f), "acrossBoundary");
 
@@ -377,7 +524,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void QueryReturnsListForChaining()
         {
-            SpatialHash2D<string> hash = new(1.0f);
+            SpatialHash2D<string> hash = Track(new SpatialHash2D<string>(1.0f));
             hash.Insert(new Vector2(0, 0), "a");
 
             List<string> results = new();
@@ -389,7 +536,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void Query3DWithMultipleLayersWorks()
         {
-            SpatialHash3D<string> hash = new(1.0f);
+            SpatialHash3D<string> hash = Track(new SpatialHash3D<string>(1.0f));
             hash.Insert(new Vector3(0.5f, 0.5f, 0.5f), "layer1");
             hash.Insert(new Vector3(0.5f, 0.5f, 1.5f), "layer2");
             hash.Insert(new Vector3(0.5f, 0.5f, 2.5f), "layer3");
@@ -403,12 +550,12 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void QueryRectWithNullResultsListThrowsArgumentNullException()
         {
-            SpatialHash2D<string> hash = new(1.0f);
+            SpatialHash2D<string> hash = Track(new SpatialHash2D<string>(1.0f));
             Assert.Throws<ArgumentNullException>(() =>
                 hash.QueryRect(new Rect(Vector2.zero, Vector2.one), null)
             );
 
-            SpatialHash3D<string> hash3D = new(1.0f);
+            SpatialHash3D<string> hash3D = Track(new SpatialHash3D<string>(1.0f));
             Assert.Throws<ArgumentNullException>(() =>
                 hash3D.QueryBox(new Bounds(Vector3.zero, Vector3.one), null)
             );
@@ -417,7 +564,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void QueryRectEmptyHashReturnsEmptyResults()
         {
-            SpatialHash2D<string> hash = new(1.0f);
+            SpatialHash2D<string> hash = Track(new SpatialHash2D<string>(1.0f));
             List<string> results = new();
             hash.QueryRect(Rect.MinMaxRect(-10, -10, 10, 10), results);
 
@@ -427,7 +574,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void QueryRectItemsWithinBoundsReturnsAll()
         {
-            SpatialHash2D<string> hash = new(1.0f);
+            SpatialHash2D<string> hash = Track(new SpatialHash2D<string>(1.0f));
             hash.Insert(new Vector2(0.5f, 0.5f), "a");
             hash.Insert(new Vector2(1.5f, 1.5f), "b");
             hash.Insert(new Vector2(5.0f, 5.0f), "c");
@@ -443,7 +590,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void QueryRectItemsOutsideBoundsExcludesAll()
         {
-            SpatialHash2D<string> hash = new(1.0f);
+            SpatialHash2D<string> hash = Track(new SpatialHash2D<string>(1.0f));
             hash.Insert(new Vector2(5.0f, 5.0f), "far");
 
             List<string> results = new();
@@ -455,7 +602,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void QueryRectInvertedBoundsStillWorks()
         {
-            SpatialHash2D<string> hash = new(1.0f);
+            SpatialHash2D<string> hash = Track(new SpatialHash2D<string>(1.0f));
             hash.Insert(new Vector2(1.5f, 1.5f), "item");
 
             List<string> results = new();
@@ -467,7 +614,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void QueryRectZeroSizeRectReturnsItemsInCell()
         {
-            SpatialHash2D<string> hash = new(1.0f);
+            SpatialHash2D<string> hash = Track(new SpatialHash2D<string>(1.0f));
             hash.Insert(new Vector2(0.5f, 0.5f), "item");
 
             List<string> results = new();
@@ -479,7 +626,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void QueryRectNegativeCoordinatesWorks()
         {
-            SpatialHash2D<string> hash = new(1.0f);
+            SpatialHash2D<string> hash = Track(new SpatialHash2D<string>(1.0f));
             hash.Insert(new Vector2(-2.5f, -2.5f), "negative");
 
             List<string> results = new();
@@ -491,7 +638,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void QueryRectClearsResultsListBeforeAdding()
         {
-            SpatialHash2D<string> hash = new(1.0f);
+            SpatialHash2D<string> hash = Track(new SpatialHash2D<string>(1.0f));
             hash.Insert(new Vector2(0, 0), "new");
 
             List<string> results = new() { "old1", "old2", "old3" };
@@ -504,7 +651,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void QueryRectDeduplicatesItemsAcrossCells()
         {
-            SpatialHash2D<string> hash = new(1.0f);
+            SpatialHash2D<string> hash = Track(new SpatialHash2D<string>(1.0f));
             string item = "shared";
             hash.Insert(new Vector2(0.5f, 0.5f), item);
             hash.Insert(new Vector2(1.5f, 1.5f), item);
@@ -517,9 +664,29 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
+        public void QueryRectDistinctAndNonDistinctModesYieldExpectedCounts()
+        {
+            SpatialHash2D<string> hash = Track(new SpatialHash2D<string>(1.0f));
+            hash.Insert(new Vector2(0.25f, 0.25f), "dup");
+            hash.Insert(new Vector2(0.9f, 0.9f), "dup");
+            hash.Insert(new Vector2(0.5f, 0.5f), "unique");
+
+            Rect rect = Rect.MinMaxRect(0, 0, 1.2f, 1.2f);
+
+            List<string> distinctResults = new();
+            hash.QueryRect(rect, distinctResults, distinct: true);
+            CollectionAssert.AreEquivalent(new[] { "dup", "unique" }, distinctResults);
+
+            List<string> duplicates = new();
+            hash.QueryRect(rect, duplicates, distinct: false);
+            Assert.AreEqual(3, duplicates.Count);
+            Assert.AreEqual(2, duplicates.Count(token => token == "dup"));
+        }
+
+        [Test]
         public void QueryRectReturnsListForChaining()
         {
-            SpatialHash2D<string> hash = new(1.0f);
+            SpatialHash2D<string> hash = Track(new SpatialHash2D<string>(1.0f));
             hash.Insert(new Vector2(0, 0), "a");
 
             List<string> results = new();
@@ -531,7 +698,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void QueryBox3DWorks()
         {
-            SpatialHash3D<string> hash = new(1.0f);
+            SpatialHash3D<string> hash = Track(new SpatialHash3D<string>(1.0f));
             hash.Insert(new Vector3(0.5f, 0.5f, 0.5f), "a");
             hash.Insert(new Vector3(1.5f, 1.5f, 1.5f), "b");
             hash.Insert(new Vector3(5.0f, 5.0f, 5.0f), "c");
@@ -545,9 +712,42 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
+        public void QueryBox3DIncludesBoundaryPoints()
+        {
+            SpatialHash3D<string> hash = Track(new SpatialHash3D<string>(1.0f));
+            hash.Insert(new Vector3(1f, 1f, 1f), "edge");
+
+            Bounds bounds = new(new Vector3(0.5f, 0.5f, 0.5f), new Vector3(1f, 1f, 1f));
+            List<string> results = new();
+            hash.QueryBox(bounds, results);
+
+            CollectionAssert.Contains(results, "edge");
+        }
+
+        [Test]
+        public void QueryBox3DDistinctVersusNonDistinct()
+        {
+            SpatialHash3D<string> hash = Track(new SpatialHash3D<string>(1.0f));
+            hash.Insert(new Vector3(0.25f, 0.25f, 0.25f), "alpha");
+            hash.Insert(new Vector3(0.9f, 0.9f, 0.9f), "alpha");
+            hash.Insert(new Vector3(0.5f, 0.5f, 0.2f), "beta");
+
+            Bounds bounds = new(new Vector3(0.5f, 0.5f, 0.5f), new Vector3(1.2f, 1.2f, 1.2f));
+
+            List<string> distinct = new();
+            hash.QueryBox(bounds, distinct, distinct: true);
+            CollectionAssert.AreEquivalent(new[] { "alpha", "beta" }, distinct);
+
+            List<string> duplicates = new();
+            hash.QueryBox(bounds, duplicates, distinct: false);
+            Assert.AreEqual(3, duplicates.Count);
+            Assert.AreEqual(2, duplicates.Count(token => token == "alpha"));
+        }
+
+        [Test]
         public void ClearEmptyHashDoesNothing()
         {
-            SpatialHash2D<string> hash = new(1.0f);
+            SpatialHash2D<string> hash = Track(new SpatialHash2D<string>(1.0f));
             hash.Clear();
             Assert.AreEqual(0, hash.CellCount);
         }
@@ -555,7 +755,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void ClearWithItemsRemovesAll()
         {
-            SpatialHash2D<string> hash = new(1.0f);
+            SpatialHash2D<string> hash = Track(new SpatialHash2D<string>(1.0f));
             hash.Insert(new Vector2(0, 0), "a");
             hash.Insert(new Vector2(1, 1), "b");
             hash.Insert(new Vector2(2, 2), "c");
@@ -572,7 +772,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void ClearAllowsReuse()
         {
-            SpatialHash2D<string> hash = new(1.0f);
+            SpatialHash2D<string> hash = Track(new SpatialHash2D<string>(1.0f));
             hash.Insert(new Vector2(0, 0), "a");
             hash.Clear();
             hash.Insert(new Vector2(1, 1), "b");
@@ -587,7 +787,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void StressTestManyItemsSameCell()
         {
-            SpatialHash2D<int> hash = new(1.0f);
+            SpatialHash2D<int> hash = Track(new SpatialHash2D<int>(1.0f));
             int count = 1000;
 
             for (int i = 0; i < count; i++)
@@ -605,7 +805,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void StressTestManyDifferentCells()
         {
-            SpatialHash2D<string> hash = new(1.0f);
+            SpatialHash2D<string> hash = Track(new SpatialHash2D<string>(1.0f));
             int gridSize = 100;
 
             for (int x = 0; x < gridSize; x++)
@@ -622,7 +822,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void StressTestQueryLargeRadius()
         {
-            SpatialHash2D<int> hash = new(1.0f);
+            SpatialHash2D<int> hash = Track(new SpatialHash2D<int>(1.0f));
             for (int i = 0; i < 100; i++)
             {
                 hash.Insert(new Vector2(i * 0.5f, i * 0.5f), i);
@@ -637,7 +837,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void EdgeCaseFloatingPointPrecisionCellBoundaries()
         {
-            SpatialHash2D<string> hash = new(1.0f);
+            SpatialHash2D<string> hash = Track(new SpatialHash2D<string>(1.0f));
             hash.Insert(new Vector2(0.999999f, 0.999999f), "a");
             hash.Insert(new Vector2(1.000001f, 1.000001f), "b");
 
@@ -650,7 +850,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void EdgeCaseVerifyDeduplicationComplexScenario()
         {
-            SpatialHash2D<string> hash = new(1.0f);
+            SpatialHash2D<string> hash = Track(new SpatialHash2D<string>(1.0f));
             string shared = "shared_item";
 
             for (int x = 0; x < 3; x++)
@@ -670,7 +870,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void EdgeCaseMultipleClearAndInsert()
         {
-            SpatialHash2D<string> hash = new(1.0f);
+            SpatialHash2D<string> hash = Track(new SpatialHash2D<string>(1.0f));
 
             for (int iteration = 0; iteration < 10; iteration++)
             {
@@ -692,7 +892,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         public void EdgeCaseValueTypeWithCustomComparer()
         {
             EqualityComparer<int> comparer = EqualityComparer<int>.Default;
-            SpatialHash2D<int> hash = new(1.0f, comparer);
+            SpatialHash2D<int> hash = Track(new SpatialHash2D<int>(1.0f, comparer));
 
             hash.Insert(new Vector2(0, 0), 42);
             hash.Insert(new Vector2(1, 1), 42);
@@ -706,7 +906,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void EdgeCaseReferenceTypeDeduplication()
         {
-            SpatialHash2D<List<int>> hash = new(1.0f);
+            SpatialHash2D<List<int>> hash = Track(new SpatialHash2D<List<int>>(1.0f));
             List<int> list = new() { 1, 2, 3 };
 
             hash.Insert(new Vector2(0, 0), list);
@@ -723,7 +923,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void EdgeCaseSameItemRemovedMultipleTimes()
         {
-            SpatialHash2D<string> hash = new(1.0f);
+            SpatialHash2D<string> hash = Track(new SpatialHash2D<string>(1.0f));
             hash.Insert(new Vector2(0, 0), "item");
 
             Assert.IsTrue(hash.Remove(new Vector2(0, 0), "item"));
@@ -734,7 +934,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void EdgeCaseInsertRemoveInsertSamePosition()
         {
-            SpatialHash2D<string> hash = new(1.0f);
+            SpatialHash2D<string> hash = Track(new SpatialHash2D<string>(1.0f));
             hash.Insert(new Vector2(0, 0), "first");
             hash.Remove(new Vector2(0, 0), "first");
             hash.Insert(new Vector2(0, 0), "second");
@@ -749,7 +949,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void EdgeCaseQueryWithExtremelySmallCellSize()
         {
-            SpatialHash2D<string> hash = new(0.001f);
+            SpatialHash2D<string> hash = Track(new SpatialHash2D<string>(0.001f));
             hash.Insert(new Vector2(0.0005f, 0.0005f), "tiny");
 
             List<string> results = new();
@@ -761,7 +961,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void EdgeCaseQueryWithLargeCellSize()
         {
-            SpatialHash2D<string> hash = new(1000f);
+            SpatialHash2D<string> hash = Track(new SpatialHash2D<string>(1000f));
             hash.Insert(new Vector2(500, 500), "a");
             hash.Insert(new Vector2(1500, 1500), "b");
 
@@ -774,7 +974,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void EdgeCaseItemAtExactCellCorner()
         {
-            SpatialHash2D<string> hash = new(1.0f);
+            SpatialHash2D<string> hash = Track(new SpatialHash2D<string>(1.0f));
             hash.Insert(new Vector2(0f, 0f), "corner");
 
             List<string> results = new();
@@ -787,7 +987,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void EdgeCaseMultipleNullItems()
         {
-            SpatialHash2D<string> hash = new(1.0f);
+            SpatialHash2D<string> hash = Track(new SpatialHash2D<string>(1.0f));
             hash.Insert(new Vector2(0, 0), null);
             hash.Insert(new Vector2(0, 0), null);
             hash.Insert(new Vector2(0, 0), null);
@@ -802,7 +1002,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void EdgeCaseQueryRectSpanningManyCells()
         {
-            SpatialHash2D<string> hash = new(1.0f);
+            SpatialHash2D<string> hash = Track(new SpatialHash2D<string>(1.0f));
             for (int x = 0; x < 50; x++)
             {
                 for (int y = 0; y < 50; y++)
@@ -821,7 +1021,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void EdgeCaseQueryRectExactBoundaryExclusion()
         {
-            SpatialHash2D<string> hash = new(1.0f);
+            SpatialHash2D<string> hash = Track(new SpatialHash2D<string>(1.0f));
             hash.Insert(new Vector2(1.0f, 1.0f), "onBoundary");
             hash.Insert(new Vector2(0.5f, 0.5f), "inside");
             hash.Insert(new Vector2(1.5f, 1.5f), "outside");
@@ -838,7 +1038,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void EdgeCaseQueryRectPartialOverlap()
         {
-            SpatialHash2D<string> hash = new(1.0f);
+            SpatialHash2D<string> hash = Track(new SpatialHash2D<string>(1.0f));
             for (int x = 0; x < 10; x++)
             {
                 for (int y = 0; y < 10; y++)
@@ -857,7 +1057,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void EdgeCaseQueryRectSingleRowOrColumn()
         {
-            SpatialHash2D<string> hash = new(1.0f);
+            SpatialHash2D<string> hash = Track(new SpatialHash2D<string>(1.0f));
             for (int x = 0; x < 10; x++)
             {
                 for (int y = 0; y < 10; y++)
@@ -880,7 +1080,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void EdgeCase3DQueryBoxInvertedBounds()
         {
-            SpatialHash3D<string> hash = new(1.0f);
+            SpatialHash3D<string> hash = Track(new SpatialHash3D<string>(1.0f));
             hash.Insert(new Vector3(1, 1, 1), "item");
 
             List<string> results = new();
@@ -892,7 +1092,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void EdgeCase3DZAxisIsolation()
         {
-            SpatialHash3D<string> hash = new(1.0f);
+            SpatialHash3D<string> hash = Track(new SpatialHash3D<string>(1.0f));
             hash.Insert(new Vector3(0.5f, 0.5f, 0.5f), "bottom");
             hash.Insert(new Vector3(0.5f, 0.5f, 10.5f), "top");
 
@@ -906,7 +1106,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void EdgeCase3DQueryBoxExactBoundaryInclusion()
         {
-            SpatialHash3D<string> hash = new(1.0f);
+            SpatialHash3D<string> hash = Track(new SpatialHash3D<string>(1.0f));
             hash.Insert(new Vector3(2.0f, 2.0f, 2.0f), "onBoundary");
             hash.Insert(new Vector3(1.5f, 1.5f, 1.5f), "inside");
             hash.Insert(new Vector3(2.5f, 2.5f, 2.5f), "outside");
@@ -923,7 +1123,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void EdgeCase3DQueryBoxSpanningManyCells()
         {
-            SpatialHash3D<string> hash = new(1.0f);
+            SpatialHash3D<string> hash = Track(new SpatialHash3D<string>(1.0f));
             for (int x = 0; x < 10; x++)
             {
                 for (int y = 0; y < 10; y++)
@@ -946,7 +1146,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void EdgeCase3DQueryBoxPartialOverlap()
         {
-            SpatialHash3D<string> hash = new(1.0f);
+            SpatialHash3D<string> hash = Track(new SpatialHash3D<string>(1.0f));
             for (int x = 0; x < 10; x++)
             {
                 for (int y = 0; y < 10; y++)
@@ -969,7 +1169,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [Test]
         public void EdgeCase3DQueryBoxSinglePlane()
         {
-            SpatialHash3D<string> hash = new(1.0f);
+            SpatialHash3D<string> hash = Track(new SpatialHash3D<string>(1.0f));
             for (int x = 0; x < 5; x++)
             {
                 for (int y = 0; y < 5; y++)

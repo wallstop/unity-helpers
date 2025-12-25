@@ -1,4 +1,4 @@
-namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
+namespace WallstopStudios.UnityHelpers.Tests.Sprites
 {
 #if UNITY_EDITOR
     using System.Collections.Generic;
@@ -6,8 +6,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
     using NUnit.Framework;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Editor.Sprites;
+    using WallstopStudios.UnityHelpers.Tests.Core;
 
-    public sealed class AnimationCopierFilterTests
+    public sealed class AnimationCopierFilterTests : CommonTestBase
     {
         private static AnimationCopierWindow.AnimationFileInfo NewFileInfo(string name)
         {
@@ -17,12 +18,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
         [Test]
         public void SortsAscendingAndDescending()
         {
-            AnimationCopierWindow wnd = ScriptableObject.CreateInstance<AnimationCopierWindow>();
+            AnimationCopierWindow wnd = Track(
+                ScriptableObject.CreateInstance<AnimationCopierWindow>()
+            );
             AnimationCopierWindow.AnimationFileInfo a = NewFileInfo("zeta.anim");
             AnimationCopierWindow.AnimationFileInfo b = NewFileInfo("alpha.anim");
             AnimationCopierWindow.AnimationFileInfo c = NewFileInfo("beta.anim");
-            List<AnimationCopierWindow.AnimationFileInfo> items =
-                new List<AnimationCopierWindow.AnimationFileInfo> { a, b, c };
+            List<AnimationCopierWindow.AnimationFileInfo> items = new() { a, b, c };
 
             wnd._filterText = string.Empty;
             wnd._filterUseRegex = false;
@@ -42,12 +44,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
         [Test]
         public void FiltersBySubstringAndRegex()
         {
-            AnimationCopierWindow wnd = ScriptableObject.CreateInstance<AnimationCopierWindow>();
+            AnimationCopierWindow wnd = Track(
+                ScriptableObject.CreateInstance<AnimationCopierWindow>()
+            );
             AnimationCopierWindow.AnimationFileInfo a = NewFileInfo("walk.anim");
             AnimationCopierWindow.AnimationFileInfo b = NewFileInfo("attack.anim");
             AnimationCopierWindow.AnimationFileInfo c = NewFileInfo("idle.anim");
-            List<AnimationCopierWindow.AnimationFileInfo> items =
-                new List<AnimationCopierWindow.AnimationFileInfo> { a, b, c };
+            List<AnimationCopierWindow.AnimationFileInfo> items = new() { a, b, c };
 
             wnd._filterText = "ta";
             wnd._filterUseRegex = false;

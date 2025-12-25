@@ -94,8 +94,8 @@ namespace WallstopStudios.UnityHelpers.Tags
 
         private static bool IsExplicitInclude(Type type)
         {
-            return type.IsDefined(
-                typeof(AlwaysIncludeInAttributeMetadataCacheAttribute),
+            return ReflectionHelpers.HasAttributeSafe<AlwaysIncludeInAttributeMetadataCacheAttribute>(
+                type,
                 inherit: true
             );
         }

@@ -5,33 +5,21 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
     using UnityEngine;
     using UnityEngine.TestTools;
     using UnityEngine.UI;
-    using WallstopStudios.UnityHelpers.Tests.TestUtils;
+    using WallstopStudios.UnityHelpers.Tests.Core;
     using WallstopStudios.UnityHelpers.Utils;
 
     public sealed class MatchColliderToSpriteAdditionalTests : CommonTestBase
     {
         private Sprite _spriteWithNoShapes;
 
-        [OneTimeSetUp]
-        public void Setup()
+        [SetUp]
+        public override void BaseSetUp()
         {
-            Texture2D tex = new(8, 8);
-            _spriteWithNoShapes = Sprite.Create(
-                tex,
-                new Rect(0, 0, 8, 8),
-                new Vector2(0.5f, 0.5f),
-                100f
+            base.BaseSetUp();
+            Texture2D tex = Track(new Texture2D(8, 8));
+            _spriteWithNoShapes = Track(
+                Sprite.Create(tex, new Rect(0, 0, 8, 8), new Vector2(0.5f, 0.5f), 100f)
             );
-        }
-
-        [OneTimeTearDown]
-        public void Teardown()
-        {
-            if (_spriteWithNoShapes != null)
-            {
-                Object.Destroy(_spriteWithNoShapes.texture);
-                Object.Destroy(_spriteWithNoShapes);
-            }
         }
 
         [UnityTest]

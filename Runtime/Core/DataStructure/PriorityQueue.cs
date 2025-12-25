@@ -5,10 +5,20 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
     using System.Collections.Generic;
 
     /// <summary>
-    /// A priority queue implemented as a thin wrapper around Heap.
+    /// A priority queue implemented as a thin wrapper around <see cref="Heap{T}"/>.
     /// Provides clearer semantics for priority-based task scheduling, A* pathfinding,
     /// event systems, and AI decision making. Supports both min-priority and max-priority modes.
     /// </summary>
+    /// <example>
+    /// <code><![CDATA[
+    /// PriorityQueue<PathNode> open = new PriorityQueue<PathNode>(Comparer<PathNode>.Create((a, b) => a.F.CompareTo(b.F)));
+    /// open.Enqueue(startNode);
+    /// while (!open.IsEmpty && open.TryDequeue(out PathNode current))
+    /// {
+    ///     // process node
+    /// }
+    /// ]]></code>
+    /// </example>
     [Serializable]
     public sealed class PriorityQueue<T> : IEnumerable<T>
     {

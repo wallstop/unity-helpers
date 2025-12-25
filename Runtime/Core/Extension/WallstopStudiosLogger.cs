@@ -191,9 +191,14 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 Object localComponent = component;
                 Exception localE = e;
                 bool localPretty = pretty;
-                UnityMainThreadDispatcher.Instance.RunOnMainThread(() =>
-                    LogInstance.Log(localMessage, localComponent, localE, localPretty)
-                );
+                if (
+                    !TryInvokeOnMainThread(() =>
+                        LogInstance.Log(localMessage, localComponent, localE, localPretty)
+                    )
+                )
+                {
+                    LogOffline(LogType.Log, localComponent, localMessage, localE);
+                }
             }
 #endif
         }
@@ -222,9 +227,14 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 Object localComponent = component;
                 Exception localE = e;
                 bool localPretty = pretty;
-                UnityMainThreadDispatcher.Instance.RunOnMainThread(() =>
-                    LogInstance.LogWarn(localMessage, localComponent, localE, localPretty)
-                );
+                if (
+                    !TryInvokeOnMainThread(() =>
+                        LogInstance.LogWarn(localMessage, localComponent, localE, localPretty)
+                    )
+                )
+                {
+                    LogOffline(LogType.Warning, localComponent, localMessage, localE);
+                }
             }
 #endif
         }
@@ -253,9 +263,14 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 Object localComponent = component;
                 Exception localE = e;
                 bool localPretty = pretty;
-                UnityMainThreadDispatcher.Instance.RunOnMainThread(() =>
-                    LogInstance.LogError(localMessage, localComponent, localE, localPretty)
-                );
+                if (
+                    !TryInvokeOnMainThread(() =>
+                        LogInstance.LogError(localMessage, localComponent, localE, localPretty)
+                    )
+                )
+                {
+                    LogOffline(LogType.Error, localComponent, localMessage, localE);
+                }
             }
 #endif
         }
@@ -282,6 +297,43 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             }
 
             return LoggingEnabled && !Disabled.Contains(component);
+        }
+
+        private static bool TryInvokeOnMainThread(Action action)
+        {
+            return UnityMainThreadDispatcher.TryDispatchToMainThread(action)
+                || UnityMainThreadGuard.TryPostToMainThread(action);
+        }
+
+        private static void LogOffline(
+            LogType type,
+            Object component,
+            FormattableString message,
+            Exception exception
+        )
+        {
+#if ENABLE_UBERLOGGING || DEBUG_LOGGING || WARN_LOGGING || ERROR_LOGGING
+            try
+            {
+                string contextLabel = ReferenceEquals(component, null)
+                    ? "null"
+                    : component.GetType().Name;
+                string formattedMessage = message?.ToString() ?? string.Empty;
+                if (exception != null)
+                {
+                    formattedMessage = $"{formattedMessage} :: {exception}";
+                }
+
+                Debug.unityLogger.Log(
+                    type,
+                    $"[WallstopMainThreadLogger:{contextLabel}] {formattedMessage}"
+                );
+            }
+            catch
+            {
+                // Swallow
+            }
+#endif
         }
     }
 }

@@ -5,9 +5,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
     using NUnit.Framework;
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Core.Extension;
+    using WallstopStudios.UnityHelpers.Tests.Core;
     using WallstopStudios.UnityHelpers.Tests.TestUtils;
 
-    public sealed class EnumExtensionTests
+    public sealed class EnumExtensionTests : CommonTestBase
     {
         private enum TestEnum
         {

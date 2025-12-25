@@ -34,7 +34,7 @@ namespace WallstopStudios.UnityHelpers.Visuals.UIToolkit
     ///     filterExtensions: new[] { ".anim" },
     ///     persistenceKey: "AnimationViewer"
     /// );
-    /// selector.OnFilesSelected += files => Debug.Log($"Selected {files.Count} files");
+    /// selector.OnFilesSelectedReadOnly += files => Debug.Log($"Selected {files.Count} files");
     /// selector.OnCancelled += () => Debug.Log("Selection cancelled");
     /// rootVisualElement.Add(selector);
     /// // To hide: selector.parent.Remove(selector);
@@ -50,7 +50,13 @@ namespace WallstopStudios.UnityHelpers.Visuals.UIToolkit
         /// <summary>
         /// Invoked when the user confirms selection. Provides absolute file system paths.
         /// </summary>
+        [Obsolete("Use OnFilesSelectedReadOnly for allocation-free callbacks.")]
         public event Action<List<string>> OnFilesSelected;
+
+        /// <summary>
+        /// Invoked when the user confirms selection without allocating a copy of the paths.
+        /// </summary>
+        public event Action<IReadOnlyCollection<string>> OnFilesSelectedReadOnly;
 
         /// <summary>
         /// Invoked when the user cancels the dialog without confirming.
@@ -248,10 +254,10 @@ namespace WallstopStudios.UnityHelpers.Visuals.UIToolkit
                     marginBottom = 5,
                     backgroundColor = Color.white * 0.15f,
                 },
+                makeItem = MakeRow,
+                bindItem = BindRow,
+                itemsSource = _items,
             };
-            _listView.makeItem = MakeRow;
-            _listView.bindItem = BindRow;
-            _listView.itemsSource = _items;
             contentBox.Add(_listView);
 
             VisualElement footerControls = new()
@@ -493,7 +499,12 @@ namespace WallstopStudios.UnityHelpers.Visuals.UIToolkit
 
         private void ConfirmSelection()
         {
-            OnFilesSelected?.Invoke(new List<string>(_selectedSet));
+            OnFilesSelectedReadOnly?.Invoke(_selectedSet);
+
+            if (OnFilesSelected != null)
+            {
+                OnFilesSelected.Invoke(new List<string>(_selectedSet));
+            }
         }
 
         /// <summary>
@@ -637,11 +648,11 @@ namespace WallstopStudios.UnityHelpers.Visuals.UIToolkit
         }
 
         /// <summary>
-        /// Returns a copy of the selected file paths for diagnostics and tests.
+        /// Returns the currently selected file paths for diagnostics and tests.
         /// </summary>
         public IReadOnlyCollection<string> DebugGetSelectedFilePaths()
         {
-            return new List<string>(_selectedSet);
+            return _selectedSet;
         }
 
         private void BuildBreadcrumbs()

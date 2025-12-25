@@ -236,7 +236,7 @@ namespace WallstopStudios.UnityHelpers.Utils
         }
 
         /// <summary>
-        /// Applies <see cref="Object.DontDestroyOnLoad(UnityEngine.Object)"/> when configured to
+        /// Applies <see cref="UnityEngine.Object.DontDestroyOnLoad(UnityEngine.Object)"/> when configured to
         /// keep the spawner alive between scene loads.
         /// </summary>
         private void TrySetDontDestroyOnLoad()

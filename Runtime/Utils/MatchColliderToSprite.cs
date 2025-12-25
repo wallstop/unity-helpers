@@ -86,8 +86,9 @@ namespace WallstopStudios.UnityHelpers.Utils
 
                 int physicsShapes = _lastHandled.GetPhysicsShapeCount();
                 polygonCollider.pathCount = physicsShapes;
-                using PooledResource<List<Vector2>> bufferResource = Buffers<Vector2>.List.Get();
-                List<Vector2> buffer = bufferResource.resource;
+                using PooledResource<List<Vector2>> bufferResource = Buffers<Vector2>.List.Get(
+                    out List<Vector2> buffer
+                );
                 for (int i = 0; i < physicsShapes; ++i)
                 {
                     buffer.Clear();

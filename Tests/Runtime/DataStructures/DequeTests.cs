@@ -217,7 +217,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
 
             Assert.Throws<IndexOutOfRangeException>(() =>
             {
-                int x = deque[-1];
+                int unused = deque[-1];
             });
         }
 
@@ -229,7 +229,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
 
             Assert.Throws<IndexOutOfRangeException>(() =>
             {
-                int x = deque[1];
+                int unused = deque[1];
             });
         }
 
@@ -587,7 +587,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             deque.PushBack(1);
             deque.PushBack(2);
 
-            Deque<int>.DequeEnumerator enumerator = deque.GetEnumerator();
+            using Deque<int>.DequeEnumerator enumerator = deque.GetEnumerator();
             enumerator.MoveNext();
             enumerator.MoveNext();
 

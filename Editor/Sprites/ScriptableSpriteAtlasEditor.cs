@@ -12,6 +12,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
     using UnityEngine.U2D;
     using WallstopStudios.UnityHelpers.Core.Extension;
     using WallstopStudios.UnityHelpers.Core.Helper;
+    using WallstopStudios.UnityHelpers.Editor.Extensions;
     using WallstopStudios.UnityHelpers.Utils;
     using Object = UnityEngine.Object;
 
@@ -381,7 +382,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                                     SerializedProperty entryProp =
                                         sourceFolderEntriesProp.GetArrayElementAtIndex(j);
                                     SerializedProperty pathProp = entryProp.FindPropertyRelative(
-                                        "folderPath"
+                                        nameof(SourceFolderEntry.folderPath)
                                     );
                                     if (
                                         string.Equals(
@@ -401,15 +402,11 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
 
                                 if (!pathExists)
                                 {
-                                    sourceFolderEntriesProp.InsertArrayElementAtIndex(
-                                        sourceFolderEntriesProp.arraySize
-                                    );
                                     SerializedProperty newEntryProp =
-                                        sourceFolderEntriesProp.GetArrayElementAtIndex(
-                                            sourceFolderEntriesProp.arraySize - 1
-                                        );
-                                    newEntryProp.FindPropertyRelative("folderPath").stringValue =
-                                        relativePath;
+                                        sourceFolderEntriesProp.AppendArrayElement();
+                                    newEntryProp
+                                        .FindPropertyRelative(nameof(SourceFolderEntry.folderPath))
+                                        .stringValue = relativePath;
 
                                     serializedConfig.ApplyModifiedProperties();
                                     this.Log(
@@ -586,265 +583,337 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 return;
             }
 
-            ScanResult currentScan = new();
-            HashSet<Sprite> foundSpritesInFolders = new();
+            ScanResult currentScan = new ScanResult();
+            int totalFoundSprites = 0;
+            int potentialAddCount = 0;
+            int potentialRemoveCount = 0;
 
-            foreach (SourceFolderEntry entry in config.sourceFolderEntries)
-            {
-                if (
-                    string.IsNullOrWhiteSpace(entry.folderPath)
-                    || !AssetDatabase.IsValidFolder(entry.folderPath)
+            using (
+                PooledResource<HashSet<Sprite>> foundSpritesLease = Buffers<Sprite>.HashSet.Get(
+                    out HashSet<Sprite> foundSpritesInFolders
                 )
+            )
+            using (
+                PooledResource<HashSet<Sprite>> configSpritesLease = Buffers<Sprite>.HashSet.Get(
+                    out HashSet<Sprite> configSprites
+                )
+            )
+            using (
+                PooledResource<List<Sprite>> validSpritesLease = Buffers<Sprite>.List.Get(
+                    out List<Sprite> validSpritesInConfigList
+                )
+            )
+            {
+                for (int i = 0; i < config.spritesToPack.Count; ++i)
                 {
-                    this.LogWarn(
-                        $"'{config.name}': Invalid or empty folder path '{entry.folderPath}' in an entry. Skipping this entry."
-                    );
-                    continue;
-                }
-
-                // Build a search set optimized by labels when applicable
-                bool useLabels =
-                    entry.selectionMode.HasFlagNoAlloc(SpriteSelectionMode.Labels)
-                    && entry.labels is { Count: > 0 };
-                List<string> guidList = new();
-                if (useLabels)
-                {
-                    switch (entry.labelSelectionMode)
+                    Sprite sprite = config.spritesToPack[i];
+                    if (sprite == null)
                     {
-                        case LabelSelectionMode.All:
-                        {
-                            string query = "t:Texture2D";
-                            foreach (string l in entry.labels)
-                            {
-                                if (!string.IsNullOrWhiteSpace(l))
-                                {
-                                    query += $" l:{l}";
-                                }
-                            }
-                            guidList.AddRange(
-                                AssetDatabase.FindAssets(query, new[] { entry.folderPath })
-                            );
-                            break;
-                        }
-                        case LabelSelectionMode.AnyOf:
-                        {
-                            using PooledResource<HashSet<string>> setRes =
-                                Buffers<string>.HashSet.Get();
-                            HashSet<string> set = setRes.resource;
-                            foreach (string l in entry.labels)
-                            {
-                                if (string.IsNullOrWhiteSpace(l))
-                                {
-                                    continue;
-                                }
-                                string query = $"t:Texture2D l:{l}";
-                                foreach (
-                                    string g in AssetDatabase.FindAssets(
-                                        query,
-                                        new[] { entry.folderPath }
-                                    )
-                                )
-                                {
-                                    set.Add(g);
-                                }
-                            }
-                            if (set.Count > 0)
-                            {
-                                guidList.AddRange(set);
-                            }
-                            break;
-                        }
-                        default:
-                        {
-                            this.LogError(
-                                $"'{config.name}', Folder '{entry.folderPath}': Invalid LabelSelectionMode value '{entry.labelSelectionMode}'. Skipping label pre-filter."
-                            );
-                            break;
-                        }
+                        continue;
                     }
-                }
-                else
-                {
-                    guidList.AddRange(
-                        AssetDatabase.FindAssets("t:Texture2D", new[] { entry.folderPath })
-                    );
+
+                    validSpritesInConfigList.Add(sprite);
+                    configSprites.Add(sprite);
                 }
 
-                // Prepare compiled regexes if regex selection is enabled
-                bool useRegex = entry.selectionMode.HasFlagNoAlloc(SpriteSelectionMode.Regex);
-                List<string> activeRegexPatterns = entry
-                    .regexes.Where(r => !string.IsNullOrWhiteSpace(r))
-                    .ToList();
-                List<Regex> compiledRegexes = null;
-                if (useRegex && activeRegexPatterns.Count > 0)
+                for (int i = 0; i < config.sourceFolderEntries.Count; ++i)
                 {
-                    compiledRegexes = new List<Regex>(activeRegexPatterns.Count);
-                    foreach (string pattern in activeRegexPatterns)
+                    SourceFolderEntry entry = config.sourceFolderEntries[i];
+                    ProcessSourceFolderEntry(config, entry, foundSpritesInFolders);
+                }
+
+                foreach (Sprite sprite in foundSpritesInFolders)
+                {
+                    if (sprite != null && !configSprites.Contains(sprite))
                     {
-                        try
-                        {
-                            compiledRegexes.Add(
-                                new Regex(
-                                    pattern,
-                                    RegexOptions.IgnoreCase
-                                        | RegexOptions.CultureInvariant
-                                        | RegexOptions.Compiled
-                                )
-                            );
-                        }
-                        catch (ArgumentException ex)
-                        {
-                            this.LogError(
-                                $"'{config.name}', Folder '{entry.folderPath}': Invalid Regex pattern '{pattern}': {ex.Message}. This pattern will be ignored."
-                            );
-                        }
+                        currentScan.spritesToAdd.Add(sprite);
                     }
                 }
 
-                // Compile exclusion regexes if provided
-                List<Regex> compiledExcludeRegexes = null;
-                if (entry.excludeRegexes is { Count: > 0 })
+                for (int i = 0; i < validSpritesInConfigList.Count; ++i)
                 {
-                    compiledExcludeRegexes = new List<Regex>(entry.excludeRegexes.Count);
-                    foreach (string pattern in entry.excludeRegexes)
+                    Sprite sprite = validSpritesInConfigList[i];
+                    if (!foundSpritesInFolders.Contains(sprite))
                     {
-                        if (string.IsNullOrWhiteSpace(pattern))
+                        currentScan.spritesToRemove.Add(sprite);
+                    }
+                }
+
+                totalFoundSprites = foundSpritesInFolders.Count;
+                potentialAddCount = currentScan.spritesToAdd.Count;
+                potentialRemoveCount = currentScan.spritesToRemove.Count;
+            }
+
+            currentScan.hasScanned = true;
+            _scanResultsCache[config] = currentScan;
+            this.Log(
+                $"'{config.name}': Scan complete. Total unique sprites found across all folder entries: {totalFoundSprites}. Potential to add: {potentialAddCount}, Potential to remove: {potentialRemoveCount}."
+            );
+            Repaint();
+        }
+
+        private void ProcessSourceFolderEntry(
+            ScriptableSpriteAtlas config,
+            SourceFolderEntry entry,
+            HashSet<Sprite> foundSpritesInFolders
+        )
+        {
+            if (entry == null)
+            {
+                return;
+            }
+
+            if (
+                string.IsNullOrWhiteSpace(entry.folderPath)
+                || !AssetDatabase.IsValidFolder(entry.folderPath)
+            )
+            {
+                this.LogWarn(
+                    $"'{config.name}': Invalid or empty folder path '{entry.folderPath}' in an entry. Skipping this entry."
+                );
+                return;
+            }
+
+            bool includeRegexFilter = entry.selectionMode.HasFlagNoAlloc(SpriteSelectionMode.Regex);
+            bool includeLabelFilter =
+                entry.selectionMode.HasFlagNoAlloc(SpriteSelectionMode.Labels)
+                && entry.labels is { Count: > 0 };
+
+            List<string> includeLabels = null;
+            List<string> excludeLabels = null;
+            List<string> excludePrefixes = null;
+            List<Regex> compiledRegexes = null;
+            List<Regex> compiledExcludeRegexes = null;
+
+            PooledResource<List<string>> includeLabelsLease = default;
+            PooledResource<List<string>> excludeLabelsLease = default;
+            PooledResource<List<string>> excludePrefixesLease = default;
+            PooledResource<List<Regex>> compiledRegexesLease = default;
+            PooledResource<List<Regex>> compiledExcludeRegexesLease = default;
+
+            using (
+                PooledResource<List<string>> guidListLease = Buffers<string>.List.Get(
+                    out List<string> guidList
+                )
+            )
+            {
+                try
+                {
+                    if (includeLabelFilter)
+                    {
+                        includeLabelsLease = Buffers<string>.List.Get(out includeLabels);
+                        AppendNonEmptyStrings(entry.labels, includeLabels);
+                        if (includeLabels.Count == 0)
+                        {
+                            includeLabelFilter = false;
+                        }
+                        else if (!IsValidLabelSelectionMode(entry.labelSelectionMode))
+                        {
+                            this.LogError(
+                                $"'{config.name}', Folder '{entry.folderPath}': Invalid LabelSelectionMode value '{entry.labelSelectionMode}'. Skipping label filtering for this entry."
+                            );
+                            includeLabelFilter = false;
+                        }
+                    }
+
+                    bool hasExcludeLabels = entry.excludeLabels is { Count: > 0 };
+                    if (hasExcludeLabels)
+                    {
+                        excludeLabelsLease = Buffers<string>.List.Get(out excludeLabels);
+                        AppendNonEmptyStrings(entry.excludeLabels, excludeLabels);
+                        if (excludeLabels.Count == 0)
+                        {
+                            hasExcludeLabels = false;
+                        }
+                        else if (!IsValidLabelSelectionMode(entry.excludeLabelSelectionMode))
+                        {
+                            this.LogError(
+                                $"'{config.name}', Folder '{entry.folderPath}': Invalid LabelSelectionMode value '{entry.excludeLabelSelectionMode}'. Skipping exclude label filtering for this entry."
+                            );
+                            hasExcludeLabels = false;
+                        }
+                    }
+
+                    bool hasExcludePrefixes = entry.excludePathPrefixes is { Count: > 0 };
+                    if (hasExcludePrefixes)
+                    {
+                        excludePrefixesLease = Buffers<string>.List.Get(out excludePrefixes);
+                        AppendSanitizedPrefixes(entry.excludePathPrefixes, excludePrefixes);
+                        if (excludePrefixes.Count == 0)
+                        {
+                            hasExcludePrefixes = false;
+                        }
+                    }
+
+                    bool searchedByLabels =
+                        includeLabelFilter
+                        && TryFindLabelFilteredAssets(config, entry, includeLabels, guidList);
+
+                    if (!searchedByLabels)
+                    {
+                        string[] defaultGuids = AssetDatabase.FindAssets(
+                            "t:Texture2D",
+                            new[] { entry.folderPath }
+                        );
+                        if (defaultGuids != null && defaultGuids.Length > 0)
+                        {
+                            guidList.AddRange(defaultGuids);
+                        }
+                    }
+
+                    if (includeRegexFilter && entry.regexes is { Count: > 0 })
+                    {
+                        compiledRegexesLease = Buffers<Regex>.List.Get(out compiledRegexes);
+                        CompileRegexPatterns(
+                            config,
+                            entry,
+                            entry.regexes,
+                            compiledRegexes,
+                            "Regex"
+                        );
+                    }
+
+                    bool hasExcludeRegexes = entry.excludeRegexes is { Count: > 0 };
+                    if (hasExcludeRegexes)
+                    {
+                        compiledExcludeRegexesLease = Buffers<Regex>.List.Get(
+                            out compiledExcludeRegexes
+                        );
+                        CompileRegexPatterns(
+                            config,
+                            entry,
+                            entry.excludeRegexes,
+                            compiledExcludeRegexes,
+                            "Exclude Regex"
+                        );
+                        if (compiledExcludeRegexes.Count == 0)
+                        {
+                            hasExcludeRegexes = false;
+                        }
+                    }
+
+                    if (guidList.Count == 0)
+                    {
+                        return;
+                    }
+
+                    bool needsExcludeLabels =
+                        hasExcludeLabels && excludeLabels != null && excludeLabels.Count > 0;
+                    bool needsLabels = includeLabelFilter || needsExcludeLabels;
+
+                    for (int i = 0; i < guidList.Count; ++i)
+                    {
+                        string guid = guidList[i];
+                        string assetPath = AssetDatabase.GUIDToAssetPath(guid);
+                        if (string.IsNullOrWhiteSpace(assetPath))
                         {
                             continue;
                         }
-                        try
-                        {
-                            compiledExcludeRegexes.Add(
-                                new Regex(
-                                    pattern,
-                                    RegexOptions.IgnoreCase
-                                        | RegexOptions.CultureInvariant
-                                        | RegexOptions.Compiled
-                                )
-                            );
-                        }
-                        catch (ArgumentException ex)
-                        {
-                            this.LogError(
-                                $"'{config.name}', Folder '{entry.folderPath}': Invalid Exclude Regex pattern '{pattern}': {ex.Message}. This pattern will be ignored."
-                            );
-                        }
-                    }
-                }
 
-                foreach (string guid in guidList)
-                {
-                    string assetPath = AssetDatabase.GUIDToAssetPath(guid);
-                    string fileName = Path.GetFileName(assetPath);
-
-                    bool matchesAllRegexesInEntry = true;
-                    if (useRegex && compiledRegexes is { Count: > 0 })
-                    {
-                        foreach (Regex rx in compiledRegexes)
+                        string fileName = Path.GetFileName(assetPath);
+                        bool regexMatch = true;
+                        if (
+                            compiledRegexes != null
+                            && compiledRegexes.Count > 0
+                            && !string.IsNullOrEmpty(fileName)
+                        )
                         {
-                            if (!rx.IsMatch(fileName))
+                            for (int r = 0; r < compiledRegexes.Count; ++r)
                             {
-                                matchesAllRegexesInEntry = false;
-                                break;
+                                Regex rx = compiledRegexes[r];
+                                if (!rx.IsMatch(fileName))
+                                {
+                                    regexMatch = false;
+                                    break;
+                                }
                             }
                         }
-                    }
 
-                    bool allMatch = matchesAllRegexesInEntry;
-                    bool matchesAllTagsInEntry = true;
-                    if (
-                        entry.selectionMode.HasFlagNoAlloc(SpriteSelectionMode.Labels)
-                        && entry.labels is { Count: > 0 }
-                    )
-                    {
-                        Object mainAsset = AssetDatabase.LoadMainAssetAtPath(assetPath);
-                        if (mainAsset != null)
+                        string[] assetLabels = needsLabels
+                            ? LoadAssetLabels(assetPath)
+                            : Array.Empty<string>();
+
+                        bool labelMatch = true;
+                        if (includeLabelFilter)
                         {
-                            string[] labels = AssetDatabase.GetLabels(mainAsset);
-                            using PooledResource<HashSet<string>> entryLabelsRes =
-                                Buffers<string>.HashSet.Get();
-                            HashSet<string> entryLabels = entryLabelsRes.resource;
-                            entryLabels.Clear();
-                            entryLabels.UnionWith(entry.labels);
+                            labelMatch = MatchesLabelRule(
+                                includeLabels,
+                                entry.labelSelectionMode,
+                                assetLabels
+                            );
+                        }
 
-                            using PooledResource<HashSet<string>> assetLabelsRes =
-                                Buffers<string>.HashSet.Get();
-                            HashSet<string> assetLabels = assetLabelsRes.resource;
-                            assetLabels.Clear();
-                            assetLabels.UnionWith(labels);
-                            switch (entry.labelSelectionMode)
+                        bool passesFilters;
+                        if (includeRegexFilter && includeLabelFilter)
+                        {
+                            switch (entry.regexAndTagLogic)
                             {
-                                case LabelSelectionMode.All:
-                                {
-                                    // Asset must contain all required entry labels
-                                    matchesAllTagsInEntry = entryLabels.All(assetLabels.Contains);
+                                case SpriteSelectionBooleanLogic.And:
+                                    passesFilters = regexMatch && labelMatch;
                                     break;
-                                }
-                                case LabelSelectionMode.AnyOf:
-                                {
-                                    matchesAllTagsInEntry = assetLabels.Any(entryLabels.Contains);
+                                case SpriteSelectionBooleanLogic.Or:
+                                    passesFilters = regexMatch || labelMatch;
                                     break;
-                                }
                                 default:
-                                {
                                     this.LogError(
-                                        $"'{config.name}', Folder '{entry.folderPath}': Invalid LabelSelectionMode value '{entry.labelSelectionMode}'. Skipping label filtering for this entry."
+                                        $"'{config.name}', Folder '{entry.folderPath}': Invalid SpriteSelectionBooleanLogic value '{entry.regexAndTagLogic}'. Defaulting to AND logic."
                                     );
-                                    matchesAllTagsInEntry = false;
+                                    passesFilters = regexMatch && labelMatch;
                                     break;
-                                }
                             }
                         }
-
-                        switch (entry.regexAndTagLogic)
+                        else if (includeRegexFilter)
                         {
-                            case SpriteSelectionBooleanLogic.And:
-                            {
-                                allMatch = matchesAllRegexesInEntry && matchesAllTagsInEntry;
-                                break;
-                            }
-                            case SpriteSelectionBooleanLogic.Or:
-                            {
-                                allMatch = matchesAllRegexesInEntry || matchesAllTagsInEntry;
-                                break;
-                            }
-                            default:
-                            {
-                                this.LogError(
-                                    $"'{config.name}', Folder '{entry.folderPath}': Invalid SpriteSelectionBooleanLogic value '{entry.regexAndTagLogic}'. Defaulting to AND logic."
-                                );
-                                allMatch = matchesAllRegexesInEntry && matchesAllTagsInEntry;
-                                break;
-                            }
+                            passesFilters = regexMatch;
                         }
-                    }
+                        else if (includeLabelFilter)
+                        {
+                            passesFilters = labelMatch;
+                        }
+                        else
+                        {
+                            passesFilters = true;
+                        }
 
-                    if (allMatch)
-                    {
+                        if (!passesFilters)
+                        {
+                            continue;
+                        }
+
                         bool excluded = false;
-                        // Exclude by path prefixes (case-insensitive starts-with)
-                        if (!excluded && entry.excludePathPrefixes is { Count: > 0 })
+                        if (!excluded && hasExcludePrefixes && excludePrefixes != null)
                         {
-                            string ap = assetPath.SanitizePath();
-                            foreach (string prefix in entry.excludePathPrefixes)
+                            string sanitizedAssetPath = assetPath.SanitizePath();
+                            for (
+                                int prefixIndex = 0;
+                                prefixIndex < excludePrefixes.Count;
+                                ++prefixIndex
+                            )
                             {
-                                if (string.IsNullOrWhiteSpace(prefix))
-                                {
-                                    continue;
-                                }
-                                string p = prefix.SanitizePath();
-                                if (ap.StartsWith(p, StringComparison.OrdinalIgnoreCase))
+                                string prefix = excludePrefixes[prefixIndex];
+                                if (
+                                    sanitizedAssetPath.StartsWith(
+                                        prefix,
+                                        StringComparison.OrdinalIgnoreCase
+                                    )
+                                )
                                 {
                                     excluded = true;
                                     break;
                                 }
                             }
                         }
-                        // Exclude by regex (OR semantics)
-                        if (!excluded && compiledExcludeRegexes is { Count: > 0 })
+
+                        if (
+                            !excluded
+                            && hasExcludeRegexes
+                            && compiledExcludeRegexes != null
+                            && !string.IsNullOrEmpty(fileName)
+                        )
                         {
-                            foreach (Regex rx in compiledExcludeRegexes)
+                            for (int r = 0; r < compiledExcludeRegexes.Count; ++r)
                             {
+                                Regex rx = compiledExcludeRegexes[r];
                                 if (rx.IsMatch(fileName))
                                 {
                                     excluded = true;
@@ -853,69 +922,295 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                             }
                         }
 
-                        // Exclude by labels
-                        if (!excluded && entry.excludeLabels is { Count: > 0 })
+                        if (!excluded && needsExcludeLabels)
                         {
-                            Object mainAsset2 = AssetDatabase.LoadMainAssetAtPath(assetPath);
-                            if (mainAsset2 != null)
-                            {
-                                string[] labels2 = AssetDatabase.GetLabels(mainAsset2);
-                                using PooledResource<HashSet<string>> exEntryLabelsRes =
-                                    Buffers<string>.HashSet.Get();
-                                HashSet<string> exEntryLabels = exEntryLabelsRes.resource;
-                                exEntryLabels.Clear();
-                                exEntryLabels.UnionWith(entry.excludeLabels);
-
-                                using PooledResource<HashSet<string>> assetLabelsRes2 =
-                                    Buffers<string>.HashSet.Get();
-                                HashSet<string> assetLabels2 = assetLabelsRes2.resource;
-                                assetLabels2.Clear();
-                                assetLabels2.UnionWith(labels2);
-
-                                switch (entry.excludeLabelSelectionMode)
-                                {
-                                    case LabelSelectionMode.All:
-                                        excluded = exEntryLabels.All(assetLabels2.Contains);
-                                        break;
-                                    case LabelSelectionMode.AnyOf:
-                                        excluded = assetLabels2.Any(exEntryLabels.Contains);
-                                        break;
-                                }
-                            }
+                            excluded = MatchesLabelRule(
+                                excludeLabels,
+                                entry.excludeLabelSelectionMode,
+                                assetLabels
+                            );
                         }
 
-                        if (!excluded)
+                        if (excluded)
                         {
-                            foreach (Object asset in AssetDatabase.LoadAllAssetsAtPath(assetPath))
+                            continue;
+                        }
+
+                        Object[] assets = AssetDatabase.LoadAllAssetsAtPath(assetPath);
+                        if (assets == null || assets.Length == 0)
+                        {
+                            continue;
+                        }
+
+                        for (int assetIndex = 0; assetIndex < assets.Length; ++assetIndex)
+                        {
+                            Object asset = assets[assetIndex];
+                            if (asset is Sprite spriteAsset && spriteAsset != null)
                             {
-                                if (asset is Sprite spriteAsset && spriteAsset != null)
-                                {
-                                    foundSpritesInFolders.Add(spriteAsset);
-                                }
+                                foundSpritesInFolders.Add(spriteAsset);
                             }
                         }
                     }
                 }
+                finally
+                {
+                    compiledRegexesLease.Dispose();
+                    compiledExcludeRegexesLease.Dispose();
+                    includeLabelsLease.Dispose();
+                    excludeLabelsLease.Dispose();
+                    excludePrefixesLease.Dispose();
+                }
+            }
+        }
+
+        private bool TryFindLabelFilteredAssets(
+            ScriptableSpriteAtlas config,
+            SourceFolderEntry entry,
+            IReadOnlyList<string> includeLabels,
+            List<string> guidList
+        )
+        {
+            if (includeLabels == null || includeLabels.Count == 0)
+            {
+                return false;
             }
 
-            List<Sprite> validSpritesInConfigList = config
-                .spritesToPack.Where(s => s != null)
-                .ToList();
+            if (!IsValidLabelSelectionMode(entry.labelSelectionMode))
+            {
+                this.LogError(
+                    $"'{config.name}', Folder '{entry.folderPath}': Invalid LabelSelectionMode value '{entry.labelSelectionMode}'. Skipping label pre-filter."
+                );
+                return false;
+            }
 
-            currentScan.spritesToAdd = foundSpritesInFolders
-                .Except(validSpritesInConfigList)
-                .ToList();
+            switch (entry.labelSelectionMode)
+            {
+                case LabelSelectionMode.All:
+                {
+                    string query = "t:Texture2D";
+                    for (int i = 0; i < includeLabels.Count; ++i)
+                    {
+                        string label = includeLabels[i];
+                        if (!string.IsNullOrWhiteSpace(label))
+                        {
+                            query += $" l:{label}";
+                        }
+                    }
 
-            currentScan.spritesToRemove = validSpritesInConfigList
-                .Except(foundSpritesInFolders)
-                .ToList();
+                    string[] guids = AssetDatabase.FindAssets(query, new[] { entry.folderPath });
+                    if (guids != null && guids.Length > 0)
+                    {
+                        guidList.AddRange(guids);
+                    }
+                    return true;
+                }
+                case LabelSelectionMode.AnyOf:
+                {
+                    using (
+                        PooledResource<HashSet<string>> setLease = Buffers<string>.HashSet.Get(
+                            out HashSet<string> set
+                        )
+                    )
+                    {
+                        for (int i = 0; i < includeLabels.Count; ++i)
+                        {
+                            string label = includeLabels[i];
+                            if (string.IsNullOrWhiteSpace(label))
+                            {
+                                continue;
+                            }
 
-            currentScan.hasScanned = true;
-            _scanResultsCache[config] = currentScan;
-            this.Log(
-                $"'{config.name}': Scan complete. Total unique sprites found across all folder entries: {foundSpritesInFolders.Count}. Potential to add: {currentScan.spritesToAdd.Count}, Potential to remove: {currentScan.spritesToRemove.Count}."
-            );
-            Repaint();
+                            string query = $"t:Texture2D l:{label}";
+                            string[] guids = AssetDatabase.FindAssets(
+                                query,
+                                new[] { entry.folderPath }
+                            );
+                            if (guids == null || guids.Length == 0)
+                            {
+                                continue;
+                            }
+
+                            for (int g = 0; g < guids.Length; ++g)
+                            {
+                                set.Add(guids[g]);
+                            }
+                        }
+
+                        if (set.Count > 0)
+                        {
+                            guidList.AddRange(set);
+                        }
+                    }
+                    return true;
+                }
+                default:
+                {
+                    return false;
+                }
+            }
+        }
+
+        private void CompileRegexPatterns(
+            ScriptableSpriteAtlas config,
+            SourceFolderEntry entry,
+            IReadOnlyList<string> patterns,
+            List<Regex> destination,
+            string description
+        )
+        {
+            if (patterns == null || destination == null)
+            {
+                return;
+            }
+
+            for (int i = 0; i < patterns.Count; ++i)
+            {
+                string pattern = patterns[i];
+                if (string.IsNullOrWhiteSpace(pattern))
+                {
+                    continue;
+                }
+
+                try
+                {
+                    destination.Add(
+                        new Regex(
+                            pattern,
+                            RegexOptions.IgnoreCase
+                                | RegexOptions.CultureInvariant
+                                | RegexOptions.Compiled
+                        )
+                    );
+                }
+                catch (ArgumentException ex)
+                {
+                    this.LogError(
+                        $"'{config.name}', Folder '{entry.folderPath}': Invalid {description} pattern '{pattern}': {ex.Message}. This pattern will be ignored."
+                    );
+                }
+            }
+        }
+
+        private static void AppendNonEmptyStrings(
+            IReadOnlyList<string> source,
+            List<string> destination
+        )
+        {
+            if (source == null || destination == null)
+            {
+                return;
+            }
+
+            for (int i = 0; i < source.Count; ++i)
+            {
+                string value = source[i];
+                if (!string.IsNullOrWhiteSpace(value))
+                {
+                    destination.Add(value);
+                }
+            }
+        }
+
+        private static void AppendSanitizedPrefixes(
+            IReadOnlyList<string> source,
+            List<string> destination
+        )
+        {
+            if (source == null || destination == null)
+            {
+                return;
+            }
+
+            for (int i = 0; i < source.Count; ++i)
+            {
+                string prefix = source[i];
+                if (string.IsNullOrWhiteSpace(prefix))
+                {
+                    continue;
+                }
+
+                destination.Add(prefix.SanitizePath());
+            }
+        }
+
+        private static bool MatchesLabelRule(
+            IReadOnlyList<string> configuredLabels,
+            LabelSelectionMode selectionMode,
+            IReadOnlyList<string> assetLabels
+        )
+        {
+            if (configuredLabels == null || configuredLabels.Count == 0)
+            {
+                return true;
+            }
+
+            if (assetLabels == null || assetLabels.Count == 0)
+            {
+                return false;
+            }
+
+            switch (selectionMode)
+            {
+                case LabelSelectionMode.All:
+                {
+                    for (int i = 0; i < configuredLabels.Count; ++i)
+                    {
+                        if (!AssetLabelsContain(assetLabels, configuredLabels[i]))
+                        {
+                            return false;
+                        }
+                    }
+                    return true;
+                }
+                case LabelSelectionMode.AnyOf:
+                {
+                    for (int i = 0; i < configuredLabels.Count; ++i)
+                    {
+                        if (AssetLabelsContain(assetLabels, configuredLabels[i]))
+                        {
+                            return true;
+                        }
+                    }
+                    return false;
+                }
+                default:
+                    return false;
+            }
+        }
+
+        private static bool AssetLabelsContain(IReadOnlyList<string> assetLabels, string label)
+        {
+            if (assetLabels == null || assetLabels.Count == 0 || string.IsNullOrWhiteSpace(label))
+            {
+                return false;
+            }
+
+            for (int i = 0; i < assetLabels.Count; ++i)
+            {
+                if (string.Equals(assetLabels[i], label, StringComparison.Ordinal))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private static bool IsValidLabelSelectionMode(LabelSelectionMode mode)
+        {
+            return mode == LabelSelectionMode.All || mode == LabelSelectionMode.AnyOf;
+        }
+
+        private static string[] LoadAssetLabels(string assetPath)
+        {
+            Object mainAsset = AssetDatabase.LoadMainAssetAtPath(assetPath);
+            if (mainAsset == null)
+            {
+                return Array.Empty<string>();
+            }
+
+            string[] labels = AssetDatabase.GetLabels(mainAsset);
+            return labels ?? Array.Empty<string>();
         }
 
         private void AddScannedSprites(ScriptableSpriteAtlas config, ScanResult result)
@@ -946,10 +1241,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 }
                 if (!alreadyExists)
                 {
-                    spritesListProp.InsertArrayElementAtIndex(spritesListProp.arraySize);
-                    spritesListProp
-                        .GetArrayElementAtIndex(spritesListProp.arraySize - 1)
-                        .objectReferenceValue = sprite;
+                    SerializedProperty newElement = spritesListProp.AppendArrayElement();
+                    newElement.objectReferenceValue = sprite;
                     addedCount++;
                 }
             }
@@ -981,7 +1274,9 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             }
 
             SerializedObject so = new(config);
-            SerializedProperty spritesListProp = so.FindProperty("spritesToPack");
+            SerializedProperty spritesListProp = so.FindProperty(
+                nameof(ScriptableSpriteAtlas.spritesToPack)
+            );
 
             Undo.RecordObject(config, "Remove Unfound Sprites from Atlas Config");
 
@@ -1277,124 +1572,127 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
 
             int modifiedCount = 0;
             int errorCount = 0;
-            HashSet<string> processedAssetPaths = new();
-
-            List<TextureImporter> importers = new();
-            AssetDatabase.StartAssetEditing();
-            try
+            using PooledResource<HashSet<string>> processedAssetPathsLease =
+                Buffers<string>.HashSet.Get(out HashSet<string> processedAssetPaths);
+            using PooledResource<List<TextureImporter>> importersLease =
+                Buffers<TextureImporter>.List.Get(out List<TextureImporter> importers);
             {
-                for (int i = 0; i < spritesToProcess.Count; ++i)
+                AssetDatabase.StartAssetEditing();
+                try
                 {
-                    Sprite sprite = spritesToProcess[i];
-                    Utils.EditorUi.ShowProgress(
-                        "Modifying Source Sprite Import Settings",
-                        $"Processing: {sprite.name} ({i + 1}/{spritesToProcess.Count})",
-                        (float)(i + 1) / spritesToProcess.Count
-                    );
-
-                    string assetPath = AssetDatabase.GetAssetPath(sprite.texture);
-                    if (string.IsNullOrWhiteSpace(assetPath))
+                    for (int i = 0; i < spritesToProcess.Count; ++i)
                     {
-                        this.LogWarn(
-                            $"Could not find asset path for sprite's texture: {sprite.name}. Skipping."
+                        Sprite sprite = spritesToProcess[i];
+                        Utils.EditorUi.ShowProgress(
+                            "Modifying Source Sprite Import Settings",
+                            $"Processing: {sprite.name} ({i + 1}/{spritesToProcess.Count})",
+                            (float)(i + 1) / spritesToProcess.Count
                         );
-                        errorCount++;
-                        continue;
-                    }
 
-                    if (!processedAssetPaths.Add(assetPath))
-                    {
-                        continue;
-                    }
+                        string assetPath = AssetDatabase.GetAssetPath(sprite.texture);
+                        if (string.IsNullOrWhiteSpace(assetPath))
+                        {
+                            this.LogWarn(
+                                $"Could not find asset path for sprite's texture: {sprite.name}. Skipping."
+                            );
+                            errorCount++;
+                            continue;
+                        }
 
-                    TextureImporter importer =
-                        AssetImporter.GetAtPath(assetPath) as TextureImporter;
-                    if (importer == null)
-                    {
-                        this.LogWarn(
-                            $"Could not get TextureImporter for asset: {assetPath} (from sprite: {sprite.name}). Skipping."
-                        );
-                        errorCount++;
-                        continue;
-                    }
+                        if (!processedAssetPaths.Add(assetPath))
+                        {
+                            continue;
+                        }
 
-                    bool settingsActuallyModified = false;
+                        TextureImporter importer =
+                            AssetImporter.GetAtPath(assetPath) as TextureImporter;
+                        if (importer == null)
+                        {
+                            this.LogWarn(
+                                $"Could not get TextureImporter for asset: {assetPath} (from sprite: {sprite.name}). Skipping."
+                            );
+                            errorCount++;
+                            continue;
+                        }
 
-                    if (importer.crunchedCompression)
-                    {
-                        importer.crunchedCompression = false;
-                        settingsActuallyModified = true;
-                    }
+                        bool settingsActuallyModified = false;
 
-                    if (importer.textureCompression != TextureImporterCompression.Uncompressed)
-                    {
-                        importer.textureCompression = TextureImporterCompression.Uncompressed;
-                        settingsActuallyModified = true;
-                    }
+                        if (importer.crunchedCompression)
+                        {
+                            importer.crunchedCompression = false;
+                            settingsActuallyModified = true;
+                        }
 
-                    TextureImporterPlatformSettings platformSettings =
-                        importer.GetDefaultPlatformTextureSettings();
-                    bool platformSettingsChangedThisTime = false;
-                    TextureImporterFormat targetFormat = importer.DoesSourceTextureHaveAlpha()
-                        ? TextureImporterFormat.RGBA32
-                        : TextureImporterFormat.RGB24;
+                        if (importer.textureCompression != TextureImporterCompression.Uncompressed)
+                        {
+                            importer.textureCompression = TextureImporterCompression.Uncompressed;
+                            settingsActuallyModified = true;
+                        }
 
-                    if (platformSettings.format != targetFormat)
-                    {
-                        platformSettings.format = targetFormat;
-                        platformSettingsChangedThisTime = true;
-                    }
-                    if (platformSettings.crunchedCompression)
-                    {
-                        platformSettings.crunchedCompression = false;
-                        platformSettingsChangedThisTime = true;
-                    }
-                    if (platformSettings.compressionQuality != 100)
-                    {
-                        platformSettings.compressionQuality = 100;
-                        platformSettingsChangedThisTime = true;
-                    }
+                        TextureImporterPlatformSettings platformSettings =
+                            importer.GetDefaultPlatformTextureSettings();
+                        bool platformSettingsChangedThisTime = false;
+                        TextureImporterFormat targetFormat = importer.DoesSourceTextureHaveAlpha()
+                            ? TextureImporterFormat.RGBA32
+                            : TextureImporterFormat.RGB24;
 
-                    if (platformSettingsChangedThisTime || !platformSettings.overridden)
-                    {
-                        platformSettings.overridden = true;
-                        importer.SetPlatformTextureSettings(platformSettings);
-                        settingsActuallyModified = true;
-                    }
+                        if (platformSettings.format != targetFormat)
+                        {
+                            platformSettings.format = targetFormat;
+                            platformSettingsChangedThisTime = true;
+                        }
+                        if (platformSettings.crunchedCompression)
+                        {
+                            platformSettings.crunchedCompression = false;
+                            platformSettingsChangedThisTime = true;
+                        }
+                        if (platformSettings.compressionQuality != 100)
+                        {
+                            platformSettings.compressionQuality = 100;
+                            platformSettingsChangedThisTime = true;
+                        }
 
-                    if (settingsActuallyModified)
-                    {
-                        importer.SaveAndReimport();
-                        importers.Add(importer);
-                        modifiedCount++;
-                        this.Log(
-                            $"Set import settings for texture: {assetPath} (from sprite: {sprite.name}) to uncompressed ({targetFormat})."
-                        );
+                        if (platformSettingsChangedThisTime || !platformSettings.overridden)
+                        {
+                            platformSettings.overridden = true;
+                            importer.SetPlatformTextureSettings(platformSettings);
+                            settingsActuallyModified = true;
+                        }
+
+                        if (settingsActuallyModified)
+                        {
+                            importer.SaveAndReimport();
+                            importers.Add(importer);
+                            modifiedCount++;
+                            this.Log(
+                                $"Set import settings for texture: {assetPath} (from sprite: {sprite.name}) to uncompressed ({targetFormat})."
+                            );
+                        }
                     }
                 }
-            }
-            finally
-            {
-                AssetDatabase.StopAssetEditing();
-                Utils.EditorUi.ClearProgress();
-            }
+                finally
+                {
+                    AssetDatabase.StopAssetEditing();
+                    Utils.EditorUi.ClearProgress();
+                }
 
-            foreach (TextureImporter importer in importers)
-            {
-                importer.SaveAndReimport();
-            }
+                foreach (TextureImporter importer in importers)
+                {
+                    importer.SaveAndReimport();
+                }
 
-            if (modifiedCount > 0 || errorCount > 0)
-            {
-                AssetDatabase.SaveAssets();
-                AssetDatabase.Refresh();
-            }
+                if (modifiedCount > 0 || errorCount > 0)
+                {
+                    AssetDatabase.SaveAssets();
+                    AssetDatabase.Refresh();
+                }
 
-            string summaryMessage =
-                $"Finished processing source sprite textures for '{config.name}'.\n"
-                + $"Successfully modified importers for: {modifiedCount} textures.\n"
-                + $"Errors/Skipped duplicates: {errorCount + (spritesToProcess.Count - processedAssetPaths.Count)}.";
-            this.Log($"{summaryMessage}");
+                string summaryMessage =
+                    $"Finished processing source sprite textures for '{config.name}'.\n"
+                    + $"Successfully modified importers for: {modifiedCount} textures.\n"
+                    + $"Errors/Skipped duplicates: {errorCount + (spritesToProcess.Count - processedAssetPaths.Count)}.";
+                this.Log($"{summaryMessage}");
+            }
         }
 
         private void SyncListToScanResult(ScriptableSpriteAtlas config, ScanResult result)
@@ -1412,8 +1710,9 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             Undo.RecordObject(config, "Sync Sprites To Scan Result");
 
             // Build the target set = (current ∪ toAdd) \ toRemove
-            using PooledResource<HashSet<Sprite>> targetSetRes = Buffers<Sprite>.HashSet.Get();
-            HashSet<Sprite> targetSet = targetSetRes.resource;
+            using PooledResource<HashSet<Sprite>> targetSetRes = Buffers<Sprite>.HashSet.Get(
+                out HashSet<Sprite> targetSet
+            );
 
             for (int i = 0; i < spritesListProp.arraySize; ++i)
             {
@@ -1444,12 +1743,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             {
                 spritesListProp.DeleteArrayElementAtIndex(spritesListProp.arraySize - 1);
             }
-            int index = 0;
             foreach (Sprite s in targetSet)
             {
-                spritesListProp.InsertArrayElementAtIndex(index);
-                spritesListProp.GetArrayElementAtIndex(index).objectReferenceValue = s;
-                index++;
+                SerializedProperty newElement = spritesListProp.AppendArrayElement();
+                newElement.objectReferenceValue = s;
             }
 
             so.ApplyModifiedProperties();

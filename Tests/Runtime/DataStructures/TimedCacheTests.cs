@@ -278,29 +278,130 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             Assert.AreEqual(1, cache.Value);
         }
 
-        [UnityTest]
-        public IEnumerator JitterCausesFirstExpirationToVaryFromTtl()
+        [TestCase(0.02f)]
+        [TestCase(0.05f)]
+        [TestCase(0.1f)]
+        public void JitterCausesFirstExpirationToVaryFromTtl(float jitterOverride)
         {
+            const float CacheTtl = 0.1f;
+            const float Epsilon = 0.001f;
+
+            ManualTimeSource time = new();
             int producerCalls = 0;
-            TimedCache<int> cache = new(() => ++producerCalls, 0.1f, useJitter: true);
+            TimedCache<int> cache = new(
+                () => ++producerCalls,
+                CacheTtl,
+                useJitter: true,
+                timeProvider: time.Get,
+                jitterOverride: jitterOverride
+            );
 
             int first = cache.Value;
             Assert.AreEqual(1, first);
             Assert.AreEqual(1, producerCalls);
 
-            // Wait for standard TTL - may or may not have expired depending on jitter
-            yield return new WaitForSeconds(0.1f);
+            time.Advance(CacheTtl - Epsilon);
+            Assert.AreEqual(
+                1,
+                cache.Value,
+                $"Cache expired before TTL. Now={time.Now:F3}s, TTL={CacheTtl:F3}s."
+            );
 
-            // Access to potentially trigger expiration
-            _ = cache.Value;
+            time.Advance(Epsilon * 2f);
+            Assert.AreEqual(
+                1,
+                cache.Value,
+                $"Jitter should delay expiration. Now={time.Now:F3}s, jitter={jitterOverride:F3}s."
+            );
 
-            // Wait additional time to ensure jitter range is covered
-            yield return new WaitForSeconds(0.11f);
+            float deltaToBoundary = MathF.Max(jitterOverride - Epsilon, 0f);
+            if (deltaToBoundary > 0f)
+            {
+                time.Advance(deltaToBoundary);
+                Assert.AreEqual(
+                    1,
+                    cache.Value,
+                    $"Cache expired before reaching TTL + jitter. Now={time.Now:F3}s, boundary={(CacheTtl + jitterOverride):F3}s."
+                );
+            }
 
-            int afterJitter = cache.Value;
-            // Should have refreshed by now (TTL + max jitter = 0.2s total)
-            Assert.AreEqual(2, afterJitter);
+            time.Advance(Epsilon * 2f);
+            Assert.AreEqual(
+                2,
+                cache.Value,
+                $"Cache failed to expire after surpassing TTL + jitter. Now={time.Now:F3}s, boundary={(CacheTtl + jitterOverride):F3}s."
+            );
+            Assert.AreEqual(
+                2,
+                producerCalls,
+                "Producer should be called exactly once for the jittered refresh."
+            );
+
+            time.Advance(CacheTtl - Epsilon);
+            Assert.AreEqual(
+                2,
+                cache.Value,
+                $"Jitter should not be reapplied. Cache expired early at {time.Now:F3}s."
+            );
+
+            time.Advance(Epsilon * 2f);
+            Assert.AreEqual(
+                3,
+                cache.Value,
+                $"Cache failed to expire after the standard TTL once jitter was consumed. Now={time.Now:F3}s."
+            );
+            Assert.AreEqual(3, producerCalls);
+        }
+
+        [Test]
+        public void ZeroJitterBehavesLikeStandardTtl()
+        {
+            const float CacheTtl = 0.1f;
+            const float Epsilon = 0.001f;
+
+            ManualTimeSource time = new();
+            int producerCalls = 0;
+            TimedCache<int> cache = new(
+                () => ++producerCalls,
+                CacheTtl,
+                useJitter: true,
+                timeProvider: time.Get,
+                jitterOverride: 0f
+            );
+
+            int first = cache.Value;
+            Assert.AreEqual(1, first);
+            Assert.AreEqual(1, producerCalls);
+
+            time.Advance(CacheTtl - Epsilon);
+            Assert.AreEqual(
+                1,
+                cache.Value,
+                $"Cache expired early before TTL with zero jitter. Now={time.Now:F3}s."
+            );
+
+            time.Advance(Epsilon * 2f);
+            Assert.AreEqual(
+                2,
+                cache.Value,
+                $"Cache failed to expire right after TTL when jitter is zero. Now={time.Now:F3}s."
+            );
             Assert.AreEqual(2, producerCalls);
+
+            time.Advance(CacheTtl - Epsilon);
+            Assert.AreEqual(
+                2,
+                cache.Value,
+                $"Cache expired too early after refresh with zero jitter. Now={time.Now:F3}s."
+            );
+
+            time.Advance(Epsilon * 2f);
+            Assert.AreEqual(
+                3,
+                cache.Value,
+                $"Cache failed to expire at TTL after jitter was consumed. Now={time.Now:F3}s."
+            );
+            Assert.AreEqual(3, producerCalls);
         }
 
         [UnityTest]
@@ -369,6 +470,207 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             int third = cache.Value;
             Assert.AreEqual(3, third);
             Assert.AreEqual(3, producerCalls);
+        }
+
+        private sealed class ManualTimeSource
+        {
+            public float Now;
+
+            public float Get() => Now;
+
+            public void Advance(float delta) => Now += delta;
+        }
+
+        [UnityTest]
+        public IEnumerator ResetAfterJitterDoesNotReapplyJitter()
+        {
+            const float CacheTtl = 0.2f;
+            const float Jitter = CacheTtl;
+            int producerCalls = 0;
+            ManualTimeSource time = new();
+            TimedCache<int> cache = new(
+                () => ++producerCalls,
+                CacheTtl,
+                useJitter: true,
+                timeProvider: time.Get,
+                jitterOverride: Jitter
+            );
+
+            _ = cache.Value;
+            Assert.AreEqual(1, producerCalls);
+            yield return null;
+
+            // Wait long enough to cover initial jitter range.
+            time.Advance(CacheTtl + Jitter + 0.01f);
+            yield return null;
+            _ = cache.Value;
+            Assert.AreEqual(2, producerCalls);
+
+            cache.Reset();
+            int callsAfterReset = producerCalls;
+
+            // Wait under the TTL to ensure jitter was not re-applied.
+            time.Advance(CacheTtl * 0.5f);
+            yield return null;
+            _ = cache.Value;
+            Assert.AreEqual(callsAfterReset, producerCalls);
+
+            // Wait beyond the TTL to trigger expiry without jitter.
+            time.Advance(CacheTtl * 0.6f);
+            yield return null;
+            _ = cache.Value;
+            Assert.AreEqual(callsAfterReset + 1, producerCalls);
+        }
+
+        [UnityTest]
+        public IEnumerator MultipleResetsAfterJitterRemainDeterministic()
+        {
+            const float CacheTtl = 0.15f;
+            const float Jitter = CacheTtl;
+            int producerCalls = 0;
+            ManualTimeSource time = new();
+            TimedCache<int> cache = new(
+                () => ++producerCalls,
+                CacheTtl,
+                useJitter: true,
+                timeProvider: time.Get,
+                jitterOverride: Jitter
+            );
+
+            _ = cache.Value;
+            Assert.AreEqual(1, producerCalls);
+            yield return null;
+
+            time.Advance(CacheTtl + Jitter + 0.01f);
+            yield return null;
+            _ = cache.Value;
+            Assert.AreEqual(2, producerCalls);
+
+            for (int i = 0; i < 2; i++)
+            {
+                cache.Reset();
+                int callsAfterReset = producerCalls;
+
+                time.Advance(CacheTtl * 0.4f);
+                yield return null;
+                _ = cache.Value;
+                Assert.AreEqual(
+                    callsAfterReset,
+                    producerCalls,
+                    "Cache should not refresh before TTL after reset."
+                );
+
+                time.Advance(CacheTtl * 0.7f);
+                yield return null;
+                _ = cache.Value;
+                Assert.AreEqual(
+                    callsAfterReset + 1,
+                    producerCalls,
+                    "Cache should refresh once TTL has elapsed."
+                );
+            }
+        }
+
+        [UnityTest]
+        public IEnumerator JitterIsConsumedOnlyOnceAcrossRefreshes()
+        {
+            const float CacheTtl = 0.2f;
+            const float Jitter = CacheTtl * 0.5f;
+
+            int producerCalls = 0;
+            ManualTimeSource time = new();
+            TimedCache<int> cache = new(
+                () => ++producerCalls,
+                CacheTtl,
+                useJitter: true,
+                timeProvider: time.Get,
+                jitterOverride: Jitter
+            );
+
+            _ = cache.Value;
+            Assert.AreEqual(1, producerCalls);
+            yield return null;
+
+            time.Advance(CacheTtl + Jitter + 0.01f);
+            yield return null;
+            _ = cache.Value;
+            Assert.AreEqual(2, producerCalls, "First refresh should include jitter.");
+
+            time.Advance(CacheTtl * 0.6f);
+            yield return null;
+            _ = cache.Value;
+            Assert.AreEqual(2, producerCalls, "Jitter should not be reapplied.");
+
+            time.Advance(CacheTtl * 0.5f);
+            yield return null;
+            _ = cache.Value;
+            Assert.AreEqual(3, producerCalls, "Subsequent refresh should honor TTL only.");
+        }
+
+        [Test]
+        public void ManualTimeProviderControlsExpiration()
+        {
+            ManualTimeSource time = new();
+            int producerCalls = 0;
+            TimedCache<int> cache = new(() => ++producerCalls, 1f, timeProvider: time.Get);
+
+            _ = cache.Value;
+            Assert.AreEqual(1, producerCalls);
+
+            time.Advance(0.5f);
+            _ = cache.Value;
+            Assert.AreEqual(1, producerCalls);
+
+            time.Advance(0.6f);
+            _ = cache.Value;
+            Assert.AreEqual(2, producerCalls);
+        }
+
+        [Test]
+        public void JitterOverrideAllowsDeterministicScheduling()
+        {
+            ManualTimeSource time = new();
+            int producerCalls = 0;
+            TimedCache<int> cache = new(
+                () => ++producerCalls,
+                0.5f,
+                useJitter: true,
+                timeProvider: time.Get,
+                jitterOverride: 0.5f
+            );
+
+            _ = cache.Value;
+            Assert.AreEqual(1, producerCalls);
+
+            time.Advance(1.01f);
+            _ = cache.Value;
+            Assert.AreEqual(2, producerCalls, "Cache should refresh after TTL + jitter.");
+        }
+
+        [UnityTest]
+        public IEnumerator ValueRefreshesExactlyWhenTtlElapsed()
+        {
+            const float CacheTtl = 0.05f;
+            int producerCalls = 0;
+            ManualTimeSource time = new();
+            TimedCache<int> cache = new(() => ++producerCalls, CacheTtl, timeProvider: time.Get);
+
+            int first = cache.Value;
+            Assert.AreEqual(1, first);
+
+            // Advance just shy of the TTL — cache should still be valid.
+            time.Advance(CacheTtl - 0.001f);
+            yield return null;
+            int withinWindow = cache.Value;
+            Assert.AreEqual(1, withinWindow);
+            Assert.AreEqual(1, producerCalls);
+
+            // Advance past the TTL to trigger the expiration boundary.
+            time.Advance(0.002f);
+            yield return null;
+            int afterExpiry = cache.Value;
+            Assert.AreEqual(2, afterExpiry);
+            Assert.AreEqual(2, producerCalls);
         }
 
         [Test]

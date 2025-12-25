@@ -1,13 +1,18 @@
 namespace WallstopStudios.UnityHelpers.Core.DataStructure
 {
     using System;
-    using Helper;
     using Random;
     using UnityEngine;
 
     /// <summary>
-    /// A lightweight time-based cache that recomputes a value after a TTL expires.
+    /// A lightweight time-based cache that recomputes a value after a time-to-live interval expires.
     /// </summary>
+    /// <example>
+    /// <code><![CDATA[
+    /// TimedCache<int> enemyCount = new TimedCache<int>(TimeSpan.FromSeconds(1f), () => FindEnemies().Count);
+    /// int cachedValue = enemyCount.GetValue(Time.time);
+    /// ]]></code>
+    /// </example>
     /// <typeparam name="T">Value type produced by the cache factory.</typeparam>
     /// <remarks>
     /// Use for expensive computations that can be reused for a short period (e.g., path costs, counts, queries).
@@ -24,20 +29,20 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             {
                 if (!_lastRead.HasValue)
                 {
-                    Reset();
+                    ResetInternal(consumeJitter: false);
                 }
-                else if (
-                    Helpers.HasEnoughTimePassed(
-                        _lastRead.Value,
-                        _cacheTtl + (_shouldUseJitter && !_usedJitter ? _jitterAmount : 0f)
-                    )
-                )
+                else
                 {
-                    if (_shouldUseJitter)
+                    float expiration =
+                        _cacheTtl + (_shouldUseJitter && !_usedJitter ? _jitterAmount : 0f);
+                    if (_lastRead.Value + expiration < CurrentTime)
                     {
-                        _usedJitter = true;
+                        if (_shouldUseJitter)
+                        {
+                            _usedJitter = true;
+                        }
+                        ResetInternal(consumeJitter: false);
                     }
-                    Reset();
                 }
 
                 return _value;
@@ -53,6 +58,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
         private bool _usedJitter;
         private readonly bool _shouldUseJitter;
         private readonly float _jitterAmount;
+        private readonly Func<float> _timeProvider;
 
         /// <summary>
         /// Creates a time-based cache.
@@ -62,7 +68,13 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
         /// <param name="useJitter">If true, applies a single randomized offset up to <paramref name="cacheTtl"/> to the first refresh.</param>
         /// <exception cref="ArgumentNullException">Thrown when <paramref name="valueProducer"/> is null.</exception>
         /// <exception cref="ArgumentException">Thrown when <paramref name="cacheTtl"/> is negative.</exception>
-        public TimedCache(Func<T> valueProducer, float cacheTtl, bool useJitter = false)
+        public TimedCache(
+            Func<T> valueProducer,
+            float cacheTtl,
+            bool useJitter = false,
+            Func<float> timeProvider = null,
+            float? jitterOverride = null
+        )
         {
             _valueProducer =
                 valueProducer ?? throw new ArgumentNullException(nameof(valueProducer));
@@ -73,16 +85,30 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
 
             _cacheTtl = cacheTtl;
             _shouldUseJitter = useJitter;
-            _jitterAmount = useJitter ? PRNG.Instance.NextFloat(0f, cacheTtl) : 0f;
+            _jitterAmount = useJitter
+                ? Mathf.Max(0f, jitterOverride ?? PRNG.Instance.NextFloat(0f, cacheTtl))
+                : 0f;
+            _timeProvider = timeProvider ?? (() => Time.time);
         }
+
+        private float CurrentTime => _timeProvider();
 
         /// <summary>
         /// Forces the cache to recompute the value and resets the TTL timer.
         /// </summary>
         public void Reset()
         {
+            ResetInternal(consumeJitter: true);
+        }
+
+        private void ResetInternal(bool consumeJitter)
+        {
             _value = _valueProducer();
-            _lastRead = Time.time;
+            _lastRead = CurrentTime;
+            if (consumeJitter && _shouldUseJitter)
+            {
+                _usedJitter = true;
+            }
         }
     }
 }

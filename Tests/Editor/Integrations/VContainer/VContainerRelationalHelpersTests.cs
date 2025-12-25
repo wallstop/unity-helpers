@@ -7,7 +7,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.VContainer
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Integrations.VContainer;
     using WallstopStudios.UnityHelpers.Tags;
-    using WallstopStudios.UnityHelpers.Tests.Editor.Utils;
+    using WallstopStudios.UnityHelpers.Tests.Core;
 
     public sealed class VContainerRelationalHelpersTests : CommonTestBase
     {
@@ -153,7 +153,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.VContainer
         private class BaseWithSibling : MonoBehaviour
         {
             [SiblingComponent]
+#pragma warning disable CS0649 // Field is never assigned to, and will always have its default value
             protected internal SpriteRenderer _spriteRenderer;
+#pragma warning restore CS0649 // Field is never assigned to, and will always have its default value
 
             public SpriteRenderer SR => _spriteRenderer;
         }

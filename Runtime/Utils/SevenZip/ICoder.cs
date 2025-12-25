@@ -1,9 +1,9 @@
 // ICoder.h
 
-using System;
-
 namespace SevenZip
 {
+    using System;
+
     /// <summary>
     /// The exception that is thrown when an error in input stream occurs during decoding.
     /// </summary>

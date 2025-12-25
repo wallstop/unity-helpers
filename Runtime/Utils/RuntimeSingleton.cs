@@ -77,6 +77,8 @@ namespace WallstopStudios.UnityHelpers.Utils
                     return _instance;
                 }
 
+                UnityMainThreadGuard.EnsureMainThread();
+
                 _instance = FindAnyObjectByType<T>(FindObjectsInactive.Exclude);
                 if (_instance != null)
                 {
@@ -98,6 +100,7 @@ namespace WallstopStudios.UnityHelpers.Utils
         private static void ClearInstance()
         {
             _instance.Destroy();
+            _instance = null;
         }
 
         protected virtual void Awake()

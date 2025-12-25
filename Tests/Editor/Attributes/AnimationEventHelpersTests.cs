@@ -1,14 +1,13 @@
-namespace WallstopStudios.UnityHelpers.Tests.Editor.Attributes
+namespace WallstopStudios.UnityHelpers.Tests.Attributes
 {
     using System;
     using System.Collections.Generic;
     using System.Linq;
     using System.Reflection;
     using NUnit.Framework;
-    using UnityEngine;
-    using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Editor.Core.Helper;
-    using WallstopStudios.UnityHelpers.Tests.Editor.Utils;
+    using WallstopStudios.UnityHelpers.Tests.Core;
+    using WallstopStudios.UnityHelpers.Tests.Editor.TestTypes;
 
     [TestFixture]
     public sealed class AnimationEventHelpersTests : CommonTestBase
@@ -26,12 +25,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Attributes
                 ),
                 "Expected AnimationEventSource to be registered."
             );
-            CollectionAssert.Contains(
-                methods,
-                typeof(AnimationEventSource).GetMethod(
-                    nameof(AnimationEventSource.SimpleEvent),
-                    BindingFlags.Instance | BindingFlags.NonPublic
-                )
+            Assert.IsTrue(
+                methods.Any(method =>
+                    method.DeclaringType == typeof(AnimationEventSource)
+                    && method.Name == nameof(AnimationEventSource.SimpleEvent)
+                ),
+                "Expected SimpleEvent to be registered for AnimationEventSource."
             );
 
             Assert.IsFalse(mapping.ContainsKey(typeof(AnimationEventPlainBehaviour)));
@@ -57,19 +56,19 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Attributes
                 ),
                 "Derived type should register when it declares its own handlers."
             );
-            CollectionAssert.Contains(
-                methods,
-                typeof(AnimationEventDerivedAllowed).GetMethod(
-                    nameof(AnimationEventDerivedAllowed.DerivedOnly),
-                    BindingFlags.Instance | BindingFlags.NonPublic
-                )
+            Assert.IsTrue(
+                methods.Any(method =>
+                    method.DeclaringType == typeof(AnimationEventDerivedAllowed)
+                    && method.Name == nameof(AnimationEventDerivedAllowed.DerivedOnly)
+                ),
+                "Derived-only handler should be registered."
             );
-            CollectionAssert.Contains(
-                methods,
-                typeof(AnimationEventSource).GetMethod(
-                    nameof(AnimationEventSource.AllowDerived),
-                    BindingFlags.Instance | BindingFlags.NonPublic
-                )
+            Assert.IsTrue(
+                methods.Any(method =>
+                    method.DeclaringType == typeof(AnimationEventSource)
+                    && method.Name == nameof(AnimationEventSource.AllowDerived)
+                ),
+                "Base handler that allows derived types should be included."
             );
         }
 
@@ -111,61 +110,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Attributes
         }
     }
 
-    internal enum AnimationEventSignal
+    public enum AnimationEventSignal
     {
         Ready,
         Done,
-    }
-
-    internal sealed class AnimationEventPlainBehaviour : MonoBehaviour { }
-
-    internal class AnimationEventSource : MonoBehaviour
-    {
-        [AnimationEvent]
-        protected internal void SimpleEvent() { }
-
-        [AnimationEvent(ignoreDerived = false)]
-        protected internal void AllowDerived() { }
-
-        [AnimationEvent]
-        private int InvalidReturn() => 0;
-
-        [AnimationEvent]
-        private void InvalidParameter(Vector3 _) { }
-    }
-
-    internal sealed class AnimationEventDerivedIgnore : AnimationEventSource { }
-
-    internal sealed class AnimationEventDerivedAllowed : AnimationEventSource
-    {
-        [AnimationEvent(ignoreDerived = false)]
-        internal void DerivedOnly() { }
-    }
-
-    internal sealed class AnimationEventSignatureHost : MonoBehaviour
-    {
-        [AnimationEvent]
-        public void NoArgs() { }
-
-        [AnimationEvent]
-        public void WithInt(int value) { }
-
-        [AnimationEvent]
-        public void WithEnum(AnimationEventSignal signal) { }
-
-        [AnimationEvent]
-        public void WithFloat(float value) { }
-
-        [AnimationEvent]
-        public void WithString(string text) { }
-
-        [AnimationEvent]
-        public void WithUnityObject(UnityEngine.Object target) { }
-
-        [AnimationEvent]
-        public void TwoParameters(int value, string text) { }
-
-        [AnimationEvent]
-        public int NonVoidReturn() => 0;
     }
 }

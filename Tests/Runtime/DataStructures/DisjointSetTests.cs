@@ -5,6 +5,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
     using System.Linq;
     using NUnit.Framework;
     using WallstopStudios.UnityHelpers.Core.DataStructure;
+    using WallstopStudios.UnityHelpers.Core.Random;
 
     public sealed class DisjointSetTests
     {
@@ -564,7 +565,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             Assert.IsTrue(ds.TryUnion(2, 3));
             Assert.IsTrue(ds.TryUnion(0, 2));
 
-            Assert.IsTrue(ds.TryFind(3, out int rep3));
+            Assert.IsTrue(ds.TryFind(3, out int _));
             Assert.IsTrue(ds.TryIsConnected(1, 3, out bool connected));
             Assert.IsTrue(connected);
         }
@@ -715,7 +716,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             edges.Sort((a, b) => a.weight.CompareTo(b.weight));
 
             int edgesAdded = 0;
-            foreach ((int u, int v, int weight) in edges)
+            foreach ((int u, int v, int _) in edges)
             {
                 if (ds.TryUnion(u, v))
                 {
@@ -787,7 +788,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         public void StressTestRandomUnions()
         {
             DisjointSet ds = new(1000);
-            Random rng = new(42);
+            IRandom rng = new PcgRandom(42);
 
             for (int i = 0; i < 5000; i++)
             {

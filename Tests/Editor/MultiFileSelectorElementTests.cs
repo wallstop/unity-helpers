@@ -1,4 +1,4 @@
-namespace WallstopStudios.UnityHelpers.Tests.Editor
+namespace WallstopStudios.UnityHelpers.Tests
 {
     using System;
     using System.Collections.Generic;
@@ -13,15 +13,33 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor
     {
         private string _baseRel;
         private string _baseAbs;
+        private string _baseMeta;
+        private static readonly string[] PrefKeys =
+        {
+            "WallstopStudios.MultiFileSelector.lastSearch.TestScope1",
+            "WallstopStudios.MultiFileSelector.lastSearch.KeyA",
+            "WallstopStudios.MultiFileSelector.lastSearch.KeyB",
+            "WallstopStudios.MultiFileSelector.lastSearch.SelScope",
+            "WallstopStudios.MultiFileSelector.lastDirectory.DirKey",
+            "WallstopStudios.MultiFileSelector.lastDirectory.DirTestA",
+            "WallstopStudios.MultiFileSelector.lastUsed.KeyA",
+            "WallstopStudios.MultiFileSelector.lastUsed.KeyB",
+            "WallstopStudios.MultiFileSelector.scopes",
+        };
 
         [SetUp]
         public void SetUp()
         {
             _baseRel = "Assets/TempMultiFileSelectorTests";
             _baseAbs = Path.Combine(Application.dataPath, "TempMultiFileSelectorTests");
+            _baseMeta = _baseAbs + ".meta";
             if (Directory.Exists(_baseAbs))
             {
                 Directory.Delete(_baseAbs, recursive: true);
+            }
+            if (File.Exists(_baseMeta))
+            {
+                File.Delete(_baseMeta);
             }
 
             Directory.CreateDirectory(_baseAbs);
@@ -34,25 +52,41 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor
             File.WriteAllText(Path.Combine(_baseAbs, "bar.txt"), "bar");
             File.WriteAllText(Path.Combine(_baseAbs, "DirA/nested.txt"), "nested");
 
-            AssetDatabase.Refresh();
+            TestContext.WriteLine($"[MultiFileSelectorElementTests] Test root: {_baseAbs}");
         }
 
         [TearDown]
         public void TearDown()
         {
-            // Clean persisted keys used in tests
-            EditorPrefs.DeleteKey("WallstopStudios.MultiFileSelector.lastSearch.TestScope1");
-            EditorPrefs.DeleteKey("WallstopStudios.MultiFileSelector.lastSearch.KeyA");
-            EditorPrefs.DeleteKey("WallstopStudios.MultiFileSelector.lastSearch.KeyB");
-            EditorPrefs.DeleteKey("WallstopStudios.MultiFileSelector.lastSearch.SelScope");
-            EditorPrefs.DeleteKey("WallstopStudios.MultiFileSelector.lastDirectory.DirKey");
-            EditorPrefs.DeleteKey("WallstopStudios.MultiFileSelector.lastDirectory.DirTestA");
-            EditorPrefs.DeleteKey("WallstopStudios.MultiFileSelector.lastUsed.KeyA");
-            EditorPrefs.DeleteKey("WallstopStudios.MultiFileSelector.lastUsed.KeyB");
-            EditorPrefs.DeleteKey("WallstopStudios.MultiFileSelector.scopes");
+            foreach (string key in PrefKeys)
+            {
+                EditorPrefs.DeleteKey(key);
+            }
+        }
 
-            AssetDatabase.DeleteAsset(_baseRel);
-            AssetDatabase.Refresh();
+        [OneTimeTearDown]
+        public void OneTimeTearDown()
+        {
+            try
+            {
+                if (Directory.Exists(_baseAbs))
+                {
+                    Directory.Delete(_baseAbs, recursive: true);
+                }
+                if (File.Exists(_baseMeta))
+                {
+                    File.Delete(_baseMeta);
+                }
+                TestContext.WriteLine(
+                    "[MultiFileSelectorElementTests] Cleaned test root (best effort)."
+                );
+            }
+            catch (IOException io)
+            {
+                Debug.LogWarning(
+                    $"[MultiFileSelectorElementTests] Unable to delete '{_baseAbs}' due to IO exception: {io.Message}. Manual cleanup may be required."
+                );
+            }
         }
 
         [Test]

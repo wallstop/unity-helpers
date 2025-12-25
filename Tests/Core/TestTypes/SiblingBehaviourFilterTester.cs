@@ -1,0 +1,11 @@
+namespace WallstopStudios.UnityHelpers.Tests.Core.TestTypes
+{
+    using UnityEngine;
+    using WallstopStudios.UnityHelpers.Core.Attributes;
+
+    public sealed class SiblingBehaviourFilterTester : MonoBehaviour
+    {
+        [SiblingComponent(IncludeInactive = false)]
+        public SiblingTestBehaviour[] activeBehaviours;
+    }
+}

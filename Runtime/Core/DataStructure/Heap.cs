@@ -11,6 +11,16 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
     /// Uses dynamic resizing with geometric growth for efficient amortized insertions.
     /// Allocation-free enumerator and minimal heap operations ensure optimal performance.
     /// </summary>
+    /// <example>
+    /// <code><![CDATA[
+    /// Heap<PathNode> openSet = new Heap<PathNode>(Comparer<PathNode>.Create((a, b) => a.F.CompareTo(b.F)));
+    /// openSet.Push(startNode);
+    /// while (!openSet.IsEmpty && openSet.TryPop(out PathNode current))
+    /// {
+    ///     // A* exploration...
+    /// }
+    /// ]]></code>
+    /// </example>
     /// <typeparam name="T">The type of elements in the heap. Must be comparable.</typeparam>
     [Serializable]
     public sealed class Heap<T> : IReadOnlyList<T>

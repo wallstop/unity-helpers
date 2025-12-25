@@ -1,4 +1,4 @@
-namespace WallstopStudios.UnityHelpers.Tests.Performance
+namespace WallstopStudios.UnityHelpers.Tests.Runtime.Performance
 {
     using System;
     using System.Collections.Generic;
@@ -12,49 +12,62 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
 
     public sealed class IListSortingPerformanceTests
     {
-        private const string DocumentPath = "Docs/ILIST_SORTING_PERFORMANCE.md";
+        private const string DocumentPath = "docs/performance/ilist-sorting-performance.md";
         private const string SectionPrefix = "ILIST_SORT_";
         private const int NearlySortedSwapPercentage = 50;
+        private const int BenchmarkTimeoutMilliseconds = 300_000;
+        private const int BenchmarkWarmupIterations = 3;
 
         private static readonly DatasetSizeSpec[] DatasetSizeSpecs =
         {
-            new DatasetSizeSpec("100", 100),
-            new DatasetSizeSpec("1,000", 1_000),
-            new DatasetSizeSpec("10,000", 10_000),
-            new DatasetSizeSpec("100,000", 100_000),
-            new DatasetSizeSpec("1,000,000", 1_000_000),
+            new("100", 100),
+            new("1,000", 1_000),
+            new("10,000", 10_000),
+            new("100,000", 100_000),
+            new("1,000,000", 1_000_000),
         };
 
         private static readonly DatasetState[] DatasetStates =
         {
-            new DatasetState("Sorted", BuildSortedData),
-            new DatasetState("Nearly Sorted (2% swaps)", BuildNearlySortedData),
-            new DatasetState("Shuffled (deterministic)", BuildShuffledData),
+            new("Sorted", BuildSortedData),
+            new("Nearly Sorted (2% swaps)", BuildNearlySortedData),
+            new("Shuffled (deterministic)", BuildShuffledData),
         };
 
         private static readonly SortImplementation[] SortImplementations =
         {
-            new SortImplementation("Ghost", SortAlgorithm.Ghost, false, int.MaxValue),
-            new SortImplementation("Meteor", SortAlgorithm.Meteor, false, int.MaxValue),
-            new SortImplementation(
+            new("Ghost", SortAlgorithm.Ghost, false, int.MaxValue),
+            new("Meteor", SortAlgorithm.Meteor, false, int.MaxValue),
+            new(
                 "Pattern-Defeating QuickSort",
                 SortAlgorithm.PatternDefeatingQuickSort,
                 false,
                 int.MaxValue
             ),
-            new SortImplementation("Grail", SortAlgorithm.Grail, true, int.MaxValue),
-            new SortImplementation("Power", SortAlgorithm.Power, true, int.MaxValue),
-            new SortImplementation("Insertion", SortAlgorithm.Insertion, true, 10_000),
+            new("Grail", SortAlgorithm.Grail, true, int.MaxValue),
+            new("Power", SortAlgorithm.Power, true, int.MaxValue),
+            new("Insertion", SortAlgorithm.Insertion, true, 10_000),
+            new("Tim", SortAlgorithm.Tim, true, int.MaxValue),
+            new("Jesse", SortAlgorithm.Jesse, false, int.MaxValue),
+            new("Green", SortAlgorithm.Green, true, int.MaxValue),
+            new("Ska", SortAlgorithm.Ska, false, int.MaxValue),
+            new("Ipn", SortAlgorithm.Ipn, false, int.MaxValue),
+            new("Smooth", SortAlgorithm.Smooth, false, int.MaxValue),
+            new("Block", SortAlgorithm.Block, true, int.MaxValue),
+            new("IPS4o", SortAlgorithm.Ips4o, false, int.MaxValue),
+            new("Power+", SortAlgorithm.PowerPlus, true, int.MaxValue),
+            new("Glide", SortAlgorithm.Glide, true, int.MaxValue),
+            new("Flux", SortAlgorithm.Flux, false, int.MaxValue),
         };
 
         [Test]
-        [Timeout(0)]
+        [Timeout(BenchmarkTimeoutMilliseconds)]
         public void Benchmark()
         {
             string operatingSystemToken = GetOperatingSystemToken();
             string sectionName = SectionPrefix + operatingSystemToken;
 
-            List<string> readmeLines = new List<string>
+            List<string> readmeLines = new()
             {
                 string.Format(
                     CultureInfo.InvariantCulture,
@@ -98,7 +111,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
 
         private static string BuildHeaderLine()
         {
-            StringBuilder headerBuilder = new StringBuilder();
+            StringBuilder headerBuilder = new();
             headerBuilder.Append("| List Size |");
             foreach (SortImplementation implementation in SortImplementations)
             {
@@ -112,7 +125,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
 
         private static string BuildDividerLine()
         {
-            StringBuilder dividerBuilder = new StringBuilder();
+            StringBuilder dividerBuilder = new();
             dividerBuilder.Append("| --- |");
             foreach (SortImplementation implementation in SortImplementations)
             {
@@ -128,7 +141,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
             IComparer<int> comparer
         )
         {
-            StringBuilder rowBuilder = new StringBuilder();
+            StringBuilder rowBuilder = new();
             rowBuilder.Append("| ");
             rowBuilder.Append(sizeLabel);
             rowBuilder.Append(" |");
@@ -156,9 +169,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
             }
 
             int[] workingData = new int[baseData.Length];
-            Array.Copy(baseData, workingData, baseData.Length);
-
             IList<int> workingList = workingData;
+            RunWarmups(implementation, baseData, comparer, workingData, workingList);
+            Array.Copy(baseData, workingData, baseData.Length);
             Stopwatch stopwatch = Stopwatch.StartNew();
 
             try
@@ -179,6 +192,26 @@ namespace WallstopStudios.UnityHelpers.Tests.Performance
 
             double milliseconds = stopwatch.Elapsed.TotalMilliseconds;
             return FormatDuration(milliseconds);
+        }
+
+        private static void RunWarmups(
+            SortImplementation implementation,
+            int[] baseData,
+            IComparer<int> comparer,
+            int[] workingData,
+            IList<int> workingList
+        )
+        {
+            if (BenchmarkWarmupIterations <= 0 || baseData.Length == 0)
+            {
+                return;
+            }
+
+            for (int i = 0; i < BenchmarkWarmupIterations; ++i)
+            {
+                Array.Copy(baseData, workingData, baseData.Length);
+                implementation.Execute(workingList, comparer);
+            }
         }
 
         private static string FormatDuration(double milliseconds)

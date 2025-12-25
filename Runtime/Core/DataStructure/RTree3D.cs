@@ -8,8 +8,16 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
     using Utils;
 
     /// <summary>
-    /// Immutable 3D R-Tree for efficient spatial indexing of 3D bounds.
+    /// Immutable 3D R-tree for efficient spatial indexing of 3D bounds.
     /// </summary>
+    /// <example>
+    /// <code><![CDATA[
+    /// RTree3D<Volume>.Entry[] entries = volumes.Select(v => new RTree3D<Volume>.Entry(v, v.Bounds)).ToArray();
+    /// RTree3D<Volume> tree = RTree3D<Volume>.Build(entries);
+    /// List<Volume> overlaps = new List<Volume>();
+    /// tree.GetElementsInRange(origin, 8f, overlaps);
+    /// ]]></code>
+    /// </example>
     /// <typeparam name="T">Element type.</typeparam>
     /// <remarks>
     /// <para>Pros: Great for sized 3D objects (meshes, volumes) with fast box and radius intersection queries.</para>
@@ -487,7 +495,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 {
                     ElementData elementData = _elementData[i];
                     T value = elementData._value;
-                    if (nearestNeighborsSet.Contains(value))
+                    if (!nearestNeighborsSet.Add(value))
                     {
                         continue;
                     }
@@ -497,7 +505,6 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                     if (candidates.Count < count)
                     {
                         candidates.Add((i, distanceSquared));
-                        nearestNeighborsSet.Add(value);
                         if (candidates.Count == count)
                         {
                             currentWorstDistanceSquared = FindWorstDistance(candidates);
@@ -508,6 +515,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
 
                     if (distanceSquared >= currentWorstDistanceSquared)
                     {
+                        nearestNeighborsSet.Remove(value);
                         continue;
                     }
 
@@ -516,7 +524,6 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                     nearestNeighborsSet.Remove(removedValue);
 
                     candidates[worstCandidateIndex] = (i, distanceSquared);
-                    nearestNeighborsSet.Add(value);
 
                     currentWorstDistanceSquared = FindWorstDistance(candidates);
                 }
@@ -641,8 +648,10 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             const int BucketCount = 1 << BitsPerPass;
             Span<int> counts = stackalloc int[BucketCount];
 
-            using PooledResource<ElementData[]> scratchResource =
-                WallstopFastArrayPool<ElementData>.Get(length, out ElementData[] scratch);
+            using PooledArray<ElementData> scratchResource = SystemArrayPool<ElementData>.Get(
+                length,
+                out ElementData[] scratch
+            );
             ElementData[] source = elements;
             ElementData[] destination = scratch;
             bool dataInScratch = false;

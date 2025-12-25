@@ -154,6 +154,45 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
+        public void GetElementsInRangeFullyContainedNodeOutsideMinimumReturnsAll()
+        {
+            List<Vector3> cluster = new();
+            Vector3 center = new(25f, -10f, 5f);
+            for (int i = 0; i < 24; ++i)
+            {
+                float offset = i * 0.1f;
+                cluster.Add(center + new Vector3(offset, -offset * 0.5f, offset * 0.25f));
+            }
+
+            OctTree3D<Vector3> tree = CreateTree(cluster);
+            List<Vector3> results = new();
+
+            tree.GetElementsInRange(Vector3.zero, 200f, results, minimumRange: 5f);
+
+            CollectionAssert.AreEquivalent(cluster, results);
+        }
+
+        [Test]
+        public void GetElementsInRangeFullyContainedNodeIntersectingMinimumFiltersPoints()
+        {
+            List<Vector3> points = new()
+            {
+                new Vector3(0.5f, 0f, 0f),
+                new Vector3(1.5f, 0.5f, 0f),
+                new Vector3(3f, 0f, 0f),
+                new Vector3(6f, 0f, 0f),
+            };
+
+            OctTree3D<Vector3> tree = CreateTree(points);
+            List<Vector3> results = new();
+
+            tree.GetElementsInRange(Vector3.zero, 10f, results, minimumRange: 2f);
+
+            Vector3[] expected = { points[2], points[3] };
+            CollectionAssert.AreEquivalent(expected, results);
+        }
+
+        [Test]
         public void GetElementsInBoundsReturnsIntersectingPoints()
         {
             List<Vector3> points = new()
@@ -306,6 +345,75 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
 
         [Test]
+        public void BoundsDiagnosticsLoggerCapturesVisitsAndPointEvaluations()
+        {
+            List<Vector3> points = new()
+            {
+                Vector3.zero,
+                new Vector3(1f, 1f, 1f),
+                new Vector3(2f, 2f, 2f),
+                new Vector3(3f, 3f, 3f),
+            };
+
+            OctTree3D<Vector3> tree = CreateTree(points);
+            Bounds query = new(new Vector3(1.5f, 1.5f, 1.5f), new Vector3(3f, 3f, 3f));
+            OctTreeBoundsQueryDiagnosticsCollector diagnostics = new();
+            List<Vector3> results = new();
+            tree.GetElementsInBoundsWithDiagnostics(query, results, diagnostics);
+
+            Assert.IsFalse(diagnostics.RootPruned, "Query should intersect root bounds.");
+            Assert.Greater(diagnostics.Nodes.Count, 0, "Expected at least one node visit.");
+            Assert.Greater(
+                diagnostics.Points.Count + diagnostics.BulkAppends.Sum(b => b.AppendedCount),
+                0,
+                "Diagnostics should record how elements were produced."
+            );
+
+            int includedCount =
+                diagnostics.Points.Count(p => p.Included)
+                + diagnostics.BulkAppends.Sum(record => record.AppendedCount);
+            Assert.AreEqual(
+                results.Count,
+                includedCount,
+                "Diagnostics summary should match actual results."
+            );
+        }
+
+        [Test]
+        public void SpatialDiagnosticsReportIncludesOctTreeTrace()
+        {
+            List<Vector3> points = new() { Vector3.zero, Vector3.one, new Vector3(2f, 2f, 2f) };
+            OctTree3D<Vector3> oct = CreateTree(points);
+            KdTree3D<Vector3> kd = new(points, p => p);
+            Bounds query = new(new Vector3(1f, 1f, 1f), new Vector3(2f, 2f, 2f));
+
+            List<Vector3> kdResults = new();
+            kd.GetElementsInBounds(query, kdResults);
+
+            List<Vector3> octResults = new();
+            OctTreeBoundsQueryDiagnosticsCollector diagnostics = new();
+            oct.GetElementsInBoundsWithDiagnostics(query, octResults, diagnostics);
+            if (octResults.Count > 0)
+            {
+                octResults.RemoveAt(0);
+            }
+
+            AssertionException ex = Assert.Throws<AssertionException>(() =>
+                SpatialDiagnostics.AssertMatchingResults(
+                    "forced mismatch",
+                    query,
+                    kdResults,
+                    octResults,
+                    maxItems: 4,
+                    octDiagnostics: diagnostics
+                )
+            );
+
+            StringAssert.Contains("OctTree diagnostics", ex.Message);
+            StringAssert.Contains("Node visits", ex.Message);
+        }
+
+        [Test]
         public void GetElementsInRangeClearsResultsListAdditional()
         {
             List<Vector3> points = new() { Vector3.zero };
@@ -346,6 +454,22 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
 
             tree.GetElementsInRange(Vector3.zero, float.MaxValue / 2f, results);
             Assert.AreEqual(points.Count, results.Count);
+        }
+
+        [Test]
+        public void BucketSizeLessThanOneIsClamped()
+        {
+            List<Vector3> points = new();
+            for (int i = 0; i < 64; ++i)
+            {
+                points.Add(new Vector3(i, i * 0.5f, -i));
+            }
+
+            OctTree3D<Vector3> tree = new(points, point => point, bucketSize: 0);
+
+            List<Vector3> results = new();
+            tree.GetElementsInRange(Vector3.zero, 500f, results);
+            CollectionAssert.AreEquivalent(points, results);
         }
     }
 }

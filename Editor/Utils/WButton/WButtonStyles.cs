@@ -1,0 +1,333 @@
+namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
+{
+#if UNITY_EDITOR
+    using System.Collections.Generic;
+    using UnityEditor;
+    using UnityEngine;
+    using WallstopStudios.UnityHelpers.Core.Helper;
+
+    internal static class WButtonStyles
+    {
+        private static GUIStyle _groupStyle;
+        private static GUIStyle _headerStyle;
+        private static GUIStyle _baseButtonStyle;
+        private static GUIStyle _baseMiniButtonStyle;
+        private static GUIStyle _arrayHeaderStyle;
+        private static GUIStyle _foldoutContainerExpanded;
+        private static GUIStyle _foldoutContainerCollapsed;
+        private static GUIStyle _foldoutHeaderStyle;
+        private static GUIContent _topHeaderContent;
+        private static GUIContent _bottomHeaderContent;
+        private static readonly Dictionary<ButtonStyleKey, GUIStyle> ColoredButtonStyles = new(
+            new ButtonStyleKeyComparer()
+        );
+        private static readonly Dictionary<ButtonStyleKey, GUIStyle> ColoredMiniButtonStyles = new(
+            new ButtonStyleKeyComparer()
+        );
+        private static readonly Dictionary<Color, Texture2D> SolidColorTextures = new(
+            new ColorComparer()
+        );
+
+        internal const float ButtonHeight = 18f;
+
+        internal static GUIStyle GroupStyle
+        {
+            get
+            {
+                _groupStyle ??= new GUIStyle(EditorStyles.helpBox)
+                {
+                    padding = new RectOffset(4, 4, 4, 4),
+                    margin = new RectOffset(1, 1, 0, 0),
+                };
+                return _groupStyle;
+            }
+        }
+
+        internal static GUIStyle HeaderStyle
+        {
+            get
+            {
+                _headerStyle ??= new GUIStyle(EditorStyles.boldLabel)
+                {
+                    fontSize = 11,
+                    fontStyle = FontStyle.Bold,
+                };
+                return _headerStyle;
+            }
+        }
+
+        private static GUIStyle ButtonStyle
+        {
+            get
+            {
+                _baseButtonStyle ??= new GUIStyle(GUI.skin.button)
+                {
+                    wordWrap = true,
+                    fontSize = 11,
+                    richText = false,
+                    fixedHeight = ButtonHeight,
+                    alignment = TextAnchor.MiddleCenter,
+                    padding = new RectOffset(6, 6, 3, 4),
+                    margin = new RectOffset(1, 1, 1, 3),
+                };
+                return _baseButtonStyle;
+            }
+        }
+
+        private static GUIStyle MiniButtonStyle
+        {
+            get
+            {
+                _baseMiniButtonStyle ??= new GUIStyle(EditorStyles.miniButton)
+                {
+                    wordWrap = false,
+                    fontSize = 10,
+                    richText = false,
+                    alignment = TextAnchor.MiddleCenter,
+                    padding = new RectOffset(4, 4, 2, 2),
+                    margin = new RectOffset(1, 1, 1, 1),
+                };
+                return _baseMiniButtonStyle;
+            }
+        }
+
+        internal static GUIStyle ArrayHeaderStyle
+        {
+            get
+            {
+                _arrayHeaderStyle ??= new GUIStyle(EditorStyles.boldLabel) { fontSize = 10 };
+                return _arrayHeaderStyle;
+            }
+        }
+
+        internal static GUIStyle GetFoldoutContainerStyle(bool expanded)
+        {
+            _foldoutContainerExpanded ??= CreateFoldoutContainerStyle(expanded: true);
+            _foldoutContainerCollapsed ??= CreateFoldoutContainerStyle(expanded: false);
+            return expanded ? _foldoutContainerExpanded : _foldoutContainerCollapsed;
+        }
+
+        internal static GUIStyle FoldoutHeaderStyle
+        {
+            get
+            {
+                _foldoutHeaderStyle ??= new GUIStyle(EditorStyles.foldoutHeader)
+                {
+                    fontStyle = FontStyle.Bold,
+                    padding = new RectOffset(18, 4, 2, 2),
+                    margin = new RectOffset(0, 1, 2, 1),
+                };
+                return _foldoutHeaderStyle;
+            }
+        }
+
+        internal static Color GetFoldoutBackgroundColor(bool expanded)
+        {
+            if (EditorGUIUtility.isProSkin)
+            {
+                return expanded
+                    ? new Color(0.23f, 0.23f, 0.25f, 1f)
+                    : new Color(0.19f, 0.19f, 0.2f, 1f);
+            }
+
+            return expanded
+                ? new Color(0.89f, 0.92f, 0.97f, 1f)
+                : new Color(0.94f, 0.94f, 0.96f, 1f);
+        }
+
+        internal const float FoldoutContentSpacing = 4f;
+        internal const float FoldoutIconOffset = 4f;
+
+        internal static GUIContent TopGroupLabel
+        {
+            get
+            {
+                _topHeaderContent ??= new GUIContent("Actions");
+                return _topHeaderContent;
+            }
+        }
+
+        internal static GUIContent BottomGroupLabel
+        {
+            get
+            {
+                _bottomHeaderContent ??= new GUIContent("Additional Actions");
+                return _bottomHeaderContent;
+            }
+        }
+
+        internal static GUIStyle GetColoredButtonStyle(Color buttonColor, Color textColor)
+        {
+            GUIStyle baseStyle = ButtonStyle;
+            ButtonStyleKey key = new(buttonColor, textColor);
+            if (ColoredButtonStyles.TryGetValue(key, out GUIStyle cached))
+            {
+                return cached;
+            }
+
+            GUIStyle style = new(baseStyle)
+            {
+                fixedHeight = ButtonHeight,
+                normal = { textColor = textColor },
+                focused = { textColor = textColor },
+                active = { textColor = textColor },
+                hover = { textColor = textColor },
+                onNormal = { textColor = textColor },
+                onFocused = { textColor = textColor },
+                onActive = { textColor = textColor },
+                onHover = { textColor = textColor },
+            };
+
+            Texture2D normal = GetSolidTexture(buttonColor);
+            Texture2D hover = GetSolidTexture(WButtonColorUtility.GetHoverColor(buttonColor));
+            Texture2D active = GetSolidTexture(WButtonColorUtility.GetActiveColor(buttonColor));
+
+            style.normal.background = normal;
+            style.focused.background = normal;
+            style.onNormal.background = normal;
+            style.onFocused.background = normal;
+
+            style.hover.background = hover;
+            style.onHover.background = hover;
+
+            style.active.background = active;
+            style.onActive.background = active;
+
+            ColoredButtonStyles[key] = style;
+            return style;
+        }
+
+        internal static GUIStyle GetColoredMiniButtonStyle(Color buttonColor, Color textColor)
+        {
+            GUIStyle baseStyle = MiniButtonStyle;
+            ButtonStyleKey key = new(buttonColor, textColor);
+            if (ColoredMiniButtonStyles.TryGetValue(key, out GUIStyle cached))
+            {
+                return cached;
+            }
+
+            GUIStyle style = new(baseStyle)
+            {
+                normal = { textColor = textColor },
+                focused = { textColor = textColor },
+                active = { textColor = textColor },
+                hover = { textColor = textColor },
+                onNormal = { textColor = textColor },
+                onFocused = { textColor = textColor },
+                onActive = { textColor = textColor },
+                onHover = { textColor = textColor },
+            };
+
+            Texture2D normal = GetSolidTexture(buttonColor);
+            Texture2D hover = GetSolidTexture(WButtonColorUtility.GetHoverColor(buttonColor));
+            Texture2D active = GetSolidTexture(WButtonColorUtility.GetActiveColor(buttonColor));
+
+            style.normal.background = normal;
+            style.focused.background = normal;
+            style.onNormal.background = normal;
+            style.onFocused.background = normal;
+
+            style.hover.background = hover;
+            style.onHover.background = hover;
+
+            style.active.background = active;
+            style.onActive.background = active;
+
+            ColoredMiniButtonStyles[key] = style;
+            return style;
+        }
+
+        private static Texture2D GetSolidTexture(Color color)
+        {
+            if (SolidColorTextures.TryGetValue(color, out Texture2D cached))
+            {
+                return cached;
+            }
+
+            Texture2D texture = new(1, 1)
+            {
+                hideFlags = HideFlags.HideAndDontSave,
+                filterMode = FilterMode.Point,
+            };
+            texture.SetPixel(0, 0, color);
+            texture.Apply();
+            SolidColorTextures[color] = texture;
+            return texture;
+        }
+
+        private static GUIStyle CreateFoldoutContainerStyle(bool expanded)
+        {
+            RectOffset padding = expanded ? new RectOffset(4, 4, 4, 4) : new RectOffset(4, 4, 4, 3);
+            GUIStyle style = new(EditorStyles.helpBox)
+            {
+                padding = padding,
+                margin = new RectOffset(1, 1, 0, 0),
+            };
+            return style;
+        }
+
+        private readonly struct ButtonStyleKey : System.IEquatable<ButtonStyleKey>
+        {
+            internal ButtonStyleKey(Color buttonColor, Color textColor)
+            {
+                ButtonColor = buttonColor;
+                TextColor = textColor;
+            }
+
+            private Color ButtonColor { get; }
+
+            private Color TextColor { get; }
+
+            public bool Equals(ButtonStyleKey other)
+            {
+                return ColorComparer.AreEqual(ButtonColor, other.ButtonColor)
+                    && ColorComparer.AreEqual(TextColor, other.TextColor);
+            }
+
+            public override bool Equals(object obj)
+            {
+                return obj is ButtonStyleKey other && Equals(other);
+            }
+
+            public override int GetHashCode()
+            {
+                return Objects.HashCode(ButtonColor, TextColor);
+            }
+        }
+
+        private sealed class ButtonStyleKeyComparer : IEqualityComparer<ButtonStyleKey>
+        {
+            public bool Equals(ButtonStyleKey x, ButtonStyleKey y)
+            {
+                return x.Equals(y);
+            }
+
+            public int GetHashCode(ButtonStyleKey obj)
+            {
+                return obj.GetHashCode();
+            }
+        }
+
+        private sealed class ColorComparer : IEqualityComparer<Color>
+        {
+            public bool Equals(Color x, Color y)
+            {
+                return AreEqual(x, y);
+            }
+
+            public int GetHashCode(Color obj)
+            {
+                return Objects.HashCode(obj.r, obj.g, obj.b, obj.a);
+            }
+
+            public static bool AreEqual(Color x, Color y)
+            {
+                return Mathf.Approximately(x.r, y.r)
+                    && Mathf.Approximately(x.g, y.g)
+                    && Mathf.Approximately(x.b, y.b)
+                    && Mathf.Approximately(x.a, y.a);
+            }
+        }
+    }
+#endif
+}

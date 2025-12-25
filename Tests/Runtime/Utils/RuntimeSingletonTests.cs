@@ -1,17 +1,35 @@
 namespace WallstopStudios.UnityHelpers.Tests.Utils
 {
+    using System;
     using System.Collections;
+    using System.Threading.Tasks;
     using NUnit.Framework;
     using UnityEngine;
+    using UnityEngine.SceneManagement;
     using UnityEngine.TestTools;
-    using WallstopStudios.UnityHelpers.Tests.TestUtils;
+    using WallstopStudios.UnityHelpers.Tests.Core;
     using WallstopStudios.UnityHelpers.Utils;
+    using Object = UnityEngine.Object;
 
     public sealed class RuntimeSingletonTests : CommonTestBase
     {
         [SetUp]
-        public void ResetSingletons()
+        public override void BaseSetUp()
         {
+            base.BaseSetUp();
+            DestroyAll<TestRuntimeSingleton>();
+            DestroyAll<PreservableSingleton>();
+            DestroyAll<NonPreservableSingleton>();
+            DestroyAll<CustomAwakeSingleton>();
+            DestroyAll<CustomStartSingleton>();
+            DestroyAll<CustomDestroyableSingleton>();
+            DestroyAll<ApplicationQuitSingleton>();
+
+            // Reset test flags
+            CustomDestroyableSingleton.destroyWasCalled = false;
+            ApplicationQuitSingleton.quitWasCalled = false;
+            return;
+
             // Proactively clear any lingering singleton instances between tests
             void DestroyAll<T>()
                 where T : RuntimeSingleton<T>
@@ -24,18 +42,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                     }
                 }
             }
-
-            DestroyAll<TestRuntimeSingleton>();
-            DestroyAll<PreservableSingleton>();
-            DestroyAll<NonPreservableSingleton>();
-            DestroyAll<CustomAwakeSingleton>();
-            DestroyAll<CustomStartSingleton>();
-            DestroyAll<CustomDestroyableSingleton>();
-            DestroyAll<ApplicationQuitSingleton>();
-
-            // Reset test flags
-            CustomDestroyableSingleton.destroyWasCalled = false;
-            ApplicationQuitSingleton.quitWasCalled = false;
         }
 
         private sealed class TestRuntimeSingleton : RuntimeSingleton<TestRuntimeSingleton>
@@ -650,6 +656,29 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             Assert.IsTrue(instance.transform.parent == null);
         }
 
+        [UnityTest]
+        public IEnumerator PreservableSingletonLivesInDontDestroyScene()
+        {
+            PreservableSingleton instance = PreservableSingleton.Instance;
+            Track(instance.gameObject);
+
+            yield return null;
+
+            Assert.AreEqual("DontDestroyOnLoad", instance.gameObject.scene.name);
+        }
+
+        [UnityTest]
+        public IEnumerator NonPreservableSingletonRemainsInActiveScene()
+        {
+            Scene activeScene = SceneManager.GetActiveScene();
+            NonPreservableSingleton instance = NonPreservableSingleton.Instance;
+            Track(instance.gameObject);
+
+            yield return null;
+
+            Assert.AreEqual(activeScene, instance.gameObject.scene);
+        }
+
         [Test]
         public void InstanceCreationDoesNotThrow()
         {
@@ -761,6 +790,42 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
 
             Assert.IsTrue(instance.gameObject.name.Contains("TestRuntimeSingleton"));
             Assert.IsTrue(instance.gameObject.name.Contains("Singleton"));
+        }
+
+        [Test]
+        public void InstanceThrowsWhenCreatedFromBackgroundThread()
+        {
+            InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
+            {
+                Task.Run(() =>
+                    {
+                        TestRuntimeSingleton singleton = TestRuntimeSingleton.Instance;
+                    })
+                    .GetAwaiter()
+                    .GetResult();
+            });
+
+            Assert.IsNotNull(exception);
+            StringAssert.Contains("main thread", exception.Message);
+            Assert.IsFalse(TestRuntimeSingleton.HasInstance);
+        }
+
+        [Test]
+        public void BackgroundThreadCanAccessInstanceAfterMainThreadCreation()
+        {
+            TestRuntimeSingleton instance = TestRuntimeSingleton.Instance;
+            Track(instance.gameObject);
+
+            TestRuntimeSingleton backgroundInstance = null;
+
+            Task.Run(() =>
+                {
+                    backgroundInstance = TestRuntimeSingleton.Instance;
+                })
+                .GetAwaiter()
+                .GetResult();
+
+            Assert.AreSame(instance, backgroundInstance);
         }
     }
 }

@@ -3,6 +3,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
     using System;
     using System.IO;
     using NUnit.Framework;
+    using WallstopStudios.UnityHelpers.Core.Random;
     using WallstopStudios.UnityHelpers.Utils;
 
     public sealed class LZMAComprehensiveTests
@@ -10,7 +11,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         [Test]
         public void RoundtripVariousSizes()
         {
-            Random random = new(12345);
+            IRandom random = new PcgRandom(12345);
             int[] sizes = { 0, 1, 3, 5, 32, 64, 257, 1024, 4096 };
             foreach (int length in sizes)
             {
@@ -30,7 +31,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         [Test]
         public void MultipleSequentialRoundtripsReuseCodecSafely()
         {
-            Random random = new(42);
+            IRandom random = new PcgRandom(42);
             for (int i = 0; i < 10; i++)
             {
                 int length = 128 + i * 17;
@@ -99,7 +100,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         public void TruncatedPayloadThrows()
         {
             byte[] data = new byte[256];
-            new Random(7).NextBytes(data);
+            FillDeterministicBytes(data, 7);
             byte[] compressed = LZMA.Compress(data);
 
             int keep = Math.Max(13, compressed.Length / 2);
@@ -118,7 +119,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         public void CorruptedPropertiesThrows()
         {
             byte[] data = new byte[32];
-            new Random(9).NextBytes(data);
+            FillDeterministicBytes(data, 9);
             byte[] compressed = LZMA.Compress(data);
 
             byte[] corrupted = new byte[compressed.Length];
@@ -137,7 +138,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         public void CorruptedBodyThrows()
         {
             byte[] data = new byte[64];
-            new Random(21).NextBytes(data);
+            FillDeterministicBytes(data, 21);
             byte[] compressed = LZMA.Compress(data);
 
             byte[] corrupted = new byte[compressed.Length];
@@ -161,7 +162,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         public void TrailingBytesAfterValidPayloadThrows()
         {
             byte[] data = new byte[128];
-            new Random(11).NextBytes(data);
+            FillDeterministicBytes(data, 11);
             byte[] compressed = LZMA.Compress(data);
 
             byte[] withTrailing = new byte[compressed.Length + 5];
@@ -191,7 +192,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         [Test]
         public void StreamOverloadsRoundtrip()
         {
-            Random random = new(123);
+            IRandom random = new PcgRandom(123);
             byte[] data = new byte[4096];
             random.NextBytes(data);
 
@@ -208,7 +209,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         [Test]
         public void LargeDataRoundtrip()
         {
-            Random random = new(2024);
+            IRandom random = new PcgRandom(2024);
             int length = 128 * 1024;
             byte[] data = new byte[length];
             random.NextBytes(data);
@@ -223,8 +224,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         {
             byte[] a = new byte[1024];
             byte[] b = new byte[1536];
-            new Random(1).NextBytes(a);
-            new Random(2).NextBytes(b);
+            FillDeterministicBytes(a, 1);
+            FillDeterministicBytes(b, 2);
 
             byte[] aCompressed = null;
             byte[] bCompressed = null;
@@ -244,6 +245,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
 
             Assert.AreEqual(a, aRound, "Parallel roundtrip mismatch for first buffer");
             Assert.AreEqual(b, bRound, "Parallel roundtrip mismatch for second buffer");
+        }
+
+        private static void FillDeterministicBytes(byte[] buffer, long seed)
+        {
+            IRandom random = new PcgRandom(seed);
+            random.NextBytes(buffer);
         }
     }
 }

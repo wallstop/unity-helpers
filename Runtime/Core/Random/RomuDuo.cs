@@ -45,6 +45,12 @@ namespace WallstopStudios.UnityHelpers.Core.Random
     /// double normal = rng.NextGaussian(0.0, 1.0);
     /// </code>
     /// </example>
+    [RandomGeneratorMetadata(
+        RandomQuality.VeryGood,
+        "ROMU family member (RomuDuo); authors report strong BigCrush results with minor low-bit weaknesses in some rotations.",
+        "Markus & Crow 2019",
+        "" // romu-random.org SSL certificate expired; see archived versions
+    )]
     [Serializable]
     [DataContract]
     [ProtoContract]

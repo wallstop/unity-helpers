@@ -73,6 +73,8 @@ namespace WallstopStudios.UnityHelpers.Core.Random
     [ProtoInclude(112, typeof(FlurryBurstRandom))]
     [ProtoInclude(113, typeof(PhotonSpinRandom))]
     [ProtoInclude(114, typeof(StormDropRandom))]
+    [ProtoInclude(115, typeof(BlastCircuitRandom))]
+    [ProtoInclude(116, typeof(WaveSplatRandom))]
     public abstract class AbstractRandom : IRandom
     {
 #if SINGLE_THREADED
@@ -113,7 +115,9 @@ namespace WallstopStudios.UnityHelpers.Core.Random
         protected RandomState BuildState(
             ulong state1,
             ulong state2 = 0,
-            IReadOnlyList<byte> payload = null
+            IReadOnlyList<byte> payload = null,
+            uint? auxiliaryUintA = null,
+            uint? auxiliaryUintB = null
         )
         {
             byte[] payloadCopy = null;
@@ -321,7 +325,7 @@ namespace WallstopStudios.UnityHelpers.Core.Random
             return UnbiasLong(biasedResult);
         }
 
-        public ulong NextUlong()
+        public virtual ulong NextUlong()
         {
             uint upper = NextUint();
             uint lower = NextUint();
@@ -336,9 +340,31 @@ namespace WallstopStudios.UnityHelpers.Core.Random
                 throw new ArgumentException("Max cannot be zero");
             }
 
-            // 64-bit Lemire method via high 64 bits of 128-bit product
-            // Produces uniform values in [0, max) without rejection
-            return MulHi64(NextUlong(), max);
+            // Power-of-two fast path (no rejection required)
+            if ((max & (max - 1)) == 0)
+            {
+                return NextUlong() & (max - 1);
+            }
+
+            // Lemire's method with rejection: use high 64 bits of the 128-bit product,
+            // retrying when the low bits fall within the threshold region to avoid bias.
+            ulong threshold = unchecked(0UL - max) % max;
+            int attempts = 0;
+            while (true)
+            {
+                ulong sample = NextUlong();
+                ulong productLow = unchecked(sample * max);
+                if (productLow >= threshold)
+                {
+                    return MulHi64(sample, max);
+                }
+
+                if (++attempts > MaxRejectionAttempts64)
+                {
+                    // Failsafe: fall back to modulo to avoid hanging indefinitely.
+                    return sample % max;
+                }
+            }
         }
 
         public ulong NextUlong(ulong min, ulong max)
@@ -833,8 +859,7 @@ namespace WallstopStudios.UnityHelpers.Core.Random
                 return;
             }
 
-            using PooledResource<HashSet<T>> pooledSet = Buffers<T>.HashSet.Get();
-            HashSet<T> set = pooledSet.resource;
+            using PooledResource<HashSet<T>> pooledSet = Buffers<T>.HashSet.Get(out HashSet<T> set);
             foreach (T exclusion in exclusions)
             {
                 if (Array.IndexOf(enumValues, exclusion) < 0)
@@ -845,12 +870,9 @@ namespace WallstopStudios.UnityHelpers.Core.Random
                 set.Add(exclusion);
                 if (set.Count >= enumCount)
                 {
-                    set.Clear();
                     ThrowAllEnumValuesExcluded<T>(enumCount);
                 }
             }
-
-            set.Clear();
         }
 
         private T NextEnumExceptInternal<T>(ReadOnlySpan<T> exclusions)
@@ -884,10 +906,7 @@ namespace WallstopStudios.UnityHelpers.Core.Random
                 return count == 1 ? buffer[0] : buffer[Next(count)];
             }
 
-            using PooledResource<T[]> pooled = WallstopFastArrayPool<T>.Get(
-                enumCount,
-                out T[] temp
-            );
+            using PooledArray<T> pooled = SystemArrayPool<T>.Get(enumCount, out T[] temp);
             Span<T> tempSpan = temp.AsSpan(0, enumCount);
             int index = PopulateAllowedValues(enumValues, exclusions, tempSpan);
             if (index == 0)
@@ -921,10 +940,7 @@ namespace WallstopStudios.UnityHelpers.Core.Random
                 return count == 1 ? buffer[0] : buffer[Next(count)];
             }
 
-            using PooledResource<T[]> pooled = WallstopFastArrayPool<T>.Get(
-                enumCount,
-                out T[] temp
-            );
+            using PooledArray<T> pooled = SystemArrayPool<T>.Get(enumCount, out T[] temp);
             Span<T> tempSpan = temp.AsSpan(0, enumCount);
             int index = PopulateAllowedValues(enumValues, exclusions, tempSpan);
             if (index == 0)
@@ -1158,8 +1174,9 @@ namespace WallstopStudios.UnityHelpers.Core.Random
         {
             T[] enumValues = GetEnumValues<T>();
 
-            using PooledResource<HashSet<T>> bufferResource = Buffers<T>.HashSet.Get();
-            HashSet<T> set = bufferResource.resource;
+            using PooledResource<HashSet<T>> bufferResource = Buffers<T>.HashSet.Get(
+                out HashSet<T> set
+            );
             set.Add(exception1);
             set.Add(exception2);
             set.Add(exception3);
@@ -1179,9 +1196,9 @@ namespace WallstopStudios.UnityHelpers.Core.Random
             return new Guid(GenerateGuidBytes(_guidBytes));
         }
 
-        public KGuid NextKGuid()
+        public WGuid NextWGuid()
         {
-            return new KGuid(GenerateGuidBytes(_guidBytes));
+            return new WGuid(GenerateGuidBytes(_guidBytes));
         }
 
         private byte[] GenerateGuidBytes(byte[] guidBytes)
@@ -1193,22 +1210,25 @@ namespace WallstopStudios.UnityHelpers.Core.Random
 
         public static void SetUuidV4Bits(byte[] bytes)
         {
-            // Set version to 4 (bits 6-7 of byte 6)
+            if (bytes == null || bytes.Length < 16)
+            {
+                throw new ArgumentException(
+                    "UUID buffer must contain at least 16 bytes.",
+                    nameof(bytes)
+                );
+            }
 
-            // Clear the version bits first (clear bits 4-7)
-            byte value = bytes[6];
-            value &= 0x0f;
-            // Set version 4 (set bits 4-7 to 0100)
-            value |= 0x40;
-            bytes[6] = value;
+            // Version bits live in byte 7 (second byte of the time_hi_and_version field).
+            byte versionByte = bytes[7];
+            versionByte &= 0x0F;
+            versionByte |= 0x40;
+            bytes[7] = versionByte;
 
-            // Set variant to RFC 4122 (bits 6-7 of byte 8)
-            value = bytes[8];
-            // Clear the variant bits first (clear bits 6-7)
-            value &= 0x3f;
-            // Set RFC 4122 variant (set bits 6-7 to 10)
-            value |= 0x80;
-            bytes[8] = value;
+            // Variant bits live in byte 8 (clock_seq_hi_and_reserved).
+            byte variantByte = bytes[8];
+            variantByte &= 0x3F;
+            variantByte |= 0x80;
+            bytes[8] = variantByte;
         }
 
         public float[,] NextNoiseMap(
@@ -1257,7 +1277,7 @@ namespace WallstopStudios.UnityHelpers.Core.Random
 
             int width = noiseMap.GetLength(0);
             int height = noiseMap.GetLength(1);
-            using PooledResource<Vector2[]> octaveOffsetBuffer = WallstopFastArrayPool<Vector2>.Get(
+            using PooledArray<Vector2> octaveOffsetBuffer = SystemArrayPool<Vector2>.Get(
                 octaves,
                 out Vector2[] octaveOffsets
             );

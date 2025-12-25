@@ -8,41 +8,48 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
     using UnityEngine;
     using UnityEngine.TestTools;
     using WallstopStudios.UnityHelpers.Core.Helper;
+    using WallstopStudios.UnityHelpers.Core.Random;
+    using WallstopStudios.UnityHelpers.Tests.Core;
 
-    public sealed class FileHelperTests
+    public sealed class FileHelperTests : CommonTestBase
     {
-        private string testDirectory;
+        private string _testDirectory;
 
         [SetUp]
-        public void SetUp()
+        public override void BaseSetUp()
         {
-            testDirectory = Path.Combine(Application.temporaryCachePath, "FileHelperTests");
-            if (!Directory.Exists(testDirectory))
+            base.BaseSetUp();
+            _testDirectory = Path.Combine(Application.temporaryCachePath, "FileHelperTests");
+            if (!Directory.Exists(_testDirectory))
             {
-                Directory.CreateDirectory(testDirectory);
+                Directory.CreateDirectory(_testDirectory);
             }
         }
 
         [TearDown]
-        public void TearDown()
+        public override void TearDown()
         {
-            if (Directory.Exists(testDirectory))
+            try
             {
-                try
+                if (!string.IsNullOrEmpty(_testDirectory) && Directory.Exists(_testDirectory))
                 {
-                    Directory.Delete(testDirectory, true);
+                    Directory.Delete(_testDirectory, recursive: true);
                 }
-                catch
-                {
-                    // Best effort cleanup
-                }
+            }
+            catch
+            {
+                // Best effort cleanup, fall through to base teardown.
+            }
+            finally
+            {
+                base.TearDown();
             }
         }
 
         [Test]
         public void InitializePathCreatesFileWhenItDoesNotExist()
         {
-            string testFile = Path.Combine(testDirectory, "test.txt");
+            string testFile = Path.Combine(_testDirectory, "test.txt");
             Assert.IsFalse(File.Exists(testFile));
 
             bool result = FileHelper.InitializePath(testFile);
@@ -54,7 +61,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         [Test]
         public void InitializePathReturnsFalseWhenFileAlreadyExists()
         {
-            string testFile = Path.Combine(testDirectory, "existing.txt");
+            string testFile = Path.Combine(_testDirectory, "existing.txt");
             File.WriteAllText(testFile, "existing content");
 
             bool result = FileHelper.InitializePath(testFile);
@@ -65,7 +72,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         [Test]
         public void InitializePathCreatesFileWithProvidedContents()
         {
-            string testFile = Path.Combine(testDirectory, "withcontent.txt");
+            string testFile = Path.Combine(_testDirectory, "withcontent.txt");
             byte[] contents = System.Text.Encoding.UTF8.GetBytes("Hello, World!");
 
             bool result = FileHelper.InitializePath(testFile, contents);
@@ -79,7 +86,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         [Test]
         public void InitializePathCreatesFileWithEmptyContentsWhenNullProvided()
         {
-            string testFile = Path.Combine(testDirectory, "empty.txt");
+            string testFile = Path.Combine(_testDirectory, "empty.txt");
 
             bool result = FileHelper.InitializePath(testFile, null);
 
@@ -92,7 +99,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         public void InitializePathCreatesIntermediateDirectories()
         {
             string nestedPath = Path.Combine(
-                testDirectory,
+                _testDirectory,
                 "Level1",
                 "Level2",
                 "Level3",
@@ -110,7 +117,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         [Test]
         public void InitializePathHandlesFileInRootOfTestDirectory()
         {
-            string testFile = Path.Combine(testDirectory, "root.txt");
+            string testFile = Path.Combine(_testDirectory, "root.txt");
 
             bool result = FileHelper.InitializePath(testFile);
 
@@ -121,7 +128,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         [Test]
         public void InitializePathDoesNotOverwriteExistingFile()
         {
-            string testFile = Path.Combine(testDirectory, "preserve.txt");
+            string testFile = Path.Combine(_testDirectory, "preserve.txt");
             string originalContent = "Original Content";
             File.WriteAllText(testFile, originalContent);
 
@@ -136,7 +143,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         [Test]
         public void InitializePathWithEmptyDirectoryPathCreatesFileInCurrentDirectory()
         {
-            string fileName = Path.Combine(testDirectory, "nodirpath.txt");
+            string fileName = Path.Combine(_testDirectory, "nodirpath.txt");
 
             bool result = FileHelper.InitializePath(fileName);
 
@@ -146,7 +153,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         [Test]
         public void InitializePathWithVeryLongPathCreatesFile()
         {
-            string longPath = testDirectory;
+            string longPath = _testDirectory;
             for (int i = 0; i < 10; i++)
             {
                 longPath = Path.Combine(longPath, $"Dir{i}");
@@ -162,7 +169,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         [Test]
         public void InitializePathWithSpecialCharactersInFilenameCreatesFile()
         {
-            string testFile = Path.Combine(testDirectory, "file (copy) [1].txt");
+            string testFile = Path.Combine(_testDirectory, "file (copy) [1].txt");
 
             bool result = FileHelper.InitializePath(testFile);
 
@@ -173,7 +180,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         [Test]
         public void InitializePathWithUnicodeCharactersCreatesFile()
         {
-            string testFile = Path.Combine(testDirectory, "ファイル.txt");
+            string testFile = Path.Combine(_testDirectory, "ファイル.txt");
 
             bool result = FileHelper.InitializePath(testFile);
 
@@ -184,7 +191,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         [Test]
         public void InitializePathWithLargeContentsCreatesFile()
         {
-            string testFile = Path.Combine(testDirectory, "large.txt");
+            string testFile = Path.Combine(_testDirectory, "large.txt");
             byte[] largeContents = new byte[1024 * 1024]; // 1 MB
             for (int i = 0; i < largeContents.Length; i++)
             {
@@ -201,8 +208,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         [UnityTest]
         public IEnumerator CopyFileAsyncCopiesFileSuccessfully()
         {
-            string sourceFile = Path.Combine(testDirectory, "source.txt");
-            string destinationFile = Path.Combine(testDirectory, "destination.txt");
+            string sourceFile = Path.Combine(_testDirectory, "source.txt");
+            string destinationFile = Path.Combine(_testDirectory, "destination.txt");
             string content = "Test Content for Async Copy";
             File.WriteAllText(sourceFile, content);
 
@@ -222,8 +229,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         [UnityTest]
         public IEnumerator CopyFileAsyncReturnsFalseWhenSourceDoesNotExist()
         {
-            string sourceFile = Path.Combine(testDirectory, "nonexistent.txt");
-            string destinationFile = Path.Combine(testDirectory, "destination.txt");
+            string sourceFile = Path.Combine(_testDirectory, "nonexistent.txt");
+            string destinationFile = Path.Combine(_testDirectory, "destination.txt");
 
             ValueTask<bool> copyTask = FileHelper.CopyFileAsync(sourceFile, destinationFile);
             while (!copyTask.IsCompleted)
@@ -239,8 +246,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         [UnityTest]
         public IEnumerator CopyFileAsyncOverwritesExistingDestination()
         {
-            string sourceFile = Path.Combine(testDirectory, "source2.txt");
-            string destinationFile = Path.Combine(testDirectory, "destination2.txt");
+            string sourceFile = Path.Combine(_testDirectory, "source2.txt");
+            string destinationFile = Path.Combine(_testDirectory, "destination2.txt");
             string sourceContent = "Source Content";
             string oldDestContent = "Old Destination Content";
 
@@ -261,8 +268,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         [UnityTest]
         public IEnumerator CopyFileAsyncCopiesEmptyFile()
         {
-            string sourceFile = Path.Combine(testDirectory, "empty_source.txt");
-            string destinationFile = Path.Combine(testDirectory, "empty_destination.txt");
+            string sourceFile = Path.Combine(_testDirectory, "empty_source.txt");
+            string destinationFile = Path.Combine(_testDirectory, "empty_destination.txt");
             File.WriteAllText(sourceFile, string.Empty);
 
             ValueTask<bool> copyTask = FileHelper.CopyFileAsync(sourceFile, destinationFile);
@@ -280,8 +287,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         [UnityTest]
         public IEnumerator CopyFileAsyncCopiesLargeFile()
         {
-            string sourceFile = Path.Combine(testDirectory, "large_source.txt");
-            string destinationFile = Path.Combine(testDirectory, "large_destination.txt");
+            string sourceFile = Path.Combine(_testDirectory, "large_source.txt");
+            string destinationFile = Path.Combine(_testDirectory, "large_destination.txt");
             byte[] largeContent = new byte[5 * 1024 * 1024]; // 5 MB
             for (int i = 0; i < largeContent.Length; i++)
             {
@@ -303,8 +310,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         [UnityTest]
         public IEnumerator CopyFileAsyncWithCustomBufferSizeCopiesFile()
         {
-            string sourceFile = Path.Combine(testDirectory, "buffered_source.txt");
-            string destinationFile = Path.Combine(testDirectory, "buffered_destination.txt");
+            string sourceFile = Path.Combine(_testDirectory, "buffered_source.txt");
+            string destinationFile = Path.Combine(_testDirectory, "buffered_destination.txt");
             string content = "Test Content with Custom Buffer";
             File.WriteAllText(sourceFile, content);
 
@@ -327,8 +334,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         [UnityTest]
         public IEnumerator CopyFileAsyncWithVerySmallBufferSizeCopiesFile()
         {
-            string sourceFile = Path.Combine(testDirectory, "small_buffer_source.txt");
-            string destinationFile = Path.Combine(testDirectory, "small_buffer_destination.txt");
+            string sourceFile = Path.Combine(_testDirectory, "small_buffer_source.txt");
+            string destinationFile = Path.Combine(_testDirectory, "small_buffer_destination.txt");
             string content = "Content";
             File.WriteAllText(sourceFile, content);
 
@@ -350,8 +357,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         [UnityTest]
         public IEnumerator CopyFileAsyncCanBeCancelled()
         {
-            string sourceFile = Path.Combine(testDirectory, "cancel_source.txt");
-            string destinationFile = Path.Combine(testDirectory, "cancel_destination.txt");
+            string sourceFile = Path.Combine(_testDirectory, "cancel_source.txt");
+            string destinationFile = Path.Combine(_testDirectory, "cancel_destination.txt");
             byte[] largeContent = new byte[10 * 1024 * 1024]; // 10 MB
             File.WriteAllBytes(sourceFile, largeContent);
 
@@ -375,15 +382,19 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         [UnityTest]
         public IEnumerator CopyFileAsyncCreatesDestinationDirectory()
         {
-            string sourceFile = Path.Combine(testDirectory, "nested_source.txt");
+            string sourceFile = Path.Combine(_testDirectory, "nested_source.txt");
             string destinationFile = Path.Combine(
-                testDirectory,
+                _testDirectory,
                 "NewDir",
                 "nested_destination.txt"
             );
             string content = "Nested Content";
             File.WriteAllText(sourceFile, content);
-            Directory.CreateDirectory(Path.GetDirectoryName(destinationFile));
+            string directoryName = Path.GetDirectoryName(destinationFile);
+            if (!string.IsNullOrEmpty(directoryName) && !Directory.Exists(directoryName))
+            {
+                Directory.CreateDirectory(directoryName);
+            }
 
             ValueTask<bool> copyTask = FileHelper.CopyFileAsync(sourceFile, destinationFile);
             while (!copyTask.IsCompleted)
@@ -398,8 +409,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         [UnityTest]
         public IEnumerator CopyFileAsyncCopiesBinaryFile()
         {
-            string sourceFile = Path.Combine(testDirectory, "binary_source.bin");
-            string destinationFile = Path.Combine(testDirectory, "binary_destination.bin");
+            string sourceFile = Path.Combine(_testDirectory, "binary_source.bin");
+            string destinationFile = Path.Combine(_testDirectory, "binary_destination.bin");
             byte[] binaryContent = { 0x00, 0xFF, 0x7F, 0x80, 0x01, 0xFE };
             File.WriteAllBytes(sourceFile, binaryContent);
 
@@ -417,8 +428,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         [UnityTest]
         public IEnumerator CopyFileAsyncCopiesFileWithSpecialCharactersInName()
         {
-            string sourceFile = Path.Combine(testDirectory, "source (copy).txt");
-            string destinationFile = Path.Combine(testDirectory, "destination [1].txt");
+            string sourceFile = Path.Combine(_testDirectory, "source (copy).txt");
+            string destinationFile = Path.Combine(_testDirectory, "destination [1].txt");
             string content = "Special Characters";
             File.WriteAllText(sourceFile, content);
 
@@ -436,8 +447,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         [UnityTest]
         public IEnumerator CopyFileAsyncWithZeroBufferSizeUsesDefault()
         {
-            string sourceFile = Path.Combine(testDirectory, "zero_buffer_source.txt");
-            string destinationFile = Path.Combine(testDirectory, "zero_buffer_destination.txt");
+            string sourceFile = Path.Combine(_testDirectory, "zero_buffer_source.txt");
+            string destinationFile = Path.Combine(_testDirectory, "zero_buffer_destination.txt");
             string content = "Content";
             File.WriteAllText(sourceFile, content);
 
@@ -459,10 +470,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         [UnityTest]
         public IEnumerator CopyFileAsyncPreservesFileContentsExactly()
         {
-            string sourceFile = Path.Combine(testDirectory, "exact_source.txt");
-            string destinationFile = Path.Combine(testDirectory, "exact_destination.txt");
+            string sourceFile = Path.Combine(_testDirectory, "exact_source.txt");
+            string destinationFile = Path.Combine(_testDirectory, "exact_destination.txt");
             byte[] randomContent = new byte[4096];
-            System.Random random = new(42);
+            IRandom random = new PcgRandom(42);
             random.NextBytes(randomContent);
             File.WriteAllBytes(sourceFile, randomContent);
 

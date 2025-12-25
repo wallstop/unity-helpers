@@ -14,6 +14,16 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
     /// fast membership testing combined with cache-friendly iteration over active elements.
     /// Elements must be non-negative integers within a specified universe size.
     /// </summary>
+    /// <example>
+    /// <code><![CDATA[
+    /// SparseSet activeEntities = new SparseSet(1024);
+    /// activeEntities.Add(entityId);
+    /// if (activeEntities.Contains(entityId))
+    /// {
+    ///     UpdateEntity(entityId);
+    /// }
+    /// ]]></code>
+    /// </example>
     [Serializable]
     [ProtoContract(IgnoreListHandling = true)]
     public sealed class SparseSet : IReadOnlyList<int>
@@ -302,7 +312,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             private readonly T[] _elements;
             private readonly int[] _dense;
             private readonly int _count;
-            private PooledResource<T[]> _pooledArray;
+            private PooledArray<T> _pooledArray;
             private int _index;
             private T _current;
             private bool _initialized;
@@ -320,7 +330,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 // Rent array and populate on first use
                 if (count > 0)
                 {
-                    _pooledArray = WallstopFastArrayPool<T>.Get(count, out T[] temp);
+                    _pooledArray = SystemArrayPool<T>.Get(count, out T[] temp);
                     for (int i = 0; i < count; i++)
                     {
                         temp[i] = elements[dense[i]];
@@ -333,7 +343,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             {
                 if (++_index < _count)
                 {
-                    _current = _pooledArray.resource[_index];
+                    _current = _pooledArray.array[_index];
                     return true;
                 }
 

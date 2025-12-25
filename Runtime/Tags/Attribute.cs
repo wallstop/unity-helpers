@@ -10,7 +10,6 @@ namespace WallstopStudios.UnityHelpers.Tags
     using Core.Extension;
     using ProtoBuf;
     using UnityEngine;
-    using WallstopStudios.UnityHelpers.Utils;
 
     /// <summary>
     /// Represents a dynamic numeric attribute that supports temporary modifications through effects.
@@ -130,21 +129,11 @@ namespace WallstopStudios.UnityHelpers.Tags
         internal void CalculateCurrentValue()
         {
             float calculatedValue = _baseValue;
-            using PooledResource<List<AttributeModification>> modificationBuffer =
-                Buffers<AttributeModification>.List.Get(
-                    out List<AttributeModification> modifications
-                );
-            foreach (
-                KeyValuePair<EffectHandle, List<AttributeModification>> entry in _modifications
-            )
+            if (_modifications.Count > 0)
             {
-                modifications.AddRange(entry.Value);
-            }
-
-            modifications.Sort();
-            foreach (AttributeModification attributeModification in modifications)
-            {
-                ApplyAttributeModification(attributeModification, ref calculatedValue);
+                ApplyModificationsInOrder(ModificationAction.Addition, ref calculatedValue);
+                ApplyModificationsInOrder(ModificationAction.Multiplication, ref calculatedValue);
+                ApplyModificationsInOrder(ModificationAction.Override, ref calculatedValue);
             }
 
             _currentValue = calculatedValue;
@@ -280,6 +269,24 @@ namespace WallstopStudios.UnityHelpers.Tags
         public void ClearCache()
         {
             _currentValueCalculated = false;
+        }
+
+        private void ApplyModificationsInOrder(ModificationAction action, ref float value)
+        {
+            foreach (
+                KeyValuePair<EffectHandle, List<AttributeModification>> entry in _modifications
+            )
+            {
+                List<AttributeModification> modifications = entry.Value;
+                for (int index = 0; index < modifications.Count; index++)
+                {
+                    AttributeModification modification = modifications[index];
+                    if (modification.action == action)
+                    {
+                        ApplyAttributeModification(modification, ref value);
+                    }
+                }
+            }
         }
 
         private static void ValidateInput(float value, [CallerMemberName] string caller = null)

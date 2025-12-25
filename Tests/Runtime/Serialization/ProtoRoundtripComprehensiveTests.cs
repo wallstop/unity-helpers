@@ -11,6 +11,19 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
 
     public sealed class ProtoRoundtripComprehensiveTests
     {
+        [ProtoContract]
+        private sealed class WGuidCollection
+        {
+            [ProtoMember(1)]
+            public WGuid single;
+
+            [ProtoMember(2)]
+            public WGuid[] array;
+
+            [ProtoMember(3)]
+            public List<WGuid> list;
+        }
+
         private static T RoundTrip<T>(T value)
         {
             byte[] bytes = Serializer.ProtoSerialize(value);
@@ -20,19 +33,43 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
         }
 
         [Test]
-        public void KVector2RoundTrips()
+        public void WGuidRoundTrips()
         {
-            KVector2 v = new(1.25f, -2.5f);
-            KVector2 again = RoundTrip(v);
-            Assert.AreEqual(v, again, "KVector2 should round-trip by value");
+            WGuid id = WGuid.NewGuid();
+            WGuid again = RoundTrip(id);
+            Assert.AreEqual(id, again, "WGuid should round-trip by value");
         }
 
         [Test]
-        public void KGuidRoundTrips()
+        public void WGuidCollectionsRoundTrip()
         {
-            KGuid id = KGuid.NewGuid();
-            KGuid again = RoundTrip(id);
-            Assert.AreEqual(id, again, "KGuid should round-trip by value");
+            WGuidCollection payload = new()
+            {
+                single = WGuid.NewGuid(),
+                array = new[] { WGuid.NewGuid(), WGuid.NewGuid() },
+                list = new List<WGuid> { WGuid.NewGuid(), WGuid.NewGuid(), WGuid.NewGuid() },
+            };
+
+            WGuidCollection again = RoundTrip(payload);
+
+            Assert.AreEqual(payload.single, again.single, "Single WGuid should round-trip");
+            CollectionAssert.AreEqual(
+                payload.array,
+                again.array,
+                "Array of WGuid should round-trip"
+            );
+            CollectionAssert.AreEqual(payload.list, again.list, "List of WGuid should round-trip");
+
+            Assert.IsTrue(again.single.IsVersion4, "Single WGuid should remain v4");
+            foreach (WGuid value in again.array)
+            {
+                Assert.IsTrue(value.IsVersion4, "Array WGuid entries should remain v4");
+            }
+
+            foreach (WGuid value in again.list)
+            {
+                Assert.IsTrue(value.IsVersion4, "List WGuid entries should remain v4");
+            }
         }
 
         [Test]
@@ -194,9 +231,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
             [ProtoMember(2)]
             public FastVector3Int fv3;
 
-            [ProtoMember(3)]
-            public KVector2 kv2;
-
             [ProtoMember(4)]
             public Line2D l2;
 
@@ -223,7 +257,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
             {
                 fv2 = new FastVector2Int(-3, 7),
                 fv3 = new FastVector3Int(1, -2, 3),
-                kv2 = new KVector2(0.5f, -1.5f),
                 l2 = new Line2D(new Vector2(0, 0), new Vector2(1, 1)),
                 l3 = new Line3D(new Vector3(0, 0, 0), new Vector3(1, 2, 3)),
                 ri = Range<int>.InclusiveExclusive(0, 5),
@@ -244,7 +277,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
                 again.fv3,
                 "FastVector3Int should round-trip in composite"
             );
-            Assert.AreEqual(payload.kv2, again.kv2, "KVector2 should round-trip in composite");
             Assert.AreEqual(payload.l2, again.l2, "Line2D should round-trip in composite");
             Assert.AreEqual(payload.l3, again.l3, "Line3D should round-trip in composite");
             Assert.AreEqual(payload.ri, again.ri, "Range<int> should round-trip in composite");

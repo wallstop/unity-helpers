@@ -96,11 +96,17 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         /// Thread Safety: Thread-safe if random is thread-safe.
         /// Performance: O(1) - two random number generations.
         /// Allocations: No heap allocations (Vector2 is a value type).
-        /// Edge Cases: Negative amplitude is converted to positive via the range calculation.
+        /// Edge Cases: Negative amplitude is normalized via absolute value. Zero amplitude returns Vector2.zero.
         /// </remarks>
         public static Vector2 NextVector2(this IRandom random, float amplitude)
         {
-            return random.NextVector2(-amplitude, amplitude);
+            float range = Mathf.Abs(amplitude);
+            if (range <= 0f)
+            {
+                return Vector2.zero;
+            }
+
+            return random.NextVector2(-range, range);
         }
 
         /// <summary>
@@ -141,10 +147,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             }
 
             HashSet<T> exclude = new(exceptions);
-            using PooledResource<T[]> pooled = WallstopArrayPool<T>.Get(
-                source.Count,
-                out T[] buffer
-            );
+            using PooledArray<T> pooled = SystemArrayPool<T>.Get(source.Count, out T[] buffer);
             int n = 0;
             for (int i = 0; i < source.Count; ++i)
             {
@@ -200,7 +203,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         /// Thread Safety: Thread-safe if random is thread-safe.
         /// Performance: O(1) - uses square root for uniform distribution.
         /// Allocations: No heap allocations.
-        /// Edge Cases: Negative range may produce unexpected results. Zero range returns origin.
+        /// Edge Cases: Negative range is normalized via absolute value. Zero range returns origin.
         /// </remarks>
         public static Vector2 NextVector2InRange(
             this IRandom random,
@@ -208,7 +211,13 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             Vector2? origin = null
         )
         {
-            return Helpers.GetRandomPointInCircle(origin ?? Vector2.zero, range, random);
+            float radius = Mathf.Abs(range);
+            if (radius <= 0f)
+            {
+                return origin ?? Vector2.zero;
+            }
+
+            return Helpers.GetRandomPointInCircle(origin ?? Vector2.zero, radius, random);
         }
 
         /// <summary>
@@ -222,11 +231,17 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         /// Thread Safety: Thread-safe if random is thread-safe.
         /// Performance: O(1) - three random number generations.
         /// Allocations: No heap allocations.
-        /// Edge Cases: Negative amplitude is converted to positive via the range calculation.
+        /// Edge Cases: Negative amplitude is normalized via absolute value. Zero amplitude returns Vector3.zero.
         /// </remarks>
         public static Vector3 NextVector3(this IRandom random, float amplitude)
         {
-            return random.NextVector3(-amplitude, amplitude);
+            float range = Mathf.Abs(amplitude);
+            if (range <= 0f)
+            {
+                return Vector3.zero;
+            }
+
+            return random.NextVector3(-range, range);
         }
 
         /// <summary>
@@ -267,7 +282,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         /// Thread Safety: Thread-safe if random is thread-safe.
         /// Performance: O(1) - uses cube root for uniform distribution.
         /// Allocations: No heap allocations.
-        /// Edge Cases: Negative range may produce unexpected results. Zero range returns origin.
+        /// Edge Cases: Negative range is normalized via absolute value. Zero range returns origin.
         /// </remarks>
         public static Vector3 NextVector3InRange(
             this IRandom random,
@@ -275,7 +290,13 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             Vector3? origin = null
         )
         {
-            return Helpers.GetRandomPointInSphere(origin ?? Vector3.zero, range, random);
+            float radius = Mathf.Abs(range);
+            if (radius <= 0f)
+            {
+                return origin ?? Vector3.zero;
+            }
+
+            return Helpers.GetRandomPointInSphere(origin ?? Vector3.zero, radius, random);
         }
 
         /// <summary>
@@ -290,7 +311,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         /// Thread Safety: Thread-safe if random is thread-safe.
         /// Performance: O(1) average case - Marsaglia rejection sampling averages ~1.3 iterations. Uses square root.
         /// Allocations: No heap allocations.
-        /// Edge Cases: Very small radius (near zero) works correctly. Negative radius produces points at -radius distance.
+        /// Edge Cases: Very small radius (near zero) works correctly. Negative radius is treated as its absolute value.
         /// </remarks>
         public static Vector3 NextVector3OnSphere(
             this IRandom random,
@@ -298,22 +319,36 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             Vector3? center = null
         )
         {
-            // Marsaglia's method for uniform sphere surface sampling
-            float x;
-            float y;
-            float z;
-            float lengthSquared;
-            do
+            const int MaxAttempts = 128;
+            const float MinLengthSquared = 0.0001f;
+            float radiusMagnitude = Mathf.Abs(radius);
+            if (radiusMagnitude <= 0f)
             {
-                x = random.NextFloat(-1f, 1f);
-                y = random.NextFloat(-1f, 1f);
-                z = random.NextFloat(-1f, 1f);
-                lengthSquared = x * x + y * y + z * z;
-            } while (lengthSquared > 1f || lengthSquared < 0.0001f);
+                return center ?? Vector3.zero;
+            }
 
-            float invLength = radius / Mathf.Sqrt(lengthSquared);
-            Vector3 result = new(x * invLength, y * invLength, z * invLength);
-            return center.HasValue ? result + center.Value : result;
+            for (int attempt = 0; attempt < MaxAttempts; ++attempt)
+            {
+                float x = random.NextFloat(-1f, 1f);
+                float y = random.NextFloat(-1f, 1f);
+                float z = random.NextFloat(-1f, 1f);
+                float lengthSquared = x * x + y * y + z * z;
+                if (
+                    !float.IsFinite(lengthSquared)
+                    || lengthSquared > 1f
+                    || lengthSquared < MinLengthSquared
+                )
+                {
+                    continue;
+                }
+
+                float invLength = radiusMagnitude / Mathf.Sqrt(lengthSquared);
+                Vector3 sampled = new(x * invLength, y * invLength, z * invLength);
+                return center.HasValue ? sampled + center.Value : sampled;
+            }
+
+            Vector3 fallback = new(radiusMagnitude, 0f, 0f);
+            return center.HasValue ? fallback + center.Value : fallback;
         }
 
         /// <summary>
@@ -328,7 +363,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         /// Thread Safety: Thread-safe if random is thread-safe.
         /// Performance: O(1) - uses cube root for uniform volumetric distribution.
         /// Allocations: No heap allocations.
-        /// Edge Cases: Negative radius may produce unexpected results. Zero radius returns center.
+        /// Edge Cases: Negative radius is treated as its absolute value. Zero radius returns center.
         /// </remarks>
         public static Vector3 NextVector3InSphere(
             this IRandom random,
@@ -354,9 +389,9 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         public static Quaternion NextQuaternion(this IRandom random)
         {
             // Uniform random rotation using Shoemake's algorithm
-            float u1 = random.NextFloat();
-            float u2 = random.NextFloat();
-            float u3 = random.NextFloat();
+            float u1 = Helpers.ClampUnitInterval(random.NextFloat());
+            float u2 = Helpers.ClampUnitInterval(random.NextFloat());
+            float u3 = Helpers.ClampUnitInterval(random.NextFloat());
 
             float sqrt1MinusU1 = Mathf.Sqrt(1f - u1);
             float sqrtU1 = Mathf.Sqrt(u1);
@@ -506,11 +541,17 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         /// Thread Safety: Thread-safe if random is thread-safe.
         /// Performance: O(1) - two random integer generations.
         /// Allocations: No heap allocations.
-        /// Edge Cases: Negative amplitude is converted to positive via the range calculation.
+        /// Edge Cases: Negative amplitude is normalized via absolute value. Zero amplitude returns Vector2Int.zero.
         /// </remarks>
         public static Vector2Int NextVector2Int(this IRandom random, int amplitude)
         {
-            return random.NextVector2Int(-amplitude, amplitude);
+            int range = Mathf.Abs(amplitude);
+            if (range == 0)
+            {
+                return Vector2Int.zero;
+            }
+
+            return random.NextVector2Int(-range, range);
         }
 
         /// <summary>
@@ -570,11 +611,17 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         /// Thread Safety: Thread-safe if random is thread-safe.
         /// Performance: O(1) - three random integer generations.
         /// Allocations: No heap allocations.
-        /// Edge Cases: Negative amplitude is converted to positive via the range calculation.
+        /// Edge Cases: Negative amplitude is normalized via absolute value. Zero amplitude returns Vector3Int.zero.
         /// </remarks>
         public static Vector3Int NextVector3Int(this IRandom random, int amplitude)
         {
-            return random.NextVector3Int(-amplitude, amplitude);
+            int range = Mathf.Abs(amplitude);
+            if (range == 0)
+            {
+                return Vector3Int.zero;
+            }
+
+            return random.NextVector3Int(-range, range);
         }
 
         /// <summary>
@@ -694,8 +741,13 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         /// </remarks>
         public static Vector2 NextVector2InRect(this IRandom random, Rect rect)
         {
-            float x = random.NextFloat(rect.xMin, rect.xMax);
-            float y = random.NextFloat(rect.yMin, rect.yMax);
+            float xMin = Mathf.Min(rect.xMin, rect.xMax);
+            float xMax = Mathf.Max(rect.xMin, rect.xMax);
+            float yMin = Mathf.Min(rect.yMin, rect.yMax);
+            float yMax = Mathf.Max(rect.yMin, rect.yMax);
+
+            float x = xMax - xMin <= 0f ? xMin : random.NextFloat(xMin, xMax);
+            float y = yMax - yMin <= 0f ? yMin : random.NextFloat(yMin, yMax);
             return new Vector2(x, y);
         }
 
@@ -710,13 +762,22 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         /// Thread Safety: Thread-safe if random is thread-safe.
         /// Performance: O(1) - three random float generations.
         /// Allocations: No heap allocations.
-        /// Edge Cases: Zero-volume bounds return the center point.
+        /// Edge Cases: Degenerate (zero-volume) bounds return the center point.
         /// </remarks>
         public static Vector3 NextVector3InBounds(this IRandom random, Bounds bounds)
         {
-            float x = random.NextFloat(bounds.min.x, bounds.max.x);
-            float y = random.NextFloat(bounds.min.y, bounds.max.y);
-            float z = random.NextFloat(bounds.min.z, bounds.max.z);
+            Vector3 size = bounds.size;
+            if (size.x <= 0f || size.y <= 0f || size.z <= 0f)
+            {
+                return bounds.center;
+            }
+
+            Vector3 min = bounds.min;
+            Vector3 max = bounds.max;
+
+            float x = random.NextFloat(min.x, max.x);
+            float y = random.NextFloat(min.y, max.y);
+            float z = random.NextFloat(min.z, max.z);
             return new Vector3(x, y, z);
         }
 
@@ -908,6 +969,11 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         /// </remarks>
         public static float NextFloatAround(this IRandom random, float center, float variance)
         {
+            if (variance <= 0f)
+            {
+                return center;
+            }
+
             return random.NextFloat(center - variance, center + variance);
         }
 
@@ -927,6 +993,11 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         /// </remarks>
         public static int NextIntAround(this IRandom random, int center, int variance)
         {
+            if (variance <= 0)
+            {
+                return center;
+            }
+
             return random.Next(center - variance, center + variance + 1);
         }
 
@@ -976,31 +1047,38 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
 
             if (count == 0)
             {
-                return Enumerable.Empty<T>();
+                return Array.Empty<T>();
             }
 
-            using PooledResource<T[]> arrayBuffer = WallstopArrayPool<T>.Get(count, out T[] result);
+            return NextSubsetIterator(random, itemsList, count);
+        }
 
-            // Fill the reservoir with the first count elements
+        private static IEnumerable<T> NextSubsetIterator<T>(
+            IRandom random,
+            IReadOnlyList<T> items,
+            int count
+        )
+        {
+            using PooledArray<T> arrayBuffer = SystemArrayPool<T>.Get(count, out T[] result);
+
             for (int i = 0; i < count; ++i)
             {
-                result[i] = itemsList[i];
+                result[i] = items[i];
             }
 
-            // Process remaining elements
-            for (int i = count; i < itemsList.Count; ++i)
+            for (int i = count; i < items.Count; ++i)
             {
-                // Generate a random index from 0 to i (inclusive)
                 int j = random.Next(0, i + 1);
-
-                // If the random index is within the reservoir, replace it
                 if (j < count)
                 {
-                    result[j] = itemsList[i];
+                    result[j] = items[i];
                 }
             }
 
-            return result;
+            for (int i = 0; i < count; ++i)
+            {
+                yield return result[i];
+            }
         }
     }
 }

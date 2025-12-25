@@ -10,13 +10,21 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
     /// <summary>
     /// Immutable octree for efficient 3D spatial queries.
     /// </summary>
+    /// <example>
+    /// <code><![CDATA[
+    /// OctTree3D<Vector3>.Entry[] entries = points.Select(p => new OctTree3D<Vector3>.Entry(p, p)).ToArray();
+    /// OctTree3D<Vector3> tree = OctTree3D<Vector3>.Build(entries);
+    /// List<Vector3> hits = new List<Vector3>();
+    /// tree.GetElementsInBounds(searchBounds, hits);
+    /// ]]></code>
+    /// </example>
     /// <typeparam name="T">Element type contained in the tree.</typeparam>
     /// <remarks>
     /// <para>Pros: Good all-around performance for 3D point queries, range queries, and approximate nearest neighbor searches.</para>
     /// <para>Cons: Immutable structure by design; rebuild when positions change frequently.</para>
     /// <para>Semantics: OctTree3D uses octant subdivision and inclusive half-open containment checks with internal
     /// fast-paths when nodes are fully contained. These choices can lead to different results from KdTree3D for points
-    /// on boundaries or when numeric precision interacts with minimum node-size adjustments. See Docs/SPATIAL_TREE_SEMANTICS.md.</para>
+    /// on boundaries or when numeric precision interacts with minimum node-size adjustments. See docs/features/spatial/spatial-tree-semantics.md.</para>
     /// </remarks>
     [Serializable]
     public sealed class OctTree3D<T> : ISpatialTree3D<T>
@@ -128,6 +136,86 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
         }
 
         public const int DefaultBucketSize = 12;
+
+        public enum NodeVisitKind
+        {
+            FullyContainedInternal,
+            FullyContainedLeaf,
+            PartiallyContainedInternal,
+            PartiallyContainedLeaf,
+        }
+
+        public enum NodePruneReason
+        {
+            EmptyOrNullChild,
+            NoIntersection,
+        }
+
+        public readonly struct BoundsQueryNodeTrace
+        {
+            public BoundsQueryNodeTrace(
+                BoundingBox3D boundary,
+                Bounds unityBounds,
+                int count,
+                bool isTerminal,
+                bool nodeFullyContained
+            )
+            {
+                Boundary = boundary;
+                UnityBounds = unityBounds;
+                Count = count;
+                IsTerminal = isTerminal;
+                NodeFullyContained = nodeFullyContained;
+                VisitKind = DetermineVisitKind(isTerminal, nodeFullyContained);
+            }
+
+            public BoundingBox3D Boundary { get; }
+
+            public Bounds UnityBounds { get; }
+
+            public int Count { get; }
+
+            public bool IsTerminal { get; }
+
+            public bool NodeFullyContained { get; }
+
+            public NodeVisitKind VisitKind { get; }
+
+            private static NodeVisitKind DetermineVisitKind(
+                bool isTerminal,
+                bool nodeFullyContained
+            )
+            {
+                if (nodeFullyContained)
+                {
+                    return isTerminal
+                        ? NodeVisitKind.FullyContainedLeaf
+                        : NodeVisitKind.FullyContainedInternal;
+                }
+
+                return isTerminal
+                    ? NodeVisitKind.PartiallyContainedLeaf
+                    : NodeVisitKind.PartiallyContainedInternal;
+            }
+        }
+
+        public interface IOctTreeBoundsQueryLogger
+        {
+            void OnQueryInitialized(
+                Bounds closedQuery,
+                BoundingBox3D halfOpenQuery,
+                BoundingBox3D treeBounds
+            );
+            void OnRootPruned();
+            void OnNodeVisited(in BoundsQueryNodeTrace trace);
+            void OnBulkAppend(
+                in BoundsQueryNodeTrace trace,
+                int appendedCount,
+                bool viaClosedContainment
+            );
+            void OnPointEvaluated(Vector3 position, bool included, in BoundsQueryNodeTrace trace);
+            void OnChildPruned(BoundingBox3D childBounds, NodePruneReason reason);
+        }
 
         public readonly ImmutableArray<T> elements;
         public Bounds Boundary => _boundary;
@@ -438,8 +526,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             }
 
             using PooledResource<Stack<OctTreeNode>> nodesToVisitResource =
-                Buffers<OctTreeNode>.Stack.Get();
-            Stack<OctTreeNode> nodesToVisit = nodesToVisitResource.resource;
+                Buffers<OctTreeNode>.Stack.Get(out Stack<OctTreeNode> nodesToVisit);
             nodesToVisit.Push(_head);
 
             Entry[] entries = _entries;
@@ -556,11 +643,56 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
 
         public List<T> GetElementsInBounds(Bounds queryBounds, List<T> elementsInBounds)
         {
+            return GetElementsInBoundsInternal(queryBounds, elementsInBounds, logger: null);
+        }
+
+        internal List<T> GetElementsInBoundsWithDiagnostics(
+            Bounds queryBounds,
+            List<T> elementsInBounds,
+            IOctTreeBoundsQueryLogger logger
+        )
+        {
+            if (logger is null)
+            {
+                throw new ArgumentNullException(nameof(logger));
+            }
+
+            return GetElementsInBoundsInternal(queryBounds, elementsInBounds, logger);
+        }
+
+        private List<T> GetElementsInBoundsInternal(
+            Bounds queryBounds,
+            List<T> elementsInBounds,
+            IOctTreeBoundsQueryLogger logger
+        )
+        {
             elementsInBounds.Clear();
+            if (_head._count <= 0)
+            {
+                logger?.OnQueryInitialized(queryBounds, BoundingBox3D.Empty, _bounds);
+                logger?.OnRootPruned();
+                return elementsInBounds;
+            }
+
             // Use inclusive-max conversion to align with KDTree semantics at max edges
             BoundingBox3D queryHalfOpen = BoundingBox3D.FromClosedBoundsInclusiveMax(queryBounds);
-            if (_head._count <= 0 || !queryHalfOpen.Intersects(_bounds))
+            logger?.OnQueryInitialized(queryBounds, queryHalfOpen, _bounds);
+            // Heavy closed-bounds asserts are optional to keep performance tests lightweight.
+#if UNITY_ASSERTIONS && ENABLE_SPATIAL_DIAGNOSTICS
+            Bounds closedQuery = queryBounds;
+#endif
+            bool rootIntersects = queryHalfOpen.Intersects(_bounds);
+#if UNITY_ASSERTIONS && ENABLE_SPATIAL_DIAGNOSTICS
+            bool closedRootIntersects = ClosedIntersects(closedQuery, _bounds);
+            UnityEngine.Assertions.Assert.AreEqual(
+                closedRootIntersects,
+                rootIntersects,
+                "[OctTree3D] Root intersection semantics mismatch between half-open and closed bounds."
+            );
+#endif
+            if (!rootIntersects)
             {
+                logger?.OnRootPruned();
                 return elementsInBounds;
             }
 
@@ -576,11 +708,32 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             {
                 if (currentNode is null || currentNode._count <= 0)
                 {
+                    logger?.OnChildPruned(
+                        currentNode?.boundary ?? BoundingBox3D.Empty,
+                        NodePruneReason.EmptyOrNullChild
+                    );
                     continue;
                 }
 
-                // Fully contained under half-open semantics
-                if (queryHalfOpen.Contains(currentNode.boundary))
+                bool nodeFullyContained = queryHalfOpen.Contains(currentNode.boundary);
+#if UNITY_ASSERTIONS && ENABLE_SPATIAL_DIAGNOSTICS
+                bool closedNodeContained = ClosedContains(closedQuery, currentNode.boundary);
+                UnityEngine.Assertions.Assert.AreEqual(
+                    closedNodeContained,
+                    nodeFullyContained,
+                    "[OctTree3D] Node containment semantics mismatch between half-open and closed bounds."
+                );
+#endif
+                BoundsQueryNodeTrace trace = new(
+                    currentNode.boundary,
+                    currentNode.unityBoundary,
+                    currentNode._count,
+                    currentNode.isTerminal,
+                    nodeFullyContained
+                );
+                logger?.OnNodeVisited(trace);
+
+                if (nodeFullyContained)
                 {
                     // Conservative guard for leaves: ensure the leaf's closed Unity bounds
                     // are fully contained by the closed query before fast-adding.
@@ -597,6 +750,11 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                             {
                                 elementsInBounds.Add(entries[indices[i]].value);
                             }
+                            logger?.OnBulkAppend(
+                                trace,
+                                currentNode._count,
+                                viaClosedContainment: true
+                            );
                             continue;
                         }
                         // Otherwise, fall through to the terminal per-point closed checks below.
@@ -609,6 +767,11 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                         {
                             elementsInBounds.Add(entries[indices[i]].value);
                         }
+                        logger?.OnBulkAppend(
+                            trace,
+                            currentNode._count,
+                            viaClosedContainment: false
+                        );
                         continue;
                     }
                 }
@@ -621,7 +784,17 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                     {
                         Entry entry = entries[indices[i]];
                         // Per-point checks use inclusive half-open semantics for closed behavior
-                        if (queryHalfOpen.Contains(entry.position))
+                        bool contains = queryHalfOpen.Contains(entry.position);
+#if UNITY_ASSERTIONS && ENABLE_SPATIAL_DIAGNOSTICS
+                        bool closedContains = queryBounds.Contains(entry.position);
+                        UnityEngine.Assertions.Assert.AreEqual(
+                            closedContains,
+                            contains,
+                            "[OctTree3D] Point inclusion mismatch between half-open and closed bounds."
+                        );
+#endif
+                        logger?.OnPointEvaluated(entry.position, contains, trace);
+                        if (contains)
                         {
                             elementsInBounds.Add(entry.value);
                         }
@@ -636,13 +809,30 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                     OctTreeNode child = childNodes[i];
                     if (child is null || child._count <= 0)
                     {
+                        logger?.OnChildPruned(
+                            child?.boundary ?? BoundingBox3D.Empty,
+                            NodePruneReason.EmptyOrNullChild
+                        );
                         continue;
                     }
 
                     // Traverse children that intersect under half-open semantics
-                    if (queryHalfOpen.Intersects(child.boundary))
+                    bool childIntersects = queryHalfOpen.Intersects(child.boundary);
+#if UNITY_ASSERTIONS && ENABLE_SPATIAL_DIAGNOSTICS
+                    bool closedChildIntersects = ClosedIntersects(closedQuery, child.boundary);
+                    UnityEngine.Assertions.Assert.AreEqual(
+                        closedChildIntersects,
+                        childIntersects,
+                        "[OctTree3D] Child traversal semantics mismatch between half-open and closed bounds."
+                    );
+#endif
+                    if (childIntersects)
                     {
                         nodesToVisit.Push(child);
+                    }
+                    else
+                    {
+                        logger?.OnChildPruned(child.boundary, NodePruneReason.NoIntersection);
                     }
                 }
             }
@@ -728,18 +918,57 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             bounds.size = size;
         }
 
-        private static Bounds ToClosedBounds(BoundingBox3D box)
+#if UNITY_ASSERTIONS && ENABLE_SPATIAL_DIAGNOSTICS
+        private static Vector3 ComputeClosedMax(Vector3 min, Vector3 exclusiveMax)
         {
-            Vector3 min = box.min;
-            Vector3 maxClosed = new(
-                PrevFloat(box.max.x),
-                PrevFloat(box.max.y),
-                PrevFloat(box.max.z)
-            );
-            Vector3 center = (min + maxClosed) * 0.5f;
-            Vector3 size = maxClosed - min;
-            return new Bounds(center, size);
+            float closedX = PrevFloat(exclusiveMax.x);
+            float closedY = PrevFloat(exclusiveMax.y);
+            float closedZ = PrevFloat(exclusiveMax.z);
+
+            if (closedX < min.x)
+            {
+                closedX = min.x;
+            }
+            if (closedY < min.y)
+            {
+                closedY = min.y;
+            }
+            if (closedZ < min.z)
+            {
+                closedZ = min.z;
+            }
+
+            return new Vector3(closedX, closedY, closedZ);
         }
+
+        private static bool ClosedContains(Bounds container, BoundingBox3D contents)
+        {
+            Vector3 contentMin = contents.min;
+            Vector3 contentMax = ComputeClosedMax(contentMin, contents.max);
+            Vector3 containerMin = container.min;
+            Vector3 containerMax = container.max;
+            return containerMin.x <= contentMin.x
+                && containerMin.y <= contentMin.y
+                && containerMin.z <= contentMin.z
+                && containerMax.x >= contentMax.x
+                && containerMax.y >= contentMax.y
+                && containerMax.z >= contentMax.z;
+        }
+
+        private static bool ClosedIntersects(Bounds closedQuery, BoundingBox3D nodeBoundary)
+        {
+            Vector3 nodeMin = nodeBoundary.min;
+            Vector3 nodeMax = ComputeClosedMax(nodeMin, nodeBoundary.max);
+            Vector3 queryMin = closedQuery.min;
+            Vector3 queryMax = closedQuery.max;
+            return nodeMax.x >= queryMin.x
+                && nodeMin.x <= queryMax.x
+                && nodeMax.y >= queryMin.y
+                && nodeMin.y <= queryMax.y
+                && nodeMax.z >= queryMin.z
+                && nodeMin.z <= queryMax.z;
+        }
+#endif
 
         private static float PrevFloat(float value)
         {
@@ -849,7 +1078,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                         continue;
                     }
 
-                    if (bestNeighborValues.Contains(entry.value))
+                    if (!bestNeighborValues.Add(entry.value))
                     {
                         continue;
                     }
@@ -860,7 +1089,6 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                         distanceSquared
                     );
                     bestNeighborValues.Remove(replaced.entry.value);
-                    bestNeighborValues.Add(entry.value);
                     currentWorstDistanceSquared = FindWorstDistanceSquared(bestNeighbors);
                 }
             }

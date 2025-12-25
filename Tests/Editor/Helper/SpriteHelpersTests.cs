@@ -1,11 +1,11 @@
-namespace WallstopStudios.UnityHelpers.Tests.Editor.Helper
+namespace WallstopStudios.UnityHelpers.Tests.Helper
 {
     using System.IO;
     using NUnit.Framework;
     using UnityEditor;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Helper;
-    using WallstopStudios.UnityHelpers.Tests.Editor.Utils;
+    using WallstopStudios.UnityHelpers.Tests.Core;
 
     [TestFixture]
     public sealed class SpriteHelpersTests : CommonTestBase
@@ -13,10 +13,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Helper
         private const string TestFolder = "Assets/TempSpriteHelpersTests";
         private string _testTexturePath;
         private Texture2D _testTexture;
+        private static readonly int[] TextureSizeCases = { 1, 2, 4, 16, 64, 256, 512 };
 
         [SetUp]
-        public void SetUp()
+        public override void BaseSetUp()
         {
+            base.BaseSetUp();
             if (Application.isPlaying)
             {
                 return;
@@ -188,34 +190,29 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Helper
             Assert.AreEqual(originalFormat, _testTexture.format, "Format should be preserved");
         }
 
-        [Test]
-        public void MakeReadableWithDifferentTextureSizesWorksCorrectly()
+        [TestCaseSource(nameof(TextureSizeCases))]
+        public void MakeReadableWithDifferentTextureSizesWorksCorrectly(int size)
         {
             if (Application.isPlaying)
             {
                 Assert.Ignore("AssetDatabase access requires edit mode.");
             }
 
-            int[] sizes = { 1, 2, 4, 16, 64, 256, 512 };
+            CreateTestTexture(readable: false, width: size, height: size);
 
-            foreach (int size in sizes)
-            {
-                CreateTestTexture(readable: false, width: size, height: size);
+            _testTexture.MakeReadable();
 
-                _testTexture.MakeReadable();
+            AssetDatabase.Refresh();
+            _testTexture = AssetDatabase.LoadAssetAtPath<Texture2D>(_testTexturePath);
 
-                AssetDatabase.Refresh();
-                _testTexture = AssetDatabase.LoadAssetAtPath<Texture2D>(_testTexturePath);
+            Assert.IsTrue(
+                _testTexture.isReadable,
+                $"Texture of size {size}x{size} should be readable"
+            );
 
-                Assert.IsTrue(
-                    _testTexture.isReadable,
-                    $"Texture of size {size}x{size} should be readable"
-                );
-
-                AssetDatabase.DeleteAsset(_testTexturePath);
-                _testTexture = null;
-                _testTexturePath = null;
-            }
+            AssetDatabase.DeleteAsset(_testTexturePath);
+            _testTexture = null;
+            _testTexturePath = null;
         }
 
         [Test]

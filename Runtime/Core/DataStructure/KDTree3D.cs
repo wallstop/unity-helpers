@@ -4,12 +4,21 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
     using System.Buffers;
     using System.Collections.Generic;
     using System.Collections.Immutable;
+    using System.Runtime.CompilerServices;
     using UnityEngine;
     using Utils;
 
     /// <summary>
     /// Immutable 3D k-d tree for efficient nearest neighbor, range, and bounds queries in 3D space.
     /// </summary>
+    /// <example>
+    /// <code><![CDATA[
+    /// List<Vector3> points = SamplePoints();
+    /// KdTree3D<Vector3> tree = new KdTree3D<Vector3>(points, p => p);
+    /// List<Vector3> neighbors = new List<Vector3>();
+    /// tree.GetElementsInRange(queryPosition, 4f, neighbors);
+    /// ]]></code>
+    /// </example>
     /// <typeparam name="T">Element type contained in the tree.</typeparam>
     /// <remarks>
     /// <para>Pros: Very fast nearest neighbor performance; good for static or batched updates.</para>
@@ -17,32 +26,19 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
     /// <para>Semantics: Due to algorithmic choices (axis-aligned splitting, half-open containment checks,
     /// minimum node-size enforcement, and tie-handling on split planes), KdTree3D (balanced and unbalanced)
     /// may return different edge-case results compared to OctTree3D for identical inputs/queries—especially for
-    /// points lying exactly on query boundaries or split planes. See Docs/SPATIAL_TREE_SEMANTICS.md for details.</para>
+    /// points lying exactly on query boundaries or split planes. See docs/features/spatial/spatial-tree-semantics.md for details.</para>
     /// </remarks>
     [Serializable]
     public sealed class KdTree3D<T> : ISpatialTree3D<T>
     {
-        [Serializable]
-        public readonly struct Entry
-        {
-            public readonly T value;
-            public readonly Vector3 position;
-
-            public Entry(T value, Vector3 position)
-            {
-                this.value = value;
-                this.position = position;
-            }
-        }
-
         private readonly struct Neighbor
         {
-            public readonly T value;
+            public readonly int index;
             public readonly float sqrDistance;
 
-            public Neighbor(T value, float sqrDistance)
+            public Neighbor(int index, float sqrDistance)
             {
-                this.value = value;
+                this.index = index;
                 this.sqrDistance = sqrDistance;
             }
         }
@@ -107,7 +103,9 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
         public Bounds Boundary => _bounds;
 
         private readonly Bounds _bounds;
-        private readonly Entry[] _entries;
+        private readonly float[] _positionsX;
+        private readonly float[] _positionsY;
+        private readonly float[] _positionsZ;
         private readonly int[] _indices;
         private readonly KdTreeNode _head;
         private readonly bool _balanced;
@@ -136,7 +134,9 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             elements =
                 points?.ToImmutableArray() ?? throw new ArgumentNullException(nameof(points));
             int elementCount = elements.Length;
-            _entries = elementCount == 0 ? Array.Empty<Entry>() : new Entry[elementCount];
+            _positionsX = elementCount == 0 ? Array.Empty<float>() : new float[elementCount];
+            _positionsY = elementCount == 0 ? Array.Empty<float>() : new float[elementCount];
+            _positionsZ = elementCount == 0 ? Array.Empty<float>() : new float[elementCount];
             _indices = elementCount == 0 ? Array.Empty<int>() : new int[elementCount];
             _balanced = balanced;
             _bucketSize = Math.Max(1, bucketSize);
@@ -152,7 +152,9 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             {
                 T element = elements[i];
                 Vector3 position = elementTransformer(element);
-                _entries[i] = new Entry(element, position);
+                _positionsX[i] = position.x;
+                _positionsY[i] = position.y;
+                _positionsZ[i] = position.z;
 
                 if (position.x < minX)
                 {
@@ -249,7 +251,9 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
         {
             Span<int> source = _indices.AsSpan(startIndex, count);
             Span<int> temp = scratch.AsSpan(0, count);
-            Entry[] entries = _entries;
+            float[] positionsX = _positionsX;
+            float[] positionsY = _positionsY;
+            float[] positionsZ = _positionsZ;
 
             float minX = float.PositiveInfinity;
             float minY = float.PositiveInfinity;
@@ -260,30 +264,33 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
 
             for (int i = 0; i < count; ++i)
             {
-                Vector3 position = entries[source[i]].position;
-                if (position.x < minX)
+                int entryIndex = source[i];
+                float px = positionsX[entryIndex];
+                float py = positionsY[entryIndex];
+                float pz = positionsZ[entryIndex];
+                if (px < minX)
                 {
-                    minX = position.x;
+                    minX = px;
                 }
-                if (position.y < minY)
+                if (py < minY)
                 {
-                    minY = position.y;
+                    minY = py;
                 }
-                if (position.z < minZ)
+                if (pz < minZ)
                 {
-                    minZ = position.z;
+                    minZ = pz;
                 }
-                if (position.x > maxX)
+                if (px > maxX)
                 {
-                    maxX = position.x;
+                    maxX = px;
                 }
-                if (position.y > maxY)
+                if (py > maxY)
                 {
-                    maxY = position.y;
+                    maxY = py;
                 }
-                if (position.z > maxZ)
+                if (pz > maxZ)
                 {
-                    maxZ = position.z;
+                    maxZ = pz;
                 }
             }
 
@@ -298,11 +305,11 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
 
             int leftWrite = 0;
             int rightWrite = count - 1;
+            float[] axisArray = GetAxisArray(axis);
             for (int i = 0; i < count; ++i)
             {
                 int entryIndex = source[i];
-                Vector3 position = entries[entryIndex].position;
-                float value = GetAxisValue(position, axis);
+                float value = axisArray[entryIndex];
                 if (value <= cutoff)
                 {
                     temp[leftWrite++] = entryIndex;
@@ -342,8 +349,10 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 return new Bounds();
             }
 
-            Entry[] entries = _entries;
             int[] indices = _indices;
+            float[] positionsX = _positionsX;
+            float[] positionsY = _positionsY;
+            float[] positionsZ = _positionsZ;
             float minX = float.PositiveInfinity;
             float minY = float.PositiveInfinity;
             float minZ = float.PositiveInfinity;
@@ -354,30 +363,33 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             int end = startIndex + count;
             for (int i = startIndex; i < end; ++i)
             {
-                Vector3 position = entries[indices[i]].position;
-                if (position.x < minX)
+                int entryIndex = indices[i];
+                float px = positionsX[entryIndex];
+                float py = positionsY[entryIndex];
+                float pz = positionsZ[entryIndex];
+                if (px < minX)
                 {
-                    minX = position.x;
+                    minX = px;
                 }
-                if (position.y < minY)
+                if (py < minY)
                 {
-                    minY = position.y;
+                    minY = py;
                 }
-                if (position.z < minZ)
+                if (pz < minZ)
                 {
-                    minZ = position.z;
+                    minZ = pz;
                 }
-                if (position.x > maxX)
+                if (px > maxX)
                 {
-                    maxX = position.x;
+                    maxX = px;
                 }
-                if (position.y > maxY)
+                if (py > maxY)
                 {
-                    maxY = position.y;
+                    maxY = py;
                 }
-                if (position.z > maxZ)
+                if (pz > maxZ)
                 {
-                    maxZ = position.z;
+                    maxZ = pz;
                 }
             }
 
@@ -386,7 +398,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
 
         private void SelectKth(Span<int> span, int k, int axis)
         {
-            Entry[] entries = _entries;
+            float[] axisValues = GetAxisArray(axis);
             int left = 0;
             int right = span.Length - 1;
 
@@ -394,24 +406,24 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             {
                 if (right - left <= SmallPartitionThreshold)
                 {
-                    InsertionSort(span.Slice(left, right - left + 1), axis, entries);
+                    InsertionSort(span.Slice(left, right - left + 1), axisValues);
                     return;
                 }
 
-                int pivotIndex = SelectPivot(span, left, right, axis, entries);
-                float pivot = GetAxis(entries[span[pivotIndex]], axis);
+                int pivotIndex = SelectPivot(span, left, right, axisValues);
+                float pivot = axisValues[span[pivotIndex]];
 
                 int i = left;
                 int j = right;
 
                 while (i <= j)
                 {
-                    while (i <= j && GetAxis(entries[span[i]], axis) < pivot)
+                    while (i <= j && axisValues[span[i]] < pivot)
                     {
                         i++;
                     }
 
-                    while (i <= j && GetAxis(entries[span[j]], axis) > pivot)
+                    while (i <= j && axisValues[span[j]] > pivot)
                     {
                         j--;
                     }
@@ -440,19 +452,13 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             }
         }
 
-        private static int SelectPivot(
-            Span<int> span,
-            int left,
-            int right,
-            int axis,
-            Entry[] entries
-        )
+        private static int SelectPivot(Span<int> span, int left, int right, float[] axisValues)
         {
             int mid = left + ((right - left) >> 1);
 
-            float leftValue = GetAxis(entries[span[left]], axis);
-            float midValue = GetAxis(entries[span[mid]], axis);
-            float rightValue = GetAxis(entries[span[right]], axis);
+            float leftValue = axisValues[span[left]];
+            float midValue = axisValues[span[mid]];
+            float rightValue = axisValues[span[right]];
 
             if (leftValue > midValue)
             {
@@ -475,7 +481,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             return mid;
         }
 
-        private static void InsertionSort(Span<int> span, int axis, Entry[] entries)
+        private static void InsertionSort(Span<int> span, float[] axisValues)
         {
             if (span.Length <= 1)
             {
@@ -485,10 +491,10 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             for (int i = 1; i < span.Length; ++i)
             {
                 int currentIndex = span[i];
-                float currentValue = GetAxis(entries[currentIndex], axis);
+                float currentValue = axisValues[currentIndex];
                 int j = i - 1;
 
-                while (j >= 0 && GetAxis(entries[span[j]], axis) > currentValue)
+                while (j >= 0 && axisValues[span[j]] > currentValue)
                 {
                     span[j + 1] = span[j];
                     j--;
@@ -496,16 +502,6 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
 
                 span[j + 1] = currentIndex;
             }
-        }
-
-        private static float GetAxis(in Entry entry, int axis)
-        {
-            return axis switch
-            {
-                0 => entry.position.x,
-                1 => entry.position.y,
-                _ => entry.position.z,
-            };
         }
 
         private static float GetAxisValue(Vector3 position, int axis)
@@ -567,6 +563,32 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             bounds.size = size;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private float[] GetAxisArray(int axis)
+        {
+            return axis switch
+            {
+                0 => _positionsX,
+                1 => _positionsY,
+                _ => _positionsZ,
+            };
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private Vector3 GetPosition(int index)
+        {
+            return new Vector3(_positionsX[index], _positionsY[index], _positionsZ[index]);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private float GetDistanceSquared(int index, Vector3 point)
+        {
+            float dx = _positionsX[index] - point.x;
+            float dy = _positionsY[index] - point.y;
+            float dz = _positionsZ[index] - point.z;
+            return dx * dx + dy * dy + dz * dz;
+        }
+
         public List<T> GetElementsInRange(
             Vector3 position,
             float range,
@@ -589,11 +611,12 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 return elementsInRange;
             }
 
-            using PooledResource<Stack<KdTreeNode>> stackResource = Buffers<KdTreeNode>.Stack.Get();
-            Stack<KdTreeNode> nodesToVisit = stackResource.resource;
+            using PooledResource<Stack<KdTreeNode>> stackResource = Buffers<KdTreeNode>.Stack.Get(
+                out Stack<KdTreeNode> nodesToVisit
+            );
             nodesToVisit.Push(_head);
 
-            Entry[] entries = _entries;
+            ImmutableArray<T> values = elements;
             int[] indices = _indices;
             float rangeSquared = range * range;
             bool hasMinimumRange = 0f < minimumRange;
@@ -629,7 +652,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                             // Fast path: all points in this node are within range
                             for (int i = start; i < end; ++i)
                             {
-                                elementsInRange.Add(entries[indices[i]].value);
+                                elementsInRange.Add(values[indices[i]]);
                             }
                         }
                         else
@@ -642,7 +665,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                                 // Fast path: all points are in the annulus
                                 for (int i = start; i < end; ++i)
                                 {
-                                    elementsInRange.Add(entries[indices[i]].value);
+                                    elementsInRange.Add(values[indices[i]]);
                                 }
                             }
                             else
@@ -650,11 +673,14 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                                 // Need to check each point against minimum range
                                 for (int i = start; i < end; ++i)
                                 {
-                                    Entry entry = entries[indices[i]];
-                                    float squareDistance = (entry.position - position).sqrMagnitude;
+                                    int elementIndex = indices[i];
+                                    float squareDistance = GetDistanceSquared(
+                                        elementIndex,
+                                        position
+                                    );
                                     if (squareDistance > minimumRangeSquared)
                                     {
-                                        elementsInRange.Add(entry.value);
+                                        elementsInRange.Add(values[elementIndex]);
                                     }
                                 }
                             }
@@ -665,8 +691,8 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                         // Terminal node but not fully contained: check each point
                         for (int i = start; i < end; ++i)
                         {
-                            Entry entry = entries[indices[i]];
-                            float squareDistance = (entry.position - position).sqrMagnitude;
+                            int elementIndex = indices[i];
+                            float squareDistance = GetDistanceSquared(elementIndex, position);
                             if (squareDistance > rangeSquared)
                             {
                                 continue;
@@ -677,7 +703,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                                 continue;
                             }
 
-                            elementsInRange.Add(entry.value);
+                            elementsInRange.Add(values[elementIndex]);
                         }
                     }
 
@@ -723,7 +749,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             );
             nodesToVisit.Push(_head);
 
-            Entry[] entries = _entries;
+            ImmutableArray<T> values = elements;
             int[] indices = _indices;
 
             while (nodesToVisit.TryPop(out KdTreeNode currentNode))
@@ -739,11 +765,12 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                     int end = start + currentNode._count;
                     for (int i = start; i < end; ++i)
                     {
-                        Entry entry = entries[indices[i]];
+                        int elementIndex = indices[i];
+                        Vector3 entryPosition = GetPosition(elementIndex);
                         // Use inclusive half-open check for robust closed semantics
-                        if (queryBox.Contains(entry.position))
+                        if (queryBox.Contains(entryPosition))
                         {
-                            elementsInBounds.Add(entry.value);
+                            elementsInBounds.Add(values[elementIndex]);
                         }
                     }
 
@@ -790,7 +817,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             using PooledResource<List<Neighbor>> neighborCandidatesResource =
                 Buffers<Neighbor>.List.Get(out List<Neighbor> neighborCandidates);
 
-            Entry[] entries = _entries;
+            ImmutableArray<T> values = elements;
             int[] indices = _indices;
 
             KdTreeNode current = _head;
@@ -873,14 +900,15 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 int endIndex = startIndex + selected._count;
                 for (int i = startIndex; i < endIndex; ++i)
                 {
-                    Entry entry = entries[indices[i]];
-                    if (!nearestNeighborBuffer.Add(entry.value))
+                    int elementIndex = indices[i];
+                    T value = values[elementIndex];
+                    if (!nearestNeighborBuffer.Add(value))
                     {
                         continue;
                     }
 
-                    float sqrDistance = (entry.position - position).sqrMagnitude;
-                    neighborCandidates.Add(new Neighbor(entry.value, sqrDistance));
+                    float sqrDistance = GetDistanceSquared(elementIndex, position);
+                    neighborCandidates.Add(new Neighbor(elementIndex, sqrDistance));
                 }
             }
 
@@ -892,7 +920,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             nearestNeighbors.Clear();
             for (int i = 0; i < neighborCandidates.Count && i < count; ++i)
             {
-                nearestNeighbors.Add(neighborCandidates[i].value);
+                nearestNeighbors.Add(values[neighborCandidates[i].index]);
             }
 
             return nearestNeighbors;

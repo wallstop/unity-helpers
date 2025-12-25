@@ -5,25 +5,22 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
     using UnityEngine;
     using UnityEngine.TestTools;
     using UnityEngine.UI;
-    using WallstopStudios.UnityHelpers.Tests.TestUtils;
+    using WallstopStudios.UnityHelpers.Tests.Core;
     using WallstopStudios.UnityHelpers.Utils;
 
     public sealed class MatchColliderToSpriteTests : CommonTestBase
     {
         private Sprite _testSprite;
 
-        [OneTimeSetUp]
-        public void OneTimeSetup()
+        [SetUp]
+        public override void BaseSetUp()
         {
-            Texture2D texture = new(64, 64);
-            _testSprite = Sprite.Create(
-                texture,
-                new Rect(0, 0, 64, 64),
-                new Vector2(0.5f, 0.5f),
-                100f
+            base.BaseSetUp();
+            Texture2D texture = Track(new Texture2D(64, 64));
+            _testSprite = Track(
+                Sprite.Create(texture, new Rect(0, 0, 64, 64), new Vector2(0.5f, 0.5f), 100f)
             );
 
-            // Define a physics shape for the sprite (a simple rectangle)
             Vector2[] physicsShape =
             {
                 new(-0.5f, -0.5f),
@@ -32,16 +29,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                 new(0.5f, -0.5f),
             };
             _testSprite.OverridePhysicsShape(new[] { physicsShape });
-        }
-
-        [OneTimeTearDown]
-        public void OneTimeTeardown()
-        {
-            if (_testSprite != null)
-            {
-                Object.Destroy(_testSprite.texture);
-                Object.Destroy(_testSprite);
-            }
         }
 
         // Per-test cleanup handled by CommonTestBase

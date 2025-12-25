@@ -1,4 +1,4 @@
-namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
+namespace WallstopStudios.UnityHelpers.Tests.Sprites
 {
 #if UNITY_EDITOR
     using System.IO;
@@ -7,17 +7,22 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Editor.Sprites;
-    using WallstopStudios.UnityHelpers.Tests.Editor.Utils;
+    using WallstopStudios.UnityHelpers.Editor.Utils;
+    using WallstopStudios.UnityHelpers.Tests.Core;
 
     public sealed class AnimationCopierWindowTests : CommonTestBase
     {
         private const string SrcRoot = "Assets/Temp/AnimationCopierTests/Src";
         private const string DstRoot = "Assets/Temp/AnimationCopierTests/Dst";
         private bool _prevPrompt;
+        private bool _previousEditorUiSuppress;
 
         [SetUp]
-        public void SetUp()
+        public override void BaseSetUp()
         {
+            base.BaseSetUp();
+            _previousEditorUiSuppress = EditorUi.Suppress;
+            EditorUi.Suppress = true;
             EnsureFolder(SrcRoot);
             EnsureFolder(DstRoot);
             _prevPrompt = AnimationCopierWindow.SuppressUserPrompts;
@@ -28,9 +33,26 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
         public override void TearDown()
         {
             base.TearDown();
-            AssetDatabase.DeleteAsset("Assets/Temp/AnimationCopierTests");
-            AssetDatabase.Refresh();
+            // Clean up only tracked folders/assets that this test created
+            CleanupTrackedFoldersAndAssets();
             AnimationCopierWindow.SuppressUserPrompts = _prevPrompt;
+            EditorUi.Suppress = _previousEditorUiSuppress;
+        }
+
+        private static void ImportAssetIfExists(string assetPath)
+        {
+            if (string.IsNullOrEmpty(assetPath))
+            {
+                return;
+            }
+
+            if (
+                AssetDatabase.IsValidFolder(assetPath)
+                || AssetDatabase.LoadAssetAtPath<Object>(assetPath) != null
+            )
+            {
+                AssetDatabase.ImportAsset(assetPath, ImportAssetOptions.ForceUpdate);
+            }
         }
 
         [Test]
@@ -39,7 +61,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             string srcA = Path.Combine(SrcRoot, "A.anim").SanitizePath();
             CreateEmptyClip(srcA);
             AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
+            ImportAssetIfExists(srcA);
 
             AnimationCopierWindow window = CreateWindow();
             window.AnimationSourcePathRelative = SrcRoot;
@@ -59,18 +81,18 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             string dstA = Path.Combine(DstRoot, "A.anim").SanitizePath();
             Assert.IsTrue(AssetDatabase.CopyAsset(srcA, dstA));
             AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
+            ImportAssetIfExists(dstA);
 
             // Modify source so it becomes changed vs. destination
             ModifyClip(srcA);
             AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
+            ImportAssetIfExists(srcA);
 
             // Add orphan in destination
             string dstB = Path.Combine(DstRoot, "B.anim").SanitizePath();
             CreateEmptyClip(dstB);
             AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
+            ImportAssetIfExists(dstB);
 
             window.AnalyzeAnimations();
 
@@ -92,16 +114,16 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             string dstA = Path.Combine(DstRoot, "A.anim").SanitizePath();
             CreateEmptyClip(srcA);
             AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
+            ImportAssetIfExists(srcA);
             Assert.IsTrue(AssetDatabase.CopyAsset(srcA, dstA));
             AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
+            ImportAssetIfExists(dstA);
 
             string guidBefore = AssetDatabase.AssetPathToGUID(dstA);
             // Modify source to force change
             ModifyClip(srcA);
             AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
+            ImportAssetIfExists(srcA);
 
             AnimationCopierWindow window = CreateWindow();
             window.AnimationSourcePathRelative = SrcRoot;
@@ -127,7 +149,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             CreateEmptyClip(srcA);
             CreateEmptyClip(dstB);
             AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
+            ImportAssetIfExists(srcA);
+            ImportAssetIfExists(dstB);
 
             AnimationCopierWindow window = CreateWindow();
             window.AnimationSourcePathRelative = SrcRoot;
@@ -141,7 +164,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
 
             window.MirrorDeleteDestinationAnimations();
             AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
+            ImportAssetIfExists(DstRoot);
 
             Assert.IsFalse(
                 File.Exists(ToFull(dstB)) || AssetDatabase.LoadMainAssetAtPath(dstB) != null,
@@ -150,21 +173,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
         }
 
         // Helpers
-        private static void EnsureFolder(string relPath)
-        {
-            string[] parts = relPath.Split('/');
-            string cur = parts[0];
-            for (int i = 1; i < parts.Length; i++)
-            {
-                string next = cur + "/" + parts[i];
-                if (!AssetDatabase.IsValidFolder(next))
-                {
-                    AssetDatabase.CreateFolder(cur, parts[i]);
-                }
-                cur = next;
-            }
-        }
-
         private static string ToFull(string rel) =>
             Path.Combine(
                     Application.dataPath.Substring(
@@ -173,14 +181,15 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
                     ),
                     rel
                 )
-                .Replace('\\', '/');
+                .SanitizePath();
 
-        private static void CreateEmptyClip(string relPath)
+        private void CreateEmptyClip(string relPath)
         {
-            string dir = Path.GetDirectoryName(relPath).Replace('\\', '/');
+            string dir = Path.GetDirectoryName(relPath).SanitizePath();
             EnsureFolder(dir);
             AnimationClip clip = new();
             AssetDatabase.CreateAsset(clip, relPath);
+            TrackAssetPath(relPath);
         }
 
         private static void ModifyClip(string relPath)

@@ -6,10 +6,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
     using NUnit.Framework;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Helper;
-    using WallstopStudios.UnityHelpers.Tests.Attributes;
+    using WallstopStudios.UnityHelpers.Tests.Core;
+    using WallstopStudios.UnityHelpers.Tests.Core.TestTypes;
 
     [TestFixture]
-    public sealed class ReflectionHelpersTypeScanningTests
+    public sealed class ReflectionHelpersTypeScanningTests : CommonTestBase
     {
         [Test]
         public void GetAllLoadedTypesIncludesTestAssemblyType()

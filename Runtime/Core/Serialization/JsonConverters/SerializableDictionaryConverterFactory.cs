@@ -1,0 +1,310 @@
+namespace WallstopStudios.UnityHelpers.Core.Serialization.JsonConverters
+{
+    using System;
+    using System.Reflection;
+    using System.Text.Json;
+    using System.Text.Json.Serialization;
+    using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
+
+    /// <summary>
+    /// JSON converter factory for SerializableDictionary types.
+    /// Ensures serialization produces an object with "_keys" and "_values" fields rather than a JSON dictionary,
+    /// which is necessary for proper order preservation across serialization cycles.
+    /// </summary>
+    public sealed class SerializableDictionaryConverterFactory : JsonConverterFactory
+    {
+        public static readonly SerializableDictionaryConverterFactory Instance = new();
+
+        private SerializableDictionaryConverterFactory() { }
+
+        public override bool CanConvert(Type typeToConvert)
+        {
+            if (!typeToConvert.IsGenericType)
+            {
+                return false;
+            }
+
+            Type genericDef = typeToConvert.GetGenericTypeDefinition();
+            return genericDef == typeof(SerializableDictionary<,>)
+                || genericDef == typeof(SerializableDictionary<,,>);
+        }
+
+        public override JsonConverter CreateConverter(
+            Type typeToConvert,
+            JsonSerializerOptions options
+        )
+        {
+            Type genericDef = typeToConvert.GetGenericTypeDefinition();
+            Type[] typeArgs = typeToConvert.GetGenericArguments();
+
+            Type converterType;
+            if (genericDef == typeof(SerializableDictionary<,>))
+            {
+                // SerializableDictionary<TKey, TValue> where TValueCache = TValue
+                converterType = typeof(SerializableDictionaryConverter<,>).MakeGenericType(
+                    typeArgs
+                );
+            }
+            else
+            {
+                // SerializableDictionary<TKey, TValue, TValueCache>
+                converterType =
+                    typeof(SerializableDictionaryWithCacheConverter<,,>).MakeGenericType(typeArgs);
+            }
+
+            return (JsonConverter)Activator.CreateInstance(converterType);
+        }
+
+        private sealed class SerializableDictionaryConverter<TKey, TValue>
+            : JsonConverter<SerializableDictionary<TKey, TValue>>
+        {
+            private const string KeysPropertyName = "_keys";
+            private const string ValuesPropertyName = "_values";
+
+            public override SerializableDictionary<TKey, TValue> Read(
+                ref Utf8JsonReader reader,
+                Type typeToConvert,
+                JsonSerializerOptions options
+            )
+            {
+                if (reader.TokenType == JsonTokenType.Null)
+                {
+                    return null;
+                }
+
+                if (reader.TokenType != JsonTokenType.StartObject)
+                {
+                    throw new JsonException(
+                        $"Expected StartObject for SerializableDictionary<{typeof(TKey).Name}, {typeof(TValue).Name}>, got {reader.TokenType}"
+                    );
+                }
+
+                TKey[] keysArray = null;
+                TValue[] valuesArray = null;
+
+                while (reader.Read())
+                {
+                    if (reader.TokenType == JsonTokenType.EndObject)
+                    {
+                        break;
+                    }
+
+                    if (reader.TokenType != JsonTokenType.PropertyName)
+                    {
+                        continue;
+                    }
+
+                    string propertyName = reader.GetString();
+                    reader.Read();
+
+                    if (
+                        string.Equals(
+                            propertyName,
+                            KeysPropertyName,
+                            StringComparison.OrdinalIgnoreCase
+                        )
+                    )
+                    {
+                        keysArray = JsonSerializer.Deserialize<TKey[]>(ref reader, options);
+                    }
+                    else if (
+                        string.Equals(
+                            propertyName,
+                            ValuesPropertyName,
+                            StringComparison.OrdinalIgnoreCase
+                        )
+                    )
+                    {
+                        valuesArray = JsonSerializer.Deserialize<TValue[]>(ref reader, options);
+                    }
+                    else
+                    {
+                        reader.Skip();
+                    }
+                }
+
+                SerializableDictionary<TKey, TValue> result = new();
+                if (keysArray != null && valuesArray != null)
+                {
+                    SetSerializedArrays(result, keysArray, valuesArray);
+                    result.OnAfterDeserialize();
+                }
+
+                return result;
+            }
+
+            public override void Write(
+                Utf8JsonWriter writer,
+                SerializableDictionary<TKey, TValue> value,
+                JsonSerializerOptions options
+            )
+            {
+                if (value == null)
+                {
+                    writer.WriteNullValue();
+                    return;
+                }
+
+                // Ensure serialized arrays are up to date
+                value.OnBeforeSerialize();
+
+                writer.WriteStartObject();
+                writer.WritePropertyName(KeysPropertyName);
+                JsonSerializer.Serialize(writer, value.SerializedKeys, options);
+                writer.WritePropertyName(ValuesPropertyName);
+                JsonSerializer.Serialize(writer, value.SerializedValues, options);
+                writer.WriteEndObject();
+            }
+
+            private static void SetSerializedArrays(
+                SerializableDictionary<TKey, TValue> dict,
+                TKey[] keys,
+                TValue[] values
+            )
+            {
+                // Use reflection to set the internal _keys and _values fields
+                Type baseType = typeof(SerializableDictionaryBase<TKey, TValue, TValue>);
+
+                FieldInfo keysField = baseType.GetField(
+                    "_keys",
+                    BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public
+                );
+                FieldInfo valuesField = baseType.GetField(
+                    "_values",
+                    BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public
+                );
+
+                keysField?.SetValue(dict, keys);
+                valuesField?.SetValue(dict, values);
+            }
+        }
+
+        private sealed class SerializableDictionaryWithCacheConverter<TKey, TValue, TValueCache>
+            : JsonConverter<SerializableDictionary<TKey, TValue, TValueCache>>
+            where TValueCache : SerializableDictionary.Cache<TValue>, new()
+        {
+            private const string KeysPropertyName = "_keys";
+            private const string ValuesPropertyName = "_values";
+
+            public override SerializableDictionary<TKey, TValue, TValueCache> Read(
+                ref Utf8JsonReader reader,
+                Type typeToConvert,
+                JsonSerializerOptions options
+            )
+            {
+                if (reader.TokenType == JsonTokenType.Null)
+                {
+                    return null;
+                }
+
+                if (reader.TokenType != JsonTokenType.StartObject)
+                {
+                    throw new JsonException(
+                        $"Expected StartObject for SerializableDictionary<{typeof(TKey).Name}, {typeof(TValue).Name}, {typeof(TValueCache).Name}>, got {reader.TokenType}"
+                    );
+                }
+
+                TKey[] keysArray = null;
+                TValueCache[] valuesArray = null;
+
+                while (reader.Read())
+                {
+                    if (reader.TokenType == JsonTokenType.EndObject)
+                    {
+                        break;
+                    }
+
+                    if (reader.TokenType != JsonTokenType.PropertyName)
+                    {
+                        continue;
+                    }
+
+                    string propertyName = reader.GetString();
+                    reader.Read();
+
+                    if (
+                        string.Equals(
+                            propertyName,
+                            KeysPropertyName,
+                            StringComparison.OrdinalIgnoreCase
+                        )
+                    )
+                    {
+                        keysArray = JsonSerializer.Deserialize<TKey[]>(ref reader, options);
+                    }
+                    else if (
+                        string.Equals(
+                            propertyName,
+                            ValuesPropertyName,
+                            StringComparison.OrdinalIgnoreCase
+                        )
+                    )
+                    {
+                        valuesArray = JsonSerializer.Deserialize<TValueCache[]>(
+                            ref reader,
+                            options
+                        );
+                    }
+                    else
+                    {
+                        reader.Skip();
+                    }
+                }
+
+                SerializableDictionary<TKey, TValue, TValueCache> result = new();
+                if (keysArray != null && valuesArray != null)
+                {
+                    SetSerializedArrays(result, keysArray, valuesArray);
+                    result.OnAfterDeserialize();
+                }
+
+                return result;
+            }
+
+            public override void Write(
+                Utf8JsonWriter writer,
+                SerializableDictionary<TKey, TValue, TValueCache> value,
+                JsonSerializerOptions options
+            )
+            {
+                if (value == null)
+                {
+                    writer.WriteNullValue();
+                    return;
+                }
+
+                // Ensure serialized arrays are up to date
+                value.OnBeforeSerialize();
+
+                writer.WriteStartObject();
+                writer.WritePropertyName(KeysPropertyName);
+                JsonSerializer.Serialize(writer, value.SerializedKeys, options);
+                writer.WritePropertyName(ValuesPropertyName);
+                JsonSerializer.Serialize(writer, value.SerializedValues, options);
+                writer.WriteEndObject();
+            }
+
+            private static void SetSerializedArrays(
+                SerializableDictionary<TKey, TValue, TValueCache> dict,
+                TKey[] keys,
+                TValueCache[] values
+            )
+            {
+                // Use reflection to set the internal _keys and _values fields
+                Type baseType = typeof(SerializableDictionaryBase<TKey, TValue, TValueCache>);
+
+                FieldInfo keysField = baseType.GetField(
+                    "_keys",
+                    BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public
+                );
+                FieldInfo valuesField = baseType.GetField(
+                    "_values",
+                    BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public
+                );
+
+                keysField?.SetValue(dict, keys);
+                valuesField?.SetValue(dict, values);
+            }
+        }
+    }
+}

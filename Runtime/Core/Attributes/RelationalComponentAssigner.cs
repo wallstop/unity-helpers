@@ -2,7 +2,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
 {
     using System;
     using System.Collections.Generic;
-    using System.Linq;
+    using Helper;
     using Tags;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Utils;
@@ -11,9 +11,19 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
     /// Default implementation of <see cref="IRelationalComponentAssigner"/> that delegates to the
     /// existing relational component extensions.
     /// </summary>
+    /// <remarks>
+    /// Thread-safety note: The <c>_metadataCache</c> reference is assigned once during construction and never changed.
+    /// The <see cref="AttributeMetadataCache"/> instance itself is thread-safe for concurrent reads, as its internal
+    /// dictionaries are only populated during static initialization before any instance is exposed.
+    /// The <c>_hasAssignmentsCache</c> dictionary is protected by <c>_cacheLock</c> for concurrent access.
+    /// </remarks>
     public sealed class RelationalComponentAssigner : IRelationalComponentAssigner
     {
+        // Immutable after construction - assigned in constructor and never modified.
+        // The AttributeMetadataCache instance is thread-safe for reads after initialization.
         private readonly AttributeMetadataCache _metadataCache;
+
+        // Guarded by _cacheLock for all access.
         private readonly Dictionary<Type, bool> _hasAssignmentsCache;
         private readonly object _cacheLock = new();
 
@@ -79,6 +89,13 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
             return result;
         }
 
+        private static readonly Type[] RelationalAttributeTypes =
+        {
+            typeof(ParentComponentAttribute),
+            typeof(ChildComponentAttribute),
+            typeof(SiblingComponentAttribute),
+        };
+
         private void StoreCacheResult(Type componentType, bool result)
         {
             lock (_cacheLock)
@@ -92,21 +109,9 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
             Type current = componentType;
             while (current != null && typeof(Component).IsAssignableFrom(current))
             {
-                // Prefer ReflectionHelpers so Editor TypeCache can accelerate lookups
-                bool has =
-                    Helper
-                        .ReflectionHelpers.GetFieldsWithAttribute<ParentComponentAttribute>(current)
-                        .Any()
-                    || Helper
-                        .ReflectionHelpers.GetFieldsWithAttribute<ChildComponentAttribute>(current)
-                        .Any()
-                    || Helper
-                        .ReflectionHelpers.GetFieldsWithAttribute<SiblingComponentAttribute>(
-                            current
-                        )
-                        .Any();
-
-                if (has)
+                // IsDefined checks for exact attribute types, not derived types.
+                // Must check each concrete relational attribute type separately.
+                if (current.HasAnyFieldWithAttributes(RelationalAttributeTypes))
                 {
                     return true;
                 }

@@ -5,8 +5,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
     using System.Linq;
     using NUnit.Framework;
     using WallstopStudios.UnityHelpers.Core.Extension;
+    using WallstopStudios.UnityHelpers.Tests.Core;
 
-    public sealed class StringExtensionTests
+    public sealed class StringExtensionTests : CommonTestBase
     {
         [Test]
         public void ToPascalCaseNominal()
@@ -475,6 +476,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             Assert.AreEqual("version2Update", "version-2-update".ToCamelCase());
             Assert.AreEqual("test1Test2", "test1_test2".ToCamelCase());
             Assert.AreEqual("api2Endpoint", "api_2_endpoint".ToCamelCase());
+        }
+
+        [Test]
+        public void ToCamelCaseHandlesTurkishCharacters()
+        {
+            Assert.AreEqual("istanbulCity", "İSTANBUL_city".ToCamelCase());
         }
 
         [Test]
@@ -1524,6 +1531,16 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         }
 
         [Test]
+        public void ToTitleCaseWithoutPreservingSeparatorsCollapsesDelimiters()
+        {
+            Assert.AreEqual(
+                "Hello World 123 Beta",
+                "hello_world-123__beta".ToTitleCase(preserveSeparators: false)
+            );
+            Assert.AreEqual("Foo Bar", "foo---bar".ToTitleCase(preserveSeparators: false));
+        }
+
+        [Test]
         public void ContainsIgnoreCaseNominal()
         {
             Assert.IsTrue("Hello World".ContainsIgnoreCase("hello"));
@@ -1765,6 +1782,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             Assert.AreEqual(string.Empty, "not valid base64!@#".FromBase64());
             Assert.AreEqual(string.Empty, ((string)null).FromBase64());
             Assert.AreEqual(string.Empty, string.Empty.FromBase64());
+        }
+
+        [Test]
+        public void FromBase64RejectsLikelyButInvalidPadding()
+        {
+            Assert.AreEqual(string.Empty, "AAAA====".FromBase64());
         }
 
         [Test]
@@ -2244,89 +2267,34 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             Assert.AreEqual("MixedTest", "mixed.'Test".ToPascalCase());
         }
 
-        [Test]
-        public void ToCasePascalCase()
+        private static readonly object[] ToCaseMatrixData =
         {
-            Assert.AreEqual("PascalCase", "pascalCase".ToCase(StringCase.PascalCase));
-            Assert.AreEqual("PascalCase", "pascal_case".ToCase(StringCase.PascalCase));
-            Assert.AreEqual("PascalCase", "PASCAL_CASE".ToCase(StringCase.PascalCase));
-            Assert.AreEqual("PascalCase", "pascal-case".ToCase(StringCase.PascalCase));
-            Assert.AreEqual("TestValue", "test value".ToCase(StringCase.PascalCase));
-        }
+            new object[] { "mixed_input", StringCase.PascalCase, "MixedInput" },
+            new object[] { "mixed_input", StringCase.CamelCase, "mixedInput" },
+            new object[] { "mixed_input", StringCase.SnakeCase, "mixed_input" },
+            new object[] { "mixed_input", StringCase.KebabCase, "mixed-input" },
+            new object[] { "mixed_input", StringCase.TitleCase, "Mixed Input" },
+            new object[] { "mixed_input", StringCase.LowerCase, "mixed_input" },
+            new object[] { "mixed_input", StringCase.UpperCase, "MIXED_INPUT" },
+            new object[] { "mixed_input", StringCase.LowerInvariant, "mixed_input" },
+            new object[] { "mixed_input", StringCase.UpperInvariant, "MIXED_INPUT" },
+#pragma warning disable CS0618
+            new object[] { "mixed_input", StringCase.None, "mixed_input" },
+#pragma warning restore CS0618
+            new object[] { "HeLLo WoRLd", StringCase.LowerCase, "hello world" },
+            new object[] { "HeLLo WoRLd", StringCase.UpperCase, "HELLO WORLD" },
+            new object[] { "İSTANBUL", StringCase.LowerInvariant, "istanbul" },
+            new object[] { "istanbul", StringCase.UpperInvariant, "ISTANBUL" },
+        };
 
-        [Test]
-        public void ToCaseCamelCase()
+        [TestCaseSource(nameof(ToCaseMatrixData))]
+        public void ToCaseMatrixCoversAllStringCases(
+            string input,
+            StringCase stringCase,
+            string expected
+        )
         {
-            Assert.AreEqual("camelCase", "CamelCase".ToCase(StringCase.CamelCase));
-            Assert.AreEqual("camelCase", "camel_case".ToCase(StringCase.CamelCase));
-            Assert.AreEqual("camelCase", "CAMEL_CASE".ToCase(StringCase.CamelCase));
-            Assert.AreEqual("camelCase", "camel-case".ToCase(StringCase.CamelCase));
-            Assert.AreEqual("testValue", "test value".ToCase(StringCase.CamelCase));
-        }
-
-        [Test]
-        public void ToCaseSnakeCase()
-        {
-            Assert.AreEqual("snake_case", "SnakeCase".ToCase(StringCase.SnakeCase));
-            Assert.AreEqual("snake_case", "snakeCase".ToCase(StringCase.SnakeCase));
-            Assert.AreEqual("snake_case", "SNAKE_CASE".ToCase(StringCase.SnakeCase));
-            Assert.AreEqual("snake_case", "snake-case".ToCase(StringCase.SnakeCase));
-            Assert.AreEqual("test_value", "test value".ToCase(StringCase.SnakeCase));
-        }
-
-        [Test]
-        public void ToCaseKebabCase()
-        {
-            Assert.AreEqual("kebab-case", "KebabCase".ToCase(StringCase.KebabCase));
-            Assert.AreEqual("kebab-case", "kebabCase".ToCase(StringCase.KebabCase));
-            Assert.AreEqual("kebab-case", "KEBAB_CASE".ToCase(StringCase.KebabCase));
-            Assert.AreEqual("kebab-case", "kebab_case".ToCase(StringCase.KebabCase));
-            Assert.AreEqual("test-value", "test value".ToCase(StringCase.KebabCase));
-        }
-
-        [Test]
-        public void ToCaseTitleCase()
-        {
-            Assert.AreEqual("Title Case", "title case".ToCase(StringCase.TitleCase));
-            Assert.AreEqual("Title Case", "TitleCase".ToCase(StringCase.TitleCase));
-            Assert.AreEqual("Title Case", "TITLE CASE".ToCase(StringCase.TitleCase));
-            Assert.AreEqual("Test Value", "test_value".ToCase(StringCase.TitleCase));
-        }
-
-        [Test]
-        public void ToCaseLowerCase()
-        {
-            Assert.AreEqual("lowercase", "LowerCase".ToCase(StringCase.LowerCase));
-            Assert.AreEqual("lowercase", "LOWERCASE".ToCase(StringCase.LowerCase));
-            Assert.AreEqual("test value", "Test Value".ToCase(StringCase.LowerCase));
-            Assert.AreEqual("hello world", "HeLLo WoRLd".ToCase(StringCase.LowerCase));
-        }
-
-        [Test]
-        public void ToCaseUpperCase()
-        {
-            Assert.AreEqual("UPPERCASE", "UpperCase".ToCase(StringCase.UpperCase));
-            Assert.AreEqual("UPPERCASE", "uppercase".ToCase(StringCase.UpperCase));
-            Assert.AreEqual("TEST VALUE", "Test Value".ToCase(StringCase.UpperCase));
-            Assert.AreEqual("HELLO WORLD", "HeLLo WoRLd".ToCase(StringCase.UpperCase));
-        }
-
-        [Test]
-        public void ToCaseLowerInvariant()
-        {
-            Assert.AreEqual("lowercase", "LowerCase".ToCase(StringCase.LowerInvariant));
-            Assert.AreEqual("lowercase", "LOWERCASE".ToCase(StringCase.LowerInvariant));
-            Assert.AreEqual("test value", "Test Value".ToCase(StringCase.LowerInvariant));
-            Assert.AreEqual("istanbul", "İSTANBUL".ToCase(StringCase.LowerInvariant));
-        }
-
-        [Test]
-        public void ToCaseUpperInvariant()
-        {
-            Assert.AreEqual("UPPERCASE", "UpperCase".ToCase(StringCase.UpperInvariant));
-            Assert.AreEqual("UPPERCASE", "uppercase".ToCase(StringCase.UpperInvariant));
-            Assert.AreEqual("TEST VALUE", "Test Value".ToCase(StringCase.UpperInvariant));
-            Assert.AreEqual("ISTANBUL", "istanbul".ToCase(StringCase.UpperInvariant));
+            Assert.AreEqual(expected, input.ToCase(stringCase));
         }
 
         [Test]

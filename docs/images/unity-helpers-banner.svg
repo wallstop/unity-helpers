@@ -1,0 +1,187 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 200" width="800" height="200">
+  <defs>
+    <!-- Gradient for main background -->
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a1a2e;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#16213e;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0f3460;stop-opacity:1" />
+    </linearGradient>
+    <!-- Accent gradient -->
+    <linearGradient id="accentGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#e94560;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#f39c12;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#00d9ff;stop-opacity:1" />
+    </linearGradient>
+    <!-- Wallstop logo gradient -->
+    <linearGradient id="wallstopGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#e94560;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#f39c12;stop-opacity:1" />
+    </linearGradient>
+    <!-- Secondary gradient for depth -->
+    <linearGradient id="wallstopGradient2" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#00d9ff;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#2ecc71;stop-opacity:1" />
+    </linearGradient>
+    <!-- Glow filter -->
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <!-- Icon glow -->
+    <filter id="iconGlow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="800" height="200" fill="url(#bgGradient)" rx="12" ry="12"/>
+  
+  <!-- Decorative grid pattern (subtle) -->
+  <g opacity="0.05">
+    <line x1="0" y1="50" x2="800" y2="50" stroke="white" stroke-width="1"/>
+    <line x1="0" y1="100" x2="800" y2="100" stroke="white" stroke-width="1"/>
+    <line x1="0" y1="150" x2="800" y2="150" stroke="white" stroke-width="1"/>
+    <line x1="100" y1="0" x2="100" y2="200" stroke="white" stroke-width="1"/>
+    <line x1="200" y1="0" x2="200" y2="200" stroke="white" stroke-width="1"/>
+    <line x1="300" y1="0" x2="300" y2="200" stroke="white" stroke-width="1"/>
+    <line x1="400" y1="0" x2="400" y2="200" stroke="white" stroke-width="1"/>
+    <line x1="500" y1="0" x2="500" y2="200" stroke="white" stroke-width="1"/>
+    <line x1="600" y1="0" x2="600" y2="200" stroke="white" stroke-width="1"/>
+    <line x1="700" y1="0" x2="700" y2="200" stroke="white" stroke-width="1"/>
+  </g>
+
+  <!-- Wallstop Studios Logo - Stylized W in hexagonal shield -->
+  <g transform="translate(40, 50)">
+    <!-- Outer hexagonal shield (stop sign inspired) -->
+    <polygon points="45,0 80,15 80,65 45,80 10,65 10,15" fill="none" stroke="url(#wallstopGradient)" stroke-width="3" opacity="0.8"/>
+    
+    <!-- Inner glow ring -->
+    <polygon points="45,8 72,20 72,60 45,72 18,60 18,20" fill="url(#bgGradient)" stroke="url(#wallstopGradient2)" stroke-width="1.5" opacity="0.6"/>
+    
+    <!-- Stylized W made of brick-like segments -->
+    <!-- Left outer stroke of W (descending from top-left) -->
+    <rect x="20" y="22" width="8" height="10" fill="url(#wallstopGradient)" rx="1"/>
+    <rect x="23" y="34" width="8" height="10" fill="url(#wallstopGradient)" rx="1" opacity="0.9"/>
+    <rect x="26" y="46" width="8" height="12" fill="url(#wallstopGradient)" rx="1" opacity="0.8"/>
+    
+    <!-- Left inner stroke of W (ascending to center peak) -->
+    <rect x="34" y="42" width="7" height="10" fill="url(#wallstopGradient2)" rx="1" opacity="0.85"/>
+    <rect x="38" y="32" width="7" height="10" fill="url(#wallstopGradient2)" rx="1" opacity="0.9"/>
+    
+    <!-- Center peak of W (points UP) -->
+    <rect x="41" y="22" width="8" height="10" fill="#ffffff" rx="1" opacity="0.95"/>
+    
+    <!-- Right inner stroke of W (descending from center peak) -->
+    <rect x="45" y="32" width="7" height="10" fill="url(#wallstopGradient2)" rx="1" opacity="0.9"/>
+    <rect x="49" y="42" width="7" height="10" fill="url(#wallstopGradient2)" rx="1" opacity="0.85"/>
+    
+    <!-- Right outer stroke of W (descending from top-right) -->
+    <rect x="62" y="22" width="8" height="10" fill="url(#wallstopGradient)" rx="1"/>
+    <rect x="59" y="34" width="8" height="10" fill="url(#wallstopGradient)" rx="1" opacity="0.9"/>
+    <rect x="56" y="46" width="8" height="12" fill="url(#wallstopGradient)" rx="1" opacity="0.8"/>
+    
+    <!-- Decorative corner accents -->
+    <circle cx="45" cy="4" r="2" fill="url(#accentGradient)"/>
+    <circle cx="45" cy="76" r="2" fill="url(#accentGradient)"/>
+  </g>
+
+  <!-- Main title -->
+  <text x="150" y="85" font-family="'Segoe UI', 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif" font-size="48" font-weight="700" fill="white" filter="url(#glow)">
+    Unity Helpers
+  </text>
+
+  <!-- Tagline -->
+  <text x="150" y="115" font-family="'Segoe UI', 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif" font-size="16" fill="#8892b0" letter-spacing="0.5">
+    Stop writing boilerplate. Start shipping features.
+  </text>
+
+  <!-- Accent line under title -->
+  <rect x="150" y="125" width="300" height="3" fill="url(#accentGradient)" rx="1.5" ry="1.5"/>
+
+  <!-- Feature icons row -->
+  <g transform="translate(150, 150)">
+    <!-- Inspector icon (palette) -->
+    <g transform="translate(0, 0)" filter="url(#iconGlow)">
+      <circle cx="12" cy="12" r="14" fill="none" stroke="#e94560" stroke-width="2" opacity="0.3"/>
+      <circle cx="12" cy="12" r="10" fill="#e94560" opacity="0.2"/>
+      <text x="12" y="17" font-size="14" text-anchor="middle" fill="#e94560">🎨</text>
+    </g>
+    <text x="12" y="38" font-size="9" text-anchor="middle" fill="#8892b0">Inspector</text>
+
+    <!-- Components icon (plug) -->
+    <g transform="translate(70, 0)" filter="url(#iconGlow)">
+      <circle cx="12" cy="12" r="14" fill="none" stroke="#f39c12" stroke-width="2" opacity="0.3"/>
+      <circle cx="12" cy="12" r="10" fill="#f39c12" opacity="0.2"/>
+      <text x="12" y="17" font-size="14" text-anchor="middle" fill="#f39c12">🔌</text>
+    </g>
+    <text x="82" y="38" font-size="9" text-anchor="middle" fill="#8892b0">Auto-Wire</text>
+
+    <!-- Spatial icon (tree) -->
+    <g transform="translate(140, 0)" filter="url(#iconGlow)">
+      <circle cx="12" cy="12" r="14" fill="none" stroke="#2ecc71" stroke-width="2" opacity="0.3"/>
+      <circle cx="12" cy="12" r="10" fill="#2ecc71" opacity="0.2"/>
+      <text x="12" y="17" font-size="14" text-anchor="middle" fill="#2ecc71">🌳</text>
+    </g>
+    <text x="152" y="38" font-size="9" text-anchor="middle" fill="#8892b0">Spatial</text>
+
+    <!-- PRNG icon (dice) -->
+    <g transform="translate(210, 0)" filter="url(#iconGlow)">
+      <circle cx="12" cy="12" r="14" fill="none" stroke="#9b59b6" stroke-width="2" opacity="0.3"/>
+      <circle cx="12" cy="12" r="10" fill="#9b59b6" opacity="0.2"/>
+      <text x="12" y="17" font-size="14" text-anchor="middle" fill="#9b59b6">🎲</text>
+    </g>
+    <text x="222" y="38" font-size="9" text-anchor="middle" fill="#8892b0">PRNG</text>
+
+    <!-- Effects icon (gamepad) -->
+    <g transform="translate(280, 0)" filter="url(#iconGlow)">
+      <circle cx="12" cy="12" r="14" fill="none" stroke="#00d9ff" stroke-width="2" opacity="0.3"/>
+      <circle cx="12" cy="12" r="10" fill="#00d9ff" opacity="0.2"/>
+      <text x="12" y="17" font-size="14" text-anchor="middle" fill="#00d9ff">🎮</text>
+    </g>
+    <text x="292" y="38" font-size="9" text-anchor="middle" fill="#8892b0">Effects</text>
+
+    <!-- Tools icon (wrench) -->
+    <g transform="translate(350, 0)" filter="url(#iconGlow)">
+      <circle cx="12" cy="12" r="14" fill="none" stroke="#e74c3c" stroke-width="2" opacity="0.3"/>
+      <circle cx="12" cy="12" r="10" fill="#e74c3c" opacity="0.2"/>
+      <text x="12" y="17" font-size="14" text-anchor="middle" fill="#e74c3c">🛠️</text>
+    </g>
+    <text x="362" y="38" font-size="9" text-anchor="middle" fill="#8892b0">Tools</text>
+  </g>
+
+  <!-- Stats badges on right side -->
+  <g transform="translate(555, 50)">
+    <!-- Unity version badge -->
+    <rect x="0" y="0" width="130" height="28" rx="14" ry="14" fill="#2ecc71" opacity="0.2"/>
+    <rect x="0" y="0" width="130" height="28" rx="14" ry="14" fill="none" stroke="#2ecc71" stroke-width="1.5" opacity="0.5"/>
+    <text x="65" y="18" font-family="'SF Mono', 'Fira Code', monospace" font-size="11" text-anchor="middle" fill="#2ecc71" font-weight="600">🎮 Unity 2021.3+</text>
+
+    <!-- Tests badge -->
+    <rect x="0" y="38" width="130" height="28" rx="14" ry="14" fill="#3498db" opacity="0.2"/>
+    <rect x="0" y="38" width="130" height="28" rx="14" ry="14" fill="none" stroke="#3498db" stroke-width="1.5" opacity="0.5"/>
+    <text x="65" y="56" font-family="'SF Mono', 'Fira Code', monospace" font-size="11" text-anchor="middle" fill="#3498db" font-weight="600">✅ 8,000+ tests</text>
+
+    <!-- High performance badge -->
+    <rect x="0" y="76" width="130" height="28" rx="14" ry="14" fill="#9b59b6" opacity="0.2"/>
+    <rect x="0" y="76" width="130" height="28" rx="14" ry="14" fill="none" stroke="#9b59b6" stroke-width="1.5" opacity="0.5"/>
+    <text x="65" y="94" font-family="'SF Mono', 'Fira Code', monospace" font-size="11" text-anchor="middle" fill="#9b59b6" font-weight="600">⚡ High perf</text>
+  </g>
+
+  <!-- Version indicator -->
+  <g transform="translate(700, 15)">
+    <rect x="0" y="0" width="85" height="22" rx="11" ry="11" fill="#e94560" opacity="0.9"/>
+    <text x="42" y="15" font-family="'SF Mono', 'Fira Code', monospace" font-size="11" text-anchor="middle" fill="white" font-weight="600">v3.0.0</text>
+  </g>
+
+  <!-- Wallstop Studios branding -->
+  <text x="785" y="190" font-family="'Segoe UI', sans-serif" font-size="10" text-anchor="end" fill="#4a5568" opacity="0.7">
+    Wallstop Studios
+  </text>
+</svg>

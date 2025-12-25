@@ -38,7 +38,9 @@ namespace WallstopStudios.UnityHelpers.Tags
         public const string CollisionDisabledTag = nameof(CollisionDisabledTag);
 
         [SiblingComponent]
+#pragma warning disable CS0649 // Field is never assigned to, and will always have its default value
         private TagHandler _tagHandler;
+#pragma warning restore CS0649 // Field is never assigned to, and will always have its default value
 
         private readonly List<Collider2D> _managedColliders = new();
 

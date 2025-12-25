@@ -2,6 +2,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Extensions
 {
 #if UNITY_EDITOR
     using System;
+    using System.Collections.Generic;
     using System.Reflection;
     using UnityEditor;
 
@@ -10,6 +11,85 @@ namespace WallstopStudios.UnityHelpers.Editor.Extensions
     /// </summary>
     public static class SerializedPropertyExtensions
     {
+        private static readonly Dictionary<string, string[]> PathSplitCache = new(
+            StringComparer.Ordinal
+        );
+        private static readonly Dictionary<string, string[]> TrimmedPathSplitCache = new(
+            StringComparer.Ordinal
+        );
+        private static readonly char[] PathSeparator = { '.' };
+
+        internal static void ClearCache()
+        {
+            PathSplitCache.Clear();
+            TrimmedPathSplitCache.Clear();
+        }
+
+        private static string[] GetCachedPathParts(string propertyPath)
+        {
+            if (PathSplitCache.TryGetValue(propertyPath, out string[] cached))
+            {
+                return cached;
+            }
+
+            string[] parts = propertyPath.Split(PathSeparator);
+            PathSplitCache[propertyPath] = parts;
+            return parts;
+        }
+
+        private static string[] GetTrimmedPathParts(string propertyPath, string propertyName)
+        {
+            if (TrimmedPathSplitCache.TryGetValue(propertyPath, out string[] cached))
+            {
+                return cached;
+            }
+
+            string[] pathParts = GetCachedPathParts(propertyPath);
+
+            if (
+                string.Equals(propertyName, "data", StringComparison.Ordinal)
+                && pathParts.Length > 1
+                && pathParts[^1].Contains('[')
+                && pathParts[^1].Contains(']')
+                && string.Equals(pathParts[^2], "Array", StringComparison.Ordinal)
+            )
+            {
+                string[] trimmed = new string[pathParts.Length - 2];
+                Array.Copy(pathParts, trimmed, trimmed.Length);
+                TrimmedPathSplitCache[propertyPath] = trimmed;
+                return trimmed;
+            }
+
+            TrimmedPathSplitCache[propertyPath] = pathParts;
+            return pathParts;
+        }
+
+        /// <summary>
+        /// Appends a new default element to the end of an array/list property and returns it.
+        /// Unlike InsertArrayElementAtIndex, this works even when the array is empty and avoids duplicating the last entry.
+        /// </summary>
+        /// <param name="arrayProperty">Serialized array/list property.</param>
+        /// <returns>The SerializedProperty representing the newly added element.</returns>
+        /// <exception cref="ArgumentNullException">Thrown if arrayProperty is null.</exception>
+        public static SerializedProperty AppendArrayElement(this SerializedProperty arrayProperty)
+        {
+            if (arrayProperty == null)
+            {
+                throw new ArgumentNullException(nameof(arrayProperty));
+            }
+
+            if (!arrayProperty.isArray)
+            {
+                throw new InvalidOperationException(
+                    $"SerializedProperty '{arrayProperty.propertyPath}' is not an array."
+                );
+            }
+
+            int newIndex = arrayProperty.arraySize;
+            arrayProperty.arraySize = newIndex + 1;
+            return arrayProperty.GetArrayElementAtIndex(newIndex);
+        }
+
         /// <summary>
         /// Gets the instance object that contains (encloses) the given SerializedProperty, along with the field's metadata.
         /// </summary>
@@ -38,18 +118,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Extensions
                 return null;
             }
             Type type = obj.GetType();
-            string[] pathParts = property.propertyPath.Split('.');
-
-            if (
-                string.Equals(property.name, "data", StringComparison.Ordinal)
-                && pathParts.Length > 1
-                && pathParts[^1].Contains('[')
-                && pathParts[^1].Contains(']')
-                && string.Equals(pathParts[^2], "Array", StringComparison.Ordinal)
-            )
-            {
-                Array.Resize(ref pathParts, pathParts.Length - 2);
-            }
+            string[] pathParts = GetTrimmedPathParts(property.propertyPath, property.name);
 
             // Traverse the path but stop at the second-to-last field
             for (int i = 0; i < pathParts.Length - 1; ++i)
@@ -61,14 +130,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Extensions
                     // Move to "data[i]", no need to length-check, we're guarded above
                     ++i;
                     fieldName = pathParts[i];
-                    if (
-                        !int.TryParse(
-                            fieldName
-                                .Replace("data[", string.Empty, StringComparison.Ordinal)
-                                .Replace("]", string.Empty, StringComparison.Ordinal),
-                            out int index
-                        )
-                    )
+                    if (!TryParseArrayIndex(fieldName, out int index))
                     {
                         // Unexpected, die
                         fieldInfo = null;
@@ -154,7 +216,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Extensions
             }
 
             Type type = obj.GetType();
-            string[] pathParts = property.propertyPath.Split('.');
+            string[] pathParts = GetCachedPathParts(property.propertyPath);
 
             for (int i = 0; i < pathParts.Length; ++i)
             {
@@ -169,14 +231,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Extensions
                         break;
                     }
 
-                    if (
-                        !int.TryParse(
-                            pathParts[i]
-                                .Replace("data[", string.Empty, StringComparison.Ordinal)
-                                .Replace("]", string.Empty, StringComparison.Ordinal),
-                            out int index
-                        )
-                    )
+                    if (!TryParseArrayIndex(pathParts[i], out int index))
                     {
                         // Unexpected, die
                         fieldInfo = null;
@@ -202,6 +257,35 @@ namespace WallstopStudios.UnityHelpers.Editor.Extensions
             }
 
             return obj;
+        }
+
+        private static readonly Dictionary<string, int> ArrayIndexCache = new(
+            StringComparer.Ordinal
+        );
+
+        private static bool TryParseArrayIndex(string dataField, out int index)
+        {
+            if (ArrayIndexCache.TryGetValue(dataField, out index))
+            {
+                return index >= 0;
+            }
+
+            if (
+                dataField.StartsWith("data[", StringComparison.Ordinal)
+                && dataField.EndsWith("]", StringComparison.Ordinal)
+            )
+            {
+                ReadOnlySpan<char> span = dataField.AsSpan(5, dataField.Length - 6);
+                if (int.TryParse(span, out index))
+                {
+                    ArrayIndexCache[dataField] = index;
+                    return true;
+                }
+            }
+
+            index = -1;
+            ArrayIndexCache[dataField] = index;
+            return false;
         }
 
         private static object GetElementAtIndex(object obj, int index)

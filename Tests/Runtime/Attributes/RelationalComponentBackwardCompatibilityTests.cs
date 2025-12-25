@@ -1,12 +1,12 @@
 namespace WallstopStudios.UnityHelpers.Tests.Attributes
 {
     using System.Collections;
-    using System.Collections.Generic;
     using NUnit.Framework;
     using UnityEngine;
     using UnityEngine.TestTools;
     using WallstopStudios.UnityHelpers.Core.Attributes;
-    using WallstopStudios.UnityHelpers.Tests.TestUtils;
+    using WallstopStudios.UnityHelpers.Tests.Core;
+    using WallstopStudios.UnityHelpers.Tests.Core.TestTypes;
 
     /// <summary>
     /// Tests to ensure backward compatibility after refactoring to use base classes.
@@ -352,127 +352,5 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
 
             yield break;
         }
-    }
-
-    // Parent test components
-    internal sealed class BasicParentTester : MonoBehaviour
-    {
-        [ParentComponent]
-        public SpriteRenderer parent;
-    }
-
-    internal sealed class ParentArrayTester : MonoBehaviour
-    {
-        [ParentComponent]
-        public SpriteRenderer[] parents;
-    }
-
-    internal sealed class ParentListTester : MonoBehaviour
-    {
-        [ParentComponent]
-        public List<SpriteRenderer> parents;
-    }
-
-    internal sealed class ParentOptionalTester2 : MonoBehaviour
-    {
-        [ParentComponent(Optional = true)]
-        public SpriteRenderer optionalParent;
-    }
-
-    internal sealed class ParentOnlyAncestorsTester2 : MonoBehaviour
-    {
-        [ParentComponent(OnlyAncestors = true)]
-        public SpriteRenderer ancestorOnly;
-    }
-
-    internal sealed class ParentInactiveTester2 : MonoBehaviour
-    {
-        [ParentComponent(IncludeInactive = true)]
-        public SpriteRenderer includeInactive;
-
-        [ParentComponent(IncludeInactive = false)]
-        public SpriteRenderer excludeInactive;
-    }
-
-    // Child test components
-    internal sealed class BasicChildTester : MonoBehaviour
-    {
-        [ChildComponent(OnlyDescendants = true)]
-        public SpriteRenderer child;
-    }
-
-    internal sealed class ChildArrayTester : MonoBehaviour
-    {
-        [ChildComponent(OnlyDescendants = true)]
-        public SpriteRenderer[] children;
-    }
-
-    internal sealed class ChildListTester : MonoBehaviour
-    {
-        [ChildComponent(OnlyDescendants = true)]
-        public List<SpriteRenderer> children;
-    }
-
-    internal sealed class ChildOnlyDescendantsTester : MonoBehaviour
-    {
-        [ChildComponent(OnlyDescendants = true)]
-        public SpriteRenderer descendantOnly;
-    }
-
-    internal sealed class ChildOrderTester : MonoBehaviour
-    {
-        [ChildComponent]
-        public SpriteRenderer[] children;
-    }
-
-    // Sibling test components
-    internal sealed class BasicSiblingTester : MonoBehaviour
-    {
-        [SiblingComponent]
-        public BoxCollider sibling;
-    }
-
-    internal sealed class SiblingArrayTester : MonoBehaviour
-    {
-        [SiblingComponent]
-        public BoxCollider[] siblings;
-    }
-
-    internal sealed class SiblingListTester : MonoBehaviour
-    {
-        [SiblingComponent]
-        public List<BoxCollider> siblings;
-    }
-
-    internal sealed class SiblingInactiveTester : MonoBehaviour
-    {
-        [SiblingComponent(IncludeInactive = true)]
-        public BoxCollider includeInactive;
-
-        [SiblingComponent(IncludeInactive = false, Optional = true)]
-        public BoxCollider excludeInactive;
-    }
-
-    // Relational test component
-    internal sealed class AllRelationalTester : MonoBehaviour
-    {
-        [ParentComponent(OnlyAncestors = true)]
-        public SpriteRenderer parentRenderer;
-
-        [ChildComponent(OnlyDescendants = false)]
-        public SpriteRenderer childRenderer;
-
-        [SiblingComponent]
-        public BoxCollider siblingCollider;
-    }
-
-    // SkipIfAssigned test component
-    internal sealed class SkipIfAssignedTester : MonoBehaviour
-    {
-        [ParentComponent(SkipIfAssigned = true)]
-        public SpriteRenderer preAssigned;
-
-        [ParentComponent]
-        public SpriteRenderer normal;
     }
 }

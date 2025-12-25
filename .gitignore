@@ -7,10 +7,23 @@
 *.userosscache
 *.sln.docstates
 
+TestFailures.txt
+TestFailures.txt.meta
+
+PlaceHolderSummary.md
+PlaceHolderSummary.md.meta
+
+logs_*zip
+logs_*zip.meta
+
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
 
+progress/**
+progress.meta
+
 .claude/*
+.codex/*
 
 # Build results
 [Dd]ebug/
@@ -23,6 +36,10 @@ bld/
 [Bb]in/
 [Oo]bj/
 [Ll]og/
+
+method-analysis-*
+
+TestProjects.meta
 
 # Visual Studio 2015 cache/options directory
 .vs/
@@ -196,6 +213,16 @@ ClientBin/
 node_modules/
 node_modules.meta
 orleans.codegen.cs
+TestProjects/**/Library/
+TestProjects/**/Logs/
+TestProjects/**/Temp/
+TestProjects/**/Obj/
+TestProjects/**/UserSettings/
+TestProjects/**/Build*/
+TestProjects/**/Packages/packages-lock.json
+TestProjects/**/Artifacts/
+TestProjects/
+scripts/run-unity*
 
 # Since there are multiple workflows, uncomment next line to ignore bower_components
 # (https://github.com/github/gitignore/pull/1529#issuecomment-104372622)
@@ -259,6 +286,7 @@ paket-files/
 
 # JetBrains Rider
 .idea/
+!.idea/idea.properties
 *.sln
 *.sln.meta
 *.sln.iml
@@ -317,3 +345,13 @@ package-lock.json.meta
 # Ensure Unity package samples are included
 !Samples~/
 !Samples~/**
+
+PLAN.md*
+
+artifacts*/
+artifacts/**
+artifacts.meta
+.claude*/
+.claude*.meta
+.codex*/
+.codex*.meta

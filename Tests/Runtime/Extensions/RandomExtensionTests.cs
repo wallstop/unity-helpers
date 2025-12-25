@@ -7,9 +7,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Extension;
     using WallstopStudios.UnityHelpers.Core.Random;
-    using WallstopStudios.UnityHelpers.Tests.Random;
+    using WallstopStudios.UnityHelpers.Tests.Core;
+    using WallstopStudios.UnityHelpers.Tests.Runtime.Random;
 
-    public sealed class RandomExtensionTests
+    public sealed class RandomExtensionTests : CommonTestBase
     {
         [Test]
         public void NextVector2WithAmplitude()
@@ -486,7 +487,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         {
             List<string> items = new() { "item" };
             Assert.Throws<ArgumentNullException>(() =>
-                PRNG.Instance.NextWeightedElement(items, (IReadOnlyList<float>)null)
+                PRNG.Instance.NextWeightedElement(items, null)
             );
         }
 
@@ -582,7 +583,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         [Test]
         public void NextWeightedIndexThrowsOnEmpty()
         {
-            Assert.Throws<ArgumentException>(() => PRNG.Instance.NextWeightedIndex(new float[0]));
+            Assert.Throws<ArgumentException>(() =>
+                PRNG.Instance.NextWeightedIndex(Array.Empty<float>())
+            );
         }
 
         [Test]

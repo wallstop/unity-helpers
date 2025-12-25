@@ -1,13 +1,16 @@
 namespace WallstopStudios.UnityHelpers.Tests.Extensions
 {
     using System;
+    using System.Collections;
     using System.Collections.Generic;
     using System.Linq;
     using NUnit.Framework;
+    using UnityEngine.TestTools;
     using WallstopStudios.UnityHelpers.Core.Extension;
+    using WallstopStudios.UnityHelpers.Tests.Core;
     using WallstopStudios.UnityHelpers.Utils;
 
-    public sealed class IEnumerableExtensionsTests
+    public sealed class IEnumerableExtensionsTests : CommonTestBase
     {
         [Test]
         public void ToLinkedListPreservesOrder()
@@ -91,6 +94,56 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             int[] values = { 1, 2 };
             int[] repeated = values.Infinite().Take(5).ToArray();
             CollectionAssert.AreEqual(new[] { 1, 2, 1, 2, 1 }, repeated);
+        }
+
+        [Test]
+        public void InfiniteQueueMaintainsFifoOrder()
+        {
+            Queue<int> queue = new();
+            queue.Enqueue(10);
+            queue.Enqueue(20);
+            queue.Enqueue(30);
+
+            int[] repeated = queue.Infinite().Take(7).ToArray();
+            CollectionAssert.AreEqual(new[] { 10, 20, 30, 10, 20, 30, 10 }, repeated);
+        }
+
+        [Test]
+        public void InfiniteStackUsesEnumeratorOrder()
+        {
+            Stack<int> stack = new();
+            stack.Push(1);
+            stack.Push(2);
+            stack.Push(3);
+
+            int[] repeated = stack.Infinite().Take(6).ToArray();
+            CollectionAssert.AreEqual(new[] { 3, 2, 1, 3, 2, 1 }, repeated);
+        }
+
+        [Test]
+        public void InfiniteBuffersNonCollectionEnumerables()
+        {
+            IEnumerable<int> source = StreamingSequence();
+            int[] repeated = source.Infinite().Take(6).ToArray();
+            CollectionAssert.AreEqual(new[] { 0, 1, 0, 1, 0, 1 }, repeated);
+        }
+
+        [Test]
+        public void InfiniteHandlesEmptyEnumerable()
+        {
+            IEnumerable<int> source = Array.Empty<int>();
+            Assert.IsFalse(source.Infinite().GetEnumerator().MoveNext());
+        }
+
+        [Test]
+        public void InfiniteBufferedSequenceSupportsMultipleEnumerations()
+        {
+            IEnumerable<int> infinite = StreamingSequence().Infinite();
+            int[] first = infinite.Take(4).ToArray();
+            int[] second = infinite.Take(4).ToArray();
+
+            CollectionAssert.AreEqual(new[] { 0, 1, 0, 1 }, first);
+            CollectionAssert.AreEqual(first, second);
         }
 
         [Test]
@@ -186,6 +239,175 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             {
                 CollectionAssert.AreEqual(new[] { values[i] }, partitions[i]);
             }
+        }
+
+        [Test]
+        public void PartitionPooledRequiresDisposalToReturnBuffers()
+        {
+            int[] values = { 1, 2, 3, 4 };
+            using IEnumerator<PooledResource<List<int>>> enumerator = values
+                .PartitionPooled(2)
+                .GetEnumerator();
+
+            Assert.IsTrue(enumerator.MoveNext());
+            PooledResource<List<int>> first = enumerator.Current;
+            List<int> firstChunk = first.resource;
+            int[] firstSnapshot = firstChunk.ToArray();
+            CollectionAssert.AreEqual(new[] { 1, 2 }, firstSnapshot);
+
+            Assert.IsTrue(enumerator.MoveNext());
+            using PooledResource<List<int>> second = enumerator.Current;
+            CollectionAssert.AreEqual(new[] { 3, 4 }, second.resource);
+
+            first.Dispose();
+            Assert.AreEqual(0, firstChunk.Count, "Disposed pooled list should be cleared.");
+        }
+
+        [Test]
+        public void PartitionPooledReusesClearedBuffers()
+        {
+            int[] values = { 1, 2, 3, 4 };
+            List<int> capturedBuffer = null;
+
+            foreach (PooledResource<List<int>> pooled in values.PartitionPooled(2))
+            {
+                using PooledResource<List<int>> lease = pooled;
+                if (capturedBuffer == null)
+                {
+                    capturedBuffer = lease.resource;
+                }
+            }
+
+            Assert.IsNotNull(capturedBuffer);
+            Assert.AreEqual(0, capturedBuffer.Count);
+
+            using IEnumerator<PooledResource<List<int>>> enumerator = values
+                .PartitionPooled(2)
+                .GetEnumerator();
+            Assert.IsTrue(enumerator.MoveNext());
+            using PooledResource<List<int>> leased = enumerator.Current;
+            Assert.AreSame(
+                capturedBuffer,
+                leased.resource,
+                "Buffers should be reused after disposal."
+            );
+            CollectionAssert.AreEqual(new[] { 1, 2 }, leased.resource);
+        }
+
+        [Test]
+        public void PartitionPooledEnumeratorDisposesOutstandingChunks()
+        {
+            int[] values = { 1, 2, 3, 4 };
+            using IEnumerator<PooledResource<List<int>>> enumerator = values
+                .PartitionPooled(2)
+                .GetEnumerator();
+
+            Assert.IsTrue(enumerator.MoveNext());
+            PooledResource<List<int>> chunk = enumerator.Current;
+            List<int> buffer = chunk.resource;
+            CollectionAssert.AreEqual(new[] { 1, 2 }, buffer);
+
+            enumerator.Dispose();
+
+            Assert.AreEqual(
+                0,
+                buffer.Count,
+                "Enumerator disposal should release outstanding pooled lists."
+            );
+        }
+
+        private static IEnumerable<int> StreamingSequence()
+        {
+            yield return 0;
+            yield return 1;
+        }
+
+        [UnityTest]
+        public IEnumerator PartitionPooledSupportsFrameDelayedDisposal()
+        {
+            int[] values = { 10, 11, 12, 13 };
+            using IEnumerator<PooledResource<List<int>>> enumerator = values
+                .PartitionPooled(2)
+                .GetEnumerator();
+
+            Assert.IsTrue(enumerator.MoveNext());
+            PooledResource<List<int>> chunk = enumerator.Current;
+            List<int> buffer = chunk.resource;
+            CollectionAssert.AreEqual(new[] { 10, 11 }, buffer);
+
+            // Simulate work across frames while the pooled list remains in use.
+            yield return null;
+            CollectionAssert.AreEqual(new[] { 10, 11 }, buffer);
+
+            chunk.Dispose();
+            Assert.AreEqual(
+                0,
+                buffer.Count,
+                "Disposing after a frame should still release the pooled list."
+            );
+        }
+
+        [UnityTest]
+        public IEnumerator PartitionPooledReleasesChunksWhenExceptionOccurs()
+        {
+            int[] values = { 5, 6, 7, 8 };
+            List<int> leakedBuffer = null;
+
+            IEnumerator<PooledResource<List<int>>> enumerator = values
+                .PartitionPooled(2)
+                .GetEnumerator();
+
+            Assert.IsTrue(enumerator.MoveNext());
+            PooledResource<List<int>> chunk = enumerator.Current;
+            leakedBuffer = chunk.resource;
+            // Intentionally leak (no dispose) and mimic async work.
+            yield return null;
+
+            bool exceptionObserved = false;
+            try
+            {
+                throw new InvalidOperationException("Simulated failure mid-enumeration.");
+            }
+            catch (InvalidOperationException)
+            {
+                exceptionObserved = true;
+            }
+            finally
+            {
+                enumerator.Dispose();
+            }
+
+            Assert.IsTrue(exceptionObserved, "The simulated failure should be observed.");
+            Assert.IsNotNull(leakedBuffer);
+            Assert.AreEqual(
+                0,
+                leakedBuffer.Count,
+                "Enumerator disposal should return leaked pooled lists even after exceptions."
+            );
+        }
+
+        [UnityTest]
+        public IEnumerator PartitionPooledHandlesMultipleOutstandingDisposals()
+        {
+            int[] values = { 1, 2, 3, 4, 5, 6 };
+            using IEnumerator<PooledResource<List<int>>> enumerator = values
+                .PartitionPooled(2)
+                .GetEnumerator();
+
+            Assert.IsTrue(enumerator.MoveNext());
+            PooledResource<List<int>> first = enumerator.Current;
+
+            Assert.IsTrue(enumerator.MoveNext());
+            PooledResource<List<int>> second = enumerator.Current;
+
+            // Release only one chunk.
+            first.Dispose();
+            Assert.AreEqual(0, first.resource.Count);
+
+            // Enumerator disposal should release the other chunk automatically.
+            enumerator.Dispose();
+            Assert.AreEqual(0, second.resource.Count);
+            yield break;
         }
     }
 }

@@ -1,0 +1,14 @@
+namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers.TestTypes
+{
+    using System;
+    using UnityEngine;
+    using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
+
+    public sealed class DictionaryPageTestHost : ScriptableObject
+    {
+        public DictionaryPageTestDictionary dictionary = new();
+    }
+
+    [Serializable]
+    public sealed class DictionaryPageTestDictionary : SerializableDictionary<int, string> { }
+}

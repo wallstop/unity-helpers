@@ -321,6 +321,57 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
         }
     }
 
+    // Protobuf wrapper types for serializable collections.
+    // These types do NOT implement IEnumerable, which prevents protobuf-net's
+    // collection detection from treating them as repeated fields.
+    // See: https://github.com/protobuf-net/protobuf-net/issues/1185
+
+    /// <summary>
+    /// Protobuf wrapper for SerializableHashSet that avoids IEnumerable collection detection.
+    /// </summary>
+    [ProtoContract]
+    internal sealed class SerializableHashSetProtoWrapper<T>
+    {
+        [ProtoMember(1, OverwriteList = true)]
+        public T[] Items;
+    }
+
+    /// <summary>
+    /// Protobuf wrapper for SerializableSortedSet that avoids IEnumerable collection detection.
+    /// </summary>
+    [ProtoContract]
+    internal sealed class SerializableSortedSetProtoWrapper<T>
+    {
+        [ProtoMember(1, OverwriteList = true)]
+        public T[] Items;
+    }
+
+    /// <summary>
+    /// Protobuf wrapper for SerializableDictionary that avoids IEnumerable collection detection.
+    /// </summary>
+    [ProtoContract]
+    internal sealed class SerializableDictionaryProtoWrapper<TKey, TValue>
+    {
+        [ProtoMember(1, OverwriteList = true)]
+        public TKey[] Keys;
+
+        [ProtoMember(2, OverwriteList = true)]
+        public TValue[] Values;
+    }
+
+    /// <summary>
+    /// Protobuf wrapper for SerializableSortedDictionary that avoids IEnumerable collection detection.
+    /// </summary>
+    [ProtoContract]
+    internal sealed class SerializableSortedDictionaryProtoWrapper<TKey, TValue>
+    {
+        [ProtoMember(1, OverwriteList = true)]
+        public TKey[] Keys;
+
+        [ProtoMember(2, OverwriteList = true)]
+        public TValue[] Values;
+    }
+
     internal static class ProtobufUnityModel
     {
         static ProtobufUnityModel()
@@ -328,6 +379,8 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
             try
             {
                 RuntimeTypeModel model = RuntimeTypeModel.Default;
+
+                // Register surrogates for Unity types we cannot annotate directly.
                 model
                     .Add(typeof(Vector2), applyDefaultBehaviour: false)
                     .SetSurrogate(typeof(Vector2Surrogate));
@@ -343,7 +396,6 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
                 model
                     .Add(typeof(Color32), applyDefaultBehaviour: false)
                     .SetSurrogate(typeof(Color32Surrogate));
-                // Common math/geometry types
                 model
                     .Add(typeof(Rect), applyDefaultBehaviour: false)
                     .SetSurrogate(typeof(RectSurrogate));
@@ -365,6 +417,13 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
                 model
                     .Add(typeof(Resolution), applyDefaultBehaviour: false)
                     .SetSurrogate(typeof(ResolutionSurrogate));
+
+                // NOTE: SerializableHashSet, SerializableSortedSet, SerializableDictionary, and
+                // SerializableSortedDictionary are handled via wrapper-based serialization in
+                // Serializer.ProtoSerialize/ProtoDeserialize rather than RuntimeTypeModel configuration.
+                // This is necessary because protobuf-net's TryGetRepeatedProvider does not respect
+                // IgnoreListHandling, causing IEnumerable types to always be treated as collections.
+                // See: https://github.com/protobuf-net/protobuf-net/issues/1185
             }
             catch
             {

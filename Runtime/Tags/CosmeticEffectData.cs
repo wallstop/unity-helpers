@@ -65,6 +65,15 @@ namespace WallstopStudios.UnityHelpers.Tags
         [NonSerialized]
         private readonly Lazy<HashSet<Type>> _cosmeticTypes;
 
+        /// <summary>
+        /// Initializes a new <see cref="CosmeticEffectData"/> and defers lookup of attached
+        /// <see cref="CosmeticEffectComponent"/> types until first access.
+        /// </summary>
+        /// <remarks>
+        /// The lazily-evaluated caches keep the component lightweight at edit time and avoid
+        /// unnecessary allocations until <see cref="RequiresInstancing"/> or equality checks are
+        /// performed.
+        /// </remarks>
         public CosmeticEffectData()
         {
             _cosmetics = new Lazy<CosmeticEffectComponent[]>(
@@ -75,11 +84,22 @@ namespace WallstopStudios.UnityHelpers.Tags
             );
         }
 
+        /// <summary>
+        /// Determines whether this instance is equal to another object.
+        /// </summary>
+        /// <param name="other">The object to compare with.</param>
+        /// <returns><c>true</c> when <paramref name="other"/> is a <see cref="CosmeticEffectData"/> with matching components and name; otherwise, <c>false</c>.</returns>
         public override bool Equals(object other)
         {
             return other is CosmeticEffectData cosmeticEffectData && Equals(cosmeticEffectData);
         }
 
+        /// <summary>
+        /// Determines whether this instance is equal to another <see cref="CosmeticEffectData"/>.
+        /// Equality compares the set of contained <see cref="CosmeticEffectComponent"/> types and the GameObject name.
+        /// </summary>
+        /// <param name="other">The other cosmetic effect data to compare.</param>
+        /// <returns><c>true</c> if both assets expose the same component types and share the same name; otherwise, <c>false</c>.</returns>
         public bool Equals(CosmeticEffectData other)
         {
             if (ReferenceEquals(this, other))
@@ -101,6 +121,10 @@ namespace WallstopStudios.UnityHelpers.Tags
             return Helpers.NameEquals(this, other);
         }
 
+        /// <summary>
+        /// Returns a hash code based on the component types contained within this cosmetic effect.
+        /// </summary>
+        /// <returns>A hash code suitable for use in hash-based collections.</returns>
         public override int GetHashCode()
         {
             return Objects.HashCode(_cosmeticTypes.Value.Count);

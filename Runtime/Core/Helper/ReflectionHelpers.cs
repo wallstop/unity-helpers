@@ -13,7 +13,6 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
     using System.Reflection;
     using System.Runtime.CompilerServices;
 #if UNITY_EDITOR
-    using UnityEditor;
 #endif
 #if EMIT_DYNAMIC_IL
     using System.Reflection.Emit;
@@ -32,9 +31,84 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
     /// dynamic collection creation, and type/attribute scanning with caching and optional IL emission.
     /// </summary>
     /// <remarks>
-    /// - Uses expression compilation or dynamic IL where supported; falls back to reflection otherwise.
-    /// - Caches generated delegates to avoid per-call reflection overhead.
-    /// - Designed for hot paths (serialization, UI binding, ECS-style systems).
+    /// <para><b>Architecture Overview</b></para>
+    /// <para>
+    /// This class provides a unified API for reflection-based operations while automatically selecting
+    /// the highest-performance implementation strategy available on the current platform. The implementation
+    /// uses a three-tier fallback system:
+    /// </para>
+    /// <list type="number">
+    ///   <item>
+    ///     <term><b>Expression Trees</b> (preferred)</term>
+    ///     <description>
+    ///       Uses <c>System.Linq.Expressions</c> to build and compile lambda expressions at runtime.
+    ///       This produces near-native performance delegates. Available on Mono and .NET runtimes that
+    ///       support JIT compilation. Disabled on IL2CPP and WebGL builds where AOT compilation is required.
+    ///     </description>
+    ///   </item>
+    ///   <item>
+    ///     <term><b>Dynamic IL Emission</b> (fallback #1)</term>
+    ///     <description>
+    ///       Uses <c>System.Reflection.Emit.DynamicMethod</c> to generate IL bytecode directly.
+    ///       Provides similar performance to expression trees but with more control over the generated code.
+    ///       Also disabled on IL2CPP and WebGL. Some edge cases that fail expression compilation may
+    ///       succeed with IL emission.
+    ///     </description>
+    ///   </item>
+    ///   <item>
+    ///     <term><b>Direct Reflection</b> (fallback #2)</term>
+    ///     <description>
+    ///       Falls back to standard <c>FieldInfo.GetValue</c>/<c>SetValue</c>, <c>PropertyInfo</c>,
+    ///       <c>MethodInfo.Invoke</c>, and <c>ConstructorInfo.Invoke</c> calls. This is the slowest
+    ///       option but works on all platforms including IL2CPP and WebGL.
+    ///     </description>
+    ///   </item>
+    /// </list>
+    /// <para><b>Platform Support</b></para>
+    /// <list type="table">
+    ///   <listheader>
+    ///     <term>Platform</term>
+    ///     <description>Strategy Used</description>
+    ///   </listheader>
+    ///   <item>
+    ///     <term>Unity Editor</term>
+    ///     <description>Expression Trees → Dynamic IL → Reflection</description>
+    ///   </item>
+    ///   <item>
+    ///     <term>Standalone (Mono)</term>
+    ///     <description>Expression Trees → Dynamic IL → Reflection</description>
+    ///   </item>
+    ///   <item>
+    ///     <term>IL2CPP Builds</term>
+    ///     <description>Reflection only (JIT unavailable)</description>
+    ///   </item>
+    ///   <item>
+    ///     <term>WebGL</term>
+    ///     <description>Reflection only (JIT unavailable)</description>
+    ///   </item>
+    /// </list>
+    /// <para><b>Caching Strategy</b></para>
+    /// <para>
+    /// All generated delegates are cached using thread-safe concurrent dictionaries (or regular dictionaries
+    /// when <c>SINGLE_THREADED</c> is defined). The cache key includes both the member info and the strategy
+    /// used, allowing the system to track which strategies have been attempted and failed for each member.
+    /// A blocklist tracks strategies that failed for specific members, avoiding repeated failed attempts.
+    /// </para>
+    /// <para><b>Testing Support</b></para>
+    /// <para>
+    /// The internal <c>OverrideReflectionCapabilities</c> method allows tests to force specific strategies,
+    /// enabling verification that all fallback paths work correctly. Use the returned <c>IDisposable</c>
+    /// to restore original capabilities after the test.
+    /// </para>
+    /// <para><b>File Organization</b></para>
+    /// <para>
+    /// This is a partial class split across multiple files:
+    /// </para>
+    /// <list type="bullet">
+    ///   <item><c>ReflectionHelpers.cs</c> - Public API, caching infrastructure, IL emission methods</item>
+    ///   <item><c>ReflectionHelpers.Factory.cs</c> - Internal <c>DelegateFactory</c> class managing
+    ///     delegate creation, strategy selection, and caching for each member type</item>
+    /// </list>
     /// </remarks>
     /// <example>
     /// <code><![CDATA[
@@ -48,6 +122,10 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
     /// UnityEngine.Debug.Log(getter(p)); // 42
     /// ]]></code>
     /// </example>
+    /// <threadsafety>
+    /// All public methods are thread-safe. Internal caching uses <c>ConcurrentDictionary</c> by default,
+    /// or standard dictionaries with external synchronization when <c>SINGLE_THREADED</c> is defined.
+    /// </threadsafety>
     public static partial class ReflectionHelpers
     {
         // Cache for type resolution by name
@@ -239,6 +317,14 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             (Type type, string sig, BindingFlags flags),
             MethodInfo
         > MethodLookup = new();
+        private static readonly Dictionary<
+            (Type type, BindingFlags flags),
+            FieldInfo[]
+        > FieldArrayCache = new();
+        private static readonly Dictionary<
+            (Type type, Type returnType, string indexParamsSig),
+            PropertyInfo
+        > IndexerLookup = new();
 #else
         private static readonly ConcurrentDictionary<
             (Type type, string name, BindingFlags flags),
@@ -252,7 +338,65 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             (Type type, string sig, BindingFlags flags),
             MethodInfo
         > MethodLookup = new();
+        private static readonly ConcurrentDictionary<
+            (Type type, BindingFlags flags),
+            FieldInfo[]
+        > FieldArrayCache = new();
+        private static readonly ConcurrentDictionary<
+            (Type type, Type returnType, string indexParamsSig),
+            PropertyInfo
+        > IndexerLookup = new();
 #endif
+
+        private const BindingFlags AllInstanceFieldsFlags =
+            BindingFlags.Public
+            | BindingFlags.NonPublic
+            | BindingFlags.Instance
+            | BindingFlags.Static;
+
+        /// <summary>
+        /// Gets all fields for a type with caching to avoid repeated allocations.
+        /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal static FieldInfo[] GetFieldsCached(Type type, BindingFlags flags)
+        {
+            if (type == null)
+            {
+                return Array.Empty<FieldInfo>();
+            }
+
+            (Type, BindingFlags) key = (type, flags);
+#if SINGLE_THREADED
+            if (!FieldArrayCache.TryGetValue(key, out FieldInfo[] fields))
+            {
+                try
+                {
+                    fields = type.GetFields(flags);
+                }
+                catch
+                {
+                    fields = Array.Empty<FieldInfo>();
+                }
+                FieldArrayCache[key] = fields;
+            }
+            return fields;
+#else
+            return FieldArrayCache.GetOrAdd(
+                key,
+                static k =>
+                {
+                    try
+                    {
+                        return k.type.GetFields(k.flags);
+                    }
+                    catch
+                    {
+                        return Array.Empty<FieldInfo>();
+                    }
+                }
+            );
+#endif
+        }
 
         /// <summary>
         /// Tries to get an attribute of type <typeparamref name="T"/> and indicates whether it is present.
@@ -763,7 +907,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 $"Get{field.DeclaringType.Name}_{field.Name}",
                 typeof(object),
                 Type.EmptyTypes,
-                field.DeclaringType,
+                field.DeclaringType.Module,
                 true
             );
             ILGenerator il = dynamicMethod.GetILGenerator();
@@ -2741,507 +2885,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             return DelegateFactory.GetParameterlessConstructorTyped<T>(constructor);
         }
 
-        /// <summary>
-        /// Returns all loaded types across accessible assemblies, swallowing reflection errors.
-        /// </summary>
-        public static IEnumerable<Type> GetAllLoadedTypes()
-        {
-            return GetAllLoadedAssemblies()
-                .SelectMany(assembly => GetTypesFromAssembly(assembly))
-                .Where(type => type != null);
-        }
-
-        /// <summary>
-        /// Returns all loaded assemblies discoverable by the current AppDomain.
-        /// </summary>
-        public static IEnumerable<Assembly> GetAllLoadedAssemblies()
-        {
-            try
-            {
-                return AppDomain
-                    .CurrentDomain.GetAssemblies()
-                    .Where(assembly => assembly != null && !assembly.IsDynamic);
-            }
-            catch
-            {
-                return Enumerable.Empty<Assembly>();
-            }
-        }
-
-        /// <summary>
-        /// Safely gets all types from the specified assembly, returning an empty array on failure.
-        /// </summary>
-        public static Type[] GetTypesFromAssembly(Assembly assembly)
-        {
-            if (assembly == null)
-            {
-                return Type.EmptyTypes;
-            }
-
-            try
-            {
-                return assembly.GetTypes();
-            }
-            catch (ReflectionTypeLoadException ex)
-            {
-                return ex.Types.Where(t => t != null).ToArray();
-            }
-            catch
-            {
-                return Type.EmptyTypes;
-            }
-        }
-
-        /// <summary>
-        /// Attempts to resolve a type by name using Type.GetType first, then scans loaded assemblies.
-        /// Returns null if not found. Results are cached.
-        /// </summary>
-        public static Type TryResolveType(string typeName)
-        {
-            if (string.IsNullOrWhiteSpace(typeName))
-            {
-                return null;
-            }
-
-            if (TypeResolutionCache.TryGetValue(typeName, out Type cached))
-            {
-                return cached;
-            }
-
-            Type resolved = null;
-            try
-            {
-                resolved = Type.GetType(typeName, throwOnError: false, ignoreCase: false);
-            }
-            catch
-            {
-                resolved = null;
-            }
-
-            if (resolved == null)
-            {
-                foreach (Assembly asm in GetAllLoadedAssemblies())
-                {
-                    try
-                    {
-                        resolved = asm.GetType(typeName, throwOnError: false, ignoreCase: false);
-                        if (resolved != null)
-                        {
-                            break;
-                        }
-                    }
-                    catch
-                    {
-                        // swallow and continue
-                    }
-                }
-            }
-
-            TypeResolutionCache[typeName] = resolved;
-            return resolved;
-        }
-
-        /// <summary>
-        /// Gets all loaded types derived from T. In editor, uses TypeCache for speed.
-        /// </summary>
-        public static IEnumerable<Type> GetTypesDerivedFrom<T>(bool includeAbstract = false)
-        {
-#if UNITY_EDITOR
-            try
-            {
-                TypeCache.TypeCollection list = TypeCache.GetTypesDerivedFrom<T>();
-                return list.Where(t =>
-                    t != null && (includeAbstract || (t.IsClass && !t.IsAbstract))
-                );
-            }
-            catch
-            {
-                // fall through to runtime path
-            }
-#endif
-            Type baseType = typeof(T);
-            return GetAllLoadedTypes()
-                .Where(t =>
-                    t != null
-                    && baseType.IsAssignableFrom(t)
-                    && (includeAbstract || (t.IsClass && !t.IsAbstract))
-                );
-        }
-
-        /// <summary>
-        /// Gets all loaded types derived from the specified base type. In editor, uses TypeCache for speed.
-        /// </summary>
-        public static IEnumerable<Type> GetTypesDerivedFrom(
-            Type baseType,
-            bool includeAbstract = false
-        )
-        {
-            if (baseType == null)
-            {
-                return Array.Empty<Type>();
-            }
-#if UNITY_EDITOR
-            try
-            {
-                TypeCache.TypeCollection list = TypeCache.GetTypesDerivedFrom(baseType);
-                return list.Where(t =>
-                    t != null && (includeAbstract || (t.IsClass && !t.IsAbstract))
-                );
-            }
-            catch
-            {
-                // fall through
-            }
-#endif
-            return GetAllLoadedTypes()
-                .Where(t =>
-                    t != null
-                    && baseType.IsAssignableFrom(t)
-                    && (includeAbstract || (t.IsClass && !t.IsAbstract))
-                );
-        }
-
-        /// <summary>
-        /// Safely gets all types from the assembly with the specified name, if loaded.
-        /// </summary>
-        public static Type[] GetTypesFromAssemblyName(string assemblyName)
-        {
-            try
-            {
-                Assembly assembly = Assembly.Load(assemblyName);
-                return GetTypesFromAssembly(assembly);
-            }
-            catch
-            {
-                return Type.EmptyTypes;
-            }
-        }
-
-        /// <summary>
-        /// Finds all types with a given attribute across loaded assemblies.
-        /// </summary>
-        public static IEnumerable<Type> GetTypesWithAttribute<TAttribute>()
-            where TAttribute : Attribute
-        {
-            return GetAllLoadedTypes().Where(type => HasAttributeSafe<TAttribute>(type));
-        }
-
-        /// <summary>
-        /// Finds all types with a given attribute, using TypeCache in editor when available.
-        /// </summary>
-        public static IEnumerable<Type> GetTypesWithAttribute<TAttribute>(bool includeAbstract)
-            where TAttribute : Attribute
-        {
-#if UNITY_EDITOR
-            try
-            {
-                TypeCache.TypeCollection types = TypeCache.GetTypesWithAttribute<TAttribute>();
-                return types.Where(t =>
-                    t != null && (includeAbstract || (t.IsClass && !t.IsAbstract))
-                );
-            }
-            catch
-            {
-                // fall through
-            }
-#endif
-            return GetAllLoadedTypes()
-                .Where(t =>
-                    t != null
-                    && (includeAbstract || (t.IsClass && !t.IsAbstract))
-                    && HasAttributeSafe<TAttribute>(t)
-                );
-        }
-
-        /// <summary>
-        /// Finds all types with a given attribute across loaded assemblies (non-generic overload).
-        /// </summary>
-        public static IEnumerable<Type> GetTypesWithAttribute(Type attributeType)
-        {
-            if (attributeType == null || !typeof(Attribute).IsAssignableFrom(attributeType))
-            {
-                return Enumerable.Empty<Type>();
-            }
-
-            return GetAllLoadedTypes().Where(type => HasAttributeSafe(type, attributeType));
-        }
-
-        public static IEnumerable<Type> GetComponentTypes(bool includeAbstract = false)
-        {
-            return GetTypesDerivedFrom(typeof(UnityEngine.Component), includeAbstract);
-        }
-
-        public static IEnumerable<Type> GetScriptableObjectTypes(bool includeAbstract = false)
-        {
-            return GetTypesDerivedFrom(typeof(UnityEngine.ScriptableObject), includeAbstract);
-        }
-
-        public static IEnumerable<MethodInfo> GetMethodsWithAttribute<TAttribute>(
-            Type within = null,
-            BindingFlags flags =
-                BindingFlags.Instance
-                | BindingFlags.Static
-                | BindingFlags.Public
-                | BindingFlags.NonPublic
-        )
-            where TAttribute : Attribute
-        {
-#if UNITY_EDITOR
-            try
-            {
-                TypeCache.MethodCollection methods =
-                    TypeCache.GetMethodsWithAttribute<TAttribute>();
-                IEnumerable<MethodInfo> filtered = methods;
-                if (within != null)
-                {
-                    filtered = filtered.Where(m => m?.DeclaringType == within);
-                }
-                return filtered.Where(m => m != null);
-            }
-            catch
-            {
-                // fall through
-            }
-#endif
-            if (within != null)
-            {
-                return SafeGetMethods(within, flags)
-                    .Where(m => m != null && HasAttributeSafe<TAttribute>(m));
-            }
-            return GetAllLoadedTypes()
-                .SelectMany(t => SafeGetMethods(t, flags))
-                .Where(m => m != null && HasAttributeSafe<TAttribute>(m));
-        }
-
-        public static IEnumerable<FieldInfo> GetFieldsWithAttribute<TAttribute>(
-            Type within = null,
-            BindingFlags flags =
-                BindingFlags.Instance
-                | BindingFlags.Static
-                | BindingFlags.Public
-                | BindingFlags.NonPublic
-        )
-            where TAttribute : Attribute
-        {
-#if UNITY_EDITOR
-            try
-            {
-                TypeCache.FieldInfoCollection fields =
-                    TypeCache.GetFieldsWithAttribute<TAttribute>();
-                IEnumerable<FieldInfo> filtered = fields;
-                if (within != null)
-                {
-                    filtered = filtered.Where(f => f?.DeclaringType == within);
-                }
-                return filtered.Where(f => f != null);
-            }
-            catch
-            {
-                // fall through
-            }
-#endif
-            if (within != null)
-            {
-                return SafeGetFields(within, flags)
-                    .Where(f => f != null && HasAttributeSafe<TAttribute>(f));
-            }
-            return GetAllLoadedTypes()
-                .SelectMany(t => SafeGetFields(t, flags))
-                .Where(f => f != null && HasAttributeSafe<TAttribute>(f));
-        }
-
-        public static IEnumerable<PropertyInfo> GetPropertiesWithAttribute<TAttribute>(
-            Type within = null,
-            BindingFlags flags =
-                BindingFlags.Instance
-                | BindingFlags.Static
-                | BindingFlags.Public
-                | BindingFlags.NonPublic
-        )
-            where TAttribute : Attribute
-        {
-            if (within != null)
-            {
-                return SafeGetProperties(within, flags)
-                    .Where(p => p != null && HasAttributeSafe<TAttribute>(p));
-            }
-            return GetAllLoadedTypes()
-                .SelectMany(t => SafeGetProperties(t, flags))
-                .Where(p => p != null && HasAttributeSafe<TAttribute>(p));
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static IEnumerable<MethodInfo> SafeGetMethods(Type t, BindingFlags flags)
-        {
-            try
-            {
-                return t?.GetMethods(flags) ?? Array.Empty<MethodInfo>();
-            }
-            catch
-            {
-                return Array.Empty<MethodInfo>();
-            }
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static IEnumerable<FieldInfo> SafeGetFields(Type t, BindingFlags flags)
-        {
-            try
-            {
-                return t?.GetFields(flags) ?? Array.Empty<FieldInfo>();
-            }
-            catch
-            {
-                return Array.Empty<FieldInfo>();
-            }
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static IEnumerable<PropertyInfo> SafeGetProperties(Type t, BindingFlags flags)
-        {
-            try
-            {
-                return t?.GetProperties(flags) ?? Array.Empty<PropertyInfo>();
-            }
-            catch
-            {
-                return Array.Empty<PropertyInfo>();
-            }
-        }
-
-        public static bool TryGetField(
-            Type type,
-            string name,
-            out FieldInfo field,
-            BindingFlags flags =
-                BindingFlags.Instance
-                | BindingFlags.Static
-                | BindingFlags.Public
-                | BindingFlags.NonPublic
-        )
-        {
-            field = null;
-            if (type == null || string.IsNullOrEmpty(name))
-            {
-                return false;
-            }
-
-            (Type type, string name, BindingFlags flags) key = (type, name, flags);
-#if SINGLE_THREADED
-            if (!FieldLookup.TryGetValue(key, out field))
-            {
-                field = type.GetField(name, flags);
-                FieldLookup[key] = field;
-            }
-#else
-            field = FieldLookup.GetOrAdd(key, static k => k.type.GetField(k.name, k.flags));
-#endif
-            return field != null;
-        }
-
-        public static bool TryGetProperty(
-            Type type,
-            string name,
-            out PropertyInfo property,
-            BindingFlags flags =
-                BindingFlags.Instance
-                | BindingFlags.Static
-                | BindingFlags.Public
-                | BindingFlags.NonPublic
-        )
-        {
-            property = null;
-            if (type == null || string.IsNullOrEmpty(name))
-            {
-                return false;
-            }
-
-            (Type type, string name, BindingFlags flags) key = (type, name, flags);
-#if SINGLE_THREADED
-            if (!PropertyLookup.TryGetValue(key, out property))
-            {
-                property = type.GetProperty(name, flags);
-                PropertyLookup[key] = property;
-            }
-#else
-            property = PropertyLookup.GetOrAdd(
-                key,
-                static k => k.type.GetProperty(k.name, k.flags)
-            );
-#endif
-            return property != null;
-        }
-
-        public static bool TryGetMethod(
-            Type type,
-            string name,
-            out MethodInfo method,
-            Type[] paramTypes = null,
-            BindingFlags flags =
-                BindingFlags.Instance
-                | BindingFlags.Static
-                | BindingFlags.Public
-                | BindingFlags.NonPublic
-        )
-        {
-            method = null;
-            if (type == null || string.IsNullOrEmpty(name))
-            {
-                return false;
-            }
-
-            string sig = BuildMethodSignatureKey(name, paramTypes);
-            (Type type, string sig, BindingFlags flags) key = (type, sig, flags);
-#if SINGLE_THREADED
-            if (!MethodLookup.TryGetValue(key, out method))
-            {
-                method =
-                    paramTypes == null
-                        ? type.GetMethod(name, flags)
-                        : type.GetMethod(
-                            name,
-                            flags,
-                            binder: null,
-                            types: paramTypes,
-                            modifiers: null
-                        );
-                MethodLookup[key] = method;
-            }
-#else
-            method = MethodLookup.GetOrAdd(
-                key,
-                static (tuple, state) =>
-                {
-                    if (state.parameterTypes == null)
-                    {
-                        return tuple.type.GetMethod(state.methodName, tuple.flags);
-                    }
-                    return tuple.type.GetMethod(
-                        state.methodName,
-                        tuple.flags,
-                        binder: null,
-                        types: state.parameterTypes,
-                        modifiers: null
-                    );
-                },
-                (methodName: name, parameterTypes: paramTypes)
-            );
-#endif
-            return method != null;
-        }
-
-        private static string BuildMethodSignatureKey(string name, Type[] paramTypes)
-        {
-            if (paramTypes == null || paramTypes.Length == 0)
-            {
-                return name + "()";
-            }
-
-            return name
-                + "("
-                + string.Join(",", paramTypes.Select(t => t?.FullName ?? "null"))
-                + ")";
-        }
+        // Type discovery methods moved to ReflectionHelpers.TypeDiscovery.cs
 
         public static bool HasAttributeSafe<TAttribute>(
             ICustomAttributeProvider provider,
@@ -3505,31 +3149,105 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             }
         }
 
+        public static bool TryGetAttributeSafe<TAttribute>(
+            ICustomAttributeProvider provider,
+            out TAttribute attribute,
+            bool inherit = true
+        )
+            where TAttribute : Attribute
+        {
+            attribute = default;
+            if (provider == null)
+            {
+                return false;
+            }
+
+            try
+            {
+                if (!provider.IsDefined(typeof(TAttribute), inherit))
+                {
+                    return false;
+                }
+
+                object[] attributes = provider.GetCustomAttributes(typeof(TAttribute), inherit);
+                if (attributes == null || attributes.Length == 0)
+                {
+                    return false;
+                }
+
+                for (int index = 0; index < attributes.Length; index++)
+                {
+                    if (attributes[index] is TAttribute typed)
+                    {
+                        attribute = typed;
+                        return true;
+                    }
+                }
+            }
+            catch
+            {
+                attribute = default;
+                return false;
+            }
+
+            attribute = default;
+            return false;
+        }
+
+        public static bool TryGetAttributeSafe(
+            ICustomAttributeProvider provider,
+            Type attributeType,
+            out Attribute attribute,
+            bool inherit = true
+        )
+        {
+            attribute = null;
+            if (provider == null || attributeType == null)
+            {
+                return false;
+            }
+
+            try
+            {
+                if (!provider.IsDefined(attributeType, inherit))
+                {
+                    return false;
+                }
+
+                object[] attributes = provider.GetCustomAttributes(attributeType, inherit);
+                if (attributes == null || attributes.Length == 0)
+                {
+                    return false;
+                }
+
+                for (int index = 0; index < attributes.Length; index++)
+                {
+                    if (attributes[index] is Attribute typed)
+                    {
+                        attribute = typed;
+                        return true;
+                    }
+                }
+            }
+            catch
+            {
+                attribute = null;
+                return false;
+            }
+
+            attribute = null;
+            return false;
+        }
+
         public static TAttribute GetAttributeSafe<TAttribute>(
             ICustomAttributeProvider provider,
             bool inherit = true
         )
             where TAttribute : Attribute
         {
-            if (provider == null)
-            {
-                return default;
-            }
-
-            try
-            {
-                if (provider.IsDefined(typeof(TAttribute), inherit))
-                {
-                    object[] attributes = provider.GetCustomAttributes(typeof(TAttribute), inherit);
-                    return attributes.Length > 0 ? attributes[0] as TAttribute : default;
-                }
-            }
-            catch
-            {
-                // Swallow
-            }
-
-            return default;
+            return TryGetAttributeSafe(provider, out TAttribute attribute, inherit)
+                ? attribute
+                : default;
         }
 
         public static Attribute GetAttributeSafe(
@@ -3538,25 +3256,9 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             bool inherit = true
         )
         {
-            if (provider == null || attributeType == null)
-            {
-                return null;
-            }
-
-            try
-            {
-                if (provider.IsDefined(attributeType, inherit))
-                {
-                    object[] attributes = provider.GetCustomAttributes(attributeType, inherit);
-                    return attributes.Length > 0 ? attributes[0] as Attribute : null;
-                }
-            }
-            catch
-            {
-                // Swallow
-            }
-
-            return null;
+            return TryGetAttributeSafe(provider, attributeType, out Attribute attribute, inherit)
+                ? attribute
+                : null;
         }
 
         public static TAttribute[] GetAllAttributesSafe<TAttribute>(
@@ -3750,6 +3452,78 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             {
                 return Array.Empty<FieldInfo>();
             }
+        }
+
+        /// <summary>
+        /// Checks if a type has any field decorated with the specified attribute type.
+        /// Short-circuits on first match for efficiency.
+        /// </summary>
+        /// <typeparam name="TAttribute">The attribute type to search for.</typeparam>
+        /// <param name="type">The type to inspect.</param>
+        /// <param name="inherit">Whether to search the attribute's inheritance chain.</param>
+        /// <returns>True if any field has the attribute; otherwise false.</returns>
+        public static bool HasAnyFieldWithAttribute<TAttribute>(this Type type, bool inherit = true)
+            where TAttribute : Attribute
+        {
+            if (type == null)
+            {
+                return false;
+            }
+
+            FieldInfo[] fields = GetFieldsCached(type, AllInstanceFieldsFlags);
+
+            for (int i = 0; i < fields.Length; i++)
+            {
+                if (HasAttributeSafe<TAttribute>(fields[i], inherit))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Checks if a type has any field decorated with any of the specified attribute types.
+        /// Short-circuits on first match for efficiency. Useful when checking for multiple
+        /// related attributes without allocating enumerators.
+        /// </summary>
+        /// <param name="type">The type to inspect.</param>
+        /// <param name="attributeTypes">The attribute types to search for.</param>
+        /// <param name="inherit">Whether to search the attribute's inheritance chain.</param>
+        /// <returns>True if any field has any of the attributes; otherwise false.</returns>
+        public static bool HasAnyFieldWithAttributes(
+            this Type type,
+            Type[] attributeTypes,
+            bool inherit = true
+        )
+        {
+            if (type == null || attributeTypes == null || attributeTypes.Length == 0)
+            {
+                return false;
+            }
+
+            FieldInfo[] fields = GetFieldsCached(type, AllInstanceFieldsFlags);
+
+            for (int i = 0; i < fields.Length; i++)
+            {
+                FieldInfo field = fields[i];
+                if (field == null)
+                {
+                    continue;
+                }
+
+                for (int j = 0; j < attributeTypes.Length; j++)
+                {
+                    Type attributeType = attributeTypes[j];
+                    if (attributeType != null && HasAttributeSafe(field, attributeType, inherit))
+                    {
+                        return true;
+                    }
+                }
+            }
+
+            return false;
         }
 
         private static bool CheckDynamicIlSupport()
@@ -5144,7 +4918,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 $"GetStaticTyped{field.DeclaringType.Name}_{field.Name}",
                 typeof(TValue),
                 Type.EmptyTypes,
-                field.DeclaringType,
+                field.DeclaringType.Module,
                 true
             );
             ILGenerator il = dynamicMethod.GetILGenerator();
@@ -5319,7 +5093,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         {
             if (!ExpressionsEnabled)
             {
-                return () => field.GetValue(null);
+                return null;
             }
 
             try
@@ -5334,7 +5108,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             }
             catch
             {
-                return () => field.GetValue(null);
+                return null;
             }
         }
 
@@ -5380,7 +5154,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         {
             if (!ExpressionsEnabled)
             {
-                return value => field.SetValue(null, value);
+                return null;
             }
 
             try
@@ -5400,7 +5174,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             }
             catch
             {
-                return value => field.SetValue(null, value);
+                return null;
             }
         }
 

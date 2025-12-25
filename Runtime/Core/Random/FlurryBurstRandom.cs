@@ -15,7 +15,7 @@ namespace WallstopStudios.UnityHelpers.Core.Random
     /// </summary>
     /// <remarks>
     /// <para>
-    /// https://github.com/wileylooper/flurryburst
+    /// Reference: Will Stafford Parsons (wileylooper/flurryburst, repository offline).
     /// Based on <c>wileylooper/flurryburst</c>, this implementation captures the 32-bit variant that balances
     /// speed, period (~2<sup>128</sup>) and state size for gameplay workloads. It is suitable as a drop-in
     /// alternative to Xoshiro128** and similar families, while retaining deterministic serialization support.
@@ -49,6 +49,12 @@ namespace WallstopStudios.UnityHelpers.Core.Random
     /// float weight = rng.NextFloat();
     /// </code>
     /// </example>
+    [RandomGeneratorMetadata(
+        RandomQuality.Excellent,
+        "Hybrid Xoshiro/PCG variant tuned for all-around use; passes TestU01 BigCrush per upstream reference implementation.",
+        "Blackman & Vigna 2019",
+        "http://xoshiro.di.unimi.it"
+    )]
     [Serializable]
     [DataContract]
     [ProtoContract]
@@ -69,7 +75,7 @@ namespace WallstopStudios.UnityHelpers.Core.Random
             {
                 ulong state1 = ((ulong)_a << 32) | _b;
                 ulong state2 = ((ulong)_c << 32) | _d;
-                using PooledResource<byte[]> payloadLease = WallstopArrayPool<byte>.Get(
+                using PooledArray<byte> payloadLease = WallstopArrayPool<byte>.Get(
                     PayloadByteCount,
                     out byte[] buffer
                 );

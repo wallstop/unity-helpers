@@ -8,8 +8,17 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
     using WallstopStudios.UnityHelpers.Core.Helper;
 
     /// <summary>
-    /// Represents a circle in 2D space defined by a center point and radius.
+    /// Lightweight 2D circle utility that powers overlap tests and distance checks for gameplay zones, detection ranges, and radial falloffs.
     /// </summary>
+    /// <example>
+    /// <code><![CDATA[
+    /// Circle aggroRange = new Circle(enemyPosition, 5f);
+    /// if (aggroRange.Contains(playerPosition))
+    /// {
+    ///     enemy.BeginChase();
+    /// }
+    /// ]]></code>
+    /// </example>
     public readonly struct Circle : IEquatable<Circle>
     {
         public readonly Vector2 center;

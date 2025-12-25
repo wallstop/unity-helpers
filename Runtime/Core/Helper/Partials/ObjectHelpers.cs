@@ -193,8 +193,9 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 return;
             }
 
-            using PooledResource<List<T>> componentBuffer = Buffers<T>.List.Get();
-            List<T> components = componentBuffer.resource;
+            using PooledResource<List<T>> componentBuffer = Buffers<T>.List.Get(
+                out List<T> components
+            );
             component.GetComponents(components);
             foreach (T behaviour in components)
             {
@@ -278,8 +279,9 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         public static void DestroyAllComponentsOfType<T>(this GameObject gameObject)
             where T : Component
         {
-            using PooledResource<List<T>> componentBuffer = Buffers<T>.List.Get();
-            List<T> components = componentBuffer.resource;
+            using PooledResource<List<T>> componentBuffer = Buffers<T>.List.Get(
+                out List<T> components
+            );
             gameObject.GetComponents(components);
             foreach (T component in components)
             {

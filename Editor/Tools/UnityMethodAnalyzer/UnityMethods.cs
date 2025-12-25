@@ -1,0 +1,172 @@
+namespace WallstopStudios.UnityHelpers.Editor.Tools.UnityMethodAnalyzer
+{
+#if UNITY_EDITOR
+    using System;
+    using System.Collections.Generic;
+
+    /// <summary>
+    /// Unity MonoBehaviour lifecycle methods and their expected signatures.
+    /// </summary>
+    public static class UnityMethods
+    {
+        public static readonly HashSet<string> LifecycleMethods = new(StringComparer.Ordinal)
+        {
+            // Initialization
+            "Awake",
+            "OnEnable",
+            "Start",
+            "OnDisable",
+            "OnDestroy",
+            // Update methods
+            "Update",
+            "LateUpdate",
+            "FixedUpdate",
+            // Physics
+            "OnCollisionEnter",
+            "OnCollisionStay",
+            "OnCollisionExit",
+            "OnCollisionEnter2D",
+            "OnCollisionStay2D",
+            "OnCollisionExit2D",
+            "OnTriggerEnter",
+            "OnTriggerStay",
+            "OnTriggerExit",
+            "OnTriggerEnter2D",
+            "OnTriggerStay2D",
+            "OnTriggerExit2D",
+            "OnControllerColliderHit",
+            "OnJointBreak",
+            "OnJointBreak2D",
+            "OnParticleCollision",
+            "OnParticleTrigger",
+            "OnParticleSystemStopped",
+            "OnParticleUpdateJobScheduled",
+            // Rendering
+            "OnPreCull",
+            "OnPreRender",
+            "OnPostRender",
+            "OnRenderObject",
+            "OnWillRenderObject",
+            "OnBecameVisible",
+            "OnBecameInvisible",
+            "OnRenderImage",
+            "OnGUI",
+            "OnDrawGizmos",
+            "OnDrawGizmosSelected",
+            // Application
+            "OnApplicationFocus",
+            "OnApplicationPause",
+            "OnApplicationQuit",
+            // Mouse
+            "OnMouseDown",
+            "OnMouseUp",
+            "OnMouseUpAsButton",
+            "OnMouseEnter",
+            "OnMouseExit",
+            "OnMouseDrag",
+            "OnMouseOver",
+            // Animation
+            "OnAnimatorIK",
+            "OnAnimatorMove",
+            // Audio
+            "OnAudioFilterRead",
+            // Network (legacy)
+            "OnServerInitialized",
+            "OnConnectedToServer",
+            "OnDisconnectedFromServer",
+            "OnFailedToConnect",
+            "OnFailedToConnectToMasterServer",
+            "OnMasterServerEvent",
+            "OnNetworkInstantiate",
+            "OnPlayerConnected",
+            "OnPlayerDisconnected",
+            "OnSerializeNetworkView",
+            // Scene
+            "OnLevelWasLoaded",
+            // Validation/Editor
+            "OnValidate",
+            "Reset",
+            // Transform
+            "OnTransformChildrenChanged",
+            "OnTransformParentChanged",
+        };
+
+        public static readonly HashSet<string> MonoBehaviourBaseClasses = new(
+            StringComparer.Ordinal
+        )
+        {
+            "MonoBehaviour",
+            "ScriptableObject",
+            "StateMachineBehaviour",
+            "NetworkBehaviour",
+            "Editor",
+            "EditorWindow",
+            "PropertyDrawer",
+            "DecoratorDrawer",
+            "AssetPostprocessor",
+            "ScriptedImporter",
+        };
+
+        /// <summary>
+        /// Lifecycle methods that accept parameters.
+        /// </summary>
+        public static readonly HashSet<string> MethodsWithParameters = new(StringComparer.Ordinal)
+        {
+            "OnCollisionEnter",
+            "OnCollisionStay",
+            "OnCollisionExit",
+            "OnCollisionEnter2D",
+            "OnCollisionStay2D",
+            "OnCollisionExit2D",
+            "OnTriggerEnter",
+            "OnTriggerStay",
+            "OnTriggerExit",
+            "OnTriggerEnter2D",
+            "OnTriggerStay2D",
+            "OnTriggerExit2D",
+            "OnControllerColliderHit",
+            "OnJointBreak",
+            "OnJointBreak2D",
+            "OnParticleCollision",
+            "OnAnimatorIK",
+            "OnAnimatorMove",
+            "OnAudioFilterRead",
+            "OnRenderImage",
+            "OnApplicationFocus",
+            "OnApplicationPause",
+            "OnSerializeNetworkView",
+            "OnLevelWasLoaded",
+        };
+
+        /// <summary>
+        /// Returns true if the given return type is valid for the specified Unity lifecycle method.
+        /// </summary>
+        public static bool IsValidUnityLifecycleReturnType(string methodName, string returnType)
+        {
+            if (string.IsNullOrEmpty(returnType))
+            {
+                return false;
+            }
+
+            string normalized = returnType.Trim();
+
+            if (string.Equals(normalized, "void", StringComparison.Ordinal))
+            {
+                return true;
+            }
+
+            if (string.Equals(methodName, "Start", StringComparison.Ordinal))
+            {
+                return string.Equals(normalized, "IEnumerator", StringComparison.Ordinal)
+                    || string.Equals(
+                        normalized,
+                        "System.Collections.IEnumerator",
+                        StringComparison.Ordinal
+                    );
+            }
+
+            return false;
+        }
+    }
+#endif
+}

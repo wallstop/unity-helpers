@@ -1,7 +1,5 @@
 namespace WallstopStudios.UnityHelpers.Tests.Attributes
 {
-    using System;
-    using System.Reflection;
     using NUnit.Framework;
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using PropertyAttribute = UnityEngine.PropertyAttribute;
@@ -17,9 +15,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         }
 
         [Test]
-        public void IntDropdownAttributeExposesOptions()
+        public void IntDropDownAttributeExposesOptions()
         {
-            IntDropdownAttribute attribute = new(1, 2, 3);
+            IntDropDownAttribute attribute = new(1, 2, 3);
             CollectionAssert.AreEqual(new[] { 1, 2, 3 }, attribute.Options);
         }
 
@@ -42,34 +40,38 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
         }
 
         [Test]
-        public void DxReadOnlyAttributeDerivesFromPropertyAttribute()
+        public void WShowIfAttributeExposesComparisonMode()
         {
-            Assert.IsInstanceOf<PropertyAttribute>(new DxReadOnlyAttribute());
+            WShowIfAttribute attribute = new("flag", WShowIfComparison.GreaterThan, 5);
+            Assert.AreEqual(WShowIfComparison.GreaterThan, attribute.comparison);
         }
 
         [Test]
-        public void KSerializableAttributesAreDiscoverableViaReflection()
+        public void WShowIfAttributeComparisonConstructorWithoutValuesSetsMode()
         {
-            Type type = typeof(SerializableTarget);
-            Assert.IsNotNull(Attribute.GetCustomAttribute(type, typeof(KSerializableAttribute)));
-
-            FieldInfo field = type.GetField(nameof(SerializableTarget.included));
-            Assert.IsNotNull(Attribute.GetCustomAttribute(field, typeof(KSerializableAttribute)));
-
-            FieldInfo ignored = type.GetField(nameof(SerializableTarget.ignored));
-            Assert.IsNotNull(
-                Attribute.GetCustomAttribute(ignored, typeof(KNonSerializableAttribute))
-            );
+            WShowIfAttribute attribute = new("flag", WShowIfComparison.IsNull);
+            Assert.AreEqual(WShowIfComparison.IsNull, attribute.comparison);
+            Assert.IsEmpty(attribute.expectedValues);
         }
-    }
 
-    [KSerializable]
-    internal sealed class SerializableTarget
-    {
-        [KSerializable]
-        public int included;
+        [Test]
+        public void WShowIfAttributeDefaultsComparisonToEqual()
+        {
+            WShowIfAttribute attribute = new("flag");
+            Assert.AreEqual(WShowIfComparison.Equal, attribute.comparison);
+        }
 
-        [KNonSerializable]
-        public int ignored;
+        [Test]
+        public void WShowIfAttributeParamsConstructorCopiesValues()
+        {
+            WShowIfAttribute attribute = new("flag", 1, 2, 3);
+            CollectionAssert.AreEqual(new object[] { 1, 2, 3 }, attribute.expectedValues);
+        }
+
+        [Test]
+        public void WReadOnlyAttributeDerivesFromPropertyAttribute()
+        {
+            Assert.IsInstanceOf<PropertyAttribute>(new WReadOnlyAttribute());
+        }
     }
 }

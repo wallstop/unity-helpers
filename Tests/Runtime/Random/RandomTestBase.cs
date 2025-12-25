@@ -1,4 +1,4 @@
-namespace WallstopStudios.UnityHelpers.Tests.Random
+namespace WallstopStudios.UnityHelpers.Tests.Runtime.Random
 {
     using System;
     using System.Collections.Generic;
@@ -29,6 +29,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Random
         private const int NumGeneratorChecks = 1_000;
         private const int NormalIterations = 1_000;
         private const int SampleCount = 12_750_000;
+        protected const uint DeterministicSeed32 = 0xC0FFEE11U;
+        protected const ulong DeterministicSeed64 = 0x0123456789ABCDEFUL;
+        protected const ulong DeterministicSeed64B = 0xF0E1D2C3B4A59687UL;
+        protected const int DeterministicSeedInt = 0x1BADC0DE;
+        protected static readonly Guid DeterministicGuid = new(
+            "11223344-5566-7788-99AA-BBCCDDEEFF00"
+        );
 
         private readonly int[] _samples = new int[1_000];
 
@@ -468,14 +475,14 @@ namespace WallstopStudios.UnityHelpers.Tests.Random
 
         [Test]
         [Parallelizable]
-        public void NextKGuid()
+        public void NextWGuid()
         {
             IRandom random = NewRandom();
 
-            HashSet<KGuid> seen = new();
+            HashSet<WGuid> seen = new();
             for (int i = 0; i < NormalIterations; ++i)
             {
-                KGuid value = random.NextKGuid();
+                WGuid value = random.NextWGuid();
                 seen.Add(value);
             }
 

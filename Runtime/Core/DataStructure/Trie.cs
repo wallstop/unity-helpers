@@ -9,11 +9,19 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
     using WallstopStudios.UnityHelpers.Utils;
 
     /// <summary>
-    /// A highly optimized, array-backed Trie implementation for fast prefix search and exact word lookup.
+    /// A highly optimized, array-backed trie implementation for fast prefix search and exact word lookup.
     /// Preallocates storage based on total characters in the input set and uses integer indices for traversal,
-    /// minimizing memory allocations and indirections. Provides allocation-free prefix search method (aside from
-    /// returned string allocations).
+    /// minimizing memory allocations and indirections. Provides allocation-free prefix search aside from returned string allocations.
     /// </summary>
+    /// <example>
+    /// <code><![CDATA[
+    /// Trie commands = new Trie(new[] { "spawn", "speed", "spectate" });
+    /// foreach (string suggestion in commands.GetWordsWithPrefix("sp"))
+    /// {
+    ///     Debug.Log(suggestion);
+    /// }
+    /// ]]></code>
+    /// </example>
     public sealed class Trie : IEnumerable<string>
     {
         private const int Poison = -1;
@@ -22,7 +30,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
         private readonly int[] _firstChild;
         private readonly int[] _nextSibling;
         private readonly bool[] _isWord;
-        private readonly StringBuilder _stringBuilder;
+        private readonly int _maxWordLength;
         private int _nodeCount;
 
         /// <summary>
@@ -65,7 +73,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             Array.Fill(_firstChild, Poison);
             Array.Fill(_nextSibling, Poison);
 
-            _stringBuilder = new StringBuilder(maxWordLength);
+            _maxWordLength = maxWordLength;
 
             _nodeCount = 1; // root node index
             for (int i = 0; i < wordList.Count; ++i)
@@ -165,14 +173,18 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
 
                 node = child;
             }
-            _stringBuilder.Clear();
-            _stringBuilder.Append(prefix);
-            Collect(node, results, maxResults);
+            using PooledResource<StringBuilder> builderResource = Buffers.GetStringBuilder(
+                Mathf.Max(_maxWordLength, prefix?.Length ?? 0),
+                out StringBuilder builder
+            );
+            builder.Clear();
+            builder.Append(prefix);
+            Collect(node, results, maxResults, builder);
             return results;
         }
 
         // Recursive collection without allocations
-        private void Collect(int node, List<string> results, int maxResults)
+        private void Collect(int node, List<string> results, int maxResults, StringBuilder builder)
         {
             if (results.Count >= maxResults)
             {
@@ -181,7 +193,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
 
             if (_isWord[node])
             {
-                results.Add(_stringBuilder.ToString());
+                results.Add(builder.ToString());
                 if (results.Count >= maxResults)
                 {
                     return;
@@ -189,9 +201,9 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             }
             for (int child = _firstChild[node]; child != Poison; child = _nextSibling[child])
             {
-                _stringBuilder.Append(_chars[child]);
-                Collect(child, results, maxResults);
-                _stringBuilder.Length--;
+                builder.Append(_chars[child]);
+                Collect(child, results, maxResults, builder);
+                builder.Length--;
                 if (results.Count >= maxResults)
                 {
                     return;
@@ -227,20 +239,32 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             private readonly PooledResource<
                 Stack<(int node, PooledResource<StringBuilder> sbResource, int sbLength)>
             > _stackResource;
+            private readonly Stack<(
+                int node,
+                PooledResource<StringBuilder> sbResource,
+                int sbLength
+            )> _stack;
             private readonly PooledResource<List<PooledResource<StringBuilder>>> _listResource;
+            private readonly List<PooledResource<StringBuilder>> _stringBuilderResources;
             private string _current;
 
             internal Enumerator(Trie trie)
             {
                 _trie = trie;
-                _stackResource = Buffers<(int, PooledResource<StringBuilder>, int)>.Stack.Get();
-                _listResource = Buffers<PooledResource<StringBuilder>>.List.Get();
+                _stackResource = Buffers<(int, PooledResource<StringBuilder>, int)>.Stack.Get(
+                    out Stack<(int, PooledResource<StringBuilder>, int)> stack
+                );
+                _stack = stack;
+                _listResource = Buffers<PooledResource<StringBuilder>>.List.Get(
+                    out List<PooledResource<StringBuilder>> stringBuilderResources
+                );
+                _stringBuilderResources = stringBuilderResources;
                 _current = null;
 
                 // Initialize with root node
                 PooledResource<StringBuilder> sbResource = Buffers.StringBuilder.Get();
-                _listResource.resource.Add(sbResource);
-                _stackResource.resource.Push((0, sbResource, 0));
+                _stringBuilderResources.Add(sbResource);
+                _stack.Push((0, sbResource, 0));
             }
 
             public string Current => _current;
@@ -248,7 +272,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             public bool MoveNext()
             {
                 while (
-                    _stackResource.resource.TryPop(
+                    _stack.TryPop(
                         out (int node, PooledResource<StringBuilder> sbResource, int sbLength) item
                     )
                 )
@@ -274,12 +298,13 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                         child = _trie._nextSibling[child]
                     )
                     {
-                        PooledResource<StringBuilder> childResource = Buffers.StringBuilder.Get();
-                        _listResource.resource.Add(childResource);
-                        StringBuilder childSb = childResource.resource;
+                        PooledResource<StringBuilder> childResource = Buffers.StringBuilder.Get(
+                            out StringBuilder childSb
+                        );
+                        _stringBuilderResources.Add(childResource);
                         childSb.Append(sb);
                         childSb.Append(_trie._chars[child]);
-                        _stackResource.resource.Push((child, childResource, childSb.Length));
+                        _stack.Push((child, childResource, childSb.Length));
                     }
                 }
 
@@ -300,19 +325,20 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                     child = _trie._nextSibling[child]
                 )
                 {
-                    PooledResource<StringBuilder> childResource = Buffers.StringBuilder.Get();
-                    _listResource.resource.Add(childResource);
-                    StringBuilder childSb = childResource.resource;
+                    PooledResource<StringBuilder> childResource = Buffers.StringBuilder.Get(
+                        out StringBuilder childSb
+                    );
+                    _stringBuilderResources.Add(childResource);
                     childSb.Append(sb);
                     childSb.Append(_trie._chars[child]);
-                    _stackResource.resource.Push((child, childResource, childSb.Length));
+                    _stack.Push((child, childResource, childSb.Length));
                 }
             }
 
             public void Dispose()
             {
                 // Return all pooled StringBuilders to the pool
-                foreach (PooledResource<StringBuilder> resource in _listResource.resource)
+                foreach (PooledResource<StringBuilder> resource in _stringBuilderResources)
                 {
                     resource.Dispose();
                 }
@@ -560,18 +586,20 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
         {
             private readonly Trie<T> _trie;
             private readonly PooledResource<Stack<int>> _stackResource;
+            private readonly Stack<int> _stack;
             private T _current;
 
             internal Enumerator(Trie<T> trie)
             {
                 _trie = trie;
-                _stackResource = Buffers<int>.Stack.Get();
+                _stackResource = Buffers<int>.Stack.Get(out Stack<int> stack);
+                _stack = stack;
                 _current = default;
 
                 // Initialize with root node
                 if (_trie._nodeCount >= 1)
                 {
-                    _stackResource.resource.Push(0);
+                    _stack.Push(0);
                 }
             }
 
@@ -579,7 +607,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
 
             public bool MoveNext()
             {
-                while (_stackResource.resource.TryPop(out int node))
+                while (_stack.TryPop(out int node))
                 {
                     // Check if this node has a value (including root for empty string keys)
                     if (_trie._hasValue[node])
@@ -598,7 +626,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                         child = _trie._nextSibling[child]
                     )
                     {
-                        _stackResource.resource.Push(child);
+                        _stack.Push(child);
                     }
                 }
 
@@ -614,7 +642,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                     child = _trie._nextSibling[child]
                 )
                 {
-                    _stackResource.resource.Push(child);
+                    _stack.Push(child);
                 }
             }
 

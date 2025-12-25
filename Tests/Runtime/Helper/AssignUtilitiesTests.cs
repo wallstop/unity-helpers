@@ -2,8 +2,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
 {
     using NUnit.Framework;
     using WallstopStudios.UnityHelpers.Core.Helper;
+    using WallstopStudios.UnityHelpers.Tests.Core;
 
-    public sealed class AssignUtilitiesTests
+    public sealed class AssignUtilitiesTests : CommonTestBase
     {
         [Test]
         public void ExchangeReplacesValueAndReturnsOriginal()

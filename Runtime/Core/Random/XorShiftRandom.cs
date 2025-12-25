@@ -50,6 +50,12 @@ namespace WallstopStudios.UnityHelpers.Core.Random
     /// var fast = XorShiftRandom.Instance; // per-thread instance
     /// </code>
     /// </example>
+    [RandomGeneratorMetadata(
+        RandomQuality.Fair,
+        "Classic 32-bit xorshift; known to fail portions of TestU01 and PractRand, acceptable for lightweight effects only.",
+        "Marsaglia 2003",
+        "https://www.jstatsoft.org/article/view/v008i14"
+    )]
     [Serializable]
     [DataContract]
     [ProtoContract]

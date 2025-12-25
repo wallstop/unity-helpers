@@ -8,10 +8,17 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
     using System.Collections.Generic;
 #endif
 
-    /*
-        Used to cache strings, meant to be used in place of strings as keys for when a Dictionary
-        has a known set of values
-     */
+    /// <summary>
+    /// Flyweight cache that interns frequently reused strings to reduce allocations and dictionary lookups.
+    /// Useful when you have a known set of keys and want reference equality semantics without hitting <see cref="string.Intern(string)"/>.
+    /// </summary>
+    /// <example>
+    /// <code><![CDATA[
+    /// StringWrapper key = StringWrapper.Get("Enemy/State/Alert");
+    /// dictionary[key] = value;
+    /// key.Dispose(); // optional – returns wrapper to cache when no longer needed
+    /// ]]></code>
+    /// </example>
     [Serializable]
     public sealed class StringWrapper
         : IEquatable<StringWrapper>,

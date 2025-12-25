@@ -8,8 +8,15 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
     using UnityEngine;
 
     /// <summary>
-    /// Represents a sphere in 3D space defined by a center point and radius.
+    /// Compact 3D sphere helper for distance checks, containment tests, and broad-phase overlap queries.
+    /// Ideal for vision cones, trigger volumes, and physics culling.
     /// </summary>
+    /// <example>
+    /// <code><![CDATA[
+    /// Sphere detection = new Sphere(transform.position, 4f);
+    /// bool containsTarget = detection.Contains(targetPosition);
+    /// ]]></code>
+    /// </example>
     public readonly struct Sphere : IEquatable<Sphere>
     {
         public readonly Vector3 center;

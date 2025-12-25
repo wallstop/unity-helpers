@@ -1,5 +1,6 @@
 namespace WallstopStudios.UnityHelpers.Utils
 {
+    using System.Collections;
     using UnityEngine;
 
     [DisallowMultipleComponent]
@@ -7,8 +8,9 @@ namespace WallstopStudios.UnityHelpers.Utils
     {
         public bool Started { get; private set; }
 
-        private void Start()
+        private IEnumerator Start()
         {
+            yield return null;
             Started = true;
         }
     }

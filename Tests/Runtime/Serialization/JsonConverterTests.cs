@@ -7,7 +7,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
     using UnityEngine.Rendering;
     using UnityEngine.SceneManagement;
     using WallstopStudios.UnityHelpers.Core.Serialization;
-    using WallstopStudios.UnityHelpers.Tests.TestUtils;
+    using WallstopStudios.UnityHelpers.Tests.Core;
 
     [TestFixture]
     public sealed class JsonConverterTests : CommonTestBase
@@ -923,9 +923,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
             AnimationCurve original = new(
                 new Keyframe(0f, 0f, 0f, 1f),
                 new Keyframe(1f, 1f, 1f, 0f)
-            );
-            original.preWrapMode = WrapMode.ClampForever;
-            original.postWrapMode = WrapMode.Once;
+            )
+            {
+                preWrapMode = WrapMode.ClampForever,
+                postWrapMode = WrapMode.Once,
+            };
             string json = Serializer.JsonStringify(original);
             AnimationCurve deserialized = Serializer.JsonDeserialize<AnimationCurve>(json);
             Assert.AreEqual(original.preWrapMode, deserialized.preWrapMode);
@@ -938,17 +940,15 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
         [Test]
         public void GradientConverterSerializeAndDeserializeSuccess()
         {
-            Gradient original = new();
-            original.mode = GradientMode.Blend;
-            original.colorKeys = new[]
+            Gradient original = new()
             {
-                new GradientColorKey(Color.red, 0f),
-                new GradientColorKey(Color.blue, 1f),
-            };
-            original.alphaKeys = new[]
-            {
-                new GradientAlphaKey(1f, 0f),
-                new GradientAlphaKey(1f, 1f),
+                mode = GradientMode.Blend,
+                colorKeys = new[]
+                {
+                    new GradientColorKey(Color.red, 0f),
+                    new GradientColorKey(Color.blue, 1f),
+                },
+                alphaKeys = new[] { new GradientAlphaKey(1f, 0f), new GradientAlphaKey(1f, 1f) },
             };
             string json = Serializer.JsonStringify(original);
             Gradient deserialized = Serializer.JsonDeserialize<Gradient>(json);
@@ -1097,10 +1097,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
         [Test]
         public void RaycastHitConverterSerializeAndDeserializeSuccess()
         {
-            RaycastHit original = new();
-            original.point = new Vector3(1, 2, 3);
-            original.normal = Vector3.up;
-            original.distance = 5f;
+            RaycastHit original = new()
+            {
+                point = new Vector3(1, 2, 3),
+                normal = Vector3.up,
+                distance = 5f,
+            };
             string json = Serializer.JsonStringify(original);
             RaycastHit deserialized = Serializer.JsonDeserialize<RaycastHit>(json);
             Assert.AreEqual(original.point, deserialized.point);

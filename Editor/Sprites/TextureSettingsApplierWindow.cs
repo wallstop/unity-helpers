@@ -43,6 +43,21 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
 
             [WShowIf(nameof(applyCrunchCompression))]
             public bool useCrunchCompression;
+
+            internal static class SerializedPropertyNames
+            {
+                internal const string PlatformName = nameof(platformName);
+                internal const string ApplyResizeAlgorithm = nameof(applyResizeAlgorithm);
+                internal const string ResizeAlgorithm = nameof(resizeAlgorithm);
+                internal const string ApplyMaxTextureSize = nameof(applyMaxTextureSize);
+                internal const string MaxTextureSize = nameof(maxTextureSize);
+                internal const string ApplyFormat = nameof(applyFormat);
+                internal const string Format = nameof(format);
+                internal const string ApplyCompression = nameof(applyCompression);
+                internal const string Compression = nameof(compression);
+                internal const string ApplyCrunchCompression = nameof(applyCrunchCompression);
+                internal const string UseCrunchCompression = nameof(useCrunchCompression);
+            }
         }
 
         // Basic importer settings
@@ -381,8 +396,13 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             return config;
         }
 
-        private List<string> GetTargetTexturePaths()
+        private void GetTargetTexturePaths(List<string> destination)
         {
+            if (destination == null)
+            {
+                throw new ArgumentNullException(nameof(destination));
+            }
+            destination.Clear();
             // Build extension filter (normalize)
             using (
                 SetBuffers<string>
@@ -405,7 +425,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 }
 
                 // Collect folders
-                using (Buffers<string>.List.Get(out List<string> folderAssetPaths))
+                using PooledResource<List<string>> folderAssetPathsResource =
+                    Buffers<string>.List.Get(out List<string> folderAssetPaths);
                 {
                     if (directories != null)
                     {
@@ -435,17 +456,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                     {
                         if (folderAssetPaths.Count > 0)
                         {
-                            using PooledResource<string[]> folderLease =
-                                WallstopFastArrayPool<string>.Get(
-                                    folderAssetPaths.Count,
-                                    out string[] folders
-                                );
-                            for (int i = 0; i < folderAssetPaths.Count; i++)
-                            {
-                                folders[i] = folderAssetPaths[i];
-                            }
-
-                            string[] guids = AssetDatabase.FindAssets("t:Texture2D", folders);
+                            string[] guids = AssetDatabase.FindAssets(
+                                "t:Texture2D",
+                                folderAssetPaths.ToArray()
+                            );
                             for (int i = 0; i < guids.Length; i++)
                             {
                                 string p = AssetDatabase.GUIDToAssetPath(guids[i]);
@@ -467,41 +481,47 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                         // De-dupe textures and skip nulls without LINQ
                         using (Buffers<Texture2D>.HashSet.Get(out HashSet<Texture2D> texSet))
                         {
-                            if (textures != null)
+                            if (textures == null)
                             {
-                                for (int ti = 0; ti < textures.Count; ti++)
+                                foreach (string path in unique)
                                 {
-                                    Texture2D t = textures[ti];
-                                    if (t == null)
-                                    {
-                                        continue;
-                                    }
-                                    if (!texSet.Add(t))
-                                    {
-                                        continue;
-                                    }
-
-                                    string p = AssetDatabase.GetAssetPath(t);
-                                    if (string.IsNullOrWhiteSpace(p))
-                                    {
-                                        continue;
-                                    }
-
-                                    string ext = Path.GetExtension(p);
-                                    if (
-                                        allowedExtensions.Count > 0
-                                        && !allowedExtensions.Contains(ext)
-                                    )
-                                    {
-                                        continue;
-                                    }
-
-                                    _ = unique.Add(p);
+                                    destination.Add(path);
                                 }
+                                return;
+                            }
+
+                            for (int ti = 0; ti < textures.Count; ti++)
+                            {
+                                Texture2D t = textures[ti];
+                                if (t == null)
+                                {
+                                    continue;
+                                }
+                                if (!texSet.Add(t))
+                                {
+                                    continue;
+                                }
+
+                                string p = AssetDatabase.GetAssetPath(t);
+                                if (string.IsNullOrWhiteSpace(p))
+                                {
+                                    continue;
+                                }
+
+                                string ext = Path.GetExtension(p);
+                                if (allowedExtensions.Count > 0 && !allowedExtensions.Contains(ext))
+                                {
+                                    continue;
+                                }
+
+                                _ = unique.Add(p);
                             }
                         }
 
-                        return new List<string>(unique);
+                        foreach (string path in unique)
+                        {
+                            destination.Add(path);
+                        }
                     }
                 }
             }
@@ -509,7 +529,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
 
         public void CalculateStats()
         {
-            List<string> targets = GetTargetTexturePaths();
+            using PooledResource<List<string>> targetsLease = Buffers<string>.List.Get(
+                out List<string> targets
+            );
+            GetTargetTexturePaths(targets);
             _totalTexturesToProcess = targets.Count;
             _texturesThatWillChange = 0;
             _assetsThatWillChange.Clear();
@@ -564,7 +587,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 return;
             }
 
-            List<string> targets = GetTargetTexturePaths();
+            using PooledResource<List<string>> targetsLease = Buffers<string>.List.Get(
+                out List<string> targets
+            );
+            GetTargetTexturePaths(targets);
             TextureSettingsApplierAPI.Config config = BuildConfig();
             // Warn about unknown platforms prior to apply
             if (platformOverrides != null)
@@ -586,7 +612,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 }
             }
             int count = 0;
-            using (Buffers<TextureImporter>.List.Get(out List<TextureImporter> changed))
+            using PooledResource<List<TextureImporter>> changedResource =
+                Buffers<TextureImporter>.List.Get(out List<TextureImporter> changed);
             {
                 AssetDatabase.StartAssetEditing();
                 try

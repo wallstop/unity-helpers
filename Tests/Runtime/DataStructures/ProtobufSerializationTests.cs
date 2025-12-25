@@ -1,6 +1,10 @@
 namespace WallstopStudios.UnityHelpers.Tests.DataStructures
 {
+    using System;
+    using System.Collections.Generic;
+    using System.Linq;
     using NUnit.Framework;
+    using ProtoBuf;
     using WallstopStudios.UnityHelpers.Core.DataStructure;
     using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
     using WallstopStudios.UnityHelpers.Core.Math;
@@ -213,6 +217,232 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
                 deserialized.TryGet(i, out bool deserVal);
                 Assert.AreEqual(origVal, deserVal, $"Bit {i} mismatch");
             }
+        }
+
+        [Test]
+        public void SerializableDictionarySerializesAndDeserializes()
+        {
+            SerializableDictionary<string, int> original = new()
+            {
+                { "alpha", 1 },
+                { "beta", 2 },
+                { "gamma", 3 },
+            };
+
+            byte[] data = Serializer.ProtoSerialize(original);
+            SerializableDictionary<string, int> deserialized = Serializer.ProtoDeserialize<
+                SerializableDictionary<string, int>
+            >(data);
+
+            Assert.AreEqual(original.Count, deserialized.Count);
+            foreach (KeyValuePair<string, int> pair in original)
+            {
+                Assert.IsTrue(deserialized.TryGetValue(pair.Key, out int value), pair.Key);
+                Assert.AreEqual(pair.Value, value, pair.Key);
+            }
+        }
+
+        [Test]
+        public void SerializableDictionaryProtoRoundtripPreservesInternalArrays()
+        {
+            // Arrange: Create dictionary with specific entries
+            SerializableDictionary<string, int> original = new()
+            {
+                { "alpha", 1 },
+                { "beta", 2 },
+                { "gamma", 3 },
+            };
+            original.OnBeforeSerialize();
+
+            // Diagnostic: Verify original state
+            Assert.IsNotNull(
+                original._keys,
+                "Original _keys should not be null before serialization"
+            );
+            Assert.IsNotNull(
+                original._values,
+                "Original _values should not be null before serialization"
+            );
+            string originalKeysStr = string.Join(", ", original._keys);
+            string originalValuesStr = string.Join(", ", original._values);
+
+            // Act: Protobuf round-trip
+            byte[] data = Serializer.ProtoSerialize(original);
+
+            // Diagnostic: Verify data was serialized
+            Assert.IsNotNull(data, "Serialized data should not be null");
+            Assert.Greater(
+                data.Length,
+                0,
+                $"Serialized data should not be empty. Keys: [{originalKeysStr}], Values: [{originalValuesStr}]"
+            );
+
+            string hexDump = string.Join(" ", data.Take(30).Select(b => b.ToString("X2")));
+
+            SerializableDictionary<string, int> deserialized = Serializer.ProtoDeserialize<
+                SerializableDictionary<string, int>
+            >(data);
+
+            // Assert: Internal arrays should be restored
+            Assert.IsNotNull(deserialized, "Deserialized object should not be null");
+            Assert.IsNotNull(
+                deserialized._keys,
+                $"Deserialized _keys should not be null. "
+                    + $"Original keys: [{originalKeysStr}], Bytes: {data.Length}, Hex: {hexDump}"
+            );
+            Assert.IsNotNull(
+                deserialized._values,
+                $"Deserialized _values should not be null. "
+                    + $"Original values: [{originalValuesStr}], Bytes: {data.Length}, Hex: {hexDump}"
+            );
+            Assert.AreEqual(
+                original._keys.Length,
+                deserialized._keys.Length,
+                "Keys array length should match"
+            );
+            Assert.AreEqual(
+                original._values.Length,
+                deserialized._values.Length,
+                "Values array length should match"
+            );
+
+            // Verify contents
+            CollectionAssert.AreEquivalent(
+                original._keys,
+                deserialized._keys,
+                "Keys should contain the same elements"
+            );
+            CollectionAssert.AreEquivalent(
+                original._values,
+                deserialized._values,
+                "Values should contain the same elements"
+            );
+        }
+
+        private static IEnumerable<TestCaseData> DictionaryProtoArraysTestCases()
+        {
+            yield return new TestCaseData(new[] { "single" }, new[] { 1 }).SetName("SingleEntry");
+            yield return new TestCaseData(
+                new[] { "a", "b", "c", "d" },
+                new[] { 1, 2, 3, 4 }
+            ).SetName("MultipleEntries");
+            yield return new TestCaseData(new[] { "empty_value_test" }, new[] { 0 }).SetName(
+                "ZeroValue"
+            );
+            yield return new TestCaseData(new[] { "negative" }, new[] { -100 }).SetName(
+                "NegativeValue"
+            );
+        }
+
+        [TestCaseSource(nameof(DictionaryProtoArraysTestCases))]
+        public void SerializableDictionaryProtoDeserializationRestoresArraysDataDriven(
+            string[] keys,
+            int[] values
+        )
+        {
+            // Arrange
+            SerializableDictionary<string, int> original = new();
+            for (int i = 0; i < keys.Length; i++)
+            {
+                original.Add(keys[i], values[i]);
+            }
+            original.OnBeforeSerialize();
+
+            // Diagnostic
+            Assert.IsNotNull(original._keys, "Original _keys should not be null");
+            Assert.IsNotNull(original._values, "Original _values should not be null");
+            Assert.AreEqual(keys.Length, original._keys.Length, "Original _keys length mismatch");
+            Assert.AreEqual(
+                values.Length,
+                original._values.Length,
+                "Original _values length mismatch"
+            );
+
+            // Act
+            byte[] data = Serializer.ProtoSerialize(original);
+            Assert.Greater(data.Length, 0, "Serialized data should not be empty");
+
+            string hexDump = string.Join(" ", data.Take(30).Select(b => b.ToString("X2")));
+
+            SerializableDictionary<string, int> deserialized = Serializer.ProtoDeserialize<
+                SerializableDictionary<string, int>
+            >(data);
+
+            // Assert
+            Assert.IsNotNull(deserialized, "Deserialized object should not be null");
+            Assert.IsNotNull(
+                deserialized._keys,
+                $"Deserialized _keys should not be null. "
+                    + $"Input keys: [{string.Join(", ", keys)}], Bytes: {data.Length}, Hex: {hexDump}"
+            );
+            Assert.IsNotNull(
+                deserialized._values,
+                $"Deserialized _values should not be null. "
+                    + $"Input values: [{string.Join(", ", values)}], Bytes: {data.Length}, Hex: {hexDump}"
+            );
+            Assert.AreEqual(keys.Length, deserialized._keys.Length, "Keys length should match");
+            Assert.AreEqual(
+                values.Length,
+                deserialized._values.Length,
+                "Values length should match"
+            );
+            CollectionAssert.AreEquivalent(keys, deserialized._keys, "Keys content should match");
+            CollectionAssert.AreEquivalent(
+                values,
+                deserialized._values,
+                "Values content should match"
+            );
+        }
+
+        [Test]
+        public void SerializableDictionaryCacheSerializesAndDeserializes()
+        {
+            SerializableDictionary<
+                int,
+                SerializablePayload,
+                SerializableDictionary.Cache<SerializablePayload>
+            > original = new()
+            {
+                {
+                    1,
+                    new SerializablePayload { Id = 1, Name = "Primary" }
+                },
+                {
+                    2,
+                    new SerializablePayload { Id = 2, Name = "Secondary" }
+                },
+            };
+
+            byte[] data = Serializer.ProtoSerialize(original);
+            SerializableDictionary<
+                int,
+                SerializablePayload,
+                SerializableDictionary.Cache<SerializablePayload>
+            > deserialized = Serializer.ProtoDeserialize<
+                SerializableDictionary<
+                    int,
+                    SerializablePayload,
+                    SerializableDictionary.Cache<SerializablePayload>
+                >
+            >(data);
+
+            Assert.AreEqual(original.Count, deserialized.Count);
+            foreach (KeyValuePair<int, SerializablePayload> pair in original)
+            {
+                Assert.IsTrue(deserialized.TryGetValue(pair.Key, out SerializablePayload value));
+                Assert.AreEqual(pair.Value.Id, value.Id);
+                Assert.AreEqual(pair.Value.Name, value.Name);
+            }
+        }
+
+        [ProtoContract]
+        private sealed class SerializablePayload
+        {
+            [ProtoMember(1)]
+            public int Id { get; set; }
+
+            [ProtoMember(2)]
+            public string Name { get; set; }
         }
 
         [Test]
@@ -470,6 +700,692 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             Assert.AreEqual(10000f, deserialized.MaxHeight, 1f);
             Assert.AreEqual(50000f, deserialized.Length, 1f);
             Assert.IsTrue(original.Equals(deserialized));
+        }
+
+        [Test]
+        public void SerializableDictionarySupportsMultipleProtobufCycles()
+        {
+            SerializableDictionary<string, int> dictionary = new()
+            {
+                { "alpha", 1 },
+                { "beta", 2 },
+            };
+
+            byte[] firstSnapshot = Serializer.ProtoSerialize(dictionary);
+
+            dictionary["alpha"] = 10;
+            dictionary.Add("gamma", 3);
+            dictionary.Remove("beta");
+
+            byte[] secondSnapshot = Serializer.ProtoSerialize(dictionary);
+
+            dictionary.Clear();
+            dictionary.Add("delta", 4);
+
+            byte[] thirdSnapshot = Serializer.ProtoSerialize(dictionary);
+
+            SerializableDictionary<string, int> firstRoundTrip = Serializer.ProtoDeserialize<
+                SerializableDictionary<string, int>
+            >(firstSnapshot);
+            SerializableDictionary<string, int> secondRoundTrip = Serializer.ProtoDeserialize<
+                SerializableDictionary<string, int>
+            >(secondSnapshot);
+            SerializableDictionary<string, int> thirdRoundTrip = Serializer.ProtoDeserialize<
+                SerializableDictionary<string, int>
+            >(thirdSnapshot);
+
+            Assert.That(firstRoundTrip.Count, Is.EqualTo(2));
+            Assert.That(firstRoundTrip["alpha"], Is.EqualTo(1));
+            Assert.That(firstRoundTrip["beta"], Is.EqualTo(2));
+
+            Assert.That(secondRoundTrip.Count, Is.EqualTo(2));
+            Assert.IsTrue(secondRoundTrip.ContainsKey("alpha"));
+            Assert.IsTrue(secondRoundTrip.ContainsKey("gamma"));
+            Assert.IsFalse(secondRoundTrip.ContainsKey("beta"));
+            Assert.That(secondRoundTrip["alpha"], Is.EqualTo(10));
+            Assert.That(secondRoundTrip["gamma"], Is.EqualTo(3));
+
+            Assert.That(thirdRoundTrip.Count, Is.EqualTo(1));
+            Assert.That(thirdRoundTrip["delta"], Is.EqualTo(4));
+
+            secondRoundTrip["alpha"] = 25;
+            secondRoundTrip.Add("epsilon", 5);
+            secondRoundTrip.Remove("gamma");
+
+            byte[] fourthSnapshot = Serializer.ProtoSerialize(secondRoundTrip);
+            SerializableDictionary<string, int> fourthRoundTrip = Serializer.ProtoDeserialize<
+                SerializableDictionary<string, int>
+            >(fourthSnapshot);
+
+            Assert.That(fourthRoundTrip.Count, Is.EqualTo(2));
+            Assert.That(fourthRoundTrip["alpha"], Is.EqualTo(25));
+            Assert.That(fourthRoundTrip["epsilon"], Is.EqualTo(5));
+
+            fourthRoundTrip.Clear();
+            fourthRoundTrip.Add("zeta", 6);
+
+            byte[] finalSnapshot = Serializer.ProtoSerialize(fourthRoundTrip);
+            SerializableDictionary<string, int> finalRoundTrip = Serializer.ProtoDeserialize<
+                SerializableDictionary<string, int>
+            >(finalSnapshot);
+
+            Assert.That(finalRoundTrip.Count, Is.EqualTo(1));
+            Assert.That(finalRoundTrip["zeta"], Is.EqualTo(6));
+        }
+
+        [Test]
+        public void CacheSerializableDictionaryHandlesMultipleProtobufMutations()
+        {
+            SerializableDictionary<
+                int,
+                SerializablePayload,
+                SerializableDictionary.Cache<SerializablePayload>
+            > dictionary = new()
+            {
+                {
+                    1,
+                    new SerializablePayload { Id = 1, Name = "First" }
+                },
+                {
+                    2,
+                    new SerializablePayload { Id = 2, Name = "Second" }
+                },
+            };
+
+            byte[] firstSnapshot = Serializer.ProtoSerialize(dictionary);
+
+            dictionary[1] = new SerializablePayload { Id = 11, Name = "First Updated" };
+            dictionary.Remove(2);
+            dictionary.Add(3, new SerializablePayload { Id = 3, Name = "Third" });
+
+            byte[] secondSnapshot = Serializer.ProtoSerialize(dictionary);
+
+            dictionary.Clear();
+            dictionary.Add(4, new SerializablePayload { Id = 4, Name = "Fourth" });
+
+            byte[] thirdSnapshot = Serializer.ProtoSerialize(dictionary);
+
+            SerializableDictionary<
+                int,
+                SerializablePayload,
+                SerializableDictionary.Cache<SerializablePayload>
+            > firstRoundTrip = Serializer.ProtoDeserialize<
+                SerializableDictionary<
+                    int,
+                    SerializablePayload,
+                    SerializableDictionary.Cache<SerializablePayload>
+                >
+            >(firstSnapshot);
+
+            SerializableDictionary<
+                int,
+                SerializablePayload,
+                SerializableDictionary.Cache<SerializablePayload>
+            > secondRoundTrip = Serializer.ProtoDeserialize<
+                SerializableDictionary<
+                    int,
+                    SerializablePayload,
+                    SerializableDictionary.Cache<SerializablePayload>
+                >
+            >(secondSnapshot);
+
+            SerializableDictionary<
+                int,
+                SerializablePayload,
+                SerializableDictionary.Cache<SerializablePayload>
+            > thirdRoundTrip = Serializer.ProtoDeserialize<
+                SerializableDictionary<
+                    int,
+                    SerializablePayload,
+                    SerializableDictionary.Cache<SerializablePayload>
+                >
+            >(thirdSnapshot);
+
+            Assert.That(firstRoundTrip.Count, Is.EqualTo(2));
+            Assert.That(firstRoundTrip[1].Name, Is.EqualTo("First"));
+            Assert.That(firstRoundTrip[2].Name, Is.EqualTo("Second"));
+
+            Assert.That(secondRoundTrip.Count, Is.EqualTo(2));
+            Assert.That(secondRoundTrip[1].Name, Is.EqualTo("First Updated"));
+            Assert.That(secondRoundTrip[3].Name, Is.EqualTo("Third"));
+
+            Assert.That(thirdRoundTrip.Count, Is.EqualTo(1));
+            Assert.That(thirdRoundTrip[4].Name, Is.EqualTo("Fourth"));
+
+            secondRoundTrip[3] = new SerializablePayload { Id = 30, Name = "Third Updated" };
+            secondRoundTrip.Add(5, new SerializablePayload { Id = 5, Name = "Fifth" });
+
+            byte[] laterSnapshot = Serializer.ProtoSerialize(secondRoundTrip);
+            SerializableDictionary<
+                int,
+                SerializablePayload,
+                SerializableDictionary.Cache<SerializablePayload>
+            > laterRoundTrip = Serializer.ProtoDeserialize<
+                SerializableDictionary<
+                    int,
+                    SerializablePayload,
+                    SerializableDictionary.Cache<SerializablePayload>
+                >
+            >(laterSnapshot);
+
+            Assert.That(laterRoundTrip.Count, Is.EqualTo(3));
+            Assert.That(laterRoundTrip[1].Name, Is.EqualTo("First Updated"));
+            Assert.That(laterRoundTrip[3].Name, Is.EqualTo("Third Updated"));
+            Assert.That(laterRoundTrip[5].Name, Is.EqualTo("Fifth"));
+        }
+
+        [Test]
+        public void DiagnosticProtobufNetDirectSerializationBehavior()
+        {
+            // This test documents protobuf-net's direct serialization behavior.
+            // IMPORTANT: protobuf-net ignores IgnoreListHandling=true for classes that implement
+            // collection interfaces (ISet<T>, ICollection<T>, etc.). Instead, it treats the class
+            // as a collection and uses Add() calls during deserialization, leaving _items null.
+            // Additionally, the [ProtoAfterDeserialization] callback is NOT called when protobuf-net
+            // uses the collection deserialization path.
+            //
+            // The Serializer.ProtoDeserialize wrapper handles this by using wrapper-based
+            // deserialization that bypasses protobuf-net's collection detection.
+
+            // Create a simple set with known values
+            SerializableHashSet<int> original = new() { 10, 20, 30 };
+            original.OnBeforeSerialize();
+
+            // Verify original state
+            Assert.IsNotNull(
+                original._items,
+                "Original _items should be set after OnBeforeSerialize"
+            );
+            string originalItems = string.Join(", ", original._items);
+
+            // Serialize using protobuf-net directly
+            using System.IO.MemoryStream ms = new();
+            ProtoBuf.Serializer.Serialize(ms, original);
+            byte[] bytes = ms.ToArray();
+
+            string hexDump = string.Join(" ", bytes.Select(b => b.ToString("X2")));
+            Assert.Greater(
+                bytes.Length,
+                0,
+                $"Bytes should be serialized. Original items: [{originalItems}]"
+            );
+
+            // Deserialize using protobuf-net directly
+            ms.Position = 0;
+            SerializableHashSet<int> deserialized = ProtoBuf.Serializer.Deserialize<
+                SerializableHashSet<int>
+            >(ms);
+
+            Assert.IsNotNull(deserialized, "Deserialized object should not be null");
+
+            // Check if items were added via Add() (collection behavior) vs _items population
+            string deserializedItems =
+                deserialized._items != null ? string.Join(", ", deserialized._items) : "null";
+
+            // The set should have items via Add() calls during deserialization
+            // This happens because protobuf-net treats the class as a collection
+            Assert.Greater(
+                deserialized.Count,
+                0,
+                $"Deserialized set should have items. "
+                    + $"Count={deserialized.Count}, _items={deserializedItems}, "
+                    + $"Original: [{originalItems}], Bytes: {bytes.Length}, Hex: {hexDump}"
+            );
+
+            // DOCUMENTED BEHAVIOR: protobuf-net ignores IgnoreListHandling=true for collection types.
+            // After direct protobuf-net deserialization, _items will be null because:
+            // 1. protobuf-net uses Add() calls instead of populating the _items field
+            // 2. [ProtoAfterDeserialization] callback is NOT called when using collection path
+            //
+            // This is why Serializer.ProtoDeserialize has special wrapper-based handling.
+            // Note: If this assertion fails (i.e., _items is NOT null), protobuf-net's behavior
+            // has changed and the workaround in Serializer.ProtoDeserialize may no longer be needed.
+            Assert.IsNull(
+                deserialized._items,
+                $"Direct protobuf-net deserialization leaves _items null due to collection path. "
+                    + $"If this fails, protobuf-net behavior has changed. "
+                    + $"Original: [{originalItems}], Bytes: {bytes.Length}, Hex: {hexDump}, "
+                    + $"Deserialized count: {deserialized.Count}"
+            );
+
+            // However, the set itself should have the correct items (populated via Add())
+            HashSet<int> originalSet = original.ToHashSet();
+            HashSet<int> deserializedSet = deserialized.ToHashSet();
+            Assert.IsTrue(
+                originalSet.SetEquals(deserializedSet),
+                $"Set contents should match after round-trip (via Add() calls). "
+                    + $"Original: [{string.Join(", ", originalSet)}], "
+                    + $"Deserialized: [{string.Join(", ", deserializedSet)}]"
+            );
+        }
+
+        [Test]
+        public void SerializableHashSetSerializesAndDeserializes()
+        {
+            SerializableHashSet<int> original = new() { 1, 2, 3, 5, 8, 13 };
+
+            byte[] data = Serializer.ProtoSerialize(original);
+            Assert.IsNotNull(data, "Serialized data should not be null");
+            Assert.Greater(data.Length, 0, "Serialized data should not be empty");
+
+            SerializableHashSet<int> deserialized = Serializer.ProtoDeserialize<
+                SerializableHashSet<int>
+            >(data);
+
+            Assert.IsNotNull(deserialized, "Deserialized object should not be null");
+            Assert.AreEqual(original.Count, deserialized.Count, "Count should match");
+            foreach (int item in original)
+            {
+                Assert.IsTrue(deserialized.Contains(item), $"Should contain {item}");
+            }
+        }
+
+        [Test]
+        public void SerializableHashSetProtoRoundtripPreservesInternalItemsArray()
+        {
+            // Arrange: Create set with specific items
+            SerializableHashSet<int> original = new() { 7, 3, 9, 1 };
+            original.OnBeforeSerialize();
+
+            // Diagnostic: Verify original state
+            Assert.IsNotNull(
+                original._items,
+                "Original _items should not be null before serialization"
+            );
+            string originalItemsStr = string.Join(", ", original._items);
+
+            // Act: Protobuf round-trip
+            byte[] data = Serializer.ProtoSerialize(original);
+
+            // Diagnostic: Verify data was serialized
+            Assert.IsNotNull(data, "Serialized data should not be null");
+            Assert.Greater(
+                data.Length,
+                0,
+                $"Serialized data should not be empty. Original items: [{originalItemsStr}]"
+            );
+
+            string hexDump = string.Join(" ", data.Take(20).Select(b => b.ToString("X2")));
+
+            SerializableHashSet<int> deserialized = Serializer.ProtoDeserialize<
+                SerializableHashSet<int>
+            >(data);
+
+            // Assert: Internal _items array should be restored
+            Assert.IsNotNull(deserialized, "Deserialized object should not be null");
+            Assert.IsNotNull(
+                deserialized._items,
+                $"Deserialized _items should not be null. "
+                    + $"Original items: [{originalItemsStr}], Bytes: {data.Length}, Hex: {hexDump}"
+            );
+            Assert.AreEqual(
+                original._items.Length,
+                deserialized._items.Length,
+                $"Items array length should match. Original: [{originalItemsStr}], "
+                    + $"Deserialized: [{string.Join(", ", deserialized._items ?? Array.Empty<int>())}]"
+            );
+
+            // Verify contents (order may differ for HashSet)
+            CollectionAssert.AreEquivalent(
+                original._items,
+                deserialized._items,
+                "Items should contain the same elements"
+            );
+        }
+
+        private static IEnumerable<TestCaseData> HashSetProtoItemsArrayTestCases()
+        {
+            yield return new TestCaseData(new[] { 1 }).SetName("SingleElement");
+            yield return new TestCaseData(new[] { 5, 3, 8, 1, 9 }).SetName(
+                "MultipleElements.Unordered"
+            );
+            yield return new TestCaseData(new[] { 1, 2, 3, 4, 5 }).SetName(
+                "MultipleElements.Ascending"
+            );
+            yield return new TestCaseData(new[] { 5, 4, 3, 2, 1 }).SetName(
+                "MultipleElements.Descending"
+            );
+            yield return new TestCaseData(new[] { 0, -1, 1, -100, 100 }).SetName(
+                "MixedPositiveNegative"
+            );
+            yield return new TestCaseData(new[] { int.MaxValue, int.MinValue, 0 }).SetName(
+                "ExtremeBoundaryValues"
+            );
+        }
+
+        [TestCaseSource(nameof(HashSetProtoItemsArrayTestCases))]
+        public void SerializableHashSetProtoDeserializationRestoresItemsArrayDataDriven(int[] items)
+        {
+            // Arrange
+            SerializableHashSet<int> original = new();
+            foreach (int item in items)
+            {
+                original.Add(item);
+            }
+            original.OnBeforeSerialize();
+
+            // Diagnostic
+            Assert.IsNotNull(original._items, "Original _items should not be null");
+            Assert.AreEqual(
+                items.Length,
+                original._items.Length,
+                $"Original _items length should match input. Items: [{string.Join(", ", items)}]"
+            );
+
+            // Act
+            byte[] data = Serializer.ProtoSerialize(original);
+            Assert.Greater(data.Length, 0, "Serialized data should not be empty");
+
+            string hexDump = string.Join(" ", data.Take(30).Select(b => b.ToString("X2")));
+
+            SerializableHashSet<int> deserialized = Serializer.ProtoDeserialize<
+                SerializableHashSet<int>
+            >(data);
+
+            // Assert
+            Assert.IsNotNull(deserialized, "Deserialized object should not be null");
+            Assert.IsNotNull(
+                deserialized._items,
+                $"Deserialized _items should not be null. "
+                    + $"Input: [{string.Join(", ", items)}], Bytes: {data.Length}, Hex: {hexDump}"
+            );
+            Assert.AreEqual(
+                items.Length,
+                deserialized._items.Length,
+                $"Items array length should match"
+            );
+            CollectionAssert.AreEquivalent(
+                items,
+                deserialized._items,
+                $"Items content should match"
+            );
+        }
+
+        [Test]
+        public void SerializableHashSetEmptySerializesAndDeserializes()
+        {
+            SerializableHashSet<string> original = new();
+
+            byte[] data = Serializer.ProtoSerialize(original);
+            SerializableHashSet<string> deserialized = Serializer.ProtoDeserialize<
+                SerializableHashSet<string>
+            >(data);
+
+            Assert.IsNotNull(deserialized, "Deserialized object should not be null");
+            Assert.AreEqual(0, deserialized.Count, "Empty set should have zero count");
+        }
+
+        [Test]
+        public void SerializableHashSetWithStringsSerializesAndDeserializes()
+        {
+            SerializableHashSet<string> original = new() { "alpha", "beta", "gamma", "delta" };
+
+            byte[] data = Serializer.ProtoSerialize(original);
+            SerializableHashSet<string> deserialized = Serializer.ProtoDeserialize<
+                SerializableHashSet<string>
+            >(data);
+
+            Assert.AreEqual(original.Count, deserialized.Count);
+            foreach (string item in original)
+            {
+                Assert.IsTrue(deserialized.Contains(item), $"Should contain '{item}'");
+            }
+        }
+
+        [Test]
+        public void SerializableHashSetSupportsMultipleProtobufCycles()
+        {
+            SerializableHashSet<int> set = new() { 10, 20, 30 };
+
+            byte[] firstSnapshot = Serializer.ProtoSerialize(set);
+
+            set.Add(40);
+            set.Remove(20);
+
+            byte[] secondSnapshot = Serializer.ProtoSerialize(set);
+
+            set.Clear();
+            set.Add(100);
+
+            byte[] thirdSnapshot = Serializer.ProtoSerialize(set);
+
+            SerializableHashSet<int> firstRoundTrip = Serializer.ProtoDeserialize<
+                SerializableHashSet<int>
+            >(firstSnapshot);
+            SerializableHashSet<int> secondRoundTrip = Serializer.ProtoDeserialize<
+                SerializableHashSet<int>
+            >(secondSnapshot);
+            SerializableHashSet<int> thirdRoundTrip = Serializer.ProtoDeserialize<
+                SerializableHashSet<int>
+            >(thirdSnapshot);
+
+            Assert.AreEqual(3, firstRoundTrip.Count);
+            Assert.IsTrue(firstRoundTrip.Contains(10));
+            Assert.IsTrue(firstRoundTrip.Contains(20));
+            Assert.IsTrue(firstRoundTrip.Contains(30));
+
+            Assert.AreEqual(3, secondRoundTrip.Count);
+            Assert.IsTrue(secondRoundTrip.Contains(10));
+            Assert.IsTrue(secondRoundTrip.Contains(30));
+            Assert.IsTrue(secondRoundTrip.Contains(40));
+            Assert.IsFalse(secondRoundTrip.Contains(20));
+
+            Assert.AreEqual(1, thirdRoundTrip.Count);
+            Assert.IsTrue(thirdRoundTrip.Contains(100));
+        }
+
+        [Test]
+        public void SerializableSortedSetSerializesAndDeserializes()
+        {
+            SerializableSortedSet<int> original = new() { 5, 1, 9, 3, 7 };
+
+            byte[] data = Serializer.ProtoSerialize(original);
+            Assert.IsNotNull(data, "Serialized data should not be null");
+            Assert.Greater(data.Length, 0, "Serialized data should not be empty");
+
+            SerializableSortedSet<int> deserialized = Serializer.ProtoDeserialize<
+                SerializableSortedSet<int>
+            >(data);
+
+            Assert.IsNotNull(deserialized, "Deserialized object should not be null");
+            Assert.AreEqual(original.Count, deserialized.Count, "Count should match");
+            foreach (int item in original)
+            {
+                Assert.IsTrue(deserialized.Contains(item), $"Should contain {item}");
+            }
+        }
+
+        [Test]
+        public void SerializableSortedSetProtoRoundtripPreservesInternalItemsArray()
+        {
+            // Arrange: Create set with specific items
+            SerializableSortedSet<int> original = new() { 7, 3, 9, 1 };
+            original.OnBeforeSerialize();
+
+            // Diagnostic: Verify original state
+            Assert.IsNotNull(
+                original._items,
+                "Original _items should not be null before serialization"
+            );
+            string originalItemsStr = string.Join(", ", original._items);
+
+            // Act: Protobuf round-trip
+            byte[] data = Serializer.ProtoSerialize(original);
+
+            // Diagnostic: Verify data was serialized
+            Assert.IsNotNull(data, "Serialized data should not be null");
+            Assert.Greater(
+                data.Length,
+                0,
+                $"Serialized data should not be empty. Original items: [{originalItemsStr}]"
+            );
+
+            string hexDump = string.Join(" ", data.Take(20).Select(b => b.ToString("X2")));
+
+            SerializableSortedSet<int> deserialized = Serializer.ProtoDeserialize<
+                SerializableSortedSet<int>
+            >(data);
+
+            // Assert: Internal _items array should be restored
+            Assert.IsNotNull(deserialized, "Deserialized object should not be null");
+            Assert.IsNotNull(
+                deserialized._items,
+                $"Deserialized _items should not be null. "
+                    + $"Original items: [{originalItemsStr}], Bytes: {data.Length}, Hex: {hexDump}"
+            );
+            Assert.AreEqual(
+                original._items.Length,
+                deserialized._items.Length,
+                $"Items array length should match. Original: [{originalItemsStr}], "
+                    + $"Deserialized: [{string.Join(", ", deserialized._items ?? Array.Empty<int>())}]"
+            );
+
+            // Verify contents
+            CollectionAssert.AreEquivalent(
+                original._items,
+                deserialized._items,
+                "Items should contain the same elements"
+            );
+        }
+
+        private static IEnumerable<TestCaseData> SortedSetProtoItemsArrayTestCases()
+        {
+            yield return new TestCaseData(new[] { 42 }).SetName("SingleElement");
+            yield return new TestCaseData(new[] { 5, 3, 8, 1, 9 }).SetName(
+                "MultipleElements.Unordered"
+            );
+            yield return new TestCaseData(new[] { 1, 2, 3, 4, 5 }).SetName(
+                "MultipleElements.Ascending"
+            );
+            yield return new TestCaseData(new[] { 5, 4, 3, 2, 1 }).SetName(
+                "MultipleElements.Descending"
+            );
+            yield return new TestCaseData(new[] { 0, -1, 1, -100, 100 }).SetName(
+                "MixedPositiveNegative"
+            );
+        }
+
+        [TestCaseSource(nameof(SortedSetProtoItemsArrayTestCases))]
+        public void SerializableSortedSetProtoDeserializationRestoresItemsArrayDataDriven(
+            int[] items
+        )
+        {
+            // Arrange
+            SerializableSortedSet<int> original = new();
+            foreach (int item in items)
+            {
+                original.Add(item);
+            }
+            original.OnBeforeSerialize();
+
+            // Diagnostic
+            Assert.IsNotNull(original._items, "Original _items should not be null");
+            Assert.AreEqual(
+                items.Length,
+                original._items.Length,
+                $"Original _items length should match input"
+            );
+
+            // Act
+            byte[] data = Serializer.ProtoSerialize(original);
+            Assert.Greater(data.Length, 0, "Serialized data should not be empty");
+
+            string hexDump = string.Join(" ", data.Take(30).Select(b => b.ToString("X2")));
+
+            SerializableSortedSet<int> deserialized = Serializer.ProtoDeserialize<
+                SerializableSortedSet<int>
+            >(data);
+
+            // Assert
+            Assert.IsNotNull(deserialized, "Deserialized object should not be null");
+            Assert.IsNotNull(
+                deserialized._items,
+                $"Deserialized _items should not be null. "
+                    + $"Input: [{string.Join(", ", items)}], Bytes: {data.Length}, Hex: {hexDump}"
+            );
+            Assert.AreEqual(
+                items.Length,
+                deserialized._items.Length,
+                $"Items array length should match"
+            );
+            CollectionAssert.AreEquivalent(
+                items,
+                deserialized._items,
+                $"Items content should match"
+            );
+        }
+
+        [Test]
+        public void SerializableSortedSetEmptySerializesAndDeserializes()
+        {
+            SerializableSortedSet<int> original = new();
+
+            byte[] data = Serializer.ProtoSerialize(original);
+            SerializableSortedSet<int> deserialized = Serializer.ProtoDeserialize<
+                SerializableSortedSet<int>
+            >(data);
+
+            Assert.IsNotNull(deserialized, "Deserialized object should not be null");
+            Assert.AreEqual(0, deserialized.Count, "Empty set should have zero count");
+        }
+
+        [Test]
+        public void SerializableSortedSetWithStringsSerializesAndDeserializes()
+        {
+            SerializableSortedSet<string> original = new() { "zebra", "apple", "mango", "banana" };
+
+            byte[] data = Serializer.ProtoSerialize(original);
+            SerializableSortedSet<string> deserialized = Serializer.ProtoDeserialize<
+                SerializableSortedSet<string>
+            >(data);
+
+            Assert.AreEqual(original.Count, deserialized.Count);
+            foreach (string item in original)
+            {
+                Assert.IsTrue(deserialized.Contains(item), $"Should contain '{item}'");
+            }
+        }
+
+        [Test]
+        public void SerializableSortedSetSupportsMultipleProtobufCycles()
+        {
+            SerializableSortedSet<int> set = new() { 100, 50, 75 };
+
+            byte[] firstSnapshot = Serializer.ProtoSerialize(set);
+
+            set.Add(60);
+            set.Remove(50);
+
+            byte[] secondSnapshot = Serializer.ProtoSerialize(set);
+
+            set.Clear();
+            set.Add(200);
+
+            byte[] thirdSnapshot = Serializer.ProtoSerialize(set);
+
+            SerializableSortedSet<int> firstRoundTrip = Serializer.ProtoDeserialize<
+                SerializableSortedSet<int>
+            >(firstSnapshot);
+            SerializableSortedSet<int> secondRoundTrip = Serializer.ProtoDeserialize<
+                SerializableSortedSet<int>
+            >(secondSnapshot);
+            SerializableSortedSet<int> thirdRoundTrip = Serializer.ProtoDeserialize<
+                SerializableSortedSet<int>
+            >(thirdSnapshot);
+
+            Assert.AreEqual(3, firstRoundTrip.Count);
+            Assert.IsTrue(firstRoundTrip.Contains(100));
+            Assert.IsTrue(firstRoundTrip.Contains(50));
+            Assert.IsTrue(firstRoundTrip.Contains(75));
+
+            Assert.AreEqual(3, secondRoundTrip.Count);
+            Assert.IsTrue(secondRoundTrip.Contains(100));
+            Assert.IsTrue(secondRoundTrip.Contains(75));
+            Assert.IsTrue(secondRoundTrip.Contains(60));
+            Assert.IsFalse(secondRoundTrip.Contains(50));
+
+            Assert.AreEqual(1, thirdRoundTrip.Count);
+            Assert.IsTrue(thirdRoundTrip.Contains(200));
         }
     }
 }

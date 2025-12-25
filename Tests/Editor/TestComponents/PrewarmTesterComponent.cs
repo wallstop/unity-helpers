@@ -1,4 +1,4 @@
-namespace WallstopStudios.UnityHelpers.Tests.Editor.TestComponents
+namespace WallstopStudios.UnityHelpers.Tests.TestComponents
 {
 #if UNITY_EDITOR
     using UnityEngine;

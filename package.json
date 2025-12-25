@@ -1,25 +1,36 @@
 {
   "name": "com.wallstop-studios.unity-helpers",
-  "version": "2.1.3",
+  "version": "3.0.0",
   "displayName": "Unity Helpers",
-  "description": "Various Unity Helper Library",
+  "description": "Treasure chest of Unity developer tools ",
   "dependencies": {},
   "unity": "2021.3",
   "keywords": [
-    "helper",
-    "library",
-    "quad tree",
-    "extension",
-    "helpers",
+    "inspector-attributes",
+    "custom-drawers",
+    "editor-tools",
+    "spatial-tree",
+    "prng",
     "random",
-    "pcg random",
-    "protobuf",
-    "pascal",
-    "rtree",
-    "r tree",
-    "kd tree",
+    "serialization",
+    "data-structures",
+    "effects-system",
+    "relational-components",
+    "quadtree",
     "kdtree",
-    "cyclic buffer"
+    "rtree",
+    "octree",
+    "serializable-dictionary",
+    "serializable-hashset",
+    "dependency-injection",
+    "di-integration",
+    "sprite-tools",
+    "animation-tools",
+    "extensions",
+    "utility",
+    "performance",
+    "protobuf",
+    "json"
   ],
   "license": "MIT",
   "repository": {
@@ -64,6 +75,11 @@
       "path": "Samples~/Random - PRNG"
     },
     {
+      "displayName": "Logging – Tag Formatter",
+      "description": "UnityLogTagFormatter decorators, runtime toggles, and logging extension demos.",
+      "path": "Samples~/Logging - Tag Formatter"
+    },
+    {
       "displayName": "Spatial Structures – 2D and 3D",
       "description": "QuadTree2D, KdTree2D nearest neighbors, SpatialHash2D queries.",
       "path": "Samples~/Spatial Structures - 2D and 3D"
@@ -80,8 +96,8 @@
     }
   ],
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "lint:docs": "pwsh -NoProfile -File scripts/lint-doc-links.ps1",
+    "lint:docs": "node ./scripts/run-doc-link-lint.js",
+    "lint:doc-links": "node ./scripts/run-doc-link-lint.js --verbose",
     "hooks:install": "git config core.hooksPath .githooks",
     "eol:check": "pwsh -NoProfile -File scripts/check-eol.ps1",
     "eol:fix": "pwsh -NoProfile -File scripts/normalize-eol.ps1",
@@ -93,12 +109,14 @@
     "format:yaml:check": "prettier --check \"**/*.{yml,yaml}\"",
     "lint:markdown": "markdownlint \"**/*.md\" \"**/*.markdown\" --config .markdownlint.json --ignore-path .markdownlintignore",
     "validate:content": "npm run lint:docs && npm run lint:markdown && npm run format:md:check && npm run format:json:check && npm run format:yaml:check",
-    "validate:prepush": "npm run validate:content && npm run eol:check && npm run lint:tests",
+    "validate:tests": "npm run lint:tests",
+    "validate:prepush": "npm run validate:content && npm run eol:check && npm run validate:tests && npm run lint:csharp-naming",
     "lint:tests": "pwsh -NoProfile -File scripts/lint-tests.ps1 -VerboseOutput",
+    "lint:csharp-naming": "pwsh -NoProfile -File scripts/lint-csharp-naming.ps1 -VerboseOutput",
     "prepublishOnly": "npm run validate:content"
   },
   "devDependencies": {
-    "markdownlint-cli": "^0.45.0",
-    "prettier": "3.6.2"
+    "markdownlint-cli": "^0.46.0",
+    "prettier": "3.7.4"
   }
 }

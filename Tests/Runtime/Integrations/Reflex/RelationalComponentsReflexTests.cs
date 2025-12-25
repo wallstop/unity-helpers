@@ -1,5 +1,5 @@
 #if REFLEX_PRESENT
-namespace WallstopStudios.UnityHelpers.Tests.Integrations.Reflex
+namespace WallstopStudios.UnityHelpers.Tests.Integrations.Reflex.Runtime
 {
     using System;
     using System.Collections.Generic;
@@ -11,7 +11,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.Reflex
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Integrations.Reflex;
     using WallstopStudios.UnityHelpers.Tags;
-    using WallstopStudios.UnityHelpers.Tests.TestUtils;
+    using WallstopStudios.UnityHelpers.Tests.Core;
 
     public sealed class RelationalComponentsReflexTests : CommonTestBase
     {
@@ -92,10 +92,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.Reflex
         public System.Collections.IEnumerator InstallerBindsAssignerAndOptions()
         {
             AttributeMetadataCache cache = CreateCacheFor(typeof(ReflexRelationalTester));
-            System.Lazy<AttributeMetadataCache> previousLazy = AttributeMetadataCache.LazyInstance;
-            AttributeMetadataCache.LazyInstance = new System.Lazy<AttributeMetadataCache>(() =>
-                cache
-            );
+            Lazy<AttributeMetadataCache> previousLazy = AttributeMetadataCache._lazyInstance;
+            AttributeMetadataCache._lazyInstance = new Lazy<AttributeMetadataCache>(() => cache);
 
             Scene scene = CreateTempScene("ReflexInstallerScene");
             GameObject installerObject = Track(new GameObject("ReflexInstaller"));
@@ -132,7 +130,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.Reflex
             }
             finally
             {
-                AttributeMetadataCache.LazyInstance = previousLazy;
+                AttributeMetadataCache._lazyInstance = previousLazy;
             }
         }
 

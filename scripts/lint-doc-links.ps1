@@ -50,7 +50,7 @@ function Get-MarkdownLinkTarget {
     return $trimmed
 }
 
-function Is-LocalImageTarget {
+function Is-LocalTarget {
     param([string]$Target)
 
     if ([string]::IsNullOrWhiteSpace($Target)) {
@@ -69,7 +69,7 @@ function Is-LocalImageTarget {
     return $true
 }
 
-function Resolve-ImagePath {
+function Resolve-LocalPath {
     param(
         [string]$SourceFile,
         [string]$Target,
@@ -95,6 +95,12 @@ function Resolve-ImagePath {
         return $null
     }
 
+    try {
+        $normalized = [System.Uri]::UnescapeDataString($normalized)
+    } catch {
+        # ignore decoding errors and keep original
+    }
+
     $separator = [System.IO.Path]::DirectorySeparatorChar
     $normalized = $normalized.Replace('/', $separator).Replace('\', $separator)
 
@@ -118,26 +124,43 @@ function Resolve-ImagePath {
 
 $mdPattern = [regex]'[A-Za-z0-9._/\-]+\.md(?:#[A-Za-z0-9_\-]+)?'
 $linkPattern = [regex]'\[[^\]]+\]\([^)]+\)'
+$standardLinkPattern = [regex]'(?<!\!)\[(?<text>[^\]]+)\]\((?<target>[^)]+)\)'
 $anglePattern = [regex]'<[^>]+>'
 $filenameTextLinkPattern = [regex]'\[(?<text>[^\]]+?\.md(?:#[^\]]+)?)\]\((?<target>[^)]+?\.md(?:#[^)]+)?)\)'
-$inlineCodeMdPattern = [regex]'`[^`\n]*?\.md[^`\n]*?`'
+# Match inline code that mentions a .md file path (not just a bare extension like `.md` or `.json`)
+# Excludes: `*.md`, `.md`, `*.json`, `.cs` etc. - these are file type references, not file paths
+$inlineCodeMdPattern = [regex]'`[^`\n]*[A-Za-z0-9_\-]+\.md[^`\n]*`'
+# Pattern to detect bare file extension references that should NOT be flagged
+$fileExtensionPattern = [regex]'^`(\*)?\.[\w]+`$'
 $imagePattern = [regex]'!\[[^\]]*\]\((?<target>[^)]+)\)'
 $imageReferencePattern = [regex]'!\[[^\]]*\]\[(?<label>[^\]]+)\]'
 $definitionPattern = [regex]'^\s*\[(?<label>[^\]]+)\]:\s*(?<rest>.+)$'
 
 $violationCount = 0
+$codeDocsPattern = [regex]'(?i)docs[\\/][A-Za-z0-9._/\\-]+\.md(?:#[A-Za-z0-9_\-]+)?'
+$codeFileExtensions = @('.cs', '.csproj', '.props', '.targets', '.ps1', '.psm1', '.psd1', '.py', '.ts', '.tsx', '.js', '.jsx', '.json', '.yml', '.yaml', '.sh', '.cmd')
 
-Get-ChildItem -Path . -Recurse -Include *.md -File |
-    Where-Object { $_.FullName -notmatch '(?i)[\\/](node_modules)[\\/]' } |
-    ForEach-Object {
-    $file = $_.FullName
+# Use git ls-files for efficiency and to respect .gitignore
+$gitFiles = git ls-files --cached --others --exclude-standard 2>$null
+if (-not $gitFiles) {
+    Write-Host "Warning: Not in a git repository or git not available, falling back to filesystem scan" -ForegroundColor Yellow
+    $gitFiles = Get-ChildItem -Path . -Recurse -File | ForEach-Object { $_.FullName.Substring($repoRoot.Length + 1) }
+}
+
+$mdFiles = $gitFiles | Where-Object { $_ -match '\.md$' }
+
+$mdFiles | ForEach-Object {
+    $relativePath = $_
+    $file = Join-Path $repoRoot $relativePath
+    if (-not (Test-Path -LiteralPath $file)) { return }
     $lines = Get-Content -LiteralPath $file
     $lineCount = $lines.Length
-    $linkDefinitions = New-Object 'System.Collections.Generic.Dictionary[string,string]' ([System.StringComparer]::OrdinalIgnoreCase)
+    $linkDefinitions = New-Object 'System.Collections.Generic.Dictionary[string,object]' ([System.StringComparer]::OrdinalIgnoreCase)
     $inFence = $false
 
     for ($index = 0; $index -lt $lineCount; $index++) {
         $line = $lines[$index]
+        $lineNo = $index + 1
         if ($line -match '^\s*```' -or $line -match '^\s*~~~') {
             $inFence = -not $inFence
             continue
@@ -150,8 +173,25 @@ Get-ChildItem -Path . -Recurse -Include *.md -File |
             $rest = $definitionMatch.Groups['rest'].Value
             $target = Get-MarkdownLinkTarget $rest
             if ($label -and $target) {
-                $linkDefinitions[$label] = $target
+                $linkDefinitions[$label] = [pscustomobject]@{
+                    Target = $target
+                    LineNumber = $lineNo
+                }
             }
+        }
+    }
+
+    foreach ($entry in $linkDefinitions.GetEnumerator()) {
+        $definitionTarget = $entry.Value.Target
+        $definitionLine = $entry.Value.LineNumber
+        if (-not $definitionTarget) { continue }
+        if (-not (Is-LocalTarget $definitionTarget)) { continue }
+        if ($definitionTarget -notmatch '(?i)\.md($|[?#])') { continue }
+
+        $resolvedDefinition = Resolve-LocalPath -SourceFile $file -Target $definitionTarget -RepoRoot $repoRoot
+        if (-not $resolvedDefinition) {
+            $violationCount++
+            Write-Violation -File $file -LineNumber $definitionLine -Message "Reference link target '$definitionTarget' does not resolve to an existing markdown file" -Line ''
         }
     }
 
@@ -166,7 +206,15 @@ Get-ChildItem -Path . -Recurse -Include *.md -File |
         }
         if ($inFence) { continue }
 
-        if ($inlineCodeMdPattern.IsMatch($line)) {
+        # Check for inline code that mentions .md files (but not bare extension references)
+        foreach ($match in $inlineCodeMdPattern.Matches($line)) {
+            $codeContent = $match.Value
+            # Skip if it's a file extension or glob pattern reference like:
+            # `.md`, `*.md`, `**/*.md`, `.json`, `*.xml`, etc.
+            # Pattern: starts with `, optional glob chars (**/), optional *, then .extension, ends with `
+            if ($codeContent -match '^`(\*\*/|\./)?(\*)?\.[\w]+`$') {
+                continue
+            }
             $violationCount++
             Write-Violation -File $file -LineNumber $lineNo -Message "Inline code mentions .md; use a human-readable link instead" -Line $line
         }
@@ -188,11 +236,25 @@ Get-ChildItem -Path . -Recurse -Include *.md -File |
             }
         }
 
+        foreach ($match in $standardLinkPattern.Matches($line)) {
+            $rawTarget = $match.Groups['target'].Value
+            $resolvedTarget = Get-MarkdownLinkTarget $rawTarget
+            if (-not $resolvedTarget) { continue }
+            if (-not (Is-LocalTarget $resolvedTarget)) { continue }
+            if ($resolvedTarget -notmatch '(?i)\.md($|[?#])') { continue }
+
+            $linkPath = Resolve-LocalPath -SourceFile $file -Target $resolvedTarget -RepoRoot $repoRoot
+            if (-not $linkPath) {
+                $violationCount++
+                Write-Violation -File $file -LineNumber $lineNo -Message "Markdown link target '$resolvedTarget' does not resolve to an existing markdown file" -Line $line
+            }
+        }
+
         foreach ($match in $imagePattern.Matches($line)) {
             $rawTarget = $match.Groups['target'].Value
             $resolvedTarget = Get-MarkdownLinkTarget $rawTarget
-            if ($resolvedTarget -and (Is-LocalImageTarget $resolvedTarget)) {
-                $imagePath = Resolve-ImagePath -SourceFile $file -Target $resolvedTarget -RepoRoot $repoRoot
+            if ($resolvedTarget -and (Is-LocalTarget $resolvedTarget)) {
+                $imagePath = Resolve-LocalPath -SourceFile $file -Target $resolvedTarget -RepoRoot $repoRoot
                 if (-not $imagePath) {
                     $violationCount++
                     Write-Violation -File $file -LineNumber $lineNo -Message "Image target '$resolvedTarget' does not resolve to a file" -Line $line
@@ -203,14 +265,41 @@ Get-ChildItem -Path . -Recurse -Include *.md -File |
         foreach ($match in $imageReferencePattern.Matches($line)) {
             $label = $match.Groups['label'].Value.Trim()
             if ($linkDefinitions.ContainsKey($label)) {
-                $resolvedTarget = $linkDefinitions[$label]
-                if ($resolvedTarget -and (Is-LocalImageTarget $resolvedTarget)) {
-                    $imagePath = Resolve-ImagePath -SourceFile $file -Target $resolvedTarget -RepoRoot $repoRoot
+                $definition = $linkDefinitions[$label]
+                $resolvedTarget = $definition.Target
+                if ($resolvedTarget -and (Is-LocalTarget $resolvedTarget)) {
+                    $imagePath = Resolve-LocalPath -SourceFile $file -Target $resolvedTarget -RepoRoot $repoRoot
                     if (-not $imagePath) {
                         $violationCount++
                         Write-Violation -File $file -LineNumber $lineNo -Message "Image reference '$label' points to '$resolvedTarget' which does not resolve" -Line $line
                     }
                 }
+            }
+        }
+    }
+}
+
+# Process code files for docs references
+$codeFiles = $gitFiles | Where-Object { 
+    $ext = [System.IO.Path]::GetExtension($_)
+    $codeFileExtensions -contains $ext
+}
+
+$codeFiles | ForEach-Object {
+    $relativePath = $_
+    $file = Join-Path $repoRoot $relativePath
+    if (-not (Test-Path -LiteralPath $file)) { return }
+    $lines = Get-Content -LiteralPath $file
+    for ($index = 0; $index -lt $lines.Length; $index++) {
+        $line = $lines[$index]
+        $lineNo = $index + 1
+        foreach ($match in $codeDocsPattern.Matches($line)) {
+            $rawTarget = $match.Value
+            $normalizedTarget = $rawTarget -replace '\\', '/'
+            $resolvedPath = Resolve-LocalPath -SourceFile $file -Target $normalizedTarget -RepoRoot $repoRoot
+            if (-not $resolvedPath) {
+                $violationCount++
+                Write-Violation -File $file -LineNumber $lineNo -Message "Source reference '$normalizedTarget' does not resolve to an existing markdown file" -Line $line
             }
         }
     }

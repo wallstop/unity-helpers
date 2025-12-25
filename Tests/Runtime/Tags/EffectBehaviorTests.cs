@@ -14,7 +14,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Tags
         public void SetUp()
         {
             ResetEffectHandleId();
-            RecordingEffectBehavior.Reset();
+            RecordingEffectBehavior.ResetForTests();
         }
 
         [UnityTest]

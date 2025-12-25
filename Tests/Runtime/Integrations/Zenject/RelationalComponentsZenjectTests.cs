@@ -1,5 +1,5 @@
 #if ZENJECT_PRESENT
-namespace WallstopStudios.UnityHelpers.Tests.Integrations.Zenject
+namespace WallstopStudios.UnityHelpers.Tests.Integrations.Zenject.Runtime
 {
     using System;
     using System.Collections.Generic;
@@ -11,6 +11,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.Zenject
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Integrations.Zenject;
     using WallstopStudios.UnityHelpers.Tags;
+    using WallstopStudios.UnityHelpers.Tests.Core;
     using WallstopStudios.UnityHelpers.Tests.TestUtils;
 
     public sealed class RelationalComponentsZenjectTests : CommonTestBase
@@ -18,8 +19,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.Zenject
         private DiContainer Container;
 
         [SetUp]
-        public void Setup()
+        public override void BaseSetUp()
         {
+            base.BaseSetUp();
             ReflexTestSupport.EnsureReflexSettings();
             Container = new DiContainer();
         }

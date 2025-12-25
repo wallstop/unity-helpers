@@ -3,9 +3,9 @@ namespace WallstopStudios.UnityHelpers.Tags
     using System;
     using System.Collections.Generic;
     using Core.Attributes;
+    using Core.Helper;
     using UnityEngine;
     using Utils;
-    using WallstopStudios.UnityHelpers.Core.Helper;
 
     /// <summary>
     /// Serialized cache of attribute metadata to avoid runtime reflection.
@@ -13,7 +13,9 @@ namespace WallstopStudios.UnityHelpers.Tags
     /// When the prewarm toggle is enabled, a runtime hook pre-initializes relational component
     /// reflection helpers before the first scene loads to avoid first-use stalls.
     /// </summary>
-    [ScriptableSingletonPath("Wallstop Studios/AttributeMetadataCache")]
+    [ScriptableSingletonPath("Wallstop Studios/Unity Helpers")]
+    [AllowDuplicateCleanup]
+    [AutoLoadSingleton(RuntimeInitializeLoadType.BeforeSceneLoad)]
     public sealed class AttributeMetadataCache : ScriptableObjectSingleton<AttributeMetadataCache>
     {
         [Header("Initialization")]
@@ -23,31 +25,89 @@ namespace WallstopStudios.UnityHelpers.Tags
         [SerializeField]
         private bool _prewarmRelationalOnLoad = false;
 
+        /// <summary>
+        /// Categorizes a relational attribute reference discovered on an <see cref="AttributesComponent"/>.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// Relational attributes allow a component to expose references to related components so modifications can propagate
+        /// (e.g., parent/child links for hierarchical buffs). These values are serialized into the cache to avoid runtime reflection.
+        /// </para>
+        /// <para>
+        /// Typical usage happens via auto-generated metadata; you generally do not set this manually.
+        /// </para>
+        /// </remarks>
         public enum RelationalAttributeKind : byte
         {
             [Obsolete("Default uninitialized value - should never be used")]
             Unknown = 0,
+
+            /// <summary>
+            /// The relational field points to a parent component.
+            /// </summary>
             Parent = 1,
+
+            /// <summary>
+            /// The relational field points to a child component.
+            /// </summary>
             Child = 2,
+
+            /// <summary>
+            /// The relational field points to a sibling component.
+            /// </summary>
             Sibling = 3,
         }
 
+        /// <summary>
+        /// Describes the collection shape of a relational field captured in metadata.
+        /// </summary>
         public enum FieldKind : byte
         {
             [Obsolete("Default uninitialized value - should never be used")]
             None = 0,
+
+            /// <summary>
+            /// A single reference value.
+            /// </summary>
             Single = 1,
+
+            /// <summary>
+            /// An array of values.
+            /// </summary>
             Array = 2,
+
+            /// <summary>
+            /// A <see cref="List{T}"/> of values.
+            /// </summary>
             List = 3,
+
+            /// <summary>
+            /// A <see cref="HashSet{T}"/> of values.
+            /// </summary>
             HashSet = 4,
         }
 
+        /// <summary>
+        /// Serializable entry describing attribute field names for a single component type.
+        /// </summary>
         [Serializable]
         public sealed class TypeFieldMetadata
         {
+            /// <summary>
+            /// Assembly-qualified component type name.
+            /// </summary>
             public string typeName;
+
+            /// <summary>
+            /// Attribute field names discovered on the component.
+            /// </summary>
             public string[] fieldNames;
 
+            /// <summary>
+            /// Creates a new metadata entry for a component type.
+            /// </summary>
+            /// <param name="typeName">Assembly-qualified name of the component type.</param>
+            /// <param name="fieldNames">Attribute field names found on that type.</param>
             public TypeFieldMetadata(string typeName, string[] fieldNames)
             {
                 this.typeName = typeName;
@@ -55,15 +115,45 @@ namespace WallstopStudios.UnityHelpers.Tags
             }
         }
 
+        /// <summary>
+        /// Serializable entry describing a relational attribute field on a component.
+        /// </summary>
         [Serializable]
         public sealed class RelationalFieldMetadata
         {
+            /// <summary>
+            /// The name of the relational field on the component.
+            /// </summary>
             public string fieldName;
+
+            /// <summary>
+            /// The relationship classification (parent/child/sibling).
+            /// </summary>
             public RelationalAttributeKind attributeKind;
+
+            /// <summary>
+            /// The collection shape of the field (single, array, list, hashset).
+            /// </summary>
             public FieldKind fieldKind;
+
+            /// <summary>
+            /// The assembly-qualified element type name for the field (for collections) or the field type (for singles).
+            /// </summary>
             public string elementTypeName;
+
+            /// <summary>
+            /// Indicates whether the element type is an interface (affects resolution and validation).
+            /// </summary>
             public bool isInterface;
 
+            /// <summary>
+            /// Creates a relational metadata entry for a component field.
+            /// </summary>
+            /// <param name="fieldName">The field name on the component.</param>
+            /// <param name="attributeKind">How the field relates to other components.</param>
+            /// <param name="fieldKind">Collection shape of the field.</param>
+            /// <param name="elementTypeName">Assembly-qualified element or field type.</param>
+            /// <param name="isInterface">Whether the element type is an interface.</param>
             public RelationalFieldMetadata(
                 string fieldName,
                 RelationalAttributeKind attributeKind,
@@ -80,8 +170,19 @@ namespace WallstopStudios.UnityHelpers.Tags
             }
         }
 
+        /// <summary>
+        /// Runtime-resolved relational field metadata with <see cref="Type"/> references resolved.
+        /// </summary>
         public readonly struct ResolvedRelationalFieldMetadata
         {
+            /// <summary>
+            /// Creates a resolved relational metadata entry.
+            /// </summary>
+            /// <param name="fieldName">The relational field name on the component.</param>
+            /// <param name="attributeKind">Relationship classification.</param>
+            /// <param name="fieldKind">Collection shape of the field.</param>
+            /// <param name="elementType">Resolved element type (or field type for singles).</param>
+            /// <param name="isInterface">Whether the element type is an interface.</param>
             public ResolvedRelationalFieldMetadata(
                 string fieldName,
                 RelationalAttributeKind attributeKind,
@@ -97,23 +198,53 @@ namespace WallstopStudios.UnityHelpers.Tags
                 IsInterface = isInterface;
             }
 
+            /// <summary>
+            /// The name of the relational field.
+            /// </summary>
             public string FieldName { get; }
 
+            /// <summary>
+            /// Relationship classification for the field.
+            /// </summary>
             public RelationalAttributeKind AttributeKind { get; }
 
+            /// <summary>
+            /// Collection shape of the field.
+            /// </summary>
             public FieldKind FieldKind { get; }
 
+            /// <summary>
+            /// Resolved CLR type for the element/field.
+            /// </summary>
             public Type ElementType { get; }
 
+            /// <summary>
+            /// Indicates if the element type is an interface.
+            /// </summary>
             public bool IsInterface { get; }
         }
 
+        /// <summary>
+        /// Serializable entry describing all relational fields for a component type.
+        /// </summary>
         [Serializable]
         public sealed class RelationalTypeMetadata
         {
+            /// <summary>
+            /// Assembly-qualified component type name.
+            /// </summary>
             public string typeName;
+
+            /// <summary>
+            /// Relational attribute fields discovered on the component.
+            /// </summary>
             public RelationalFieldMetadata[] fields;
 
+            /// <summary>
+            /// Creates relational metadata for a component type.
+            /// </summary>
+            /// <param name="typeName">Assembly-qualified name of the component type.</param>
+            /// <param name="fields">Relational fields discovered on that type.</param>
             public RelationalTypeMetadata(string typeName, RelationalFieldMetadata[] fields)
             {
                 this.typeName = typeName;
@@ -137,22 +268,81 @@ namespace WallstopStudios.UnityHelpers.Tags
         internal RelationalTypeMetadata[] _relationalTypeMetadata =
             Array.Empty<RelationalTypeMetadata>();
 
+        /// <summary>
+        /// Serialized entry describing an auto-loaded singleton dependency.
+        /// </summary>
+        [Serializable]
+        public sealed class AutoLoadSingletonEntry
+        {
+            /// <summary>
+            /// Assembly-qualified type name of the singleton to load.
+            /// </summary>
+            public string typeName;
+
+            /// <summary>
+            /// Whether the singleton should be created, fetched, or ignored.
+            /// </summary>
+            public SingletonAutoLoadKind kind;
+
+            /// <summary>
+            /// Unity load phase used to initialize the singleton.
+            /// </summary>
+            public RuntimeInitializeLoadType loadType;
+
+            /// <summary>
+            /// Default constructor for serialization.
+            /// </summary>
+            public AutoLoadSingletonEntry() { }
+
+            /// <summary>
+            /// Creates a new singleton auto-load entry.
+            /// </summary>
+            /// <param name="typeName">Assembly-qualified type name to load.</param>
+            /// <param name="kind">How the singleton should be handled.</param>
+            /// <param name="loadType">Unity load phase for initialization.</param>
+            public AutoLoadSingletonEntry(
+                string typeName,
+                SingletonAutoLoadKind kind,
+                RuntimeInitializeLoadType loadType
+            )
+            {
+                this.typeName = typeName;
+                this.kind = kind;
+                this.loadType = loadType;
+            }
+        }
+
+        [SerializeField]
+        private AutoLoadSingletonEntry[] _autoLoadSingletons =
+            Array.Empty<AutoLoadSingletonEntry>();
+
+        internal string[] SerializedAttributeNames => _allAttributeNames ?? Array.Empty<string>();
+
+        internal TypeFieldMetadata[] SerializedTypeMetadata =>
+            _typeMetadata ?? Array.Empty<TypeFieldMetadata>();
+
+        internal RelationalTypeMetadata[] SerializedRelationalTypeMetadata =>
+            _relationalTypeMetadata ?? Array.Empty<RelationalTypeMetadata>();
+
+        internal AutoLoadSingletonEntry[] SerializedAutoLoadSingletons =>
+            _autoLoadSingletons ?? Array.Empty<AutoLoadSingletonEntry>();
+
         // Compound key for element type lookup
         private readonly struct ElementTypeKey : IEquatable<ElementTypeKey>
         {
-            private readonly Type componentType;
-            private readonly string fieldName;
+            private readonly Type _componentType;
+            private readonly string _fieldName;
 
             public ElementTypeKey(Type componentType, string fieldName)
             {
-                this.componentType = componentType;
-                this.fieldName = fieldName;
+                _componentType = componentType;
+                _fieldName = fieldName;
             }
 
             public bool Equals(ElementTypeKey other)
             {
-                return componentType == other.componentType
-                    && string.Equals(fieldName, other.fieldName, StringComparison.Ordinal);
+                return _componentType == other._componentType
+                    && string.Equals(_fieldName, other._fieldName, StringComparison.Ordinal);
             }
 
             public override bool Equals(object obj)
@@ -162,7 +352,7 @@ namespace WallstopStudios.UnityHelpers.Tags
 
             public override int GetHashCode()
             {
-                return Objects.HashCode(componentType, fieldName);
+                return Objects.HashCode(_componentType, _fieldName);
             }
         }
 
@@ -183,6 +373,22 @@ namespace WallstopStudios.UnityHelpers.Tags
             StringComparer.Ordinal
         );
 
+        /// <summary>
+        /// Alphabetical list of all attribute field names discovered across registered <see cref="AttributesComponent"/> types.
+        /// Includes test-only attributes when test assemblies are loaded.
+        /// </summary>
+        /// <remarks>
+        /// Callers typically use this to drive tooling (e.g., dropdowns). The list is cached and refreshed automatically when test assemblies are present.
+        /// </remarks>
+        /// <example>
+        /// <code language="csharp">
+        /// AttributeMetadataCache cache = AttributeMetadataCache.Instance;
+        /// foreach (string attributeName in cache.AllAttributeNames)
+        /// {
+        ///     Debug.Log($"Attribute: {attributeName}");
+        /// }
+        /// </code>
+        /// </example>
         public string[] AllAttributeNames
         {
             get
@@ -207,6 +413,12 @@ namespace WallstopStudios.UnityHelpers.Tags
                 return _computedAllAttributeNames;
             }
         }
+
+        /// <summary>
+        /// Auto-load singleton entries configured for this cache.
+        /// </summary>
+        /// <remarks>Entries are sorted for determinism and safe to iterate without additional allocation.</remarks>
+        public AutoLoadSingletonEntry[] AutoLoadSingletons => SerializedAutoLoadSingletons;
 
         private void OnEnable()
         {
@@ -268,7 +480,10 @@ namespace WallstopStudios.UnityHelpers.Tags
                 {
                     foreach (TypeFieldMetadata metadata in _typeMetadata)
                     {
-                        if (!TryResolveType(metadata?.typeName, out Type componentType))
+                        if (
+                            metadata == null
+                            || !TryResolveType(metadata.typeName, out Type componentType)
+                        )
                         {
                             LogMissingType(metadata?.typeName, "attribute component");
                             continue;
@@ -283,7 +498,10 @@ namespace WallstopStudios.UnityHelpers.Tags
                 {
                     foreach (RelationalTypeMetadata metadata in _relationalTypeMetadata)
                     {
-                        if (!TryResolveType(metadata?.typeName, out Type relationalType))
+                        if (
+                            metadata == null
+                            || !TryResolveType(metadata.typeName, out Type relationalType)
+                        )
                         {
                             LogMissingType(metadata?.typeName, "relational component");
                             continue;
@@ -337,6 +555,12 @@ namespace WallstopStudios.UnityHelpers.Tags
         }
 
 #if UNITY_INCLUDE_TESTS
+        /// <summary>
+        /// Rebuilds all cached lookup tables. Intended for editor and test usage.
+        /// </summary>
+        /// <remarks>
+        /// This clears internal dictionaries and forces a full rebuild, ensuring test isolation.
+        /// </remarks>
         public void ForceRebuildForTests()
         {
             lock (_lookupLock)
@@ -351,15 +575,36 @@ namespace WallstopStudios.UnityHelpers.Tags
         }
 #endif
 
+        /// <summary>
+        /// Attempts to retrieve attribute field names for a given component type.
+        /// </summary>
+        /// <param name="type">Component type that owns attribute fields.</param>
+        /// <param name="fieldNames">Output array of field names if present.</param>
+        /// <returns><c>true</c> when metadata exists for the type; otherwise, <c>false</c>.</returns>
+        /// <example>
+        /// <code language="csharp">
+        /// if (AttributeMetadataCache.Instance.TryGetFieldNames(typeof(AttributesComponent), out var names))
+        /// {
+        ///     Debug.Log($"Found {names.Length} attribute fields.");
+        /// }
+        /// </code>
+        /// </example>
         public bool TryGetFieldNames(Type type, out string[] fieldNames)
         {
             if (_typeFieldsLookup == null)
             {
                 BuildLookup();
             }
+            // ReSharper disable once PossibleNullReferenceException
             return _typeFieldsLookup.TryGetValue(type, out fieldNames);
         }
 
+        /// <summary>
+        /// Attempts to retrieve relational field metadata for a given component type.
+        /// </summary>
+        /// <param name="type">Component type declaring relational attributes.</param>
+        /// <param name="relationalFields">Output array of serialized relational metadata.</param>
+        /// <returns><c>true</c> when relational metadata exists; otherwise, <c>false</c>.</returns>
         public bool TryGetRelationalFields(
             Type type,
             out RelationalFieldMetadata[] relationalFields
@@ -369,6 +614,7 @@ namespace WallstopStudios.UnityHelpers.Tags
             {
                 BuildLookup();
             }
+            // ReSharper disable once PossibleNullReferenceException
             return _relationalFieldsLookup.TryGetValue(type, out relationalFields);
         }
 
@@ -390,6 +636,7 @@ namespace WallstopStudios.UnityHelpers.Tags
                 BuildLookup();
             }
 
+            // ReSharper disable once PossibleNullReferenceException
             foreach (KeyValuePair<Type, RelationalFieldMetadata[]> pair in _relationalFieldsLookup)
             {
                 Type componentType = pair.Key;
@@ -398,13 +645,19 @@ namespace WallstopStudios.UnityHelpers.Tags
                     continue;
                 }
 
-                if (pair.Value != null && pair.Value.Length > 0)
+                if (pair.Value is { Length: > 0 })
                 {
                     destination.Add(componentType);
                 }
             }
         }
 
+        /// <summary>
+        /// Attempts to retrieve relational metadata with resolved runtime <see cref="Type"/> references.
+        /// </summary>
+        /// <param name="type">Component type declaring relational attributes.</param>
+        /// <param name="relationalFields">Output array of resolved relational metadata.</param>
+        /// <returns><c>true</c> when resolved metadata exists; otherwise, <c>false</c>.</returns>
         public bool TryGetResolvedRelationalFields(
             Type type,
             out ResolvedRelationalFieldMetadata[] relationalFields
@@ -414,15 +667,24 @@ namespace WallstopStudios.UnityHelpers.Tags
             {
                 BuildLookup();
             }
+            // ReSharper disable once PossibleNullReferenceException
             return _resolvedRelationalFieldsLookup.TryGetValue(type, out relationalFields);
         }
 
+        /// <summary>
+        /// Attempts to resolve the element type for a relational field on a component.
+        /// </summary>
+        /// <param name="componentType">Component type declaring the field.</param>
+        /// <param name="fieldName">Name of the relational field.</param>
+        /// <param name="elementType">Resolved element type when available.</param>
+        /// <returns><c>true</c> when a matching element type exists; otherwise, <c>false</c>.</returns>
         public bool TryGetElementType(Type componentType, string fieldName, out Type elementType)
         {
             if (_elementTypeLookup == null)
             {
                 BuildLookup();
             }
+            // ReSharper disable once PossibleNullReferenceException
             return _elementTypeLookup.TryGetValue(
                 new ElementTypeKey(componentType, fieldName),
                 out elementType
@@ -444,7 +706,7 @@ namespace WallstopStudios.UnityHelpers.Tags
                     return type != null;
                 }
 
-                type = Core.Helper.ReflectionHelpers.TryResolveType(typeName);
+                type = ReflectionHelpers.TryResolveType(typeName);
                 _resolvedTypeCache[typeName] = type;
                 return type != null;
             }
@@ -476,10 +738,18 @@ namespace WallstopStudios.UnityHelpers.Tags
         }
 
 #if UNITY_EDITOR
+        /// <summary>
+        /// Sets all serialized metadata fields and rebuilds internal lookups.
+        /// </summary>
+        /// <param name="allAttributeNames">All attribute names discovered.</param>
+        /// <param name="typeMetadata">Attribute field metadata per component type.</param>
+        /// <param name="relationalTypeMetadata">Relational field metadata per component type.</param>
+        /// <param name="autoLoadSingletons">Auto-load singleton entries.</param>
         public void SetMetadata(
             string[] allAttributeNames,
             TypeFieldMetadata[] typeMetadata,
-            RelationalTypeMetadata[] relationalTypeMetadata
+            RelationalTypeMetadata[] relationalTypeMetadata,
+            AutoLoadSingletonEntry[] autoLoadSingletons
         )
         {
             string[] normalizedAttributeNames = SortAttributeNames(allAttributeNames);
@@ -487,10 +757,14 @@ namespace WallstopStudios.UnityHelpers.Tags
             RelationalTypeMetadata[] normalizedRelationalMetadata = SortRelationalTypeMetadata(
                 relationalTypeMetadata
             );
+            AutoLoadSingletonEntry[] normalizedAutoLoad = SortAutoLoadSingletonEntries(
+                autoLoadSingletons
+            );
 
             _allAttributeNames = normalizedAttributeNames;
             _typeMetadata = normalizedTypeMetadata;
             _relationalTypeMetadata = normalizedRelationalMetadata;
+            _autoLoadSingletons = normalizedAutoLoad;
             _computedAllAttributeNames = null;
             _computedAllAttributeNamesIncludesTests = false;
             _typeFieldsLookup = null;
@@ -521,9 +795,9 @@ namespace WallstopStudios.UnityHelpers.Tags
             }
 
             int nonNullCount = 0;
-            for (int i = 0; i < typeMetadata.Length; i++)
+            foreach (TypeFieldMetadata typeFieldMetadata in typeMetadata)
             {
-                if (typeMetadata[i] != null)
+                if (typeFieldMetadata != null)
                 {
                     nonNullCount++;
                 }
@@ -536,9 +810,8 @@ namespace WallstopStudios.UnityHelpers.Tags
 
             TypeFieldMetadata[] result = new TypeFieldMetadata[nonNullCount];
             int resultIndex = 0;
-            for (int i = 0; i < typeMetadata.Length; i++)
+            foreach (TypeFieldMetadata metadata in typeMetadata)
             {
-                TypeFieldMetadata metadata = typeMetadata[i];
                 if (metadata == null)
                 {
                     continue;
@@ -567,9 +840,9 @@ namespace WallstopStudios.UnityHelpers.Tags
             }
 
             int nonNullCount = 0;
-            for (int i = 0; i < relationalTypeMetadata.Length; i++)
+            foreach (RelationalTypeMetadata typeMetadata in relationalTypeMetadata)
             {
-                if (relationalTypeMetadata[i] != null)
+                if (typeMetadata != null)
                 {
                     nonNullCount++;
                 }
@@ -582,9 +855,8 @@ namespace WallstopStudios.UnityHelpers.Tags
 
             RelationalTypeMetadata[] result = new RelationalTypeMetadata[nonNullCount];
             int resultIndex = 0;
-            for (int i = 0; i < relationalTypeMetadata.Length; i++)
+            foreach (RelationalTypeMetadata metadata in relationalTypeMetadata)
             {
-                RelationalTypeMetadata metadata = relationalTypeMetadata[i];
                 if (metadata == null)
                 {
                     continue;
@@ -610,9 +882,9 @@ namespace WallstopStudios.UnityHelpers.Tags
             }
 
             int nonNullCount = 0;
-            for (int i = 0; i < relationalFields.Length; i++)
+            foreach (RelationalFieldMetadata relationalField in relationalFields)
             {
-                if (relationalFields[i] != null)
+                if (relationalField != null)
                 {
                     nonNullCount++;
                 }
@@ -625,9 +897,8 @@ namespace WallstopStudios.UnityHelpers.Tags
 
             RelationalFieldMetadata[] result = new RelationalFieldMetadata[nonNullCount];
             int resultIndex = 0;
-            for (int i = 0; i < relationalFields.Length; i++)
+            foreach (RelationalFieldMetadata field in relationalFields)
             {
-                RelationalFieldMetadata field = relationalFields[i];
                 if (field == null)
                 {
                     continue;
@@ -801,6 +1072,35 @@ namespace WallstopStudios.UnityHelpers.Tags
             }
 
             return left.isInterface ? -1 : 1;
+        }
+
+        private static AutoLoadSingletonEntry[] SortAutoLoadSingletonEntries(
+            AutoLoadSingletonEntry[] entries
+        )
+        {
+            if (entries == null || entries.Length == 0)
+            {
+                return Array.Empty<AutoLoadSingletonEntry>();
+            }
+
+            List<AutoLoadSingletonEntry> result = new(entries.Length);
+            foreach (AutoLoadSingletonEntry entry in entries)
+            {
+                if (entry == null || string.IsNullOrWhiteSpace(entry.typeName))
+                {
+                    continue;
+                }
+
+                result.Add(new AutoLoadSingletonEntry(entry.typeName, entry.kind, entry.loadType));
+            }
+
+            if (result.Count == 0)
+            {
+                return Array.Empty<AutoLoadSingletonEntry>();
+            }
+
+            result.Sort((left, right) => string.CompareOrdinal(left.typeName, right.typeName));
+            return result.ToArray();
         }
 #endif
     }

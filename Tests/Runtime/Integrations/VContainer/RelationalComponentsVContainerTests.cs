@@ -1,5 +1,5 @@
 #if VCONTAINER_PRESENT
-namespace WallstopStudios.UnityHelpers.Tests.Integrations.VContainer
+namespace WallstopStudios.UnityHelpers.Tests.Integrations.VContainer.Runtime
 {
     using System;
     using System.Collections.Generic;
@@ -11,13 +11,15 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.VContainer
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Integrations.VContainer;
     using WallstopStudios.UnityHelpers.Tags;
+    using WallstopStudios.UnityHelpers.Tests.Core;
     using WallstopStudios.UnityHelpers.Tests.TestUtils;
 
     public sealed class RelationalComponentsVContainerTests : CommonTestBase
     {
         [SetUp]
-        public void CommonSetup()
+        public override void BaseSetUp()
         {
+            base.BaseSetUp();
             ReflexTestSupport.EnsureReflexSettings();
         }
 

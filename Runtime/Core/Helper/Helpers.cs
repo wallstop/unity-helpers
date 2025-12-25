@@ -52,6 +52,56 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         private static bool LayerCacheInitialized;
 
 #if UNITY_EDITOR
+        internal static Func<string[]> LayerNameProvider
+        {
+            get => _layerNameProvider ?? DefaultLayerNameProvider;
+            set => _layerNameProvider = value;
+        }
+
+        private static Func<string[]> _layerNameProvider;
+
+        private static readonly Func<string[]> DefaultLayerNameProvider = () =>
+            InternalEditorUtility.layers;
+
+        internal static void ResetLayerNameProvider()
+        {
+            _layerNameProvider = null;
+        }
+#else
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("UnusedMember.Local", "")]
+        internal static void ResetLayerNameProvider() { }
+#endif
+
+        internal static Func<float, float> JitterSampler
+        {
+            get => _jitterSampler ?? DefaultJitterSampler;
+            set => _jitterSampler = value;
+        }
+
+        private static Func<float, float> _jitterSampler;
+
+        private static readonly Func<float, float> DefaultJitterSampler = maxDelay =>
+        {
+            if (maxDelay <= 0f)
+            {
+                return 0f;
+            }
+
+            return PRNG.Instance.NextFloat(0f, maxDelay);
+        };
+
+        internal static void ResetJitterSampler()
+        {
+            _jitterSampler = null;
+        }
+
+        internal static void ResetLayerCache()
+        {
+            CachedLayerNames = Array.Empty<string>();
+            LayerCacheInitialized = false;
+        }
+
+#if UNITY_EDITOR
         private static readonly string[] DefaultPrefabSearchFolders =
         {
             "Assets/Prefabs",
@@ -64,13 +114,25 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             "Assets/Resources",
             "Assets/TileMaps",
         };
+
+        [InitializeOnLoadMethod]
+        private static void RegisterProjectChangeHandlers()
+        {
+            EditorApplication.projectChanged -= HandleProjectChangedForHelpers;
+            EditorApplication.projectChanged += HandleProjectChangedForHelpers;
+        }
+
+        internal static void HandleProjectChangedForHelpers()
+        {
+            ResetLayerCache();
+            ResetSpriteLabelCache();
+        }
 #endif
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
-        private static void CLearLayerNames()
+        internal static void CLearLayerNames()
         {
-            CachedLayerNames = Array.Empty<string>();
-            LayerCacheInitialized = false;
+            ResetLayerCache();
         }
 
         /// <summary>
@@ -82,39 +144,134 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         public static bool IsRunningInBatchMode => Application.isBatchMode;
 
         /// <summary>
+        /// Environment variable names commonly set by CI systems.
+        /// Use these constants when checking for specific CI environments.
+        /// </summary>
+        public static class CiEnvironmentVariables
+        {
+            /// <summary>Generic CI indicator, set by many CI systems.</summary>
+            public const string Ci = "CI";
+
+            /// <summary>GitHub Actions environment indicator.</summary>
+            public const string GitHubActions = "GITHUB_ACTIONS";
+
+            /// <summary>GitLab CI environment indicator.</summary>
+            public const string GitLabCi = "GITLAB_CI";
+
+            /// <summary>Jenkins URL, set when running in Jenkins.</summary>
+            public const string JenkinsUrl = "JENKINS_URL";
+
+            /// <summary>Travis CI environment indicator.</summary>
+            public const string TravisCi = "TRAVIS";
+
+            /// <summary>CircleCI environment indicator.</summary>
+            public const string CircleCi = "CIRCLECI";
+
+            /// <summary>Azure Pipelines environment indicator.</summary>
+            public const string AzurePipelines = "TF_BUILD";
+
+            /// <summary>TeamCity environment indicator.</summary>
+            public const string TeamCity = "TEAMCITY_VERSION";
+
+            /// <summary>Buildkite environment indicator.</summary>
+            public const string Buildkite = "BUILDKITE";
+
+            /// <summary>AWS CodeBuild environment indicator.</summary>
+            public const string AwsCodeBuild = "CODEBUILD_BUILD_ID";
+
+            /// <summary>Bitbucket Pipelines environment indicator.</summary>
+            public const string BitbucketPipelines = "BITBUCKET_BUILD_NUMBER";
+
+            /// <summary>AppVeyor environment indicator.</summary>
+            public const string AppVeyor = "APPVEYOR";
+
+            /// <summary>Drone CI environment indicator.</summary>
+            public const string DroneCi = "DRONE";
+
+            /// <summary>Unity-specific CI environment indicator.</summary>
+            public const string UnityCi = "UNITY_CI";
+
+            /// <summary>Unity test runner environment indicator.</summary>
+            public const string UnityTests = "UNITY_TESTS";
+
+            /// <summary>
+            /// All environment variable names checked by <see cref="IsRunningInContinuousIntegration"/>.
+            /// </summary>
+            public static readonly string[] All =
+            {
+                Ci,
+                GitHubActions,
+                GitLabCi,
+                JenkinsUrl,
+                TravisCi,
+                CircleCi,
+                AzurePipelines,
+                TeamCity,
+                Buildkite,
+                AwsCodeBuild,
+                BitbucketPipelines,
+                AppVeyor,
+                DroneCi,
+                UnityCi,
+                UnityTests,
+            };
+        }
+
+        /// <summary>
         /// Indicates whether the process appears to be running under a CI system.
         /// </summary>
         /// <remarks>
-        /// Checks common CI environment variables including GITHUB_ACTIONS, CI, JENKINS_URL, and GITLAB_CI.
+        /// <para>
+        /// Checks common CI environment variables including:
+        /// <list type="bullet">
+        /// <item><description>CI (generic, set by many CI systems)</description></item>
+        /// <item><description>GITHUB_ACTIONS (GitHub Actions)</description></item>
+        /// <item><description>GITLAB_CI (GitLab CI)</description></item>
+        /// <item><description>JENKINS_URL (Jenkins)</description></item>
+        /// <item><description>TRAVIS (Travis CI)</description></item>
+        /// <item><description>CIRCLECI (CircleCI)</description></item>
+        /// <item><description>TF_BUILD (Azure Pipelines)</description></item>
+        /// <item><description>TEAMCITY_VERSION (TeamCity)</description></item>
+        /// <item><description>BUILDKITE (Buildkite)</description></item>
+        /// <item><description>CODEBUILD_BUILD_ID (AWS CodeBuild)</description></item>
+        /// <item><description>BITBUCKET_BUILD_NUMBER (Bitbucket Pipelines)</description></item>
+        /// <item><description>APPVEYOR (AppVeyor)</description></item>
+        /// <item><description>DRONE (Drone CI)</description></item>
+        /// <item><description>UNITY_CI (Unity-specific CI)</description></item>
+        /// <item><description>UNITY_TESTS (Unity test runner)</description></item>
+        /// </list>
+        /// </para>
+        /// <para>
+        /// Environment variables are checked on each access. While this involves system calls,
+        /// the overhead is negligible and ensures accurate detection if variables change.
+        /// </para>
         /// </remarks>
         public static bool IsRunningInContinuousIntegration
         {
             get
             {
-                if (
-                    !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("GITHUB_ACTIONS"))
-                )
+                foreach (string envVar in CiEnvironmentVariables.All)
                 {
-                    return true;
-                }
-
-                if (!string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("CI")))
-                {
-                    return true;
-                }
-
-                if (!string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("JENKINS_URL")))
-                {
-                    return true;
-                }
-
-                if (!string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("GITLAB_CI")))
-                {
-                    return true;
+                    if (!string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable(envVar)))
+                    {
+                        return true;
+                    }
                 }
 
                 return false;
             }
+        }
+
+        /// <summary>
+        /// Checks if a specific environment variable is set to a non-empty, non-whitespace value.
+        /// </summary>
+        /// <param name="environmentVariableName">The name of the environment variable to check.</param>
+        /// <returns>True if the environment variable is set to a non-empty, non-whitespace value; otherwise, false.</returns>
+        public static bool IsEnvironmentVariableSet(string environmentVariableName)
+        {
+            return !string.IsNullOrWhiteSpace(
+                Environment.GetEnvironmentVariable(environmentVariableName)
+            );
         }
 
         internal static string[] AllSpriteLabels { get; private set; } = Array.Empty<string>();
@@ -141,8 +298,10 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 return AllSpriteLabels;
             }
 
-            using PooledResource<List<string>> labelBuffer = Buffers<string>.List.Get();
-            CollectSpriteLabels(labelBuffer.resource);
+            using PooledResource<List<string>> labelBuffer = Buffers<string>.List.Get(
+                out List<string> labels
+            );
+            CollectSpriteLabels(labels);
             return AllSpriteLabels;
 #else
             return Array.Empty<string>();
@@ -194,11 +353,16 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         /// </remarks>
         public static string[] GetAllLayerNames()
         {
+            if (LayerCacheInitialized && CachedLayerNames != null)
+            {
+                return CachedLayerNames;
+            }
+
 #if UNITY_EDITOR
             try
             {
                 // Prefer the editor API when available
-                string[] editorLayers = InternalEditorUtility.layers;
+                string[] editorLayers = LayerNameProvider?.Invoke();
                 if (editorLayers is { Length: > 0 })
                 {
                     LayerCacheInitialized = true;
@@ -216,8 +380,9 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 return CachedLayerNames;
             }
 
-            using PooledResource<List<string>> layerBuffer = Buffers<string>.List.Get();
-            List<string> layers = layerBuffer.resource;
+            using PooledResource<List<string>> layerBuffer = Buffers<string>.List.Get(
+                out List<string> layers
+            );
             for (int i = 0; i < 32; ++i)
             {
                 string name = LayerMask.LayerToName(i);
@@ -275,8 +440,9 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         {
             destination.Clear();
 
-            using PooledResource<HashSet<string>> labelSetResource = Buffers<string>.HashSet.Get();
-            HashSet<string> labelSet = labelSetResource.resource;
+            using PooledResource<HashSet<string>> labelSetResource = Buffers<string>.HashSet.Get(
+                out HashSet<string> labelSet
+            );
 
             string[] guids = AssetDatabase.FindAssets("t:Sprite");
             foreach (string guid in guids)
@@ -470,7 +636,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             {
                 GameObject go => go != null ? go.GetComponents<T>() : Array.Empty<T>(),
                 Component c => c != null ? c.GetComponents<T>() : Array.Empty<T>(),
-                _ => default,
+                _ => Array.Empty<T>(),
             };
         }
 
@@ -532,10 +698,12 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         /// </summary>
         public static GameObject FindChildGameObjectWithTag(this GameObject gameObject, string tag)
         {
-            using PooledResource<List<Transform>> bufferResource = Buffers<Transform>.List.Get();
+            using PooledResource<List<Transform>> bufferResource = Buffers<Transform>.List.Get(
+                out List<Transform> transforms
+            );
             foreach (
                 Transform t in gameObject.transform.IterateOverAllChildrenRecursively(
-                    bufferResource.resource,
+                    transforms,
                     includeSelf: true
                 )
             )
@@ -572,6 +740,11 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             bool waitBefore = false
         )
         {
+            if (action == null)
+            {
+                throw new ArgumentNullException(nameof(action));
+            }
+
             return monoBehaviour.StartCoroutine(
                 FunctionAsCoroutine(action, updateRate, useJitter, waitBefore)
             );
@@ -584,54 +757,61 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             bool waitBefore
         )
         {
-            bool usedJitter = false;
+            float interval = ResolveInvocationDelay(updateRate);
+            float initialDelay = waitBefore ? interval : 0f;
+
+            if (useJitter)
+            {
+                initialDelay += SampleInitialJitter(interval);
+            }
+
+            if (initialDelay > 0f)
+            {
+                yield return WaitForDelay(initialDelay);
+            }
+
             while (true)
             {
-                float startTime;
-                if (waitBefore)
-                {
-                    if (useJitter && !usedJitter)
-                    {
-                        float delay = PRNG.Instance.NextFloat(updateRate);
-                        startTime = Time.time;
-                        while (!HasEnoughTimePassed(startTime, delay))
-                        {
-                            yield return null;
-                        }
-
-                        usedJitter = true;
-                    }
-
-                    startTime = Time.time;
-                    while (!HasEnoughTimePassed(startTime, updateRate))
-                    {
-                        yield return null;
-                    }
-                }
-
                 action();
-
-                if (!waitBefore)
+                if (interval <= 0f)
                 {
-                    if (useJitter && !usedJitter)
-                    {
-                        float delay = PRNG.Instance.NextFloat(updateRate);
-                        startTime = Time.time;
-                        while (!HasEnoughTimePassed(startTime, delay))
-                        {
-                            yield return null;
-                        }
-
-                        usedJitter = true;
-                    }
-
-                    startTime = Time.time;
-                    while (!HasEnoughTimePassed(startTime, updateRate))
-                    {
-                        yield return null;
-                    }
+                    yield return null;
+                    continue;
                 }
+
+                yield return WaitForDelay(interval);
             }
+        }
+
+        private static float ResolveInvocationDelay(float baseDelay)
+        {
+            return Mathf.Max(0f, baseDelay);
+        }
+
+        private static float SampleInitialJitter(float interval)
+        {
+            if (interval <= 0f)
+            {
+                return 0f;
+            }
+
+            float jitter = JitterSampler(interval);
+            if (float.IsNaN(jitter) || jitter <= 0f)
+            {
+                return 0f;
+            }
+
+            return Mathf.Min(jitter, interval);
+        }
+
+        private static IEnumerator WaitForDelay(float duration)
+        {
+            float clamped = Mathf.Max(0f, duration);
+            float startTime = Time.time;
+            do
+            {
+                yield return null;
+            } while (!HasEnoughTimePassed(startTime, clamped));
         }
 
         public static Coroutine ExecuteFunctionAfterDelay(
@@ -640,6 +820,11 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             float delay
         )
         {
+            if (action == null)
+            {
+                throw new ArgumentNullException(nameof(action));
+            }
+
             return monoBehaviour.StartCoroutine(FunctionDelayAsCoroutine(action, delay));
         }
 
@@ -648,6 +833,11 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             Action action
         )
         {
+            if (action == null)
+            {
+                throw new ArgumentNullException(nameof(action));
+            }
+
             return monoBehaviour.ExecuteFunctionAfterDelay(action, 0f);
         }
 
@@ -656,6 +846,11 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             Action action
         )
         {
+            if (action == null)
+            {
+                throw new ArgumentNullException(nameof(action));
+            }
+
             return monoBehaviour.StartCoroutine(FunctionAfterFrame(action));
         }
 
@@ -838,8 +1033,16 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         )
         {
             random ??= PRNG.Instance;
-            double r = radius * Math.Sqrt(random.NextDouble());
-            double theta = random.NextDouble() * 2 * Math.PI;
+            double radiusAbs = Math.Abs(radius);
+            if (radiusAbs <= 0f)
+            {
+                return center;
+            }
+
+            double radiusSample = ClampUnitInterval(random.NextDouble());
+            double angleSample = ClampUnitInterval(random.NextDouble());
+            double r = radiusAbs * Math.Sqrt(radiusSample);
+            double theta = angleSample * 2 * Math.PI;
             return new Vector2(
                 center.x + (float)(r * Math.Cos(theta)),
                 center.y + (float)(r * Math.Sin(theta))
@@ -859,11 +1062,27 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         )
         {
             random ??= PRNG.Instance;
-            double u = random.NextDouble();
-            double v = random.NextDouble();
-            double theta = 2 * Math.PI * u;
-            double phi = Math.Acos(2 * v - 1);
-            double r = radius * Math.Pow(random.NextDouble(), 1.0 / 3.0);
+            double radiusAbs = Math.Abs(radius);
+            if (radiusAbs <= 0f)
+            {
+                return center;
+            }
+
+            double thetaSample = ClampUnitInterval(random.NextDouble());
+            double phiSample = ClampUnitInterval(random.NextDouble());
+            double radiusSample = ClampUnitInterval(random.NextDouble());
+            double theta = 2 * Math.PI * thetaSample;
+            double phiArgument = 2 * phiSample - 1;
+            if (phiArgument < -1)
+            {
+                phiArgument = -1;
+            }
+            else if (phiArgument > 1)
+            {
+                phiArgument = 1;
+            }
+            double phi = Math.Acos(phiArgument);
+            double r = radiusAbs * Math.Pow(radiusSample, 1.0 / 3.0);
             double sinPhi = Math.Sin(phi);
             return new Vector3(
                 center.x + (float)(r * sinPhi * Math.Cos(theta)),
@@ -891,10 +1110,12 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             string tag
         )
         {
-            using PooledResource<List<Transform>> bufferResource = Buffers<Transform>.List.Get();
+            using PooledResource<List<Transform>> bufferResource = Buffers<Transform>.List.Get(
+                out List<Transform> transforms
+            );
             foreach (
                 Transform t in gameObject.transform.IterateOverAllChildrenRecursively(
-                    bufferResource.resource,
+                    transforms,
                     includeSelf: true
                 )
             )
@@ -941,8 +1162,9 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 
             int pathCount = collider.pathCount = sprite.GetPhysicsShapeCount();
 
-            using PooledResource<List<Vector2>> pathResource = Buffers<Vector2>.List.Get();
-            List<Vector2> path = pathResource.resource;
+            using PooledResource<List<Vector2>> pathResource = Buffers<Vector2>.List.Get(
+                out List<Vector2> path
+            );
             for (int i = 0; i < pathCount; ++i)
             {
                 path.Clear();
@@ -990,7 +1212,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             IEnumerable<string> assetPaths,
             string[] defaultFolders,
             out PooledResource<List<string>> listResource,
-            out PooledResource<string[]> arrayResource
+            out PooledArray<string> arrayResource
         )
         {
             listResource = default;
@@ -1008,7 +1230,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 
             if (assetPaths is IReadOnlyList<string> readonlyList)
             {
-                arrayResource = WallstopFastArrayPool<string>.Get(
+                arrayResource = SystemArrayPool<string>.Get(
                     readonlyList.Count,
                     out string[] buffer
                 );
@@ -1022,10 +1244,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             }
             if (assetPaths is ICollection<string> collection)
             {
-                arrayResource = WallstopFastArrayPool<string>.Get(
-                    collection.Count,
-                    out string[] buffer
-                );
+                arrayResource = SystemArrayPool<string>.Get(collection.Count, out string[] buffer);
                 collection.CopyTo(buffer, 0);
                 return buffer;
             }
@@ -1033,7 +1252,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             listResource = Buffers<string>.List.Get(out List<string> list);
             list.AddRange(assetPaths);
 
-            arrayResource = WallstopFastArrayPool<string>.Get(list.Count, out string[] temp);
+            arrayResource = SystemArrayPool<string>.Get(list.Count, out string[] temp);
             list.CopyTo(temp);
             return temp;
         }
@@ -1049,7 +1268,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 assetPaths,
                 DefaultPrefabSearchFolders,
                 out PooledResource<List<string>> pathListResource,
-                out PooledResource<string[]> pathArrayResource
+                out PooledArray<string> pathArrayResource
             );
 
             try
@@ -1083,7 +1302,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 assetPaths,
                 DefaultScriptableObjectSearchFolders,
                 out PooledResource<List<string>> pathListResource,
-                out PooledResource<string[]> pathArrayResource
+                out PooledArray<string> pathArrayResource
             );
 
             try
@@ -1128,22 +1347,34 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 return true;
             }
 
+            string lhsNormalized = NormalizeCloneName(lhs.name);
+            string rhsNormalized = NormalizeCloneName(rhs.name);
+
+            return string.Equals(lhsNormalized, rhsNormalized, StringComparison.Ordinal);
+        }
+
+        private static string NormalizeCloneName(string name)
+        {
+            if (string.IsNullOrEmpty(name))
+            {
+                return string.Empty;
+            }
+
+            string normalized = name;
             const string clone = "(Clone)";
-            string lhsName = lhs.name;
-            while (lhsName.EndsWith(clone, StringComparison.Ordinal))
+            while (true)
             {
-                lhsName = lhsName.Substring(0, lhsName.Length - clone.Length);
-                lhsName = lhsName.Trim();
+                string trimmedEnd = normalized.TrimEnd();
+                if (!trimmedEnd.EndsWith(clone, StringComparison.Ordinal))
+                {
+                    normalized = trimmedEnd;
+                    break;
+                }
+
+                normalized = trimmedEnd.Substring(0, trimmedEnd.Length - clone.Length);
             }
 
-            string rhsName = rhs.name;
-            while (rhsName.EndsWith(clone, StringComparison.Ordinal))
-            {
-                rhsName = rhsName.Substring(0, rhsName.Length - clone.Length);
-                rhsName = rhsName.Trim();
-            }
-
-            return string.Equals(lhsName, rhsName, StringComparison.Ordinal);
+            return normalized.Trim();
         }
 
         public static Color ChangeColorBrightness(this Color color, float correctionFactor)
@@ -1179,8 +1410,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         public static void AwakeObject(this GameObject gameObject)
         {
             using PooledResource<List<MonoBehaviour>> componentResource =
-                Buffers<MonoBehaviour>.List.Get();
-            List<MonoBehaviour> components = componentResource.resource;
+                Buffers<MonoBehaviour>.List.Get(out List<MonoBehaviour> components);
             gameObject.GetComponentsInChildren(false, components);
             foreach (MonoBehaviour script in components)
             {

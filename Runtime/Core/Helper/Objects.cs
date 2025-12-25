@@ -275,6 +275,468 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             return hash.ToHashCode();
         }
 
+        public static int HashCode<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12>(
+            T1 param1,
+            T2 param2,
+            T3 param3,
+            T4 param4,
+            T5 param5,
+            T6 param6,
+            T7 param7,
+            T8 param8,
+            T9 param9,
+            T10 param10,
+            T11 param11,
+            T12 param12
+        )
+        {
+            DeterministicHashBuilder hash = default;
+            hash.Add(param1);
+            hash.Add(param2);
+            hash.Add(param3);
+            hash.Add(param4);
+            hash.Add(param5);
+            hash.Add(param6);
+            hash.Add(param7);
+            hash.Add(param8);
+            hash.Add(param9);
+            hash.Add(param10);
+            hash.Add(param11);
+            hash.Add(param12);
+            return hash.ToHashCode();
+        }
+
+        public static int HashCode<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13>(
+            T1 param1,
+            T2 param2,
+            T3 param3,
+            T4 param4,
+            T5 param5,
+            T6 param6,
+            T7 param7,
+            T8 param8,
+            T9 param9,
+            T10 param10,
+            T11 param11,
+            T12 param12,
+            T13 param13
+        )
+        {
+            DeterministicHashBuilder hash = default;
+            hash.Add(param1);
+            hash.Add(param2);
+            hash.Add(param3);
+            hash.Add(param4);
+            hash.Add(param5);
+            hash.Add(param6);
+            hash.Add(param7);
+            hash.Add(param8);
+            hash.Add(param9);
+            hash.Add(param10);
+            hash.Add(param11);
+            hash.Add(param12);
+            hash.Add(param13);
+            return hash.ToHashCode();
+        }
+
+        public static int HashCode<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14>(
+            T1 param1,
+            T2 param2,
+            T3 param3,
+            T4 param4,
+            T5 param5,
+            T6 param6,
+            T7 param7,
+            T8 param8,
+            T9 param9,
+            T10 param10,
+            T11 param11,
+            T12 param12,
+            T13 param13,
+            T14 param14
+        )
+        {
+            DeterministicHashBuilder hash = default;
+            hash.Add(param1);
+            hash.Add(param2);
+            hash.Add(param3);
+            hash.Add(param4);
+            hash.Add(param5);
+            hash.Add(param6);
+            hash.Add(param7);
+            hash.Add(param8);
+            hash.Add(param9);
+            hash.Add(param10);
+            hash.Add(param11);
+            hash.Add(param12);
+            hash.Add(param13);
+            hash.Add(param14);
+            return hash.ToHashCode();
+        }
+
+        public static int HashCode<
+            T1,
+            T2,
+            T3,
+            T4,
+            T5,
+            T6,
+            T7,
+            T8,
+            T9,
+            T10,
+            T11,
+            T12,
+            T13,
+            T14,
+            T15
+        >(
+            T1 param1,
+            T2 param2,
+            T3 param3,
+            T4 param4,
+            T5 param5,
+            T6 param6,
+            T7 param7,
+            T8 param8,
+            T9 param9,
+            T10 param10,
+            T11 param11,
+            T12 param12,
+            T13 param13,
+            T14 param14,
+            T15 param15
+        )
+        {
+            DeterministicHashBuilder hash = default;
+            hash.Add(param1);
+            hash.Add(param2);
+            hash.Add(param3);
+            hash.Add(param4);
+            hash.Add(param5);
+            hash.Add(param6);
+            hash.Add(param7);
+            hash.Add(param8);
+            hash.Add(param9);
+            hash.Add(param10);
+            hash.Add(param11);
+            hash.Add(param12);
+            hash.Add(param13);
+            hash.Add(param14);
+            hash.Add(param15);
+            return hash.ToHashCode();
+        }
+
+        public static int HashCode<
+            T1,
+            T2,
+            T3,
+            T4,
+            T5,
+            T6,
+            T7,
+            T8,
+            T9,
+            T10,
+            T11,
+            T12,
+            T13,
+            T14,
+            T15,
+            T16
+        >(
+            T1 param1,
+            T2 param2,
+            T3 param3,
+            T4 param4,
+            T5 param5,
+            T6 param6,
+            T7 param7,
+            T8 param8,
+            T9 param9,
+            T10 param10,
+            T11 param11,
+            T12 param12,
+            T13 param13,
+            T14 param14,
+            T15 param15,
+            T16 param16
+        )
+        {
+            DeterministicHashBuilder hash = default;
+            hash.Add(param1);
+            hash.Add(param2);
+            hash.Add(param3);
+            hash.Add(param4);
+            hash.Add(param5);
+            hash.Add(param6);
+            hash.Add(param7);
+            hash.Add(param8);
+            hash.Add(param9);
+            hash.Add(param10);
+            hash.Add(param11);
+            hash.Add(param12);
+            hash.Add(param13);
+            hash.Add(param14);
+            hash.Add(param15);
+            hash.Add(param16);
+            return hash.ToHashCode();
+        }
+
+        public static int HashCode<
+            T1,
+            T2,
+            T3,
+            T4,
+            T5,
+            T6,
+            T7,
+            T8,
+            T9,
+            T10,
+            T11,
+            T12,
+            T13,
+            T14,
+            T15,
+            T16,
+            T17
+        >(
+            T1 param1,
+            T2 param2,
+            T3 param3,
+            T4 param4,
+            T5 param5,
+            T6 param6,
+            T7 param7,
+            T8 param8,
+            T9 param9,
+            T10 param10,
+            T11 param11,
+            T12 param12,
+            T13 param13,
+            T14 param14,
+            T15 param15,
+            T16 param16,
+            T17 param17
+        )
+        {
+            DeterministicHashBuilder hash = default;
+            hash.Add(param1);
+            hash.Add(param2);
+            hash.Add(param3);
+            hash.Add(param4);
+            hash.Add(param5);
+            hash.Add(param6);
+            hash.Add(param7);
+            hash.Add(param8);
+            hash.Add(param9);
+            hash.Add(param10);
+            hash.Add(param11);
+            hash.Add(param12);
+            hash.Add(param13);
+            hash.Add(param14);
+            hash.Add(param15);
+            hash.Add(param16);
+            hash.Add(param17);
+            return hash.ToHashCode();
+        }
+
+        public static int HashCode<
+            T1,
+            T2,
+            T3,
+            T4,
+            T5,
+            T6,
+            T7,
+            T8,
+            T9,
+            T10,
+            T11,
+            T12,
+            T13,
+            T14,
+            T15,
+            T16,
+            T17,
+            T18
+        >(
+            T1 param1,
+            T2 param2,
+            T3 param3,
+            T4 param4,
+            T5 param5,
+            T6 param6,
+            T7 param7,
+            T8 param8,
+            T9 param9,
+            T10 param10,
+            T11 param11,
+            T12 param12,
+            T13 param13,
+            T14 param14,
+            T15 param15,
+            T16 param16,
+            T17 param17,
+            T18 param18
+        )
+        {
+            DeterministicHashBuilder hash = default;
+            hash.Add(param1);
+            hash.Add(param2);
+            hash.Add(param3);
+            hash.Add(param4);
+            hash.Add(param5);
+            hash.Add(param6);
+            hash.Add(param7);
+            hash.Add(param8);
+            hash.Add(param9);
+            hash.Add(param10);
+            hash.Add(param11);
+            hash.Add(param12);
+            hash.Add(param13);
+            hash.Add(param14);
+            hash.Add(param15);
+            hash.Add(param16);
+            hash.Add(param17);
+            hash.Add(param18);
+            return hash.ToHashCode();
+        }
+
+        public static int HashCode<
+            T1,
+            T2,
+            T3,
+            T4,
+            T5,
+            T6,
+            T7,
+            T8,
+            T9,
+            T10,
+            T11,
+            T12,
+            T13,
+            T14,
+            T15,
+            T16,
+            T17,
+            T18,
+            T19
+        >(
+            T1 param1,
+            T2 param2,
+            T3 param3,
+            T4 param4,
+            T5 param5,
+            T6 param6,
+            T7 param7,
+            T8 param8,
+            T9 param9,
+            T10 param10,
+            T11 param11,
+            T12 param12,
+            T13 param13,
+            T14 param14,
+            T15 param15,
+            T16 param16,
+            T17 param17,
+            T18 param18,
+            T19 param19
+        )
+        {
+            DeterministicHashBuilder hash = default;
+            hash.Add(param1);
+            hash.Add(param2);
+            hash.Add(param3);
+            hash.Add(param4);
+            hash.Add(param5);
+            hash.Add(param6);
+            hash.Add(param7);
+            hash.Add(param8);
+            hash.Add(param9);
+            hash.Add(param10);
+            hash.Add(param11);
+            hash.Add(param12);
+            hash.Add(param13);
+            hash.Add(param14);
+            hash.Add(param15);
+            hash.Add(param16);
+            hash.Add(param17);
+            hash.Add(param18);
+            hash.Add(param19);
+            return hash.ToHashCode();
+        }
+
+        public static int HashCode<
+            T1,
+            T2,
+            T3,
+            T4,
+            T5,
+            T6,
+            T7,
+            T8,
+            T9,
+            T10,
+            T11,
+            T12,
+            T13,
+            T14,
+            T15,
+            T16,
+            T17,
+            T18,
+            T19,
+            T20
+        >(
+            T1 param1,
+            T2 param2,
+            T3 param3,
+            T4 param4,
+            T5 param5,
+            T6 param6,
+            T7 param7,
+            T8 param8,
+            T9 param9,
+            T10 param10,
+            T11 param11,
+            T12 param12,
+            T13 param13,
+            T14 param14,
+            T15 param15,
+            T16 param16,
+            T17 param17,
+            T18 param18,
+            T19 param19,
+            T20 param20
+        )
+        {
+            DeterministicHashBuilder hash = default;
+            hash.Add(param1);
+            hash.Add(param2);
+            hash.Add(param3);
+            hash.Add(param4);
+            hash.Add(param5);
+            hash.Add(param6);
+            hash.Add(param7);
+            hash.Add(param8);
+            hash.Add(param9);
+            hash.Add(param10);
+            hash.Add(param11);
+            hash.Add(param12);
+            hash.Add(param13);
+            hash.Add(param14);
+            hash.Add(param15);
+            hash.Add(param16);
+            hash.Add(param17);
+            hash.Add(param18);
+            hash.Add(param19);
+            hash.Add(param20);
+            return hash.ToHashCode();
+        }
+
         /// <summary>
         /// Combines hash codes for all elements in an enumerable (with optimized paths for common collection types).
         /// </summary>

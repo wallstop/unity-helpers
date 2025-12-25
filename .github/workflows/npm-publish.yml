@@ -14,14 +14,14 @@ jobs:
 
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6.0.1
         with:
           fetch-depth: 0  # Ensure full commit history for version comparison
 
       - name: Set up Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v6.1.0
         with:
-          node-version: 18
+          node-version: 22
           registry-url: 'https://registry.npmjs.org/'
 
       - name: Check if version changed
@@ -30,14 +30,14 @@ jobs:
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             echo "Manual trigger detected. Skipping version check."
             NEW_VERSION=$(jq -r '.version' package.json)
-            echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_ENV
-            echo "should_publish=true" >> $GITHUB_ENV
+            echo "NEW_VERSION=$NEW_VERSION" >> "$GITHUB_ENV"
+            echo "should_publish=true" >> "$GITHUB_ENV"
             if [[ "$NEW_VERSION" == *"rc"* ]]; then
               echo "This is a pre-release (next tag)."
-              echo "NPM_TAG=next" >> $GITHUB_ENV
+              echo "NPM_TAG=next" >> "$GITHUB_ENV"
             else
               echo "This is a stable release (latest tag)."
-              echo "NPM_TAG=latest" >> $GITHUB_ENV
+              echo "NPM_TAG=latest" >> "$GITHUB_ENV"
             fi
           else
             PREV_VERSION=$(git show HEAD~1:package.json | jq -r '.version' || echo "0.0.0")
@@ -47,20 +47,20 @@ jobs:
 
             if [ "$PREV_VERSION" != "$NEW_VERSION" ]; then
               echo "Version changed, proceeding..."
-              echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_ENV
-              echo "should_publish=true" >> $GITHUB_ENV
+              echo "NEW_VERSION=$NEW_VERSION" >> "$GITHUB_ENV"
+              echo "should_publish=true" >> "$GITHUB_ENV"
 
               # Detect pre-releases (versions with "rc" or similar tags)
               if [[ "$NEW_VERSION" == *"rc"* ]]; then
                 echo "This is a pre-release (next tag)."
-                echo "NPM_TAG=next" >> $GITHUB_ENV
+                echo "NPM_TAG=next" >> "$GITHUB_ENV"
               else
                 echo "This is a stable release (latest tag)."
-                echo "NPM_TAG=latest" >> $GITHUB_ENV
+                echo "NPM_TAG=latest" >> "$GITHUB_ENV"
               fi
             else
               echo "Version did not change, skipping..."
-              echo "should_publish=false" >> $GITHUB_ENV
+              echo "should_publish=false" >> "$GITHUB_ENV"
             fi
           fi
 
@@ -73,3 +73,4 @@ jobs:
         run: npm publish --access public --tag ${{ env.NPM_TAG }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+

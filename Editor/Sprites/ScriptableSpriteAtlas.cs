@@ -156,14 +156,14 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
         }
 
         [Header("Packing Settings")]
-        [IntDropdown(32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384)]
+        [IntDropDown(32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384)]
         public int maxTextureSize = 8192;
 
         [Tooltip("Allow Unity to rotate sprites to fit them better.")]
         public bool enableRotation = true;
 
         [Tooltip("Padding in pixels between sprites in the atlas.")]
-        [IntDropdown(0, 2, 4, 8, 16, 32)]
+        [IntDropDown(0, 2, 4, 8, 16, 32)]
         public int padding = 4;
 
         public bool enableTightPacking = true;

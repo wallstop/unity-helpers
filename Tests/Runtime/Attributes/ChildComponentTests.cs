@@ -9,7 +9,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
     using UnityEngine;
     using UnityEngine.TestTools;
     using WallstopStudios.UnityHelpers.Core.Attributes;
-    using WallstopStudios.UnityHelpers.Tests.TestUtils;
+    using WallstopStudios.UnityHelpers.Tests.Core;
+    using WallstopStudios.UnityHelpers.Tests.Core.TestTypes;
 
     [TestFixture]
     public sealed class ChildComponentTests : CommonTestBase
@@ -639,128 +640,5 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
             Assert.IsTrue(tester.optionalRenderer == null);
             yield break;
         }
-    }
-
-    internal sealed class ChildAssignmentTester : MonoBehaviour
-    {
-        [ChildComponent(OnlyDescendants = true, IncludeInactive = false)]
-        public SpriteRenderer activeOnly;
-
-        [ChildComponent(OnlyDescendants = true, IncludeInactive = true)]
-        public SpriteRenderer inactive;
-
-        [ChildComponent(OnlyDescendants = true, IncludeInactive = false)]
-        public List<SpriteRenderer> descendentsActiveOnlyList;
-
-        [ChildComponent(OnlyDescendants = true, IncludeInactive = true)]
-        public List<SpriteRenderer> descendentsAllList;
-
-        [ChildComponent(OnlyDescendants = true, IncludeInactive = false)]
-        public SpriteRenderer[] descendentsActiveOnlyArray;
-
-        [ChildComponent(OnlyDescendants = true, IncludeInactive = true)]
-        public SpriteRenderer[] descendentsAllArray;
-    }
-
-    internal sealed class ChildMissingTester : MonoBehaviour
-    {
-        [ChildComponent(OnlyDescendants = true)]
-        public SpriteRenderer requiredRenderer;
-    }
-
-    internal sealed class ChildSkipIfAssignedTester : MonoBehaviour
-    {
-        [ChildComponent(SkipIfAssigned = true)]
-        public SpriteRenderer preAssignedChild;
-
-        [ChildComponent(SkipIfAssigned = true)]
-        public SpriteRenderer[] preAssignedChildArray;
-
-        [ChildComponent(SkipIfAssigned = true)]
-        public List<SpriteRenderer> preAssignedChildList;
-
-        [ChildComponent]
-        public SpriteRenderer normalChild;
-    }
-
-    internal sealed class ChildOptionalTester : MonoBehaviour
-    {
-        [ChildComponent(Optional = true)]
-        public SpriteRenderer optionalRenderer;
-    }
-
-    internal sealed class ChildOnlyDescendentsTester : MonoBehaviour
-    {
-        [ChildComponent(OnlyDescendants = true)]
-        public SpriteRenderer descendentOnly;
-
-        [ChildComponent(OnlyDescendants = true)]
-        public SpriteRenderer[] descendentOnlyArray;
-
-        [ChildComponent(OnlyDescendants = false)]
-        public SpriteRenderer includeSelf;
-
-        [ChildComponent(OnlyDescendants = false)]
-        public SpriteRenderer[] includeSelfArray;
-    }
-
-    internal sealed class ChildMultipleTester : MonoBehaviour
-    {
-        [ChildComponent(IncludeInactive = true)]
-        public SpriteRenderer[] allChildren;
-
-        [ChildComponent(IncludeInactive = true)]
-        public List<SpriteRenderer> allChildrenList;
-    }
-
-    internal sealed class ChildInactiveTester : MonoBehaviour
-    {
-        [ChildComponent(OnlyDescendants = true, IncludeInactive = false)]
-        public SpriteRenderer activeOnly;
-
-        [ChildComponent(OnlyDescendants = true, IncludeInactive = false)]
-        public SpriteRenderer[] activeOnlyArray;
-
-        [ChildComponent(OnlyDescendants = true, IncludeInactive = true)]
-        public SpriteRenderer[] includeInactiveArray;
-    }
-
-    internal sealed class ChildDisabledBehaviourTester : MonoBehaviour
-    {
-        [ChildComponent(OnlyDescendants = true, IncludeInactive = false)]
-        public BoxCollider activeOnly;
-
-        [ChildComponent(OnlyDescendants = true, IncludeInactive = false)]
-        public BoxCollider[] activeOnlyArray;
-
-        [ChildComponent(OnlyDescendants = true, IncludeInactive = true)]
-        public BoxCollider includeInactive;
-
-        [ChildComponent(OnlyDescendants = true, IncludeInactive = true)]
-        public BoxCollider[] includeInactiveArray;
-    }
-
-    internal sealed class ChildMultiComponentTester : MonoBehaviour
-    {
-        [ChildComponent(OnlyDescendants = true)]
-        public BoxCollider[] colliders;
-    }
-
-    internal sealed class ChildCacheIsolationTesterA : MonoBehaviour
-    {
-        [ChildComponent]
-        public SpriteRenderer childRenderer;
-    }
-
-    internal sealed class ChildCacheIsolationTesterB : MonoBehaviour
-    {
-        [ChildComponent]
-        public SpriteRenderer childRenderer;
-    }
-
-    internal sealed class ChildSingleTester : MonoBehaviour
-    {
-        [ChildComponent]
-        public SpriteRenderer single;
     }
 }

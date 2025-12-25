@@ -8,7 +8,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Tags
     using global::UnityEngine;
     using UnityHelpers.Core.Attributes;
     using UnityHelpers.Tags;
+    using WallstopStudios.UnityHelpers.Core.Helper;
+    using WallstopStudios.UnityHelpers.Editor.Utils;
     using static UnityHelpers.Tags.AttributeMetadataCache;
+    using ReflectionHelpers = WallstopStudios.UnityHelpers.Core.Helper.ReflectionHelpers;
 
     /// <summary>
     /// Editor script that generates AttributeMetadataCache at edit-time using TypeCache.
@@ -24,6 +27,16 @@ namespace WallstopStudios.UnityHelpers.Editor.Tags
 
         internal static void GenerateCache()
         {
+            // Skip automatic cache generation during test runs to avoid Unity's internal modal dialogs
+            // when asset operations fail, unless explicitly allowed.
+            if (
+                EditorUi.Suppress
+                && !ScriptableObjectSingletonCreator.AllowAssetCreationDuringSuppression
+            )
+            {
+                return;
+            }
+
             try
             {
                 // Gather all types derived from AttributesComponent, with a robust fallback
@@ -66,6 +79,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Tags
                 // Scan for relational attributes
                 List<RelationalTypeMetadata> relationalMetadataList = ScanRelationalAttributes();
 
+                AutoLoadSingletonEntry[] autoLoadEntries = BuildAutoLoadSingletonEntries();
+
                 // Get or create the cache asset
                 AttributeMetadataCache cache = GetOrCreateCache();
 
@@ -73,7 +88,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Tags
                 cache.SetMetadata(
                     sortedAttributeNames,
                     typeMetadataList.ToArray(),
-                    relationalMetadataList.ToArray()
+                    relationalMetadataList.ToArray(),
+                    autoLoadEntries
                 );
 
                 // Save the asset
@@ -88,10 +104,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Tags
         private static List<Type> FindAttributeComponentTypes()
         {
             // Primary: fast TypeCache-based discovery
-            List<Type> types = WallstopStudios
-                .UnityHelpers.Core.Helper.ReflectionHelpers.GetTypesDerivedFrom<AttributesComponent>(
-                    includeAbstract: false
-                )
+            List<Type> types = ReflectionHelpers
+                .GetTypesDerivedFrom<AttributesComponent>(includeAbstract: false)
                 .Where(AttributeMetadataFilters.ShouldSerialize)
                 .ToList();
 
@@ -102,9 +116,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Tags
 
             // Fallback: reflection-based scan via ReflectionHelpers
             HashSet<Type> results = new();
-            foreach (
-                Type t in WallstopStudios.UnityHelpers.Core.Helper.ReflectionHelpers.GetAllLoadedTypes()
-            )
+            foreach (Type t in ReflectionHelpers.GetAllLoadedTypes())
             {
                 if (
                     t is { IsAbstract: false, IsGenericTypeDefinition: false }
@@ -123,10 +135,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Tags
             List<RelationalTypeMetadata> result = new();
 
             // Get all Component types using TypeCache with a reflection fallback for robustness
-            List<Type> componentTypes = WallstopStudios
-                .UnityHelpers.Core.Helper.ReflectionHelpers.GetTypesDerivedFrom<Component>(
-                    includeAbstract: false
-                )
+            List<Type> componentTypes = ReflectionHelpers
+                .GetTypesDerivedFrom<Component>(includeAbstract: false)
                 .Where(type => !type.IsGenericType)
                 .Where(AttributeMetadataFilters.ShouldSerialize)
                 .ToList();
@@ -134,9 +144,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Tags
             if (componentTypes.Count == 0)
             {
                 HashSet<Type> results = new();
-                foreach (
-                    Type t in WallstopStudios.UnityHelpers.Core.Helper.ReflectionHelpers.GetAllLoadedTypes()
-                )
+                foreach (Type t in ReflectionHelpers.GetAllLoadedTypes())
                 {
                     if (
                         t != null
@@ -162,15 +170,30 @@ namespace WallstopStudios.UnityHelpers.Editor.Tags
                 foreach (FieldInfo field in fields)
                 {
                     RelationalAttributeKind? attributeKind = null;
-                    if (field.IsDefined(typeof(ParentComponentAttribute), false))
+                    if (
+                        ReflectionHelpers.HasAttributeSafe<ParentComponentAttribute>(
+                            field,
+                            inherit: false
+                        )
+                    )
                     {
                         attributeKind = RelationalAttributeKind.Parent;
                     }
-                    else if (field.IsDefined(typeof(ChildComponentAttribute), false))
+                    else if (
+                        ReflectionHelpers.HasAttributeSafe<ChildComponentAttribute>(
+                            field,
+                            inherit: false
+                        )
+                    )
                     {
                         attributeKind = RelationalAttributeKind.Child;
                     }
-                    else if (field.IsDefined(typeof(SiblingComponentAttribute), false))
+                    else if (
+                        ReflectionHelpers.HasAttributeSafe<SiblingComponentAttribute>(
+                            field,
+                            inherit: false
+                        )
+                    )
                     {
                         attributeKind = RelationalAttributeKind.Sibling;
                     }
@@ -240,6 +263,91 @@ namespace WallstopStudios.UnityHelpers.Editor.Tags
             return result;
         }
 
+        private static AutoLoadSingletonEntry[] BuildAutoLoadSingletonEntries()
+        {
+            List<AutoLoadSingletonEntry> entries = new();
+            foreach (Type type in TypeCache.GetTypesWithAttribute<AutoLoadSingletonAttribute>())
+            {
+                if (type == null || type.IsAbstract || type.ContainsGenericParameters)
+                {
+                    continue;
+                }
+
+                AutoLoadSingletonAttribute attribute =
+                    System
+                        .Attribute.GetCustomAttributes(
+                            type,
+                            typeof(AutoLoadSingletonAttribute),
+                            inherit: false
+                        )
+                        .FirstOrDefault() as AutoLoadSingletonAttribute;
+                if (attribute == null)
+                {
+                    continue;
+                }
+
+                SingletonAutoLoadKind? kind = ResolveSingletonKind(type);
+                if (!kind.HasValue)
+                {
+                    Debug.LogWarning(
+                        $"AttributeMetadataCacheGenerator: {type.FullName} is marked with [AutoLoadSingleton] but does not derive from RuntimeSingleton<> or ScriptableObjectSingleton<>."
+                    );
+                    continue;
+                }
+
+                string typeName = GetAssemblyQualifiedTypeName(type);
+                if (string.IsNullOrWhiteSpace(typeName))
+                {
+                    continue;
+                }
+
+                entries.Add(new AutoLoadSingletonEntry(typeName, kind.Value, attribute.LoadType));
+            }
+
+            entries.Sort((left, right) => string.CompareOrdinal(left.typeName, right.typeName));
+            return entries.ToArray();
+        }
+
+        private static SingletonAutoLoadKind? ResolveSingletonKind(Type type)
+        {
+            if (
+                IsSubclassOfRawGeneric(
+                    type,
+                    typeof(WallstopStudios.UnityHelpers.Utils.RuntimeSingleton<>)
+                )
+            )
+            {
+                return SingletonAutoLoadKind.Runtime;
+            }
+
+            if (
+                IsSubclassOfRawGeneric(
+                    type,
+                    typeof(WallstopStudios.UnityHelpers.Utils.ScriptableObjectSingleton<>)
+                )
+            )
+            {
+                return SingletonAutoLoadKind.ScriptableObject;
+            }
+
+            return null;
+        }
+
+        private static bool IsSubclassOfRawGeneric(Type derived, Type openGeneric)
+        {
+            Type current = derived;
+            while (current != null && current != typeof(object))
+            {
+                if (current.IsGenericType && current.GetGenericTypeDefinition() == openGeneric)
+                {
+                    return true;
+                }
+
+                current = current.BaseType;
+            }
+            return false;
+        }
+
         private static string GetAssemblyQualifiedTypeName(Type type)
         {
             if (type == null)
@@ -252,7 +360,112 @@ namespace WallstopStudios.UnityHelpers.Editor.Tags
 
         private static AttributeMetadataCache GetOrCreateCache()
         {
-            return AttributeMetadataCache.Instance;
+            // Try loading from the expected path first
+            const string assetPath =
+                "Assets/Resources/Wallstop Studios/AttributeMetadataCache.asset";
+            const string resourcesLoadPath = "Wallstop Studios/AttributeMetadataCache";
+            const string resourcesFolder = "Wallstop Studios";
+
+            AttributeMetadataCache cache = AssetDatabase.LoadAssetAtPath<AttributeMetadataCache>(
+                assetPath
+            );
+            if (cache != null)
+            {
+                UpdateMetadataEntry(assetPath, resourcesLoadPath, resourcesFolder);
+                return cache;
+            }
+
+            // Try loading via the singleton Instance (may work if already created)
+            cache = AttributeMetadataCache.Instance;
+            if (cache != null)
+            {
+                return cache;
+            }
+
+            // Create the asset ourselves
+            string directory = System.IO.Path.GetDirectoryName(assetPath);
+            if (!string.IsNullOrEmpty(directory))
+            {
+                directory = directory.SanitizePath();
+
+                // First, ensure the folder exists on disk. This prevents Unity's internal
+                // "Moving file failed" modal dialog when CreateAsset tries to move a temp file
+                // to a destination folder that doesn't exist.
+                string projectRoot = System.IO.Path.GetDirectoryName(Application.dataPath);
+                if (!string.IsNullOrEmpty(projectRoot))
+                {
+                    string absoluteDirectory = System.IO.Path.Combine(projectRoot, directory);
+                    try
+                    {
+                        if (!System.IO.Directory.Exists(absoluteDirectory))
+                        {
+                            System.IO.Directory.CreateDirectory(absoluteDirectory);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.LogWarning(
+                            $"AttributeMetadataCacheGenerator: Failed to create directory on disk '{absoluteDirectory}': {ex.Message}"
+                        );
+                        return null;
+                    }
+                }
+
+                if (!AssetDatabase.IsValidFolder(directory))
+                {
+                    string[] segments = directory.Split('/', StringSplitOptions.RemoveEmptyEntries);
+                    string current = segments[0];
+                    for (int i = 1; i < segments.Length; i++)
+                    {
+                        string next = $"{current}/{segments[i]}";
+                        if (!AssetDatabase.IsValidFolder(next))
+                        {
+                            AssetDatabase.CreateFolder(current, segments[i]);
+                        }
+                        current = next;
+                    }
+                }
+            }
+
+            cache = ScriptableObject.CreateInstance<AttributeMetadataCache>();
+            try
+            {
+                AssetDatabase.CreateAsset(cache, assetPath);
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning(
+                    $"AttributeMetadataCacheGenerator: Failed to create cache asset: {ex.Message}"
+                );
+                if (cache != null)
+                {
+                    UnityEngine.Object.DestroyImmediate(cache);
+                }
+                return null;
+            }
+            AssetDatabase.SaveAssets();
+
+            UpdateMetadataEntry(assetPath, resourcesLoadPath, resourcesFolder);
+
+            return cache;
+        }
+
+        private static void UpdateMetadataEntry(
+            string assetPath,
+            string resourcesLoadPath,
+            string resourcesFolder
+        )
+        {
+            string guid = AssetDatabase.AssetPathToGUID(assetPath);
+            if (!string.IsNullOrEmpty(guid))
+            {
+                ScriptableObjectSingletonMetadataUtility.UpdateEntry(
+                    typeof(AttributeMetadataCache),
+                    resourcesLoadPath,
+                    resourcesFolder,
+                    guid
+                );
+            }
         }
     }
 }

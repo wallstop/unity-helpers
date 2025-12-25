@@ -1,4 +1,4 @@
-namespace WallstopStudios.UnityHelpers.Tests.Editor.Tools
+namespace WallstopStudios.UnityHelpers.Tests.Tools
 {
 #if UNITY_EDITOR
     using NUnit.Framework;
@@ -7,21 +7,21 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Tools
 
     public sealed class ImageBlurToolTests
     {
-        [Test]
-        public void KernelHasExpectedLengthAndNormalizes()
+        [TestCase(1)]
+        [TestCase(2)]
+        [TestCase(3)]
+        [TestCase(4)]
+        public void KernelHasExpectedLengthAndNormalizes(int radius)
         {
-            for (int radius = 1; radius <= 4; radius++)
+            float[] kernel = ImageBlurTool.KernelForTests(radius);
+            Assert.NotNull(kernel);
+            Assert.AreEqual(radius * 2 + 1, kernel.Length);
+            float sum = 0f;
+            for (int i = 0; i < kernel.Length; i++)
             {
-                float[] kernel = ImageBlurTool.KernelForTests(radius);
-                Assert.NotNull(kernel);
-                Assert.AreEqual(radius * 2 + 1, kernel.Length);
-                float sum = 0f;
-                for (int i = 0; i < kernel.Length; i++)
-                {
-                    sum += kernel[i];
-                }
-                Assert.That(sum, Is.InRange(0.999f, 1.001f));
+                sum += kernel[i];
             }
+            Assert.That(sum, Is.InRange(0.999f, 1.001f));
         }
 
         [Test]

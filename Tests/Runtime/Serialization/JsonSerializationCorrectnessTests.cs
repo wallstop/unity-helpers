@@ -429,7 +429,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
         [Test]
         public void ManySequentialSerializeDeserializeNoStateLeakage()
         {
-            Random rng = new(54321);
             for (int i = 0; i < 1_000; ++i)
             {
                 SimpleMessage msg = new()

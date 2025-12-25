@@ -46,7 +46,7 @@ namespace Samples.UnityHelpers.SpatialStructures
             Debug.Log($"KdTree2D nearest neighbors (approx): {results.Count}");
 
             // SpatialHash: insert and query
-            using (SpatialHash2D<Vector2> grid = new SpatialHash2D<Vector2>(cellSize: queryRadius))
+            using (ISpatialHash2D<Vector2> grid = new SpatialHash2D<Vector2>(cellSize: queryRadius))
             {
                 foreach (Vector2 p in points)
                 {

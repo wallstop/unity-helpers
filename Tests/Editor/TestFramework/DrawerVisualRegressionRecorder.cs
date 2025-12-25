@@ -1,0 +1,89 @@
+namespace WallstopStudios.UnityHelpers.Tests.TestUtils
+{
+    using System;
+    using System.Collections.Generic;
+    using UnityEditor;
+    using UnityEngine;
+
+    internal enum DrawerVisualRole
+    {
+        Unknown = 0,
+        DictionaryKey,
+        DictionaryValue,
+        SetElement,
+    }
+
+    internal readonly struct DrawerVisualSample
+    {
+        public DrawerVisualSample(DrawerVisualRole role, int arrayIndex, Rect rect)
+        {
+            Role = role;
+            ArrayIndex = arrayIndex;
+            Rect = rect;
+        }
+
+        public DrawerVisualRole Role { get; }
+
+        public int ArrayIndex { get; }
+
+        public Rect Rect { get; }
+    }
+
+    internal static class DrawerVisualRecorder
+    {
+        private static readonly List<DrawerVisualSample> Samples = new();
+        private static bool _isRecording;
+
+        internal static bool IsRecording => _isRecording;
+
+        internal static void BeginRecording()
+        {
+            Samples.Clear();
+            _isRecording = true;
+        }
+
+        internal static DrawerVisualSample[] EndRecording()
+        {
+            DrawerVisualSample[] snapshot = Samples.ToArray();
+            Samples.Clear();
+            _isRecording = false;
+            return snapshot;
+        }
+
+        internal static void Record(DrawerVisualRole role, SerializedProperty property, Rect rect)
+        {
+            if (!_isRecording)
+            {
+                return;
+            }
+
+            int arrayIndex = ExtractArrayIndex(property?.propertyPath);
+            Samples.Add(new DrawerVisualSample(role, arrayIndex, rect));
+        }
+
+        private static int ExtractArrayIndex(string propertyPath)
+        {
+            if (string.IsNullOrEmpty(propertyPath))
+            {
+                return -1;
+            }
+
+            const string Needle = "Array.data[";
+            int needleIndex = propertyPath.LastIndexOf(Needle, StringComparison.Ordinal);
+            if (needleIndex < 0)
+            {
+                return -1;
+            }
+
+            int start = needleIndex + Needle.Length;
+            int end = propertyPath.IndexOf(']', start);
+            if (end < 0)
+            {
+                return -1;
+            }
+
+            string slice = propertyPath.Substring(start, end - start);
+            return int.TryParse(slice, out int value) ? value : -1;
+        }
+    }
+}

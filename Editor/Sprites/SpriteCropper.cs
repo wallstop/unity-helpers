@@ -102,7 +102,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
         [SerializeField]
         internal bool _copyDefaultPlatformSettings = true;
 
-        private List<string> _filesToProcess;
+        internal List<string> _filesToProcess;
         private SerializedObject _serializedObject;
         private SerializedProperty _inputDirectoriesProperty;
         private SerializedProperty _onlyNecessaryProperty;
@@ -264,7 +264,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
 
         internal void FindFilesToProcess()
         {
-            _filesToProcess = new List<string>();
+            _filesToProcess ??= new List<string>();
+            _filesToProcess.Clear();
             if (_inputDirectories is not { Count: > 0 })
             {
                 this.LogWarn($"No input directories selected.");
@@ -491,60 +492,39 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 return;
             }
 
-            HashSet<string> processedFiles = new(StringComparer.OrdinalIgnoreCase);
-            List<string> needReprocessing = new();
-            Dictionary<string, bool> originalReadable = new(StringComparer.OrdinalIgnoreCase);
             string lastProcessed = null;
             bool canceled = false;
-            try
+            WallstopGenericPool<HashSet<string>> processedFilesPool =
+                SetBuffers<string>.GetHashSetPool(StringComparer.OrdinalIgnoreCase);
+            using PooledResource<HashSet<string>> processedFilesLease = processedFilesPool.Get(
+                out HashSet<string> processedFiles
+            );
+            using PooledResource<List<string>> needReprocessingLease = Buffers<string>.List.Get(
+                out List<string> needReprocessing
+            );
+            WallstopGenericPool<Dictionary<string, bool>> originalReadablePool = DictionaryBuffer<
+                string,
+                bool
+            >.GetDictionaryPool(StringComparer.OrdinalIgnoreCase);
+            using PooledResource<Dictionary<string, bool>> originalReadableLease =
+                originalReadablePool.Get(out Dictionary<string, bool> originalReadable);
+            using PooledResource<List<TextureImporter>> newImportersLease =
+                Buffers<TextureImporter>.List.Get(out List<TextureImporter> newImporters);
             {
-                int total = _filesToProcess.Count;
-                List<TextureImporter> newImporters = new();
-                AssetDatabase.StartAssetEditing();
                 try
                 {
-                    for (int i = 0; i < _filesToProcess.Count; ++i)
-                    {
-                        string file = _filesToProcess[i];
-                        lastProcessed = file;
-                        if (
-                            Utils.EditorUi.CancelableProgress(
-                                Name,
-                                $"Pre-processing {i + 1}/{total}: {Path.GetFileName(file)}",
-                                i / (float)total
-                            )
-                        )
-                        {
-                            canceled = true;
-                            break;
-                        }
-                        CheckPreProcessNeeded(file, originalReadable);
-                    }
-                }
-                finally
-                {
-                    AssetDatabase.StopAssetEditing();
-                    AssetDatabase.SaveAssets();
-                    AssetDatabase.Refresh();
-                }
-
-                if (!canceled)
-                {
+                    int total = _filesToProcess.Count;
                     AssetDatabase.StartAssetEditing();
                     try
                     {
                         for (int i = 0; i < _filesToProcess.Count; ++i)
                         {
                             string file = _filesToProcess[i];
-                            if (!processedFiles.Add(file))
-                            {
-                                continue;
-                            }
                             lastProcessed = file;
                             if (
                                 Utils.EditorUi.CancelableProgress(
                                     Name,
-                                    $"Processing {i + 1}/{total}: {Path.GetFileName(file)}",
+                                    $"Pre-processing {i + 1}/{total}: {Path.GetFileName(file)}",
                                     i / (float)total
                                 )
                             )
@@ -552,134 +532,177 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                                 canceled = true;
                                 break;
                             }
-
-                            TextureImporter newImporter = ProcessSprite(
-                                file,
-                                out ProcessOutcome outcome,
-                                originalReadable
-                            );
-                            switch (outcome)
-                            {
-                                case ProcessOutcome.Success:
-                                    if (newImporter != null)
-                                    {
-                                        newImporters.Add(newImporter);
-                                    }
-                                    break;
-                                case ProcessOutcome.SkippedNoChange:
-                                    // No-op
-                                    break;
-                                case ProcessOutcome.RetryableError:
-                                    needReprocessing.Add(file);
-                                    break;
-                                case ProcessOutcome.FatalError:
-                                    // Log already handled inside ProcessSprite; skip
-                                    break;
-                            }
+                            CheckPreProcessNeeded(file, originalReadable);
                         }
                     }
                     finally
                     {
                         AssetDatabase.StopAssetEditing();
-                        foreach (TextureImporter newImporter in newImporters)
-                        {
-                            newImporter.SaveAndReimport();
-                        }
                         AssetDatabase.SaveAssets();
                         AssetDatabase.Refresh();
                     }
-                }
 
-                if (!canceled && needReprocessing.Any())
-                {
-                    newImporters.Clear();
-                    AssetDatabase.StartAssetEditing();
-                    try
-                    {
-                        foreach (string file in needReprocessing)
-                        {
-                            TextureImporter newImporter = ProcessSprite(
-                                file,
-                                out ProcessOutcome outcome,
-                                originalReadable
-                            );
-                            if (outcome == ProcessOutcome.Success && newImporter != null)
-                            {
-                                newImporters.Add(newImporter);
-                            }
-                        }
-                    }
-                    finally
-                    {
-                        AssetDatabase.StopAssetEditing();
-                        foreach (TextureImporter newImporter in newImporters)
-                        {
-                            newImporter.SaveAndReimport();
-                        }
-                        AssetDatabase.SaveAssets();
-                        AssetDatabase.Refresh();
-                    }
-                }
+                    int totalSuccessfullyProcessed = 0;
 
-                // Restore readability to originals that we changed
-                if (originalReadable.Count > 0 && !_overwriteOriginals)
-                {
-                    AssetDatabase.StartAssetEditing();
-                    try
+                    if (!canceled)
                     {
-                        foreach ((string path, bool wasReadable) in originalReadable)
+                        AssetDatabase.StartAssetEditing();
+                        try
                         {
-                            try
+                            for (int i = 0; i < _filesToProcess.Count; ++i)
                             {
+                                string file = _filesToProcess[i];
+                                if (!processedFiles.Add(file))
+                                {
+                                    continue;
+                                }
+                                lastProcessed = file;
                                 if (
-                                    AssetImporter.GetAtPath(path) is TextureImporter
-                                    {
-                                        textureType: TextureImporterType.Sprite
-                                    } srcImporter
+                                    Utils.EditorUi.CancelableProgress(
+                                        Name,
+                                        $"Processing {i + 1}/{total}: {Path.GetFileName(file)}",
+                                        i / (float)total
+                                    )
                                 )
                                 {
-                                    if (srcImporter.isReadable != wasReadable)
-                                    {
-                                        srcImporter.isReadable = wasReadable;
-                                        srcImporter.SaveAndReimport();
-                                    }
+                                    canceled = true;
+                                    break;
+                                }
+
+                                TextureImporter newImporter = ProcessSprite(
+                                    file,
+                                    out ProcessOutcome outcome,
+                                    originalReadable
+                                );
+                                switch (outcome)
+                                {
+                                    case ProcessOutcome.Success:
+                                        ++totalSuccessfullyProcessed;
+                                        if (newImporter != null)
+                                        {
+                                            newImporters.Add(newImporter);
+                                        }
+                                        break;
+                                    case ProcessOutcome.SkippedNoChange:
+                                        // No-op
+                                        break;
+                                    case ProcessOutcome.RetryableError:
+                                        needReprocessing.Add(file);
+                                        break;
+                                    case ProcessOutcome.FatalError:
+                                        // Log already handled inside ProcessSprite; skip
+                                        break;
                                 }
                             }
-                            catch (Exception ex)
+                        }
+                        finally
+                        {
+                            AssetDatabase.StopAssetEditing();
+                            foreach (TextureImporter newImporter in newImporters)
                             {
-                                this.LogError($"Failed to restore readability for '{path}'.", ex);
+                                newImporter.SaveAndReimport();
                             }
+                            AssetDatabase.SaveAssets();
+                            AssetDatabase.Refresh();
                         }
                     }
-                    finally
+
+                    if (!canceled && needReprocessing.Any())
                     {
-                        AssetDatabase.StopAssetEditing();
-                        AssetDatabase.SaveAssets();
-                        AssetDatabase.Refresh();
+                        newImporters.Clear();
+                        AssetDatabase.StartAssetEditing();
+                        try
+                        {
+                            foreach (string file in needReprocessing)
+                            {
+                                TextureImporter newImporter = ProcessSprite(
+                                    file,
+                                    out ProcessOutcome outcome,
+                                    originalReadable
+                                );
+                                if (outcome == ProcessOutcome.Success && newImporter != null)
+                                {
+                                    ++totalSuccessfullyProcessed;
+                                    newImporters.Add(newImporter);
+                                }
+                            }
+                        }
+                        finally
+                        {
+                            AssetDatabase.StopAssetEditing();
+                            foreach (TextureImporter newImporter in newImporters)
+                            {
+                                newImporter.SaveAndReimport();
+                            }
+                            AssetDatabase.SaveAssets();
+                            AssetDatabase.Refresh();
+                        }
+                    }
+
+                    // Restore readability to originals that we changed
+                    if (originalReadable.Count > 0 && !_overwriteOriginals)
+                    {
+                        AssetDatabase.StartAssetEditing();
+                        try
+                        {
+                            foreach ((string path, bool wasReadable) in originalReadable)
+                            {
+                                try
+                                {
+                                    if (
+                                        AssetImporter.GetAtPath(path) is TextureImporter
+                                        {
+                                            textureType: TextureImporterType.Sprite
+                                        } srcImporter
+                                    )
+                                    {
+                                        if (srcImporter.isReadable != wasReadable)
+                                        {
+                                            srcImporter.isReadable = wasReadable;
+                                            srcImporter.SaveAndReimport();
+                                        }
+                                    }
+                                }
+                                catch (Exception ex)
+                                {
+                                    this.LogError(
+                                        $"Failed to restore readability for '{path}'.",
+                                        ex
+                                    );
+                                }
+                            }
+                        }
+                        finally
+                        {
+                            AssetDatabase.StopAssetEditing();
+                            AssetDatabase.SaveAssets();
+                            AssetDatabase.Refresh();
+                        }
+                    }
+
+                    if (canceled)
+                    {
+                        this.LogWarn($"Sprite cropping canceled by user.");
+                    }
+                    else
+                    {
+                        int skipped = _filesToProcess.Count - totalSuccessfullyProcessed;
+                        this.Log(
+                            $"{totalSuccessfullyProcessed} sprites processed successfully. Skipped: {skipped}"
+                        );
                     }
                 }
-
-                if (canceled)
+                catch (Exception e)
                 {
-                    this.LogWarn($"Sprite cropping canceled by user.");
-                }
-                else
-                {
-                    this.Log(
-                        $"{newImporters.Count} sprites processed successfully. Skipped: {_filesToProcess.Count - needReprocessing.Count - newImporters.Count}"
+                    this.LogError(
+                        $"An error occurred during processing. Last processed: {lastProcessed}.",
+                        e
                     );
                 }
-            }
-            catch (Exception e)
-            {
-                this.LogError(
-                    $"An error occurred during processing. Last processed: {lastProcessed}.",
-                    e
-                );
-            }
-            finally
-            {
-                Utils.EditorUi.ClearProgress();
+                finally
+                {
+                    Utils.EditorUi.ClearProgress();
+                }
             }
         }
 
@@ -835,10 +858,11 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             }
 
             Texture2D cropped = new(cropWidth, cropHeight, TextureFormat.RGBA32, false);
-            using PooledResource<Color32[]> pooledCropped = WallstopFastArrayPool<Color32>.Get(
-                cropWidth * cropHeight,
-                out Color32[] croppedPixels
-            );
+            int pixelCount = cropWidth * cropHeight;
+            // Note: We need an exact-size array for SetPixels32, which requires the array length
+            // to exactly match width * height. SystemArrayPool returns arrays that may be larger
+            // than requested, so we must allocate an exact-size array for the Unity API call.
+            Color32[] croppedPixels = new Color32[pixelCount];
 
             int srcX0 = Mathf.Max(visibleMinX, 0);
             int srcY0 = Mathf.Max(visibleMinY, 0);

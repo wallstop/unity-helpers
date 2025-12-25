@@ -8,7 +8,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
     using WallstopStudios.UnityHelpers.Core.Extension;
     using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Core.Helper.Logging;
-    using WallstopStudios.UnityHelpers.Tests.TestUtils;
+    using WallstopStudios.UnityHelpers.Tests.Core;
 
     public sealed class LoggingExtensionTests : CommonTestBase
     {
@@ -64,8 +64,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             Assert.AreEqual("<c>Hello</c>", formatted);
         }
 
-        [Test]
-        public void SimpleLogging()
+        [TestCase(true)]
+        [TestCase(false)]
+        public void SimpleLogging(bool pretty)
         {
             GameObject go = Track(new GameObject(nameof(SimpleLogging), typeof(SpriteRenderer)));
 
@@ -76,47 +77,45 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             try
             {
                 int expectedLogCount = 0;
-                foreach (bool pretty in new[] { true, false })
+
+                assertion = message =>
                 {
-                    assertion = message =>
+                    if (pretty)
                     {
-                        if (pretty)
-                        {
-                            Assert.IsTrue(message.Contains(nameof(SimpleLogging)), message);
-                            Assert.IsTrue(message.Contains(nameof(GameObject)), message);
-                            Assert.IsTrue(message.Contains("Hello, world!"), message);
-                        }
-                        else
-                        {
-                            Assert.AreEqual("Hello, world!", message);
-                        }
-                    };
-
-                    go.Log($"Hello, world!", pretty: pretty);
-                    Assert.AreEqual(++expectedLogCount, logCount);
-                    Assert.IsNull(exception, exception?.ToString());
-
-                    SpriteRenderer sr = go.GetComponent<SpriteRenderer>();
-
-                    assertion = message =>
+                        Assert.IsTrue(message.Contains(nameof(SimpleLogging)), message);
+                        Assert.IsTrue(message.Contains(nameof(GameObject)), message);
+                        Assert.IsTrue(message.Contains("Hello, world!"), message);
+                    }
+                    else
                     {
-                        if (pretty)
-                        {
-                            Assert.IsTrue(message.Contains(nameof(SimpleLogging)), message);
-                            Assert.IsTrue(message.Contains(nameof(SpriteRenderer)), message);
-                            Assert.IsTrue(message.Contains("Hello, world!"), message);
-                        }
-                        else
-                        {
-                            Assert.AreEqual("Hello, world!", message);
-                        }
-                    };
+                        Assert.AreEqual("Hello, world!", message);
+                    }
+                };
 
-                    sr.Log($"Hello, world!", pretty: pretty);
+                go.Log($"Hello, world!", pretty: pretty);
+                Assert.AreEqual(++expectedLogCount, logCount);
+                Assert.IsNull(exception, exception?.ToString());
 
-                    Assert.AreEqual(++expectedLogCount, logCount);
-                    Assert.IsNull(exception, exception?.ToString());
-                }
+                SpriteRenderer sr = go.GetComponent<SpriteRenderer>();
+
+                assertion = message =>
+                {
+                    if (pretty)
+                    {
+                        Assert.IsTrue(message.Contains(nameof(SimpleLogging)), message);
+                        Assert.IsTrue(message.Contains(nameof(SpriteRenderer)), message);
+                        Assert.IsTrue(message.Contains("Hello, world!"), message);
+                    }
+                    else
+                    {
+                        Assert.AreEqual("Hello, world!", message);
+                    }
+                };
+
+                sr.Log($"Hello, world!", pretty: pretty);
+
+                Assert.AreEqual(++expectedLogCount, logCount);
+                Assert.IsNull(exception, exception?.ToString());
             }
             finally
             {
@@ -140,8 +139,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             }
         }
 
-        [Test]
-        public void ColorLogging()
+        [TestCase(true)]
+        [TestCase(false)]
+        public void ColorLogging(bool pretty)
         {
             GameObject go = Track(new GameObject(nameof(ColorLogging), typeof(SpriteRenderer)));
 
@@ -153,68 +153,65 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             try
             {
                 int expectedLogCount = 0;
-                foreach (bool pretty in new[] { true, false })
+                assertion = message =>
                 {
-                    assertion = message =>
+                    if (pretty)
                     {
-                        if (pretty)
-                        {
-                            Assert.IsTrue(message.Contains(nameof(ColorLogging)), message);
-                            Assert.IsTrue(message.Contains(nameof(GameObject)), message);
-                            Assert.IsTrue(
-                                message.Contains("Hello <color=#FF0000FF>world</color>"),
-                                message
-                            );
-                        }
-                        else
-                        {
-                            Assert.AreEqual("Hello <color=#FF0000FF>world</color>", message);
-                        }
-                    };
-                    go.Log($"Hello {"world":#red}", pretty: pretty);
-                    Assert.AreEqual(++expectedLogCount, logCount);
-                    Assert.IsNull(exception, exception?.ToString());
+                        Assert.IsTrue(message.Contains(nameof(ColorLogging)), message);
+                        Assert.IsTrue(message.Contains(nameof(GameObject)), message);
+                        Assert.IsTrue(
+                            message.Contains("Hello <color=#FF0000FF>world</color>"),
+                            message
+                        );
+                    }
+                    else
+                    {
+                        Assert.AreEqual("Hello <color=#FF0000FF>world</color>", message);
+                    }
+                };
+                go.Log($"Hello {"world":#red}", pretty: pretty);
+                Assert.AreEqual(++expectedLogCount, logCount);
+                Assert.IsNull(exception, exception?.ToString());
 
-                    assertion = message =>
+                assertion = message =>
+                {
+                    if (pretty)
                     {
-                        if (pretty)
-                        {
-                            Assert.IsTrue(message.Contains(nameof(ColorLogging)), message);
-                            Assert.IsTrue(message.Contains(nameof(GameObject)), message);
-                            Assert.IsTrue(
-                                message.Contains("Hello <color=#00FF00FF>world</color>"),
-                                message
-                            );
-                        }
-                        else
-                        {
-                            Assert.AreEqual("Hello <color=#00FF00FF>world</color>", message);
-                        }
-                    };
-                    go.Log($"Hello {"world":#green}", pretty: pretty);
-                    Assert.AreEqual(++expectedLogCount, logCount);
-                    Assert.IsNull(exception, exception?.ToString());
+                        Assert.IsTrue(message.Contains(nameof(ColorLogging)), message);
+                        Assert.IsTrue(message.Contains(nameof(GameObject)), message);
+                        Assert.IsTrue(
+                            message.Contains("Hello <color=#00FF00FF>world</color>"),
+                            message
+                        );
+                    }
+                    else
+                    {
+                        Assert.AreEqual("Hello <color=#00FF00FF>world</color>", message);
+                    }
+                };
+                go.Log($"Hello {"world":#green}", pretty: pretty);
+                Assert.AreEqual(++expectedLogCount, logCount);
+                Assert.IsNull(exception, exception?.ToString());
 
-                    assertion = message =>
+                assertion = message =>
+                {
+                    if (pretty)
                     {
-                        if (pretty)
-                        {
-                            Assert.IsTrue(message.Contains(nameof(ColorLogging)), message);
-                            Assert.IsTrue(message.Contains(nameof(GameObject)), message);
-                            Assert.IsTrue(
-                                message.Contains("Hello <color=#FFAABB>world</color>"),
-                                message
-                            );
-                        }
-                        else
-                        {
-                            Assert.AreEqual("Hello <color=#FFAABB>world</color>", message);
-                        }
-                    };
-                    go.Log($"Hello {"world":#FFAABB}", pretty: pretty);
-                    Assert.AreEqual(++expectedLogCount, logCount);
-                    Assert.IsNull(exception, exception?.ToString());
-                }
+                        Assert.IsTrue(message.Contains(nameof(ColorLogging)), message);
+                        Assert.IsTrue(message.Contains(nameof(GameObject)), message);
+                        Assert.IsTrue(
+                            message.Contains("Hello <color=#FFAABB>world</color>"),
+                            message
+                        );
+                    }
+                    else
+                    {
+                        Assert.AreEqual("Hello <color=#FFAABB>world</color>", message);
+                    }
+                };
+                go.Log($"Hello {"world":#FFAABB}", pretty: pretty);
+                Assert.AreEqual(++expectedLogCount, logCount);
+                Assert.IsNull(exception, exception?.ToString());
             }
             finally
             {
@@ -238,8 +235,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             }
         }
 
-        [Test]
-        public void BoldLogging()
+        [TestCase(true)]
+        [TestCase(false)]
+        public void BoldLogging(bool pretty)
         {
             GameObject go = Track(new GameObject(nameof(BoldLogging), typeof(SpriteRenderer)));
 
@@ -251,33 +249,30 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             try
             {
                 int expectedLogCount = 0;
-                foreach (bool pretty in new[] { true, false })
+                assertion = message =>
                 {
-                    assertion = message =>
+                    if (pretty)
                     {
-                        if (pretty)
-                        {
-                            Assert.IsTrue(message.Contains(nameof(BoldLogging)), message);
-                            Assert.IsTrue(message.Contains(nameof(GameObject)), message);
-                            Assert.IsTrue(message.Contains("Hello <b>world</b>"), message);
-                        }
-                        else
-                        {
-                            Assert.AreEqual("Hello <b>world</b>", message);
-                        }
-                    };
-                    go.Log($"Hello {"world":b}", pretty: pretty);
-                    Assert.AreEqual(++expectedLogCount, logCount);
-                    Assert.IsNull(exception, exception?.ToString());
+                        Assert.IsTrue(message.Contains(nameof(BoldLogging)), message);
+                        Assert.IsTrue(message.Contains(nameof(GameObject)), message);
+                        Assert.IsTrue(message.Contains("Hello <b>world</b>"), message);
+                    }
+                    else
+                    {
+                        Assert.AreEqual("Hello <b>world</b>", message);
+                    }
+                };
+                go.Log($"Hello {"world":b}", pretty: pretty);
+                Assert.AreEqual(++expectedLogCount, logCount);
+                Assert.IsNull(exception, exception?.ToString());
 
-                    go.Log($"Hello {"world":bold}", pretty: pretty);
-                    Assert.AreEqual(++expectedLogCount, logCount);
-                    Assert.IsNull(exception, exception?.ToString());
+                go.Log($"Hello {"world":bold}", pretty: pretty);
+                Assert.AreEqual(++expectedLogCount, logCount);
+                Assert.IsNull(exception, exception?.ToString());
 
-                    go.Log($"Hello {"world":!}", pretty: pretty);
-                    Assert.AreEqual(++expectedLogCount, logCount);
-                    Assert.IsNull(exception, exception?.ToString());
-                }
+                go.Log($"Hello {"world":!}", pretty: pretty);
+                Assert.AreEqual(++expectedLogCount, logCount);
+                Assert.IsNull(exception, exception?.ToString());
             }
             finally
             {
@@ -301,8 +296,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             }
         }
 
-        [Test]
-        public void JsonLogging()
+        [TestCase(true)]
+        [TestCase(false)]
+        public void JsonLogging(bool pretty)
         {
             GameObject go = Track(new GameObject(nameof(JsonLogging), typeof(SpriteRenderer)));
 
@@ -314,80 +310,77 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             try
             {
                 int expectedLogCount = 0;
-                foreach (bool pretty in new[] { true, false })
+                assertion = message =>
                 {
-                    assertion = message =>
+                    if (pretty)
                     {
-                        if (pretty)
-                        {
-                            Assert.IsTrue(message.Contains(nameof(JsonLogging)), message);
-                            Assert.IsTrue(message.Contains(nameof(GameObject)), message);
-                            Assert.IsTrue(message.Contains("Hello [\"a\",\"b\",\"c\"]"), message);
-                        }
-                        else
-                        {
-                            Assert.AreEqual("Hello [\"a\",\"b\",\"c\"]", message);
-                        }
-                    };
-
-                    go.Log($"Hello {new List<string> { "a", "b", "c" }:json}", pretty: pretty);
-                    Assert.AreEqual(++expectedLogCount, logCount);
-                    Assert.IsNull(exception, exception?.ToString());
-
-                    assertion = message =>
+                        Assert.IsTrue(message.Contains(nameof(JsonLogging)), message);
+                        Assert.IsTrue(message.Contains(nameof(GameObject)), message);
+                        Assert.IsTrue(message.Contains("Hello [\"a\",\"b\",\"c\"]"), message);
+                    }
+                    else
                     {
-                        if (pretty)
-                        {
-                            Assert.IsTrue(message.Contains(nameof(JsonLogging)), message);
-                            Assert.IsTrue(message.Contains(nameof(GameObject)), message);
-                            Assert.IsTrue(message.Contains("Hello {}"), message);
-                        }
-                        else
-                        {
-                            Assert.AreEqual("Hello {}", message);
-                        }
-                    };
-                    go.Log($"Hello {null:json}", pretty: pretty);
-                    Assert.AreEqual(++expectedLogCount, logCount);
-                    Assert.IsNull(exception, exception?.ToString());
+                        Assert.AreEqual("Hello [\"a\",\"b\",\"c\"]", message);
+                    }
+                };
 
-                    assertion = message =>
-                    {
-                        if (pretty)
-                        {
-                            Assert.IsTrue(message.Contains(nameof(JsonLogging)), message);
-                            Assert.IsTrue(message.Contains(nameof(GameObject)), message);
-                            Assert.IsTrue(message.Contains("Hello [1,2,3,4]"), message);
-                        }
-                        else
-                        {
-                            Assert.AreEqual("Hello [1,2,3,4]", message);
-                        }
-                    };
-                    go.Log($"Hello {new[] { 1, 2, 3, 4 }:json}", pretty: pretty);
-                    Assert.AreEqual(++expectedLogCount, logCount);
-                    Assert.IsNull(exception, exception?.ToString());
+                go.Log($"Hello {new List<string> { "a", "b", "c" }:json}", pretty: pretty);
+                Assert.AreEqual(++expectedLogCount, logCount);
+                Assert.IsNull(exception, exception?.ToString());
 
-                    assertion = message =>
+                assertion = message =>
+                {
+                    if (pretty)
                     {
-                        if (pretty)
-                        {
-                            Assert.IsTrue(message.Contains(nameof(JsonLogging)), message);
-                            Assert.IsTrue(message.Contains(nameof(GameObject)), message);
-                            Assert.IsTrue(message.Contains("Hello {\"key\":\"value\"}"), message);
-                        }
-                        else
-                        {
-                            Assert.AreEqual("Hello {\"key\":\"value\"}", message);
-                        }
-                    };
-                    go.Log(
-                        $"Hello {new Dictionary<string, string> { ["key"] = "value" }:json}",
-                        pretty: pretty
-                    );
-                    Assert.AreEqual(++expectedLogCount, logCount);
-                    Assert.IsNull(exception, exception?.ToString());
-                }
+                        Assert.IsTrue(message.Contains(nameof(JsonLogging)), message);
+                        Assert.IsTrue(message.Contains(nameof(GameObject)), message);
+                        Assert.IsTrue(message.Contains("Hello {}"), message);
+                    }
+                    else
+                    {
+                        Assert.AreEqual("Hello {}", message);
+                    }
+                };
+                go.Log($"Hello {null:json}", pretty: pretty);
+                Assert.AreEqual(++expectedLogCount, logCount);
+                Assert.IsNull(exception, exception?.ToString());
+
+                assertion = message =>
+                {
+                    if (pretty)
+                    {
+                        Assert.IsTrue(message.Contains(nameof(JsonLogging)), message);
+                        Assert.IsTrue(message.Contains(nameof(GameObject)), message);
+                        Assert.IsTrue(message.Contains("Hello [1,2,3,4]"), message);
+                    }
+                    else
+                    {
+                        Assert.AreEqual("Hello [1,2,3,4]", message);
+                    }
+                };
+                go.Log($"Hello {new[] { 1, 2, 3, 4 }:json}", pretty: pretty);
+                Assert.AreEqual(++expectedLogCount, logCount);
+                Assert.IsNull(exception, exception?.ToString());
+
+                assertion = message =>
+                {
+                    if (pretty)
+                    {
+                        Assert.IsTrue(message.Contains(nameof(JsonLogging)), message);
+                        Assert.IsTrue(message.Contains(nameof(GameObject)), message);
+                        Assert.IsTrue(message.Contains("Hello {\"key\":\"value\"}"), message);
+                    }
+                    else
+                    {
+                        Assert.AreEqual("Hello {\"key\":\"value\"}", message);
+                    }
+                };
+                go.Log(
+                    $"Hello {new Dictionary<string, string> { ["key"] = "value" }:json}",
+                    pretty: pretty
+                );
+                Assert.AreEqual(++expectedLogCount, logCount);
+                Assert.IsNull(exception, exception?.ToString());
             }
             finally
             {
@@ -411,8 +404,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             }
         }
 
-        [Test]
-        public void SizeLogging()
+        [TestCase(true)]
+        [TestCase(false)]
+        public void SizeLogging(bool pretty)
         {
             GameObject go = Track(new GameObject(nameof(SizeLogging), typeof(SpriteRenderer)));
 
@@ -424,29 +418,26 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             try
             {
                 int expectedLogCount = 0;
-                foreach (bool pretty in new[] { true, false })
+                assertion = message =>
                 {
-                    assertion = message =>
+                    if (pretty)
                     {
-                        if (pretty)
-                        {
-                            Assert.IsTrue(message.Contains(nameof(SizeLogging)), message);
-                            Assert.IsTrue(message.Contains(nameof(GameObject)), message);
-                            Assert.IsTrue(message.Contains("Hello <size=40>world</size>"), message);
-                        }
-                        else
-                        {
-                            Assert.AreEqual("Hello <size=40>world</size>", message);
-                        }
-                    };
-                    go.Log($"Hello {"world":40}", pretty: pretty);
-                    Assert.AreEqual(++expectedLogCount, logCount);
-                    Assert.IsNull(exception, exception?.ToString());
+                        Assert.IsTrue(message.Contains(nameof(SizeLogging)), message);
+                        Assert.IsTrue(message.Contains(nameof(GameObject)), message);
+                        Assert.IsTrue(message.Contains("Hello <size=40>world</size>"), message);
+                    }
+                    else
+                    {
+                        Assert.AreEqual("Hello <size=40>world</size>", message);
+                    }
+                };
+                go.Log($"Hello {"world":40}", pretty: pretty);
+                Assert.AreEqual(++expectedLogCount, logCount);
+                Assert.IsNull(exception, exception?.ToString());
 
-                    go.Log($"Hello {"world":size=40}", pretty: pretty);
-                    Assert.AreEqual(++expectedLogCount, logCount);
-                    Assert.IsNull(exception, exception?.ToString());
-                }
+                go.Log($"Hello {"world":size=40}", pretty: pretty);
+                Assert.AreEqual(++expectedLogCount, logCount);
+                Assert.IsNull(exception, exception?.ToString());
             }
             finally
             {
@@ -470,8 +461,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             }
         }
 
-        [Test]
-        public void DateTimeNormalFormatTests()
+        [TestCase(true)]
+        [TestCase(false)]
+        public void DateTimeNormalFormatTests(bool pretty)
         {
             GameObject go = Track(
                 new GameObject(nameof(DateTimeNormalFormatTests), typeof(SpriteRenderer))
@@ -484,53 +476,41 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             {
                 int expectedLogCount = 0;
                 DateTime now = DateTime.UtcNow;
-                foreach (bool pretty in new[] { true, false })
+                assertion = message =>
                 {
-                    assertion = message =>
+                    if (pretty)
                     {
-                        if (pretty)
-                        {
-                            Assert.IsTrue(
-                                message.Contains(nameof(DateTimeNormalFormatTests)),
-                                message
-                            );
-                            Assert.IsTrue(message.Contains(nameof(GameObject)), message);
-                            Assert.IsTrue(message.Contains($"Hello {now:O}"), message);
-                        }
-                        else
-                        {
-                            Assert.AreEqual($"Hello {now:O}", message);
-                        }
-                    };
-
-                    go.Log($"Hello {now:O}", pretty: pretty);
-                    Assert.AreEqual(++expectedLogCount, logCount);
-                    Assert.IsNull(exception, exception?.ToString());
-
-                    assertion = message =>
+                        Assert.IsTrue(message.Contains(nameof(DateTimeNormalFormatTests)), message);
+                        Assert.IsTrue(message.Contains(nameof(GameObject)), message);
+                        Assert.IsTrue(message.Contains($"Hello {now:O}"), message);
+                    }
+                    else
                     {
-                        if (pretty)
-                        {
-                            Assert.IsTrue(
-                                message.Contains(nameof(DateTimeNormalFormatTests)),
-                                message
-                            );
-                            Assert.IsTrue(message.Contains(nameof(GameObject)), message);
-                            Assert.IsTrue(
-                                message.Contains($"Hello <size=40>{now}</size>"),
-                                message
-                            );
-                        }
-                        else
-                        {
-                            Assert.AreEqual($"Hello <size=40>{now}</size>", message);
-                        }
-                    };
+                        Assert.AreEqual($"Hello {now:O}", message);
+                    }
+                };
 
-                    go.Log($"Hello {now:40}", pretty: pretty);
-                    Assert.AreEqual(++expectedLogCount, logCount);
-                    Assert.IsNull(exception, exception?.ToString());
-                }
+                go.Log($"Hello {now:O}", pretty: pretty);
+                Assert.AreEqual(++expectedLogCount, logCount);
+                Assert.IsNull(exception, exception?.ToString());
+
+                assertion = message =>
+                {
+                    if (pretty)
+                    {
+                        Assert.IsTrue(message.Contains(nameof(DateTimeNormalFormatTests)), message);
+                        Assert.IsTrue(message.Contains(nameof(GameObject)), message);
+                        Assert.IsTrue(message.Contains($"Hello <size=40>{now}</size>"), message);
+                    }
+                    else
+                    {
+                        Assert.AreEqual($"Hello <size=40>{now}</size>", message);
+                    }
+                };
+
+                go.Log($"Hello {now:40}", pretty: pretty);
+                Assert.AreEqual(++expectedLogCount, logCount);
+                Assert.IsNull(exception, exception?.ToString());
             }
             finally
             {
@@ -554,8 +534,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             }
         }
 
-        [Test]
-        public void StackedTags()
+        [TestCase(true)]
+        [TestCase(false)]
+        public void StackedTags(bool pretty)
         {
             GameObject go = Track(new GameObject(nameof(StackedTags), typeof(SpriteRenderer)));
             int logCount = 0;
@@ -566,50 +547,44 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             try
             {
                 int expectedLogCount = 0;
-                foreach (bool pretty in new[] { true, false })
+                assertion = message =>
                 {
-                    assertion = message =>
+                    if (pretty)
                     {
-                        if (pretty)
-                        {
-                            Assert.IsTrue(message.Contains(nameof(StackedTags)), message);
-                            Assert.IsTrue(message.Contains(nameof(GameObject)), message);
-                            Assert.IsTrue(message.Contains("Hello <b>[1,2,3]</b>"), message);
-                        }
-                        else
-                        {
-                            Assert.AreEqual("Hello <b>[1,2,3]</b>", message);
-                        }
-                    };
-
-                    go.Log($"Hello {new List<int> { 1, 2, 3 }:json,b}", pretty: pretty);
-                    Assert.AreEqual(++expectedLogCount, logCount);
-                    Assert.IsNull(exception, exception?.ToString());
-
-                    assertion = message =>
+                        Assert.IsTrue(message.Contains(nameof(StackedTags)), message);
+                        Assert.IsTrue(message.Contains(nameof(GameObject)), message);
+                        Assert.IsTrue(message.Contains("Hello <b>[1,2,3]</b>"), message);
+                    }
+                    else
                     {
-                        if (pretty)
-                        {
-                            Assert.IsTrue(message.Contains(nameof(StackedTags)), message);
-                            Assert.IsTrue(message.Contains(nameof(GameObject)), message);
-                            Assert.IsTrue(
-                                message.Contains("Hello <color=#FF0000FF><b>[1,2,3]</b></color>"),
-                                message
-                            );
-                        }
-                        else
-                        {
-                            Assert.AreEqual(
-                                "Hello <color=#FF0000FF><b>[1,2,3]</b></color>",
-                                message
-                            );
-                        }
-                    };
+                        Assert.AreEqual("Hello <b>[1,2,3]</b>", message);
+                    }
+                };
 
-                    go.Log($"Hello {new List<int> { 1, 2, 3 }:json,b,color=red}", pretty: pretty);
-                    Assert.AreEqual(++expectedLogCount, logCount);
-                    Assert.IsNull(exception, exception?.ToString());
-                }
+                go.Log($"Hello {new List<int> { 1, 2, 3 }:json,b}", pretty: pretty);
+                Assert.AreEqual(++expectedLogCount, logCount);
+                Assert.IsNull(exception, exception?.ToString());
+
+                assertion = message =>
+                {
+                    if (pretty)
+                    {
+                        Assert.IsTrue(message.Contains(nameof(StackedTags)), message);
+                        Assert.IsTrue(message.Contains(nameof(GameObject)), message);
+                        Assert.IsTrue(
+                            message.Contains("Hello <color=#FF0000FF><b>[1,2,3]</b></color>"),
+                            message
+                        );
+                    }
+                    else
+                    {
+                        Assert.AreEqual("Hello <color=#FF0000FF><b>[1,2,3]</b></color>", message);
+                    }
+                };
+
+                go.Log($"Hello {new List<int> { 1, 2, 3 }:json,b,color=red}", pretty: pretty);
+                Assert.AreEqual(++expectedLogCount, logCount);
+                Assert.IsNull(exception, exception?.ToString());
             }
             finally
             {
@@ -633,8 +608,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             }
         }
 
-        [Test]
-        public void TagsDeduplicate()
+        [TestCase(true)]
+        [TestCase(false)]
+        public void TagsDeduplicate(bool pretty)
         {
             GameObject go = Track(new GameObject(nameof(TagsDeduplicate), typeof(SpriteRenderer)));
             int logCount = 0;
@@ -645,56 +621,50 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             try
             {
                 int expectedLogCount = 0;
-                foreach (bool pretty in new[] { true, false })
+                assertion = message =>
                 {
-                    assertion = message =>
+                    if (pretty)
                     {
-                        if (pretty)
-                        {
-                            Assert.IsTrue(message.Contains(nameof(TagsDeduplicate)), message);
-                            Assert.IsTrue(message.Contains(nameof(GameObject)), message);
-                            Assert.IsTrue(message.Contains("Hello <b>[1,2,3]</b>"), message);
-                        }
-                        else
-                        {
-                            Assert.AreEqual("Hello <b>[1,2,3]</b>", message);
-                        }
-                    };
-
-                    go.Log(
-                        $"Hello {new List<int> { 1, 2, 3 }:json,b,bold,!,bold,b,!,b,bold}",
-                        pretty: pretty
-                    );
-                    Assert.AreEqual(++expectedLogCount, logCount);
-                    Assert.IsNull(exception, exception?.ToString());
-
-                    assertion = message =>
+                        Assert.IsTrue(message.Contains(nameof(TagsDeduplicate)), message);
+                        Assert.IsTrue(message.Contains(nameof(GameObject)), message);
+                        Assert.IsTrue(message.Contains("Hello <b>[1,2,3]</b>"), message);
+                    }
+                    else
                     {
-                        if (pretty)
-                        {
-                            Assert.IsTrue(message.Contains(nameof(TagsDeduplicate)), message);
-                            Assert.IsTrue(message.Contains(nameof(GameObject)), message);
-                            Assert.IsTrue(
-                                message.Contains("Hello <color=#FF0000FF><b>[1,2,3]</b></color>"),
-                                message
-                            );
-                        }
-                        else
-                        {
-                            Assert.AreEqual(
-                                "Hello <color=#FF0000FF><b>[1,2,3]</b></color>",
-                                message
-                            );
-                        }
-                    };
+                        Assert.AreEqual("Hello <b>[1,2,3]</b>", message);
+                    }
+                };
 
-                    go.Log(
-                        $"Hello {new List<int> { 1, 2, 3 }:json,b,!,color=red,b,b,b,b,b,b,b}",
-                        pretty: pretty
-                    );
-                    Assert.AreEqual(++expectedLogCount, logCount);
-                    Assert.IsNull(exception, exception?.ToString());
-                }
+                go.Log(
+                    $"Hello {new List<int> { 1, 2, 3 }:json,b,bold,!,bold,b,!,b,bold}",
+                    pretty: pretty
+                );
+                Assert.AreEqual(++expectedLogCount, logCount);
+                Assert.IsNull(exception, exception?.ToString());
+
+                assertion = message =>
+                {
+                    if (pretty)
+                    {
+                        Assert.IsTrue(message.Contains(nameof(TagsDeduplicate)), message);
+                        Assert.IsTrue(message.Contains(nameof(GameObject)), message);
+                        Assert.IsTrue(
+                            message.Contains("Hello <color=#FF0000FF><b>[1,2,3]</b></color>"),
+                            message
+                        );
+                    }
+                    else
+                    {
+                        Assert.AreEqual("Hello <color=#FF0000FF><b>[1,2,3]</b></color>", message);
+                    }
+                };
+
+                go.Log(
+                    $"Hello {new List<int> { 1, 2, 3 }:json,b,!,color=red,b,b,b,b,b,b,b}",
+                    pretty: pretty
+                );
+                Assert.AreEqual(++expectedLogCount, logCount);
+                Assert.IsNull(exception, exception?.ToString());
             }
             finally
             {

@@ -227,14 +227,8 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 return len1;
             }
 
-            using PooledResource<int[]> prevLease = WallstopFastArrayPool<int>.Get(
-                len2 + 1,
-                out int[] prev
-            );
-            using PooledResource<int[]> currLease = WallstopFastArrayPool<int>.Get(
-                len2 + 1,
-                out int[] curr
-            );
+            using PooledArray<int> prevLease = SystemArrayPool<int>.Get(len2 + 1, out int[] prev);
+            using PooledArray<int> currLease = SystemArrayPool<int>.Get(len2 + 1, out int[] curr);
 
             for (int j = 0; j <= len2; ++j)
             {
@@ -1051,6 +1045,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 return char.ToLowerInvariant(pascalCase[0]).ToString();
             }
 
+            pascalCase = RemoveCombiningDotAboveIfPresent(pascalCase);
             using PooledResource<StringBuilder> stringBuilderBuffer = Buffers.GetStringBuilder(
                 value.Length,
                 out StringBuilder stringBuilder
@@ -1328,10 +1323,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 return false;
             }
 
-            using PooledResource<byte[]> lease = WallstopFastArrayPool<byte>.Get(
-                outputLen,
-                out byte[] buffer
-            );
+            using PooledArray<byte> lease = SystemArrayPool<byte>.Get(outputLen, out byte[] buffer);
 
             int k = 0;
             for (int i = 0; i < len; i += 4)
@@ -1433,8 +1425,9 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 return Array.Empty<string>();
             }
 
-            using PooledResource<List<string>> listBuffer = Buffers<string>.List.Get();
-            List<string> words = listBuffer.resource;
+            using PooledResource<List<string>> listBuffer = Buffers<string>.List.Get(
+                out List<string> words
+            );
             using PooledResource<StringBuilder> stringBuilderBuffer = Buffers.GetStringBuilder(
                 input.Length,
                 out StringBuilder currentWord

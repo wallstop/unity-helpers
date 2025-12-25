@@ -1,12 +1,15 @@
 namespace WallstopStudios.UnityHelpers.Tests.Extensions
 {
     using System;
+    using System.Collections.Concurrent;
     using System.Collections.Generic;
     using System.Linq;
+    using System.Threading.Tasks;
     using NUnit.Framework;
     using WallstopStudios.UnityHelpers.Core.Extension;
+    using WallstopStudios.UnityHelpers.Tests.Core;
 
-    public sealed class DictionaryExtensionTests
+    public sealed class DictionaryExtensionTests : CommonTestBase
     {
         [Test]
         public void GetOrAddValueProducer()
@@ -461,10 +464,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         [Test]
         public void TryRemoveFromConcurrentDictionary()
         {
-            System.Collections.Concurrent.ConcurrentDictionary<string, int> dictionary = new();
-            dictionary["one"] = 1;
-            dictionary["two"] = 2;
-            dictionary["three"] = 3;
+            ConcurrentDictionary<string, int> dictionary = new()
+            {
+                ["one"] = 1,
+                ["two"] = 2,
+                ["three"] = 3,
+            };
 
             bool removed = dictionary.TryRemove("two", out int value);
             Assert.IsTrue(removed);
@@ -658,7 +663,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         [Test]
         public void GetOrAddConcurrentDictionary()
         {
-            System.Collections.Concurrent.ConcurrentDictionary<string, int> dict = new();
+            ConcurrentDictionary<string, int> dict = new();
 
             int value = dict.GetOrAdd("test", () => 100);
             Assert.AreEqual(100, value);
@@ -671,7 +676,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         [Test]
         public void GetOrAddKeyConcurrentDictionary()
         {
-            System.Collections.Concurrent.ConcurrentDictionary<string, int> dict = new();
+            ConcurrentDictionary<string, int> dict = new();
 
             int value = dict.GetOrAdd("test", key => key.Length);
             Assert.AreEqual(4, value);
@@ -684,7 +689,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         [Test]
         public void GetOrAddNewConcurrentDictionary()
         {
-            System.Collections.Concurrent.ConcurrentDictionary<string, List<int>> dict = new();
+            ConcurrentDictionary<string, List<int>> dict = new();
 
             List<int> value = dict.GetOrAdd("test");
             Assert.IsNotNull(value);
@@ -700,7 +705,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         [Test]
         public void AddOrUpdateConcurrentDictionary()
         {
-            System.Collections.Concurrent.ConcurrentDictionary<string, int> dict = new();
+            ConcurrentDictionary<string, int> dict = new();
 
             int value = dict.AddOrUpdate("test", key => 100, (key, existing) => existing + 1);
             Assert.AreEqual(100, value);
@@ -712,13 +717,35 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         [Test]
         public void TryAddConcurrentDictionary()
         {
-            System.Collections.Concurrent.ConcurrentDictionary<string, int> dict = new();
+            ConcurrentDictionary<string, int> dict = new();
 
             int value = dict.TryAdd("test", key => 100);
             Assert.AreEqual(100, value);
 
             int existing = dict.TryAdd("test", key => 200);
             Assert.AreEqual(100, existing);
+        }
+
+        [Test]
+        public void ConcurrentDictionaryAddOrUpdateHandlesParallelWrites()
+        {
+            ConcurrentDictionary<string, int> dictionary = new();
+            Parallel.For(
+                0,
+                1000,
+                _ => dictionary.AddOrUpdate("counter", _ => 1, (_, existing) => existing + 1)
+            );
+
+            Assert.IsTrue(dictionary.TryGetValue("counter", out int value));
+            Assert.AreEqual(1000, value);
+        }
+
+        [Test]
+        public void ToDictionaryThrowsOnDuplicateTupleKeys()
+        {
+            IEnumerable<(string, int)> tuples = new List<(string, int)> { ("dup", 1), ("dup", 2) };
+
+            Assert.Throws<ArgumentException>(() => tuples.ToDictionary());
         }
     }
 }

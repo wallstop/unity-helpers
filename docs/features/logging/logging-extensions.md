@@ -1,0 +1,138 @@
+# Unity Logging Extensions & Tag Formatter
+
+Bring structured, color-coded logs to any Unity project without sprinkling `Debug.Log` everywhere. `WallstopStudiosLogger` adds extension methods (`this.Log`, `this.LogWarn`, `this.LogError`, `this.LogDebug`) that automatically capture component metadata, thread info, timestamps, and user-defined tags rendered by `UnityLogTagFormatter`.
+
+- **Thread-safe:** Logs are marshaled back to the Unity main thread when required (via `UnityMainThreadDispatcher` / `UnityMainThreadGuard`).
+- **Readable output:** Pretty mode prefixes `time|GameObject[Component]` when logging on the main thread and inserts `|thread|` only when background workers emit messages, keeping logs deterministic without extra noise.
+- **Tag formatter:** Apply rich text decorations inline (`$"{name:b,color=cyan}"`) without string concatenation. Tags deduplicate automatically and can be stacked in any order.
+
+> These helpers live in `Runtime/Core/Extension/WallstopStudiosLogger.cs` and `Runtime/Core/Helper/Logging/UnityLogTagFormatter.cs`. Tests at `Tests/Runtime/Extensions/LoggingExtensionTests.cs` demonstrate every supported scenario.
+
+---
+
+## Sample Scene
+
+- Import the `Logging – Tag Formatter` package sample and open `Samples~/Logging - Tag Formatter/Scenes/LoggingDemo.unity`.
+- Press Play to use the on-screen toggles (global logging, component logging, pretty output) and emit Info/Warn/Error logs that showcase the decorators.
+- Review `LoggingDemoBootstrap` (decorator registration) and `LoggingDemoController` (runtime toggles + `this.Log*` usage) to copy the patterns into your project.
+
+---
+
+## Quick Start
+
+```csharp
+using UnityEngine;
+using WallstopStudios.UnityHelpers.Core.Extension;
+
+public sealed class EnemyHUD : MonoBehaviour
+{
+    private void Start()
+    {
+        string mode = Application.isEditor ? "Test" : "Live";
+        int hp = 42;
+
+        this.Log(
+            $"Player {"Rogue-17":b,color=orange} :: HP {hp:color=#FF4444} ({mode:italic})"
+        );
+    }
+}
+```
+
+- Pass interpolated strings directly; the formatter applies tags before Unity renders the message.
+- Use `pretty: false` if you only want the decorated text without the timestamp (or optional thread) prefix.
+- Call `this.LogWarn`, `this.LogError`, or `this.LogDebug` for severity-specific output; all overloads accept `Exception e` to append stack traces.
+
+### Enabling logging in builds
+
+`ENABLE_UBERLOGGING` is defined automatically for `DEBUG`, `DEVELOPMENT_BUILD`, and `UNITY_EDITOR`. Define it manually (or `DEBUG_LOGGING` / `WARN_LOGGING` / `ERROR_LOGGING`) in Player Settings if you need the extensions in release builds.
+
+---
+
+## Default Tag Reference
+
+| Tag syntax                              | Effect                          | Notes                                                 |
+| --------------------------------------- | ------------------------------- | ----------------------------------------------------- |
+| `:b`, `:bold`, `:!`                     | Wraps value in `<b>`            | Editor-only (uses Unity rich text)                    |
+| `:i`, `:italic`, `:_`                   | Wraps value in `<i>`            | Editor-only                                           |
+| `:json`                                 | Serializes value via `ToJson()` | Works in player builds                                |
+| `:#color`, `:color=name`, `:color=#hex` | Wraps with `<color=...>`        | Named colors resolve to `UnityEngine.Color` constants |
+| `:42`, `:size=42`                       | Wraps with `<size=42>`          | Integers 1–100 (or any positive int)                  |
+
+- Combine tags using commas: `$"{stats:json,b,color=yellow}"` emits bold, colored JSON.
+- Tags are applied in priority order and deduplicate automatically, so repeating `:b` has no effect.
+
+---
+
+## Custom Decorations
+
+Register project-specific tags at startup (for example, in an `InitializeOnLoad` editor script or a runtime bootstrapper):
+
+```csharp
+using WallstopStudios.UnityHelpers.Core.Extension;
+using WallstopStudios.UnityHelpers.Core.Helper.Logging;
+
+[InitializeOnLoad]
+internal static class LoggingBootstrap
+{
+    static LoggingBootstrap()
+    {
+        UnityLogTagFormatter formatter = WallstopStudiosLogger.LogInstance;
+
+        formatter.AddDecoration(
+            predicate: tag => tag.StartsWith("stat:", StringComparison.OrdinalIgnoreCase),
+            format: (tag, value) =>
+            {
+                string label = tag.Substring("stat:".Length);
+                return $"<color=#7AD7FF>[{label}]</color> {value}";
+            },
+            tag: "StatLabel",
+            priority: -10 // run before built-ins
+        );
+    }
+}
+```
+
+Key APIs:
+
+- `AddDecoration(string match, Func<object,string> format, string tag, int priority = 0, bool editorOnly = false, bool force = false)`
+- `AddDecoration(Func<string,bool> predicate, Func<string,object,string> format, string tag, int priority = 0, bool editorOnly = false, bool force = false)`
+- `RemoveDecoration(string tag, out Decoration removed)` to swap or disable decorators at runtime.
+- `UnityLogTagFormatter.Separator (',')` controls how stacked tags are parsed.
+
+Use negative priorities for “outer” wrappers (run earlier) and higher numbers for final passes. Setting `force: true` replaces existing tags with the same name.
+
+---
+
+## Extension Method Cheat Sheet
+
+| API                                                                                                      | Description                                                                                      |
+| -------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| `component.Log(FormattableString, Exception e = null, bool pretty = true)`                               | Sends an info log through the formatter. Guarded by `ENABLE_UBERLOGGING`/`DEBUG_LOGGING`.        |
+| `component.LogWarn(...)`, `component.LogError(...)`, `component.LogDebug(...)`                           | Severity-specific variants with the same signature.                                              |
+| `component.GenericToString()`                                                                            | Serializes all public fields/properties into JSON (used by the formatter when you pass `:json`). |
+| `component.EnableLogging()` / `component.DisableLogging()`                                               | Per-object toggle. Disabled components are skipped without allocations.                          |
+| `component.GlobalEnableLogging()` / `component.GlobalDisableLogging()` / `SetGlobalLoggingEnabled(bool)` | Global kill switch suitable for in-game consoles or dev toggles.                                 |
+| `WallstopStudiosLogger.IsGlobalLoggingEnabled()`                                                         | Query current state (useful for tooling UIs).                                                    |
+
+Additional behavior:
+
+- **Thread routing:** If a log originates off the main thread, the extension tries `UnityMainThreadDispatcher.TryDispatchToMainThread` first. If unavailable, it falls back to `UnityMainThreadGuard.TryPostToMainThread` and, if that fails, emits an “offline” log with a `[WallstopMainThreadLogger:*]` prefix.
+- **Pretty output:** Keeps logs uniform (`timestamp|GameObject[Component]|message` on the main thread, inserting `|thread|` only for worker threads). Pass `pretty: false` when emitting data the Unity console already decorates (for example, performance CSV dumps).
+- **Context awareness:** Unity context objects are forwarded to `Debug.Log*`, preserving click-to-focus navigation even when logs originate from pooled helper classes.
+
+---
+
+## Best Practices
+
+1. **Register tags once** — Use static constructors or `[RuntimeInitializeOnLoadMethod]` to register project-wide tags. Avoid allocating per-frame delegates.
+2. **Prefer interpolation** — `$"{health:json}"` keeps minimal formatting allocations compared to `string.Format`.
+3. **Use `pretty: false` for exporters** — When writing to files or parsing logs, disable prefixes to simplify downstream tooling.
+4. **Gate release builds** — If you plan to leave logging enabled in production, explicitly define `ENABLE_UBERLOGGING` (or `DEBUG_LOGGING` / `WARN_LOGGING` / `ERROR_LOGGING`) and make sure log volume is acceptable (or wrap noisy calls in your own `#define`s).
+5. **Leverage tests** — `Tests/Runtime/Extensions/LoggingExtensionTests.cs` covers every default tag and stacking scenario. Copy those patterns when adding new decorations to ensure behavior stays deterministic.
+
+---
+
+## Related Topics
+
+- [Unity Main Thread Dispatcher](unity-main-thread-dispatcher.md) — Ensures background logs can find the main thread safely.
+- [Helper Utilities Overview](../utilities/helper-utilities.md) — Highlights other runtime helpers.

@@ -140,6 +140,17 @@ namespace WallstopStudios.UnityHelpers.Visuals.UIToolkit
 
             TimeSpan elapsed = _timer.Elapsed;
             TimeSpan deltaTime = TimeSpan.FromMilliseconds(1000 / _fps);
+
+            // Prevent time accumulation drift: if _lastTick has fallen significantly behind
+            // (e.g., editor was paused/unfocused, or this is the first update after construction),
+            // clamp it BEFORE checking the frame advance condition. This prevents rapid "catch-up"
+            // animation that makes the preview appear to run at too high FPS.
+            // Allow at most one frame of lag before resetting to current time.
+            if (elapsed - _lastTick > deltaTime + deltaTime)
+            {
+                _lastTick = elapsed - deltaTime;
+            }
+
             if (!force && _lastTick + deltaTime > elapsed)
             {
                 return;
@@ -147,6 +158,7 @@ namespace WallstopStudios.UnityHelpers.Visuals.UIToolkit
 
             _index = _index.WrappedIncrement(_computed.Length);
             _lastTick += deltaTime;
+
             Render(_index);
         }
 
@@ -255,8 +267,8 @@ namespace WallstopStudios.UnityHelpers.Visuals.UIToolkit
                 AnimatedSpriteLayer[] layers = _layers;
                 int layerCount = layers.Length;
 
-                using PooledResource<LayerFrameInfo[]> frameInfoLease =
-                    WallstopFastArrayPool<LayerFrameInfo>.Get(
+                using PooledArray<LayerFrameInfo> frameInfoLease =
+                    SystemArrayPool<LayerFrameInfo>.Get(
                         layerCount,
                         out LayerFrameInfo[] frameInfos
                     );
@@ -361,7 +373,7 @@ namespace WallstopStudios.UnityHelpers.Visuals.UIToolkit
                 }
 
                 int compositeLength = compositeWidth * compositeHeight;
-                using PooledResource<Color[]> compositeLease = WallstopFastArrayPool<Color>.Get(
+                using PooledArray<Color> compositeLease = SystemArrayPool<Color>.Get(
                     compositeLength,
                     out Color[] bufferPixels
                 );
@@ -488,7 +500,7 @@ namespace WallstopStudios.UnityHelpers.Visuals.UIToolkit
                 int finalHeight = maxY - minY + 1;
                 int finalLength = finalWidth * finalHeight;
 
-                using PooledResource<Color[]> finalLease = WallstopFastArrayPool<Color>.Get(
+                using PooledArray<Color> finalLease = SystemArrayPool<Color>.Get(
                     finalLength,
                     out Color[] finalPixels
                 );

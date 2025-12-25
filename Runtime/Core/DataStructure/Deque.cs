@@ -13,6 +13,15 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
     /// Supports efficient O(1) insertion and removal from both front and back.
     /// Ideal for BFS algorithms, undo/redo systems, and sliding window problems.
     /// </summary>
+    /// <example>
+    /// <code><![CDATA[
+    /// Deque<Vector3> patrolPoints = new Deque<Vector3>();
+    /// patrolPoints.PushBack(startPoint);
+    /// patrolPoints.PushBack(nextPoint);
+    /// Vector3 current = patrolPoints.PopFront();
+    /// patrolPoints.PushBack(current); // cycle patrol
+    /// ]]></code>
+    /// </example>
     /// <typeparam name="T">The type of elements in the deque.</typeparam>
     [Serializable]
     [ProtoContract(IgnoreListHandling = true)]

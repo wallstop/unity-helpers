@@ -1,20 +1,22 @@
-namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
+namespace WallstopStudios.UnityHelpers.Tests.Windows
 {
 #if UNITY_EDITOR
     using System.IO;
     using NUnit.Framework;
     using UnityEditor;
     using UnityEngine;
+    using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Editor;
-    using WallstopStudios.UnityHelpers.Tests.Editor.Utils;
+    using WallstopStudios.UnityHelpers.Tests.Core;
 
     public sealed class FitTextureSizeWindowTests : CommonTestBase
     {
         private const string Root = "Assets/Temp/FitTextureSizeTests";
 
         [SetUp]
-        public void SetUp()
+        public override void BaseSetUp()
         {
+            base.BaseSetUp();
             EnsureFolder(Root);
         }
 
@@ -22,14 +24,14 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
         public override void TearDown()
         {
             base.TearDown();
-            AssetDatabase.DeleteAsset("Assets/Temp");
-            AssetDatabase.Refresh();
+            // Clean up only tracked folders/assets that this test created
+            CleanupTrackedFoldersAndAssets();
         }
 
         [Test]
         public void GrowOnlyRaisesToNextPowerOfTwo()
         {
-            string path = Path.Combine(Root, "grow.png").Replace('\\', '/');
+            string path = Path.Combine(Root, "grow.png").SanitizePath();
             CreatePng(path, 300, 100, Color.magenta);
             AssetDatabase.Refresh();
 
@@ -62,7 +64,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
         [Test]
         public void ShrinkOnlyReducesToTightPowerOfTwo()
         {
-            string path = Path.Combine(Root, "shrink.png").Replace('\\', '/');
+            string path = Path.Combine(Root, "shrink.png").SanitizePath();
             CreatePng(path, 300, 100, Color.cyan);
             AssetDatabase.Refresh();
 
@@ -95,7 +97,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
         [Test]
         public void ShrinkOnlyKeepsExactPowerOfTwo()
         {
-            string path = Path.Combine(Root, "shrinkExact.png").Replace('\\', '/');
+            string path = Path.Combine(Root, "shrinkExact.png").SanitizePath();
             CreatePng(path, 256, 128, Color.yellow);
             AssetDatabase.Refresh();
 
@@ -123,7 +125,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
         [Test]
         public void ShrinkOnlyShrinksFromSlightlyOverPot()
         {
-            string path = Path.Combine(Root, "shrinkOver.png").Replace('\\', '/');
+            string path = Path.Combine(Root, "shrinkOver.png").SanitizePath();
             CreatePng(path, 257, 64, Color.gray);
             AssetDatabase.Refresh();
 
@@ -151,7 +153,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
         [Test]
         public void GrowOnlyDoesNotShrinkWhenAlreadyLarge()
         {
-            string path = Path.Combine(Root, "growNoChange.png").Replace('\\', '/');
+            string path = Path.Combine(Root, "growNoChange.png").SanitizePath();
             CreatePng(path, 300, 100, Color.white);
             AssetDatabase.Refresh();
 
@@ -180,7 +182,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
         [Test]
         public void ClampMinRaisesToMinimum()
         {
-            string path = Path.Combine(Root, "clampMin.png").Replace('\\', '/');
+            string path = Path.Combine(Root, "clampMin.png").SanitizePath();
             CreatePng(path, 64, 64, Color.red);
             AssetDatabase.Refresh();
 
@@ -211,7 +213,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
         [Test]
         public void ClampMaxCapsOversize()
         {
-            string path = Path.Combine(Root, "clampMax.png").Replace('\\', '/');
+            string path = Path.Combine(Root, "clampMax.png").SanitizePath();
             // Force next POT far above Unity cap to ensure clamp path is tested.
             CreatePng(path, 9001, 10, Color.black);
             AssetDatabase.Refresh();
@@ -243,7 +245,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
         [Test]
         public void PlatformOverrideAndroidApplied()
         {
-            string path = Path.Combine(Root, "android.png").Replace('\\', '/');
+            string path = Path.Combine(Root, "android.png").SanitizePath();
             CreatePng(path, 300, 100, Color.magenta);
             AssetDatabase.Refresh();
 
@@ -274,8 +276,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
         [Test]
         public void OnlySpritesFiltersNonSprites()
         {
-            string spritePath = Path.Combine(Root, "sprite.png").Replace('\\', '/');
-            string texPath = Path.Combine(Root, "tex.png").Replace('\\', '/');
+            string spritePath = Path.Combine(Root, "sprite.png").SanitizePath();
+            string texPath = Path.Combine(Root, "tex.png").SanitizePath();
             CreatePng(spritePath, 300, 100, Color.yellow);
             CreatePng(texPath, 300, 100, Color.cyan);
             AssetDatabase.Refresh();
@@ -312,8 +314,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
         [Test]
         public void NameFilterContainsOnlyMatches()
         {
-            string heroPath = Path.Combine(Root, "hero_idle.png").Replace('\\', '/');
-            string villPath = Path.Combine(Root, "villain_idle.png").Replace('\\', '/');
+            string heroPath = Path.Combine(Root, "hero_idle.png").SanitizePath();
+            string villPath = Path.Combine(Root, "villain_idle.png").SanitizePath();
             CreatePng(heroPath, 300, 100, Color.white);
             CreatePng(villPath, 300, 100, Color.white);
             AssetDatabase.Refresh();
@@ -347,8 +349,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
         [Test]
         public void NameFilterRegexMatches()
         {
-            string aPath = Path.Combine(Root, "item01.png").Replace('\\', '/');
-            string bPath = Path.Combine(Root, "itemABC.png").Replace('\\', '/');
+            string aPath = Path.Combine(Root, "item01.png").SanitizePath();
+            string bPath = Path.Combine(Root, "itemABC.png").SanitizePath();
             CreatePng(aPath, 300, 100, Color.white);
             CreatePng(bPath, 300, 100, Color.white);
             AssetDatabase.Refresh();
@@ -382,8 +384,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
         [Test]
         public void LabelFilterMatchesOnlyLabeled()
         {
-            string labeledPath = Path.Combine(Root, "labeled.png").Replace('\\', '/');
-            string unlabeledPath = Path.Combine(Root, "unlabeled.png").Replace('\\', '/');
+            string labeledPath = Path.Combine(Root, "labeled.png").SanitizePath();
+            string unlabeledPath = Path.Combine(Root, "unlabeled.png").SanitizePath();
             CreatePng(labeledPath, 300, 100, Color.gray);
             CreatePng(unlabeledPath, 300, 100, Color.gray);
             AssetDatabase.Refresh();
@@ -420,8 +422,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
         [Test]
         public void SelectionOnlyProcessesOnlySelectedAsset()
         {
-            string aPath = Path.Combine(Root, "sel_a.png").Replace('\\', '/');
-            string bPath = Path.Combine(Root, "sel_b.png").Replace('\\', '/');
+            string aPath = Path.Combine(Root, "sel_a.png").SanitizePath();
+            string bPath = Path.Combine(Root, "sel_b.png").SanitizePath();
             CreatePng(aPath, 300, 100, Color.white);
             CreatePng(bPath, 300, 100, Color.white);
             AssetDatabase.Refresh();
@@ -454,7 +456,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
         [Test]
         public void NameFilterCaseSensitivityHonored()
         {
-            string path = Path.Combine(Root, "Hero.png").Replace('\\', '/');
+            string path = Path.Combine(Root, "Hero.png").SanitizePath();
             CreatePng(path, 300, 100, Color.white);
             AssetDatabase.Refresh();
 
@@ -488,7 +490,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
         [Test]
         public void LabelFilterCaseSensitivityHonored()
         {
-            string path = Path.Combine(Root, "labelCase.png").Replace('\\', '/');
+            string path = Path.Combine(Root, "labelCase.png").SanitizePath();
             CreatePng(path, 300, 100, Color.gray);
             AssetDatabase.Refresh();
 
@@ -526,7 +528,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
         [Test]
         public void PlatformOverrideStandaloneApplied()
         {
-            string path = Path.Combine(Root, "standalone.png").Replace('\\', '/');
+            string path = Path.Combine(Root, "standalone.png").SanitizePath();
             CreatePng(path, 300, 100, Color.magenta);
             AssetDatabase.Refresh();
 
@@ -555,7 +557,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
         [Test]
         public void PlatformOverrideIOSApplied()
         {
-            string path = Path.Combine(Root, "ios.png").Replace('\\', '/');
+            string path = Path.Combine(Root, "ios.png").SanitizePath();
             CreatePng(path, 300, 100, Color.magenta);
             AssetDatabase.Refresh();
 
@@ -585,10 +587,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
         public void MixedSelectionFoldersAndFilesWithLabelCsvOnlyLabelsFromFoldersAreProcessed()
         {
             // Prepare: one labeled texture under a folder, one unlabeled file selected directly
-            string folder = Path.Combine(Root, "Sub").Replace('\\', '/');
+            string folder = Path.Combine(Root, "Sub").SanitizePath();
             EnsureFolder(folder);
-            string labeledUnderFolder = Path.Combine(folder, "inFolder.png").Replace('\\', '/');
-            string directFile = Path.Combine(Root, "direct.png").Replace('\\', '/');
+            string labeledUnderFolder = Path.Combine(folder, "inFolder.png").SanitizePath();
+            string directFile = Path.Combine(Root, "direct.png").SanitizePath();
 
             CreatePng(labeledUnderFolder, 300, 100, Color.gray);
             CreatePng(directFile, 300, 100, Color.gray);
@@ -631,8 +633,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
         [Test]
         public void LastRunSummaryReflectsCounts()
         {
-            string aPath = Path.Combine(Root, "sumA.png").Replace('\\', '/');
-            string bPath = Path.Combine(Root, "sumB.png").Replace('\\', '/');
+            string aPath = Path.Combine(Root, "sumA.png").SanitizePath();
+            string bPath = Path.Combine(Root, "sumB.png").SanitizePath();
             // a: 300x100 -> will grow to 512 (change)
             // b: 128x128 with max=128 -> unchanged
             CreatePng(aPath, 300, 100, Color.white);
@@ -668,7 +670,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
         [Test]
         public void RoundToNearestChoosesLowerWhenCloser()
         {
-            string path = Path.Combine(Root, "roundLower.png").Replace('\\', '/');
+            string path = Path.Combine(Root, "roundLower.png").SanitizePath();
             // Largest dimension 300 -> nearest POT is 256 (diff 44 vs 212)
             CreatePng(path, 300, 100, Color.green);
             AssetDatabase.Refresh();
@@ -698,7 +700,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
         [Test]
         public void RoundToNearestRoundsUpOnTie()
         {
-            string path = Path.Combine(Root, "roundUpTie.png").Replace('\\', '/');
+            string path = Path.Combine(Root, "roundUpTie.png").SanitizePath();
             // Largest dimension 384 is exactly halfway between 256 and 512; ties round up to 512
             CreatePng(path, 384, 10, Color.blue);
             AssetDatabase.Refresh();
@@ -725,36 +727,29 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
             Assert.That(imp.maxTextureSize, Is.EqualTo(512));
         }
 
-        private static void EnsureFolder(string relPath)
+        private void CreatePng(string relPath, int w, int h, Color c)
         {
-            string[] parts = relPath.Split('/');
-            string cur = parts[0];
-            for (int i = 1; i < parts.Length; i++)
-            {
-                string next = cur + "/" + parts[i];
-                if (!AssetDatabase.IsValidFolder(next))
-                {
-                    AssetDatabase.CreateFolder(cur, parts[i]);
-                }
-                cur = next;
-            }
-        }
-
-        private static void CreatePng(string relPath, int w, int h, Color c)
-        {
-            string dir = Path.GetDirectoryName(relPath).Replace('\\', '/');
+            string dir = Path.GetDirectoryName(relPath).SanitizePath();
             EnsureFolder(dir);
             Texture2D t = new(w, h, TextureFormat.RGBA32, false);
-            Color[] pix = new Color[w * h];
-            for (int i = 0; i < pix.Length; i++)
+            try
             {
-                pix[i] = c;
-            }
+                Color[] pix = new Color[w * h];
+                for (int i = 0; i < pix.Length; i++)
+                {
+                    pix[i] = c;
+                }
 
-            t.SetPixels(pix);
-            t.Apply();
-            byte[] data = t.EncodeToPNG();
-            File.WriteAllBytes(RelToFull(relPath), data);
+                t.SetPixels(pix);
+                t.Apply();
+                byte[] data = t.EncodeToPNG();
+                File.WriteAllBytes(RelToFull(relPath), data);
+                TrackAssetPath(relPath);
+            }
+            finally
+            {
+                Object.DestroyImmediate(t);
+            }
         }
 
         private static string RelToFull(string rel)
@@ -766,7 +761,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
                     ),
                     rel
                 )
-                .Replace('\\', '/');
+                .SanitizePath();
         }
     }
 #endif

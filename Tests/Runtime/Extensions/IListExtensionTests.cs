@@ -2,19 +2,32 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
 {
     using System;
     using System.Collections.Generic;
+    using System.ComponentModel;
     using System.Linq;
     using NUnit.Framework;
+    using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Extension;
-    using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Core.Random;
+    using WallstopStudios.UnityHelpers.Tests.Core;
 
-    public sealed class IListExtensionTests
+    public sealed class IListExtensionTests : CommonTestBase
     {
         private const int NumTries = 1_000;
 
         private readonly struct IntComparer : IComparer<int>
         {
             public int Compare(int x, int y) => x.CompareTo(y);
+        }
+
+        private sealed class CountingComparer : IComparer<int>
+        {
+            public int ComparisonCount { get; private set; }
+
+            public int Compare(int x, int y)
+            {
+                ComparisonCount++;
+                return x.CompareTo(y);
+            }
         }
 
         private sealed class StableTupleComparer : IComparer<ValueTuple<int, int>>
@@ -30,6 +43,405 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             public bool Equals(int x, int y) => x == y;
 
             public int GetHashCode(int obj) => obj.GetHashCode();
+        }
+
+        public delegate void IntSortAlgorithm(IList<int> list, IComparer<int> comparer);
+
+        public delegate void TupleSortAlgorithm(
+            IList<ValueTuple<int, int>> list,
+            IComparer<ValueTuple<int, int>> comparer
+        );
+
+        private readonly struct SortDataset
+        {
+            private readonly Func<int[]> factory;
+
+            public SortDataset(string label, Func<int[]> factory)
+            {
+                Label = label;
+                this.factory = factory;
+            }
+
+            public string Label { get; }
+
+            public int[] Create()
+            {
+                return factory();
+            }
+        }
+
+        private static IEnumerable<TestCaseData> SortingAlgorithmCases
+        {
+            get
+            {
+                yield return new TestCaseData(
+                    "InsertionSort",
+                    (IntSortAlgorithm)((list, comparer) => list.InsertionSort(comparer))
+                ).SetName("SortingAlgorithmsMatchArraySortInsertionSort");
+                yield return new TestCaseData(
+                    "GhostSort",
+                    (IntSortAlgorithm)((list, comparer) => list.GhostSort(comparer))
+                ).SetName("SortingAlgorithmsMatchArraySortGhostSort");
+                yield return new TestCaseData(
+                    "MeteorSort",
+                    (IntSortAlgorithm)((list, comparer) => list.MeteorSort(comparer))
+                ).SetName("SortingAlgorithmsMatchArraySortMeteorSort");
+                yield return new TestCaseData(
+                    "PatternDefeatingQuickSort",
+                    (IntSortAlgorithm)((list, comparer) => list.PatternDefeatingQuickSort(comparer))
+                ).SetName("SortingAlgorithmsMatchArraySortPdqSort");
+                yield return new TestCaseData(
+                    "GrailSort",
+                    (IntSortAlgorithm)((list, comparer) => list.GrailSort(comparer))
+                ).SetName("SortingAlgorithmsMatchArraySortGrailSort");
+                yield return new TestCaseData(
+                    "PowerSort",
+                    (IntSortAlgorithm)((list, comparer) => list.PowerSort(comparer))
+                ).SetName("SortingAlgorithmsMatchArraySortPowerSort");
+                yield return new TestCaseData(
+                    "TimSort",
+                    (IntSortAlgorithm)((list, comparer) => list.TimSort(comparer))
+                ).SetName("SortingAlgorithmsMatchArraySortTimSort");
+                yield return new TestCaseData(
+                    "JesseSort",
+                    (IntSortAlgorithm)((list, comparer) => list.JesseSort(comparer))
+                ).SetName("SortingAlgorithmsMatchArraySortJesseSort");
+                yield return new TestCaseData(
+                    "GreenSort",
+                    (IntSortAlgorithm)((list, comparer) => list.GreenSort(comparer))
+                ).SetName("SortingAlgorithmsMatchArraySortGreenSort");
+                yield return new TestCaseData(
+                    "SkaSort",
+                    (IntSortAlgorithm)((list, comparer) => list.SkaSort(comparer))
+                ).SetName("SortingAlgorithmsMatchArraySortSkaSort");
+                yield return new TestCaseData(
+                    "IpnSort",
+                    (IntSortAlgorithm)((list, comparer) => list.IpnSort(comparer))
+                ).SetName("SortingAlgorithmsMatchArraySortIpnSort");
+                yield return new TestCaseData(
+                    "SmoothSort",
+                    (IntSortAlgorithm)((list, comparer) => list.SmoothSort(comparer))
+                ).SetName("SortingAlgorithmsMatchArraySortSmoothSort");
+                yield return new TestCaseData(
+                    "BlockMergeSort",
+                    (IntSortAlgorithm)((list, comparer) => list.BlockMergeSort(comparer))
+                ).SetName("SortingAlgorithmsMatchArraySortBlockMergeSort");
+                yield return new TestCaseData(
+                    "Ips4oSort",
+                    (IntSortAlgorithm)((list, comparer) => list.Ips4oSort(comparer))
+                ).SetName("SortingAlgorithmsMatchArraySortIps4oSort");
+                yield return new TestCaseData(
+                    "PowerSortPlus",
+                    (IntSortAlgorithm)((list, comparer) => list.PowerSortPlus(comparer))
+                ).SetName("SortingAlgorithmsMatchArraySortPowerSortPlus");
+                yield return new TestCaseData(
+                    "GlideSort",
+                    (IntSortAlgorithm)((list, comparer) => list.GlideSort(comparer))
+                ).SetName("SortingAlgorithmsMatchArraySortGlideSort");
+                yield return new TestCaseData(
+                    "FluxSort",
+                    (IntSortAlgorithm)((list, comparer) => list.FluxSort(comparer))
+                ).SetName("SortingAlgorithmsMatchArraySortFluxSort");
+            }
+        }
+
+        private static IEnumerable<TestCaseData> StableSortingAlgorithmCases
+        {
+            get
+            {
+                yield return new TestCaseData(
+                    "InsertionSort",
+                    (TupleSortAlgorithm)((list, comparer) => list.InsertionSort(comparer))
+                );
+                yield return new TestCaseData(
+                    "GrailSort",
+                    (TupleSortAlgorithm)((list, comparer) => list.GrailSort(comparer))
+                );
+                yield return new TestCaseData(
+                    "PowerSort",
+                    (TupleSortAlgorithm)((list, comparer) => list.PowerSort(comparer))
+                );
+                yield return new TestCaseData(
+                    "TimSort",
+                    (TupleSortAlgorithm)((list, comparer) => list.TimSort(comparer))
+                );
+                yield return new TestCaseData(
+                    "GreenSort",
+                    (TupleSortAlgorithm)((list, comparer) => list.GreenSort(comparer))
+                );
+                yield return new TestCaseData(
+                    "BlockMergeSort",
+                    (TupleSortAlgorithm)((list, comparer) => list.BlockMergeSort(comparer))
+                );
+                yield return new TestCaseData(
+                    "PowerSortPlus",
+                    (TupleSortAlgorithm)((list, comparer) => list.PowerSortPlus(comparer))
+                );
+                yield return new TestCaseData(
+                    "GlideSort",
+                    (TupleSortAlgorithm)((list, comparer) => list.GlideSort(comparer))
+                );
+            }
+        }
+
+        private static IEnumerable<TestCaseData> SortAlgorithmEnumCases
+        {
+            get
+            {
+                foreach (SortAlgorithm algorithm in Enum.GetValues(typeof(SortAlgorithm)))
+                {
+#pragma warning disable CS0618 // Type or member is obsolete
+                    if (algorithm == SortAlgorithm.None)
+#pragma warning restore CS0618 // Type or member is obsolete
+                    {
+                        continue;
+                    }
+
+                    yield return new TestCaseData(algorithm).SetName(
+                        $"SortAllAlgorithms{algorithm}"
+                    );
+                }
+            }
+        }
+
+        private static IEnumerable<SortDataset> GetSortingDatasets()
+        {
+            yield return new SortDataset("Empty", () => Array.Empty<int>());
+            yield return new SortDataset("Single", () => new[] { 42 });
+            yield return new SortDataset("TwoElements", () => new[] { 5, -1 });
+            yield return new SortDataset(
+                "AlreadySorted",
+                () => Enumerable.Range(-10, 21).ToArray()
+            );
+            yield return new SortDataset(
+                "ReverseSorted",
+                () => Enumerable.Range(0, 32).Reverse().ToArray()
+            );
+            yield return new SortDataset(
+                "PrimeLength",
+                () => Enumerable.Range(0, 31).Select(i => (i * 13 % 17) - 20).ToArray()
+            );
+            yield return new SortDataset(
+                "SquareGrid225",
+                () => BuildRandomDataset(225, seed: 1337)
+            );
+            yield return new SortDataset("Random64", () => BuildRandomDataset(64, seed: 42));
+            yield return new SortDataset("Random257", () => BuildRandomDataset(257, seed: 99));
+            yield return new SortDataset(
+                "ExtremeValues",
+                () => new[] { int.MaxValue, int.MinValue, 0, -1, 1, int.MaxValue }
+            );
+            yield return new SortDataset(
+                "Duplicates",
+                () => new[] { 5, 1, 5, 2, 2, 3, 3, 3, 4, 4, -1, -1 }
+            );
+        }
+
+        private static int[] BuildRandomDataset(int length, int seed)
+        {
+            IRandom random = new PcgRandom(seed);
+            int[] data = new int[length];
+            for (int i = 0; i < length; ++i)
+            {
+                data[i] = random.Next(-50_000, 50_000);
+            }
+            return data;
+        }
+
+        [TestCaseSource(nameof(SortingAlgorithmCases))]
+        public void SortingAlgorithmsMatchArraySort(
+            string algorithmName,
+            IntSortAlgorithm algorithm
+        )
+        {
+            foreach (SortDataset dataset in GetSortingDatasets())
+            {
+                int[] source = dataset.Create();
+                int[] expected = source.OrderBy(x => x).ToArray();
+                int[] actual = source.ToArray();
+
+                algorithm(actual, new IntComparer());
+
+                Assert.That(
+                    actual,
+                    Is.EqualTo(expected),
+                    $"{algorithmName} failed for dataset {dataset.Label}"
+                );
+            }
+        }
+
+        private static int[] BuildNearlySortedDataset(int length, int disturbanceStride)
+        {
+            int[] data = Enumerable.Range(0, length).ToArray();
+            int stride = Math.Max(2, disturbanceStride);
+
+            for (int i = 0; i + 1 < data.Length; i += stride)
+            {
+                (data[i], data[i + 1]) = (data[i + 1], data[i]);
+            }
+
+            return data;
+        }
+
+        private static int[] BuildAlternatingRunDataset(
+            int length,
+            int minRun,
+            int maxRun,
+            int seed
+        )
+        {
+            IRandom random = new PcgRandom(seed);
+            List<int> values = new List<int>(length);
+            bool ascending = true;
+            int current = 0;
+
+            while (values.Count < length)
+            {
+                int runLength = Math.Min(length - values.Count, random.Next(minRun, maxRun + 1));
+                if (ascending)
+                {
+                    for (int i = 0; i < runLength; ++i)
+                    {
+                        values.Add(current + i);
+                    }
+                }
+                else
+                {
+                    for (int i = runLength - 1; i >= 0; --i)
+                    {
+                        values.Add(current + i);
+                    }
+                }
+
+                current += runLength;
+                ascending = !ascending;
+            }
+
+            return values.ToArray();
+        }
+
+        private static int MeasureSmoothSortComparisons(int[] source)
+        {
+            CountingComparer comparer = new CountingComparer();
+            int[] actual = source.ToArray();
+            int[] expected = actual.OrderBy(x => x).ToArray();
+
+            actual.SmoothSort(comparer);
+            Assert.That(actual, Is.EqualTo(expected));
+
+            return comparer.ComparisonCount;
+        }
+
+        [Test]
+        public void SmoothSortUsesFewerComparisonsOnNearlySortedData()
+        {
+            const int length = 4096;
+            int[] nearlySorted = BuildNearlySortedDataset(length, disturbanceStride: 32);
+            int[] randomDataset = BuildRandomDataset(length, seed: 1234);
+
+            int nearlyComparisons = MeasureSmoothSortComparisons(nearlySorted);
+            int randomComparisons = MeasureSmoothSortComparisons(randomDataset);
+
+            TestContext.WriteLine(
+                $"SmoothSort comparison counts — nearly sorted: {nearlyComparisons}, random: {randomComparisons}"
+            );
+
+            Assert.That(
+                nearlyComparisons,
+                Is.LessThan(randomComparisons * 0.85d),
+                "SmoothSort should perform noticeably fewer comparisons on nearly sorted inputs."
+            );
+        }
+
+        [Test]
+        public void PowerSortPlusHandlesAlternatingRuns()
+        {
+            int[] dataset = BuildAlternatingRunDataset(2048, 4, 17, seed: 7);
+            int[] expected = dataset.OrderBy(x => x).ToArray();
+
+            int[] actual = dataset.ToArray();
+            actual.PowerSortPlus(new IntComparer());
+            Assert.That(actual, Is.EqualTo(expected));
+        }
+
+        [Test]
+        public void PowerSortPlusComparisonsStayCloseToPowerSortOnRunHeavyInputs()
+        {
+            int[] dataset = BuildAlternatingRunDataset(4096, 2, 9, seed: 11);
+            int[] expected = dataset.OrderBy(x => x).ToArray();
+
+            CountingComparer plusComparer = new CountingComparer();
+            int[] plusInput = dataset.ToArray();
+            plusInput.PowerSortPlus(plusComparer);
+            Assert.That(plusInput, Is.EqualTo(expected));
+
+            CountingComparer baseComparer = new CountingComparer();
+            int[] baseInput = dataset.ToArray();
+            baseInput.PowerSort(baseComparer);
+            Assert.That(baseInput, Is.EqualTo(expected));
+
+            TestContext.WriteLine(
+                $"PowerSort+ comparisons: {plusComparer.ComparisonCount}, PowerSort comparisons: {baseComparer.ComparisonCount}"
+            );
+
+            Assert.That(
+                plusComparer.ComparisonCount,
+                Is.LessThanOrEqualTo((int)(baseComparer.ComparisonCount * 1.12d) + 1),
+                $"PowerSort+ comparisons {plusComparer.ComparisonCount} vs PowerSort {baseComparer.ComparisonCount}"
+            );
+        }
+
+        [Test]
+        public void GlideSortHandlesZigZagRuns()
+        {
+            int[] dataset = BuildAlternatingRunDataset(3072, 3, 15, seed: 23);
+            int[] expected = dataset.OrderBy(x => x).ToArray();
+
+            int[] actual = dataset.ToArray();
+            actual.GlideSort(new IntComparer());
+            Assert.That(actual, Is.EqualTo(expected));
+        }
+
+        [Test]
+        public void Ips4oSortHandlesHighlyDuplicateValues()
+        {
+            int[] input = Enumerable.Range(0, 4096).Select(i => (i / 8) % 11).ToArray();
+            int[] expected = input.OrderBy(x => x).ToArray();
+
+            int[] direct = input.ToArray();
+            direct.Ips4oSort(new IntComparer());
+            Assert.That(direct, Is.EqualTo(expected));
+
+            int[] viaEnum = input.ToArray();
+            viaEnum.Sort(new IntComparer(), SortAlgorithm.Ips4o);
+            Assert.That(viaEnum, Is.EqualTo(expected));
+        }
+
+        [TestCaseSource(nameof(StableSortingAlgorithmCases))]
+        public void StableSortingAlgorithmsPreserveOrder(
+            string algorithmName,
+            TupleSortAlgorithm algorithm
+        )
+        {
+            ValueTuple<int, int>[] input = Enumerable
+                .Range(0, 120)
+                .Select(i => ValueTuple.Create(i / 3, i))
+                .ToArray();
+            ValueTuple<int, int>[] actual = input.ToArray();
+
+            algorithm(actual, new StableTupleComparer());
+
+            for (int i = 1; i < actual.Length; ++i)
+            {
+                if (actual[i - 1].Item1 == actual[i].Item1)
+                {
+                    Assert.That(
+                        actual[i - 1].Item2,
+                        Is.LessThan(actual[i].Item2),
+                        $"{algorithmName} broke stability at index {i}"
+                    );
+                }
+            }
         }
 
         [Test]
@@ -124,158 +536,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         }
 
         [Test]
-        public void InsertionSort()
-        {
-            for (int i = 0; i < NumTries; ++i)
-            {
-                int[] input = Enumerable
-                    .Range(0, 100)
-                    .Select(_ => PRNG.Instance.Next(int.MinValue, int.MaxValue))
-                    .ToArray();
-                int[] conventionalSorted = input.ToArray();
-                Array.Sort(conventionalSorted);
-
-                int[] insertionSorted = input.ToArray();
-                insertionSorted.InsertionSort(new IntComparer());
-                Assert.That(conventionalSorted, Is.EqualTo(insertionSorted));
-                Assert.That(input.OrderBy(x => x), Is.EqualTo(insertionSorted));
-            }
-        }
-
-        [Test]
-        public void GhostSort()
-        {
-            for (int i = 0; i < NumTries; ++i)
-            {
-                int[] input = Enumerable
-                    .Range(0, 100)
-                    .Select(_ => PRNG.Instance.Next(int.MinValue, int.MaxValue))
-                    .ToArray();
-                int[] conventionalSorted = input.ToArray();
-                Array.Sort(conventionalSorted);
-
-                int[] insertionSorted = input.ToArray();
-                insertionSorted.GhostSort(new IntComparer());
-                Assert.That(conventionalSorted, Is.EqualTo(insertionSorted));
-                Assert.That(input.OrderBy(x => x), Is.EqualTo(insertionSorted));
-            }
-        }
-
-        [Test]
-        public void MeteorSort()
-        {
-            for (int i = 0; i < NumTries; ++i)
-            {
-                int[] input = Enumerable
-                    .Range(0, 100)
-                    .Select(_ => PRNG.Instance.Next(int.MinValue, int.MaxValue))
-                    .ToArray();
-                int[] conventionalSorted = input.ToArray();
-                Array.Sort(conventionalSorted);
-
-                int[] meteorSorted = input.ToArray();
-                meteorSorted.MeteorSort(new IntComparer());
-                Assert.That(conventionalSorted, Is.EqualTo(meteorSorted));
-                Assert.That(input.OrderBy(x => x), Is.EqualTo(meteorSorted));
-            }
-        }
-
-        [Test]
-        public void PatternDefeatingQuickSort()
-        {
-            for (int i = 0; i < NumTries; ++i)
-            {
-                int[] input = Enumerable
-                    .Range(0, 100)
-                    .Select(_ => PRNG.Instance.Next(int.MinValue, int.MaxValue))
-                    .ToArray();
-                int[] conventionalSorted = input.ToArray();
-                Array.Sort(conventionalSorted);
-
-                int[] pdqSorted = input.ToArray();
-                pdqSorted.PatternDefeatingQuickSort(new IntComparer());
-                Assert.That(conventionalSorted, Is.EqualTo(pdqSorted));
-                Assert.That(input.OrderBy(x => x), Is.EqualTo(pdqSorted));
-            }
-        }
-
-        [Test]
-        public void GrailSort()
-        {
-            for (int i = 0; i < NumTries; ++i)
-            {
-                int[] input = Enumerable
-                    .Range(0, 100)
-                    .Select(_ => PRNG.Instance.Next(int.MinValue, int.MaxValue))
-                    .ToArray();
-                int[] conventionalSorted = input.ToArray();
-                Array.Sort(conventionalSorted);
-
-                int[] grailSorted = input.ToArray();
-                grailSorted.GrailSort(new IntComparer());
-                Assert.That(conventionalSorted, Is.EqualTo(grailSorted));
-                Assert.That(input.OrderBy(x => x), Is.EqualTo(grailSorted));
-            }
-        }
-
-        [Test]
-        public void PowerSort()
-        {
-            for (int i = 0; i < NumTries; ++i)
-            {
-                int[] input = Enumerable
-                    .Range(0, 100)
-                    .Select(_ => PRNG.Instance.Next(int.MinValue, int.MaxValue))
-                    .ToArray();
-                int[] conventionalSorted = input.ToArray();
-                Array.Sort(conventionalSorted);
-
-                int[] powerSorted = input.ToArray();
-                powerSorted.PowerSort(new IntComparer());
-                Assert.That(conventionalSorted, Is.EqualTo(powerSorted));
-                Assert.That(input.OrderBy(x => x), Is.EqualTo(powerSorted));
-            }
-        }
-
-        [Test]
-        public void GrailSortIsStable()
-        {
-            ValueTuple<int, int>[] input = Enumerable
-                .Range(0, 100)
-                .Select(i => ValueTuple.Create(i / 5, i))
-                .ToArray();
-            ValueTuple<int, int>[] grailSorted = input.ToArray();
-            grailSorted.GrailSort(new StableTupleComparer());
-
-            for (int i = 1; i < grailSorted.Length; ++i)
-            {
-                if (grailSorted[i - 1].Item1 == grailSorted[i].Item1)
-                {
-                    Assert.That(grailSorted[i - 1].Item2, Is.LessThan(grailSorted[i].Item2));
-                }
-            }
-        }
-
-        [Test]
-        public void PowerSortIsStable()
-        {
-            ValueTuple<int, int>[] input = Enumerable
-                .Range(0, 100)
-                .Select(i => ValueTuple.Create(i / 4, i))
-                .ToArray();
-            ValueTuple<int, int>[] powerSorted = input.ToArray();
-            powerSorted.PowerSort(new StableTupleComparer());
-
-            for (int i = 1; i < powerSorted.Length; ++i)
-            {
-                if (powerSorted[i - 1].Item1 == powerSorted[i].Item1)
-                {
-                    Assert.That(powerSorted[i - 1].Item2, Is.LessThan(powerSorted[i].Item2));
-                }
-            }
-        }
-
-        [Test]
         public void SortDefaultAlgorithm()
         {
             for (int i = 0; i < NumTries; ++i)
@@ -294,34 +554,32 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             }
         }
 
-        [Test]
-        public void SortAllAlgorithms()
+        [TestCaseSource(nameof(SortAlgorithmEnumCases))]
+        public void SortAllAlgorithms(SortAlgorithm sortAlgorithm)
         {
-            SortAlgorithm[] sortAlgorithms = Enum.GetValues(typeof(SortAlgorithm))
-                .OfType<SortAlgorithm>()
-#pragma warning disable CS0618 // Type or member is obsolete
-                .Except(Enumerables.Of(SortAlgorithm.None))
-#pragma warning restore CS0618 // Type or member is obsolete
-                .ToArray();
-            Assert.That(sortAlgorithms.Length, Is.GreaterThan(0));
-
-            foreach (SortAlgorithm sortAlgorithm in sortAlgorithms)
+            for (int i = 0; i < NumTries; ++i)
             {
-                for (int i = 0; i < NumTries; ++i)
-                {
-                    int[] input = Enumerable
-                        .Range(0, 100)
-                        .Select(_ => PRNG.Instance.Next(int.MinValue, int.MaxValue))
-                        .ToArray();
-                    int[] conventionalSorted = input.ToArray();
-                    Array.Sort(conventionalSorted);
+                int[] input = Enumerable
+                    .Range(0, 100)
+                    .Select(_ => PRNG.Instance.Next(int.MinValue, int.MaxValue))
+                    .ToArray();
+                int[] conventionalSorted = input.ToArray();
+                Array.Sort(conventionalSorted);
 
-                    int[] insertionSorted = input.ToArray();
-                    insertionSorted.Sort(new IntComparer(), sortAlgorithm);
-                    Assert.That(conventionalSorted, Is.EqualTo(insertionSorted));
-                    Assert.That(input.OrderBy(x => x), Is.EqualTo(insertionSorted));
-                }
+                int[] customSorted = input.ToArray();
+                customSorted.Sort(new IntComparer(), sortAlgorithm);
+                Assert.That(conventionalSorted, Is.EqualTo(customSorted));
+                Assert.That(input.OrderBy(x => x), Is.EqualTo(customSorted));
             }
+        }
+
+        [Test]
+        public void SortThrowsOnInvalidAlgorithm()
+        {
+            int[] input = { 2, 1 };
+            Assert.Throws<InvalidEnumArgumentException>(() =>
+                input.Sort(new IntComparer(), (SortAlgorithm)9999)
+            );
         }
 
         // ===== New Method Tests =====
@@ -433,6 +691,14 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             List<int> list = new() { 1, 2, 3, 4, 5 };
             list.RemoveAtSwapBack(2);
             Assert.That(list, Is.EqualTo(new[] { 1, 2, 5, 4 }));
+        }
+
+        [Test]
+        public void RemoveAtSwapBackInvalidIndexThrows()
+        {
+            List<int> list = new() { 1, 2, 3 };
+            Assert.Throws<ArgumentOutOfRangeException>(() => list.RemoveAtSwapBack(-1));
+            Assert.Throws<ArgumentOutOfRangeException>(() => list.RemoveAtSwapBack(10));
         }
 
         [Test]
@@ -985,7 +1251,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         [Test]
         public void SortByNameEmptyList()
         {
-            List<UnityEngine.GameObject> list = new();
+            List<GameObject> list = new();
             list.SortByName();
             Assert.That(list, Is.Empty);
         }
@@ -993,114 +1259,69 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         [Test]
         public void SortByNameSingleElement()
         {
-            UnityEngine.GameObject obj = new("SingleObject");
-            try
-            {
-                List<UnityEngine.GameObject> list = new() { obj };
-                list.SortByName();
-                Assert.That(list, Has.Count.EqualTo(1));
-                Assert.That(list[0].name, Is.EqualTo("SingleObject"));
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(obj);
-            }
+            GameObject obj = Track(new GameObject("SingleObject"));
+            List<GameObject> list = new() { obj };
+            list.SortByName();
+            Assert.That(list, Has.Count.EqualTo(1));
+            Assert.That(list[0].name, Is.EqualTo("SingleObject"));
         }
 
         [Test]
         public void SortByNameArray()
         {
-            UnityEngine.GameObject obj1 = new("Zebra");
-            UnityEngine.GameObject obj2 = new("Alpha");
-            UnityEngine.GameObject obj3 = new("Bravo");
-            try
-            {
-                UnityEngine.GameObject[] array = { obj1, obj2, obj3 };
-                array.SortByName();
-                Assert.That(array[0].name, Is.EqualTo("Alpha"));
-                Assert.That(array[1].name, Is.EqualTo("Bravo"));
-                Assert.That(array[2].name, Is.EqualTo("Zebra"));
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(obj1);
-                UnityEngine.Object.DestroyImmediate(obj2);
-                UnityEngine.Object.DestroyImmediate(obj3);
-            }
+            GameObject obj1 = Track(new GameObject("Zebra"));
+            GameObject obj2 = Track(new GameObject("Alpha"));
+            GameObject obj3 = Track(new GameObject("Bravo"));
+
+            GameObject[] array = { obj1, obj2, obj3 };
+            array.SortByName();
+            Assert.That(array[0].name, Is.EqualTo("Alpha"));
+            Assert.That(array[1].name, Is.EqualTo("Bravo"));
+            Assert.That(array[2].name, Is.EqualTo("Zebra"));
         }
 
         [Test]
         public void SortByNameList()
         {
-            UnityEngine.GameObject obj1 = new("Zebra");
-            UnityEngine.GameObject obj2 = new("Alpha");
-            UnityEngine.GameObject obj3 = new("Bravo");
-            UnityEngine.GameObject obj4 = new("Charlie");
-            try
-            {
-                List<UnityEngine.GameObject> list = new() { obj1, obj2, obj3, obj4 };
-                list.SortByName();
-                Assert.That(list[0].name, Is.EqualTo("Alpha"));
-                Assert.That(list[1].name, Is.EqualTo("Bravo"));
-                Assert.That(list[2].name, Is.EqualTo("Charlie"));
-                Assert.That(list[3].name, Is.EqualTo("Zebra"));
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(obj1);
-                UnityEngine.Object.DestroyImmediate(obj2);
-                UnityEngine.Object.DestroyImmediate(obj3);
-                UnityEngine.Object.DestroyImmediate(obj4);
-            }
+            GameObject obj1 = Track(new GameObject("Zebra"));
+            GameObject obj2 = Track(new GameObject("Alpha"));
+            GameObject obj3 = Track(new GameObject("Bravo"));
+            GameObject obj4 = Track(new GameObject("Charlie"));
+
+            List<GameObject> list = new() { obj1, obj2, obj3, obj4 };
+            list.SortByName();
+            Assert.That(list[0].name, Is.EqualTo("Alpha"));
+            Assert.That(list[1].name, Is.EqualTo("Bravo"));
+            Assert.That(list[2].name, Is.EqualTo("Charlie"));
+            Assert.That(list[3].name, Is.EqualTo("Zebra"));
         }
 
         [Test]
         public void SortByNameCustomIList()
         {
-            UnityEngine.GameObject obj1 = new("Zebra");
-            UnityEngine.GameObject obj2 = new("Alpha");
-            UnityEngine.GameObject obj3 = new("Bravo");
-            try
-            {
-                IList<UnityEngine.GameObject> list = new CustomList<UnityEngine.GameObject>
-                {
-                    obj1,
-                    obj2,
-                    obj3,
-                };
-                list.SortByName();
-                Assert.That(list[0].name, Is.EqualTo("Alpha"));
-                Assert.That(list[1].name, Is.EqualTo("Bravo"));
-                Assert.That(list[2].name, Is.EqualTo("Zebra"));
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(obj1);
-                UnityEngine.Object.DestroyImmediate(obj2);
-                UnityEngine.Object.DestroyImmediate(obj3);
-            }
+            GameObject obj1 = Track(new GameObject("Zebra"));
+            GameObject obj2 = Track(new GameObject("Alpha"));
+            GameObject obj3 = Track(new GameObject("Bravo"));
+
+            IList<GameObject> list = new CustomList<GameObject> { obj1, obj2, obj3 };
+            list.SortByName();
+            Assert.That(list[0].name, Is.EqualTo("Alpha"));
+            Assert.That(list[1].name, Is.EqualTo("Bravo"));
+            Assert.That(list[2].name, Is.EqualTo("Zebra"));
         }
 
         [Test]
         public void SortByNameDuplicateNames()
         {
-            UnityEngine.GameObject obj1 = new("Same");
-            UnityEngine.GameObject obj2 = new("Same");
-            UnityEngine.GameObject obj3 = new("Alpha");
-            try
-            {
-                List<UnityEngine.GameObject> list = new() { obj1, obj2, obj3 };
-                list.SortByName();
-                Assert.That(list[0].name, Is.EqualTo("Alpha"));
-                Assert.That(list[1].name, Is.EqualTo("Same"));
-                Assert.That(list[2].name, Is.EqualTo("Same"));
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(obj1);
-                UnityEngine.Object.DestroyImmediate(obj2);
-                UnityEngine.Object.DestroyImmediate(obj3);
-            }
+            GameObject obj1 = Track(new GameObject("Same"));
+            GameObject obj2 = Track(new GameObject("Same"));
+            GameObject obj3 = Track(new GameObject("Alpha"));
+
+            List<GameObject> list = new() { obj1, obj2, obj3 };
+            list.SortByName();
+            Assert.That(list[0].name, Is.EqualTo("Alpha"));
+            Assert.That(list[1].name, Is.EqualTo("Same"));
+            Assert.That(list[2].name, Is.EqualTo("Same"));
         }
 
         private sealed class CustomList<T> : IList<T>

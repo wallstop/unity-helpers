@@ -4,8 +4,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
     using NUnit.Framework;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Helper;
+    using WallstopStudios.UnityHelpers.Tests.Core;
 
-    public sealed class LineHelperTests
+    public sealed class LineHelperTests : CommonTestBase
     {
         [Test]
         public void SimplifyWithNullPointsReturnsEmptyBuffer()

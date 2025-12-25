@@ -1,32 +1,75 @@
 # Unity Helpers
 
-[![Unity 2021.3+](https://img.shields.io/badge/Unity-2021.3%2B-000000?logo=unity&logoColor=white)](https://unity.com/releases/2021-lts)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![CSharpier](https://github.com/wallstop/unity-helpers/actions/workflows/csharpier-autofix.yml/badge.svg?branch=main)](https://github.com/wallstop/unity-helpers/actions/workflows/csharpier-autofix.yml)
-[![Markdown & JSON Lint/Format](https://github.com/wallstop/unity-helpers/actions/workflows/markdown-json.yml/badge.svg?branch=main)](https://github.com/wallstop/unity-helpers/actions/workflows/markdown-json.yml)
-[![Lint Docs Links](https://github.com/wallstop/unity-helpers/actions/workflows/lint-doc-links.yml/badge.svg?branch=main)](https://github.com/wallstop/unity-helpers/actions/workflows/lint-doc-links.yml)
-[![Npm Publish](https://github.com/wallstop/unity-helpers/actions/workflows/npm-publish.yml/badge.svg?branch=main)](https://github.com/wallstop/unity-helpers/actions/workflows/npm-publish.yml)
+> **🤖 AI Assistance Disclosure:** Recent versions of this project have utilized AI assistance for bug detection, performance optimization, and documentation. The original codebase was developed entirely by humans over several years.
+
+<p align="center">
+  <img src="docs/images/unity-helpers-banner.svg" alt="Unity Helpers Banner" width="800"/>
+</p>
+
+<p align="left">
+  <a href="https://unity.com/releases/2021-lts"><img alt="Unity 2021.3+" src="https://img.shields.io/badge/Unity-2021.3%2B-000000?logo=unity&amp;logoColor=white" /></a><br>
+  <a href="https://openupm.com/packages/com.wallstop-studios.unity-helpers/"><img alt="OpenUPM" src="https://img.shields.io/npm/v/com.wallstop-studios.unity-helpers?label=openupm&amp;registry_uri=https://package.openupm.com" /></a><br>
+  <a href="https://www.npmjs.com/package/com.wallstop-studios.unity-helpers"><img alt="npm version" src="https://img.shields.io/npm/v/com.wallstop-studios.unity-helpers" /></a><br>
+  <a href="https://www.npmjs.com/package/com.wallstop-studios.unity-helpers"><img alt="npm downloads" src="https://img.shields.io/npm/dw/com.wallstop-studios.unity-helpers" /></a><br>
+  <a href="https://github.com/wallstop/unity-helpers/releases"><img alt="GitHub release version" src="https://img.shields.io/github/v/release/wallstop/unity-helpers" /></a><br>
+  <a href="https://github.com/wallstop/unity-helpers/releases"><img alt="GitHub downloads" src="https://img.shields.io/github/downloads/wallstop/unity-helpers/total" /></a><br>
+  <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-blue.svg" /></a><br>
+  <a href="https://github.com/wallstop/unity-helpers/actions/workflows/csharpier-autofix.yml"><img alt="CSharpier" src="https://github.com/wallstop/unity-helpers/actions/workflows/csharpier-autofix.yml/badge.svg?branch=main" /></a><br>
+  <a href="https://github.com/wallstop/unity-helpers/actions/workflows/markdown-json.yml"><img alt="Markdown &amp; JSON Lint/Format" src="https://github.com/wallstop/unity-helpers/actions/workflows/markdown-json.yml/badge.svg?branch=main" /></a><br>
+  <a href="https://github.com/wallstop/unity-helpers/actions/workflows/lint-doc-links.yml"><img alt="Lint Docs Links" src="https://github.com/wallstop/unity-helpers/actions/workflows/lint-doc-links.yml/badge.svg?branch=main" /></a><br>
+  <a href="https://github.com/wallstop/unity-helpers/actions/workflows/npm-publish.yml"><img alt="Npm Publish" src="https://github.com/wallstop/unity-helpers/actions/workflows/npm-publish.yml/badge.svg?branch=main" /></a>
+</p>
 
 **Stop writing boilerplate. Start shipping features.**
 
 Unity Helpers eliminates entire categories of repetitive work with production-ready utilities that are 10-100x faster than writing it yourself. From auto-wiring components to blazing-fast spatial queries, this is the toolkit that pays for itself in the first hour.
 
+---
+
+## 📦 Quick Install
+
+| Source                    | Install Method                                                                                 |
+| ------------------------- | ---------------------------------------------------------------------------------------------- |
+| **OpenUPM** (Recommended) | `openupm add com.wallstop-studios.unity-helpers`                                               |
+| **Git URL**               | Package Manager → Add from git URL → `https://github.com/wallstop/unity-helpers.git`           |
+| **NPM**                   | Add scoped registry `https://registry.npmjs.org` → search `com.wallstop-studios.unity-helpers` |
+| **Source**                | Import [`.unitypackage`](https://github.com/wallstop/unity-helpers/releases) or clone repo     |
+
+👉 [Full installation instructions](#installation) with step-by-step guides for each method.
+
+---
+
 **What makes this different:**
 
+- 🎨 **Professional inspector tooling** - Grouping, buttons, conditional display, toggle grids (consider as an Odin alternative) — [Migration Guide](docs/guides/odin-migration-guide.md)
 - ⚡ **10-15x faster** random generation than Unity.Random
 - 🔌 **Zero boilerplate** component wiring with attributes
 - 🎮 **Designer-friendly** effects system (buffs/debuffs as ScriptableObjects)
 - 🌳 **O(log n)** spatial queries instead of O(n) loops
 - 🛠️ **20+ editor tools** that automate sprite/animation workflows
-- ✅ **4,000+ tests** ensuring production quality
+- ✅ **8,000+ tests** ensuring production quality
 
 ---
 
-**📚 New to Unity Helpers?** Start here: [Getting Started Guide](Docs/GETTING_STARTED.md)
+**🗺️ Roadmap Snapshot** — See the [Roadmap](docs/overview/roadmap.md) for prioritized details.
 
-**🔍 Looking for something specific?** Check the [Feature Index](Docs/INDEX.md)
+- Inspector tooling: inline nested editors, tabbed navigation, live instrumentation, disable-if/layer attributes
+- Editor automation: Animation Creator and Sprite Sheet Animation Creator enhancements, timeline-ready Event Editor upgrades, and new automation dashboards
+- Random/statistics: CI statistical harness, automated quality reports, scenario samplers, job-safe stream schedulers
+- Spatial trees: graduate the 3D variants, add incremental updates, physics-shape parity, and streaming builders
+- UI Toolkit: control pack (dockable panes, data grids), theming samples, and performance patterns
+- Utilities: cross-system bridges plus new math/combinatorics and service-pattern helpers
+- Performance: automated benchmarks, Burst/Jobs rewrites of hot paths, and allocation analyzers
+- Attributes & tags: effect visualization tools, attribute graphs, and migration/versioning helpers
+- Relational components: cached reflection, source generators, editor-time validation, and interface-based resolution
 
-**❓ Need a definition?** See the [Glossary](Docs/GLOSSARY.md)
+---
+
+**📚 New to Unity Helpers?** Start here: [Getting Started Guide](docs/overview/getting-started.md)
+
+**🔍 Looking for something specific?** Check the [Feature Index](docs/overview/index.md)
+
+**❓ Need a definition?** See the [Glossary](docs/overview/glossary.md)
 
 ---
 
@@ -34,24 +77,79 @@ Unity Helpers eliminates entire categories of repetitive work with production-re
 
 **Pick your starting point based on your biggest pain point:**
 
-| Your Problem                         | Your Solution                                                                            | Time to Value |
-| ------------------------------------ | ---------------------------------------------------------------------------------------- | ------------- |
-| 🐌 Writing `GetComponent` everywhere | [**Relational Components**](#relational-components) - Auto-wire with attributes          | 2 minutes     |
-| 🎮 Need buffs/debuffs system         | [**Effects System**](#effects-attributes-and-tags) - Designer-friendly ScriptableObjects | 5 minutes     |
-| 🔍 Slow spatial searches             | [**Spatial Trees**](#spatial-trees) - O(log n) queries                                   | 5 minutes     |
-| 🎲 Random is too slow/limited        | [**PRNG.Instance**](#random-number-generators) - 10-15x faster, extensive API            | 1 minute      |
-| 💾 Need save/load system             | [**Serialization**](#serialization) - Unity types just work                              | 10 minutes    |
-| 🛠️ Manual sprite workflows           | [**Editor Tools**](#editor-tools) - 20+ automation tools                                 | 3 minutes     |
+| Your Problem                         | Your Solution                                                                           | Time to Value |
+| ------------------------------------ | --------------------------------------------------------------------------------------- | ------------- |
+| 🎨 Writing custom editors            | [**Inspector Tooling**](#1--professional-inspector-tooling) - Odin-level features, FREE | 2 minutes     |
+| 🐌 Writing `GetComponent` everywhere | [**Relational Components**](#2--auto-wire-components) - Auto-wire with attributes       | 2 minutes     |
+| 🎮 Need buffs/debuffs system         | [**Effects System**](#3--data-driven-effects) - Designer-friendly ScriptableObjects     | 5 minutes     |
+| 🔍 Slow spatial searches             | [**Spatial Trees**](#spatial-trees) - O(log n) queries                                  | 5 minutes     |
+| 🎲 Random is too slow/limited        | [**PRNG.Instance**](#random-number-generators) - 10-15x faster, extensive API           | 1 minute      |
+| 💾 Need save/load system             | [**Serialization**](#4--unity-aware-serialization) - Unity types just work              | 10 minutes    |
+| 🛠️ Manual sprite workflows           | [**Editor Tools**](#editor-tools) - 20+ automation tools                                | 3 minutes     |
 
-**Not sure where to start?** → [Getting Started Guide](Docs/GETTING_STARTED.md) walks through the top 3 features in 5 minutes.
+**Not sure where to start?** → [Getting Started Guide](docs/overview/getting-started.md) walks through the top 3 features in 5 minutes.
 
 ---
 
-## ⚡ Top 5 Time-Savers
+## ⚡ Top Time-Savers
 
 These features eliminate entire categories of repetitive work. Pick one that solves your immediate pain:
 
-### 1. 🔌 Auto-Wire Components
+### 1. 🎨 Professional Inspector Tooling
+
+#### ⏱️ 5-10 min/script × 200 scripts = 20+ hours saved on custom editors
+
+Stop writing custom PropertyDrawers and EditorGUI code. Get Odin Inspector-level features for free:
+
+```csharp
+// ❌ OLD WAY: 100+ lines of custom editor code
+[CustomEditor(typeof(CharacterStats))]
+public class CharacterStatsEditor : Editor {
+    // ... SerializedProperty declarations ...
+    // ... OnEnable setup ...
+    // ... OnInspectorGUI with EditorGUI.BeginFoldoutHeaderGroup ...
+    // ... Custom button rendering ...
+    // ... Conditional field display logic ...
+}
+
+// ✅ NEW WAY: Declarative attributes, zero custom editors
+public class CharacterStats : MonoBehaviour
+{
+    [WGroup("combat", "Combat Stats", collapsible: true)]
+    public float maxHealth = 100f;
+    public float defense = 10f;
+    [WGroupEnd("combat")]
+
+    [WGroup("abilities", "Abilities", collapsible: true, startCollapsed: true)]
+    [System.Flags] public enum Powers { None = 0, Fly = 1, Strength = 2, Speed = 4 }
+    [WEnumToggleButtons(showSelectAll: true, buttonsPerRow: 3)]
+    public Powers currentPowers;
+    [WGroupEnd("abilities")]
+
+    public enum WeaponType { Melee, Ranged, Magic }
+    public WeaponType weaponType;
+
+    [WShowIf(nameof(weaponType), WShowIfComparison.Equal, WeaponType.Ranged)]
+    public int ammoCapacity = 30;
+
+    [WButton("Heal to Full", groupName: "Debug")]
+    private void HealToFull() { maxHealth = 100f; }
+}
+```
+
+**Features:**
+
+- **[WGroup](docs/features/inspector/inspector-grouping-attributes.md)** - Boxed sections with auto-inclusion, collapsible headers, and animations when enabled
+- **[WButton](docs/features/inspector/inspector-button.md)** - Method buttons with history, async support, cancellation
+- **[WShowIf](docs/features/inspector/inspector-conditional-display.md)** - Conditional visibility (9 comparison operators)
+- **[WEnumToggleButtons](docs/features/inspector/inspector-selection-attributes.md)** - Flag enums as visual toggle grids
+- **[SerializableDictionary](docs/features/serialization/serialization-types.md)**, **[SerializableSet](docs/features/serialization/serialization-types.md)**, **[WGuid](docs/features/serialization/serialization-types.md)**, **[SerializableType](docs/features/serialization/serialization-types.md)** - Collections Unity can't serialize
+
+[📖 Complete Inspector Guide](docs/features/inspector/inspector-overview.md) | [🔄 Odin Migration Guide](docs/guides/odin-migration-guide.md)
+
+---
+
+### 2. 🔌 Auto-Wire Components
 
 #### ⏱️ 10-20 min/script × 100 scripts = 20+ hours saved
 
@@ -79,11 +177,11 @@ void Awake() => this.AssignRelationalComponents();
 
 **Bonus:** Works with VContainer/Zenject/Reflex for automatic DI + relational wiring!
 
-[📖 Learn More](Docs/RELATIONAL_COMPONENTS.md) | [🎯 DI – VContainer](Samples~/DI%20-%20VContainer/README.md) | [🎯 DI – Zenject](Samples~/DI%20-%20Zenject/README.md) | [🎯 DI – Reflex](Samples~/DI%20-%20Reflex/README.md)
+[📖 Learn More](docs/features/relational-components/relational-components.md) | [🎯 DI – VContainer](Samples~/DI%20-%20VContainer/README.md) | [🎯 DI – Zenject](Samples~/DI%20-%20Zenject/README.md) | [🎯 DI – Reflex](Samples~/DI%20-%20Reflex/README.md)
 
 ---
 
-### 2. 🎮 Data-Driven Effects
+### 3. 🎮 Data-Driven Effects
 
 #### ⏱️ 2-4 hours/effect × 50 effects = 150+ hours saved
 
@@ -96,7 +194,7 @@ Designers create buffs/debuffs as ScriptableObjects. Zero programmer time after 
 // Use everywhere (zero boilerplate):
 player.ApplyEffect(hasteEffect);           // Apply buff
 if (player.HasTag("Stunned")) return;      // Query state
-player.RemoveAllEffectsWithTag("Haste");   // Batch removal
+player.RemoveEffects(player.GetHandlesWithTag("Haste")); // Batch removal
 ```
 
 **What you get:**
@@ -108,11 +206,11 @@ player.RemoveAllEffectsWithTag("Haste");   // Batch removal
 
 **Beyond buffs:** Tags become a powerful capability system for AI decisions, permission gates, state management, and complex gameplay interactions (invulnerability, stealth, elemental systems).
 
-[📖 Full Guide](Docs/EFFECTS_SYSTEM.md) | [🚀 5-Minute Tutorial](Docs/EFFECTS_SYSTEM_TUTORIAL.md)
+[📖 Full Guide](docs/features/effects/effects-system.md) | [🚀 5-Minute Tutorial](docs/features/effects/effects-system-tutorial.md)
 
 ---
 
-### 3. 💾 Unity-Aware Serialization
+### 4. 💾 Unity-Aware Serialization
 
 #### ⏱️ 40+ hours on initial implementation + prevents player data loss
 
@@ -138,11 +236,11 @@ byte[] data = Serializer.JsonSerialize(saveData);
 
 **Real-world impact:** Ship updates without worrying about corrupting player saves.
 
-[📖 Serialization Guide](Docs/SERIALIZATION.md)
+[📖 Serialization Guide](docs/features/serialization/serialization.md)
 
 ---
 
-### 4. 🎱 Professional Pooling
+### 5. 🎱 Professional Pooling
 
 #### ⏱️ Eliminates GC spikes = 5-10 FPS in complex scenes
 
@@ -175,7 +273,7 @@ void ProcessEnemies(QuadTree2D<Enemy> enemyTree) {
 
 ---
 
-### 5. 🛠️ Editor Tools Suite
+### 6. 🛠️ Editor Tools Suite
 
 #### ⏱️ 1-2 hours/operation × weekly use = 100+ hours/year
 
@@ -188,7 +286,7 @@ void ProcessEnemies(QuadTree2D<Enemy> enemyTree) {
 - **Prefab Checker**: Validate 200 prefabs for missing references → 1 click (was: manual QA)
 - **Atlas Generator**: Create sprite atlases from regex/labels → automated (was: manual setup)
 
-[📖 Editor Tools Guide](Docs/EDITOR_TOOLS_GUIDE.md)
+[📖 Editor Tools Guide](docs/features/editor-tools/editor-tools-guide.md)
 
 ---
 
@@ -197,21 +295,6 @@ void ProcessEnemies(QuadTree2D<Enemy> enemyTree) {
 **Stop Googling "Unity how to..." for the 100th time.**
 
 Unity Helpers includes 200+ extension methods that handle the tedious stuff you're tired of writing:
-
-### Hierarchy Traversal (Optimized)
-
-```csharp
-// Get all ancestors without allocating
-transform.GetAncestors(buffer);  // 10x faster than recursive GetComponentInParent loops
-
-// Find specific ancestor
-Canvas canvas = transform.GetAncestor<Canvas>();  // Stops at first match
-
-// Breadth-first child search with depth control
-transform.GetDescendants(buffer, maxDepth: 2);  // Avoid traversing entire tree
-```
-
-**Why this matters:** The naive way allocates arrays on every call. These methods use buffering and early-exit for hot paths.
 
 ### Unity Type Extensions
 
@@ -222,8 +305,8 @@ Color teamColor = sprite.GetAverageColor(ColorAveragingMethod.LAB);  // Perceptu
 // Collider auto-fitting
 polygonCollider.UpdateShapeToSprite();  // Instant sprite → collider sync
 
-// Smooth rotation in one line
-transform.rotation = transform.GetAngleWithSpeed(target, rotationSpeed, Time.deltaTime);
+// Smooth direction rotation (returns rotated direction vector)
+Vector2 facing = Helpers.GetAngleWithSpeed(targetDirection, currentFacing, rotationSpeed);
 
 // Safe destruction (works in editor AND runtime)
 gameObject.SmartDestroy();  // No more #if UNITY_EDITOR everywhere
@@ -232,9 +315,8 @@ gameObject.SmartDestroy();  // No more #if UNITY_EDITOR everywhere
 Bounds visibleArea = Camera.main.OrthographicBounds();  // Perfect for culling/spawning
 
 // Predictive targeting (intercept moving targets)
-if (Ballistics.TryGetInterceptVelocity(shooter, target, projectileSpeed, out Vector3 velocity)) {
-    Instantiate(projectile, shooter, Quaternion.LookRotation(velocity));
-}
+Vector2 aimPoint = target.PredictCurrentTarget(shooter.position, projectileSpeed, predictiveFiring: true, targetVelocity);
+turret.transform.up = (aimPoint - (Vector2)shooter.position).normalized;
 ```
 
 ### Math That Should Be Built-In
@@ -269,7 +351,7 @@ int distance = playerName.LevenshteinDistance("jon");  // "john" = 1, close matc
 string apiKey = "user_name".ToPascalCase();  // "UserName"
 ```
 
-**Full list:** [Math & Extensions Guide](Docs/MATH_AND_EXTENSIONS.md) | [Reflection Helpers](Docs/REFLECTION_HELPERS.md)
+**Full list:** [Math & Extensions Guide](docs/features/utilities/math-and-extensions.md) | [Reflection Helpers](docs/features/utilities/reflection-helpers.md)
 
 ---
 
@@ -277,13 +359,14 @@ string apiKey = "user_name".ToPascalCase();  // "UserName"
 
 These powerful utilities solve specific problems that waste hours if you implement them yourself:
 
-| Feature                                                                   | What It Does                                          | Time Saved                         |
-| ------------------------------------------------------------------------- | ----------------------------------------------------- | ---------------------------------- |
-| **[Predictive Targeting](Docs/MATH_AND_EXTENSIONS.md#predictive-target)** | Perfect ballistics for turrets/missiles in one call   | 2-3 hours per shooting system      |
-| **[Coroutine Jitter](Docs/MATH_AND_EXTENSIONS.md#unity-extensions)**      | Prevents 100 enemies polling on same frame            | Eliminates frame spikes            |
-| **[IL-Emitted Reflection](Docs/REFLECTION_HELPERS.md)**                   | 100x faster than System.Reflection, IL2CPP safe       | Critical for serialization/modding |
-| **[SmartDestroy()](Docs/MATH_AND_EXTENSIONS.md#lifecycle-helpers)**       | Editor/runtime safe destruction (no scene corruption) | Prevents countless debugging hours |
-| **[Convex/Concave Hulls](Docs/HULLS.md)**                                 | Generate territory borders from point clouds          | 4-6 hours per hull algorithm       |
+| Feature                                                                                   | What It Does                                          | Time Saved                           |
+| ----------------------------------------------------------------------------------------- | ----------------------------------------------------- | ------------------------------------ |
+| **[Predictive Targeting](docs/features/utilities/helper-utilities.md#predictive-aiming)** | Perfect ballistics for turrets/missiles in one call   | 2-3 hours per shooting system        |
+| **[Coroutine Jitter](docs/features/utilities/math-and-extensions.md#unity-extensions)**   | Prevents 100 enemies polling on same frame            | Eliminates frame spikes              |
+| **[IL-Emitted Reflection](docs/features/utilities/reflection-helpers.md)**                | 100x faster than System.Reflection, IL2CPP safe       | Critical for serialization/modding   |
+| **[SmartDestroy()](docs/features/utilities/helper-utilities.md#smart-destruction)**       | Editor/runtime safe destruction (no scene corruption) | Prevents countless debugging hours   |
+| **[Convex/Concave Hulls](docs/features/spatial/hulls.md)**                                | Generate territory borders from point clouds          | 4-6 hours per hull algorithm         |
+| **[Logging Extensions](docs/features/logging/logging-extensions.md)**                     | Rich tags, thread-aware logs, per-object toggles      | Keeps consoles readable + actionable |
 
 ---
 
@@ -294,7 +377,7 @@ These powerful utilities solve specific problems that waste hours if you impleme
 **Built for Real Projects:**
 
 - ✅ **Production-tested** in shipped commercial games
-- ✅ **4,000+ automated tests** catch edge cases before you hit them
+- ✅ **8,000+ automated tests** catch edge cases before you hit them
 - ✅ **Zero dependencies** - drop it in any project
 - ✅ **IL2CPP/WebGL ready** with optimized SINGLE_THREADED paths
 - ✅ **MIT Licensed** - use freely in commercial projects
@@ -309,14 +392,67 @@ These powerful utilities solve specific problems that waste hours if you impleme
 
 ## Installation
 
-### As Unity Package (Recommended)
+Unity Helpers is available from multiple sources. Choose the one that best fits your workflow:
 
-1. Open Unity Package Manager
-2. _(Optional)_ Enable **Pre-release packages** for cutting-edge builds
-3. Click the **+** dropdown → **Add package from git URL...**
-4. Enter: `https://github.com/wallstop/unity-helpers.git`
+| Source                               | Best For                            | Auto-Updates |
+| ------------------------------------ | ----------------------------------- | ------------ |
+| [OpenUPM](#from-openupm-recommended) | Most users, easy version management | ✅ Yes       |
+| [Git URL](#from-git-url)             | Latest commits, CI/CD pipelines     | ✅ Yes       |
+| [NPM Registry](#from-npm-registry)   | Teams already using NPM             | ✅ Yes       |
+| [Source](#from-source)               | Offline, modifications needed       | ❌ Manual    |
 
-**OR** add to your `manifest.json`:
+### From OpenUPM (Recommended)
+
+[OpenUPM](https://openupm.com/packages/com.wallstop-studios.unity-helpers/) is the recommended installation method for easy version management and updates.
+
+#### Option A: Via Package Manager UI
+
+1. Open **Edit → Project Settings → Package Manager**
+2. Under **Scoped Registries**, click **+** to add a new registry:
+   - **Name**: `OpenUPM`
+   - **URL**: `https://package.openupm.com`
+   - **Scope(s)**: `com.wallstop-studios`
+3. Click **Save**
+4. Open **Window → Package Manager**
+5. Change the dropdown to **My Registries**
+6. Find and install `Unity Helpers`
+
+#### Option B: Via OpenUPM CLI
+
+If you have the [OpenUPM CLI](https://openupm.com/docs/) installed:
+
+```bash
+openupm add com.wallstop-studios.unity-helpers
+```
+
+#### Option C: Manual manifest.json
+
+Add to your `Packages/manifest.json`:
+
+```json
+{
+  "scopedRegistries": [
+    {
+      "name": "OpenUPM",
+      "url": "https://package.openupm.com",
+      "scopes": ["com.wallstop-studios"]
+    }
+  ],
+  "dependencies": {
+    "com.wallstop-studios.unity-helpers": "2.2.0"
+  }
+}
+```
+
+### From Git URL
+
+Install directly from GitHub for the latest version:
+
+1. Open **Window → Package Manager**
+2. Click **+** → **Add package from git URL...**
+3. Enter: `https://github.com/wallstop/unity-helpers.git`
+
+**OR** add to your `Packages/manifest.json`:
 
 ```json
 {
@@ -326,21 +462,32 @@ These powerful utilities solve specific problems that waste hours if you impleme
 }
 ```
 
+> **Tip:** To lock to a specific version, append `#v2.2.0` to the URL.
+
 ### From NPM Registry
 
-1. Open Unity Package Manager
-2. _(Optional)_ Enable **Pre-release packages**
-3. Open **Advanced Package Settings** (gear icon)
-4. Add a new **Scoped Registry**:
+1. Open **Edit → Project Settings → Package Manager**
+2. Under **Scoped Registries**, click **+** to add a new registry:
    - **Name**: `NPM`
    - **URL**: `https://registry.npmjs.org`
-   - **Scope(s)**: `com.wallstop-studios.unity-helpers`
-5. Search for and install `com.wallstop-studios.unity-helpers`
+   - **Scope(s)**: `com.wallstop-studios`
+3. Click **Save**
+4. Open **Window → Package Manager**
+5. Change the dropdown to **My Registries**
+6. Find and install `com.wallstop-studios.unity-helpers`
 
 ### From Source
 
-1. [Download the latest release](https://github.com/wallstop/unity-helpers/releases) or clone this repository
-2. Copy the contents to your project's `Assets` folder
+#### Option A: Import Unity Package
+
+1. [Download the latest `.unitypackage`](https://github.com/wallstop/unity-helpers/releases) from GitHub Releases
+2. In Unity, go to **Assets → Import Package → Custom Package...**
+3. Select the downloaded `.unitypackage` file and import
+
+#### Option B: Clone or Download Repository
+
+1. Clone or [download](https://github.com/wallstop/unity-helpers/archive/refs/heads/main.zip) the repository
+2. Copy the contents to your project's `Assets/` or `Packages/` folder
 3. Unity will automatically import the package
 
 ---
@@ -437,16 +584,16 @@ Create a `link.xml` file in your `Assets` folder to prevent stripping:
 
 - [Unity Manual: Managed Code Stripping](https://docs.unity3d.com/Manual/ManagedCodeStripping.html)
 - [Protobuf-net and IL2CPP](https://github.com/protobuf-net/protobuf-net#il2cpp)
-- [Serialization Guide: IL2CPP Warning](Docs/SERIALIZATION.md#️-il2cpp-and-code-stripping-warning)
-- [Reflection Helpers: IL2CPP Warning](Docs/REFLECTION_HELPERS.md#️-il2cpp-code-stripping-considerations)
+- [Serialization Guide: IL2CPP Warning](docs/features/serialization/serialization.md#-il2cpp-and-code-stripping-warning)
+- [Reflection Helpers: IL2CPP Warning](docs/features/utilities/reflection-helpers.md#-il2cpp-code-stripping-considerations)
 
 ---
 
 ## Quick Start Guide
 
-> 💡 **First time?** Skip to section #1 ([Relational Components](#1--auto-wire-components)) - it has the biggest immediate impact.
+> 💡 **First time?** Skip to section #2 ([Relational Components](#2--auto-wire-components)) - it has the biggest immediate impact.
 
-Already read the [Top 5 Time-Savers](#-top-5-time-savers)? Jump directly to the [Core Features](#core-features) reference below, or check out the comprehensive [Getting Started Guide](Docs/GETTING_STARTED.md).
+Already read the [Top 5 Time-Savers](#-top-time-savers)? Jump directly to the [Core Features](#core-features) reference below, or check out the comprehensive [Getting Started Guide](docs/overview/getting-started.md).
 
 ---
 
@@ -458,25 +605,14 @@ Unity Helpers includes **15 high-quality random number generators**, all impleme
 
 #### Available Generators
 
-| Generator                       | Speed     | Quality   | Use Case                                   |
-| ------------------------------- | --------- | --------- | ------------------------------------------ |
-| **IllusionFlow** ⭐             | Very Fast | Excellent | Default choice (via PRNG.Instance)         |
-| **PcgRandom** ⭐                | Very Fast | Excellent | Deterministic gameplay; explicit seeding   |
-| **FlurryBurstRandom**           | Very Fast | Excellent | High-quality PCG/Xoshiro alternative       |
-| **RomuDuo**                     | Very Fast | Good      | Maximum performance needed                 |
-| **LinearCongruentialGenerator** | Fastest   | Fair      | Simple, fast generation                    |
-| **XorShiftRandom**              | Very Fast | Good      | General purpose                            |
-| **XoroShiroRandom**             | Very Fast | Good      | General purpose                            |
-| **SplitMix64**                  | Very Fast | Good      | Initialization, hashing                    |
-| **StormDropRandom**             | Fast      | Excellent | Large-buffer streams for heavy simulations |
-| **PhotonSpinRandom**            | Moderate  | Excellent | Bulk generation; long non-overlapping runs |
-| **SquirrelRandom**              | Moderate  | Good      | Hash-based generation                      |
-| **WyRandom**                    | Moderate  | Good      | Hashing applications                       |
-| **DotNetRandom**                | Moderate  | Good      | .NET compatibility                         |
-| **SystemRandom**                | Slow      | Good      | Backward compatibility                     |
-| **UnityRandom**                 | Very Slow | Good      | Unity compatibility                        |
+> The tables below are auto-generated by the performance benchmark. Run  
+> `RandomPerformanceTests.Benchmark` in the Unity Test Runner to refresh them.
 
-⭐ **Recommended**: Use `PRNG.Instance` (currently IllusionFlow)
+<!-- RANDOM_BENCHMARKS_START -->
+
+_No benchmark data available yet. Run `RandomPerformanceTests.Benchmark` to populate these tables._
+
+<!-- RANDOM_BENCHMARKS_END -->
 
 #### Rich API
 
@@ -532,7 +668,7 @@ IRandom replay = new IllusionFlow(seed: 12345);
 - Use `PRNG.Instance` for a thread-local default, or use each generator's `TypeName.Instance` (e.g., `IllusionFlow.Instance`, `PcgRandom.Instance`).
 - Alternatively, create one separate instance per thread.
 
-[📊 Performance Comparison](Docs/RANDOM_PERFORMANCE.md)
+[📊 Performance Comparison](docs/performance/random-performance.md)
 
 ---
 
@@ -601,9 +737,9 @@ tree.GetElementsInRange(center, radius: 50f, results);
 - Single queries
 - Already using Unity's physics system
 
-[📊 2D Benchmarks](Docs/SPATIAL_TREE_2D_PERFORMANCE.md) | [📊 3D Benchmarks](Docs/SPATIAL_TREE_3D_PERFORMANCE.md)
+[📊 2D Benchmarks](docs/performance/spatial-tree-2d-performance.md) | [📊 3D Benchmarks](docs/performance/spatial-tree-3d-performance.md)
 
-For behavior details and edge cases, see: [Spatial Tree Semantics](Docs/SPATIAL_TREE_SEMANTICS.md)
+For behavior details and edge cases, see: [Spatial Tree Semantics](docs/features/spatial/spatial-tree-semantics.md)
 
 ---
 
@@ -617,8 +753,9 @@ Stop writing GetComponent boilerplate. Auto-wire components using attributes.
 - `[ParentComponent]` - Find components in parent hierarchy
 - `[ChildComponent]` - Find components in children
 - `[ValidateAssignment]` - Validate at edit time, show errors in inspector
-- `[NotNull]` - Must be assigned in inspector
-- `[DxReadOnly]` - Read-only display in inspector
+- `[WNotNull]` - Must be assigned in inspector
+- `[WReadOnly]` - Read-only display in inspector
+- `[WInLineEditor]` - Inline inspector editing for object references
 - `[WShowIf]` - Conditional display based on field values
 
 **Quick example:**
@@ -659,8 +796,8 @@ public class Enemy : MonoBehaviour
 }
 ```
 
-See the in-depth guide: [Relational Components](Docs/RELATIONAL_COMPONENTS.md).
-Performance snapshots: [Relational Component Performance Benchmarks](Docs/RELATIONAL_COMPONENT_PERFORMANCE.md).
+See the in-depth guide: [Relational Components](docs/features/relational-components/relational-components.md).
+Performance snapshots: [Relational Component Performance Benchmarks](docs/performance/relational-components-performance.md).
 
 ---
 
@@ -716,9 +853,9 @@ if (player.HasTag("Stunned")) { /* disable input */ }
 - `AttributeModification` order: Addition → Multiplication → Override.
 - `CosmeticEffectData.RequiresInstancing` — instance per application or reuse shared presenters.
 
-**Power Pattern:** Tags aren't just for buffs—use them to build robust capability systems for invulnerability, AI decision-making, permission gates, state management, and elemental interactions. See [Advanced Scenarios](Docs/EFFECTS_SYSTEM.md#advanced-scenarios-beyond-buffs-and-debuffs) for patterns.
+**Power Pattern:** Tags aren't just for buffs—use them to build robust capability systems for invulnerability, AI decision-making, permission gates, state management, and elemental interactions. See [Advanced Scenarios](docs/features/effects/effects-system.md#advanced-scenarios-beyond-buffs-and-debuffs) for patterns.
 
-Further reading: see the full guide [Effects System](Docs/EFFECTS_SYSTEM.md).
+Further reading: see the full guide [Effects System](docs/features/effects/effects-system.md).
 
 ---
 
@@ -832,7 +969,7 @@ NetworkMessage again = Serializer.Deserialize<NetworkMessage>(buffer.AsSpan(0, l
 - LZMA compression utilities (see `Runtime/Utils/LZMA.cs`)
 - Type‑safe serialization and pooled buffers/writers to reduce GC
 
-[Full guide: Serialization](Docs/SERIALIZATION.md)
+[Full guide: Serialization](docs/features/serialization/serialization.md)
 
 ---
 
@@ -860,11 +997,13 @@ damageHistory.Add(25f);
 damageHistory.Add(30f);
 float avgDamage = damageHistory.Average();
 
-// Priority queue for event scheduling
-PriorityQueue<GameEvent> eventQueue = new();
-eventQueue.Enqueue(spawnEvent, priority: 1);
-eventQueue.Enqueue(bossEvent, priority: 10);
-GameEvent next = eventQueue.Dequeue(); // Highest priority
+// Priority queue for event scheduling (priority determined by comparer)
+PriorityQueue<GameEvent> eventQueue = new(
+    Comparer<GameEvent>.Create((a, b) => b.Priority.CompareTo(a.Priority)) // Higher first
+);
+eventQueue.Enqueue(spawnEvent);
+eventQueue.Enqueue(bossEvent);
+if (eventQueue.TryDequeue(out GameEvent next)) { /* process event */ }
 
 // Trie for autocomplete
 Trie commandTrie = new();
@@ -875,7 +1014,7 @@ List<string> matches = commandTrie.GetWordsWithPrefix("tel");
 // Returns: ["teleport", "tell"]
 ```
 
-[Full guide: Data Structures](Docs/DATA_STRUCTURES.md)
+[Full guide: Data Structures](docs/features/utilities/data-structures.md)
 
 ---
 
@@ -883,7 +1022,7 @@ List<string> matches = commandTrie.GetWordsWithPrefix("tel");
 
 Numeric helpers, geometry primitives, Unity extensions, colors, collections, strings, directions.
 
-See the guide: [Core Math & Extensions](Docs/MATH_AND_EXTENSIONS.md).
+See the guide: [Core Math & Extensions](docs/features/utilities/math-and-extensions.md).
 
 #### At a Glance
 
@@ -905,7 +1044,7 @@ See the guide: [Core Math & Extensions](Docs/MATH_AND_EXTENSIONS.md).
 - `RuntimeSingleton<T>` — Global component singleton with optional cross‑scene persistence.
 - `ScriptableObjectSingleton<T>` — Global settings/data singleton loaded from `Resources/`, auto‑created by the editor tool.
 
-See the guide: [Singleton Utilities](Docs/SINGLETONS.md) and the tool: [ScriptableObject Singleton Creator](Docs/EDITOR_TOOLS_GUIDE.md#scriptableobject-singleton-creator).
+See the guide: [Singleton Utilities](docs/features/utilities/singletons.md) and the tool: [ScriptableObject Singleton Creator](docs/features/editor-tools/editor-tools-guide.md#scriptableobject-singleton-creator).
 
 ---
 
@@ -918,8 +1057,9 @@ Unity Helpers includes 20+ editor tools to streamline your workflow:
 - **Animation Tools**: Event Editor, Creator, Copier, Sheet Animation Creator
 - **Validation**: Prefab Checker with comprehensive validation rules
 - **Automation**: ScriptableObject Singleton Creator, Attribute Cache Generator
+- **Compilation**: Request a manual script compilation via `Tools > Wallstop Studios > Unity Helpers > Request Script Compilation` or use the default shortcut (**Ctrl/Cmd + Alt + R**) registered with Unity’s Shortcut Manager (listed under _Wallstop / Request Script Compilation_). The shortcut now forces an `AssetDatabase.Refresh` before requesting compilation and logs whenever Unity is already compiling, so scripts added outside the editor are imported even while Unity is unfocused.
 
-[📖 Complete Editor Tools Documentation](Docs/EDITOR_TOOLS_GUIDE.md)
+[📖 Complete Editor Tools Documentation](docs/features/editor-tools/editor-tools-guide.md)
 
 **Quick Access:**
 
@@ -978,7 +1118,7 @@ void ProcessLargeDataset(int size)
 
 <a id="pooling-utilities"></a>
 
-**Pooling utilities:**
+## Pooling utilities
 
 - `Buffers<T>` — pooled collections (List/Stack/Queue/HashSet) with `PooledResource` leases.
   - Lists: `using var lease = Buffers<Foo>.List.Get(out List<Foo> list);`
@@ -990,8 +1130,8 @@ void ProcessLargeDataset(int size)
   - Example: `using var lease = WallstopArrayPool<int>.Get(1024, out int[] buffer);`
   - Use for temporary processing buffers, sorting, or interop with APIs that require arrays.
 
-- `WallstopFastArrayPool<T>` — fast array pool specialized for frequent short‑lived arrays.
-  - Example: `using var lease = WallstopFastArrayPool<string>.Get(count, out string[] buffer);`
+- `WallstopFastArrayPool<T>` — fast array pool specialized for frequent short‑lived arrays (requires `T : unmanaged`), does not clear arrays. Returned arrays may have previous content in them.
+  - Example: `using var lease = WallstopFastArrayPool<int>.Get(count, out int[] buffer);`
   - Used throughout Helpers for high‑frequency editor/runtime operations (e.g., asset searches).
 
 **How pooling + buffering help APIs:**
@@ -1022,7 +1162,7 @@ void ProcessLargeDataset(int size)
 
 - When the define is present, optional assemblies under `Runtime/Integrations/*` compile automatically and expose helpers like `RelationalComponentsInstaller` (Zenject/Reflex) and `RegisterRelationalComponents()` (VContainer).
 - If you use UPM, no manual defines are required — the package IDs above trigger symbols via `versionDefines` in the asmdefs.
-- For test scenarios without LifetimeScope (VContainer), SceneContext (Zenject), or SceneScope (Reflex), see [DI Integrations: Testing and Edge Cases](Docs/RELATIONAL_COMPONENTS.md#di-integrations-testing-and-edge-cases) for step‑by‑step patterns.
+- For test scenarios without LifetimeScope (VContainer), SceneContext (Zenject), or SceneScope (Reflex), see [DI Integrations: Testing and Edge Cases](docs/features/relational-components/relational-components.md#di-integrations-testing-and-edge-cases) for step‑by‑step patterns.
 
 **Quick start:**
 
@@ -1058,7 +1198,7 @@ using WallstopStudios.UnityHelpers.Integrations.Reflex;
 var enemy = container.InstantiateComponentWithRelations(enemyPrefab, parent);
 ```
 
-See the full guide with scenarios, troubleshooting, and testing patterns: [Relational Components Guide](Docs/RELATIONAL_COMPONENTS.md)
+See the full guide with scenarios, troubleshooting, and testing patterns: [Relational Components Guide](docs/features/relational-components/relational-components.md)
 
 ### Additional Helpers
 
@@ -1106,15 +1246,15 @@ Unity Helpers is built with performance as a top priority:
 
 - 10-15x faster than Unity.Random (655-885M ops/sec vs 65-85M ops/sec)
 - Zero GC pressure with thread-local instances
-- [📊 Full Random Performance Benchmarks](Docs/RANDOM_PERFORMANCE.md)
+- [📊 Full Random Performance Benchmarks](docs/performance/random-performance.md)
 
 **Spatial Queries:**
 
 - O(log n) tree queries vs O(n) linear search
 - 100-1000x faster for large datasets
 - QuadTree2D: 10,000 objects = ~13 checks vs 10,000 checks
-- [📊 2D Performance Benchmarks](Docs/SPATIAL_TREE_2D_PERFORMANCE.md)
-- [📊 3D Performance Benchmarks](Docs/SPATIAL_TREE_3D_PERFORMANCE.md)
+- [📊 2D Performance Benchmarks](docs/performance/spatial-tree-2d-performance.md)
+- [📊 3D Performance Benchmarks](docs/performance/spatial-tree-3d-performance.md)
 
 **Memory Management:**
 
@@ -1127,13 +1267,13 @@ Unity Helpers is built with performance as a top priority:
 - Cached delegates are 10-100x faster than raw `System.Reflection` (boxed scenarios improve the most)
 - Safe for IL2CPP and AOT platforms; capability overrides (`ReflectionHelpers.OverrideReflectionCapabilities`) let tests force expression/IL fallbacks
 - Run the benchmarks via **ReflectionPerformanceTests.Benchmark** (EditMode Test Runner) and commit the updated markdown section
-- [📘 Reflection Performance Guide](Docs/ReflectionPerformance.md) and [📊 Benchmarks](Docs/REFLECTION_PERFORMANCE.md)
+- [📘 Reflection Helpers Guide](docs/features/utilities/reflection-helpers.md) and [📊 Benchmarks](docs/performance/reflection-performance.md)
 
 **List Sorting:**
 
-- Multiple adaptive algorithms (`Ghost`, `Meteor`, `Power`, `Grail`, `Pattern-Defeating QuickSort`, `Insertion`) tuned for `IList<T>`
+- Multiple adaptive algorithms (`Ghost`, `Meteor`, `Power`, `Grail`, `Pattern-Defeating QuickSort`, `Insertion`, `Tim`, `Jesse`, `Green`, `Ska`, `Ipn`, `Smooth`, `Block`, `IPS4o`, `Power+`, `Glide`, `Flux`) tuned for `IList<T>`
 - Deterministic datasets (sorted, nearly sorted, shuffled) across sizes from 100 to 1,000,000
-- [📊 IList Sorting Performance Benchmarks](Docs/ILIST_SORTING_PERFORMANCE.md)
+- [📊 IList Sorting Performance Benchmarks](docs/performance/ilist-sorting-performance.md)
 
 ---
 
@@ -1141,44 +1281,46 @@ Unity Helpers is built with performance as a top priority:
 
 **Start Here:**
 
-- 🚀 Getting Started — [Getting Started Guide](Docs/GETTING_STARTED.md)
-- 🔍 Feature Index — [Complete A-Z Index](Docs/INDEX.md)
-- 📖 Glossary — [Term Definitions](Docs/GLOSSARY.md)
+- 🚀 Getting Started — [Getting Started Guide](docs/overview/getting-started.md)
+- 🔍 Feature Index — [Complete A-Z Index](docs/overview/index.md)
+- 📖 Glossary — [Term Definitions](docs/overview/glossary.md)
 
 **Core Guides:**
 
-- Serialization Guide — [Serialization](Docs/SERIALIZATION.md)
-- Editor Tools Guide — [Editor Tools](Docs/EDITOR_TOOLS_GUIDE.md)
-- Math & Extensions — [Core Math & Extensions](Docs/MATH_AND_EXTENSIONS.md)
-- Singletons — [Singleton Utilities](Docs/SINGLETONS.md)
-- Relational Components — [Relational Components](Docs/RELATIONAL_COMPONENTS.md)
-- Effects System — [Effects System](Docs/EFFECTS_SYSTEM.md)
-- Data Structures — [Data Structures](Docs/DATA_STRUCTURES.md)
+- Odin Migration Guide — [Migrate from Odin Inspector](docs/guides/odin-migration-guide.md)
+- Serialization Guide — [Serialization](docs/features/serialization/serialization.md)
+- Editor Tools Guide — [Editor Tools](docs/features/editor-tools/editor-tools-guide.md)
+- Math & Extensions — [Core Math & Extensions](docs/features/utilities/math-and-extensions.md)
+- Singletons — [Singleton Utilities](docs/features/utilities/singletons.md)
+- Relational Components — [Relational Components](docs/features/relational-components/relational-components.md)
+- Effects System — [Effects System](docs/features/effects/effects-system.md)
+- Data Structures — [Data Structures](docs/features/utilities/data-structures.md)
 
 **Spatial Trees:**
 
-- 2D Spatial Trees Guide — [2D Spatial Trees Guide](Docs/SPATIAL_TREES_2D_GUIDE.md)
-- 3D Spatial Trees Guide — [3D Spatial Trees Guide](Docs/SPATIAL_TREES_3D_GUIDE.md)
-- Spatial Tree Semantics — [Spatial Tree Semantics](Docs/SPATIAL_TREE_SEMANTICS.md)
-- Spatial Tree 2D Performance — [Spatial Tree 2D Performance](Docs/SPATIAL_TREE_2D_PERFORMANCE.md)
-- Spatial Tree 3D Performance — [Spatial Tree 3D Performance](Docs/SPATIAL_TREE_3D_PERFORMANCE.md)
-- Hulls (Convex vs Concave) — [Hulls](Docs/HULLS.md)
+- 2D Spatial Trees Guide — [2D Spatial Trees Guide](docs/features/spatial/spatial-trees-2d-guide.md)
+- 3D Spatial Trees Guide — [3D Spatial Trees Guide](docs/features/spatial/spatial-trees-3d-guide.md)
+- Spatial Tree Semantics — [Spatial Tree Semantics](docs/features/spatial/spatial-tree-semantics.md)
+- Spatial Tree 2D Performance — [Spatial Tree 2D Performance](docs/performance/spatial-tree-2d-performance.md)
+- Spatial Tree 3D Performance — [Spatial Tree 3D Performance](docs/performance/spatial-tree-3d-performance.md)
+- Hulls (Convex vs Concave) — [Hulls](docs/features/spatial/hulls.md)
 
 **Performance & Reference:**
 
-- Reflection Performance Guide — [Reflection Performance](Docs/ReflectionPerformance.md)
-- Reflection AOT/Burst Validation — [IL2CPP & Burst Validation](Docs/ReflectionAotBurstValidation.md)
-- Reflection Benchmark CI Proposal — [Benchmark CI Proposal](Docs/ReflectionBenchmarkCIProposal.md)
-- Random Performance — [Random Performance](Docs/RANDOM_PERFORMANCE.md)
-- Reflection Helpers — [Reflection Helpers](Docs/REFLECTION_HELPERS.md)
-- IList Sorting Performance — [IList Sorting Performance](Docs/ILIST_SORTING_PERFORMANCE.md)
+- Reflection Performance Guide — [Reflection Benchmarks](docs/performance/reflection-performance.md)
+- Reflection AOT/Burst Validation — [IL2CPP & Burst Validation](docs/features/utilities/reflection-helpers.md#il2cppwebgl-notes)
+- Reflection Benchmark Workflow — [Benchmarking & Verification](docs/features/utilities/reflection-helpers.md#benchmarking--verification)
+- Random Performance — [Random Performance](docs/performance/random-performance.md)
+- Reflection Helpers — [Reflection Helpers](docs/features/utilities/reflection-helpers.md)
+- IList Sorting Performance — [IList Sorting Performance](docs/performance/ilist-sorting-performance.md)
 
 **Project Info:**
 
-- Changelog — [Changelog](Docs/CHANGELOG.md)
-- License — [License](Docs/LICENSE.md)
-- Third‑Party Notices — [Third‑Party Notices](Docs/THIRD_PARTY_NOTICES.md)
-- Contributing — [Contributing](Docs/CONTRIBUTING.md)
+- Changelog — [Changelog](CHANGELOG.md)
+- License — [License](docs/project/license.md)
+- Third‑Party Notices — [Third‑Party Notices](docs/project/third-party-notices.md)
+- Contributing — [Contributing](docs/project/contributing.md)
+- llms.txt — [LLM-Friendly Documentation](docs/project/llms-txt.md) | [llms.txt](llms.txt)
 
 ---
 
@@ -1197,13 +1339,13 @@ Contributions are welcome! Please feel free to submit a Pull Request.
   - Or run the Actions workflow manually: Actions → "Opt-in Formatting" → Run workflow → enter the PR number.
 - Not everything is auto-fixable: link checks and YAML linting may still require manual changes.
 
-See more details in [CONTRIBUTING](Docs/CONTRIBUTING.md).
+See more details in [CONTRIBUTING](docs/project/contributing.md).
 
 ---
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](Docs/LICENSE.md) file for details.
+This project is licensed under the MIT License - see the [LICENSE](docs/project/license.md) file for details.
 
 ## 2.0 Release Notes (Highlights)
 
@@ -1216,4 +1358,4 @@ This project is licensed under the MIT License - see the [LICENSE](Docs/LICENSE.
 - Minor robustness improvements:
   - Guarded stray `UnityEditor` imports in runtime files to ensure clean player builds.
 
-See [Serialization guide](Docs/SERIALIZATION.md) for AOT/IL2CPP guidance and Unity JSON options, and [Editor tools guide](Docs/EDITOR_TOOLS_GUIDE.md) for Editor tool usage details.
+See [Serialization guide](docs/features/serialization/serialization.md) for AOT/IL2CPP guidance and Unity JSON options, and [Editor tools guide](docs/features/editor-tools/editor-tools-guide.md) for Editor tool usage details.

@@ -1,4 +1,4 @@
-namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
+namespace WallstopStudios.UnityHelpers.Tests.Sprites
 {
 #if UNITY_EDITOR
     using System.IO;
@@ -6,8 +6,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
     using UnityEditor;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Helper;
+    using WallstopStudios.UnityHelpers.Editor.AssetProcessors;
     using WallstopStudios.UnityHelpers.Editor.Sprites;
-    using WallstopStudios.UnityHelpers.Tests.Editor.Utils;
+    using WallstopStudios.UnityHelpers.Tests.Core;
     using Object = UnityEngine.Object;
 
     public sealed class SpritePivotAdjusterAdditionalTests : CommonTestBase
@@ -15,8 +16,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
         private const string Root = "Assets/Temp/SpritePivotAdjusterAdditionalTests";
 
         [SetUp]
-        public void SetUp()
+        public override void BaseSetUp()
         {
+            base.BaseSetUp();
             EnsureFolder(Root);
             SpritePivotAdjuster.SuppressUserPrompts = true;
         }
@@ -25,8 +27,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
         public override void TearDown()
         {
             base.TearDown();
-            AssetDatabase.DeleteAsset("Assets/Temp");
-            AssetDatabase.Refresh();
+            // Reset DetectAssetChangeProcessor to avoid triggering loop protection
+            // when multiple assets are deleted during cleanup
+            DetectAssetChangeProcessor.ResetForTesting();
+            CleanupTrackedFoldersAndAssets();
             SpritePivotAdjuster.SuppressUserPrompts = false;
         }
 
@@ -86,7 +90,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
         [Test]
         public void SkipsWhenTextureNotReadable()
         {
-            string src = (Root + "/nonreadable.png").Replace('\\', '/');
+            string src = (Root + "/nonreadable.png").SanitizePath();
             CreateOpaqueLShape(src, 10, 10);
             AssetDatabase.Refresh();
 
@@ -120,7 +124,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
         [Test]
         public void SkipsMultipleSpriteTextures()
         {
-            string src = (Root + "/multi.png").Replace('\\', '/');
+            string src = (Root + "/multi.png").SanitizePath();
             CreateOpaqueLShape(src, 12, 12);
             AssetDatabase.Refresh();
 
@@ -151,9 +155,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             Assert.That(after, Is.EqualTo(before));
         }
 
-        private static void CreateDualAlphaPattern(string relPath, int w, int h)
+        private void CreateDualAlphaPattern(string relPath, int w, int h)
         {
-            EnsureFolder(Path.GetDirectoryName(relPath).Replace('\\', '/'));
+            EnsureFolder(Path.GetDirectoryName(relPath).SanitizePath());
             Texture2D t = new(w, h, TextureFormat.RGBA32, false) { alphaIsTransparency = true };
             Color[] pix = new Color[w * h];
             for (int y = 0; y < h; ++y)
@@ -181,9 +185,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             File.WriteAllBytes(RelToFull(relPath), t.EncodeToPNG());
         }
 
-        private static void CreateOpaqueLShape(string relPath, int w, int h)
+        private void CreateOpaqueLShape(string relPath, int w, int h)
         {
-            EnsureFolder(Path.GetDirectoryName(relPath).Replace('\\', '/'));
+            EnsureFolder(Path.GetDirectoryName(relPath).SanitizePath());
             Texture2D t = new(w, h, TextureFormat.RGBA32, false) { alphaIsTransparency = true };
             Color[] pix = new Color[w * h];
             for (int y = 0; y < h; ++y)
@@ -197,21 +201,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             File.WriteAllBytes(RelToFull(relPath), t.EncodeToPNG());
         }
 
-        private static void EnsureFolder(string relPath)
-        {
-            string[] parts = relPath.Split('/');
-            string cur = parts[0];
-            for (int i = 1; i < parts.Length; i++)
-            {
-                string next = cur + "/" + parts[i];
-                if (!AssetDatabase.IsValidFolder(next))
-                {
-                    AssetDatabase.CreateFolder(cur, parts[i]);
-                }
-                cur = next;
-            }
-        }
-
         private static string RelToFull(string rel)
         {
             return Path.Combine(
@@ -221,7 +210,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
                     ),
                     rel
                 )
-                .Replace('\\', '/');
+                .SanitizePath();
         }
     }
 #endif

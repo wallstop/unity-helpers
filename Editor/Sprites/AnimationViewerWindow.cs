@@ -13,6 +13,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
     using WallstopStudios.UnityHelpers.Core.Extension;
     using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Editor;
+    using WallstopStudios.UnityHelpers.Utils;
     using WallstopStudios.UnityHelpers.Visuals;
     using WallstopStudios.UnityHelpers.Visuals.UIToolkit;
     using Object = UnityEngine.Object;
@@ -48,7 +49,6 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
     /// </remarks>
     public sealed class AnimationViewerWindow : EditorWindow
     {
-        private const string PackageId = "com.wallstop-studios.unity-helpers";
         private const float DragThresholdSqrMagnitude = 10f * 10f;
         private const int InvalidPointerId = -1;
         private const string DirToolName = "SpriteAnimationEditor";
@@ -233,143 +233,47 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
 
         private void TryLoadStyleSheets()
         {
-            string packageRoot = DirectoryHelper.FindPackageRootPath(
-                DirectoryHelper.GetCallerScriptDirectory()
+            // Load the stylesheet using DirectoryHelper which handles all package locations
+            string styleSheetPath = DirectoryHelper.ResolvePackageAssetPath(
+                "Editor/Styles/AnimationViewer.uss"
             );
-            if (!string.IsNullOrWhiteSpace(packageRoot))
+
+            if (!string.IsNullOrWhiteSpace(styleSheetPath))
             {
-                if (
-                    packageRoot.StartsWith("Packages", StringComparison.OrdinalIgnoreCase)
-                    && !packageRoot.Contains(PackageId, StringComparison.OrdinalIgnoreCase)
-                )
+                _styleSheet = AssetDatabase.LoadAssetAtPath<StyleSheet>(styleSheetPath);
+                if (_styleSheet == null)
                 {
-                    int helpersIndex = packageRoot.LastIndexOf(
-                        "UnityHelpers",
-                        StringComparison.Ordinal
+                    this.LogError(
+                        $"Failed to load Animation Viewer stylesheet at resolved path: '{styleSheetPath}'."
                     );
-                    if (0 <= helpersIndex)
-                    {
-                        packageRoot = packageRoot[..helpersIndex];
-                        packageRoot += PackageId;
-                    }
-                }
-
-                char pathSeparator = Path.DirectorySeparatorChar;
-                string styleSheetPath =
-                    $"{packageRoot}{pathSeparator}Editor{pathSeparator}Styles{pathSeparator}AnimationViewer.uss";
-                string unityRelativeStyleSheetPath = DirectoryHelper.AbsoluteToUnityRelativePath(
-                    styleSheetPath
-                );
-                unityRelativeStyleSheetPath = unityRelativeStyleSheetPath.SanitizePath();
-
-                const string packageCache = "PackageCache/";
-                int packageCacheIndex;
-                if (!string.IsNullOrWhiteSpace(unityRelativeStyleSheetPath))
-                {
-                    _styleSheet = AssetDatabase.LoadAssetAtPath<StyleSheet>(
-                        unityRelativeStyleSheetPath
-                    );
-                }
-
-                if (_styleSheet == null && !string.IsNullOrWhiteSpace(unityRelativeStyleSheetPath))
-                {
-                    packageCacheIndex = unityRelativeStyleSheetPath.IndexOf(
-                        packageCache,
-                        StringComparison.OrdinalIgnoreCase
-                    );
-                    if (0 <= packageCacheIndex)
-                    {
-                        unityRelativeStyleSheetPath = unityRelativeStyleSheetPath[
-                            (packageCacheIndex + packageCache.Length)..
-                        ];
-                        int forwardIndex = unityRelativeStyleSheetPath.IndexOf(
-                            "/",
-                            StringComparison.Ordinal
-                        );
-                        if (0 <= forwardIndex)
-                        {
-                            unityRelativeStyleSheetPath = unityRelativeStyleSheetPath.Substring(
-                                forwardIndex
-                            );
-                            unityRelativeStyleSheetPath =
-                                "Packages/" + PackageId + "/" + unityRelativeStyleSheetPath;
-                        }
-                        else
-                        {
-                            unityRelativeStyleSheetPath = "Packages/" + unityRelativeStyleSheetPath;
-                        }
-                    }
-
-                    if (!string.IsNullOrWhiteSpace(unityRelativeStyleSheetPath))
-                    {
-                        _styleSheet = AssetDatabase.LoadAssetAtPath<StyleSheet>(
-                            unityRelativeStyleSheetPath
-                        );
-                        if (_styleSheet == null)
-                        {
-                            this.LogError(
-                                $"Failed to load Animation Viewer style sheet (package root: '{packageRoot}'), relative path '{unityRelativeStyleSheetPath}'."
-                            );
-                        }
-                    }
-                    else
-                    {
-                        this.LogError(
-                            $"Failed to convert absolute path '{styleSheetPath}' to Unity relative path."
-                        );
-                    }
-                }
-
-                string visualTreePath =
-                    $"{packageRoot}{pathSeparator}Editor{pathSeparator}Styles{pathSeparator}AnimationViewer.uxml";
-                string unityRelativeVisualTreePath = DirectoryHelper.AbsoluteToUnityRelativePath(
-                    visualTreePath
-                );
-
-                _visualTree = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>(
-                    unityRelativeVisualTreePath
-                );
-                if (_visualTree == null)
-                {
-                    packageCacheIndex = unityRelativeVisualTreePath.IndexOf(
-                        packageCache,
-                        StringComparison.OrdinalIgnoreCase
-                    );
-                    if (0 <= packageCacheIndex)
-                    {
-                        unityRelativeVisualTreePath = unityRelativeVisualTreePath[
-                            (packageCacheIndex + packageCache.Length)..
-                        ];
-                        int forwardIndex = unityRelativeVisualTreePath.IndexOf(
-                            "/",
-                            StringComparison.Ordinal
-                        );
-                        if (0 <= forwardIndex)
-                        {
-                            unityRelativeVisualTreePath = unityRelativeVisualTreePath.Substring(
-                                forwardIndex
-                            );
-                            unityRelativeVisualTreePath =
-                                "Packages/" + PackageId + "/" + unityRelativeVisualTreePath;
-                        }
-                        else
-                        {
-                            unityRelativeVisualTreePath = "Packages/" + unityRelativeVisualTreePath;
-                        }
-                    }
-
-                    if (!string.IsNullOrWhiteSpace(unityRelativeVisualTreePath))
-                    {
-                        _visualTree = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>(
-                            unityRelativeVisualTreePath
-                        );
-                    }
                 }
             }
             else
             {
                 this.LogError(
-                    $"Failed to find Animation Viewer style sheet (package root: '{packageRoot}')."
+                    $"Failed to resolve Animation Viewer stylesheet path. Package root could not be determined."
+                );
+            }
+
+            // Load the visual tree asset
+            string visualTreePath = DirectoryHelper.ResolvePackageAssetPath(
+                "Editor/Styles/AnimationViewer.uxml"
+            );
+
+            if (!string.IsNullOrWhiteSpace(visualTreePath))
+            {
+                _visualTree = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>(visualTreePath);
+                if (_visualTree == null)
+                {
+                    this.LogError(
+                        $"Failed to load Animation Viewer visual tree at resolved path: '{visualTreePath}'."
+                    );
+                }
+            }
+            else
+            {
+                this.LogError(
+                    $"Failed to resolve Animation Viewer visual tree path. Package root could not be determined."
                 );
             }
         }
@@ -383,7 +287,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                     GetLastAnimationDirectory(),
                     new[] { ".anim" }
                 );
-                _fileSelector.OnFilesSelected += HandleFilesSelectedFromCustomBrowser;
+                _fileSelector.OnFilesSelectedReadOnly += HandleFilesSelectedFromCustomBrowser;
                 _fileSelector.OnCancelled += HideMultiFileSelector;
                 root.Add(_fileSelector);
                 if (root.childCount > 1)
@@ -414,7 +318,9 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             }
         }
 
-        private void HandleFilesSelectedFromCustomBrowser(List<string> selectedFullPaths)
+        private void HandleFilesSelectedFromCustomBrowser(
+            IReadOnlyCollection<string> selectedFullPaths
+        )
         {
             HideMultiFileSelector();
 
@@ -1094,7 +1000,11 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 return;
             }
 
-            List<AnimatedSpriteLayer> animatedSpriteLayers = new();
+            using PooledResource<List<AnimatedSpriteLayer>> layerLease =
+                Buffers<AnimatedSpriteLayer>.List.Get(
+                    out List<AnimatedSpriteLayer> animatedSpriteLayers
+                );
+
             if (_loadedEditorLayers.Count > 0)
             {
                 foreach (EditorLayerData editorLayer in _loadedEditorLayers)

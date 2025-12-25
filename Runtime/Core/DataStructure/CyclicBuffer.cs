@@ -9,6 +9,20 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Utils;
 
+    /// <summary>
+    /// Fixed-capacity ring buffer that overwrites old entries when full, ideal for rolling logs, recent inputs, or telemetry windows.
+    /// Preserves allocation-free iteration while remaining serializable for debugging and tooling.
+    /// </summary>
+    /// <example>
+    /// <code><![CDATA[
+    /// CyclicBuffer<Vector3> trail = new CyclicBuffer<Vector3>(32);
+    /// trail.Add(transform.position);
+    /// foreach (Vector3 sample in trail)
+    /// {
+    ///     DrawDebugPoint(sample);
+    /// }
+    /// ]]></code>
+    /// </example>
     [Serializable]
     [ProtoContract(IgnoreListHandling = true)]
     public sealed class CyclicBuffer<T> : IReadOnlyList<T>

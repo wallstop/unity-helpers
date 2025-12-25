@@ -31,15 +31,6 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             Vector2 span = new(Mathf.Max(gridSize.x - 1, 1), Mathf.Max(gridSize.y - 1, 1));
             Vector2 center = new((gridSize.x - 1) * 0.5f, (gridSize.y - 1) * 0.5f);
 
-            Bounds Scale(Vector2 ratio)
-            {
-                Vector2 size = new(
-                    Mathf.Max(span.x * ratio.x, 1f),
-                    Mathf.Max(span.y * ratio.y, 1f)
-                );
-                return new Bounds(center, new Vector3(size.x, size.y, 1f));
-            }
-
             List<Bounds> specs = new()
             {
                 Scale(new Vector2(1f, 1f)),
@@ -48,6 +39,15 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
                 new Bounds(center, new Vector3(1f, 1f, 1f)),
             };
             return specs.ToArray();
+
+            Bounds Scale(Vector2 ratio)
+            {
+                Vector2 size = new(
+                    Mathf.Max(span.x * ratio.x, 1f),
+                    Mathf.Max(span.y * ratio.y, 1f)
+                );
+                return new Bounds(center, new Vector3(size.x, size.y, 1f));
+            }
         }
 
         [Test]

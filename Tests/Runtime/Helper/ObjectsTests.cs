@@ -7,7 +7,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
     using UnityEngine;
     using UnityEngine.TestTools;
     using WallstopStudios.UnityHelpers.Core.Helper;
-    using WallstopStudios.UnityHelpers.Tests.TestUtils;
+    using WallstopStudios.UnityHelpers.Tests.Core;
+    using Object = UnityEngine.Object;
 
     [TestFixture]
     public sealed class ObjectsTests : CommonTestBase
@@ -122,7 +123,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             bool result = Objects.Null(gameObject);
 
             Assert.IsFalse(result);
-            UnityEngine.Object.Destroy(gameObject);
+            Object.Destroy(gameObject);
             yield return null;
         }
 
@@ -130,7 +131,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         public IEnumerator NullReturnsTrueForDestroyedUnityObject()
         {
             GameObject gameObject = Track(new GameObject("Test"));
-            UnityEngine.Object.Destroy(gameObject);
+            Object.Destroy(gameObject);
             yield return null;
 
             bool result = Objects.Null(gameObject);
@@ -143,7 +144,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         {
             GameObject gameObject = Track(new GameObject("Test"));
             object boxed = gameObject;
-            UnityEngine.Object.Destroy(gameObject);
+            Object.Destroy(gameObject);
             yield return null;
 
             bool result = Objects.Null(boxed);
@@ -200,7 +201,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             bool result = Objects.NotNull(gameObject);
 
             Assert.IsTrue(result);
-            UnityEngine.Object.Destroy(gameObject);
+            Object.Destroy(gameObject);
             yield return null;
         }
 
@@ -208,7 +209,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         public IEnumerator NotNullReturnsFalseForDestroyedUnityObject()
         {
             GameObject gameObject = Track(new GameObject("Test"));
-            UnityEngine.Object.Destroy(gameObject);
+            Object.Destroy(gameObject);
             yield return null;
 
             bool result = Objects.NotNull(gameObject);
@@ -221,7 +222,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         {
             GameObject gameObject = Track(new GameObject("Test"));
             object boxed = gameObject;
-            UnityEngine.Object.Destroy(gameObject);
+            Object.Destroy(gameObject);
             yield return null;
 
             bool result = Objects.NotNull(boxed);
@@ -233,9 +234,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         public void NotNullReturnsFalseForNullSystemObject()
         {
             object nullObject = null;
-
             bool result = Objects.NotNull(nullObject);
-
             Assert.IsFalse(result);
         }
 
@@ -243,9 +242,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         public void NotNullReturnsTrueForValidSystemObject()
         {
             object obj = new();
-
             bool result = Objects.NotNull(obj);
-
             Assert.IsTrue(result);
         }
 
@@ -253,22 +250,20 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         public void HashCodeReturnsZeroForNullReference()
         {
             int result = Objects.HashCode((object)null);
-
             Assert.AreEqual(0, result);
         }
 
         [Test]
         public void HashCodeReturnsZeroForNullReferenceUnityObject()
         {
-            int result = Objects.HashCode<object>((UnityEngine.Object)null);
+            int result = Objects.HashCode<object>(null);
             Assert.AreEqual(0, result);
         }
 
         [Test]
-        public void HashCodeReturnsZeroForNullReferenceUnityObjec2t()
+        public void HashCodeReturnsZeroForNullReferenceUnityObject2()
         {
-            int result = Objects.HashCode((UnityEngine.Object)null);
-
+            int result = Objects.HashCode((Object)null);
             Assert.AreEqual(0, result);
         }
 
@@ -315,19 +310,69 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         public void HashCodeIncludesNullOrderingDeterministically()
         {
             const int expected = 1175002007;
-
             int hash = Objects.HashCode<object, int, int>(null, 1, 2);
-
             Assert.AreEqual(expected, hash);
+        }
+
+        [Test]
+        public void HashCodeSupportsUpToTwentyParameters()
+        {
+            int[] values =
+            {
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9,
+                10,
+                11,
+                12,
+                13,
+                14,
+                15,
+                16,
+                17,
+                18,
+                19,
+                20,
+            };
+
+            int spanHash = Objects.SpanHashCode<int>(values);
+            int variadicHash = Objects.HashCode(
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9,
+                10,
+                11,
+                12,
+                13,
+                14,
+                15,
+                16,
+                17,
+                18,
+                19,
+                20
+            );
+
+            Assert.AreEqual(spanHash, variadicHash);
         }
 
         [Test]
         public void EnumerableHashCodeMatchesDeterministicHash()
         {
             const int expected = 1456420779;
-
             int enumerableHash = Objects.EnumerableHashCode(new[] { 1, 2, 3 });
-
             Assert.AreEqual(expected, enumerableHash);
         }
 
@@ -358,6 +403,68 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
 
             Assert.AreNotEqual(0, result);
             Assert.IsTrue(enumerable.LastEnumerator.WasDisposed);
+        }
+
+        [UnityTest]
+        public IEnumerator EnumerableHashCodeHandlesDestroyedUnityObjects()
+        {
+            GameObject go = Track(new GameObject("HashDestroyed"));
+            List<GameObject> objects = new() { go };
+
+            int hashBefore = Objects.EnumerableHashCode(objects);
+            Assert.AreNotEqual(0, hashBefore);
+
+            Object.Destroy(go);
+            yield return null;
+
+            int hashAfter = Objects.EnumerableHashCode(objects);
+            Assert.AreEqual(0, hashAfter, "Destroyed Unity objects should hash as null.");
+        }
+
+        [Test]
+        public void EnumerableHashCodeSupportsCommonCollections()
+        {
+            SortedSet<int> sorted = new() { 1, 2, 3 };
+            Queue<int> queue = new(new[] { 1, 2, 3 });
+            Stack<int> stack = new(new[] { 1, 2, 3 });
+
+            int sortedHash = Objects.EnumerableHashCode(sorted);
+            int queueHash = Objects.EnumerableHashCode(queue);
+            int stackHash = Objects.EnumerableHashCode(stack);
+
+            Assert.AreNotEqual(0, sortedHash);
+            Assert.AreNotEqual(0, queueHash);
+            Assert.AreNotEqual(0, stackHash);
+        }
+
+        [Test]
+        public void SpanHashCodeReturnsZeroForEmptySpan()
+        {
+            ReadOnlySpan<int> empty = ReadOnlySpan<int>.Empty;
+            Assert.AreEqual(0, Objects.SpanHashCode(empty));
+        }
+
+        [Test]
+        public void SpanHashCodeRespectsCustomStructHashCodes()
+        {
+            CustomStruct[] values = { new(1), new(2), new(3) };
+            int hash = Objects.SpanHashCode<CustomStruct>(values.AsSpan());
+            Assert.AreNotEqual(0, hash);
+        }
+
+        private readonly struct CustomStruct
+        {
+            private readonly int _value;
+
+            public CustomStruct(int value)
+            {
+                _value = value;
+            }
+
+            public override int GetHashCode()
+            {
+                return _value;
+            }
         }
     }
 }

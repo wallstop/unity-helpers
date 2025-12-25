@@ -8,6 +8,8 @@ namespace WallstopStudios.UnityHelpers.Utils
     public static class SetTextureImportData
     {
         public const int MaxTextureSize = 8192;
+
+        // ReSharper disable once UnusedMember.Global
         public const int RegularTextureSize = 2048;
 
         public static void SetReadable(Texture2D texture)

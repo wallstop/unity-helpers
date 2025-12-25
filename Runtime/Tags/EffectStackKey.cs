@@ -6,6 +6,18 @@ namespace WallstopStudios.UnityHelpers.Tags
     /// <summary>
     /// Key used to group effect handles for stacking decisions.
     /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Effect stacking is driven by <see cref="EffectStackGroup"/>. For reference-based grouping, the
+    /// key stores the effect asset; for custom grouping it stores a string key. Equality and hashing are
+    /// tuned to avoid allocations and rely on reference equality for effect assets and ordinal comparison
+    /// for custom keys.
+    /// </para>
+    /// <para>
+    /// Keys are created via the factory methods and are used by <see cref="EffectHandler"/> to bucket
+    /// active <see cref="EffectHandle"/> instances when applying stacking policies.
+    /// </para>
+    /// </remarks>
     internal readonly struct EffectStackKey : IEquatable<EffectStackKey>
     {
         private readonly EffectStackGroup _group;
@@ -19,16 +31,43 @@ namespace WallstopStudios.UnityHelpers.Tags
             _customKey = customKey;
         }
 
+        /// <summary>
+        /// Creates a stack key that groups by effect asset reference.
+        /// </summary>
+        /// <param name="effect">The effect asset to use for grouping.</param>
+        /// <returns>A key representing the reference-based stack group.</returns>
+        /// <example>
+        /// <code>
+        /// EffectStackKey key = EffectStackKey.CreateReference(poisonEffect);
+        /// // All handles from the same poisonEffect asset share a stack.
+        /// </code>
+        /// </example>
         public static EffectStackKey CreateReference(AttributeEffect effect)
         {
             return new EffectStackKey(EffectStackGroup.Reference, effect, null);
         }
 
+        /// <summary>
+        /// Creates a stack key that groups by a custom string identifier.
+        /// </summary>
+        /// <param name="customKey">Identifier used to group otherwise distinct effects.</param>
+        /// <returns>A key representing the custom stack group.</returns>
+        /// <example>
+        /// <code>
+        /// EffectStackKey key = EffectStackKey.CreateCustom("DamageOverTime");
+        /// // Different assets can share the same custom key to stack together.
+        /// </code>
+        /// </example>
         public static EffectStackKey CreateCustom(string customKey)
         {
             return new EffectStackKey(EffectStackGroup.CustomKey, null, customKey);
         }
 
+        /// <summary>
+        /// Compares this key to another for value equality.
+        /// </summary>
+        /// <param name="other">The other key to compare.</param>
+        /// <returns><c>true</c> when both keys represent the same stack group; otherwise, <c>false</c>.</returns>
         public bool Equals(EffectStackKey other)
         {
             if (_group != other._group)
@@ -48,11 +87,20 @@ namespace WallstopStudios.UnityHelpers.Tags
             };
         }
 
+        /// <summary>
+        /// Determines whether this key is equal to another object.
+        /// </summary>
+        /// <param name="obj">The object to compare with.</param>
+        /// <returns><c>true</c> if the object is an <see cref="EffectStackKey"/> representing the same group; otherwise, <c>false</c>.</returns>
         public override bool Equals(object obj)
         {
             return obj is EffectStackKey other && Equals(other);
         }
 
+        /// <summary>
+        /// Generates a hash code consistent with <see cref="Equals(EffectStackKey)"/>.
+        /// </summary>
+        /// <returns>A hash code for use in dictionaries and sets.</returns>
         public override int GetHashCode()
         {
             return _group switch
@@ -66,11 +114,23 @@ namespace WallstopStudios.UnityHelpers.Tags
             };
         }
 
+        /// <summary>
+        /// Determines whether two keys are equal.
+        /// </summary>
+        /// <param name="left">First key to compare.</param>
+        /// <param name="right">Second key to compare.</param>
+        /// <returns><c>true</c> if both keys represent the same stack group; otherwise, <c>false</c>.</returns>
         public static bool operator ==(EffectStackKey left, EffectStackKey right)
         {
             return left.Equals(right);
         }
 
+        /// <summary>
+        /// Determines whether two keys are not equal.
+        /// </summary>
+        /// <param name="left">First key to compare.</param>
+        /// <param name="right">Second key to compare.</param>
+        /// <returns><c>true</c> if the keys differ; otherwise, <c>false</c>.</returns>
         public static bool operator !=(EffectStackKey left, EffectStackKey right)
         {
             return !(left == right);
