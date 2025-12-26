@@ -20,6 +20,8 @@ Unity Helpers provides powerful grouping attributes that create boxed sections a
 
 Creates boxed inspector sections with optional collapsible headers and automatic field inclusion.
 
+> ⚠️ **Important:** `[WGroupEnd]` must be placed on the **last field you want included** in the group. The field with `[WGroupEnd]` IS included in the group, and then the group closes for subsequent fields.
+
 ### Basic Usage
 
 ```csharp
@@ -33,10 +35,10 @@ public class CharacterStatsWGroup : MonoBehaviour
     public float maxHealth = 100f;
     public float defense = 10f;
     public float attackPower = 25f;
-    [WGroupEnd("combat")]
+    [WGroupEnd("combat")]  // criticalChance IS included, then group closes
     public float criticalChance = 0.15f;
 
-    public string characterName; // Not in group
+    public string characterName; // Not in group (comes after WGroupEnd)
 }
 ```
 
@@ -80,24 +82,26 @@ public class CharacterStatsWGroup : MonoBehaviour
 
 ```csharp
 [WGroup("items", "Inventory", autoIncludeCount: 3)]
-public GameObject weapon;
-public GameObject armor;
-[WGroupEnd("items")]  // Terminates auto-inclusion
-public GameObject accessory;
+public GameObject weapon;     // Field 1: in group
+public GameObject armor;      // Field 2: in group (auto-included)
+[WGroupEnd("items")]          // accessory IS included (field 3), then group closes
+public GameObject accessory;  // Field 3: in group (last field)
 
-public int gold;  // Not included
+public int gold;  // NOT in group (comes after WGroupEnd)
 ```
 
 #### 2. Infinite Auto-Include
 
 ```csharp
 [WGroup("settings", "Settings", autoIncludeCount: WGroupAttribute.InfiniteAutoInclude)]
-public bool enableSound;
-public bool enableMusic;
-public float volume;
-// ... 20 more fields ...
-[WGroupEnd("settings")]  // Required to terminate, place on top of LAST FIELD TO INCLUDE
-public bool lastField;
+public bool enableSound;   // In group
+public bool enableMusic;   // In group (auto-included)
+public float volume;       // In group (auto-included)
+// ... 20 more fields ...  // All auto-included
+[WGroupEnd("settings")]    // lastField IS included, then group closes
+public bool lastField;     // In group (last field)
+
+public int outsideGroup;   // NOT in group (comes after WGroupEnd)
 ```
 
 #### 3. Global Default
@@ -105,11 +109,11 @@ public bool lastField;
 ```csharp
 // Uses WGroupAutoIncludeRowCount from ProjectSettings/UnityHelpersSettings.asset (default: 4)
 [WGroup("stats", "Stats")]  // autoIncludeCount defaults to UseGlobalAutoInclude
-public int strength;
-public int intelligence;
-public int agility;
-[WGroupEnd("stats")]  // Optional if count matches setting
-public int luck;
+public int strength;        // Field 1: in group
+public int intelligence;    // Field 2: in group (auto-included)
+public int agility;         // Field 3: in group (auto-included)
+[WGroupEnd("stats")]        // luck IS included (field 4), then group closes
+public int luck;            // Field 4: in group (last field)
 ```
 
 ---
@@ -123,13 +127,13 @@ using WallstopStudios.UnityHelpers.Core.Attributes;
 public class WGroupEndExample : MonoBehaviour
 {
     [WGroup("advanced", "Advanced Options", collapsible: true, startCollapsed: true)]
-    public float raycastDistance = 100f;
-    public LayerMask collisionMask;
+    public float raycastDistance = 100f;  // In group
+    public LayerMask collisionMask;       // In group (auto-included)
 
-    [WGroupEnd("advanced")]
-    public bool debugDraw;
+    [WGroupEnd("advanced")]               // debugDraw IS included, then group closes
+    public bool debugDraw;                // In group (last field)
 
-    public bool someOtherField;
+    public bool someOtherField;           // NOT in group (comes after WGroupEnd)
 }
 ```
 
@@ -153,10 +157,10 @@ using WallstopStudios.UnityHelpers.Core.Attributes;
 public class HealthExample : MonoBehaviour
 {
     [WGroup("stealth", "", hideHeader: true)]
-    public float opacity = 1f;
+    public float opacity = 1f;       // In group
 
-    [WGroupEnd("stealth")]
-    public bool isVisible = true;
+    [WGroupEnd("stealth")]           // isVisible IS included, then group closes
+    public bool isVisible = true;    // In group (last field)
 }
 ```
 
@@ -181,15 +185,15 @@ using WallstopStudios.UnityHelpers.Core.Attributes;
 public class NestedGroupExample : MonoBehaviour
 {
     [WGroup("outer", "Character")]
-    public string characterName;
+    public string characterName;      // In outer group
 
     [WGroup("inner", "Stats", parentGroup: "outer")]
-    public int level;
-    public int experience;
+    public int level;                 // In inner group (nested in outer)
+    public int experience;            // In inner group (auto-included)
 
-    [WGroupEnd("inner")]
-    [WGroupEnd("outer")]
-    public string faction;
+    [WGroupEnd("inner")]              // faction IS included in BOTH groups
+    [WGroupEnd("outer")]              // Then both groups close
+    public string faction;            // In inner AND outer groups (last field)
 }
 ```
 
@@ -207,35 +211,35 @@ public class NestedGroupExample : MonoBehaviour
 
 ```csharp
 [WGroup("level1", "Level 1")]
-public string field1;
+public string field1;           // In level1 only
 
 [WGroup("level2", "Level 2", parentGroup: "level1")]
-public string field2;
+public string field2;           // In level2 (nested in level1)
 
 [WGroup("level3", "Level 3", parentGroup: "level2")]
-public string field3;
-[WGroupEnd("level3")]
-[WGroupEnd("level2")]
+public string field3;           // In level3 (nested in level2 → level1)
+[WGroupEnd("level3")]           // field4 IS included in all three groups
+[WGroupEnd("level2")]           // Then all groups close in order
 [WGroupEnd("level1")]
-public string field4;
+public string field4;           // In level3, level2, AND level1 (last field)
 ```
 
 **Sibling Nested Groups:**
 
 ```csharp
 [WGroup("parent", "Parent")]
-public string parentField;
+public string parentField;      // In parent group
 
 [WGroup("child1", "Child 1", parentGroup: "parent")]
-public string child1Field;
+public string child1Field;      // In child1 (nested in parent)
 
-[WGroupEnd("child1")]
+[WGroupEnd("child1")]           // child2Field starts NEW group, so closes child1 first
 [WGroup("child2", "Child 2", parentGroup: "parent")]
-public string child2Field;
+public string child2Field;      // In child2 (nested in parent)
 
-[WGroupEnd("child2")]
-[WGroupEnd("parent")]
-public string afterParent;
+[WGroupEnd("child2")]           // afterParent IS included in child2 AND parent
+[WGroupEnd("parent")]           // Then both groups close
+public string afterParent;      // In child2 AND parent groups (last field)
 ```
 
 **Important Notes:**
@@ -248,25 +252,48 @@ public string afterParent;
 
 ### WGroupEnd Variants
 
+> ⚠️ **Key Point:** `[WGroupEnd]` must always be attached to a field. The field with `[WGroupEnd]` IS included in the group (via auto-include), and then the group closes.
+
 #### 1. End Specific Group
 
 ```csharp
-[WGroupEnd("combat")]  // Closes only the "combat" group
-public int wGroupMustBeAttachedToAField;
+[WGroup("combat", "Combat Stats")]
+public int health;              // In group
+public int defense;             // In group (auto-included)
+[WGroupEnd("combat")]           // stamina IS included, then "combat" closes
+public int stamina;             // In group (last field)
+
+public int unrelatedField;      // NOT in group
 ```
 
-#### 2. Include Element in Group
+#### 2. End Multiple Groups
+
+When closing nested groups, stack multiple `[WGroupEnd]` attributes on the last field:
 
 ```csharp
-[WGroupEnd("stats", includeElement: true)]
-public int totalPoints;  // Included in "stats" group, then closes it
+[WGroup("outer", "Outer")]
+public int outerField;          // In outer
+
+[WGroup("inner", "Inner", parentGroup: "outer")]
+public int innerField;          // In inner (nested in outer)
+
+[WGroupEnd("inner")]            // lastField IS included in both groups
+[WGroupEnd("outer")]            // Then both groups close
+public int lastField;           // In inner AND outer (last field)
 ```
 
 #### 3. Close All Active Groups
 
+Omit the group name to close all currently active auto-include groups:
+
 ```csharp
-[WGroupEnd]  // Closes all active groups (no group name specified)
-public int wGroupMustBeAttachedToAField;
+[WGroup("settings", autoIncludeCount: WGroupAttribute.InfiniteAutoInclude)]
+public bool enableSound;        // In group
+public float volume;            // In group (auto-included)
+[WGroupEnd]                     // lastSetting IS included, then ALL groups close
+public bool lastSetting;        // In group (last field)
+
+public int outsideAllGroups;    // NOT in any group
 ```
 
 ---
@@ -351,18 +378,18 @@ All grouping attributes respect project-wide settings defined in `UnityHelpersSe
 ```csharp
 // ✅ GOOD: Explicit count for small groups
 [WGroup("position", "Position", autoIncludeCount: 3)]
-public Vector3 position;
-public Quaternion rotation;
-[WGroupEnd("position")]
-public Vector3 scale;
+public Vector3 position;        // Field 1: in group
+public Quaternion rotation;     // Field 2: in group (auto-included)
+[WGroupEnd("position")]         // scale IS included (field 3), then group closes
+public Vector3 scale;           // Field 3: in group (last field)
 
 // ✅ GOOD: Infinite for dynamic/long lists
 [WGroup("inventory", "Items", autoIncludeCount: WGroupAttribute.InfiniteAutoInclude)]
-public List<GameObject> weapons;
-public List<GameObject> consumables;
-// ... many more fields ...
-[WGroupEnd("inventory")]
-public int lastFieldToIncludeInInventory;
+public List<GameObject> weapons;      // In group
+public List<GameObject> consumables;  // In group (auto-included)
+// ... many more fields ...           // All auto-included
+[WGroupEnd("inventory")]              // lastItem IS included, then group closes
+public int lastItem;                  // In group (last field)
 
 // ❌ BAD: Infinite without WGroupEnd (includes everything below!)
 [WGroup("bad", autoIncludeCount: WGroupAttribute.InfiniteAutoInclude)]
@@ -377,15 +404,15 @@ public string unrelatedField;  // Also included!
 ```csharp
 // ✅ GOOD: Always-visible for frequently accessed data
 [WGroup("core", "Core Stats", collapsible: false)]
-public float health;
-[WGroupEnd("core")]
-public float energy;
+public float health;          // In group
+[WGroupEnd("core")]           // energy IS included, then group closes
+public float energy;          // In group (last field)
 
 // ✅ GOOD: Collapsible for optional/advanced features
 [WGroup("advanced", "Advanced", collapsible: true, startCollapsed: true)]
-public float debugParameter;
-[WGroupEnd("advanced")]
-public bool experimentalFeature;
+public float debugParameter;       // In group
+[WGroupEnd("advanced")]            // experimentalFeature IS included, then closes
+public bool experimentalFeature;   // In group (last field)
 
 // ❌ BAD: Everything collapsible (hides important data)
 [WGroup("important", "Critical Settings", collapsible: true, startCollapsed: true, autoIncludeCount: 0)]
@@ -406,29 +433,29 @@ using WallstopStudios.UnityHelpers.Core.Attributes;
 public class RPGCharacter : MonoBehaviour
 {
     [WGroup("identity", "Identity")]
-    public string characterName;
-    public Sprite portrait;
-    public string className;
+    public string characterName;           // In identity group
+    public Sprite portrait;                // In identity group (auto-included)
+    public string className;               // In identity group (auto-included)
 
-    [WGroupEnd("identity")]
+    [WGroupEnd("identity")]                // strength IS included, then identity closes
     [WGroup("attributes", "Base Attributes", collapsible: true)]
-    public int strength = 10;
-    public int agility = 10;
-    public int intelligence = 10;
-    public int vitality = 10;
+    public int strength = 10;              // In identity (last) AND starts attributes
+    public int agility = 10;               // In attributes (auto-included)
+    public int intelligence = 10;          // In attributes (auto-included)
+    public int vitality = 10;              // In attributes (auto-included)
 
-    [WGroupEnd("attributes")]
+    [WGroupEnd("attributes")]              // maxHealth IS included, then attributes closes
     [WGroup("combat", "Combat Stats")]
-    public float maxHealth = 100f;
-    public float attackPower = 25f;
-    public float defense = 15f;
+    public float maxHealth = 100f;         // In attributes (last) AND starts combat
+    public float attackPower = 25f;        // In combat (auto-included)
+    public float defense = 15f;            // In combat (auto-included)
 
-    [WGroupEnd("combat")]
+    [WGroupEnd("combat")]                  // learnedSkills IS included, then combat closes
     [WGroup("skills", "Skills", collapsible: true, startCollapsed: true)]
-    public List<string> learnedSkills = new();
+    public List<string> learnedSkills = new(); // In combat (last) AND starts skills
 
-    [WGroupEnd("skills")]
-    public int skillPoints = 0;
+    [WGroupEnd("skills")]                  // skillPoints IS included, then skills closes
+    public int skillPoints = 0;            // In skills (last field)
 }
 ```
 
@@ -451,31 +478,31 @@ public enum DamageType
 public class WeaponConfig2 : MonoBehaviour
 {
     [WGroup("basic", "Basic Info", autoIncludeCount: 2)]
-    public string weaponName;
+    public string weaponName;              // Field 1: in basic group
 
-    [WGroupEnd("basic")]
-    public Sprite icon;
+    [WGroupEnd("basic")]                   // icon IS included (field 2), then closes
+    public Sprite icon;                    // Field 2: in basic (last field)
 
     [WGroup("damage", "Damage", collapsible: true)]
-    public float baseDamage = 10f;
-    public float criticalMultiplier = 2f;
+    public float baseDamage = 10f;         // In damage group
+    public float criticalMultiplier = 2f; // In damage (auto-included)
 
-    [WGroupEnd("damage")]
-    public DamageType damageType;
+    [WGroupEnd("damage")]                  // damageType IS included, then closes
+    public DamageType damageType;          // In damage (last field)
 
     [WGroup("effects", "Special Effects", collapsible: true, startCollapsed: true)]
-    public ParticleSystem hitEffect;
-    public AudioClip hitSound;
+    public ParticleSystem hitEffect;       // In effects group
+    public AudioClip hitSound;             // In effects (auto-included)
 
-    [WGroupEnd("effects")]
-    public float effectDuration = 1f;
+    [WGroupEnd("effects")]                 // effectDuration IS included, then closes
+    public float effectDuration = 1f;      // In effects (last field)
 
     [WGroup("advanced", "Advanced Settings", collapsible: true, startCollapsed: true)]
-    public float projectileSpeed = 20f;
-    public LayerMask targetLayers;
+    public float projectileSpeed = 20f;    // In advanced group
+    public LayerMask targetLayers;         // In advanced (auto-included)
 
-    [WGroupEnd("advanced")]
-    public bool debugMode = false;
+    [WGroupEnd("advanced")]                // debugMode IS included, then closes
+    public bool debugMode = false;         // In advanced (last field)
 }
 ```
 
@@ -492,11 +519,11 @@ using WallstopStudios.UnityHelpers.Core.Attributes;
 public class LevelSettings : MonoBehaviour
 {
     [WGroup("general", "General", autoIncludeCount: 3)]
-    public string levelName;
-    public Sprite thumbnail;
+    public string levelName;               // Field 1: in general group
+    public Sprite thumbnail;               // Field 2: in general (auto-included)
 
-    [WGroupEnd("general")]
-    public string description;
+    [WGroupEnd("general")]                 // description IS included (field 3), then closes
+    public string description;             // Field 3: in general (last field)
 
     [WGroup(
         "environment",
@@ -505,29 +532,29 @@ public class LevelSettings : MonoBehaviour
         startCollapsed: true,
         autoIncludeCount: WGroupAttribute.InfiniteAutoInclude
     )]
-    public Color skyColor;
-    public Color fogColor;
-    public float fogDensity;
-    public Light directionalLight;
-    public Cubemap skybox;
-    public float ambientIntensity;
+    public Color skyColor;                 // In environment group
+    public Color fogColor;                 // In environment (auto-included)
+    public float fogDensity;               // In environment (auto-included)
+    public Light directionalLight;         // In environment (auto-included)
+    public Cubemap skybox;                 // In environment (auto-included)
+    public float ambientIntensity;         // In environment (auto-included)
 
-    [WGroupEnd("environment")]
-    public float sunIntensity;
+    [WGroupEnd("environment")]             // sunIntensity IS included, then closes
+    public float sunIntensity;             // In environment (last field)
 
     [WGroup("gameplay", "Gameplay Rules", collapsible: true, startCollapsed: false)]
-    public int enemyCount = 10;
-    public float difficultyMultiplier = 1f;
+    public int enemyCount = 10;            // In gameplay group
+    public float difficultyMultiplier = 1f; // In gameplay (auto-included)
 
-    [WGroupEnd("gameplay")]
-    public bool allowRespawns = true;
+    [WGroupEnd("gameplay")]                // allowRespawns IS included, then closes
+    public bool allowRespawns = true;      // In gameplay (last field)
 
     [WGroup("debug", "Debug Options", collapsible: true, startCollapsed: true)]
-    public bool godMode = false;
-    public bool unlimitedAmmo = false;
+    public bool godMode = false;           // In debug group
+    public bool unlimitedAmmo = false;     // In debug (auto-included)
 
-    [WGroupEnd("debug")]
-    public bool showHitboxes = false;
+    [WGroupEnd("debug")]                   // showHitboxes IS included, then closes
+    public bool showHitboxes = false;      // In debug (last field)
 }
 ```
 
@@ -545,17 +572,17 @@ public class AIController : MonoBehaviour
 {
     [WGroup("outer", "AI Configuration")]
     [WGroup("detection", "Detection", parentGroup: "outer")]
-    public float sightRange = 10f;
+    public float sightRange = 10f;         // In detection (nested in outer)
 
-    [WGroupEnd("detection")]
-    public float hearingRange = 5f;
+    [WGroupEnd("detection")]               // hearingRange IS included, then detection closes
+    public float hearingRange = 5f;        // In detection (last) AND outer (auto-included)
 
     [WGroup("behavior", "Behavior", parentGroup: "outer")]
-    public float aggressionLevel = 0.5f;
+    public float aggressionLevel = 0.5f;   // In behavior (nested in outer)
 
-    [WGroupEnd("behavior")]
-    [WGroupEnd("outer")]
-    public float retreatThreshold = 0.2f;
+    [WGroupEnd("behavior")]                // retreatThreshold IS included in both
+    [WGroupEnd("outer")]                   // Then both groups close
+    public float retreatThreshold = 0.2f;  // In behavior (last) AND outer (last)
 }
 ```
 
@@ -572,24 +599,24 @@ public class AIController : MonoBehaviour
 **Solutions:**
 
 1. Check `autoIncludeCount` - make sure it includes all desired fields
-2. Verify `WGroupEnd` placement - fields after `WGroupEnd` won't be included
+2. Verify `WGroupEnd` placement - the field WITH `WGroupEnd` IS included, fields AFTER are excluded
 3. Ensure group names match between `WGroup` and `WGroupEnd`
 
 ```csharp
-// ❌ WRONG: Count too low
+// ❌ WRONG: Count too low (only 2 fields included, but intelligence has WGroupEnd)
 [WGroup("stats", autoIncludeCount: 2)]
-public int strength;
-public int agility;
-[WGroupEnd("stats")]
-public int intelligence;  // Not included! (count is 2)
+public int strength;      // Field 1: in group
+public int agility;       // Field 2: in group (auto-included)
+[WGroupEnd("stats")]      // intelligence would be field 3, but count is only 2!
+public int intelligence;  // NOT included - auto-include budget exhausted before WGroupEnd
 
 
-// ✅ CORRECT: Increase count
+// ✅ CORRECT: Increase count to include the WGroupEnd field
 [WGroup("stats", autoIncludeCount: 3)]
-public int strength;
-public int agility;
-[WGroupEnd("stats")]
-public int intelligence;
+public int strength;      // Field 1: in group
+public int agility;       // Field 2: in group (auto-included)
+[WGroupEnd("stats")]      // intelligence IS included (field 3), then group closes
+public int intelligence;  // Field 3: in group (last field)
 ```
 
 ---

@@ -316,15 +316,15 @@ public float acceleration;
 ```csharp
 // Auto-include next N fields
 [WGroup("Movement", autoIncludeCount: 2)]
-public float speed;
-public float jumpHeight;
+public float speed;        // Field 1: in group
+public float jumpHeight;   // Field 2: in group (auto-included, last by count)
 
 // Or explicit end marker
 [WGroup("Movement")]
-public float speed;
-public float jumpHeight;
-[WGroupEnd]
-public float friction;
+public float speed;        // In group
+public float jumpHeight;   // In group (auto-included)
+[WGroupEnd]                // friction IS included, then group closes
+public float friction;     // In group (last field)
 
 // Collapsible (foldout)
 [WGroup("Advanced", collapsible: true, startCollapsed: true)]
