@@ -19,7 +19,7 @@ logs_*zip.meta
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
 
-# Progress tracking folder (root level only - anchored to avoid matching Styles/Elements/Progress)
+# Progress tracking folder (root level only)
 /progress/
 /progress.meta
 

@@ -1,0 +1,92 @@
+# NPM ignore file for Unity package publishing
+# This file explicitly controls what gets excluded from npm pack/publish
+# to ensure Unity .meta files and package assets are properly included.
+
+# Development/CI files
+.github/
+.devcontainer/
+.config/
+.husky/
+.llm/
+.vscode/
+.vs/
+.idea/
+.claude/
+.codex/
+
+# Config files not needed in package
+.cursorrules
+.csharpierignore
+.csharpierrc.json
+.editorconfig
+.gitattributes
+.gitignore
+.yamllint.yaml
+.prettierrc
+.prettierignore
+.npmignore.meta
+
+# Agent/AI instruction files (keep for npm but exclude from published package)
+AGENTS.md
+AGENTS.md.meta
+CLAUDE.md
+CLAUDE.md.meta
+PLAN.md
+PLAN.md.meta
+
+# Progress tracking folder (development notes - root level only)
+/progress/
+/progress.meta
+
+# Artifacts and build outputs
+artifacts/
+artifacts.meta
+
+# Test failures and logs
+TestFailures.txt
+TestFailures.txt.meta
+logs_*.zip
+logs_*.zip.meta
+
+# Node.js
+node_modules/
+node_modules.meta
+package-lock.json
+package-lock.json.meta
+
+# Tests (not needed in published Unity package)
+Tests/
+Tests.meta
+
+# Windows reserved device name artifacts
+nul
+nul.meta
+
+# Solution files
+*.sln
+*.sln.meta
+*.sln.iml
+
+# Visual Studio
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Placeholder files
+PlaceHolderSummary.md
+PlaceHolderSummary.md.meta
+
+# Unity Editor Analyzers (built DLLs)
+Editor/Analyzers/*.dll
+Editor/Analyzers/*.pdb
+
+# Temporary/generated files
+*.rsp.meta
+*.tmp
+*.tmp_proj
+*.log
+method-analysis-*
+TestProjects.meta
+TestProjects/
+scripts/run-unity*
