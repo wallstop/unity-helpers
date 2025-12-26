@@ -184,28 +184,41 @@ set -e
 GIT_DIR=$(git rev-parse --git-dir)
 INDEX_LOCK="$GIT_DIR/index.lock"
 MAX_ATTEMPTS=30
-DELAY=50
+BASE_DELAY_MS=50
 
 git_add_with_retry() {
     local files=("$@")
     local attempt=1
+    local delay_ms=$BASE_DELAY_MS
 
     while [ $attempt -le $MAX_ATTEMPTS ]; do
-        # Wait for lock
-        while [ -f "$INDEX_LOCK" ] && [ $attempt -le $MAX_ATTEMPTS ]; do
+        # Wait for lock (poll every 50ms)
+        local wait_count=0
+        while [ -f "$INDEX_LOCK" ] && [ $wait_count -lt 100 ]; do
             sleep 0.05
+            ((wait_count++))
         done
 
         if git add -- "${files[@]}" 2>/dev/null; then
             return 0
         fi
 
-        # Exponential backoff with jitter
-        local delay_ms=$((DELAY * (14 ** (attempt - 1)) / 10))
+        # Exponential backoff: multiply by 1.4 each attempt, cap at 3000ms
+        # Use integer math: delay = delay * 14 / 10
+        delay_ms=$((delay_ms * 14 / 10))
         [ $delay_ms -gt 3000 ] && delay_ms=3000
-        local jitter=$((RANDOM % (delay_ms / 3)))
-        sleep "0.$((delay_ms + jitter))"
 
+        # Add jitter (0-30% of delay)
+        local jitter=$((RANDOM % (delay_ms / 3 + 1)))
+        local total_delay_ms=$((delay_ms + jitter))
+
+        # Convert milliseconds to fractional seconds for sleep
+        # e.g., 150ms -> 0.150
+        local sleep_secs
+        sleep_secs=$(printf "0.%03d" $total_delay_ms)
+        [ $total_delay_ms -ge 1000 ] && sleep_secs=$(awk "BEGIN {printf \"%.3f\", $total_delay_ms/1000}")
+
+        sleep "$sleep_secs"
         ((attempt++))
     done
 
