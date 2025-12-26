@@ -348,6 +348,9 @@ package-lock.json.meta
 # Ensure Unity package samples are included
 !Samples~/
 !Samples~/**
+# But exclude .rsp files from Samples
+Samples~/**/*.rsp
+Samples~/**/*.rsp.meta
 
 PLAN.md*
 

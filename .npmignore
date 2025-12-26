@@ -82,6 +82,7 @@ Editor/Analyzers/*.dll
 Editor/Analyzers/*.pdb
 
 # Temporary/generated files
+*.rsp
 *.rsp.meta
 *.tmp
 *.tmp_proj
