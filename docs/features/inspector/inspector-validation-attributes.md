@@ -294,11 +294,11 @@ public class UIManager : MonoBehaviour
     // Group with validation and custom message
     [WGroup("UI Elements")]
     [WNotNull("Start button required for main menu")]
-    public Button startButton;
+    public Button startButton;                     // In group
 
     [WNotNull(WNotNullMessageType.Error, "Quit button required for main menu")]
-    [WGroupEnd("UI Elements")]
-    public Button quitButton;
+    [WGroupEnd("UI Elements")]                     // quitButton IS included, then closes
+    public Button quitButton;                      // In group (last field)
 }
 ```
 
@@ -567,14 +567,14 @@ public class UIManager : MonoBehaviour
     // Group with validation
     [WGroup("Required UI Elements")]
     [ValidateAssignment(ValidateAssignmentMessageType.Error)]
-    public Canvas mainCanvas;
+    public Canvas mainCanvas;                      // In group
 
     [ValidateAssignment("Button text cannot be empty")]
-    public string startButtonText;
+    public string startButtonText;                 // In group (auto-included)
 
     [ValidateAssignment(ValidateAssignmentMessageType.Error, "Add menu items to display")]
-    [WGroupEnd("Required UI Elements")]
-    public List<GameObject> menuItems;
+    [WGroupEnd("Required UI Elements")]            // menuItems IS included, then closes
+    public List<GameObject> menuItems;             // In group (last field)
 
     // Conditional validation
     [WShowIf(nameof(useCustomTheme))]

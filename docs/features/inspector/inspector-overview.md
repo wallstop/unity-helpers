@@ -317,10 +317,10 @@ public class CharacterStats : MonoBehaviour
 {
     // Grouped fields with collapsible sections
     [WGroup("Combat", "Combat Stats", collapsible: true)]
-    public float maxHealth = 100f;
-    public float defense = 10f;
-    [WGroupEnd("Combat")]
-    public float attackPower = 25f;
+    public float maxHealth = 100f;           // In group
+    public float defense = 10f;              // In group (auto-included)
+    [WGroupEnd("Combat")]                    // attackPower IS included, then closes
+    public float attackPower = 25f;          // In group (last field)
 
     // Conditional visibility based on enum
     public enum WeaponType { Melee, Ranged, Magic }

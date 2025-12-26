@@ -257,16 +257,16 @@ public ComplexConfig complex;
 ```csharp
 [WGroup("Visual Settings")]
 [WInLineEditor]
-public Material material;
+public Material material;      // In group
 
 [WInLineEditor]
-public Texture2D texture;
-[WGroupEnd]
+[WGroupEnd]                    // texture IS included, then group closes
+public Texture2D texture;      // In group (last field)
 
 [WGroup("Audio Settings")]
 [WInLineEditor]
-public AudioClip clip;
-[WGroupEnd]
+[WGroupEnd]                    // clip IS included, then group closes
+public AudioClip clip;         // In group (last field)
 ```
 
 ### 4. Disable Object Field for Embedded Data
@@ -301,16 +301,16 @@ public class CharacterAbilities : MonoBehaviour
 {
     [WGroup("Primary Abilities")]
     [WInLineEditor(WInLineEditorMode.FoldoutExpanded)]
-    public AbilityConfig primaryAttack;
+    public AbilityConfig primaryAttack;   // In group
 
     [WInLineEditor(WInLineEditorMode.FoldoutCollapsed)]
-    public AbilityConfig secondaryAttack;
-    [WGroupEnd]
+    [WGroupEnd]                           // secondaryAttack IS included, then closes
+    public AbilityConfig secondaryAttack; // In group (last field)
 
     [WGroup("Ultimate")]
     [WInLineEditor(WInLineEditorMode.FoldoutCollapsed, inspectorHeight: 250f)]
-    public AbilityConfig ultimate;
-    [WGroupEnd]
+    [WGroupEnd]                           // ultimate IS included, then closes
+    public AbilityConfig ultimate;        // In group (last field)
 }
 ```
 

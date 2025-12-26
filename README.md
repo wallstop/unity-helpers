@@ -120,14 +120,14 @@ public class CharacterStats : MonoBehaviour
 {
     [WGroup("combat", "Combat Stats", collapsible: true)]
     public float maxHealth = 100f;
+    [WGroupEnd("combat")]  // defense IS included, then group closes
     public float defense = 10f;
-    [WGroupEnd("combat")]
 
     [WGroup("abilities", "Abilities", collapsible: true, startCollapsed: true)]
     [System.Flags] public enum Powers { None = 0, Fly = 1, Strength = 2, Speed = 4 }
     [WEnumToggleButtons(showSelectAll: true, buttonsPerRow: 3)]
+    [WGroupEnd("abilities")]  // currentPowers IS included, then group closes
     public Powers currentPowers;
-    [WGroupEnd("abilities")]
 
     public enum WeaponType { Melee, Ranged, Magic }
     public WeaponType weaponType;

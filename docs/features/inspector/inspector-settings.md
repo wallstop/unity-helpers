@@ -273,17 +273,17 @@ private int CustomHistory() => Random.Range(1, 100);
 ```csharp
 // Uses WGroupAutoIncludeRowCount (default: 4)
 [WGroup("stats", "Stats")]
-public int strength;
-public int agility;
-public int intelligence;
-public int luck;
-[WGroupEnd("stats")]
+public int strength;           // Field 1: in group
+public int agility;            // Field 2: in group (auto-included)
+public int intelligence;       // Field 3: in group (auto-included)
+[WGroupEnd("stats")]           // luck IS included (field 4), then group closes
+public int luck;               // Field 4: in group (last field)
 
 // Explicit override
 [WGroup("combat", "Combat", autoIncludeCount: 2)]
-public float health;
-public float mana;
-[WGroupEnd("combat")]
+public float health;           // Field 1: in group
+[WGroupEnd("combat")]          // mana IS included (field 2), then group closes
+public float mana;             // Field 2: in group (last field)
 ```
 
 ### WGroupStartCollapsed

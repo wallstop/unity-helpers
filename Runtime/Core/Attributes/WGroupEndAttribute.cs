@@ -8,7 +8,8 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Place <see cref="WGroupEndAttribute"/> on the member immediately after the last entry you want to include.
+    /// <b>Important:</b> Place <see cref="WGroupEndAttribute"/> on the <b>last field you want included</b> in the group.
+    /// The field with this attribute IS included in the group, and then the group closes for subsequent fields.
     /// When multiple groups are stacked on the same field, you can provide explicit names to close only the desired scopes.
     /// </para>
     /// </remarks>
@@ -19,8 +20,10 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
     ///
     /// public int stamina;
     ///
-    /// [WGroupEnd]
-    /// public float hiddenSentinel; // closes the \"Stats\" group for subsequent properties
+    /// [WGroupEnd(\"Stats\")]
+    /// public float luck;        // Included in \"Stats\" group, then group closes
+    ///
+    /// public int gold;          // NOT in \"Stats\" group - comes after WGroupEnd
     /// </code>
     /// </example>
     [AttributeUsage(
