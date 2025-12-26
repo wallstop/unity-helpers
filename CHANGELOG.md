@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 See [the roadmap](docs/overview/roadmap.md) for details
 
+## [3.0.4]
+
+### Fixed
+
+- Documentation only (`WGroupEnd` examples)
+
 ## [3.0.3]
 
 ### Fixed
