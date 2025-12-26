@@ -48,7 +48,7 @@ jobs:
 
       - name: Commit formatting changes to PR branch (Dependabot only)
         if: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.login == 'dependabot[bot]' }}
-        uses: stefanzweifel/git-auto-commit-action@v7.0.0
+        uses: stefanzweifel/git-auto-commit-action@v7.1.0
         with:
           commit_message: "chore(format): apply Prettier/markdownlint fixes"
           branch: ${{ github.head_ref }}
