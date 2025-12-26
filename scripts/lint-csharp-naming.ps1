@@ -6,7 +6,18 @@ Param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+# Load shared git helpers for safe index operations
+$helpersPath = Join-Path -Path $PSScriptRoot -ChildPath 'git-staging-helpers.ps1'
+. $helpersPath
 
+# Get repository info for lock handling
+$script:RepositoryInfo = $null
+try {
+  Assert-GitAvailable | Out-Null
+  $script:RepositoryInfo = Get-GitRepositoryInfo
+} catch {
+  # Not fatal for this script - we may just be linting without staging
+}
 function Write-Info($msg) {
   if ($VerboseOutput) { Write-Host "[lint-csharp-naming] $msg" -ForegroundColor Cyan }
 }
@@ -198,8 +209,8 @@ if ($violations.Count -gt 0) {
         $fixedFiles += $rel
 
         # Re-stage the file if we're in staged-only mode
-        if ($StagedOnly) {
-          & git add $filePath 2>$null
+        if ($StagedOnly -and $null -ne $script:RepositoryInfo) {
+          Invoke-GitAddWithRetry -Items @($filePath) -IndexLockPath $script:RepositoryInfo.IndexLockPath -Quiet | Out-Null
         }
       }
     }
@@ -210,11 +221,9 @@ if ($violations.Count -gt 0) {
       Write-Host "Running CSharpier on modified files..." -ForegroundColor Cyan
       Invoke-CSharpier $fullPaths
 
-      # Re-stage after CSharpier formatting
-      if ($StagedOnly) {
-        foreach ($fp in $fullPaths) {
-          & git add $fp 2>$null
-        }
+      # Re-stage after CSharpier formatting using safe retry helper
+      if ($StagedOnly -and $null -ne $script:RepositoryInfo) {
+        Invoke-GitAddWithRetry -Items $fullPaths -IndexLockPath $script:RepositoryInfo.IndexLockPath -Quiet | Out-Null
       }
     }
 

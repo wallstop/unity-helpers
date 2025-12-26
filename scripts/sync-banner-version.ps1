@@ -15,9 +15,22 @@ param(
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
+# Load shared git helpers for safe index operations
+$helpersPath = Join-Path -Path $PSScriptRoot -ChildPath 'git-staging-helpers.ps1'
+. $helpersPath
+
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $packageJsonPath = Join-Path $repoRoot 'package.json'
 $bannerSvgPath = Join-Path $repoRoot 'docs/images/unity-helpers-banner.svg'
+
+# Get repository info for lock handling
+try {
+    Assert-GitAvailable | Out-Null
+    $repositoryInfo = Get-GitRepositoryInfo
+} catch {
+    Write-Error $_.Exception.Message
+    exit 1
+}
 
 # Check if we should run
 if ($StagedOnly) {
@@ -71,8 +84,12 @@ if ($svgContent -match $versionPattern) {
 
     Write-Host "Updated banner version to: v$version"
 
-    # Stage the modified SVG
-    git add $bannerSvgPath
+    # Stage the modified SVG using safe retry helper
+    $gitAddExitCode = Invoke-GitAddWithRetry -Items @($bannerSvgPath) -IndexLockPath $repositoryInfo.IndexLockPath
+    if ($gitAddExitCode -ne 0) {
+        Write-Error "git add failed with exit code $gitAddExitCode."
+        exit $gitAddExitCode
+    }
     Write-Host "Staged: $bannerSvgPath"
 }
 else {

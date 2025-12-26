@@ -82,6 +82,7 @@ Invoke these skills for specific tasks:
 | [create-editor-tool](skills/create-editor-tool.md)             | Creating Editor windows, drawers, inspectors        |
 | [format-code](skills/format-code.md)                           | After any C# file changes                           |
 | [search-codebase](skills/search-codebase.md)                   | Finding code, files, or patterns                    |
+| [git-safe-operations](skills/git-safe-operations.md)           | Scripts or hooks that interact with git index       |
 
 ### Performance Skills
 
