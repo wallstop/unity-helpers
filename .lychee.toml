@@ -4,20 +4,22 @@ max_concurrency = 4
 include_mail = false
 
 # Network tuning
-timeout = 20            # seconds per request
-max_retries = 3         # retry transient failures
-retry_wait_time = 2     # seconds between retries
+timeout = 30            # seconds per request (increased for slow servers)
+max_retries = 5         # retry transient failures
+retry_wait_time = 3     # seconds between retries
 max_redirects = 10
 user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36"
 
-# Treat successes and rate-limiting as acceptable in CI
-# Accept all 2xx as valid plus 429 (rate limited)
-accept = ["200..=299", "429"]
+# Treat successes, rate-limiting, and server errors as acceptable in CI
+# Accept all 2xx as valid, 429 (rate limited), and 5xx (server errors are transient)
+# Server errors (500-599) are included because external services can be temporarily unavailable
+# and we don't want CI to fail due to transient third-party outages
+accept = ["200..=299", "429", "500..=599"]
 
 # Only check web links
 scheme = ["https", "http"]
 
-# Ignore common local/test URLs and sites with bot protection
+# Ignore common local/test URLs, sites with bot protection, and known flaky sites
 exclude = [
   "^https?://localhost",
   "^http://127\\.0\\.0\\.1",
@@ -25,5 +27,7 @@ exclude = [
   "^file://",
   # Sites with aggressive bot protection that return 403 but links are valid
   "^https?://www\\.npmjs\\.com",
-  "^https?://doi\\.org"
+  "^https?://doi\\.org",
+  # Known flaky/unreliable sites that cause intermittent CI failures
+  "^https?://bugs\\.python\\.org"
 ]

@@ -1,23 +1,27 @@
 # Unity Helpers
 
-> Unity Helpers is a comprehensive Unity package (2021.3+) providing professional inspector tooling, spatial data structures, PRNGs, serialization utilities, effects systems, relational components, and 20+ editor tools. It eliminates boilerplate code and provides production-ready utilities that are 10-100x faster than writing from scratch.
+> Unity Helpers is a comprehensive Unity package (2021.3+) providing professional inspector tooling, spatial data structures, PRNGs, serialization utilities, effects systems, relational components, and 20+ editor tools. It eliminates boilerplate code and provides production-ready utilities that are 10-100x faster than writing from scratch. Production-ready with 8,000+ tests, IL2CPP/WebGL compatible, shipped in commercial games.
 
 ## Key Information
 
 - **Package Name**: `com.wallstop-studios.unity-helpers`
-- **Unity Version**: 2021.3+
+- **Version**: 3.0.4
+- **Unity Version**: 2021.3+ (LTS)
 - **License**: MIT
 - **Repository**: https://github.com/wallstop/unity-helpers
+- **Root Namespace**: `WallstopStudios.UnityHelpers`
 
 ### Important Implementation Notes
 
 - Use **explicit types** instead of `var` in all code
 - Use **PascalCase** for all method names (no underscores, even in tests)
 - Never use `#region` directives
-- Never use nullable reference types (`?` annotations)
+- Never use nullable reference types (`?` annotations like `string?`)
+- Never use `?.`, `??`, `??=` on `UnityEngine.Object` types (use explicit null checks instead)
 - Place `using` directives inside namespace blocks
 - Unity Object null checks: use `thing != null` / `thing == null` directly (Unity's Object equality)
 - For tests: use `[Test]` for synchronous tests, `[UnityTest]` with `IEnumerator` for async (NOT `async Task`)
+- One file per MonoBehaviour/ScriptableObject (production AND tests)
 
 ### Assembly Structure
 
@@ -27,6 +31,7 @@
 | `WallstopStudios.UnityHelpers.Editor` | Editor code |
 | `WallstopStudios.UnityHelpers.Tests.Runtime` | Runtime tests |
 | `WallstopStudios.UnityHelpers.Tests.Editor` | Editor tests |
+| `WallstopStudios.UnityHelpers.Tests.Core` | Shared test utilities |
 
 ## Core Features
 
@@ -35,17 +40,19 @@
 Professional inspector attributes eliminating custom PropertyDrawer code:
 
 - `[WGroup]` / `[WGroupEnd]` - Boxed sections with collapsible headers, color themes, animations
-- `[WButton]` - Method buttons with async support, cancellation, history
+- `[WButton]` - Method buttons with async support, cancellation, history, groupPriority, groupPlacement
 - `[WShowIf]` - Conditional visibility (9 comparison operators)
 - `[WEnumToggleButtons]` - Flag enums as visual toggle grids
 - `[WReadOnly]` - Read-only inspector display
 - `[WInLineEditor]` - Inline nested editor for object references
-- `[WNotNull]` - Validation for required fields (shows error in inspector)
-- `[ValidateAssignment]` - Runtime assignment validation with logging
-- `[StringInList]` - Dropdown selection from string lists or methods
+- `[WNotNull]` - Validation for required fields (shows error/warning HelpBox in inspector with customizable MessageType and CustomMessage)
+- `[ValidateAssignment]` - Runtime assignment validation (shows error/warning HelpBox for null, empty string, or empty collections)
+- `[StringInList]` - Dropdown selection from string lists, methods (`nameof(Method)`), or static methods
 - `[WValueDropDown]` - Value dropdown selection
+- `[WSerializableCollectionFoldout]` - Custom foldout behavior for serializable collections
 - `[IntDropDown]` - Integer dropdown selection
 - `[EnumDisplayName]` - Custom display names for enum values
+- `[DetectAssetChanged]` - Monitor asset changes and execute methods when assets are created/deleted
 
 ### Relational Components (Auto-Wiring)
 
@@ -67,16 +74,19 @@ Unity-serializable data structures with custom inspector drawers:
 - `SerializableDictionary<TKey, TValue>` - Dictionary with full inspector support
 - `SerializableSortedDictionary<TKey, TValue>` - Ordered dictionary
 - `SerializableHashSet<T>` - HashSet with duplicate detection
+- `SerializableSortedSet<T>` - Sorted set for `IComparable<T>` elements
 - `SerializableNullable<T>` - Nullable value types in inspector
 - `SerializableType` - Type references in inspector
 - `WGuid` - Serializable GUID
+
+All collections support pagination, inline nested editors, undo/redo, and confirmation dialogs when clearing.
 
 ### Spatial Data Structures
 
 O(log n) spatial queries for 2D and 3D:
 
-**2D Trees**: `QuadTree2D<T>`, `KDTree2D<T>`, `RTree2D<T>`
-**3D Trees**: `OctTree3D<T>`, `KDTree3D<T>`, `RTree3D<T>`, `SpatialHash3D<T>`
+**2D Trees**: `QuadTree2D<T>`, `KdTree2D<T>`, `RTree2D<T>`, `SpatialHash2D<T>`
+**3D Trees**: `OctTree3D<T>`, `KdTree3D<T>`, `RTree3D<T>`, `SpatialHash3D<T>`
 
 ```csharp
 QuadTree2D<Enemy> tree = new(enemies, e => e.transform.position);
@@ -87,13 +97,17 @@ tree.GetApproximateNearestNeighbors(position, count: 5, resultsBuffer);
 
 ### Random Number Generators
 
-15 high-quality PRNGs (10-15x faster than Unity.Random):
+20+ high-quality PRNGs (10-15x faster than Unity.Random):
 
 - `PRNG.Instance` - Thread-local default (IllusionFlow)
-- `IllusionFlow`, `PcgRandom`, `XorShiftRandom`, `SplitMixRandom`
+- `IllusionFlow`, `PcgRandom`, `XorShiftRandom`, `XoroShiroRandom`, `SplitMix64`, `RomuDuo`, `WyRandom`
+- `BlastCircuitRandom`, `WaveSplatRandom`, `FlurryBurstRandom`, `PhotonSpinRandom`, `StormDropRandom`, `SquirrelRandom`
+- `LinearCongruentialGenerator`, `DotNetRandom`, `SystemRandom`, `UnityRandom` (wrappers)
+- `NativePcgRandom` - Burst/Jobs compatible
 - All implement `IRandom` with extensive API: `NextFloat()`, `NextVector2()`, `NextGaussian()`, `NextWeightedIndex()`, `Shuffle()`, `NextGuid()`
+- `PerlinNoise` - Coherent noise generation
 
-All generators are seedable for deterministic replay systems.
+All generators are seedable for deterministic replay systems. Use `RandomGeneratorMetadata` to inspect generator properties.
 
 ### Effects System
 
@@ -131,12 +145,26 @@ Supported Unity types: Vector2/3/4, Color, Quaternion, Rect, Bounds, GameObject 
 Zero-allocation patterns for hot paths:
 
 ```csharp
+// Collection pooling (List, HashSet, etc.)
 using var lease = Buffers<Enemy>.List.Get(out List<Enemy> buffer);
 tree.GetElementsInRange(position, radius, buffer);
 // buffer automatically returned to pool on dispose
 
+// Variable-size array pooling (preferred for dynamic sizes)
+using PooledArray<float> pooled = SystemArrayPool<float>.Get(size, out float[] arr);
+// IMPORTANT: Use pooled.Length, not arr.Length (arr may be larger than requested)
+
+// Exact-size array pooling (for fixed, known sizes only)
 using var arrayLease = WallstopArrayPool<float>.Get(size, out float[] arr);
 ```
+
+### Threading & Main Thread Dispatch
+
+Thread-safe utilities for Unity's main thread requirement:
+
+- `UnityMainThreadDispatcher` - Execute code on Unity's main thread from any thread
+- `UnityMainThreadGuard` (internal) - Ensure operations run on the main thread
+- Thread pool utilities for background work
 
 ### Editor Tools
 
@@ -146,7 +174,9 @@ using var arrayLease = WallstopArrayPool<float>.Get(size, out float[] arr);
 - **Animation Tools**: Event Editor, Creator, Copier, Sheet Animation Creator
 - **Texture Tools**: Blur, Resize, Settings Applier, Fit Texture Size
 - **Validation**: Prefab Checker with comprehensive validation rules
+- **Analysis**: Unity Method Analyzer for detecting inheritance issues and lifecycle method errors
 - **Utilities**: ScriptableObject Singleton Creator, Request Script Compilation (Ctrl/Cmd+Alt+R)
+- **Project Settings**: Configure coroutine wait buffer defaults under `Project Settings > Wallstop Studios > Unity Helpers`
 
 ### Data Structures
 
@@ -161,6 +191,15 @@ Additional high-performance structures:
 - `BitSet` / `ImmutableBitSet` - Compact boolean storage
 - `TimedCache<T>` - Auto-expiring cache
 
+### Geometry & Math
+
+Geometric primitives and math utilities:
+
+- `Circle`, `Sphere`, `BoundingBox3D` - Geometric primitives
+- `WallMath` - Math utilities, ballistics, geometry calculations
+- `Geometry` - Hull generation (convex/concave), point operations
+- `LineHelper` - Line intersection, distance calculations
+
 ### Extension Methods
 
 200+ extensions for Unity types, collections, strings, math:
@@ -171,6 +210,20 @@ Additional high-performance structures:
 - `(-1).PositiveMod(length)` - Non-negative modulo
 - `gameObject.SmartDestroy()` - Editor/runtime safe destruction
 - `string.LevenshteinDistance()` - Edit distance for fuzzy matching
+
+### Visual Components
+
+UGUI and UI Toolkit visual components:
+
+- `EnhancedImage` (UGUI) - Extended Image with HDR color support, improved material management
+- `LayeredImage` (UI Toolkit) - Multi-layer visual element
+- `AnimatedSpriteLayer` - Sprite animation layers
+
+### Singletons
+
+- `RuntimeSingleton<T>` - Component singleton with cross-scene persistence
+- `ScriptableObjectSingleton<T>` - Settings singleton from Resources
+- `[AutoLoadSingleton]` - Automatic singleton instantiation during Unity start-up phases
 
 ### DI Framework Integration
 
@@ -184,11 +237,6 @@ builder.RegisterRelationalComponents();
 
 // Reflex - add RelationalComponentsInstaller to SceneScope
 ```
-
-### Singletons
-
-- `RuntimeSingleton<T>` - Component singleton with cross-scene persistence
-- `ScriptableObjectSingleton<T>` - Settings singleton from Resources
 
 ## Docs
 
@@ -219,6 +267,7 @@ builder.RegisterRelationalComponents();
 - [Reflection Helpers](https://github.com/wallstop/unity-helpers/blob/main/docs/features/utilities/reflection-helpers.md): High-performance cached reflection
 - [Singletons](https://github.com/wallstop/unity-helpers/blob/main/docs/features/utilities/singletons.md): Runtime and ScriptableObject singletons
 - [Logging Extensions](https://github.com/wallstop/unity-helpers/blob/main/docs/features/logging/logging-extensions.md): Rich logging with tags and thread awareness
+- [Unity Main Thread Dispatcher](https://github.com/wallstop/unity-helpers/blob/main/docs/features/logging/unity-main-thread-dispatcher.md): Thread-safe main thread execution
 
 ## Performance
 
