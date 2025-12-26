@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **WButton Custom Editor Integration**: New `WButtonEditorHelper` class for integrating WButton functionality into custom editors
+  - Enables WButton support with Odin Inspector's `SerializedMonoBehaviour` and `SerializedScriptableObject`
+  - Provides simple API for any custom editor to draw WButton methods
+  - Methods: `DrawButtonsAtTop()`, `DrawButtonsAtBottom()`, `ProcessInvocations()`, and convenience methods
+  - Documented integration patterns for both Odin Inspector and standard Unity custom editors
+
 See [the roadmap](docs/overview/roadmap.md) for details
 
 ## [3.0.4]

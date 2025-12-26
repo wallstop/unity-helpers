@@ -121,6 +121,39 @@ private void PrintDebugInfo() { }
 private void GenerateIds() { }
 ```
 
+**⚠️ Using WButton with Odin's SerializedMonoBehaviour/SerializedScriptableObject:**
+
+WButton requires integration with Odin's custom editors to work correctly. See [Inspector Buttons - Using with Custom Editors](../features/inspector/inspector-button.md#using-wbutton-with-custom-editors) for details.
+
+Quick example:
+
+```csharp
+#if UNITY_EDITOR && ODIN_INSPECTOR
+using Sirenix.OdinInspector.Editor;
+using UnityEditor;
+using WallstopStudios.UnityHelpers.Editor.Utils.WButton;
+
+[CustomEditor(typeof(MyComponent))]
+public class MyComponentEditor : OdinEditor
+{
+    private WButtonEditorHelper _wButtonHelper;
+
+    protected override void OnEnable()
+    {
+        base.OnEnable();
+        _wButtonHelper = new WButtonEditorHelper();
+    }
+
+    public override void OnInspectorGUI()
+    {
+        _wButtonHelper.DrawButtonsAtTop(this);
+        base.OnInspectorGUI();
+        _wButtonHelper.DrawButtonsAtBottomAndProcessInvocations(this);
+    }
+}
+#endif
+```
+
 ---
 
 ## 3. Conditional Display
