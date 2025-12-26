@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 See [the roadmap](docs/overview/roadmap.md) for details
 
+## [3.0.2]
+
+### Fixed
+
+- Fix packaging issue related to Styles/Elements/Progress.meta file
+
 ## [3.0.1]
 
 ### Fixed
