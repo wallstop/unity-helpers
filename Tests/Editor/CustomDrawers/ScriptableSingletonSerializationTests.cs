@@ -724,7 +724,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         public void IsScriptableSingletonTypeWithDestroyedObjectReturnsFalse()
         {
             RegularScriptableObject target = CreateScriptableObject<RegularScriptableObject>();
-            Object.DestroyImmediate(target);
+            Object.DestroyImmediate(target); // UNH-SUPPRESS: Testing destroyed object handling
 
             // Unity's null check should handle destroyed objects
             bool result = SerializableDictionaryPropertyDrawer.IsScriptableSingletonType(target);

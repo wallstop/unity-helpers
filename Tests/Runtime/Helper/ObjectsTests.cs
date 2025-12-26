@@ -123,7 +123,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             bool result = Objects.Null(gameObject);
 
             Assert.IsFalse(result);
-            Object.Destroy(gameObject);
+            Object.Destroy(gameObject); // UNH-SUPPRESS: Test cleanup
             yield return null;
         }
 
@@ -131,7 +131,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         public IEnumerator NullReturnsTrueForDestroyedUnityObject()
         {
             GameObject gameObject = Track(new GameObject("Test"));
-            Object.Destroy(gameObject);
+            Object.Destroy(gameObject); // UNH-SUPPRESS: Test verifies null detection after destruction
             yield return null;
 
             bool result = Objects.Null(gameObject);
@@ -144,7 +144,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         {
             GameObject gameObject = Track(new GameObject("Test"));
             object boxed = gameObject;
-            Object.Destroy(gameObject);
+            Object.Destroy(gameObject); // UNH-SUPPRESS: Test verifies null detection after destruction when boxed
             yield return null;
 
             bool result = Objects.Null(boxed);
@@ -201,7 +201,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             bool result = Objects.NotNull(gameObject);
 
             Assert.IsTrue(result);
-            Object.Destroy(gameObject);
+            Object.Destroy(gameObject); // UNH-SUPPRESS: Test cleanup
             yield return null;
         }
 
@@ -209,7 +209,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         public IEnumerator NotNullReturnsFalseForDestroyedUnityObject()
         {
             GameObject gameObject = Track(new GameObject("Test"));
-            Object.Destroy(gameObject);
+            Object.Destroy(gameObject); // UNH-SUPPRESS: Test verifies NotNull detection after destruction
             yield return null;
 
             bool result = Objects.NotNull(gameObject);
@@ -222,7 +222,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         {
             GameObject gameObject = Track(new GameObject("Test"));
             object boxed = gameObject;
-            Object.Destroy(gameObject);
+            Object.Destroy(gameObject); // UNH-SUPPRESS: Test verifies NotNull detection after destruction when boxed
             yield return null;
 
             bool result = Objects.NotNull(boxed);
@@ -414,7 +414,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             int hashBefore = Objects.EnumerableHashCode(objects);
             Assert.AreNotEqual(0, hashBefore);
 
-            Object.Destroy(go);
+            Object.Destroy(go); // UNH-SUPPRESS: Test verifies hash behavior after destruction
             yield return null;
 
             int hashAfter = Objects.EnumerableHashCode(objects);

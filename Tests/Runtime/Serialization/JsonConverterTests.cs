@@ -779,7 +779,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
         public void GameObjectConverterSerializeDestroyedGameObjectReturnsEmptyObject()
         {
             GameObject original = Track(new GameObject("TestObject"));
-            UnityEngine.Object.DestroyImmediate(original);
+            UnityEngine.Object.DestroyImmediate(original); // UNH-SUPPRESS: Test verifies serialization of destroyed object
 
             string json = Serializer.JsonStringify(original);
             Assert.IsFalse(string.IsNullOrWhiteSpace(json));

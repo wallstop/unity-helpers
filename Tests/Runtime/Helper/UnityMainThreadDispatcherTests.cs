@@ -597,7 +597,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         public IEnumerator BackgroundThreadLoggingDoesNotRespawnDispatcher()
         {
             UnityMainThreadDispatcher dispatcher = UnityMainThreadDispatcher.Instance;
-            UnityEngine.Object.Destroy(dispatcher.gameObject);
+            UnityEngine.Object.Destroy(dispatcher.gameObject); // UNH-SUPPRESS: Test verifies dispatcher respawn prevention
             while (UnityMainThreadDispatcher.HasInstance)
             {
                 yield return null;

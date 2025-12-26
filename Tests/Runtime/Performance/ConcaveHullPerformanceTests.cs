@@ -71,8 +71,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Performance
         public void BuildConcaveHullKnnGridAllocationsStayBounded()
         {
             List<FastVector3Int> points = CreateGridPointCloud(DefaultWidth, DefaultHeight);
-            Grid grid = new GameObject("ConcaveHullGrid").AddComponent<Grid>();
-            Track(grid.gameObject);
+            GameObject gridObject = Track(new GameObject("ConcaveHullGrid"));
+            Grid grid = gridObject.AddComponent<Grid>();
 
             long allocated = GCAssert.MeasureAllocatedBytes(
                 () =>

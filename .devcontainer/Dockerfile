@@ -263,14 +263,61 @@ RUN { \
     } >> /etc/bash.bashrc
 
 # Enable VS Code shell integration
-# This sources the shell integration script that VS Code injects into the environment
+# VS Code automatically injects shell integration when terminal.integrated.shellIntegration.enabled is true.
+# This manual fallback ensures shell integration works in edge cases (sub-shells, reconnections, etc.)
+# See: https://code.visualstudio.com/docs/terminal/shell-integration
 RUN { \
     echo ''; \
-    echo '# VS Code shell integration'; \
+    echo '# VS Code shell integration (manual fallback)'; \
+    echo '# Automatic injection is enabled via devcontainer.json settings.'; \
+    echo '# This provides a fallback for sub-shells and edge cases.'; \
     echo 'if [[ "$TERM_PROGRAM" == "vscode" ]]; then'; \
-    echo '    builtin . "$VSCODE_SHELL_INTEGRATION"'; \
+    echo '    # Check if VS Code has injected the integration script path'; \
+    echo '    if [[ -n "$VSCODE_SHELL_INTEGRATION" && -f "$VSCODE_SHELL_INTEGRATION" ]]; then'; \
+    echo '        builtin source "$VSCODE_SHELL_INTEGRATION"'; \
+    echo '    elif command -v code &> /dev/null; then'; \
+    echo '        # Fallback: use code CLI to locate the script'; \
+    echo '        _vscode_shell_integration="$(code --locate-shell-integration-path bash 2>/dev/null)"'; \
+    echo '        if [[ -n "$_vscode_shell_integration" && -f "$_vscode_shell_integration" ]]; then'; \
+    echo '            builtin source "$_vscode_shell_integration"'; \
+    echo '        fi'; \
+    echo '        unset _vscode_shell_integration'; \
+    echo '    fi'; \
     echo 'fi'; \
     } >> /etc/bash.bashrc
+
+# Enable VS Code shell integration for zsh (installed via common-utils feature)
+# See: https://code.visualstudio.com/docs/terminal/shell-integration
+RUN { \
+    echo ''; \
+    echo '# VS Code shell integration (manual fallback)'; \
+    echo 'if [[ "$TERM_PROGRAM" == "vscode" ]]; then'; \
+    echo '    if [[ -n "$VSCODE_SHELL_INTEGRATION" && -f "$VSCODE_SHELL_INTEGRATION" ]]; then'; \
+    echo '        builtin source "$VSCODE_SHELL_INTEGRATION"'; \
+    echo '    elif command -v code &> /dev/null; then'; \
+    echo '        _vscode_shell_integration="$(code --locate-shell-integration-path zsh 2>/dev/null)"'; \
+    echo '        if [[ -n "$_vscode_shell_integration" && -f "$_vscode_shell_integration" ]]; then'; \
+    echo '            builtin source "$_vscode_shell_integration"'; \
+    echo '        fi'; \
+    echo '        unset _vscode_shell_integration'; \
+    echo '    fi'; \
+    echo 'fi'; \
+    } >> /etc/zsh/zshrc
+
+# Enable VS Code shell integration for PowerShell
+# See: https://code.visualstudio.com/docs/terminal/shell-integration
+RUN mkdir -p /opt/microsoft/powershell/7 \
+    && { \
+    echo '# VS Code shell integration (manual fallback)'; \
+    echo 'if ($env:TERM_PROGRAM -eq "vscode") {'; \
+    echo '    if ($env:VSCODE_SHELL_INTEGRATION -and (Test-Path $env:VSCODE_SHELL_INTEGRATION)) {'; \
+    echo '        . $env:VSCODE_SHELL_INTEGRATION'; \
+    echo '    } elseif (Get-Command code -ErrorAction SilentlyContinue) {'; \
+    echo '        $script = code --locate-shell-integration-path pwsh 2>$null'; \
+    echo '        if ($script -and (Test-Path $script)) { . $script }'; \
+    echo '    }'; \
+    echo '}'; \
+    } >> /opt/microsoft/powershell/7/profile.ps1
 
 # Ensure dotnet tools are on the PATH for both root and vscode users
 ENV PATH="${PATH}:/root/.dotnet/tools:/home/vscode/.dotnet/tools"

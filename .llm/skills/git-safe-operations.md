@@ -32,6 +32,71 @@ This commonly happens when:
 
 ---
 
+## Critical Rules
+
+### 1. Never Parallel Git Operations
+
+Git's index file (`/.git/index`) doesn't support concurrent access. Running multiple git commands in parallel can corrupt the index.
+
+```bash
+# BAD: Parallel git operations
+git status & git diff &
+
+# GOOD: Sequential operations
+git status
+git diff
+```
+
+### 2. Use Porcelain Output for Parsing
+
+Use `--porcelain` flags when parsing git output programmatically. Human-readable output changes between git versions.
+
+```bash
+# BAD: Parsing human-readable output (also: never use grep, use rg)
+git status | grep "modified"
+
+# GOOD: Porcelain format (machine-parseable)
+git status --porcelain
+git diff --name-status
+```
+
+### 3. Lock-Aware Operations
+
+For long-running scripts that may conflict with IDE git integrations:
+
+```bash
+# Wait for index lock
+while [ -f ".git/index.lock" ]; do
+  sleep 0.1
+done
+```
+
+### 4. Agent-Specific: No Staging or Committing
+
+**AI agents must NEVER stage or commit changes.** All git state modifications are the user's responsibility.
+
+✅ Allowed commands:
+
+- `git status`
+- `git log`
+- `git diff`
+- `git show`
+- `git blame`
+- `git ls-files`
+
+❌ Forbidden commands:
+
+- `git add`
+- `git commit`
+- `git push`
+- `git reset`
+- `git checkout` (for file modifications)
+- `git stash`
+- `git merge`
+- `git rebase`
+
+---
+
 ## Required Pattern: Use `git-staging-helpers.ps1`
 
 **All PowerShell scripts that interact with git MUST use the shared helpers.**
@@ -231,6 +296,56 @@ git_add_with_retry file1.txt file2.txt
 
 ---
 
+## Pre-Commit Hook Safety
+
+When writing pre-commit hooks:
+
+### Capture State Early
+
+```bash
+#!/bin/bash
+# Capture staged files ONCE at the start
+STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACMR)
+
+# Process files without re-querying git
+for file in $STAGED_FILES; do
+  # validate file
+done
+```
+
+### Don't Modify Index in Hooks
+
+Pre-commit hooks should only validate, never modify. If validation fails, exit non-zero and let the user fix issues.
+
+```bash
+# BAD: Auto-fixing in hook
+npm run format
+git add .  # DON'T DO THIS
+
+# GOOD: Report issues and fail
+npm run format:check
+if [ $? -ne 0 ]; then
+  echo "Run 'npm run format' to fix formatting"
+  exit 1
+fi
+```
+
+### Handle Partial Staging
+
+Users may stage only part of a file. Validate against staged content, not working directory:
+
+```bash
+# Get staged content of a file
+git show :path/to/file.cs
+
+# Or use git stash for complex validations
+git stash --keep-index --include-untracked
+# run validation
+git stash pop
+```
+
+---
+
 ## Pre-Commit Hook Configuration
 
 Ensure hooks that modify and re-stage files use `require_serial: true`:
@@ -246,6 +361,73 @@ repos:
         language: system
         require_serial: true # CRITICAL: prevents parallel execution
         pass_filenames: false
+```
+
+---
+
+## Safe Patterns for Scripts
+
+### Checking for Changes
+
+```bash
+# Check if working tree is clean
+if git diff --quiet && git diff --cached --quiet; then
+  echo "No changes"
+fi
+
+# Check for specific file changes (use rg, not grep)
+if git diff --name-only | rg -q "\.cs$"; then
+  echo "C# files modified"
+fi
+```
+
+### Getting File Lists
+
+```bash
+# All tracked files
+git ls-files
+
+# Modified files (unstaged)
+git diff --name-only
+
+# Staged files
+git diff --cached --name-only
+
+# Untracked files
+git ls-files --others --exclude-standard
+```
+
+### Comparing Versions
+
+```bash
+# Changes since last commit
+git diff HEAD
+
+# Changes between branches
+git diff main..feature-branch --name-only
+
+# Changes in specific directory
+git diff --name-only -- "path/to/dir/"
+```
+
+---
+
+## Error Handling
+
+Always handle git command failures:
+
+```bash
+# Check if in git repository
+if ! git rev-parse --git-dir > /dev/null 2>&1; then
+  echo "Not a git repository"
+  exit 1
+fi
+
+# Handle command failure
+if ! git status --porcelain > /tmp/status.txt; then
+  echo "Git status failed"
+  exit 1
+fi
 ```
 
 ---
@@ -272,6 +454,11 @@ If you still see `index.lock` errors:
 5. **Check mutex acquisition**: Add logging to verify the global mutex is being acquired
 
 ---
+
+## Related Skills
+
+- [validate-before-commit](validate-before-commit.md) — Pre-commit validation commands
+- [format-code](format-code.md) — Code formatting before commits
 
 ## Related Files
 

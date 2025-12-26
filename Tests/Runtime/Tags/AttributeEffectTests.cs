@@ -1,3 +1,4 @@
+// UNH-SUPPRESS UNH003: AttributeEffectTests inherits from AttributeTagsTestBase which inherits from CommonTestBase
 namespace WallstopStudios.UnityHelpers.Tests.Tags
 {
     using System.Text.Json;

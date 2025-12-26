@@ -4,14 +4,16 @@ namespace WallstopStudios.UnityHelpers.Tests
     using NUnit.Framework;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Editor;
+    using WallstopStudios.UnityHelpers.Tests.Core;
 
-    public sealed class PersistentDirectorySettingsTests
+    public sealed class PersistentDirectorySettingsTests : CommonTestBase
     {
         [Test]
         public void GetPathsSortsByCountThenLastUsed()
         {
-            PersistentDirectorySettings settings =
-                ScriptableObject.CreateInstance<PersistentDirectorySettings>();
+            PersistentDirectorySettings settings = Track(
+                ScriptableObject.CreateInstance<PersistentDirectorySettings>()
+            );
 
             string tool = "TestTool";
             string ctx = "Context";
@@ -37,8 +39,9 @@ namespace WallstopStudios.UnityHelpers.Tests
         [Test]
         public void GetPathsTopOnlyRespectsLimit()
         {
-            PersistentDirectorySettings settings =
-                ScriptableObject.CreateInstance<PersistentDirectorySettings>();
+            PersistentDirectorySettings settings = Track(
+                ScriptableObject.CreateInstance<PersistentDirectorySettings>()
+            );
 
             string tool = "TopOnlyTool";
             string ctx = "Context";

@@ -44,7 +44,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             texture.Apply();
 
             byte[] png = texture.EncodeToPNG();
-            Object.DestroyImmediate(texture);
+            Object.DestroyImmediate(texture); // UNH-SUPPRESS: Intentional cleanup of temp texture
             File.WriteAllBytes(TempTexturePath, png);
             AssetDatabase.ImportAsset(TempTexturePath, ImportAssetOptions.ForceUpdate);
 

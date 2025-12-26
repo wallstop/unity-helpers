@@ -112,7 +112,9 @@
     "validate:tests": "npm run lint:tests",
     "validate:prepush": "npm run validate:content && npm run eol:check && npm run validate:tests && npm run lint:csharp-naming",
     "lint:tests": "pwsh -NoProfile -File scripts/lint-tests.ps1 -VerboseOutput",
-    "lint:csharp-naming": "pwsh -NoProfile -File scripts/lint-csharp-naming.ps1 -VerboseOutput"
+    "lint:csharp-naming": "pwsh -NoProfile -File scripts/lint-csharp-naming.ps1 -VerboseOutput",
+    "lint:unity-file-naming": "pwsh -NoProfile -File scripts/lint-unity-file-naming.ps1 -VerboseOutput",
+    "test:lint-unity-file-naming": "pwsh -NoProfile -File scripts/tests/test-lint-unity-file-naming.ps1 -VerboseOutput"
   },
   "devDependencies": {
     "markdownlint-cli": "^0.47.0",

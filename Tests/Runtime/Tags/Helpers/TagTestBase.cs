@@ -1,3 +1,4 @@
+// UNH-SUPPRESS UNH003: TagsTestBase inherits from AttributeTagsTestBase which inherits from CommonTestBase
 namespace WallstopStudios.UnityHelpers.Tests.Tags.Helpers
 {
     using System;

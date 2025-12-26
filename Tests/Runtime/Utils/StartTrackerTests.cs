@@ -186,7 +186,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             Assert.IsTrue(tracker.Started, "Initial tracker should be Started");
 
             // Destroy the component
-            Object.DestroyImmediate(tracker);
+            Object.DestroyImmediate(tracker); // UNH-SUPPRESS: Test verifies new tracker state after component destruction
             yield return null;
 
             // Add a new tracker

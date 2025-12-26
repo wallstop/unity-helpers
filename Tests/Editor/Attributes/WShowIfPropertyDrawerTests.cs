@@ -564,7 +564,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
             );
             Assert.False(InvokeShouldShow(drawer, dependentProperty));
 
-            Object.DestroyImmediate(container.referenceCondition);
+            Object.DestroyImmediate(container.referenceCondition); // UNH-SUPPRESS: Testing destroyed reference handling
             container.referenceCondition = null;
             dependentProperty = RefreshProperty(
                 serializedObject,
@@ -657,7 +657,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
 
             Assert.False(InvokeShouldShow(drawer, dependentProperty));
 
-            Object.DestroyImmediate(container.objectCondition);
+            Object.DestroyImmediate(container.objectCondition); // UNH-SUPPRESS: Testing destroyed object handling
             container.objectCondition = null;
             dependentProperty = RefreshProperty(
                 serializedObject,

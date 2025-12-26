@@ -292,6 +292,29 @@ See [create-test](skills/create-test.md) for full testing guidelines.
 - **ALWAYS generate `.meta` files** after creating ANY file or folder via `./scripts/generate-meta.sh <path>`
 - **NEVER pipe output to `/dev/null`**
 
+### Shell Tool Requirements
+
+**MANDATORY**: Use high-performance tools instead of traditional Unix tools. See [search-codebase](skills/search-codebase.md) for full documentation.
+
+| Forbidden | Use Instead          | Reason                       |
+| --------- | -------------------- | ---------------------------- |
+| `grep`    | `rg` (ripgrep)       | 10-100x faster, better regex |
+| `find`    | `fd`                 | 5x faster, friendlier syntax |
+| `cat`     | `bat --paging=never` | Syntax highlighting          |
+| `grep -r` | `rg`                 | Recursive by default         |
+
+```bash
+# ❌ NEVER
+grep -r "pattern" .
+find . -name "*.cs"
+cat file.cs
+
+# ✅ ALWAYS
+rg "pattern"
+fd "\.cs$"
+bat --paging=never file.cs
+```
+
 ### Git Operations
 
 **NEVER use `git add` or `git commit` commands.** User handles all staging/committing.

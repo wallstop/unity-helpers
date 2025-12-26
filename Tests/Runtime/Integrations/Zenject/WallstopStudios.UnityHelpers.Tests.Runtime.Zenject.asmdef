@@ -15,7 +15,11 @@
   "excludePlatforms": [],
   "allowUnsafeCode": false,
   "overrideReferences": true,
-  "precompiledReferences": ["nunit.framework.dll", "Zenject-usage.dll"],
+  "precompiledReferences": [
+    "nunit.framework.dll",
+    "Zenject-usage.dll",
+    "Sirenix.Serialization.dll"
+  ],
   "autoReferenced": false,
   "defineConstraints": ["UNITY_INCLUDE_TESTS", "ZENJECT_PRESENT"],
   "versionDefines": [

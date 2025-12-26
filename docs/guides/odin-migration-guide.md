@@ -121,6 +121,15 @@ private void PrintDebugInfo() { }
 private void GenerateIds() { }
 ```
 
+**✅ Automatic Odin Inspector Support:**
+
+WButton works automatically with Odin's `SerializedMonoBehaviour` and `SerializedScriptableObject` - no setup required! Just use `[WButton]` on your methods.
+
+**Only need manual integration if:**
+
+- You create a custom `OdinEditor` for a specific type
+- See [Inspector Buttons - Custom Editors](../features/inspector/inspector-button.md#integration-with-custom-odin-editors) for details
+
 ---
 
 ## 3. Conditional Display

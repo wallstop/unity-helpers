@@ -38,7 +38,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
             AssetDatabase.Refresh();
 
             // Create config asset
-            ScriptableSpriteAtlas config = ScriptableObject.CreateInstance<ScriptableSpriteAtlas>();
+            ScriptableSpriteAtlas config = ScriptableObject.CreateInstance<ScriptableSpriteAtlas>(); // UNH-SUPPRESS: Asset becomes persistent via CreateAsset below
             config.name = "TestAtlasConfig";
             config.spritesToPack.Add(AssetDatabase.LoadAssetAtPath<Sprite>(spritePath));
             config.outputSpriteAtlasDirectory = Root;
@@ -85,7 +85,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
             }
             finally
             {
-                Object.DestroyImmediate(t);
+                Object.DestroyImmediate(t); // UNH-SUPPRESS: Cleanup temporary texture in finally block
             }
         }
 
