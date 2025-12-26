@@ -262,6 +262,16 @@ RUN { \
     echo 'alias cdi="zi"'; \
     } >> /etc/bash.bashrc
 
+# Enable VS Code shell integration
+# This sources the shell integration script that VS Code injects into the environment
+RUN { \
+    echo ''; \
+    echo '# VS Code shell integration'; \
+    echo 'if [[ "$TERM_PROGRAM" == "vscode" ]]; then'; \
+    echo '    builtin . "$VSCODE_SHELL_INTEGRATION"'; \
+    echo 'fi'; \
+    } >> /etc/bash.bashrc
+
 # Ensure dotnet tools are on the PATH for both root and vscode users
 ENV PATH="${PATH}:/root/.dotnet/tools:/home/vscode/.dotnet/tools"
 

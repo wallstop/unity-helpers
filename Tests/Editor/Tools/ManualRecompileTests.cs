@@ -21,33 +21,77 @@ namespace WallstopStudios.UnityHelpers.Tests.Tools
         [TearDown]
         public void TearDown()
         {
-            foreach (string assetPath in createdAssetPaths)
+            try
             {
-                AssetDatabase.DeleteAsset(assetPath);
+                foreach (string assetPath in createdAssetPaths)
+                {
+                    try
+                    {
+                        AssetDatabase.DeleteAsset(assetPath);
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.LogWarning($"Failed to delete asset '{assetPath}': {ex.Message}");
+                    }
+                }
+
+                createdAssetPaths.Clear();
             }
-
-            createdAssetPaths.Clear();
-
-            ManualRecompile.SkipCompilationRequestForTests = false;
-            ManualRecompile.IsCompilationPendingEvaluator = null;
-            ManualRecompile.AssetsRefreshedForTests = null;
-            ManualRecompile.CompilationRequestedForTests = null;
-
-            string tempFolderAbsolutePath = GetAbsolutePath(TempFolderRelativePath);
-
-            if (Directory.Exists(tempFolderAbsolutePath))
+            finally
             {
-                FileUtil.DeleteFileOrDirectory(tempFolderAbsolutePath);
+                try
+                {
+                    // Reset test state hooks - always do this even if asset cleanup fails
+                    ManualRecompile.SkipCompilationRequestForTests = false;
+                    ManualRecompile.IsCompilationPendingEvaluator = null;
+                    ManualRecompile.AssetsRefreshedForTests = null;
+                    ManualRecompile.CompilationRequestedForTests = null;
+                }
+                finally
+                {
+                    // Clean up temp folder - always do this even if state reset fails
+                    string tempFolderAbsolutePath = GetAbsolutePath(TempFolderRelativePath);
+
+                    try
+                    {
+                        if (Directory.Exists(tempFolderAbsolutePath))
+                        {
+                            FileUtil.DeleteFileOrDirectory(tempFolderAbsolutePath);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.LogWarning(
+                            $"Failed to delete temp folder '{tempFolderAbsolutePath}': {ex.Message}"
+                        );
+                    }
+
+                    try
+                    {
+                        string tempFolderMetaPath = tempFolderAbsolutePath + ".meta";
+
+                        if (File.Exists(tempFolderMetaPath))
+                        {
+                            FileUtil.DeleteFileOrDirectory(tempFolderMetaPath);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.LogWarning($"Failed to delete temp folder meta: {ex.Message}");
+                    }
+
+                    try
+                    {
+                        AssetDatabase.Refresh();
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.LogWarning(
+                            $"Failed to refresh asset database in teardown: {ex.Message}"
+                        );
+                    }
+                }
             }
-
-            string tempFolderMetaPath = tempFolderAbsolutePath + ".meta";
-
-            if (File.Exists(tempFolderMetaPath))
-            {
-                FileUtil.DeleteFileOrDirectory(tempFolderMetaPath);
-            }
-
-            AssetDatabase.Refresh();
         }
 
         [Test]
@@ -289,6 +333,326 @@ namespace WallstopStudios.UnityHelpers.Tests.Tools
                     "When evaluator reset to default and Unity is compiling, refresh should be skipped."
                 );
             }
+        }
+
+        [Test]
+        public void IsCompilationPendingHandlesNullEvaluatorGracefully()
+        {
+            // Force the evaluator to null through reflection to test defensive check
+            System.Reflection.FieldInfo field = typeof(ManualRecompile).GetField(
+                "isCompilationPendingEvaluator",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static
+            );
+            Assert.IsNotNull(field, "Should be able to access isCompilationPendingEvaluator field");
+
+            field.SetValue(null, null);
+
+            ManualRecompile.SkipCompilationRequestForTests = true;
+            bool assetsRefreshed = false;
+            ManualRecompile.AssetsRefreshedForTests = () => assetsRefreshed = true;
+
+            LogAssert.Expect(
+                LogType.Warning,
+                new Regex("Compilation pending evaluator is null", RegexOptions.IgnoreCase)
+            );
+            LogAssert.Expect(
+                LogType.Log,
+                new Regex("Asset database refreshed", RegexOptions.IgnoreCase)
+            );
+
+            ManualRecompile.RequestFromMenu();
+
+            Assert.IsTrue(
+                assetsRefreshed,
+                "Request should proceed after restoring null evaluator to default"
+            );
+        }
+
+        [Test]
+        public void SkipCompilationFlagIsResetEvenIfCallbackThrows()
+        {
+            ManualRecompile.IsCompilationPendingEvaluator = () => false;
+            ManualRecompile.SkipCompilationRequestForTests = true;
+
+            bool assetsRefreshed = false;
+            ManualRecompile.AssetsRefreshedForTests = () =>
+            {
+                assetsRefreshed = true;
+                throw new InvalidOperationException("Test exception from callback");
+            };
+
+            bool caughtException = false;
+            try
+            {
+                ManualRecompile.RequestFromMenu();
+            }
+            catch (InvalidOperationException ex)
+            {
+                caughtException = true;
+                Assert.AreEqual(
+                    "Test exception from callback",
+                    ex.Message,
+                    "Exception message should match the thrown exception"
+                );
+            }
+
+            Assert.IsTrue(caughtException, "Expected InvalidOperationException to be thrown");
+            Assert.IsTrue(assetsRefreshed, "Callback should have been invoked");
+            Assert.IsFalse(
+                ManualRecompile.SkipCompilationRequestForTests,
+                $"Skip flag should be reset even when callback throws. "
+                    + $"AssetsRefreshed: {assetsRefreshed}, CaughtException: {caughtException}"
+            );
+        }
+
+        [Test]
+        public void CompilationCallbackExceptionDoesNotCorruptState()
+        {
+            ManualRecompile.IsCompilationPendingEvaluator = () => false;
+            ManualRecompile.SkipCompilationRequestForTests = false;
+
+            bool compileRequested = false;
+            ManualRecompile.CompilationRequestedForTests = () =>
+            {
+                compileRequested = true;
+                throw new InvalidOperationException("Test exception from compilation callback");
+            };
+
+            try
+            {
+                ManualRecompile.RequestFromMenu();
+            }
+            catch (InvalidOperationException)
+            {
+                // Expected exception from callback
+            }
+
+            Assert.IsTrue(compileRequested, "Compilation callback should have been invoked");
+
+            // Verify state is still clean for next request
+            ManualRecompile.SkipCompilationRequestForTests = true;
+            bool secondRequestRefreshed = false;
+            ManualRecompile.AssetsRefreshedForTests = () => secondRequestRefreshed = true;
+            ManualRecompile.CompilationRequestedForTests = null;
+
+            LogAssert.Expect(
+                LogType.Log,
+                new Regex("Asset database refreshed", RegexOptions.IgnoreCase)
+            );
+
+            ManualRecompile.RequestFromMenu();
+
+            Assert.IsTrue(
+                secondRequestRefreshed,
+                "Second request should work normally after exception in first request"
+            );
+        }
+
+        private static IEnumerable<TestCaseData> ExceptionScenarioTestCases()
+        {
+            yield return new TestCaseData(
+                new Action<Action, Action>(
+                    (setAssetsRefreshed, setCompilationRequested) =>
+                    {
+                        ManualRecompile.AssetsRefreshedForTests = () =>
+                        {
+                            setAssetsRefreshed();
+                            throw new InvalidOperationException("AssetsRefreshed exception");
+                        };
+                    }
+                ),
+                true,
+                "AssetsRefreshedCallback"
+            ).SetName("Exception.InAssetsRefreshedCallback.FlagIsReset");
+
+            yield return new TestCaseData(
+                new Action<Action, Action>(
+                    (setAssetsRefreshed, setCompilationRequested) =>
+                    {
+                        ManualRecompile.SkipCompilationRequestForTests = false;
+                        ManualRecompile.AssetsRefreshedForTests = setAssetsRefreshed;
+                        ManualRecompile.CompilationRequestedForTests = () =>
+                        {
+                            setCompilationRequested();
+                            throw new InvalidOperationException("CompilationRequested exception");
+                        };
+                    }
+                ),
+                false,
+                "CompilationRequestedCallback"
+            ).SetName("Exception.InCompilationRequestedCallback.FlagIsReset");
+
+            yield return new TestCaseData(
+                new Action<Action, Action>(
+                    (setAssetsRefreshed, setCompilationRequested) =>
+                    {
+                        ManualRecompile.AssetsRefreshedForTests = () =>
+                        {
+                            setAssetsRefreshed();
+                            throw new ArgumentException("ArgumentException from callback");
+                        };
+                    }
+                ),
+                true,
+                "AssetsRefreshedCallbackWithArgumentException"
+            ).SetName("Exception.ArgumentException.FlagIsReset");
+
+            yield return new TestCaseData(
+                new Action<Action, Action>(
+                    (setAssetsRefreshed, setCompilationRequested) =>
+                    {
+                        ManualRecompile.AssetsRefreshedForTests = () =>
+                        {
+                            setAssetsRefreshed();
+                            throw new NullReferenceException(
+                                "NullReferenceException from callback"
+                            );
+                        };
+                    }
+                ),
+                true,
+                "AssetsRefreshedCallbackWithNullReferenceException"
+            ).SetName("Exception.NullReferenceException.FlagIsReset");
+        }
+
+        [Test]
+        [TestCaseSource(nameof(ExceptionScenarioTestCases))]
+        public void SkipFlagIsResetOnExceptionInCallbacks(
+            Action<Action, Action> setupCallbacks,
+            bool initialSkipFlag,
+            string scenarioDescription
+        )
+        {
+            ManualRecompile.IsCompilationPendingEvaluator = () => false;
+            ManualRecompile.SkipCompilationRequestForTests = initialSkipFlag;
+
+            bool assetsRefreshed = false;
+            bool compilationRequested = false;
+
+            setupCallbacks(() => assetsRefreshed = true, () => compilationRequested = true);
+
+            bool caughtException = false;
+            Exception thrownException = null;
+
+            try
+            {
+                ManualRecompile.RequestFromMenu();
+            }
+            catch (Exception ex)
+            {
+                caughtException = true;
+                thrownException = ex;
+            }
+
+            Assert.IsTrue(
+                caughtException,
+                $"[{scenarioDescription}] Expected exception to be thrown"
+            );
+            Assert.IsFalse(
+                ManualRecompile.SkipCompilationRequestForTests,
+                $"[{scenarioDescription}] Skip flag should be reset after exception. "
+                    + $"AssetsRefreshed: {assetsRefreshed}, "
+                    + $"CompilationRequested: {compilationRequested}, "
+                    + $"InitialSkipFlag: {initialSkipFlag}, "
+                    + $"ExceptionType: {thrownException?.GetType().Name}, "
+                    + $"ExceptionMessage: {thrownException?.Message}"
+            );
+        }
+
+        [Test]
+        public void MultipleSequentialRequestsResetFlagCorrectly()
+        {
+            ManualRecompile.IsCompilationPendingEvaluator = () => false;
+
+            int requestCount = 0;
+
+            for (int i = 0; i < 3; i++)
+            {
+                ManualRecompile.SkipCompilationRequestForTests = true;
+                ManualRecompile.AssetsRefreshedForTests = () => requestCount++;
+
+                LogAssert.Expect(
+                    LogType.Log,
+                    new Regex("Asset database refreshed", RegexOptions.IgnoreCase)
+                );
+
+                ManualRecompile.RequestFromMenu();
+
+                Assert.IsFalse(
+                    ManualRecompile.SkipCompilationRequestForTests,
+                    $"Skip flag should be reset after request {i + 1}. RequestCount: {requestCount}"
+                );
+            }
+
+            Assert.AreEqual(
+                3,
+                requestCount,
+                "All three requests should have completed. RequestCount mismatch."
+            );
+        }
+
+        [Test]
+        public void RequestDoesNotResetFlagWhenSkipFlagIsFalse()
+        {
+            ManualRecompile.IsCompilationPendingEvaluator = () => false;
+            ManualRecompile.SkipCompilationRequestForTests = false;
+
+            bool compileRequested = false;
+            ManualRecompile.CompilationRequestedForTests = () => compileRequested = true;
+
+            LogAssert.Expect(
+                LogType.Log,
+                new Regex(
+                    "Refreshed assets and requested script compilation",
+                    RegexOptions.IgnoreCase
+                )
+            );
+
+            ManualRecompile.RequestFromMenu();
+
+            Assert.IsTrue(compileRequested, "Compilation should have been requested");
+            Assert.IsFalse(
+                ManualRecompile.SkipCompilationRequestForTests,
+                "Skip flag should remain false when it was initially false"
+            );
+        }
+
+        [Test]
+        public void ExceptionInAssetsRefreshedDoesNotPreventFlagReset()
+        {
+            ManualRecompile.IsCompilationPendingEvaluator = () => false;
+            ManualRecompile.SkipCompilationRequestForTests = true;
+
+            int callOrder = 0;
+            int assetsRefreshedOrder = -1;
+
+            ManualRecompile.AssetsRefreshedForTests = () =>
+            {
+                assetsRefreshedOrder = callOrder++;
+                throw new InvalidOperationException("Intentional test exception");
+            };
+
+            bool caughtException = false;
+            try
+            {
+                ManualRecompile.RequestFromMenu();
+            }
+            catch (InvalidOperationException)
+            {
+                caughtException = true;
+            }
+
+            Assert.IsTrue(caughtException, "Exception should have been caught");
+            Assert.AreEqual(
+                0,
+                assetsRefreshedOrder,
+                "AssetsRefreshed callback should have been called first"
+            );
+            Assert.IsFalse(
+                ManualRecompile.SkipCompilationRequestForTests,
+                $"Skip flag should be reset even when AssetsRefreshed throws. "
+                    + $"CallOrder: {callOrder}, AssetsRefreshedOrder: {assetsRefreshedOrder}"
+            );
         }
 
         private static void EnsureParentDirectoryExists(string absolutePath)

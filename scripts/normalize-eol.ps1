@@ -10,8 +10,11 @@ $extensions = @(
     'cs','csproj','sln',
     'json','yaml','yml','md','xml','uxml','uss',
     'shader','hlsl','compute','cginc',
-    'asmdef','asmref','meta','ps1'
+    'asmdef','asmref','meta','ps1','sh'
 )
+
+# Extensions that require LF (Unix) line endings (bash scripts)
+$lfExtensions = @('sh')
 
 function Get-TrackedFiles {
     $files = (git ls-files -z) -split "`0" | Where-Object { $_ -ne '' }
@@ -24,6 +27,10 @@ function Get-TrackedFiles {
 function To-CrLf([string]$text) {
     $tmp = $text -replace "`r`n", "`n" -replace "`r", "`n"
     return $tmp -replace "`n", "`r`n"
+}
+
+function To-Lf([string]$text) {
+    return $text -replace "`r`n", "`n" -replace "`r", "`n"
 }
 
 $changed = 0
@@ -46,7 +53,10 @@ foreach ($path in $tracked) {
         $text = [System.Text.Encoding]::UTF8.GetString($bytes)
     }
 
-    $normalized = To-CrLf $text
+    # Determine if this file should use LF (Unix) or CRLF (Windows) line endings
+    $ext = [System.IO.Path]::GetExtension($path).TrimStart('.').ToLowerInvariant()
+    $useLf = $lfExtensions -contains $ext
+    $normalized = if ($useLf) { To-Lf $text } else { To-CrLf $text }
 
     $fileChanged = $false
     if ($normalized -ne $text) { $fileChanged = $true; $eolFixed++ }
