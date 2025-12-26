@@ -4,6 +4,25 @@
 
 ---
 
+## MANDATORY: Exhaustive Testing for All Production Code
+
+**Every new production feature MUST have exhaustive test coverage.** This includes:
+
+- **Runtime code** — New classes, methods, extension methods, data structures
+- **Editor tooling** — Property drawers, custom inspectors, editor windows
+- **Inspector attributes** — All attribute behaviors must be tested
+
+### Test Requirements
+
+| Category           | Requirement                                             |
+| ------------------ | ------------------------------------------------------- |
+| **Normal Cases**   | Cover typical/expected usage scenarios                  |
+| **Negative Cases** | Invalid inputs, error conditions, null values           |
+| **Edge Cases**     | Empty, single-element, boundary values, max/min         |
+| **Data-Driven**    | Prefer `[TestCase]` / `[TestCaseSource]` for variations |
+
+---
+
 ## Test File Location
 
 Mirror the source structure:
@@ -111,52 +130,117 @@ Assert.That(obj, Is.Not.Null);    // Bypasses Unity's null check
 
 Don't use Description attributes on tests.
 
-### 9. Data-Driven Test Naming
+### 9. Data-Driven Test Naming (CRITICAL)
 
-Use `.` (dot) or no delimiter—**never underscores**:
+All data-driven test names must use `.` (dot) separator or PascalCase—**NEVER underscores**:
 
-- ✅ `[TestCase("Input.Valid")]`
-- ✅ `[TestCase("InputValid")]`
-- ❌ `[TestCase("Input_Valid")]`
+#### TestCase with TestName
+
+```csharp
+// ✅ CORRECT - Dot-separated hierarchy
+[TestCase(null, false, TestName = "Input.Null.ReturnsFalse")]
+[TestCase("", false, TestName = "Input.Empty.ReturnsFalse")]
+[TestCase("valid", true, TestName = "Input.Valid.ReturnsTrue")]
+
+// ✅ CORRECT - PascalCase descriptive
+[TestCase(1, TestName = "SingleFolder")]
+[TestCase(5, TestName = "MultipleFolders")]
+
+// ❌ WRONG - Underscores
+[TestCase(null, TestName = "Input_Null")]
+[TestCase("", TestName = "Empty_String_Path")]
+```
+
+#### TestCaseSource with SetName
+
+```csharp
+// ✅ CORRECT - Dot-separated hierarchy for categorization
+private static IEnumerable<TestCaseData> EdgeCasePaths()
+{
+    yield return new TestCaseData(null, false)
+        .SetName("EdgeCase.NullPath.Rejected");
+    yield return new TestCaseData("", false)
+        .SetName("EdgeCase.EmptyPath.Rejected");
+    yield return new TestCaseData("   ", false)
+        .SetName("EdgeCase.WhitespacePath.Rejected");
+}
+
+// ✅ CORRECT - Category.Scenario.Expected pattern
+yield return new TestCaseData("GroupA", "Custom Display A", 3)
+    .SetName("DisplayName.FirstFieldHasCustomName.Preserved");
+yield return new TestCaseData("GroupD", "GroupD", 2)
+    .SetName("DisplayName.NoExplicitName.UsesGroupName");
+
+// ❌ WRONG - Underscores in SetName
+yield return new TestCaseData(null).SetName("Null_Path");
+yield return new TestCaseData("").SetName("Empty_String");
+```
+
+#### Naming Patterns for TestCaseSource
+
+| Pattern                      | Example                                 | When to Use                 |
+| ---------------------------- | --------------------------------------- | --------------------------- |
+| `Category.Scenario.Expected` | `DisplayName.NoExplicit.UsesDefault`    | Testing behavior variations |
+| `Input.Type.Result`          | `Input.Null.ReturnsFalse`               | Input validation tests      |
+| `Feature.Condition.Outcome`  | `Serialization.EmptyList.PreservesType` | Feature behavior tests      |
+| `PascalCaseDescriptive`      | `SingleElement`                         | Simple enumerations         |
 
 ---
 
-## Test Coverage Requirements
+## Test Coverage Requirements (MANDATORY)
 
-### Positive Cases
+All production code **MUST** have tests covering the following categories.
 
-Verify expected behavior under normal conditions.
+### Normal Cases (Required)
 
-### Negative Cases
+Verify expected behavior under typical conditions:
 
-Verify proper handling of:
-
-- Invalid inputs
-- Error conditions
-- Failure scenarios
-
-### Edge Cases
-
-| Category        | Examples                                     |
-| --------------- | -------------------------------------------- |
-| Empty inputs    | Empty collections, strings, arrays           |
-| Single elements | Single-element collections                   |
-| Boundaries      | Max/min values, first/last elements, zero    |
-| Null values     | Where applicable                             |
-| Special strings | Whitespace-only, Unicode, special characters |
-| Concurrency     | For thread-safe code                         |
-| Large inputs    | Performance stress tests                     |
-
-### Normal Cases
-
-- Typical collection sizes (5-20 elements)
+- Standard collection sizes (5-20 elements)
 - Common string formats and lengths
-- Representative numeric values
-- Standard workflows
+- Representative numeric values within normal ranges
+- Standard user workflows
+- Typical parameter combinations
+
+### Negative Cases (Required)
+
+Verify proper handling of invalid/error conditions:
+
+- Invalid inputs (wrong types, out-of-range values)
+- Error conditions (missing dependencies, failed operations)
+- Failure scenarios (exceptions, null returns)
+- Invalid state transitions
+- Missing or misconfigured dependencies
+
+### Edge Cases (Required)
+
+| Category        | Test Scenarios                                              |
+| --------------- | ----------------------------------------------------------- |
+| Empty inputs    | Empty collections `[]`, empty strings `""`, empty arrays    |
+| Single elements | Single-element collections, single character strings        |
+| Boundaries      | `int.MaxValue`, `int.MinValue`, `0`, `-1`, first/last index |
+| Null values     | Null parameters, null collection elements, null returns     |
+| Special strings | Whitespace-only `"   "`, Unicode characters, special chars  |
+| Concurrency     | Thread-safe code: parallel access, race conditions          |
+| Large inputs    | Stress tests: 10K+ elements, deep nesting                   |
+| Type variations | Different generic type parameters, inheritance hierarchies  |
+
+### Inspector/Drawer-Specific Tests (Required for Editor Code)
+
+When testing property drawers, custom inspectors, or editor tools:
+
+| Category             | Test Scenarios                                     |
+| -------------------- | -------------------------------------------------- |
+| Property types       | All supported `SerializedPropertyType` values      |
+| Null targets         | Null `SerializedProperty`, null `SerializedObject` |
+| Missing attributes   | Fields without the target attribute                |
+| Multi-object editing | Multiple selected objects with different values    |
+| Nested properties    | Properties inside arrays, lists, nested classes    |
+| Undo/Redo            | State preservation across undo operations          |
+| Layout calculations  | Height calculations for varying content            |
 
 ---
 
-## Example: Comprehensive Test Class
+## Example: Comprehensive Data-Driven Test Class
 
 ```csharp
 namespace WallstopStudios.UnityHelpers.Tests.Core.Extension
@@ -169,6 +253,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Core.Extension
     [TestFixture]
     public sealed class DictionaryExtensionsTests
     {
+        // === NORMAL CASES ===
+
         [Test]
         public void GetOrAddReturnsExistingValueWhenKeyExists()
         {
@@ -190,6 +276,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Core.Extension
             Assert.IsTrue(dictionary.ContainsKey("key"));
         }
 
+        // === NEGATIVE CASES ===
+
         [Test]
         public void GetOrAddWithNullKeyThrowsArgumentNullException()
         {
@@ -197,6 +285,16 @@ namespace WallstopStudios.UnityHelpers.Tests.Core.Extension
 
             Assert.Throws<ArgumentNullException>(() => dictionary.GetOrAdd(null, () => 42));
         }
+
+        [Test]
+        public void GetOrAddWithNullFactoryThrowsArgumentNullException()
+        {
+            Dictionary<string, int> dictionary = new Dictionary<string, int>();
+
+            Assert.Throws<ArgumentNullException>(() => dictionary.GetOrAdd("key", null));
+        }
+
+        // === EDGE CASES ===
 
         [Test]
         public void GetOrAddWithEmptyDictionaryAddsEntry()
@@ -207,6 +305,60 @@ namespace WallstopStudios.UnityHelpers.Tests.Core.Extension
 
             Assert.AreEqual(1, dictionary.Count);
             Assert.IsTrue(result != null);
+        }
+
+        // === DATA-DRIVEN TESTS ===
+
+        private static IEnumerable<TestCaseData> KeyValueTestCases()
+        {
+            yield return new TestCaseData("", 0)
+                .SetName("Key.EmptyString.AcceptsValue");
+            yield return new TestCaseData("normal", 42)
+                .SetName("Key.NormalString.AcceptsValue");
+            yield return new TestCaseData("   ", 100)
+                .SetName("Key.WhitespaceString.AcceptsValue");
+            yield return new TestCaseData("a", int.MaxValue)
+                .SetName("Value.MaxInt.Stored");
+            yield return new TestCaseData("b", int.MinValue)
+                .SetName("Value.MinInt.Stored");
+        }
+
+        [Test]
+        [TestCaseSource(nameof(KeyValueTestCases))]
+        public void GetOrAddStoresCorrectValue(string key, int value)
+        {
+            Dictionary<string, int> dictionary = new Dictionary<string, int>();
+
+            int result = dictionary.GetOrAdd(key, () => value);
+
+            Assert.AreEqual(value, result);
+            Assert.AreEqual(value, dictionary[key]);
+        }
+
+        private static IEnumerable<TestCaseData> CollectionSizeTestCases()
+        {
+            yield return new TestCaseData(0).SetName("Size.Empty");
+            yield return new TestCaseData(1).SetName("Size.Single");
+            yield return new TestCaseData(10).SetName("Size.Small");
+            yield return new TestCaseData(100).SetName("Size.Medium");
+            yield return new TestCaseData(10000).SetName("Size.Large");
+        }
+
+        [Test]
+        [TestCaseSource(nameof(CollectionSizeTestCases))]
+        public void GetOrAddWorksWithVariousDictionarySizes(int existingCount)
+        {
+            Dictionary<int, int> dictionary = new Dictionary<int, int>();
+            for (int i = 0; i < existingCount; i++)
+            {
+                dictionary[i] = i * 2;
+            }
+
+            int newKey = existingCount;
+            int result = dictionary.GetOrAdd(newKey, () => 999);
+
+            Assert.AreEqual(999, result);
+            Assert.AreEqual(existingCount + 1, dictionary.Count);
         }
     }
 }

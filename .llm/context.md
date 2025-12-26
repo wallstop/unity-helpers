@@ -69,24 +69,46 @@ Samples~/                  # Sample projects (imported via Package Manager)
 
 Invoke these skills for specific tasks:
 
-| Skill                                                        | When to Use                                         |
-| ------------------------------------------------------------ | --------------------------------------------------- |
-| [high-performance-csharp](skills/high-performance-csharp.md) | **ALL code** (features, bugs, editor)               |
-| [create-csharp-file](skills/create-csharp-file.md)           | Creating any new `.cs` file                         |
-| [create-unity-meta](skills/create-unity-meta.md)             | **MANDATORY** after creating ANY new file or folder |
-| [create-test](skills/create-test.md)                         | Writing or modifying test files                     |
-| [create-enum](skills/create-enum.md)                         | Creating a new `enum` type                          |
-| [format-code](skills/format-code.md)                         | After any C# file changes                           |
-| [search-codebase](skills/search-codebase.md)                 | Finding code, files, or patterns                    |
-| [performance-audit](skills/performance-audit.md)             | Reviewing performance-sensitive code                |
-| [use-array-pool](skills/use-array-pool.md)                   | Working with temporary arrays                       |
-| [use-pooling](skills/use-pooling.md)                         | Working with temporary collections                  |
-| [use-prng](skills/use-prng.md)                               | Implementing randomization                          |
-| [use-spatial-structure](skills/use-spatial-structure.md)     | Spatial queries or proximity logic                  |
-| [use-serialization](skills/use-serialization.md)             | Save files, network, persistence                    |
-| [use-effects-system](skills/use-effects-system.md)           | Buffs, debuffs, stat modifications                  |
-| [add-inspector-attribute](skills/add-inspector-attribute.md) | Improving editor UX with attributes                 |
-| [debug-il2cpp](skills/debug-il2cpp.md)                       | IL2CPP build issues or AOT errors                   |
+### Core Skills (Always Consider)
+
+| Skill                                                          | When to Use                                         |
+| -------------------------------------------------------------- | --------------------------------------------------- |
+| [high-performance-csharp](skills/high-performance-csharp.md)   | **ALL code** (features, bugs, editor)               |
+| [create-csharp-file](skills/create-csharp-file.md)             | Creating any new `.cs` file                         |
+| [create-unity-meta](skills/create-unity-meta.md)               | **MANDATORY** after creating ANY new file or folder |
+| [create-test](skills/create-test.md)                           | Writing or modifying test files                     |
+| [create-enum](skills/create-enum.md)                           | Creating a new `enum` type                          |
+| [create-scriptable-object](skills/create-scriptable-object.md) | Creating ScriptableObject data assets               |
+| [create-editor-tool](skills/create-editor-tool.md)             | Creating Editor windows, drawers, inspectors        |
+| [format-code](skills/format-code.md)                           | After any C# file changes                           |
+| [search-codebase](skills/search-codebase.md)                   | Finding code, files, or patterns                    |
+
+### Performance Skills
+
+| Skill                                                      | When to Use                                   |
+| ---------------------------------------------------------- | --------------------------------------------- |
+| [performance-audit](skills/performance-audit.md)           | Reviewing performance-sensitive code          |
+| [refactor-to-zero-alloc](skills/refactor-to-zero-alloc.md) | Converting allocating code to zero-allocation |
+| [use-array-pool](skills/use-array-pool.md)                 | Working with temporary arrays                 |
+| [use-pooling](skills/use-pooling.md)                       | Working with temporary collections            |
+
+### Feature Skills
+
+| Skill                                                            | When to Use                                      |
+| ---------------------------------------------------------------- | ------------------------------------------------ |
+| [use-prng](skills/use-prng.md)                                   | Implementing randomization                       |
+| [use-spatial-structure](skills/use-spatial-structure.md)         | Spatial queries or proximity logic               |
+| [use-data-structures](skills/use-data-structures.md)             | Heaps, queues, tries, buffers, bit sets          |
+| [use-serialization](skills/use-serialization.md)                 | Save files, network, persistence                 |
+| [use-serializable-types](skills/use-serializable-types.md)       | Dictionaries, HashSets, Nullable, Type, Guid     |
+| [use-effects-system](skills/use-effects-system.md)               | Buffs, debuffs, stat modifications               |
+| [use-singleton](skills/use-singleton.md)                         | Global managers, service locators, configuration |
+| [use-relational-attributes](skills/use-relational-attributes.md) | Auto-wiring components via hierarchy             |
+| [use-extension-methods](skills/use-extension-methods.md)         | Collection, string, color utilities              |
+| [use-discriminated-union](skills/use-discriminated-union.md)     | OneOf/Result types, type-safe unions             |
+| [use-threading](skills/use-threading.md)                         | Main thread dispatch, thread safety              |
+| [add-inspector-attribute](skills/add-inspector-attribute.md)     | Improving editor UX with attributes              |
+| [debug-il2cpp](skills/debug-il2cpp.md)                           | IL2CPP build issues or AOT errors                |
 
 ---
 
@@ -227,6 +249,38 @@ public int GetHashCode() => _cachedHash;
 ---
 
 ## Agent-Specific Rules
+
+### Mandatory Testing for New Features
+
+**All new production code MUST have exhaustive test coverage.** This is non-negotiable.
+
+| Code Type               | Test Requirement                         |
+| ----------------------- | ---------------------------------------- |
+| Runtime classes/methods | Full test coverage in `Tests/Runtime/`   |
+| Editor tools/windows    | Full test coverage in `Tests/Editor/`    |
+| Property drawers        | Drawer behavior tests in `Tests/Editor/` |
+| Inspector attributes    | Attribute behavior tests                 |
+
+#### Test Coverage Checklist
+
+Every feature must include tests for:
+
+1. **Normal cases** — Typical usage scenarios
+2. **Negative cases** — Invalid inputs, error conditions, exceptions
+3. **Edge cases** — Empty, single-element, boundary values, null, special chars
+
+#### Data-Driven Testing
+
+Prefer `[TestCase]` and `[TestCaseSource]` for comprehensive coverage:
+
+```csharp
+// Use dot-separated naming: Category.Scenario.Expected
+yield return new TestCaseData(null, false).SetName("Input.Null.ReturnsFalse");
+yield return new TestCaseData("", false).SetName("Input.Empty.ReturnsFalse");
+yield return new TestCaseData("valid", true).SetName("Input.Valid.ReturnsTrue");
+```
+
+See [create-test](skills/create-test.md) for full testing guidelines.
 
 ### Scope & Behavior
 
