@@ -65,27 +65,47 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools
                 return;
             }
 
-            AssetDatabase.Refresh(RefreshOptions);
-            AssetsRefreshedForTests?.Invoke();
-
             bool skipCompilation = SkipCompilationRequestForTests;
-            SkipCompilationRequestForTests = false;
 
-            if (skipCompilation)
+            try
             {
-                Debug.Log(
-                    $"{LogPrefix} Asset database refreshed; compilation request skipped (tests)."
-                );
-                return;
-            }
+                AssetDatabase.Refresh(RefreshOptions);
+                AssetsRefreshedForTests?.Invoke();
 
-            CompilationRequestedForTests?.Invoke();
-            CompilationPipeline.RequestScriptCompilation();
-            Debug.Log($"{LogPrefix} Refreshed assets and requested script compilation.");
+                if (skipCompilation)
+                {
+                    Debug.Log(
+                        $"{LogPrefix} Asset database refreshed; compilation request skipped (tests)."
+                    );
+                    return;
+                }
+
+                CompilationRequestedForTests?.Invoke();
+                CompilationPipeline.RequestScriptCompilation();
+                Debug.Log($"{LogPrefix} Refreshed assets and requested script compilation.");
+            }
+            finally
+            {
+                // Always reset the skip flag to prevent it from persisting across multiple requests
+                // This ensures clean state even if callbacks throw exceptions
+                if (skipCompilation)
+                {
+                    SkipCompilationRequestForTests = false;
+                }
+            }
         }
 
         private static bool IsCompilationPending()
         {
+            // Defensive check: ensure evaluator is never null
+            if (isCompilationPendingEvaluator == null)
+            {
+                Debug.LogWarning(
+                    $"{LogPrefix} Compilation pending evaluator is null; resetting to default."
+                );
+                isCompilationPendingEvaluator = () => EditorApplication.isCompiling;
+            }
+
             return isCompilationPendingEvaluator();
         }
     }
