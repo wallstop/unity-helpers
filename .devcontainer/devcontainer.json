@@ -41,6 +41,12 @@
       "settings": {
         "terminal.integrated.defaultProfile.linux": "bash",
         "terminal.integrated.shellIntegration.enabled": true,
+        "terminal.integrated.shellIntegration.decorationsEnabled": "both",
+        "terminal.integrated.shellIntegration.showCommandGuide": true,
+        "terminal.integrated.stickyScroll.enabled": true,
+        "terminal.integrated.suggest.enabled": true,
+        "terminal.integrated.suggest.quickSuggestions": true,
+        "terminal.integrated.suggest.suggestOnTriggerCharacters": true,
         "dotnet.defaultSolution": "disable",
         "editor.formatOnSave": true,
         "editor.defaultFormatter": "csharpier.csharpier-vscode",

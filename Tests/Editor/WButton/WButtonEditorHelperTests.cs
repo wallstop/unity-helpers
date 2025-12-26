@@ -42,11 +42,16 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
         {
             TestComponent target = CreateScriptableObject<TestComponent>();
             TestEditor editor = Editor.CreateEditor(target) as TestEditor;
-            WButtonEditorHelper helper = new WButtonEditorHelper();
+            try
+            {
+                WButtonEditorHelper helper = new WButtonEditorHelper();
 
-            Assert.DoesNotThrow(() => helper.DrawButtonsAtTop(editor));
-
-            DestroyImmediate(editor); // UNH-SUPPRESS: Editor is not a tracked Unity object
+                Assert.DoesNotThrow(() => helper.DrawButtonsAtTop(editor));
+            }
+            finally
+            {
+                Object.DestroyImmediate(editor); // UNH-SUPPRESS: Editor is not a tracked Unity object
+            }
         }
 
         [Test]
@@ -54,11 +59,16 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
         {
             TestComponent target = CreateScriptableObject<TestComponent>();
             TestEditor editor = Editor.CreateEditor(target) as TestEditor;
-            WButtonEditorHelper helper = new WButtonEditorHelper();
+            try
+            {
+                WButtonEditorHelper helper = new WButtonEditorHelper();
 
-            Assert.DoesNotThrow(() => helper.DrawButtonsAtBottom(editor));
-
-            DestroyImmediate(editor); // UNH-SUPPRESS: Editor is not a tracked Unity object
+                Assert.DoesNotThrow(() => helper.DrawButtonsAtBottom(editor));
+            }
+            finally
+            {
+                Object.DestroyImmediate(editor); // UNH-SUPPRESS: Editor is not a tracked Unity object
+            }
         }
 
         [Test]
@@ -74,11 +84,16 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
         {
             TestComponent target = CreateScriptableObject<TestComponent>();
             TestEditor editor = Editor.CreateEditor(target) as TestEditor;
-            WButtonEditorHelper helper = new WButtonEditorHelper();
+            try
+            {
+                WButtonEditorHelper helper = new WButtonEditorHelper();
 
-            Assert.DoesNotThrow(() => helper.DrawButtonsAtBottomAndProcessInvocations(editor));
-
-            DestroyImmediate(editor); // UNH-SUPPRESS: Editor is not a tracked Unity object
+                Assert.DoesNotThrow(() => helper.DrawButtonsAtBottomAndProcessInvocations(editor));
+            }
+            finally
+            {
+                Object.DestroyImmediate(editor); // UNH-SUPPRESS: Editor is not a tracked Unity object
+            }
         }
 
         [Test]
@@ -86,11 +101,16 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
         {
             TestComponent target = CreateScriptableObject<TestComponent>();
             TestEditor editor = Editor.CreateEditor(target) as TestEditor;
-            WButtonEditorHelper helper = new WButtonEditorHelper();
+            try
+            {
+                WButtonEditorHelper helper = new WButtonEditorHelper();
 
-            Assert.DoesNotThrow(() => helper.DrawAllButtonsAndProcessInvocations(editor));
-
-            DestroyImmediate(editor); // UNH-SUPPRESS: Editor is not a tracked Unity object
+                Assert.DoesNotThrow(() => helper.DrawAllButtonsAndProcessInvocations(editor));
+            }
+            finally
+            {
+                Object.DestroyImmediate(editor); // UNH-SUPPRESS: Editor is not a tracked Unity object
+            }
         }
 
         [Test]
@@ -107,22 +127,27 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
         {
             TestComponent target = CreateScriptableObject<TestComponent>();
             TestEditor editor = Editor.CreateEditor(target) as TestEditor;
-            WButtonEditorHelper helper = new WButtonEditorHelper();
-
-            // Simulate multiple OnInspectorGUI calls
-            Assert.DoesNotThrow(() =>
+            try
             {
-                helper.DrawButtonsAtTop(editor);
-                helper.DrawButtonsAtBottomAndProcessInvocations(editor);
-            });
+                WButtonEditorHelper helper = new WButtonEditorHelper();
 
-            Assert.DoesNotThrow(() =>
+                // Simulate multiple OnInspectorGUI calls
+                Assert.DoesNotThrow(() =>
+                {
+                    helper.DrawButtonsAtTop(editor);
+                    helper.DrawButtonsAtBottomAndProcessInvocations(editor);
+                });
+
+                Assert.DoesNotThrow(() =>
+                {
+                    helper.DrawButtonsAtTop(editor);
+                    helper.DrawButtonsAtBottomAndProcessInvocations(editor);
+                });
+            }
+            finally
             {
-                helper.DrawButtonsAtTop(editor);
-                helper.DrawButtonsAtBottomAndProcessInvocations(editor);
-            });
-
-            DestroyImmediate(editor); // UNH-SUPPRESS: Editor is not a tracked Unity object
+                Object.DestroyImmediate(editor); // UNH-SUPPRESS: Editor is not a tracked Unity object
+            }
         }
     }
 }

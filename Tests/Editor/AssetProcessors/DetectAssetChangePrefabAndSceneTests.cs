@@ -964,7 +964,7 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
             }
         }
 
-        private static void CreatePayloadAsset()
+        private void CreatePayloadAsset()
         {
             EnsureFolder();
             TestDetectableAsset payload = Track(

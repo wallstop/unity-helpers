@@ -16,18 +16,22 @@ $sourceRoots = @('Runtime', 'Editor', 'Tests', 'Samples~')
 # Directories to exclude
 $excludeDirs = @('node_modules', '.git', 'obj', 'bin', 'Library', 'Temp')
 
+# Path patterns to exclude (test fixtures that intentionally violate rules)
+$excludePathPatterns = @(
+  '*scripts/tests/fixtures/should-fail*',
+  '*scripts\tests\fixtures\should-fail*'
+)
+
 # Unity base types that require one-per-file naming
-# Classes inheriting from these (directly or indirectly via common patterns) must be in their own file
+# Only MonoBehaviour, ScriptableObject, and their common base patterns require the file name
+# to match the class name. This is because Unity's serialization system relies on the file name
+# matching the class name for these types.
+# Editor classes (Editor, EditorWindow, PropertyDrawer, etc.) do NOT have this restriction
+# and can have multiple classes per file.
 $unityObjectBaseTypes = @(
   'MonoBehaviour',
   'ScriptableObject',
   'ScriptableObjectSingleton',
-  'Editor',
-  'EditorWindow',
-  'PropertyDrawer',
-  'DecoratorDrawer',
-  'AssetPostprocessor',
-  'AssetModificationProcessor',
   'StateMachineBehaviour',
   'NetworkBehaviour'
 )
@@ -56,6 +60,17 @@ function Get-FilesToCheck {
     }
     $files = @()
     foreach ($f in $stagedFiles) {
+      # Check exclusion path patterns
+      $excluded = $false
+      foreach ($pattern in $excludePathPatterns) {
+        if ($f -like $pattern) {
+          $excluded = $true
+          Write-Info "Skipping excluded path: $f"
+          break
+        }
+      }
+      if ($excluded) { continue }
+
       if (Test-Path -LiteralPath $f) {
         $files += (Get-Item -LiteralPath $f)
       }
@@ -68,10 +83,20 @@ function Get-FilesToCheck {
     if (-not (Test-Path $root)) { continue }
     $files += Get-ChildItem -Recurse -Include *.cs -Path $root | Where-Object {
       $excluded = $false
+      # Check directory exclusions
       foreach ($dir in $excludeDirs) {
         if ($_.FullName -like "*\$dir\*" -or $_.FullName -like "*/$dir/*") {
           $excluded = $true
           break
+        }
+      }
+      # Check path pattern exclusions
+      if (-not $excluded) {
+        foreach ($pattern in $excludePathPatterns) {
+          if ($_.FullName -like $pattern) {
+            $excluded = $true
+            break
+          }
         }
       }
       -not $excluded
