@@ -69,10 +69,11 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools
             AssetsRefreshedForTests?.Invoke();
 
             bool skipCompilation = SkipCompilationRequestForTests;
-            SkipCompilationRequestForTests = false;
 
             if (skipCompilation)
             {
+                // Reset flag after using it to prevent it from persisting across multiple requests
+                SkipCompilationRequestForTests = false;
                 Debug.Log(
                     $"{LogPrefix} Asset database refreshed; compilation request skipped (tests)."
                 );
@@ -86,6 +87,15 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools
 
         private static bool IsCompilationPending()
         {
+            // Defensive check: ensure evaluator is never null
+            if (isCompilationPendingEvaluator == null)
+            {
+                Debug.LogWarning(
+                    $"{LogPrefix} Compilation pending evaluator is null; resetting to default."
+                );
+                isCompilationPendingEvaluator = () => EditorApplication.isCompiling;
+            }
+
             return isCompilationPendingEvaluator();
         }
     }
