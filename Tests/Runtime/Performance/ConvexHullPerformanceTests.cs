@@ -53,8 +53,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Performance
         [Test]
         public void BuildConvexHullRotatedGridAllocationsStayBounded()
         {
-            Grid grid = new GameObject("ConvexHullRotatedGrid").AddComponent<Grid>();
-            Track(grid.gameObject);
+            GameObject gridObject = Track(new GameObject("ConvexHullRotatedGrid"));
+            Grid grid = gridObject.AddComponent<Grid>();
             grid.transform.position = new Vector3(5000f, -12500f, 0f);
             grid.transform.rotation = Quaternion.Euler(0f, 0f, 22.5f);
             grid.transform.localScale = new Vector3(0.125f, 0.333f, 1f);

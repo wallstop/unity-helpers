@@ -15,7 +15,7 @@ $allowedHelperFiles = @(
   'Tests/Runtime/Visuals/VisualsTestHelpers.cs'
 )
 
-$destroyPattern = [regex]'(?<!UNH-SUPPRESS).*\b(?:UnityEngine\.)?Object\.(?:DestroyImmediate|Destroy)\s*\((?<arg>[^)]*)\)'
+$destroyPattern = [regex]'\b(?:UnityEngine\.)?Object\.(?:DestroyImmediate|Destroy)\s*\((?<arg>[^)]*)\)'
 $createAssignObjectPattern = [regex]'(?<var>\b\w+)\s*=\s*new\s+(?<type>GameObject|Texture2D|Material|Mesh|Camera)\s*\('
 $createInlineTrackPattern = [regex]'\bTrack\s*\(\s*new\s+(?:GameObject|Texture2D|Material|Mesh|Camera)\s*\('
 $createSoAssignPattern = [regex]'(?<var>\b\w+)\s*=\s*ScriptableObject\.CreateInstance\s*<'
@@ -54,6 +54,8 @@ foreach ($root in $testRoots) {
     $lineIndex = 0
     foreach ($line in $content) {
       $lineIndex++
+      # Skip lines with UNH-SUPPRESS comment
+      if ($line -match 'UNH-SUPPRESS') { continue }
       if ($destroyPattern.IsMatch($line)) {
         $m = $destroyPattern.Match($line)
         $arg = ($m.Groups['arg'].Value).Trim()
@@ -83,6 +85,8 @@ foreach ($root in $testRoots) {
       # Find the index of this match in terms of line
       $prefix = $text.Substring(0, $am.Index)
       $lineNo = ($prefix -split "`n").Length
+      # Skip if line has UNH-SUPPRESS
+      if ($content[$lineNo-1] -match 'UNH-SUPPRESS') { continue }
       # Look ahead 10 lines for Track(var)
       $endLine = [Math]::Min($content.Count, $lineNo + 10)
       $found = $false
@@ -116,6 +120,13 @@ foreach ($root in $testRoots) {
       if ([string]::IsNullOrWhiteSpace($var)) { continue }
       $prefix = $text.Substring(0, $sm.Index)
       $lineNo = ($prefix -split "`n").Length
+      # Skip if line or next few lines have UNH-SUPPRESS (multi-line statements)
+      $checkEnd = [Math]::Min($content.Count, $lineNo + 2)
+      $suppressed = $false
+      for ($s = $lineNo - 1; $s -lt $checkEnd; $s++) {
+        if ($content[$s] -match 'UNH-SUPPRESS') { $suppressed = $true; break }
+      }
+      if ($suppressed) { continue }
       $found = $false
       $endLine = [Math]::Min($content.Count, $lineNo + 10)
       for ($j = $lineNo; $j -le $endLine; $j++) {
@@ -131,8 +142,11 @@ foreach ($root in $testRoots) {
     # Enforce CommonTestBase inheritance only if file creates Unity objects and is under Runtime/ or Editor/
     $createsUnity = ($assignMatches.Count -gt 0) -or ($text -match '\bnew\s+(GameObject|Texture2D|Material|Mesh|Camera)\s*\(') -or ($soMatches.Count -gt 0)
     if ($createsUnity) {
-      $usesBase = ($text -match ':\s*CommonTestBase')
-      if (-not $usesBase) {
+      # Check for direct or indirect inheritance (CommonTestBase or any base that inherits it)
+      $usesBase = ($text -match ':\s*(CommonTestBase|AttributeTagsTestBase|TagsTestBase|EditorCommonTestBase)')
+      # Check for file-level UNH-SUPPRESS UNH003 comment
+      $hasSuppress = ($text -match 'UNH-SUPPRESS.*UNH003|UNH-SUPPRESS:\s*Complex|UNH-SUPPRESS:\s*This IS the CommonTestBase')
+      if (-not $usesBase -and -not $hasSuppress) {
         # Only enforce for test classes; skip helper-only files
         if ($text -match '\bnamespace\s+WallstopStudios') {
           $violations += (@{

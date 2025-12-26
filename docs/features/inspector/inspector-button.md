@@ -1151,6 +1151,7 @@ public class AnimationTester : MonoBehaviour
 ### Overview
 
 WButton works automatically with:
+
 - All Unity Objects (`MonoBehaviour`, `ScriptableObject`, etc.)
 - **Odin Inspector's `SerializedMonoBehaviour` and `SerializedScriptableObject`** (when `ODIN_INSPECTOR` is defined)
 
@@ -1273,13 +1274,13 @@ public class MyComponentEditor : Editor
 
 The `WButtonEditorHelper` class provides several methods for different use cases:
 
-| Method | Description |
-|--------|-------------|
-| `DrawButtonsAtTop(Editor)` | Draws buttons configured for top placement |
-| `DrawButtonsAtBottom(Editor)` | Draws buttons configured for bottom placement |
-| `ProcessInvocations()` | Processes any triggered button invocations |
+| Method                                             | Description                                                            |
+| -------------------------------------------------- | ---------------------------------------------------------------------- |
+| `DrawButtonsAtTop(Editor)`                         | Draws buttons configured for top placement                             |
+| `DrawButtonsAtBottom(Editor)`                      | Draws buttons configured for bottom placement                          |
+| `ProcessInvocations()`                             | Processes any triggered button invocations                             |
 | `DrawButtonsAtBottomAndProcessInvocations(Editor)` | Convenience method combining bottom drawing + processing (most common) |
-| `DrawAllButtonsAndProcessInvocations(Editor)` | Draws all buttons in one location regardless of placement settings |
+| `DrawAllButtonsAndProcessInvocations(Editor)`      | Draws all buttons in one location regardless of placement settings     |
 
 **Key Points:**
 

@@ -417,13 +417,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             result = spriteRenderer.GetGameObject();
             Assert.AreEqual(result, go);
 
-            Object.DestroyImmediate(spriteRenderer);
+            Object.DestroyImmediate(spriteRenderer); // UNH-SUPPRESS: Test verifies behavior after component destruction
             result = spriteRenderer.GetGameObject();
             Assert.IsTrue(result == null);
             result = go.GetGameObject();
             Assert.AreEqual(result, go);
 
-            Object.DestroyImmediate(go);
+            Object.DestroyImmediate(go); // UNH-SUPPRESS: Test verifies behavior after GameObject destruction
             result = spriteRenderer.GetGameObject();
             Assert.IsTrue(result == null);
             result = go.GetGameObject();

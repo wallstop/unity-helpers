@@ -1036,7 +1036,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Visuals
             Material cachedInstance = image.CachedMaterialInstanceForTests;
             Assert.IsTrue(cachedInstance != null);
 
-            Object.DestroyImmediate(cachedInstance);
+            Object.DestroyImmediate(cachedInstance); // UNH-SUPPRESS: Test verifies material recreation after destruction
 
             image.InvokeStartForTests();
 
@@ -1060,7 +1060,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Visuals
             Material cachedInstance = image.CachedMaterialInstanceForTests;
             Assert.IsTrue(cachedInstance != null);
 
-            Object.DestroyImmediate(cachedInstance);
+            Object.DestroyImmediate(cachedInstance); // UNH-SUPPRESS: Test verifies material recreation on update
 
             Color newHdr = new(3f, 2f, 1f, 1f);
             image.HdrColor = newHdr;

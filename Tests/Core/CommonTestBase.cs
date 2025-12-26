@@ -1,3 +1,4 @@
+// UNH-SUPPRESS: This IS the CommonTestBase class
 namespace WallstopStudios.UnityHelpers.Tests.Core
 {
     using System;
@@ -171,7 +172,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Core
                 {
                     if (obj != null)
                     {
-                        Object.DestroyImmediate(obj);
+                        Object.DestroyImmediate(obj); // UNH-SUPPRESS: Required for EditMode test cleanup
                     }
                 }
                 _trackedObjects.Clear();
@@ -211,7 +212,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Core
                         continue;
                     }
 
-                    Object.Destroy(obj);
+                    Object.Destroy(obj); // UNH-SUPPRESS: Required for PlayMode test cleanup
                     yield return null;
                 }
                 _trackedObjects.Clear();
@@ -240,7 +241,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Core
                 {
                     if (obj != null)
                     {
-                        Object.DestroyImmediate(obj);
+                        Object.DestroyImmediate(obj); // UNH-SUPPRESS: Required for final test cleanup
                     }
                 }
                 _trackedObjects.Clear();

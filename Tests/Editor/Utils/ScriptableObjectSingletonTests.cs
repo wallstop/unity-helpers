@@ -220,7 +220,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                 EnsureFolderStatic(directory);
             }
 
-            TType instance = ScriptableObject.CreateInstance<TType>();
+            TType instance = ScriptableObject.CreateInstance<TType>(); // UNH-SUPPRESS: UNH002 - Asset managed by test cleanup
             instance.name = Path.GetFileNameWithoutExtension(fullPath);
             configure?.Invoke(instance);
 
@@ -260,7 +260,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         private static TType CreateInMemoryInstance<TType>()
             where TType : ScriptableObject
         {
-            TType instance = ScriptableObject.CreateInstance<TType>();
+            TType instance = ScriptableObject.CreateInstance<TType>(); // UNH-SUPPRESS: UNH002 - In-memory instance managed by InMemoryInstances
             instance.name = typeof(TType).Name;
             instance.hideFlags = HideFlags.DontSave;
             InMemoryInstances.Add(instance);
@@ -288,7 +288,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             {
                 if (obj != null)
                 {
-                    Object.DestroyImmediate(obj);
+                    Object.DestroyImmediate(obj); // UNH-SUPPRESS: UNH001 - Test cleanup for in-memory instances
                 }
                 yield return null;
             }
@@ -1263,7 +1263,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
 
             TestSingleton.ClearInstance();
 
-            TestSingleton created = ScriptableObject.CreateInstance<TestSingleton>();
+            TestSingleton created = ScriptableObject.CreateInstance<TestSingleton>(); // UNH-SUPPRESS: UNH002 - In-memory instance managed by InMemoryInstances
             created.hideFlags = HideFlags.DontSave;
             InMemoryInstances.Add(created);
 

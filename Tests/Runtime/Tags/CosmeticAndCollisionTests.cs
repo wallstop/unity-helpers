@@ -34,7 +34,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Tags
             GameObject target = CreateTrackedGameObject("Target");
 
             component.OnApplyEffect(target);
-            Object.DestroyImmediate(cosmetic);
+            Object.DestroyImmediate(cosmetic); // UNH-SUPPRESS: Test verifies OnDestroy callback
             Assert.AreEqual(1, SpyCosmeticComponent.RemoveInvocationCount);
         }
     }

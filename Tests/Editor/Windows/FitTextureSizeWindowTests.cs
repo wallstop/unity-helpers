@@ -748,7 +748,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Windows
             }
             finally
             {
-                Object.DestroyImmediate(t);
+                Object.DestroyImmediate(t); // UNH-SUPPRESS: Cleanup temporary texture in finally block
             }
         }
 

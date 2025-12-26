@@ -24,7 +24,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
 
             Assert.AreEqual(offset.CenterPoint, go.GetCenter());
 
-            Object.DestroyImmediate(offset);
+            Object.DestroyImmediate(offset); // UNH-SUPPRESS: Test verifies behavior after component destruction
             Assert.AreEqual((Vector2)go.transform.position, go.GetCenter());
         }
 

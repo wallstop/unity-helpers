@@ -150,7 +150,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             yield return null;
             EnsureFolder(WrongFolder);
             yield return null;
-            CreatorPathSingleton instance = ScriptableObject.CreateInstance<CreatorPathSingleton>();
+            CreatorPathSingleton instance = ScriptableObject.CreateInstance<CreatorPathSingleton>(); // UNH-SUPPRESS: UNH002 - Asset managed by test cleanup
             AssetDatabase.CreateAsset(instance, WrongAssetPath);
             AssetDatabase.SaveAssets();
             yield return null;
@@ -311,7 +311,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             yield return null;
             EnsureFolder(WrongFolderCaseVariant);
             yield return null;
-            CreatorPathSingleton instance = ScriptableObject.CreateInstance<CreatorPathSingleton>();
+            CreatorPathSingleton instance = ScriptableObject.CreateInstance<CreatorPathSingleton>(); // UNH-SUPPRESS: UNH002 - Asset managed by test cleanup
             AssetDatabase.CreateAsset(instance, WrongAssetPathCaseVariant);
             AssetDatabase.SaveAssets();
             yield return null;

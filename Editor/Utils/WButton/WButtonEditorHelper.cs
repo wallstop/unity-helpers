@@ -16,25 +16,25 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
     /// // Example with Odin Inspector's SerializedMonoBehaviour
     /// #if ODIN_INSPECTOR
     /// using Sirenix.OdinInspector.Editor;
-    /// 
+    ///
     /// public class MyOdinEditor : OdinEditor
     /// {
     ///     private WButtonEditorHelper _wButtonHelper;
-    /// 
+    ///
     ///     protected override void OnEnable()
     ///     {
     ///         base.OnEnable();
     ///         _wButtonHelper = new WButtonEditorHelper();
     ///     }
-    /// 
+    ///
     ///     public override void OnInspectorGUI()
     ///     {
     ///         // Draw buttons at top
     ///         _wButtonHelper.DrawButtonsAtTop(this);
-    /// 
+    ///
     ///         // Draw your custom inspector content
     ///         base.OnInspectorGUI();
-    /// 
+    ///
     ///         // Draw buttons at bottom and process invocations
     ///         _wButtonHelper.DrawButtonsAtBottomAndProcessInvocations(this);
     ///     }

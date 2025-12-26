@@ -36,7 +36,7 @@ namespace WallstopStudios.UnityHelpers.Tests.TestUtils
                 return;
             }
 
-            Object.DestroyImmediate(dispatcherObject);
+            Object.DestroyImmediate(dispatcherObject); // UNH-SUPPRESS: Cleanup dispatcher in test teardown
         }
     }
 }

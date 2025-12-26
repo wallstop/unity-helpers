@@ -880,7 +880,9 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
 
         private static void CreatePayloadAsset()
         {
-            TestDetectableAsset payload = ScriptableObject.CreateInstance<TestDetectableAsset>();
+            TestDetectableAsset payload = Track(
+                ScriptableObject.CreateInstance<TestDetectableAsset>()
+            );
             AssetDatabase.CreateAsset(payload, PayloadAssetPath);
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
@@ -888,8 +890,9 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
 
         private static void CreateAlternatePayloadAsset()
         {
-            TestAlternateDetectableAsset payload =
-                ScriptableObject.CreateInstance<TestAlternateDetectableAsset>();
+            TestAlternateDetectableAsset payload = Track(
+                ScriptableObject.CreateInstance<TestAlternateDetectableAsset>()
+            );
             AssetDatabase.CreateAsset(payload, AlternatePayloadAssetPath);
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
@@ -903,7 +906,7 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
                 return;
             }
 
-            T handler = ScriptableObject.CreateInstance<T>();
+            T handler = Track(ScriptableObject.CreateInstance<T>());
             AssetDatabase.CreateAsset(handler, assetPath);
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
