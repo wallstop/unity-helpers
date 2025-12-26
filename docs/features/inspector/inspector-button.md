@@ -1150,17 +1150,19 @@ public class AnimationTester : MonoBehaviour
 
 ### Overview
 
-By default, WButton works automatically with all Unity Objects through a custom editor. However, when using Odin Inspector's `SerializedMonoBehaviour`/`SerializedScriptableObject` or other custom editors, Odin's editors take precedence and WButton functionality won't appear.
+WButton works automatically with:
+- All Unity Objects (`MonoBehaviour`, `ScriptableObject`, etc.)
+- **Odin Inspector's `SerializedMonoBehaviour` and `SerializedScriptableObject`** (when `ODIN_INSPECTOR` is defined)
 
-**Solution:** Use `WButtonEditorHelper` to manually integrate WButton into your custom editors.
+**When do you need `WButtonEditorHelper`?**
+
+Only when you create **custom Odin editors** that override the default behavior. For example, if you create a `CustomEditor` that inherits from `OdinEditor` for a specific type, you'll need to integrate WButton manually.
 
 ---
 
-### Integration with Odin Inspector
+### Automatic Integration with Odin Inspector
 
-If you're using Odin Inspector, here's how to make WButton work with `SerializedMonoBehaviour` and `SerializedScriptableObject`:
-
-**Step 1: Define your component with WButton**
+**No setup required!** WButton automatically works with Odin's base types:
 
 ```csharp
 #if ODIN_INSPECTOR
@@ -1183,7 +1185,13 @@ public class MyComponent : MonoBehaviour
 }
 ```
 
-**Step 2: Create a custom Odin editor**
+WButton will appear automatically in the inspector - no additional code needed!
+
+---
+
+### Integration with Custom Odin Editors
+
+If you create a **custom Odin editor** for your type, you need to manually integrate WButton using `WButtonEditorHelper`:
 
 ```csharp
 #if UNITY_EDITOR && ODIN_INSPECTOR
@@ -1191,6 +1199,7 @@ using Sirenix.OdinInspector.Editor;
 using UnityEditor;
 using WallstopStudios.UnityHelpers.Editor.Utils.WButton;
 
+// Custom editor for a specific type
 [CustomEditor(typeof(MyComponent))]
 public class MyComponentEditor : OdinEditor
 {
