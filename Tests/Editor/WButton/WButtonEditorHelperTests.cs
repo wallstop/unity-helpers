@@ -46,7 +46,7 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
 
             Assert.DoesNotThrow(() => helper.DrawButtonsAtTop(editor));
 
-            DestroyImmediate(editor);
+            DestroyImmediate(editor); // UNH-SUPPRESS: Editor is not a tracked Unity object
         }
 
         [Test]
@@ -58,7 +58,7 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
 
             Assert.DoesNotThrow(() => helper.DrawButtonsAtBottom(editor));
 
-            DestroyImmediate(editor);
+            DestroyImmediate(editor); // UNH-SUPPRESS: Editor is not a tracked Unity object
         }
 
         [Test]
@@ -78,7 +78,7 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
 
             Assert.DoesNotThrow(() => helper.DrawButtonsAtBottomAndProcessInvocations(editor));
 
-            DestroyImmediate(editor);
+            DestroyImmediate(editor); // UNH-SUPPRESS: Editor is not a tracked Unity object
         }
 
         [Test]
@@ -90,7 +90,7 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
 
             Assert.DoesNotThrow(() => helper.DrawAllButtonsAndProcessInvocations(editor));
 
-            DestroyImmediate(editor);
+            DestroyImmediate(editor); // UNH-SUPPRESS: Editor is not a tracked Unity object
         }
 
         [Test]
@@ -123,7 +123,7 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
                 helper.DrawButtonsAtBottomAndProcessInvocations(editor);
             });
 
-            DestroyImmediate(editor);
+            DestroyImmediate(editor); // UNH-SUPPRESS: Editor is not a tracked Unity object
         }
     }
 }
