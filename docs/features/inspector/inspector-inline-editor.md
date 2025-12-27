@@ -168,7 +168,7 @@ Foldout animations create smooth expand/collapse transitions. Configure globally
 using UnityEngine;
 using WallstopStudios.UnityHelpers.Core.Attributes;
 
-public class WInLinEditorAnimation : MonoBehaviour
+public class WInLineEditorAnimation : MonoBehaviour
 {
     // Animation applies to foldout modes only
     [WInLineEditor(WInLineEditorMode.FoldoutCollapsed)] // Animated

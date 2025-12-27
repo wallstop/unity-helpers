@@ -71,7 +71,7 @@ target.ApplyEffect(hasteEffect);
 **Impact:**
 
 - **Programmer time saved**: Weeks of boilerplate → system built once
-- **Designer empowerment**: Block creating 100s of effects instantly
+- **Designer empowerment**: Create 100s of effects instantly
 - **Iteration speed**: Change values without code changes/recompiles
 - **Maintainability**: All effects in one system vs. scattered scripts
 
@@ -433,7 +433,7 @@ CosmeticEffectData (Container GameObject/Prefab)
 
 ### Creating a Cosmetic Effect
 
-### Step 1: Create a prefab with CosmeticEffectData\*\*
+### Step 1: Create a prefab with CosmeticEffectData
 
 1. Create a new GameObject in the scene
 2. Add Component → `CosmeticEffectData`
@@ -441,7 +441,7 @@ CosmeticEffectData (Container GameObject/Prefab)
 4. Save as prefab
 5. Reference this prefab in your `AttributeEffect.cosmeticEffects` list
 
-### Step 2: Implement CosmeticEffectComponent subclasses\*\*
+### Step 2: Implement CosmeticEffectComponent subclasses
 
 ```csharp
 using UnityEngine;
@@ -622,7 +622,7 @@ public class FadeOutEffect : CosmeticEffectComponent
 
 ### Complete Cosmetic Examples
 
-#### Example 1: Buff Visual with Particles and Sound\*\*
+#### Example 1: Buff Visual with Particles and Sound
 
 ```csharp
 public class BuffCosmetic : CosmeticEffectComponent
@@ -659,7 +659,7 @@ public class BuffCosmetic : CosmeticEffectComponent
 }
 ```
 
-#### Example 2: Status UI Overlay (Shared)\*\*
+#### Example 2: Status UI Overlay (Shared)
 
 ```csharp
 public class StatusOverlayCosmetic : CosmeticEffectComponent
@@ -697,7 +697,7 @@ public class StatusOverlayCosmetic : CosmeticEffectComponent
 }
 ```
 
-#### Example 3: Animation Trigger\*\*
+#### Example 3: Animation Trigger
 
 ```csharp
 public class AnimationCosmetic : CosmeticEffectComponent

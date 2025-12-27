@@ -1,0 +1,18 @@
+namespace WallstopStudios.UnityHelpers.Tests.Editor.TestTypes.Odin.ValidateAssignment
+{
+#if UNITY_EDITOR && ODIN_INSPECTOR
+    using Sirenix.OdinInspector;
+    using UnityEngine;
+    using WallstopStudios.UnityHelpers.Core.Attributes;
+
+    /// <summary>
+    /// Test target for ValidateAssignment with empty custom message (uses default message).
+    /// </summary>
+    internal sealed class OdinValidateAssignmentEmptyCustomMessageTarget
+        : SerializedScriptableObject
+    {
+        [ValidateAssignment("")]
+        public GameObject validateEmptyMessage;
+    }
+#endif
+}

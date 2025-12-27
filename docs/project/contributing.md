@@ -10,6 +10,11 @@ Thanks for helping make Unity Helpers better! This project uses a few automated 
 - Link checks: lychee and custom script
 - YAML linting: yamllint
 
+## LLM Scratch Artifacts
+
+- Files or folders starting with `_llm_` are git-ignored and automatically removed from the Unity package during imports.
+- Keep temporary AI outputs outside the package root (or rename them) to avoid unexpected deletions by the asset cleaner.
+
 ### Dependabot PRs
 
 Dependabot PRs are auto-formatted by CI. The bot pushes commits (same‑repo PRs) or opens a formatting PR (forked PRs) so they pass formatting gates.

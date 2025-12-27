@@ -29,6 +29,8 @@ Unity Helpers eliminates repetitive boilerplate code with production-ready utili
 1. **Zero boilerplate** — APIs handle tedious work; expressive, self-documenting code
 2. **Performance-proven** — Measurable speed improvements with benchmarks
 3. **Production-ready** — 8,000+ tests, IL2CPP/WebGL compatible, shipped in commercial games
+4. **DRY architecture** — Extract common patterns into lightweight, reusable abstractions
+5. **Self-documenting code** — Minimal comments; rely on descriptive names and obvious call patterns
 
 ---
 
@@ -52,12 +54,19 @@ Runtime/                   # Runtime C# libraries
 
 Editor/                    # Editor-only tooling
   CustomDrawers/           # Property drawers for all custom attributes
-  CustomEditors/           # Custom inspectors
+    Odin/                  # Odin Inspector-specific drawers (9 files)
+    Utils/                 # Shared drawer utilities (planned)
+  CustomEditors/           # Custom inspectors (including Odin inspectors)
   Tools/                   # Editor windows (Animation Creator, Texture tools, etc.)
 
 Tests/
   Runtime/                 # PlayMode tests mirroring Runtime/ structure
   Editor/                  # EditMode tests mirroring Editor/ structure
+    CustomDrawers/Odin/    # Odin drawer tests (9 files)
+    CustomEditors/         # Inspector tests (including Odin)
+    TestTypes/             # Test helper types (planned extraction)
+      Odin/                # Odin-specific test SO/MB types (planned)
+      SharedEnums/         # Shared test enums (planned)
   Core/                    # Shared test utilities
 
 Samples~/                  # Sample projects (imported via Package Manager)
@@ -71,18 +80,21 @@ Invoke these skills for specific tasks:
 
 ### Core Skills (Always Consider)
 
-| Skill                                                          | When to Use                                         |
-| -------------------------------------------------------------- | --------------------------------------------------- |
-| [high-performance-csharp](skills/high-performance-csharp.md)   | **ALL code** (features, bugs, editor)               |
-| [create-csharp-file](skills/create-csharp-file.md)             | Creating any new `.cs` file                         |
-| [create-unity-meta](skills/create-unity-meta.md)               | **MANDATORY** after creating ANY new file or folder |
-| [create-test](skills/create-test.md)                           | Writing or modifying test files                     |
-| [create-enum](skills/create-enum.md)                           | Creating a new `enum` type                          |
-| [create-scriptable-object](skills/create-scriptable-object.md) | Creating ScriptableObject data assets               |
-| [create-editor-tool](skills/create-editor-tool.md)             | Creating Editor windows, drawers, inspectors        |
-| [format-code](skills/format-code.md)                           | After any C# file changes                           |
-| [search-codebase](skills/search-codebase.md)                   | Finding code, files, or patterns                    |
-| [git-safe-operations](skills/git-safe-operations.md)           | Scripts or hooks that interact with git index       |
+| Skill                                                            | When to Use                                         |
+| ---------------------------------------------------------------- | --------------------------------------------------- |
+| [high-performance-csharp](skills/high-performance-csharp.md)     | **ALL code** (features, bugs, editor)               |
+| [defensive-programming](skills/defensive-programming.md)         | **ALL code** (features, bugs, editor)               |
+| [create-csharp-file](skills/create-csharp-file.md)               | Creating any new `.cs` file                         |
+| [create-unity-meta](skills/create-unity-meta.md)                 | **MANDATORY** after creating ANY new file or folder |
+| [create-test](skills/create-test.md)                             | Writing or modifying test files                     |
+| [investigate-test-failures](skills/investigate-test-failures.md) | **ANY test failure** — investigate before fixing    |
+| [update-documentation](skills/update-documentation.md)           | **MANDATORY** after ANY feature/bug fix/API change  |
+| [create-enum](skills/create-enum.md)                             | Creating a new `enum` type                          |
+| [create-scriptable-object](skills/create-scriptable-object.md)   | Creating ScriptableObject data assets               |
+| [create-editor-tool](skills/create-editor-tool.md)               | Creating Editor windows, drawers, inspectors        |
+| [format-code](skills/format-code.md)                             | After any C# file changes                           |
+| [search-codebase](skills/search-codebase.md)                     | Finding code, files, or patterns                    |
+| [git-safe-operations](skills/git-safe-operations.md)             | Scripts or hooks that interact with git index       |
 
 ### Performance Skills
 
@@ -95,21 +107,22 @@ Invoke these skills for specific tasks:
 
 ### Feature Skills
 
-| Skill                                                            | When to Use                                      |
-| ---------------------------------------------------------------- | ------------------------------------------------ |
-| [use-prng](skills/use-prng.md)                                   | Implementing randomization                       |
-| [use-spatial-structure](skills/use-spatial-structure.md)         | Spatial queries or proximity logic               |
-| [use-data-structures](skills/use-data-structures.md)             | Heaps, queues, tries, buffers, bit sets          |
-| [use-serialization](skills/use-serialization.md)                 | Save files, network, persistence                 |
-| [use-serializable-types](skills/use-serializable-types.md)       | Dictionaries, HashSets, Nullable, Type, Guid     |
-| [use-effects-system](skills/use-effects-system.md)               | Buffs, debuffs, stat modifications               |
-| [use-singleton](skills/use-singleton.md)                         | Global managers, service locators, configuration |
-| [use-relational-attributes](skills/use-relational-attributes.md) | Auto-wiring components via hierarchy             |
-| [use-extension-methods](skills/use-extension-methods.md)         | Collection, string, color utilities              |
-| [use-discriminated-union](skills/use-discriminated-union.md)     | OneOf/Result types, type-safe unions             |
-| [use-threading](skills/use-threading.md)                         | Main thread dispatch, thread safety              |
-| [add-inspector-attribute](skills/add-inspector-attribute.md)     | Improving editor UX with attributes              |
-| [debug-il2cpp](skills/debug-il2cpp.md)                           | IL2CPP build issues or AOT errors                |
+| Skill                                                                    | When to Use                                      |
+| ------------------------------------------------------------------------ | ------------------------------------------------ |
+| [use-prng](skills/use-prng.md)                                           | Implementing randomization                       |
+| [use-spatial-structure](skills/use-spatial-structure.md)                 | Spatial queries or proximity logic               |
+| [use-data-structures](skills/use-data-structures.md)                     | Heaps, queues, tries, buffers, bit sets          |
+| [use-serialization](skills/use-serialization.md)                         | Save files, network, persistence                 |
+| [use-serializable-types](skills/use-serializable-types.md)               | Dictionaries, HashSets, Nullable, Type, Guid     |
+| [use-effects-system](skills/use-effects-system.md)                       | Buffs, debuffs, stat modifications               |
+| [use-singleton](skills/use-singleton.md)                                 | Global managers, service locators, configuration |
+| [use-relational-attributes](skills/use-relational-attributes.md)         | Auto-wiring components via hierarchy             |
+| [use-extension-methods](skills/use-extension-methods.md)                 | Collection, string, color utilities              |
+| [use-discriminated-union](skills/use-discriminated-union.md)             | OneOf/Result types, type-safe unions             |
+| [use-threading](skills/use-threading.md)                                 | Main thread dispatch, thread safety              |
+| [add-inspector-attribute](skills/add-inspector-attribute.md)             | Improving editor UX with attributes              |
+| [debug-il2cpp](skills/debug-il2cpp.md)                                   | IL2CPP build issues or AOT errors                |
+| [integrate-optional-dependency](skills/integrate-optional-dependency.md) | Odin, VContainer, Zenject integration patterns   |
 
 ---
 
@@ -171,8 +184,12 @@ See [create-csharp-file](skills/create-csharp-file.md) for detailed rules. Key p
 5. NEVER use nullable reference types (`string?`)
 6. One file per MonoBehaviour/ScriptableObject (production AND tests)
 7. NEVER use `?.`, `??`, `??=` on UnityEngine.Object types
-8. Minimal comments (self-documenting code)
-9. **ALWAYS generate `.meta` files** after creating ANY file or folder (see below)
+8. Minimal comments — only explain **why**, never **what**; rely on descriptive names
+9. `#if` conditional blocks MUST be placed INSIDE the namespace; `#define` directives MUST be at the file top (C# language requirement)
+10. **ALWAYS generate `.meta` files** after creating ANY file or folder (see below)
+11. **ALWAYS update documentation** — Docs, XML docs, code samples, and CHANGELOG for every change (see [update-documentation](skills/update-documentation.md))
+12. **ALWAYS write exhaustive tests** — Normal, negative, edge cases, extreme scenarios, and "the impossible" (see [create-test](skills/create-test.md))
+13. **Enums MUST have explicit integer values** — EVERY enum member requires `= N`; first member MUST be `None`/`Unknown` with `= 0` and `[Obsolete]` (non-error) (see [create-enum](skills/create-enum.md))
 
 ---
 
@@ -211,6 +228,35 @@ See [create-unity-meta](skills/create-unity-meta.md) for full details.
 
 ---
 
+## Software Architecture Principles
+
+**MANDATORY**: Apply modern software engineering principles to ALL code (production, editor, tests):
+
+### SOLID Principles
+
+- **Single Responsibility** — Each class/method does one thing well
+- **Open/Closed** — Extend via composition or inheritance, don't modify existing code
+- **Liskov Substitution** — Subtypes must be substitutable for their base types
+- **Interface Segregation** — Prefer small, focused interfaces over large ones
+- **Dependency Inversion** — Depend on abstractions, not concrete implementations
+
+### DRY & Abstraction
+
+- **Never duplicate code** — Extract common patterns into reusable abstractions
+- **Build lightweight abstractions** — Prefer value types (`readonly struct`) or static functions
+- **Zero/minimal allocation** — Abstractions must not introduce heap allocations in hot paths
+- **Favor composition** — Build complex behavior from simple, composable pieces
+- **Extract repetitive patterns** — If you write similar code twice, abstract it
+
+### Clean Architecture
+
+- **Clear boundaries** — Runtime vs Editor vs Tests separation
+- **Obvious dependencies** — Explicit interfaces and injection over hidden coupling
+- **Design patterns** — Use appropriate patterns (Factory, Strategy, Observer, etc.) when they simplify code
+- **Testability** — Design for easy unit testing; avoid hidden state
+
+---
+
 ## High-Performance C# Requirements
 
 **MANDATORY**: All code must follow [high-performance-csharp](skills/high-performance-csharp.md). This applies to:
@@ -229,6 +275,8 @@ See [create-unity-meta](skills/create-unity-meta.md) for full details.
 | Reflection on our code             | `internal` + `[InternalsVisibleTo]`, interfaces |
 | Reflection on external APIs        | `ReflectionHelpers` (last resort)               |
 | `string +` in loops                | `Buffers.StringBuilder`                         |
+| Duplicated code blocks             | Extract to shared abstraction                   |
+| Heavy class where struct suffices  | `readonly struct` with cached hash              |
 
 ### Required Patterns
 
@@ -249,11 +297,114 @@ public int GetHashCode() => _cachedHash;
 
 ---
 
+## Defensive Programming Requirements
+
+**MANDATORY**: All production code (Runtime AND Editor) must follow [defensive-programming](skills/defensive-programming.md). This applies to:
+
+- **New features** — Design for resilience from the start
+- **Bug fixes** — Must not introduce new failure modes
+- **Editor tooling** — Handle missing/destroyed objects, corrupt data, user interruption
+
+### Core Principles
+
+1. **Never throw exceptions** from public APIs (except true programmer errors)
+2. **Handle all inputs gracefully** — null, empty, out-of-range, invalid type
+3. **Maintain internal consistency** — State must be valid after any operation
+4. **Fail silently with logging** — Log warnings for debugging, don't crash
+
+### Quick Rules
+
+| Forbidden                              | Use Instead                                    |
+| -------------------------------------- | ---------------------------------------------- |
+| `throw new ArgumentNullException()`    | Return `default`, empty, or `false`            |
+| `throw new IndexOutOfRangeException()` | Bounds-check, return `default` or `false`      |
+| `items[index]` without bounds check    | `TryGet(index, out value)` pattern             |
+| `dictionary[key]` without check        | `dictionary.TryGetValue(key, out value)`       |
+| `switch` without `default` case        | Always include `default` with fallback/logging |
+| Unchecked Unity Object access          | `if (obj != null)` before all operations       |
+| Bare event invocation                  | Wrap in try-catch, log exceptions              |
+
+### Required Patterns
+
+```csharp
+// TryXxx pattern for failable operations
+public bool TryGetValue(string key, out TValue value)
+{
+    value = default;
+    if (string.IsNullOrEmpty(key))
+    {
+        return false;
+    }
+    return _dictionary.TryGetValue(key, out value);
+}
+
+// Safe indexing
+public T Get(int index)
+{
+    if (index < 0 || index >= _items.Count)
+    {
+        return default;
+    }
+    return _items[index];
+}
+
+// Safe event invocation
+if (OnValueChanged != null)
+{
+    try
+    {
+        OnValueChanged.Invoke(newValue);
+    }
+    catch (Exception ex)
+    {
+        Debug.LogError($"[{nameof(MyClass)}] Exception in handler: {ex}");
+    }
+}
+
+// State repair after deserialization
+public void OnAfterDeserialize()
+{
+    _items ??= new List<Item>();
+    _items.RemoveAll(item => item == null);
+    _index = Mathf.Clamp(_index, 0, Mathf.Max(0, _items.Count - 1));
+}
+```
+
+---
+
 ## Agent-Specific Rules
 
-### Mandatory Testing for New Features
+### Zero-Flaky Test Policy (CRITICAL)
 
-**All new production code MUST have exhaustive test coverage.** This is non-negotiable.
+**This repository enforces a strict zero-flaky test policy.** Every test failure indicates a real bug—either in production code OR in the test itself. Both require comprehensive investigation and proper fixes.
+
+#### Forbidden Actions
+
+| ❌ NEVER Do This                           | ✅ ALWAYS Do This                              |
+| ------------------------------------------ | ---------------------------------------------- |
+| "Make the test pass" without understanding | Investigate root cause before ANY code changes |
+| Ignore or dismiss intermittent failures    | Treat flaky tests as highest priority bugs     |
+| Disable, skip, or `[Ignore]` failing tests | Fix the underlying issue                       |
+| Add retry logic to hide flakiness          | Eliminate the source of non-determinism        |
+| Assume "it works locally"                  | Reproduce and fix environment-specific issues  |
+
+#### Investigation Process
+
+1. **Read the full error** — Stack traces, assertion messages, expected vs actual
+2. **Understand the test's intent** — What behavior is being verified?
+3. **Classify the bug**:
+   - **Production bug** — Test correctly identifies broken behavior → Fix production code
+   - **Test bug** — Test itself is flawed → Fix the test
+4. **Implement proper fix** — Address root cause, not symptoms
+5. **Verify comprehensively** — Run full test suite, confirm no new flakiness
+
+See [investigate-test-failures](skills/investigate-test-failures.md) for detailed investigation procedures.
+
+---
+
+### Mandatory Testing for New Features (NON-NEGOTIABLE)
+
+**All new production code MUST have EXHAUSTIVE test coverage.** Tests are NON-NEGOTIABLE for new code. No feature or bug fix is complete without comprehensive tests.
 
 | Code Type               | Test Requirement                         |
 | ----------------------- | ---------------------------------------- |
@@ -261,25 +412,37 @@ public int GetHashCode() => _cachedHash;
 | Editor tools/windows    | Full test coverage in `Tests/Editor/`    |
 | Property drawers        | Drawer behavior tests in `Tests/Editor/` |
 | Inspector attributes    | Attribute behavior tests                 |
+| Bug fixes               | Regression tests proving the fix works   |
 
-#### Test Coverage Checklist
+#### Test Coverage Requirements (EXHAUSTIVE)
 
-Every feature must include tests for:
+Every feature and bug fix MUST include tests for:
 
-1. **Normal cases** — Typical usage scenarios
-2. **Negative cases** — Invalid inputs, error conditions, exceptions
-3. **Edge cases** — Empty, single-element, boundary values, null, special chars
+1. **Normal cases** — Typical usage scenarios, common inputs
+2. **Negative cases** — Invalid inputs, error conditions, expected exceptions
+3. **Edge cases** — Empty collections, single-element, boundary values, null, special characters
+4. **Extreme scenarios** — Maximum sizes, minimum values, overflow conditions, resource limits
+5. **"The Impossible"** — States that "should never happen" but could in production
 
-#### Data-Driven Testing
+#### Data-Driven Testing (PREFERRED)
 
-Prefer `[TestCase]` and `[TestCaseSource]` for comprehensive coverage:
+**Prefer `[TestCase]` and `[TestCaseSource]` for comprehensive coverage.** Data-driven tests make it easy to add new scenarios and ensure exhaustive coverage.
 
 ```csharp
 // Use dot-separated naming: Category.Scenario.Expected
 yield return new TestCaseData(null, false).SetName("Input.Null.ReturnsFalse");
 yield return new TestCaseData("", false).SetName("Input.Empty.ReturnsFalse");
 yield return new TestCaseData("valid", true).SetName("Input.Valid.ReturnsTrue");
+yield return new TestCaseData(new string('x', 10000), true).SetName("Input.VeryLong.ReturnsTrue");
+yield return new TestCaseData("\0\n\r\t", false).SetName("Input.ControlChars.ReturnsFalse");
 ```
+
+**Benefits of data-driven tests:**
+
+- Easy to add new test cases without code duplication
+- Clear visibility of all tested scenarios
+- Ensures consistent test structure across cases
+- Enables rapid expansion of coverage
 
 See [create-test](skills/create-test.md) for full testing guidelines.
 
@@ -288,9 +451,66 @@ See [create-test](skills/create-test.md) for full testing guidelines.
 - Keep changes minimal and focused
 - Strictly follow `.editorconfig` formatting rules
 - Respect folder boundaries (Runtime vs Editor)
-- Update docs and tests alongside code changes
+- **ALWAYS update documentation** alongside code changes (see below)
 - **ALWAYS generate `.meta` files** after creating ANY file or folder via `./scripts/generate-meta.sh <path>`
 - **NEVER pipe output to `/dev/null`**
+
+### Mandatory Documentation Updates (CRITICAL)
+
+**ALL documentation MUST be updated after ANY feature addition or bug fix.** Incomplete documentation = incomplete work. Documentation is NOT optional.
+
+**CHANGELOG is for USER-FACING changes ONLY.** Internal changes like CI/CD workflows, build scripts, dev tooling, and infrastructure do NOT belong in the CHANGELOG. Users don't care about how the package is built or tested—they care about what the package does for them.
+
+| Change Type              | Required Updates                                              |
+| ------------------------ | ------------------------------------------------------------- |
+| New feature/class/method | Docs, XML docs, code samples, CHANGELOG `### Added`           |
+| Bug fix                  | CHANGELOG `### Fixed`, docs if behavior changed               |
+| API modification         | All affected docs, XML docs, samples, CHANGELOG               |
+| Breaking change          | All docs, migration notes, CHANGELOG `### Changed` (Breaking) |
+| Performance improvement  | CHANGELOG `### Improved`, performance docs if metrics changed |
+| CI/CD, build scripts     | **NO CHANGELOG** — internal tooling, not user-facing          |
+| Dev tooling, workflows   | **NO CHANGELOG** — internal infrastructure                    |
+
+#### Documentation Scope (ALL Must Be Updated)
+
+| Documentation Type | Location / Format                                       |
+| ------------------ | ------------------------------------------------------- |
+| Markdown docs      | `docs/` folder, [README](../README.md)                  |
+| XML docs           | `///` comments on all public APIs                       |
+| Code comments      | Inline comments explaining **why** (not what)           |
+| Code samples       | In docs AND XML docs where applicable                   |
+| CHANGELOG          | [CHANGELOG](../CHANGELOG.md) in Keep a Changelog format |
+
+#### Documentation Quality Requirements
+
+1. **All code samples MUST compile** — Test every example before committing; broken samples are bugs
+2. **Use clear, direct language** — Avoid jargon; define technical terms when first used
+3. **Indicate NEW behavior** — "Added in vX.Y.Z" for new features; note behavior changes
+4. **Front-load key information** — Important details first, not buried in paragraphs
+5. **Keep it concise** — Say what needs to be said, nothing more; no filler
+6. **Be succinct and easy-to-understand** — A developer should grasp the concept in seconds
+7. **No unexplained jargon** — If you use a technical term, explain it or link to explanation
+
+#### CHANGELOG Format
+
+Follow [Keep a Changelog](https://keepachangelog.com/) format:
+
+```markdown
+### Added
+
+- **Feature Name**: Brief description of what was added
+  - Sub-bullet for additional details
+
+### Fixed
+
+- Fixed null reference in SerializableDictionary drawer on Unity 2021
+
+### Improved
+
+- Improved QuadTree query performance by 40% for large datasets
+```
+
+See [update-documentation](skills/update-documentation.md) for complete guidelines.
 
 ### Shell Tool Requirements
 
@@ -396,6 +616,29 @@ Options: `Optional`, `MaxDepth`, `OnlyAncestors`, `IncludeInactive`
 - **VContainer**: `builder.RegisterRelationalComponents()`
 - **Zenject**: `RelationalComponentsInstaller`
 - **Reflex**: `RelationalComponentsInstaller`
+
+### Odin Inspector Integration
+
+All inspector attributes work seamlessly with Odin Inspector when installed (`ODIN_INSPECTOR` define symbol):
+
+- **Automatic Activation**: Custom Odin drawers activate for `SerializedMonoBehaviour`/`SerializedScriptableObject`
+- **Behavior Parity**: Identical behavior with or without Odin
+- **Mixed Usage**: Can use Unity Helpers and Odin attributes on same class
+- **No Dependency**: Package functions fully without Odin installed
+
+**Odin-Enhanced Types**:
+
+- `RuntimeSingleton<T>` — Inherits `SerializedMonoBehaviour` when Odin present
+- `ScriptableObjectSingleton<T>` — Inherits `SerializedScriptableObject` when Odin present
+- `AttributeEffectData` — Uses Odin's `[ShowIf]` when available, falls back to `[WShowIf]`
+
+**File Locations**:
+
+- Odin Drawers: `Editor/CustomDrawers/Odin/` (9 files)
+- Odin Inspectors: `Editor/CustomEditors/` (3 files)
+- Odin Tests: `Tests/Editor/CustomDrawers/Odin/` (9 files)
+
+See [integrate-optional-dependency](skills/integrate-optional-dependency.md) for implementation patterns.
 
 ### Editor Tools (Tools > Wallstop Studios > Unity Helpers)
 

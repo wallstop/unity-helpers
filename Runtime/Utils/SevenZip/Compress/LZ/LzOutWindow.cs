@@ -4,13 +4,13 @@ namespace SevenZip.Compression.LZ
 {
     public class OutWindow
     {
-        byte[] _buffer = null;
-        uint _pos;
-        uint _windowSize = 0;
-        uint _streamPos;
-        System.IO.Stream _stream;
+        private byte[] _buffer = null;
+        private uint _pos;
+        private uint _windowSize = 0;
+        private uint _streamPos;
+        private System.IO.Stream _stream;
 
-        public uint TrainSize = 0;
+        public uint trainSize = 0;
 
         public void Create(uint windowSize)
         {
@@ -32,7 +32,7 @@ namespace SevenZip.Compression.LZ
             {
                 _streamPos = 0;
                 _pos = 0;
-                TrainSize = 0;
+                trainSize = 0;
             }
         }
 
@@ -40,7 +40,7 @@ namespace SevenZip.Compression.LZ
         {
             long len = stream.Length;
             uint size = (len < _windowSize) ? (uint)len : _windowSize;
-            TrainSize = size;
+            trainSize = size;
             stream.Position = len - size;
             _streamPos = _pos = 0;
             while (size > 0)

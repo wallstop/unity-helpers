@@ -1,0 +1,35 @@
+namespace WallstopStudios.UnityHelpers.Tests.Editor.TestTypes.Odin.WButton
+{
+#if UNITY_EDITOR && ODIN_INSPECTOR
+    using Sirenix.OdinInspector;
+    using WallstopStudios.UnityHelpers.Core.Attributes;
+
+    /// <summary>
+    /// Test target for WButton attribute with parameters on SerializedScriptableObject with Odin Inspector.
+    /// </summary>
+    internal sealed class OdinScriptableObjectWithParameters : SerializedScriptableObject
+    {
+        public string LastStringParam;
+        public int LastIntParam;
+
+        [WButton]
+        public void ButtonWithStringParam(string message)
+        {
+            LastStringParam = message;
+        }
+
+        [WButton]
+        public void ButtonWithIntParam(int value)
+        {
+            LastIntParam = value;
+        }
+
+        [WButton]
+        public void ButtonWithMultipleParams(string name, int count, bool enabled)
+        {
+            LastStringParam = name;
+            LastIntParam = count;
+        }
+    }
+#endif
+}

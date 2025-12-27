@@ -1,0 +1,16 @@
+namespace WallstopStudios.UnityHelpers.Tests.Editor.TestTypes.Odin.InLineEditor
+{
+#if UNITY_EDITOR && ODIN_INSPECTOR
+    using Sirenix.OdinInspector;
+    using WallstopStudios.UnityHelpers.Core.Attributes;
+
+    /// <summary>
+    /// Test target for WInLineEditor with header disabled.
+    /// </summary>
+    internal sealed class OdinInlineEditorNoHeaderTarget : SerializedScriptableObject
+    {
+        [WInLineEditor(drawHeader: false)]
+        public OdinReferencedScriptableObject noHeaderReference;
+    }
+#endif
+}

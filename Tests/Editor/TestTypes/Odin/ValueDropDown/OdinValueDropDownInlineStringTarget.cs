@@ -1,0 +1,16 @@
+namespace WallstopStudios.UnityHelpers.Tests.Editor.TestTypes.Odin.ValueDropDown
+{
+#if UNITY_EDITOR && ODIN_INSPECTOR
+    using Sirenix.OdinInspector;
+    using WallstopStudios.UnityHelpers.Core.Attributes;
+
+    /// <summary>
+    /// Test target for WValueDropDown with inline string options for difficulty levels.
+    /// </summary>
+    internal sealed class OdinValueDropDownInlineStringTarget : SerializedScriptableObject
+    {
+        [WValueDropDown("Easy", "Normal", "Hard", "Expert")]
+        public string difficulty;
+    }
+#endif
+}

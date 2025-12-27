@@ -11,7 +11,6 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
     using WallstopStudios.UnityHelpers.Tests.CustomDrawers.TestTypes;
     using WallstopStudios.UnityHelpers.Tests.Core;
     using WallstopStudios.UnityHelpers.Tests.TestUtils;
-    using PropertyAttribute = UnityEngine.PropertyAttribute;
 
     /// <summary>
     /// Comprehensive tests for WValueDropDown ObjectReference (UnityEngine.Object) support.

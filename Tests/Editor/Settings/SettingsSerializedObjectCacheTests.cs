@@ -2,7 +2,6 @@
 namespace WallstopStudios.UnityHelpers.Tests.Settings
 {
     using System;
-    using System.Collections.Generic;
     using NUnit.Framework;
     using UnityEditor;
     using UnityEngine;

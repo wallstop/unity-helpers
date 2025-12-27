@@ -1,0 +1,101 @@
+# Jekyll configuration for Unity Helpers documentation
+# https://jekyllrb.com/docs/configuration/
+
+title: Unity Helpers
+description: >-
+  Treasure chest of Unity developer tools. Professional inspector tooling,
+  high-performance utilities, spatial queries, and 20+ editor tools.
+baseurl: "/unity-helpers"
+url: "https://wallstop.github.io"
+
+# Theme
+remote_theme: pages-themes/minimal@v0.2.0
+plugins:
+  - jekyll-remote-theme
+  - jekyll-seo-tag
+  - jekyll-sitemap
+  - jekyll-relative-links
+
+# Markdown settings
+markdown: kramdown
+kramdown:
+  input: GFM
+  hard_wrap: false
+  syntax_highlighter: rouge
+  syntax_highlighter_opts:
+    block:
+      line_numbers: false
+
+# Relative links
+relative_links:
+  enabled: true
+  collections: true
+
+# Include/Exclude
+include:
+  - docs
+  - README.md
+  - CHANGELOG.md
+  - LICENSE
+
+exclude:
+  - Gemfile
+  - Gemfile.lock
+  - node_modules
+  - vendor
+  - "*.meta"
+  - Runtime
+  - Editor
+  - Tests
+  - Samples~
+  - artifacts
+  - scripts
+  - progress
+  - .llm
+  - "*.asmdef"
+  - "*.asmref"
+  - package.json
+  - package-lock.json
+  - cspell.json
+  - .github/copilot-instructions.md
+  - AGENTS.md
+  - CLAUDE.md
+  - PLAN.md
+  - llms.txt
+  - Shaders
+  - Styles
+  - URP
+
+# Collections
+collections:
+  docs:
+    output: true
+    permalink: /:collection/:path/
+
+# Defaults
+defaults:
+  - scope:
+      path: ""
+      type: "pages"
+    values:
+      layout: "default"
+  - scope:
+      path: "docs"
+    values:
+      layout: "default"
+  - scope:
+      path: ""
+    values:
+      layout: "default"
+
+# GitHub metadata
+github:
+  repository_url: https://github.com/wallstop/unity-helpers
+  repository_name: unity-helpers
+  owner_name: wallstop
+
+# SEO
+author: wallstop studios
+twitter:
+  card: summary
+logo: docs/images/unity-helpers-banner.svg

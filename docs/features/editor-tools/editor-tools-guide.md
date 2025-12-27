@@ -1888,7 +1888,7 @@ For detailed documentation on validation attributes, see [Inspector Validation A
 
 **Purpose:** Automatically creates and maintains singleton ScriptableObject assets.
 
-See the base API guide for details on `ScriptableObjectSingleton<T>` usage, scenarios, and ODIN compatibility: [Singleton Utilities](../utilities/singletons.md).
+See the base API guide for details on `ScriptableObjectSingleton<T>` usage, scenarios, and Odin compatibility: [Singleton Utilities](../utilities/singletons.md).
 
 **How It Works:**
 

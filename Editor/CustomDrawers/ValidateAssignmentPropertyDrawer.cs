@@ -1,13 +1,12 @@
 namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 {
 #if UNITY_EDITOR
-    using System.Collections;
-    using System.Collections.Generic;
     using UnityEditor;
     using UnityEditor.UIElements;
     using UnityEngine;
     using UnityEngine.UIElements;
     using WallstopStudios.UnityHelpers.Core.Attributes;
+    using WallstopStudios.UnityHelpers.Editor.CustomDrawers.Utils;
 
     /// <summary>
     /// Property drawer for <see cref="ValidateAssignmentAttribute"/> that displays a warning or error
@@ -16,15 +15,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
     [CustomPropertyDrawer(typeof(ValidateAssignmentAttribute))]
     public sealed class ValidateAssignmentPropertyDrawer : PropertyDrawer
     {
-        private const float HelpBoxPadding = 2f;
-        private const string DefaultWarningMessageFormat = "{0} is not assigned or is empty";
-        private const string InvalidValueMessage = "Field is not assigned or is empty";
-
-        private static readonly Dictionary<string, float> HelpBoxHeightCache = new(
-            System.StringComparer.Ordinal
-        );
-        private static readonly GUIContent ReusableContent = new();
-
         /// <summary>
         /// Gets the total property height including the help box when the field is invalid.
         /// </summary>
@@ -32,11 +22,11 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         {
             float baseHeight = EditorGUI.GetPropertyHeight(property, label, true);
 
-            if (IsPropertyInvalid(property))
+            if (ValidationShared.IsPropertyInvalid(property))
             {
                 string message = GetMessage(property);
-                float helpBoxHeight = GetHelpBoxHeight(message);
-                return baseHeight + helpBoxHeight + HelpBoxPadding;
+                float helpBoxHeight = ValidationShared.GetHelpBoxHeight(message);
+                return baseHeight + helpBoxHeight + ValidationShared.HelpBoxPadding;
             }
 
             return baseHeight;
@@ -50,18 +40,18 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             EditorGUI.BeginProperty(position, label, property);
             try
             {
-                bool isInvalid = IsPropertyInvalid(property);
+                bool isInvalid = ValidationShared.IsPropertyInvalid(property);
                 float propertyHeight = EditorGUI.GetPropertyHeight(property, label, true);
 
                 if (isInvalid)
                 {
                     string message = GetMessage(property);
-                    float helpBoxHeight = GetHelpBoxHeight(message);
+                    float helpBoxHeight = ValidationShared.GetHelpBoxHeight(message);
 
                     Rect helpBoxRect = new(position.x, position.y, position.width, helpBoxHeight);
                     Rect propertyRect = new(
                         position.x,
-                        position.y + helpBoxHeight + HelpBoxPadding,
+                        position.y + helpBoxHeight + ValidationShared.HelpBoxPadding,
                         position.width,
                         propertyHeight
                     );
@@ -90,7 +80,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             container.style.flexDirection = FlexDirection.Column;
 
             HelpBox helpBox = new(GetMessage(property), GetHelpBoxMessageType());
-            helpBox.style.display = IsPropertyInvalid(property)
+            helpBox.style.display = ValidationShared.IsPropertyInvalid(property)
                 ? DisplayStyle.Flex
                 : DisplayStyle.None;
 
@@ -99,7 +89,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             propertyField.RegisterValueChangeCallback(evt =>
             {
-                bool isInvalid = IsPropertyInvalid(property);
+                bool isInvalid = ValidationShared.IsPropertyInvalid(property);
                 helpBox.text = GetMessage(property);
                 helpBox.style.display = isInvalid ? DisplayStyle.Flex : DisplayStyle.None;
             });
@@ -113,138 +103,32 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         /// <summary>
         /// Checks if the property value is invalid (null, empty string, or empty collection).
         /// </summary>
+        /// <param name="property">The property to check.</param>
+        /// <returns>True if the property value is invalid.</returns>
         internal static bool IsPropertyInvalid(SerializedProperty property)
         {
-            if (property == null)
-            {
-                return true;
-            }
-
-            // Check arrays/lists first - they have isArray = true regardless of propertyType
-            // String has isArray = true but should be checked separately
-            if (property.isArray && property.propertyType != SerializedPropertyType.String)
-            {
-                return property.arraySize <= 0;
-            }
-
-            switch (property.propertyType)
-            {
-                case SerializedPropertyType.ObjectReference:
-                    return property.objectReferenceValue == null;
-                case SerializedPropertyType.ExposedReference:
-                    return property.exposedReferenceValue == null;
-                case SerializedPropertyType.ManagedReference:
-                    return property.managedReferenceValue == null;
-                case SerializedPropertyType.String:
-                    return string.IsNullOrWhiteSpace(property.stringValue);
-                case SerializedPropertyType.Generic:
-                    return IsGenericPropertyInvalid(property);
-                default:
-                    return false;
-            }
-        }
-
-        private static bool IsGenericPropertyInvalid(SerializedProperty property)
-        {
-            // Arrays are handled in IsPropertyInvalid before we get here
-            if (property.isArray)
-            {
-                return property.arraySize <= 0;
-            }
-
-            SerializedProperty arraySizeProperty = property.FindPropertyRelative("Array.size");
-            if (arraySizeProperty != null)
-            {
-                return arraySizeProperty.intValue <= 0;
-            }
-
-            SerializedProperty countProperty = property.FindPropertyRelative("_size");
-            if (countProperty != null)
-            {
-                return countProperty.intValue <= 0;
-            }
-
-            countProperty = property.FindPropertyRelative("m_Size");
-            if (countProperty != null)
-            {
-                return countProperty.intValue <= 0;
-            }
-
-            return false;
+            return ValidationShared.IsPropertyInvalid(property);
         }
 
         private string GetMessage(SerializedProperty property)
         {
             ValidateAssignmentAttribute validateAttribute =
                 attribute as ValidateAssignmentAttribute;
-            return GetMessage(property, validateAttribute);
+            return ValidationShared.GetValidateAssignmentMessage(property, validateAttribute);
         }
 
         private MessageType GetMessageType()
         {
             ValidateAssignmentAttribute validateAttribute =
                 attribute as ValidateAssignmentAttribute;
-            return GetMessageType(validateAttribute);
+            return ValidationShared.GetMessageType(validateAttribute);
         }
 
         private HelpBoxMessageType GetHelpBoxMessageType()
         {
             ValidateAssignmentAttribute validateAttribute =
                 attribute as ValidateAssignmentAttribute;
-            return GetHelpBoxMessageType(validateAttribute);
-        }
-
-        /// <summary>
-        /// Gets the validation message for a property with the given attribute.
-        /// </summary>
-        internal static string GetMessage(
-            SerializedProperty property,
-            ValidateAssignmentAttribute validateAttribute
-        )
-        {
-            if (validateAttribute != null && !string.IsNullOrEmpty(validateAttribute.CustomMessage))
-            {
-                return validateAttribute.CustomMessage;
-            }
-
-            string fieldName = property?.displayName ?? InvalidValueMessage;
-            return string.Format(DefaultWarningMessageFormat, fieldName);
-        }
-
-        /// <summary>
-        /// Gets the IMGUI MessageType for the given attribute.
-        /// </summary>
-        internal static MessageType GetMessageType(ValidateAssignmentAttribute validateAttribute)
-        {
-            if (validateAttribute == null)
-            {
-                return MessageType.Warning;
-            }
-
-            return validateAttribute.MessageType switch
-            {
-                ValidateAssignmentMessageType.Error => MessageType.Error,
-                _ => MessageType.Warning,
-            };
-        }
-
-        /// <summary>
-        /// Gets the UI Toolkit HelpBoxMessageType for the given attribute.
-        /// </summary>
-        internal static HelpBoxMessageType GetHelpBoxMessageType(
-            ValidateAssignmentAttribute validateAttribute
-        )
-        {
-            if (validateAttribute == null)
-            {
-                return HelpBoxMessageType.Warning;
-            }
-
-            return validateAttribute.MessageType switch
-            {
-                ValidateAssignmentMessageType.Error => HelpBoxMessageType.Error,
-                _ => HelpBoxMessageType.Warning,
-            };
+            return ValidationShared.GetHelpBoxMessageType(validateAttribute);
         }
 
         /// <summary>
@@ -258,47 +142,10 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             ValidateAssignmentAttribute validateAttribute
         )
         {
-            if (!IsPropertyInvalid(property))
-            {
-                return false;
-            }
-
-            string message = GetMessage(property, validateAttribute);
-            MessageType messageType = GetMessageType(validateAttribute);
-            EditorGUILayout.HelpBox(message, messageType);
-            return true;
-        }
-
-        private static float GetHelpBoxHeight(string message)
-        {
-            if (string.IsNullOrEmpty(message))
-            {
-                return EditorGUIUtility.singleLineHeight * 2f;
-            }
-
-            if (HelpBoxHeightCache.TryGetValue(message, out float cachedHeight))
-            {
-                return cachedHeight;
-            }
-
-            ReusableContent.text = message;
-            GUIStyle helpBoxStyle = EditorStyles.helpBox;
-            float minHeight = EditorGUIUtility.singleLineHeight * 2f;
-            float viewWidth = 600f;
-            try
-            {
-                viewWidth = Mathf.Max(0f, EditorGUIUtility.currentViewWidth);
-            }
-            catch
-            {
-                // Called outside OnGUI context; use fallback
-                viewWidth = 600f;
-            }
-            float calculatedHeight = helpBoxStyle.CalcHeight(ReusableContent, viewWidth - 40f);
-            float height = Mathf.Max(minHeight, calculatedHeight);
-
-            HelpBoxHeightCache[message] = height;
-            return height;
+            return ValidationShared.DrawValidateAssignmentHelpBoxIfNeeded(
+                property,
+                validateAttribute
+            );
         }
 
         /// <summary>
@@ -306,7 +153,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         /// </summary>
         internal static void ClearHeightCache()
         {
-            HelpBoxHeightCache.Clear();
+            ValidationShared.ClearHeightCache();
         }
     }
 #endif

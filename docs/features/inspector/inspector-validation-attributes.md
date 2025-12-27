@@ -83,7 +83,7 @@ public class EntityReadOnly : MonoBehaviour
 
 - **Prevent accidents**: Stop designers from accidentally modifying auto-generated values
 - **Debug visibility**: Show internal state without allowing modification
-- **Documentation**: Make it clear which fields are managed by code vs. configured the Editor
+- **Documentation**: Make it clear which fields are managed by code vs. configured in the editor
 - **Data integrity**: Protect computed or cached values from manual overrides
 
 > **Visual Reference**

@@ -1,0 +1,23 @@
+namespace WallstopStudios.UnityHelpers.Tests.Editor.TestTypes.Odin.ShowIf
+{
+#if UNITY_EDITOR && ODIN_INSPECTOR
+    using Sirenix.OdinInspector;
+    using WallstopStudios.UnityHelpers.Core.Attributes;
+
+    /// <summary>
+    /// Test target for WShowIf method-based condition tests with Odin Inspector.
+    /// </summary>
+    internal sealed class OdinShowIfMethodTarget : SerializedScriptableObject
+    {
+        public int value;
+
+        public bool IsPositive()
+        {
+            return value > 0;
+        }
+
+        [WShowIf(nameof(IsPositive))]
+        public int dependentField;
+    }
+#endif
+}

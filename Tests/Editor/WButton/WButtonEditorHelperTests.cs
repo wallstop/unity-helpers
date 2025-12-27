@@ -2,12 +2,10 @@
 namespace WallstopStudios.UnityHelpers.Tests.WButton
 {
     using NUnit.Framework;
-    using UnityEditor;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Editor.Utils.WButton;
     using WallstopStudios.UnityHelpers.Tests.Core;
-    using WallstopStudios.UnityHelpers.Tests.Editor.TestTypes;
 
     /// <summary>
     /// Tests for WButtonEditorHelper API used to integrate WButton with custom editors.
@@ -25,11 +23,6 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
             }
         }
 
-        private sealed class TestEditor : Editor
-        {
-            // Simulates a custom editor
-        }
-
         [Test]
         public void WButtonEditorHelperCanBeCreated()
         {
@@ -41,7 +34,7 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
         public void WButtonEditorHelperDrawButtonsAtTopWithValidEditorDoesNotThrow()
         {
             TestComponent target = CreateScriptableObject<TestComponent>();
-            TestEditor editor = Editor.CreateEditor(target) as TestEditor;
+            UnityEditor.Editor editor = UnityEditor.Editor.CreateEditor(target);
             try
             {
                 WButtonEditorHelper helper = new WButtonEditorHelper();
@@ -58,7 +51,7 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
         public void WButtonEditorHelperDrawButtonsAtBottomWithValidEditorDoesNotThrow()
         {
             TestComponent target = CreateScriptableObject<TestComponent>();
-            TestEditor editor = Editor.CreateEditor(target) as TestEditor;
+            UnityEditor.Editor editor = UnityEditor.Editor.CreateEditor(target);
             try
             {
                 WButtonEditorHelper helper = new WButtonEditorHelper();
@@ -83,7 +76,7 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
         public void WButtonEditorHelperDrawButtonsAtBottomAndProcessInvocationsDoesNotThrow()
         {
             TestComponent target = CreateScriptableObject<TestComponent>();
-            TestEditor editor = Editor.CreateEditor(target) as TestEditor;
+            UnityEditor.Editor editor = UnityEditor.Editor.CreateEditor(target);
             try
             {
                 WButtonEditorHelper helper = new WButtonEditorHelper();
@@ -100,7 +93,7 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
         public void WButtonEditorHelperDrawAllButtonsAndProcessInvocationsDoesNotThrow()
         {
             TestComponent target = CreateScriptableObject<TestComponent>();
-            TestEditor editor = Editor.CreateEditor(target) as TestEditor;
+            UnityEditor.Editor editor = UnityEditor.Editor.CreateEditor(target);
             try
             {
                 WButtonEditorHelper helper = new WButtonEditorHelper();
@@ -126,7 +119,7 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
         public void WButtonEditorHelperCanBeReusedAcrossMultipleCalls()
         {
             TestComponent target = CreateScriptableObject<TestComponent>();
-            TestEditor editor = Editor.CreateEditor(target) as TestEditor;
+            UnityEditor.Editor editor = UnityEditor.Editor.CreateEditor(target);
             try
             {
                 WButtonEditorHelper helper = new WButtonEditorHelper();

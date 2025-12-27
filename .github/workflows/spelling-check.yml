@@ -1,0 +1,106 @@
+name: Documentation Spelling Check
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "docs/**/*.md"
+      - "README.md"
+      - "CHANGELOG.md"
+      - "cspell.json"
+      - ".github/workflows/spelling-check.yml"
+  pull_request:
+    paths:
+      - "docs/**/*.md"
+      - "README.md"
+      - "CHANGELOG.md"
+      - "cspell.json"
+      - ".github/workflows/spelling-check.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  spelling:
+    name: Check Spelling
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6.0.1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6.1.0
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: package.json
+
+      - name: Install dependencies
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci
+          else
+            npm i --no-audit --no-fund
+          fi
+
+      - name: Run spell check
+        id: spellcheck
+        run: |
+          echo "🔍 Running spell check on documentation..."
+          
+          # Run cspell and capture output
+          set +e
+          OUTPUT=$(npm run lint:spelling 2>&1)
+          EXIT_CODE=$?
+          set -e
+          
+          echo "$OUTPUT"
+          
+          # Count misspellings
+          MISSPELLING_COUNT=$(echo "$OUTPUT" | grep -c "Unknown word" || true)
+          
+          if [ $EXIT_CODE -ne 0 ] || [ $MISSPELLING_COUNT -gt 0 ]; then
+            echo ""
+            echo "❌ Spelling check failed with $MISSPELLING_COUNT issues"
+            echo ""
+            echo "To fix spelling issues:"
+            echo "1. Correct the misspelled words in your documentation"
+            echo "2. If a word is a valid technical term, add it to cspell.json"
+            echo ""
+            echo "To add a word to the dictionary, edit cspell.json and add it to the appropriate dictionary:"
+            echo "- unity-terms: Unity API names (MonoBehaviour, ScriptableObject, etc.)"
+            echo "- csharp-terms: C# language features (async, ValueTask, etc.)"
+            echo "- package-terms: Package-specific terms (WGroup, SerializableDictionary, etc.)"
+            echo "- tech-terms: Technical/industry terms (IL2CPP, PRNG, etc.)"
+            echo "- words: General words not fitting other categories"
+            exit 1
+          fi
+          
+          echo "✅ No spelling issues found"
+
+      - name: Generate Summary
+        if: always()
+        run: |
+          echo "## 📝 Spelling Check Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Re-run to get output for summary
+          set +e
+          OUTPUT=$(npm run lint:spelling 2>&1)
+          MISSPELLING_COUNT=$(echo "$OUTPUT" | grep -c "Unknown word" || true)
+          set -e
+          
+          if [ $MISSPELLING_COUNT -gt 0 ]; then
+            echo "❌ **Found $MISSPELLING_COUNT spelling issues**" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### Issues Found:" >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+            echo "$OUTPUT" | grep "Unknown word" | head -20 >> $GITHUB_STEP_SUMMARY
+            if [ $MISSPELLING_COUNT -gt 20 ]; then
+              echo "... and $((MISSPELLING_COUNT - 20)) more" >> $GITHUB_STEP_SUMMARY
+            fi
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "✅ **No spelling issues found**" >> $GITHUB_STEP_SUMMARY
+          fi

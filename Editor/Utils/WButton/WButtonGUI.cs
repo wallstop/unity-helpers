@@ -166,7 +166,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
         {
             if (editor == null)
             {
-                throw new ArgumentNullException(nameof(editor));
+                return false;
             }
 
             UnityEngine.Object[] targets = editor.targets;

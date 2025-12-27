@@ -13,6 +13,79 @@
 - Bug fixes (must not regress performance)
 - Test utilities (may run thousands of iterations)
 
+**Never duplicate code — build abstractions.** When you see repetitive patterns:
+
+- Extract to lightweight, reusable abstractions
+- Prefer `readonly struct` or `static` methods for zero allocation
+- Apply SOLID principles — single responsibility, open/closed extension
+- Use composition to build complex behavior from simple pieces
+
+---
+
+## Abstraction Guidelines
+
+### When to Abstract
+
+- **Two or more occurrences** — If you write similar code twice, extract it
+- **Complex logic** — Encapsulate non-obvious algorithms behind clear interfaces
+- **Cross-cutting concerns** — Logging, caching, validation patterns
+
+### How to Abstract (Zero Allocation)
+
+```csharp
+// ✅ Value-type abstraction - no heap allocation
+public readonly struct ValidationResult
+{
+    public readonly bool IsValid;
+    public readonly string ErrorMessage;
+    private readonly int _hash;
+
+    public ValidationResult(bool isValid, string errorMessage = null)
+    {
+        IsValid = isValid;
+        ErrorMessage = errorMessage;
+        _hash = Objects.HashCode(isValid, errorMessage);
+    }
+}
+
+// ✅ Static utility methods - no allocation
+public static class CollectionExtensions
+{
+    public static bool TryGetFirst<T>(this IList<T> list, out T result)
+    {
+        if (list.Count > 0)
+        {
+            result = list[0];
+            return true;
+        }
+        result = default;
+        return false;
+    }
+}
+
+// ✅ Generic constraint-based abstraction
+public static void ProcessAll<T>(IList<T> items) where T : IProcessable
+{
+    for (int i = 0; i < items.Count; i++)
+    {
+        items[i].Process();
+    }
+}
+```
+
+### Abstraction Anti-Patterns
+
+````csharp
+// ❌ Class when struct suffices - unnecessary allocation
+public class ValidationResult { }
+
+// ❌ Closure-capturing delegate factory
+public Func<T> CreateGetter<T>(T value) => () => value;  // Allocates!
+
+// ❌ Over-abstraction - adds complexity without value
+public interface IStringProvider { string GetString(); }
+public class ConstantStringProvider : IStringProvider { ... }  // Just use the string!
+
 ---
 
 ## Mandatory Patterns
@@ -45,7 +118,7 @@ public readonly struct FastVector2Int : IEquatable<FastVector2Int>
         return _hash == other._hash && x == other.x && y == other.y;
     }
 }
-```
+````
 
 **When to use structs:**
 
@@ -375,6 +448,7 @@ public Item GetFirst()
 | `foreach` on non-generic `IEnumerable` | Enumerator allocation          | `for` with indexer                       |
 | Reflection                             | Slow, fragile, uncached        | Direct access, interfaces, generics      |
 | Raw `GetField`/`GetMethod`             | Uncached, repeated lookups     | `ReflectionHelpers` (external APIs only) |
+| Duplicated code patterns               | Maintenance burden             | Extract to value-type abstraction        |
 
 ### Avoid These Allocations
 
@@ -440,11 +514,15 @@ Before submitting any code, verify:
 - [ ] Editor code caches GUIContent/GUIStyle
 - [ ] `[MethodImpl(MethodImplOptions.AggressiveInlining)]` on hot paths
 - [ ] Thread safety uses conditional compilation pattern
+- [ ] No duplicated code — extract common patterns to abstractions
+- [ ] Abstractions are lightweight (prefer `readonly struct` or `static`)
 
 ---
 
 ## Related Skills
 
-- [use-pooling](use-pooling.md) - Detailed collection pooling patterns
-- [use-array-pool](use-array-pool.md) - Array pool selection guide
-- [performance-audit](performance-audit.md) - Performance review checklist
+- [defensive-programming](defensive-programming.md) — Error handling patterns (MANDATORY companion skill)
+- [use-pooling](use-pooling.md) — Detailed collection pooling patterns
+- [use-array-pool](use-array-pool.md) — Array pool selection guide
+- [performance-audit](performance-audit.md) — Performance review checklist
+- [create-editor-tool](create-editor-tool.md) — Editor-specific patterns

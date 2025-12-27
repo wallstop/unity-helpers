@@ -1,0 +1,69 @@
+name: Stale Issue and PR Management
+
+on:
+  schedule:
+    # Run daily at 9:00 AM UTC
+    - cron: '0 9 * * *'
+  workflow_dispatch:
+
+jobs:
+  stale:
+    # Only run on the main repo, not forks
+    if: github.repository == 'wallstop-studios/unity-helpers' || github.repository == 'wallstop/unity-helpers'
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: write
+
+    steps:
+      - name: Manage stale issues and PRs
+        uses: actions/stale@v9
+        with:
+          # General settings
+          operations-per-run: 30
+
+          # Issue configuration
+          days-before-issue-stale: 60
+          days-before-issue-close: 14
+          stale-issue-label: stale
+          close-issue-label: closed-stale
+          exempt-issue-labels: pinned,security,help wanted,good first issue
+          stale-issue-message: |
+            👋 Hey there! This issue has been quiet for a while (60 days without activity).
+
+            We're marking it as stale to help keep our issue tracker tidy. If this is still relevant to you, please feel free to:
+            - Add a comment with any updates or additional context
+            - Let us know if you're still experiencing this issue
+            - Or simply react to this comment to keep it open
+
+            If we don't hear back within **14 days**, we'll automatically close this issue. Don't worry though – you can always reopen it later if needed!
+
+            Thanks for your understanding! 🙏
+          close-issue-message: |
+            🔒 This issue has been automatically closed due to inactivity.
+
+            If this is still a concern or you have new information to add, please don't hesitate to reopen it or create a new issue. We're always happy to help!
+
+          # Pull Request configuration
+          days-before-pr-stale: 30
+          days-before-pr-close: 14
+          stale-pr-label: stale
+          exempt-pr-labels: pinned,work-in-progress,do-not-close
+          exempt-draft-pr: true
+          stale-pr-message: |
+            👋 Hi! This pull request hasn't seen any activity in the last 30 days.
+
+            We wanted to check in – are you still working on this? No pressure at all! Life gets busy, and we totally understand.
+
+            If you're still interested in completing this PR:
+            - Feel free to push any updates when you're ready
+            - Let us know if you need any help or have questions
+            - Or just drop a comment to let us know it's still on your radar
+
+            If we don't hear back within **14 days**, we'll close this PR to keep things organized. You can always reopen it later or open a fresh one when you're ready to continue.
+
+            Thanks for your contribution! 💜
+          close-pr-message: |
+            🔒 This pull request has been automatically closed due to inactivity.
+
+            Thank you for your contribution effort! If you'd like to pick this back up, feel free to reopen this PR or create a new one. We'd love to see your changes merged when you're ready!

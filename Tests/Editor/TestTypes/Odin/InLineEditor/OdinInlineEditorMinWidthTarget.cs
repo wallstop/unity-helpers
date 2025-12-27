@@ -1,0 +1,16 @@
+namespace WallstopStudios.UnityHelpers.Tests.Editor.TestTypes.Odin.InLineEditor
+{
+#if UNITY_EDITOR && ODIN_INSPECTOR
+    using Sirenix.OdinInspector;
+    using WallstopStudios.UnityHelpers.Core.Attributes;
+
+    /// <summary>
+    /// Test target for WInLineEditor with minimum inspector width.
+    /// </summary>
+    internal sealed class OdinInlineEditorMinWidthTarget : SerializedScriptableObject
+    {
+        [WInLineEditor(minInspectorWidth: 400f)]
+        public OdinReferencedScriptableObject minWidthReference;
+    }
+#endif
+}

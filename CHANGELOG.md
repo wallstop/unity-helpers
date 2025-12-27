@@ -9,15 +9,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **WButton Automatic Odin Inspector Support**: WButton now works automatically with Odin Inspector's `SerializedMonoBehaviour` and `SerializedScriptableObject`
-  - No setup required - just use `[WButton]` on methods in Odin types
-  - Custom editors registered specifically for Odin types when `ODIN_INSPECTOR` symbol is defined
-  - Supports all WButton features including grouping, placement, history, and async methods
-- **WButton Custom Editor Integration**: New `WButtonEditorHelper` class for integrating WButton functionality into custom Odin editors
+- **Comprehensive Odin Inspector Attribute Support**: All Unity Helpers inspector attributes now work seamlessly with Odin Inspector's `SerializedMonoBehaviour` and `SerializedScriptableObject` types
+  - **`[WButton]`**: Full support including grouping, placement, history, async methods, and parameters
+  - **`[WShowIf]`**: Conditional property display based on field values, methods, or comparisons
+  - **`[WReadOnly]`**: Disables editing while preserving display in Odin inspectors
+  - **`[WEnumToggleButtons]`**: Toggle button UI for enum selection with flags support
+  - **`[WValueDropDown]`**: Dropdown selection from custom value lists
+  - **`[WInLineEditor]`**: Inline editing of referenced ScriptableObjects and components
+  - **`[WNotNull]`**: Null reference validation with HelpBox warnings/errors
+  - **`[ValidateAssignment]`**: Field validation for null, empty strings, and empty collections
+  - **`[StringInList]`**: String selection from predefined lists or method providers
+  - **`[IntDropDown]`**: Integer selection from predefined value lists
+  - No setup required — attributes work identically whether Odin Inspector is installed or not
+  - Custom Odin drawers registered when `ODIN_INSPECTOR` symbol is defined
+- **WButton Custom Editor Integration**: New `WButtonEditorHelper` class for integrating WButton functionality into custom editors
   - Only needed when creating custom `OdinEditor` subclasses for specific types
   - Provides simple API for any custom editor to draw WButton methods
   - Methods: `DrawButtonsAtTop()`, `DrawButtonsAtBottom()`, `ProcessInvocations()`, and convenience methods
   - Documented integration patterns for both Odin Inspector and standard Unity custom editors
+
+### Fixed
+
+- **Manual Recompile Silent Failure After Build**: Fixed an issue where the "Request Script Recompilation" menu item and shortcut would stop responding after building a project (particularly on Linux)
+  - Added defensive null check in compilation pending evaluator to prevent silent `NullReferenceException`
+  - The null evaluator scenario could occur when static field initialization failed or was corrupted during build operations without a domain reload
 
 See [the roadmap](docs/overview/roadmap.md) for details
 

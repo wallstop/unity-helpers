@@ -279,6 +279,33 @@ public override void OnGUI(Rect position, SerializedProperty property, GUIConten
 }
 ```
 
+### Shared Caches (DRY Principle)
+
+When multiple drawers/inspectors need the same cache, use `EditorCacheHelper`:
+
+```csharp
+// ✅ CORRECT - Use shared cache helper
+using WallstopStudios.UnityHelpers.Editor.Core.Helper;
+
+// In any drawer:
+string display = EditorCacheHelper.GetCachedIntString(index);
+string pageLabel = EditorCacheHelper.GetPaginationLabel(page, total);
+Texture2D solidTex = EditorCacheHelper.GetSolidTexture(color);
+
+// ❌ INCORRECT - Duplicating caches across multiple files
+// Drawer1.cs
+private static readonly Dictionary<int, string> IntToStringCache = new();
+
+// Drawer2.cs (duplicate!)
+private static readonly Dictionary<int, string> IntToStringCache = new();
+```
+
+Available shared caches in `EditorCacheHelper`:
+
+- `GetCachedIntString(int)` — Cached integer-to-string conversion
+- `GetPaginationLabel(int page, int total)` — Cached "Page X / Y" strings
+- `GetSolidTexture(Color)` — Cached 1x1 solid color textures
+
 ---
 
 ## USS/UXML Styling
@@ -599,6 +626,85 @@ Editor tools should be `sealed` unless designed for inheritance:
 ```csharp
 public sealed class MyToolWindow : EditorWindow { }
 ```
+
+---
+
+## Defensive Programming (MANDATORY)
+
+Editor code is especially vulnerable to unexpected states. ALL editor code MUST follow [defensive-programming](defensive-programming.md).
+
+### Editor-Specific Defensive Patterns
+
+```csharp
+// ✅ Safe SerializedProperty access
+public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
+{
+    if (property == null)
+    {
+        return;
+    }
+
+    if (property.serializedObject == null || property.serializedObject.targetObject == null)
+    {
+        EditorGUI.LabelField(position, label, new GUIContent("(Missing Object)"));
+        return;
+    }
+
+    EditorGUI.BeginProperty(position, label, property);
+    try
+    {
+        // Draw property safely...
+    }
+    finally
+    {
+        EditorGUI.EndProperty();
+    }
+}
+
+// ✅ Safe asset operations
+public static T LoadAssetSafe<T>(string path) where T : Object
+{
+    if (string.IsNullOrEmpty(path))
+    {
+        return null;
+    }
+    return AssetDatabase.LoadAssetAtPath<T>(path);
+}
+
+// ✅ Cache invalidation on target change
+private Object _lastTarget;
+private SerializedProperty _cachedProperty;
+
+private SerializedProperty GetProperty(SerializedObject so)
+{
+    if (so == null || so.targetObject == null)
+    {
+        _cachedProperty = null;
+        _lastTarget = null;
+        return null;
+    }
+
+    if (_lastTarget != so.targetObject)
+    {
+        _cachedProperty = null;
+        _lastTarget = so.targetObject;
+    }
+
+    if (_cachedProperty == null)
+    {
+        _cachedProperty = so.FindProperty("_fieldName");
+    }
+
+    return _cachedProperty;
+}
+```
+
+### Never Throw From Editor Code
+
+- Return early for null/invalid inputs
+- Use `TryXxx` patterns for failable operations
+- Log warnings for debugging, don't crash the inspector
+- Handle destroyed objects gracefully
 
 ---
 

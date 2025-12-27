@@ -3,7 +3,6 @@
   "version": "3.0.4",
   "displayName": "Unity Helpers",
   "description": "Treasure chest of Unity developer tools ",
-  "dependencies": {},
   "unity": "2021.3",
   "keywords": [
     "inspector-attributes",
@@ -98,6 +97,10 @@
   "scripts": {
     "lint:docs": "node ./scripts/run-doc-link-lint.js",
     "lint:doc-links": "node ./scripts/run-doc-link-lint.js --verbose",
+    "lint:code-samples": "node ./scripts/extract-code-samples.js --extract-only",
+    "lint:code-samples:verbose": "node ./scripts/extract-code-samples.js --verbose --extract-only",
+    "lint:spelling": "cspell --no-progress --show-suggestions",
+    "lint:spelling:verbose": "cspell --show-suggestions",
     "hooks:install": "git config core.hooksPath .githooks",
     "eol:check": "pwsh -NoProfile -File scripts/check-eol.ps1",
     "eol:fix": "pwsh -NoProfile -File scripts/normalize-eol.ps1",
@@ -117,6 +120,7 @@
     "test:lint-unity-file-naming": "pwsh -NoProfile -File scripts/tests/test-lint-unity-file-naming.ps1 -VerboseOutput"
   },
   "devDependencies": {
+    "cspell": "^8.19.4",
     "markdownlint-cli": "^0.47.0",
     "prettier": "3.7.4"
   }

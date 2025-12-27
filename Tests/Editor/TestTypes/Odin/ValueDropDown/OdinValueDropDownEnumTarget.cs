@@ -1,0 +1,31 @@
+namespace WallstopStudios.UnityHelpers.Tests.Editor.TestTypes.Odin.ValueDropDown
+{
+#if UNITY_EDITOR && ODIN_INSPECTOR
+    using System.Collections.Generic;
+    using Sirenix.OdinInspector;
+    using WallstopStudios.UnityHelpers.Core.Attributes;
+    using WallstopStudios.UnityHelpers.Tests.Editor.TestTypes.SharedEnums;
+
+    /// <summary>
+    /// Test target for WValueDropDown with enum options from static provider.
+    /// </summary>
+    internal sealed class OdinValueDropDownEnumTarget : SerializedScriptableObject
+    {
+        [WValueDropDown(
+            typeof(TestEnumOptionsProvider),
+            nameof(TestEnumOptionsProvider.GetEnumOptions)
+        )]
+        public TestDropDownMode selectedMode;
+
+        public static class TestEnumOptionsProvider
+        {
+            public static IEnumerable<TestDropDownMode> GetEnumOptions()
+            {
+                yield return TestDropDownMode.ModeA;
+                yield return TestDropDownMode.ModeB;
+                yield return TestDropDownMode.ModeC;
+            }
+        }
+    }
+#endif
+}

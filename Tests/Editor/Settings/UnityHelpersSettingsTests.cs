@@ -6,7 +6,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
     using System.Linq;
     using NUnit.Framework;
     using UnityEditor;
-    using UnityEditorInternal;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
     using WallstopStudios.UnityHelpers.Editor.CustomDrawers;

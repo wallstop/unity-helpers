@@ -1,0 +1,22 @@
+namespace WallstopStudios.UnityHelpers.Tests.Editor.TestTypes.Odin.ReadOnly
+{
+#if UNITY_EDITOR && ODIN_INSPECTOR
+    using Sirenix.OdinInspector;
+    using UnityEngine;
+    using WallstopStudios.UnityHelpers.Core.Attributes;
+
+    /// <summary>
+    /// Test target for WReadOnly attribute combined with other Odin attributes with Odin Inspector.
+    /// </summary>
+    internal sealed class OdinReadOnlyWithOtherAttributesTarget : SerializedScriptableObject
+    {
+        [WReadOnly]
+        [Range(0, 100)]
+        public int readOnlyWithRange;
+
+        [WReadOnly]
+        [Tooltip("This is a tooltip")]
+        public string readOnlyWithTooltip;
+    }
+#endif
+}

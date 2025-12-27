@@ -259,6 +259,34 @@ npm run validate:prepush
 
 ---
 
+## Documentation Checklist
+
+Before completing ANY task that adds features or fixes bugs, verify:
+
+### For New Features
+
+- [ ] Feature documentation added/updated in `docs/features/<category>/`
+- [ ] XML documentation on all public types/members
+- [ ] At least one working code sample in docs
+- [ ] CHANGELOG entry in `### Added` section under `## [Unreleased]`
+- [ ] llms.txt updated if feature adds new capabilities
+
+### For Bug Fixes
+
+- [ ] CHANGELOG entry in `### Fixed` section under `## [Unreleased]`
+- [ ] Documentation corrected if it described wrong behavior
+
+### For API Changes
+
+- [ ] All documentation referencing old API updated
+- [ ] CHANGELOG entry (in `### Changed` section, marked Breaking if applicable)
+- [ ] XML docs updated with new parameter names/types
+- [ ] Code samples updated throughout docs
+
+See [update-documentation](update-documentation.md) for complete guidelines.
+
+---
+
 ## Pre-Existing Warnings
 
 Some lint warnings may exist in the main branch (e.g., test lifecycle warnings in `validate:tests`). Focus on:

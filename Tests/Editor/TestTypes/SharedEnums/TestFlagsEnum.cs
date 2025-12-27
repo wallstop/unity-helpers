@@ -1,0 +1,18 @@
+namespace WallstopStudios.UnityHelpers.Tests.Editor.TestTypes.SharedEnums
+{
+#if UNITY_EDITOR && ODIN_INSPECTOR
+    using System;
+
+    /// <summary>
+    /// Basic flags enum for testing flag-based toggle buttons and conditional attributes.
+    /// </summary>
+    [Flags]
+    public enum TestFlagsEnum
+    {
+        None = 0,
+        FlagA = 1 << 0,
+        FlagB = 1 << 1,
+        FlagC = 1 << 2,
+    }
+#endif
+}

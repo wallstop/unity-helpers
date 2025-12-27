@@ -1,0 +1,179 @@
+name: Deploy Documentation to GitHub Wiki
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'docs/**'
+      - 'README.md'
+      - 'CHANGELOG.md'
+      - '.github/workflows/deploy-wiki.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  deploy-wiki:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main repository
+        uses: actions/checkout@v4
+        with:
+          path: main
+
+      - name: Checkout wiki repository
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository }}.wiki
+          path: wiki
+          token: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true
+
+      - name: Initialize wiki if needed
+        run: |
+          if [ ! -d "wiki/.git" ]; then
+            mkdir -p wiki
+            cd wiki
+            git init
+            git remote add origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.wiki.git
+          fi
+
+      - name: Prepare wiki content
+        run: |
+          # Clear existing wiki content (except .git)
+          find wiki -mindepth 1 -maxdepth 1 ! -name '.git' -exec rm -rf {} +
+
+          # Copy README as Home page
+          cp main/README.md wiki/Home.md
+
+          # Copy CHANGELOG
+          cp main/CHANGELOG.md wiki/CHANGELOG.md
+
+          # Process and copy docs with proper structure
+          cd main/docs
+
+          # Create wiki pages from docs structure
+          # Using a more portable approach with find and shell
+          find . -name "*.md" -type f ! -name "*.meta" | while read -r file; do
+            # Remove leading ./
+            file="${file#./}"
+            
+            # Create wiki-friendly filename by:
+            # 1. Replacing / with -
+            # 2. Capitalizing first letter of each segment
+            wiki_name=$(echo "$file" | sed 's|/|-|g' | sed 's|\.md$||')
+            
+            # Capitalize each segment after dash
+            wiki_name=$(echo "$wiki_name" | awk -F'-' '{for(i=1;i<=NF;i++){$i=toupper(substr($i,1,1))substr($i,2)}}1' OFS='-')
+            wiki_name="${wiki_name}.md"
+            
+            # Copy file
+            cp "$file" "../../wiki/$wiki_name"
+            echo "Created: $wiki_name from $file"
+          done
+
+          # Copy images - handle nested image directories
+          find images -type f ! -name "*.meta" 2>/dev/null | while read -r img; do
+            mkdir -p "../../wiki/$(dirname "$img")"
+            cp "$img" "../../wiki/$img"
+          done || true
+
+      - name: Fix wiki links
+        run: |
+          cd wiki
+          # Update relative links to work in wiki context
+          for file in *.md; do
+            if [ -f "$file" ]; then
+              # Fix relative doc links - convert ../features/x/y.md to Features-X-Y
+              sed -i 's|\.\./\([^)]*\)\.md|#\1|g' "$file"
+              sed -i 's|\./\([^)]*\)\.md|#\1|g' "$file"
+              # Fix image paths
+              sed -i 's|docs/images/|images/|g' "$file"
+              sed -i 's|\.\./images/|images/|g' "$file"
+            fi
+          done
+
+      - name: Generate sidebar
+        run: |
+          cd wiki
+          cat > _Sidebar.md << 'EOF'
+          ## 📚 Documentation
+
+          ### Getting Started
+          - [[Home]]
+          - [[Overview-Getting-Started|Getting Started]]
+          - [[Overview-Index|Feature Index]]
+          - [[Overview-Glossary|Glossary]]
+          - [[Overview-Roadmap|Roadmap]]
+
+          ### Inspector Features
+          - [[Features-Inspector-Inspector-Overview|Inspector Overview]]
+          - [[Features-Inspector-Inspector-Grouping-Attributes|Grouping Attributes]]
+          - [[Features-Inspector-Inspector-Button|Button Attribute]]
+          - [[Features-Inspector-Inspector-Conditional-Display|Conditional Display]]
+          - [[Features-Inspector-Inspector-Selection-Attributes|Selection Attributes]]
+          - [[Features-Inspector-Inspector-Validation-Attributes|Validation Attributes]]
+          - [[Features-Inspector-Inspector-Inline-Editor|Inline Editor]]
+          - [[Features-Inspector-Inspector-Settings|Settings]]
+          - [[Features-Inspector-Visual-Components|Visual Components]]
+          - [[Features-Inspector-Utility-Components|Utility Components]]
+
+          ### Core Features
+          - [[Features-Relational-Components-Relational-Components|Relational Components]]
+          - [[Features-Effects-Effects-System|Effects System]]
+          - [[Features-Serialization-Serialization|Serialization]]
+          - [[Features-Spatial-Spatial-Trees|Spatial Trees]]
+          - [[Features-Logging-Logging|Logging]]
+
+          ### Utilities
+          - [[Features-Utilities-Data-Structures|Data Structures]]
+          - [[Features-Utilities-Math-And-Extensions|Math & Extensions]]
+          - [[Features-Utilities-Random-Generators|Random Generators]]
+          - [[Features-Utilities-Helper-Utilities|Helper Utilities]]
+          - [[Features-Utilities-Reflection-Helpers|Reflection Helpers]]
+          - [[Features-Utilities-Singletons|Singletons]]
+
+          ### Editor Tools
+          - [[Features-Editor-Tools-Editor-Tools-Guide|Editor Tools Guide]]
+
+          ### Guides
+          - [[Guides-Odin-Migration-Guide|Odin Migration Guide]]
+
+          ### Performance
+          - [[Performance-Random-Performance|Random]]
+          - [[Performance-Spatial-Tree-2D-Performance|Spatial 2D]]
+          - [[Performance-Spatial-Tree-3D-Performance|Spatial 3D]]
+          - [[Performance-Relational-Components-Performance|Relational Components]]
+          - [[Performance-Reflection-Performance|Reflection]]
+          - [[Performance-Ilist-Sorting-Performance|IList Sorting]]
+
+          ### Project
+          - [[CHANGELOG|Changelog]]
+          - [[Project-Contributing|Contributing]]
+          - [[Project-License|License]]
+          - [[Project-Third-Party-Notices|Third Party Notices]]
+          - [[Project-Llms-Txt|LLMs.txt]]
+          EOF
+
+      - name: Generate footer
+        run: |
+          cd wiki
+          cat > _Footer.md << 'EOF'
+          ---
+          📦 [Unity Helpers](https://github.com/wallstop/unity-helpers) | 📖 [Documentation](https://wallstop.github.io/unity-helpers/) | 🐛 [Issues](https://github.com/wallstop/unity-helpers/issues) | 📜 [MIT License](https://github.com/wallstop/unity-helpers/blob/main/LICENSE)
+          EOF
+
+      - name: Commit and push to wiki
+        run: |
+          cd wiki
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "Sync documentation from main repository"
+            git push origin master || git push origin main || git push --set-upstream origin master
+          fi

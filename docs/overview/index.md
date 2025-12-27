@@ -264,8 +264,8 @@ Alphabetical index of all Unity Helpers features with quick links to documentati
 **Odin Inspector Migration** - Step-by-step guide for migrating from Odin Inspector
 → [Migration Guide](../guides/odin-migration-guide.md)
 
-**ODIN Compatibility** - Automatic Odin Inspector integration
-→ [Singletons - ODIN](../features/utilities/singletons.md#odin-compatibility) | [Glossary](glossary.md#odin-compatibility)
+**Odin Compatibility** - Automatic Odin Inspector integration
+→ [Singletons - Odin](../features/utilities/singletons.md#odin-compatibility) | [Glossary](glossary.md#odin-compatibility)
 
 ---
 

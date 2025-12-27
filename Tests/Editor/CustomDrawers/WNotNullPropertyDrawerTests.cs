@@ -1,9 +1,7 @@
 namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 {
 #if UNITY_EDITOR
-    using System;
     using System.Collections;
-    using System.Reflection;
     using NUnit.Framework;
     using UnityEditor;
     using UnityEditor.UIElements;

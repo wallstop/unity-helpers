@@ -13,6 +13,8 @@
 .idea/
 .claude/
 .codex/
+_llm_*
+_llm_*.meta
 
 # Config files not needed in package
 .cursorrules
