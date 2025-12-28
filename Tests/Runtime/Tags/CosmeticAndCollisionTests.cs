@@ -1,3 +1,6 @@
+// MIT License - Copyright (c) 2023 Eli Pinkerton
+// Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
+
 namespace WallstopStudios.UnityHelpers.Tests.Tags
 {
     using System.Collections;
@@ -34,7 +37,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Tags
             GameObject target = CreateTrackedGameObject("Target");
 
             component.OnApplyEffect(target);
-            Object.DestroyImmediate(cosmetic);
+            Object.DestroyImmediate(cosmetic); // UNH-SUPPRESS: Test verifies OnDestroy callback
             Assert.AreEqual(1, SpyCosmeticComponent.RemoveInvocationCount);
         }
     }

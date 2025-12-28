@@ -1,3 +1,6 @@
+// MIT License - Copyright (c) 2023 Eli Pinkerton
+// Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
+
 #if UNITY_EDITOR
 namespace WallstopStudios.UnityHelpers.Tests.Editor.Tools
 {
@@ -18,6 +21,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Tools
     /// cancellation behavior, and UI state consistency.
     /// </summary>
     [TestFixture]
+    // UNH-SUPPRESS: Complex test class with manual EditorWindow lifecycle management in TearDown
     public sealed class UnityMethodAnalyzerWindowTests
     {
         private UnityMethodAnalyzerWindow _window;
@@ -41,7 +45,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Tools
                 // Use DestroyImmediate instead of Close() because EditorWindow.Close()
                 // can throw NullReferenceException when the window was created via
                 // ScriptableObject.CreateInstance but never shown (no host view initialized)
-                Object.DestroyImmediate(_window);
+                Object.DestroyImmediate(_window); // UNH-SUPPRESS: EditorWindow cleanup in TearDown - Close() throws NullReferenceException
                 _window = null;
             }
 
@@ -60,7 +64,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Tools
 
         private UnityMethodAnalyzerWindow CreateWindow()
         {
-            _window = ScriptableObject.CreateInstance<UnityMethodAnalyzerWindow>();
+            _window = ScriptableObject.CreateInstance<UnityMethodAnalyzerWindow>(); // UNH-SUPPRESS: EditorWindow cleaned up in TearDown
             // Initialize the window since OnEnable() is not called when using CreateInstance
             _window.Initialize();
             return _window;
@@ -2170,7 +2174,7 @@ namespace LargeTest
             // Note: ScriptableObject.CreateInstance<EditorWindow> triggers OnEnable(),
             // which calls Initialize(), so _analyzer is already non-null after CreateInstance.
             // This test verifies that Initialize() properly creates the analyzer.
-            _window = ScriptableObject.CreateInstance<UnityMethodAnalyzerWindow>();
+            _window = ScriptableObject.CreateInstance<UnityMethodAnalyzerWindow>(); // UNH-SUPPRESS: EditorWindow cleaned up in TearDown
 
             // After CreateInstance, OnEnable has been called, so analyzer should exist
             Assert.IsTrue(
@@ -2218,7 +2222,7 @@ namespace LargeTest
         [Test]
         public void StartAnalysisWithUninitializedWindowSetsErrorMessage()
         {
-            _window = ScriptableObject.CreateInstance<UnityMethodAnalyzerWindow>();
+            _window = ScriptableObject.CreateInstance<UnityMethodAnalyzerWindow>(); // UNH-SUPPRESS: EditorWindow cleaned up in TearDown
 
             // ScriptableObject.CreateInstance triggers OnEnable which calls Initialize(),
             // so we must explicitly set _analyzer to null to test uninitialized state
@@ -2516,7 +2520,7 @@ namespace LargeTest
         {
             // Test that OnDisable handles a disposed CTS gracefully
             // This can happen if analysis completes but CTS reference is stale
-            _window = ScriptableObject.CreateInstance<UnityMethodAnalyzerWindow>();
+            _window = ScriptableObject.CreateInstance<UnityMethodAnalyzerWindow>(); // UNH-SUPPRESS: EditorWindow cleaned up in TearDown
 
             // Create and dispose a CTS, then assign it to the window
             CancellationTokenSource cts = new();
@@ -2541,7 +2545,7 @@ namespace LargeTest
         public void OnDisableWithCancelledCTSDoesNotThrow()
         {
             // Test that OnDisable handles an already-cancelled CTS gracefully
-            _window = ScriptableObject.CreateInstance<UnityMethodAnalyzerWindow>();
+            _window = ScriptableObject.CreateInstance<UnityMethodAnalyzerWindow>(); // UNH-SUPPRESS: EditorWindow cleaned up in TearDown
 
             // Create a CTS and cancel it (but don't dispose)
             CancellationTokenSource cts = new();
@@ -2565,7 +2569,7 @@ namespace LargeTest
         public void OnDisableWithNullCTSDoesNotThrow()
         {
             // Test that OnDisable handles null CTS gracefully
-            _window = ScriptableObject.CreateInstance<UnityMethodAnalyzerWindow>();
+            _window = ScriptableObject.CreateInstance<UnityMethodAnalyzerWindow>(); // UNH-SUPPRESS: EditorWindow cleaned up in TearDown
 
             _window._cancellationTokenSource = null;
 
@@ -2589,7 +2593,7 @@ namespace LargeTest
             string expectedMessage
         )
         {
-            _window = ScriptableObject.CreateInstance<UnityMethodAnalyzerWindow>();
+            _window = ScriptableObject.CreateInstance<UnityMethodAnalyzerWindow>(); // UNH-SUPPRESS: EditorWindow cleaned up in TearDown
 
             _window._analyzer = null;
             _window._sourcePaths = new List<string> { _tempDir };
@@ -2699,7 +2703,7 @@ namespace LargeTest
         [Test]
         public void InitializeCanBeCalledMultipleTimesSafely()
         {
-            _window = ScriptableObject.CreateInstance<UnityMethodAnalyzerWindow>();
+            _window = ScriptableObject.CreateInstance<UnityMethodAnalyzerWindow>(); // UNH-SUPPRESS: EditorWindow cleaned up in TearDown
 
             // First Initialize (OnEnable already called this)
             MethodAnalyzer firstAnalyzer = _window._analyzer;

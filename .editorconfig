@@ -11,6 +11,10 @@ indent_size = 4
 [*.sh]
 end_of_line = lf
 
+# Git hooks require Unix line endings (they're shell scripts)
+[.githooks/*]
+end_of_line = lf
+
 # Microsoft .NET properties
 csharp_new_line_before_members_in_object_initializers = false
 csharp_preferred_modifier_order = public, private, protected, internal, file, new, static, abstract, virtual, sealed, readonly, override, extern, unsafe, volatile, async, required:suggestion

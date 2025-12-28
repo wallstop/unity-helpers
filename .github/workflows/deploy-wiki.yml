@@ -1,0 +1,462 @@
+---
+name: Deploy Documentation to GitHub Wiki
+
+"on":
+  push:
+    branches:
+      - main
+    paths:
+      - "docs/**"
+      - "README.md"
+      - "CHANGELOG.md"
+      - "index.md"
+      - ".github/workflows/deploy-wiki.yml"
+      - ".github/scripts/sync-wiki.sh"
+  workflow_dispatch:
+    inputs:
+      force_sync:
+        description: "Force sync even if no changes detected"
+        required: false
+        default: "false"
+        type: boolean
+      dry_run:
+        description: "Dry run - show changes without pushing"
+        required: false
+        default: "false"
+        type: boolean
+
+permissions:
+  contents: write
+
+# Prevent concurrent wiki pushes to avoid git conflicts
+concurrency:
+  group: wiki-sync
+  cancel-in-progress: false
+
+env:
+  WIKI_URL: "https://github.com/${{ github.repository }}.wiki.git"
+
+jobs:
+  # First job: Check if wiki exists before attempting sync
+  check-wiki:
+    name: Check wiki availability
+    runs-on: ubuntu-latest
+    outputs:
+      wiki_exists: ${{ steps.check.outputs.wiki_exists }}
+    steps:
+      - name: Check if wiki repository exists
+        id: check
+        run: |
+          set -euo pipefail
+          echo "Checking wiki availability at: $WIKI_URL"
+
+          # Use git ls-remote for lightweight check (no clone needed)
+          if git ls-remote "$WIKI_URL" HEAD >/dev/null 2>&1; then
+            echo "✅ Wiki repository exists"
+            echo "wiki_exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::Wiki repository not found at $WIKI_URL"
+            echo "::warning::To enable wiki sync:"
+            echo "::warning::  1. Go to repository Settings → Features"
+            echo "::warning::  2. Enable 'Wikis'"
+            echo "::warning::  3. Create at least one wiki page manually"
+            echo "::warning::  4. Re-run this workflow"
+            echo "wiki_exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  # Second job: Sync documentation to wiki (only if wiki exists)
+  sync-wiki:
+    name: Sync documentation to wiki
+    needs: check-wiki
+    if: needs.check-wiki.outputs.wiki_exists == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main repository
+        uses: actions/checkout@v4
+        with:
+          path: main
+          fetch-depth: 1
+
+      - name: Clone wiki repository
+        id: clone-wiki
+        run: |
+          set -euo pipefail
+          echo "Cloning wiki repository..."
+
+          WIKI_AUTH_URL="https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.wiki.git"
+
+          if ! git clone "$WIKI_AUTH_URL" wiki 2>&1; then
+            echo "::error::Failed to clone wiki repository"
+            echo "::error::Ensure the wiki has been initialized with at least one page"
+            exit 1
+          fi
+
+          echo "✅ Successfully cloned wiki repository"
+
+          # Detect wiki branch
+          cd wiki
+          WIKI_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+          echo "wiki_branch=$WIKI_BRANCH" >> "$GITHUB_OUTPUT"
+          echo "Wiki branch: $WIKI_BRANCH"
+
+      - name: Prepare wiki content
+        id: prepare
+        run: |
+          set -euo pipefail
+
+          # Track statistics
+          pages_created=0
+          images_copied=0
+
+          # Clear existing wiki content (except .git and special wiki files we'll regenerate)
+          echo "Clearing existing wiki content..."
+          find wiki -mindepth 1 -maxdepth 1 ! -name '.git' -exec rm -rf {} +
+
+          # Copy README as Home page
+          echo "Creating Home.md from README.md..."
+          cp main/README.md wiki/Home.md
+          ((pages_created++))
+
+          # Copy CHANGELOG
+          echo "Creating CHANGELOG.md..."
+          cp main/CHANGELOG.md wiki/CHANGELOG.md
+          ((pages_created++))
+
+          # Copy index.md if it exists and differs from README
+          if [ -f "main/index.md" ]; then
+            echo "Creating Index.md..."
+            cp main/index.md wiki/Index.md
+            ((pages_created++))
+          fi
+
+          # Process and copy docs with proper structure
+          echo "Processing documentation files..."
+          cd main/docs
+
+          # Create wiki pages from docs structure
+          find . -name "*.md" -type f ! -name "*.meta" | sort | while read -r file; do
+            # Remove leading ./
+            file="${file#./}"
+
+            # Create wiki-friendly filename:
+            # 1. Replace / with -
+            # 2. Capitalize first letter of each segment
+            wiki_name=$(echo "$file" | sed 's|/|-|g' | sed 's|\.md$||')
+
+            # Capitalize each segment after dash
+            wiki_name=$(echo "$wiki_name" | awk -F'-' '{for(i=1;i<=NF;i++){$i=toupper(substr($i,1,1))substr($i,2)}}1' OFS='-')
+            wiki_name="${wiki_name}.md"
+
+            # Copy file
+            cp "$file" "../../wiki/$wiki_name"
+            echo "  📄 Created: $wiki_name (from $file)"
+            ((pages_created++)) || true
+          done
+
+          # Copy images - handle nested image directories
+          echo "Copying images..."
+          if [ -d "images" ]; then
+            find images -type f ! -name "*.meta" 2>/dev/null | while read -r img; do
+              mkdir -p "../../wiki/$(dirname "$img")"
+              cp "$img" "../../wiki/$img"
+              echo "  🖼️  Copied: $img"
+              ((images_copied++)) || true
+            done
+          fi
+
+          cd ../..
+
+          echo "pages_created=$pages_created" >> "$GITHUB_OUTPUT"
+          echo "images_copied=$images_copied" >> "$GITHUB_OUTPUT"
+          echo ""
+          echo "✅ Content preparation complete"
+          echo "   Pages: $pages_created"
+          echo "   Images: $images_copied"
+
+      - name: Fix wiki links
+        run: |
+          set -euo pipefail
+          cd wiki
+
+          echo "Fixing wiki links..."
+          links_fixed=0
+
+          for file in *.md; do
+            if [ -f "$file" ]; then
+              original_hash=$(md5sum "$file" | cut -d' ' -f1)
+
+              # Fix relative doc links - convert paths to wiki page references
+              # Handle ../path/to/file.md and ./path/to/file.md patterns
+              sed -i -E 's|\(\.\.?/([^)]+)\.md\)|(\1)|g' "$file"
+
+              # Convert path separators to dashes and capitalize for wiki links
+              # This handles links like (features/inspector/overview) → (Features-Inspector-Overview)
+              sed -i -E 's|\(([a-z][^)]*)/([^)]*)\)|(\u\1-\u\2)|g' "$file"
+
+              # Fix image paths - normalize to images/ prefix
+              sed -i 's|docs/images/|images/|g' "$file"
+              sed -i 's|\.\./images/|images/|g' "$file"
+              sed -i 's|\./images/|images/|g' "$file"
+
+              # Check if file was modified
+              new_hash=$(md5sum "$file" | cut -d' ' -f1)
+              if [ "$original_hash" != "$new_hash" ]; then
+                echo "  🔗 Fixed links in: $file"
+                ((links_fixed++)) || true
+              fi
+            fi
+          done
+
+          echo "✅ Link fixing complete ($links_fixed files updated)"
+
+      - name: Generate sidebar
+        run: |
+          set -euo pipefail
+          cd wiki
+
+          echo "Generating _Sidebar.md..."
+
+          cat > _Sidebar.md << 'SIDEBAR_EOF'
+          ## 📚 Documentation
+
+          ### Getting Started
+          - [[Home]]
+          - [[Overview-Getting-Started|Getting Started]]
+          - [[Overview-Index|Feature Index]]
+          - [[Overview-Glossary|Glossary]]
+          - [[Overview-Roadmap|Roadmap]]
+
+          ### Inspector Features
+          - [[Features-Inspector-Inspector-Overview|Inspector Overview]]
+          - [[Features-Inspector-Inspector-Grouping-Attributes|Grouping Attributes]]
+          - [[Features-Inspector-Inspector-Button|Button Attribute]]
+          - [[Features-Inspector-Inspector-Conditional-Display|Conditional Display]]
+          - [[Features-Inspector-Inspector-Selection-Attributes|Selection Attributes]]
+          - [[Features-Inspector-Inspector-Validation-Attributes|Validation Attributes]]
+          - [[Features-Inspector-Inspector-Inline-Editor|Inline Editor]]
+          - [[Features-Inspector-Inspector-Settings|Settings]]
+          - [[Features-Inspector-Visual-Components|Visual Components]]
+          - [[Features-Inspector-Utility-Components|Utility Components]]
+
+          ### Core Features
+          - [[Features-Relational-Components-Relational-Components|Relational Components]]
+          - [[Features-Effects-Effects-System|Effects System]]
+          - [[Features-Serialization-Serialization|Serialization]]
+          - [[Features-Spatial-Spatial-Trees|Spatial Trees]]
+          - [[Features-Logging-Logging|Logging]]
+
+          ### Utilities
+          - [[Features-Utilities-Data-Structures|Data Structures]]
+          - [[Features-Utilities-Math-And-Extensions|Math & Extensions]]
+          - [[Features-Utilities-Random-Generators|Random Generators]]
+          - [[Features-Utilities-Helper-Utilities|Helper Utilities]]
+          - [[Features-Utilities-Reflection-Helpers|Reflection Helpers]]
+          - [[Features-Utilities-Singletons|Singletons]]
+
+          ### Editor Tools
+          - [[Features-Editor-Tools-Editor-Tools-Guide|Editor Tools Guide]]
+
+          ### Guides
+          - [[Guides-Odin-Migration-Guide|Odin Migration Guide]]
+
+          ### Performance
+          - [[Performance-Random-Performance|Random]]
+          - [[Performance-Spatial-Tree-2D-Performance|Spatial 2D]]
+          - [[Performance-Spatial-Tree-3D-Performance|Spatial 3D]]
+          - [[Performance-Relational-Components-Performance|Relational Components]]
+          - [[Performance-Reflection-Performance|Reflection]]
+          - [[Performance-Ilist-Sorting-Performance|IList Sorting]]
+
+          ### Project
+          - [[CHANGELOG|Changelog]]
+          - [[Project-Contributing|Contributing]]
+          - [[Project-License|License]]
+          - [[Project-Third-Party-Notices|Third Party Notices]]
+          - [[Project-Llms-Txt|LLMs.txt]]
+          SIDEBAR_EOF
+
+          echo "✅ Sidebar generated"
+
+      - name: Generate footer
+        run: |
+          set -euo pipefail
+          cd wiki
+
+          echo "Generating _Footer.md..."
+
+          cat > _Footer.md << 'FOOTER_EOF'
+          ---
+          📦 [Unity Helpers](https://github.com/wallstop/unity-helpers) |
+          📖 [Documentation](https://wallstop.github.io/unity-helpers/) |
+          🐛 [Issues](https://github.com/wallstop/unity-helpers/issues) |
+          📜 [MIT License](https://github.com/wallstop/unity-helpers/blob/main/LICENSE)
+          FOOTER_EOF
+
+          echo "✅ Footer generated"
+
+      - name: Validate wiki content
+        run: |
+          set -euo pipefail
+          cd wiki
+
+          echo "Validating wiki content..."
+          errors=0
+          warnings=0
+
+          # Check for required pages
+          required_pages=("Home.md" "CHANGELOG.md" "_Sidebar.md" "_Footer.md")
+          for page in "${required_pages[@]}"; do
+            if [ ! -f "$page" ]; then
+              echo "::error::Required page missing: $page"
+              ((errors++))
+            fi
+          done
+
+          # Check for empty files
+          while IFS= read -r -d '' file; do
+            if [ ! -s "$file" ]; then
+              echo "::warning::Empty file detected: $file"
+              ((warnings++))
+            fi
+          done < <(find . -name "*.md" -print0)
+
+          # Count total pages
+          total_pages=$(find . -name "*.md" -type f | wc -l)
+          total_images=$(find . -type f ! -name "*.md" ! -path "./.git/*" | wc -l)
+
+          echo ""
+          echo "📊 Wiki Statistics:"
+          echo "   Total pages: $total_pages"
+          echo "   Total images: $total_images"
+          echo "   Errors: $errors"
+          echo "   Warnings: $warnings"
+
+          if [ "$errors" -gt 0 ]; then
+            echo "::error::Validation failed with $errors errors"
+            exit 1
+          fi
+
+          echo "✅ Validation passed"
+
+      - name: Check for changes
+        id: changes
+        run: |
+          set -euo pipefail
+          cd wiki
+
+          git add -A
+
+          if git diff --staged --quiet; then
+            echo "has_changes=false" >> "$GITHUB_OUTPUT"
+            echo "📋 No changes detected in wiki content"
+          else
+            echo "has_changes=true" >> "$GITHUB_OUTPUT"
+            echo "📋 Changes detected:"
+            git diff --staged --stat
+          fi
+
+      - name: Commit and push to wiki
+        if: steps.changes.outputs.has_changes == 'true' || github.event.inputs.force_sync == 'true'
+        run: |
+          set -euo pipefail
+          cd wiki
+
+          # Configure git
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Prepare commit message with metadata
+          COMMIT_MSG="Sync documentation from main repository
+
+          Source commit: ${{ github.sha }}
+          Triggered by: ${{ github.event_name }}
+          Workflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+          # Stage all changes
+          git add -A
+
+          # Check for changes again (in case force_sync but no actual changes)
+          if git diff --staged --quiet; then
+            echo "::notice::No changes to commit (force_sync enabled but content identical)"
+            exit 0
+          fi
+
+          # Dry run mode
+          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
+            echo "🔍 DRY RUN MODE - Changes that would be committed:"
+            git diff --staged --stat
+            echo ""
+            echo "Commit message would be:"
+            echo "$COMMIT_MSG"
+            exit 0
+          fi
+
+          # Commit changes
+          git commit -m "$COMMIT_MSG"
+
+          # Push to wiki (try detected branch first, then common alternatives)
+          WIKI_BRANCH="${{ steps.clone-wiki.outputs.wiki_branch }}"
+          echo "Pushing to wiki branch: $WIKI_BRANCH"
+
+          if ! git push origin "$WIKI_BRANCH"; then
+            echo "::warning::Push to $WIKI_BRANCH failed, trying alternatives..."
+            if ! git push origin master 2>/dev/null; then
+              if ! git push origin main 2>/dev/null; then
+                echo "::error::Failed to push to wiki repository"
+                exit 1
+              fi
+            fi
+          fi
+
+          echo ""
+          echo "✅ Successfully synced documentation to wiki"
+          echo "🔗 View wiki: https://github.com/${{ github.repository }}/wiki"
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "## Wiki Sync Summary"
+            echo ""
+
+            if [ "${{ needs.check-wiki.outputs.wiki_exists }}" = "false" ]; then
+              echo "⚠️ **Wiki not available** - Please enable and initialize the wiki first."
+            elif [ "${{ steps.changes.outputs.has_changes }}" = "false" ] && [ "${{ github.event.inputs.force_sync }}" != "true" ]; then
+              echo "✅ **No changes detected** - Wiki is already up to date."
+            elif [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
+              echo "🔍 **Dry run completed** - No changes were pushed."
+            else
+              echo "✅ **Wiki synced successfully**"
+            fi
+
+            echo ""
+            echo "| Metric | Value |"
+            echo "|--------|-------|"
+            echo "| Trigger | \`${{ github.event_name }}\` |"
+            echo "| Source Commit | \`${{ github.sha }}\` |"
+            echo "| Wiki URL | [View Wiki](https://github.com/${{ github.repository }}/wiki) |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  # Notify on failure
+  notify-failure:
+    name: Notify on failure
+    needs: [check-wiki, sync-wiki]
+    if: failure()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create failure summary
+        run: |
+          {
+            echo "## ❌ Wiki Sync Failed"
+            echo ""
+            echo "The wiki synchronization workflow failed."
+            echo ""
+            echo "### Troubleshooting Steps"
+            echo ""
+            echo "1. **Check if wiki is enabled**: Go to Settings → Features → Wikis"
+            echo "2. **Initialize wiki**: Create at least one page manually in the wiki"
+            echo "3. **Check permissions**: Ensure GITHUB_TOKEN has write access"
+            echo "4. **Review logs**: Check the workflow logs for specific errors"
+            echo ""
+            echo "[View Workflow Run](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})"
+          } >> "$GITHUB_STEP_SUMMARY"

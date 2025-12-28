@@ -1,3 +1,6 @@
+// MIT License - Copyright (c) 2023 Eli Pinkerton
+// Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
+
 namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 {
 #if UNITY_EDITOR
@@ -11,6 +14,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Core.Extension;
     using WallstopStudios.UnityHelpers.Core.Helper;
+    using WallstopStudios.UnityHelpers.Editor.CustomDrawers.Utils;
     using WallstopStudios.UnityHelpers.Utils;
 
     [CustomPropertyDrawer(typeof(WShowIfAttribute))]
@@ -27,7 +31,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             (int serializedObjectHash, int instanceId, string propertyPath, string conditionField),
             SerializedProperty
         > ConditionPropertyCache = new();
-        private static readonly Dictionary<Type, MethodInfo> CompareToMethodCache = new();
         private static readonly Dictionary<
             (Type ownerType, string fieldName),
             FieldInfo
@@ -103,8 +106,11 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             Type ownerType = enclosingObject.GetType();
             Func<object, object> accessor = GetAccessor(ownerType, showIf.conditionField);
             object fieldValue = accessor(enclosingObject);
-            return !TryEvaluateCondition(fieldValue, showIf, out bool reflectedResult)
-                || reflectedResult;
+            return !ShowIfConditionEvaluator.TryEvaluateCondition(
+                    fieldValue,
+                    showIf,
+                    out bool reflectedResult
+                ) || reflectedResult;
         }
 
         public override float GetPropertyHeight(SerializedProperty property, GUIContent label)
@@ -204,8 +210,11 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             Type ownerType = enclosingObject.GetType();
             Func<object, object> accessor = GetAccessor(ownerType, showIf.conditionField);
             object fieldValue = accessor(enclosingObject);
-            return !TryEvaluateCondition(fieldValue, showIf, out bool reflectedResult)
-                || reflectedResult;
+            return !ShowIfConditionEvaluator.TryEvaluateCondition(
+                    fieldValue,
+                    showIf,
+                    out bool reflectedResult
+                ) || reflectedResult;
         }
 
         private static bool TryEvaluateCondition(
@@ -230,86 +239,11 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 conditionValue = conditionProperty.GetTargetObjectWithField(out _);
             }
 
-            return TryEvaluateCondition(conditionValue, showIf, out shouldShow);
-        }
-
-        private static bool TryEvaluateCondition(
-            object conditionValue,
-            WShowIfAttribute showIf,
-            out bool shouldShow
-        )
-        {
-            bool? evaluation = EvaluateCondition(conditionValue, showIf);
-            if (!evaluation.HasValue)
-            {
-                shouldShow = true;
-                return false;
-            }
-
-            bool matched = evaluation.Value;
-            shouldShow = showIf.inverse ? !matched : matched;
-            return true;
-        }
-
-        private static bool ValuesEqual(object actual, object expected)
-        {
-            if (ReferenceEquals(actual, expected))
-            {
-                return true;
-            }
-
-            if (actual == null || expected == null)
-            {
-                return false;
-            }
-
-            if (actual.Equals(expected))
-            {
-                return true;
-            }
-
-            Type actualType = actual.GetType();
-            Type expectedType = expected.GetType();
-
-            try
-            {
-                if (actualType.IsEnum || expectedType.IsEnum)
-                {
-                    long actualValue = Convert.ToInt64(actual);
-                    long expectedValue = Convert.ToInt64(expected);
-
-                    // For [Flags] enums, check if all expected flags are set in actual value.
-                    // This handles Unity's "Everything" selection which sets all bits (-1).
-                    // For non-flags enums, this is equivalent to exact equality when values match.
-                    Type enumType = actualType.IsEnum ? actualType : expectedType;
-                    if (enumType.IsDefined(typeof(FlagsAttribute), false))
-                    {
-                        return (actualValue & expectedValue) == expectedValue;
-                    }
-
-                    return actualValue == expectedValue;
-                }
-            }
-            catch
-            {
-                return false;
-            }
-
-            if (actual is not IConvertible || expected is not IConvertible)
-            {
-                return false;
-            }
-
-            try
-            {
-                double actualValue = Convert.ToDouble(actual);
-                double expectedValue = Convert.ToDouble(expected);
-                return Math.Abs(actualValue - expectedValue) < double.Epsilon;
-            }
-            catch
-            {
-                return false;
-            }
+            return ShowIfConditionEvaluator.TryEvaluateCondition(
+                conditionValue,
+                showIf,
+                out shouldShow
+            );
         }
 
         private static bool TryGetConditionProperty(
@@ -620,375 +554,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
 
             return IndexAccessor.Invalid;
-        }
-
-        private static bool? EvaluateCondition(object conditionValue, WShowIfAttribute attribute)
-        {
-            WShowIfComparison comparison = attribute.comparison;
-#pragma warning disable CS0618 // Type or member is obsolete
-            if (comparison == WShowIfComparison.Unknown)
-#pragma warning restore CS0618 // Type or member is obsolete
-            {
-                comparison = WShowIfComparison.Equal;
-            }
-
-            switch (comparison)
-            {
-                case WShowIfComparison.IsNull:
-                    return IsNull(conditionValue);
-                case WShowIfComparison.IsNotNull:
-                    return !IsNull(conditionValue);
-                case WShowIfComparison.IsNullOrEmpty:
-                    return IsNullOrEmpty(conditionValue);
-                case WShowIfComparison.IsNotNullOrEmpty:
-                    return !IsNullOrEmpty(conditionValue);
-                default:
-                    break;
-            }
-
-            object[] expectedValues = attribute.expectedValues;
-            if (conditionValue is bool boolean)
-            {
-                return EvaluateBooleanCondition(boolean, comparison, expectedValues);
-            }
-            if (expectedValues == null || expectedValues.Length == 0)
-            {
-                return null;
-            }
-
-            switch (comparison)
-            {
-                case WShowIfComparison.Equal:
-                    return MatchesAny(conditionValue, expectedValues);
-                case WShowIfComparison.NotEqual:
-                    return !MatchesAny(conditionValue, expectedValues);
-                case WShowIfComparison.GreaterThan:
-                case WShowIfComparison.GreaterThanOrEqual:
-                case WShowIfComparison.LessThan:
-                case WShowIfComparison.LessThanOrEqual:
-                    object referenceValue = expectedValues[0];
-                    bool? relational = EvaluateRelationalComparison(
-                        conditionValue,
-                        referenceValue,
-                        comparison
-                    );
-                    return relational;
-                default:
-                    return MatchesAny(conditionValue, expectedValues);
-            }
-        }
-
-        private static bool? EvaluateBooleanCondition(
-            bool value,
-            WShowIfComparison comparison,
-            object[] expectedValues
-        )
-        {
-            if (expectedValues is { Length: > 0 })
-            {
-                bool matches = MatchesAny(value, expectedValues);
-                if (comparison == WShowIfComparison.NotEqual)
-                {
-                    return !matches;
-                }
-
-                return matches;
-            }
-
-            if (comparison == WShowIfComparison.NotEqual)
-            {
-                return !value;
-            }
-
-            return value;
-        }
-
-        private static bool MatchesAny(object conditionValue, object[] expectedValues)
-        {
-            for (int index = 0; index < expectedValues.Length; index += 1)
-            {
-                if (ValuesEqual(conditionValue, expectedValues[index]))
-                {
-                    return true;
-                }
-            }
-
-            return false;
-        }
-
-        private static bool? EvaluateRelationalComparison(
-            object actual,
-            object expected,
-            WShowIfComparison comparison
-        )
-        {
-            if (!TryCompare(actual, expected, out int compareResult))
-            {
-                return null;
-            }
-
-            switch (comparison)
-            {
-                case WShowIfComparison.GreaterThan:
-                    return compareResult > 0;
-                case WShowIfComparison.GreaterThanOrEqual:
-                    return compareResult >= 0;
-                case WShowIfComparison.LessThan:
-                    return compareResult < 0;
-                case WShowIfComparison.LessThanOrEqual:
-                    return compareResult <= 0;
-                default:
-                    return null;
-            }
-        }
-
-        private static bool TryCompare(object actual, object expected, out int comparisonResult)
-        {
-            comparisonResult = 0;
-            if (actual == null || expected == null)
-            {
-                return false;
-            }
-
-            IComparable comparable = actual as IComparable;
-            if (comparable != null)
-            {
-                object converted = ConvertValue(
-                    actual.GetType(),
-                    expected,
-                    out bool conversionSucceeded
-                );
-                if (conversionSucceeded)
-                {
-                    try
-                    {
-                        comparisonResult = comparable.CompareTo(converted);
-                        return true;
-                    }
-                    catch { }
-                }
-            }
-
-            if (TryGenericComparableCompare(actual, expected, out comparisonResult, false))
-            {
-                return true;
-            }
-
-            IComparable expectedComparable = expected as IComparable;
-            if (expectedComparable != null)
-            {
-                object converted = ConvertValue(
-                    expected.GetType(),
-                    actual,
-                    out bool conversionSucceeded
-                );
-                if (conversionSucceeded)
-                {
-                    try
-                    {
-                        comparisonResult = -expectedComparable.CompareTo(converted);
-                        return true;
-                    }
-                    catch { }
-                }
-            }
-
-            if (TryGenericComparableCompare(expected, actual, out comparisonResult, true))
-            {
-                return true;
-            }
-
-            if (
-                TryConvertToDouble(actual, out double actualDouble)
-                && TryConvertToDouble(expected, out double expectedDouble)
-            )
-            {
-                comparisonResult = actualDouble.CompareTo(expectedDouble);
-                return true;
-            }
-
-            return false;
-        }
-
-        private static object ConvertValue(Type targetType, object value, out bool success)
-        {
-            success = true;
-            if (value == null)
-            {
-                if (targetType.IsValueType && Nullable.GetUnderlyingType(targetType) == null)
-                {
-                    success = false;
-                }
-
-                return null;
-            }
-
-            if (targetType.IsInstanceOfType(value))
-            {
-                return value;
-            }
-
-            try
-            {
-                if (targetType.IsEnum)
-                {
-                    Type underlyingType = Enum.GetUnderlyingType(targetType);
-                    object numericValue = Convert.ChangeType(value, underlyingType);
-                    return Enum.ToObject(targetType, numericValue);
-                }
-
-                return Convert.ChangeType(value, targetType);
-            }
-            catch
-            {
-                success = false;
-                return null;
-            }
-        }
-
-        private static bool TryConvertToDouble(object value, out double result)
-        {
-            result = 0d;
-            if (value == null)
-            {
-                return false;
-            }
-
-            try
-            {
-                result = Convert.ToDouble(value);
-                return true;
-            }
-            catch
-            {
-                return false;
-            }
-        }
-
-        private static bool TryGenericComparableCompare(
-            object lhs,
-            object rhs,
-            out int comparisonResult,
-            bool invert
-        )
-        {
-            comparisonResult = 0;
-            if (lhs == null)
-            {
-                return false;
-            }
-
-            Type lhsType = lhs.GetType();
-
-            if (!CompareToMethodCache.TryGetValue(lhsType, out MethodInfo compareTo))
-            {
-                compareTo = FindCompareToMethod(lhsType);
-                CompareToMethodCache[lhsType] = compareTo;
-            }
-
-            if (compareTo == null)
-            {
-                return false;
-            }
-
-            Type genericArgument = compareTo.GetParameters()[0].ParameterType;
-            object converted = ConvertValue(genericArgument, rhs, out bool success);
-            if (!success)
-            {
-                return false;
-            }
-
-            try
-            {
-                _singleIndexArgs ??= new object[1];
-                _singleIndexArgs[0] = converted;
-                object compareResult = compareTo.Invoke(lhs, _singleIndexArgs);
-                comparisonResult = Convert.ToInt32(compareResult);
-                if (invert)
-                {
-                    comparisonResult = -comparisonResult;
-                }
-
-                return true;
-            }
-            catch
-            {
-                return false;
-            }
-        }
-
-        private static MethodInfo FindCompareToMethod(Type type)
-        {
-            Type[] interfaces = type.GetInterfaces();
-            for (int index = 0; index < interfaces.Length; index += 1)
-            {
-                Type iface = interfaces[index];
-                if (
-                    !iface.IsGenericType
-                    || iface.GetGenericTypeDefinition() != typeof(IComparable<>)
-                )
-                {
-                    continue;
-                }
-
-                Type genericArgument = iface.GetGenericArguments()[0];
-                MethodInfo method = iface.GetMethod("CompareTo", new[] { genericArgument });
-                if (method != null)
-                {
-                    return method;
-                }
-            }
-
-            return null;
-        }
-
-        private static bool IsNull(object value)
-        {
-            if (value == null)
-            {
-                return true;
-            }
-
-            UnityEngine.Object unityObject = value as UnityEngine.Object;
-            if (unityObject != null)
-            {
-                return unityObject == null;
-            }
-
-            return false;
-        }
-
-        private static bool IsNullOrEmpty(object value)
-        {
-            if (IsNull(value))
-            {
-                return true;
-            }
-
-            string stringValue = value as string;
-            if (stringValue != null)
-            {
-                return stringValue.Length == 0;
-            }
-
-            ICollection collection = value as ICollection;
-            if (collection != null)
-            {
-                return collection.Count == 0;
-            }
-
-            IEnumerable enumerable = value as IEnumerable;
-            if (enumerable != null)
-            {
-                foreach (object _ in enumerable)
-                {
-                    return false;
-                }
-
-                return true;
-            }
-
-            return false;
         }
 
         private static void ParseMemberPath(string memberPath, List<MemberPathSegment> segments)

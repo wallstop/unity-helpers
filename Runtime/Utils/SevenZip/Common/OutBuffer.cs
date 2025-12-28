@@ -1,51 +1,54 @@
+// MIT License - Copyright (c) 2023 Eli Pinkerton
+// Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
+
 // OutBuffer.cs
 
 namespace SevenZip.Buffer
 {
     public class OutBuffer
     {
-        readonly byte[] m_Buffer;
-        uint m_Pos;
-        readonly uint m_BufferSize;
-        System.IO.Stream m_Stream;
-        ulong m_ProcessedSize;
+        private readonly byte[] _buffer;
+        private uint _position;
+        private readonly uint _bufferSize;
+        private System.IO.Stream _stream;
+        private ulong _processedSize;
 
         public OutBuffer(uint bufferSize)
         {
-            m_Buffer = new byte[bufferSize];
-            m_BufferSize = bufferSize;
+            _buffer = new byte[bufferSize];
+            _bufferSize = bufferSize;
         }
 
         public void SetStream(System.IO.Stream stream)
         {
-            m_Stream = stream;
+            _stream = stream;
         }
 
         public void FlushStream()
         {
-            m_Stream.Flush();
+            _stream.Flush();
         }
 
         public void CloseStream()
         {
-            m_Stream.Close();
+            _stream.Close();
         }
 
         public void ReleaseStream()
         {
-            m_Stream = null;
+            _stream = null;
         }
 
         public void Init()
         {
-            m_ProcessedSize = 0;
-            m_Pos = 0;
+            _processedSize = 0;
+            _position = 0;
         }
 
         public void WriteByte(byte b)
         {
-            m_Buffer[m_Pos++] = b;
-            if (m_Pos >= m_BufferSize)
+            _buffer[_position++] = b;
+            if (_position >= _bufferSize)
             {
                 FlushData();
             }
@@ -53,18 +56,18 @@ namespace SevenZip.Buffer
 
         public void FlushData()
         {
-            if (m_Pos == 0)
+            if (_position == 0)
             {
                 return;
             }
 
-            m_Stream.Write(m_Buffer, 0, (int)m_Pos);
-            m_Pos = 0;
+            _stream.Write(_buffer, 0, (int)_position);
+            _position = 0;
         }
 
         public ulong GetProcessedSize()
         {
-            return m_ProcessedSize + m_Pos;
+            return _processedSize + _position;
         }
     }
 }

@@ -1,3 +1,6 @@
+// MIT License - Copyright (c) 2023 Eli Pinkerton
+// Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
+
 namespace WallstopStudios.UnityHelpers.Tests.Attributes
 {
     using System;
@@ -564,7 +567,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
             );
             Assert.False(InvokeShouldShow(drawer, dependentProperty));
 
-            Object.DestroyImmediate(container.referenceCondition);
+            Object.DestroyImmediate(container.referenceCondition); // UNH-SUPPRESS: Testing destroyed reference handling
             container.referenceCondition = null;
             dependentProperty = RefreshProperty(
                 serializedObject,
@@ -657,7 +660,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
 
             Assert.False(InvokeShouldShow(drawer, dependentProperty));
 
-            Object.DestroyImmediate(container.objectCondition);
+            Object.DestroyImmediate(container.objectCondition); // UNH-SUPPRESS: Testing destroyed object handling
             container.objectCondition = null;
             dependentProperty = RefreshProperty(
                 serializedObject,

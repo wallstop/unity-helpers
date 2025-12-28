@@ -1,3 +1,6 @@
+// MIT License - Copyright (c) 2023 Eli Pinkerton
+// Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
+
 namespace WallstopStudios.UnityHelpers.Tests.Tools
 {
     using System;
@@ -338,14 +341,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Tools
         [Test]
         public void IsCompilationPendingHandlesNullEvaluatorGracefully()
         {
-            // Force the evaluator to null through reflection to test defensive check
-            System.Reflection.FieldInfo field = typeof(ManualRecompile).GetField(
-                "isCompilationPendingEvaluator",
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static
-            );
-            Assert.IsNotNull(field, "Should be able to access isCompilationPendingEvaluator field");
-
-            field.SetValue(null, null);
+            // Force the evaluator to null directly to test defensive check
+            ManualRecompile.isCompilationPendingEvaluator = null;
 
             ManualRecompile.SkipCompilationRequestForTests = true;
             bool assetsRefreshed = false;
@@ -355,17 +352,41 @@ namespace WallstopStudios.UnityHelpers.Tests.Tools
                 LogType.Warning,
                 new Regex("Compilation pending evaluator is null", RegexOptions.IgnoreCase)
             );
-            LogAssert.Expect(
-                LogType.Log,
-                new Regex("Asset database refreshed", RegexOptions.IgnoreCase)
-            );
+
+            // After resetting to default, the evaluator will check EditorApplication.isCompiling.
+            // We need to conditionally expect different log messages based on Unity's actual state.
+            bool wasCompilingAtTimeOfCall = EditorApplication.isCompiling;
+            if (wasCompilingAtTimeOfCall)
+            {
+                LogAssert.Expect(
+                    LogType.Log,
+                    new Regex("compilation already in progress", RegexOptions.IgnoreCase)
+                );
+            }
+            else
+            {
+                LogAssert.Expect(
+                    LogType.Log,
+                    new Regex("Asset database refreshed", RegexOptions.IgnoreCase)
+                );
+            }
 
             ManualRecompile.RequestFromMenu();
 
-            Assert.IsTrue(
-                assetsRefreshed,
-                "Request should proceed after restoring null evaluator to default"
-            );
+            if (wasCompilingAtTimeOfCall)
+            {
+                Assert.IsFalse(
+                    assetsRefreshed,
+                    "When evaluator reset to default and Unity is compiling, refresh should be skipped."
+                );
+            }
+            else
+            {
+                Assert.IsTrue(
+                    assetsRefreshed,
+                    "Request should proceed after restoring null evaluator to default when Unity is not compiling"
+                );
+            }
         }
 
         [Test]

@@ -1,3 +1,6 @@
+// MIT License - Copyright (c) 2023 Eli Pinkerton
+// Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
+
 namespace WallstopStudios.UnityHelpers.Tests.Windows
 {
 #if UNITY_EDITOR
@@ -748,7 +751,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Windows
             }
             finally
             {
-                Object.DestroyImmediate(t);
+                Object.DestroyImmediate(t); // UNH-SUPPRESS: Cleanup temporary texture in finally block
             }
         }
 

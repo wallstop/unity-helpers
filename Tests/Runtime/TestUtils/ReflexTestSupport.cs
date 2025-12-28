@@ -1,3 +1,6 @@
+// MIT License - Copyright (c) 2023 Eli Pinkerton
+// Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
+
 #if REFLEX_PRESENT
 namespace WallstopStudios.UnityHelpers.Tests.TestUtils
 {
@@ -7,8 +10,16 @@ namespace WallstopStudios.UnityHelpers.Tests.TestUtils
     using System.Reflection;
     using UnityEngine;
 
+    /// <summary>
+    ///     Provides test support utilities for the Reflex dependency injection library.
+    ///     This class uses reflection to access Reflex internals because Reflex does not
+    ///     expose public APIs for test setup/reset of its singleton ReflexSettings instance.
+    /// </summary>
     public static class ReflexTestSupport
     {
+        // Reflection required: Reflex provides no public API to create or reset ReflexSettings for testing.
+        // The ReflexSettings class uses a private static _instance field for its singleton pattern,
+        // and the LogLevel/ProjectScopes properties have no public setters.
         private const string ReflexSettingsTypeName = "Reflex.Configuration.ReflexSettings";
         private const string InstanceFieldName = "_instance";
         private const string LogLevelBackingFieldName = "<LogLevel>k__BackingField";
@@ -18,6 +29,10 @@ namespace WallstopStudios.UnityHelpers.Tests.TestUtils
 
         private static bool _initialized;
 
+        /// <summary>
+        ///     Ensures that ReflexSettings is initialized for testing.
+        ///     Creates a mock ReflexSettings instance via reflection if one doesn't exist.
+        /// </summary>
         public static void EnsureReflexSettings()
         {
             if (_initialized)

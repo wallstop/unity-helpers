@@ -27,6 +27,8 @@ logs_*zip.meta
 
 .claude/*
 .codex/*
+_llm_*
+_llm_*.meta
 
 # Build results
 [Dd]ebug/
@@ -66,6 +68,7 @@ dlldata.c
 project.lock.json
 project.fragment.lock.json
 artifacts/
+artifacts.meta
 
 *_i.c
 *_p.c

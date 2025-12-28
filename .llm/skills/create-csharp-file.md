@@ -27,13 +27,15 @@
 ```csharp
 namespace WallstopStudios.UnityHelpers.{Subsystem}
 {
+#if CONDITIONAL_FEATURE
     using System;
+#endif
     using System.Collections.Generic;
     using UnityEngine;
 
     public sealed class MyClass
     {
-        // Implementation
+        // Implementation - let descriptive names speak for themselves
     }
 }
 ```
@@ -130,12 +132,114 @@ UnityEngine.Object obj = ...;
 
 ### 9. Minimal Comments
 
-- ✅ Comments explaining **why** a non-obvious algorithm is used
+Comments should explain **why**, never **what**. Rely on descriptive names and obvious call patterns.
+
+- ✅ Comments explaining **why** a non-obvious approach is used
 - ✅ Comments documenting Unity quirks or platform-specific behavior
+- ✅ Brief notes on edge cases that aren't obvious from context
 - ❌ Comments describing **what** readable code does
+- ❌ Comments restating the method/variable name
 - ❌ Commented-out code (use version control)
 - ❌ TODO/FIXME without associated issue tracking
 - ❌ Section dividers like `// ========= METHODS =========`
+
+```csharp
+// ❌ BAD - States the obvious
+// Increment the counter
+counter++;
+
+// ❌ BAD - Restates the name
+// Gets the active enemies
+public void GetActiveEnemies(List<Enemy> result) { }
+
+// ✅ GOOD - Explains why (non-obvious behavior)
+// Unity's null-check operator doesn't work with destroyed objects
+if (gameObject != null) { }
+
+// ✅ GOOD - Documents a constraint not obvious from code
+// Must be called after Awake() completes across all objects
+public void Initialize() { }
+```
+
+### 10. Preprocessor Directives: `#define` vs `#if`
+
+**`#define` directives** MUST be placed at the **top of the file** before any tokens. This is a C# language requirement (error CS1032):
+
+```csharp
+// ✅ CORRECT - #define at file top (C# requirement)
+#if !ENABLE_UBERLOGGING && (DEVELOPMENT_BUILD || DEBUG || UNITY_EDITOR)
+#define ENABLE_UBERLOGGING
+#endif
+
+namespace WallstopStudios.UnityHelpers.Core.Extension
+{
+    // ...
+}
+```
+
+**`#if` conditional blocks** (without `#define`) should be placed **inside** the namespace for consistency:
+
+✅ **CORRECT**:
+
+```csharp
+namespace WallstopStudios.UnityHelpers.Core
+{
+#if SINGLE_THREADED
+    using System.Collections.Generic;
+#else
+    using System.Collections.Concurrent;
+#endif
+
+    public sealed class MyCache { }
+}
+```
+
+❌ **INCORRECT**:
+
+```csharp
+#if SINGLE_THREADED
+using System.Collections.Generic;
+#else
+using System.Collections.Concurrent;
+#endif
+
+namespace WallstopStudios.UnityHelpers.Core
+{
+    public sealed class MyCache { }
+}
+```
+
+**Exception**: Unity-standard defines like `UNITY_EDITOR`, `UNITY_2021_3_OR_NEWER` may wrap entire file contents when necessary.
+
+**Third-party package defines** (`ODIN_INSPECTOR`, `VCONTAINER`, `ZENJECT`, etc.) should also be placed inside the namespace:
+
+```csharp
+// ✅ CORRECT - Odin directive inside namespace
+namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
+{
+#if UNITY_EDITOR && ODIN_INSPECTOR
+    using Sirenix.OdinInspector.Editor;
+
+    public sealed class MyOdinDrawer : OdinAttributeDrawer<MyAttribute>
+    {
+        // Implementation
+    }
+#endif
+}
+
+// ❌ INCORRECT - Odin directive outside namespace
+#if UNITY_EDITOR && ODIN_INSPECTOR
+namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
+{
+    public sealed class MyOdinDrawer : OdinAttributeDrawer<MyAttribute>
+    {
+        // Implementation
+    }
+}
+#endif
+```
+
+See [integrate-optional-dependency](integrate-optional-dependency.md) for complete patterns.
 
 ---
 
@@ -155,9 +259,37 @@ UnityEngine.Object obj = ...;
    dotnet tool run csharpier format .
    ```
 
-3. **Verify no errors**:
+3. **Add XML documentation** for all public types and members:
+
+   ```csharp
+   /// <summary>
+   /// Brief description of the type or member.
+   /// </summary>
+   /// <param name="paramName">Description of parameter.</param>
+   /// <returns>Description of return value.</returns>
+   public int MyMethod(string paramName) { }
+   ```
+
+   > See [update-documentation](update-documentation.md) for XML doc standards.
+
+4. **Update CHANGELOG** for user-facing changes:
+   - New features → `### Added` section
+   - Bug fixes → `### Fixed` section
+   - See [update-documentation](update-documentation.md) for format
+
+5. **Verify no errors**:
    - Check IDE for compilation errors
    - Ensure `.asmdef` references are correct if adding new namespaces
+
+---
+
+## Related Skills
+
+- [high-performance-csharp](high-performance-csharp.md) — Zero-allocation patterns (MANDATORY for all code)
+- [defensive-programming](defensive-programming.md) — Robust error handling (MANDATORY for all code)
+- [create-test](create-test.md) — Testing guidelines
+- [update-documentation](update-documentation.md) — Documentation standards
+- [create-unity-meta](create-unity-meta.md) — Meta file generation
 
 ---
 

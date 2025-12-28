@@ -1,3 +1,6 @@
+// MIT License - Copyright (c) 2023 Eli Pinkerton
+// Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
+
 namespace WallstopStudios.UnityHelpers.Tests
 {
 #if UNITY_EDITOR
@@ -76,8 +79,9 @@ namespace WallstopStudios.UnityHelpers.Tests
             _createdFolders.Add(PersistentDirectorySettings.LegacyFolder);
             yield return null;
 
-            PersistentDirectorySettings legacy =
-                ScriptableObject.CreateInstance<PersistentDirectorySettings>();
+            PersistentDirectorySettings legacy = Track(
+                ScriptableObject.CreateInstance<PersistentDirectorySettings>()
+            );
             legacy.RecordPath("TestTool", "Context", "Assets/TestPath");
             AssetDatabase.CreateAsset(legacy, PersistentDirectorySettings.LegacyAssetPath);
             AssetDatabase.SaveAssets();
@@ -125,15 +129,17 @@ namespace WallstopStudios.UnityHelpers.Tests
             _createdFolders.Add(PersistentDirectorySettings.LegacyFolder);
             yield return null;
 
-            PersistentDirectorySettings target =
-                ScriptableObject.CreateInstance<PersistentDirectorySettings>();
+            PersistentDirectorySettings target = Track(
+                ScriptableObject.CreateInstance<PersistentDirectorySettings>()
+            );
             target.RecordPath("ToolA", "ContextA", "Assets/PathA");
             AssetDatabase.CreateAsset(target, PersistentDirectorySettings.TargetAssetPath);
             _createdAssets.Add(PersistentDirectorySettings.TargetAssetPath);
             yield return null;
 
-            PersistentDirectorySettings legacy =
-                ScriptableObject.CreateInstance<PersistentDirectorySettings>();
+            PersistentDirectorySettings legacy = Track(
+                ScriptableObject.CreateInstance<PersistentDirectorySettings>()
+            );
             legacy.RecordPath("ToolB", "ContextB", "Assets/PathB");
             AssetDatabase.CreateAsset(legacy, PersistentDirectorySettings.LegacyAssetPath);
             yield return null;
@@ -185,14 +191,16 @@ namespace WallstopStudios.UnityHelpers.Tests
             string customAssetPath = customFolder + "/PersistentDirectorySettings.asset";
             yield return null;
 
-            PersistentDirectorySettings first =
-                ScriptableObject.CreateInstance<PersistentDirectorySettings>();
+            PersistentDirectorySettings first = Track(
+                ScriptableObject.CreateInstance<PersistentDirectorySettings>()
+            );
             first.RecordPath("Tool1", "Ctx1", "Assets/Path1");
             AssetDatabase.CreateAsset(first, PersistentDirectorySettings.LegacyAssetPath);
             yield return null;
 
-            PersistentDirectorySettings second =
-                ScriptableObject.CreateInstance<PersistentDirectorySettings>();
+            PersistentDirectorySettings second = Track(
+                ScriptableObject.CreateInstance<PersistentDirectorySettings>()
+            );
             second.RecordPath("Tool2", "Ctx2", "Assets/Path2");
             AssetDatabase.CreateAsset(second, customAssetPath);
             _createdAssets.Add(customAssetPath);
@@ -281,8 +289,9 @@ namespace WallstopStudios.UnityHelpers.Tests
             _createdFolders.Add("Assets/Resources/Wallstop Studios");
             yield return null;
 
-            PersistentDirectorySettings legacy =
-                ScriptableObject.CreateInstance<PersistentDirectorySettings>();
+            PersistentDirectorySettings legacy = Track(
+                ScriptableObject.CreateInstance<PersistentDirectorySettings>()
+            );
             AssetDatabase.CreateAsset(legacy, PersistentDirectorySettings.LegacyAssetPath);
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
@@ -314,8 +323,9 @@ namespace WallstopStudios.UnityHelpers.Tests
             _createdFolders.Add(PersistentDirectorySettings.LegacyFolder);
             yield return null;
 
-            PersistentDirectorySettings legacy =
-                ScriptableObject.CreateInstance<PersistentDirectorySettings>();
+            PersistentDirectorySettings legacy = Track(
+                ScriptableObject.CreateInstance<PersistentDirectorySettings>()
+            );
             legacy.RecordPath("ExportTool", "Default", "Assets/Exports");
             legacy.RecordPath("ExportTool", "Default", "Assets/Exports");
             legacy.RecordPath("ExportTool", "Default", "Assets/Exports");
@@ -456,15 +466,17 @@ namespace WallstopStudios.UnityHelpers.Tests
             _createdFolders.Add(PersistentDirectorySettings.LegacyFolder);
             yield return null;
 
-            PersistentDirectorySettings target =
-                ScriptableObject.CreateInstance<PersistentDirectorySettings>();
+            PersistentDirectorySettings target = Track(
+                ScriptableObject.CreateInstance<PersistentDirectorySettings>()
+            );
             target.RecordPath("TargetTool", "TargetCtx", "Assets/TargetPath");
             AssetDatabase.CreateAsset(target, PersistentDirectorySettings.TargetAssetPath);
             _createdAssets.Add(PersistentDirectorySettings.TargetAssetPath);
             yield return null;
 
-            PersistentDirectorySettings legacy =
-                ScriptableObject.CreateInstance<PersistentDirectorySettings>();
+            PersistentDirectorySettings legacy = Track(
+                ScriptableObject.CreateInstance<PersistentDirectorySettings>()
+            );
             legacy.RecordPath("LegacyTool", "LegacyCtx", "Assets/LegacyPath");
             AssetDatabase.CreateAsset(legacy, PersistentDirectorySettings.LegacyAssetPath);
             yield return null;
@@ -562,7 +574,7 @@ namespace WallstopStudios.UnityHelpers.Tests
             _createdFolders.Add("Assets/Resources/Wallstop Studios");
             yield return null;
 
-            ScriptableObject dummy = ScriptableObject.CreateInstance<ScriptableObject>();
+            ScriptableObject dummy = Track(ScriptableObject.CreateInstance<ScriptableObject>());
             string dummyPath = folderWithAsset + "/DummyAsset.asset";
             AssetDatabase.CreateAsset(dummy, dummyPath);
             _createdAssets.Add(dummyPath);
@@ -598,8 +610,9 @@ namespace WallstopStudios.UnityHelpers.Tests
             _createdFolders.Add(PersistentDirectorySettings.TargetFolder);
             yield return null;
 
-            PersistentDirectorySettings target =
-                ScriptableObject.CreateInstance<PersistentDirectorySettings>();
+            PersistentDirectorySettings target = Track(
+                ScriptableObject.CreateInstance<PersistentDirectorySettings>()
+            );
             AssetDatabase.CreateAsset(target, PersistentDirectorySettings.TargetAssetPath);
             _createdAssets.Add(PersistentDirectorySettings.TargetAssetPath);
             yield return null;
@@ -869,7 +882,7 @@ namespace WallstopStudios.UnityHelpers.Tests
             _createdFolders.Add("Assets/Resources/Wallstop Studios");
             yield return null;
 
-            ScriptableObject dummy = ScriptableObject.CreateInstance<ScriptableObject>();
+            ScriptableObject dummy = Track(ScriptableObject.CreateInstance<ScriptableObject>());
             string dummyPath = filledBranch + "/KeepMe.asset";
             AssetDatabase.CreateAsset(dummy, dummyPath);
             _createdAssets.Add(dummyPath);
@@ -913,8 +926,9 @@ namespace WallstopStudios.UnityHelpers.Tests
             EnsureFolderExists(extraEmptyFolder);
             yield return null;
 
-            PersistentDirectorySettings legacy =
-                ScriptableObject.CreateInstance<PersistentDirectorySettings>();
+            PersistentDirectorySettings legacy = Track(
+                ScriptableObject.CreateInstance<PersistentDirectorySettings>()
+            );
             legacy.RecordPath("Tool", "Ctx", "Assets/Path");
             AssetDatabase.CreateAsset(legacy, PersistentDirectorySettings.LegacyAssetPath);
             AssetDatabase.SaveAssets();
@@ -962,8 +976,9 @@ namespace WallstopStudios.UnityHelpers.Tests
             _createdFolders.Add("Assets/Resources/Wallstop Studios");
             yield return null;
 
-            PersistentDirectorySettings legacy =
-                ScriptableObject.CreateInstance<PersistentDirectorySettings>();
+            PersistentDirectorySettings legacy = Track(
+                ScriptableObject.CreateInstance<PersistentDirectorySettings>()
+            );
             AssetDatabase.CreateAsset(legacy, PersistentDirectorySettings.LegacyAssetPath);
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
@@ -996,15 +1011,17 @@ namespace WallstopStudios.UnityHelpers.Tests
             _createdFolders.Add("Assets/Resources/Wallstop Studios/Editor");
             yield return null;
 
-            PersistentDirectorySettings target =
-                ScriptableObject.CreateInstance<PersistentDirectorySettings>();
+            PersistentDirectorySettings target = Track(
+                ScriptableObject.CreateInstance<PersistentDirectorySettings>()
+            );
             target.RecordPath("TargetTool", "Ctx", "Assets/TargetPath");
             AssetDatabase.CreateAsset(target, PersistentDirectorySettings.TargetAssetPath);
             _createdAssets.Add(PersistentDirectorySettings.TargetAssetPath);
             yield return null;
 
-            PersistentDirectorySettings legacy =
-                ScriptableObject.CreateInstance<PersistentDirectorySettings>();
+            PersistentDirectorySettings legacy = Track(
+                ScriptableObject.CreateInstance<PersistentDirectorySettings>()
+            );
             legacy.RecordPath("LegacyTool", "Ctx", "Assets/LegacyPath");
             AssetDatabase.CreateAsset(legacy, PersistentDirectorySettings.LegacyAssetPath);
             yield return null;
@@ -1057,8 +1074,9 @@ namespace WallstopStudios.UnityHelpers.Tests
             _createdFolders.Add("Assets/Resources/Wallstop Studios");
             yield return null;
 
-            PersistentDirectorySettings legacy =
-                ScriptableObject.CreateInstance<PersistentDirectorySettings>();
+            PersistentDirectorySettings legacy = Track(
+                ScriptableObject.CreateInstance<PersistentDirectorySettings>()
+            );
             legacy.RecordPath("ExportTool", "Sprites", "Assets/Sprites/Export");
             legacy.RecordPath("ExportTool", "Sprites", "Assets/Sprites/Export");
             legacy.RecordPath("ExportTool", "Audio", "Assets/Audio/Export");
@@ -1445,7 +1463,7 @@ namespace WallstopStudios.UnityHelpers.Tests
                 {
                     EnsureFolderExists(directory);
                 }
-                ScriptableObject dummy = ScriptableObject.CreateInstance<ScriptableObject>();
+                ScriptableObject dummy = Track(ScriptableObject.CreateInstance<ScriptableObject>());
                 AssetDatabase.CreateAsset(dummy, assetPath);
                 _createdAssets.Add(assetPath);
             }

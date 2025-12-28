@@ -284,7 +284,7 @@ Based on your needs:
 
 2. **Use ScriptableObject Singletons** - Global settings management
    - Start: [Singletons Guide](../features/utilities/singletons.md)
-   - Why: Auto-created, ODIN-compatible config assets
+   - Why: Auto-created, Odin-compatible config assets
 
 3. **Master Property Drawers** - Better inspector workflows
    - Start: [Property Drawers](../features/editor-tools/editor-tools-guide.md#property-drawers--attributes)

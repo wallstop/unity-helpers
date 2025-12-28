@@ -1,3 +1,6 @@
+// MIT License - Copyright (c) 2023 Eli Pinkerton
+// Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
+
 namespace WallstopStudios.UnityHelpers.Tests.Extensions
 {
     using System;
@@ -24,7 +27,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
 
             Assert.AreEqual(offset.CenterPoint, go.GetCenter());
 
-            Object.DestroyImmediate(offset);
+            Object.DestroyImmediate(offset); // UNH-SUPPRESS: Test verifies behavior after component destruction
             Assert.AreEqual((Vector2)go.transform.position, go.GetCenter());
         }
 

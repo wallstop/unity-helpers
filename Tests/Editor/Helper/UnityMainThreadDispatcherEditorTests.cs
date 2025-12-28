@@ -1,3 +1,6 @@
+// MIT License - Copyright (c) 2023 Eli Pinkerton
+// Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
+
 namespace WallstopStudios.UnityHelpers.Tests.Helper
 {
     using NUnit.Framework;
@@ -16,7 +19,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
                 Object.FindObjectOfType<UnityMainThreadDispatcher>();
             if (existing != null)
             {
-                Object.DestroyImmediate(existing.gameObject);
+                Object.DestroyImmediate(existing.gameObject); // UNH-SUPPRESS: Cleanup pre-existing dispatcher before test
             }
 
             UnityMainThreadDispatcher dispatcher = UnityMainThreadDispatcher.Instance;
@@ -33,7 +36,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             {
                 if (dispatcher != null)
                 {
-                    Object.DestroyImmediate(dispatcher.gameObject);
+                    Object.DestroyImmediate(dispatcher.gameObject); // UNH-SUPPRESS: Test cleanup in finally block
                 }
             }
         }

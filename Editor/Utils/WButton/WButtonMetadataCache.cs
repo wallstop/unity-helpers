@@ -1,3 +1,6 @@
+// MIT License - Copyright (c) 2023 Eli Pinkerton
+// Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
+
 namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
 {
 #if UNITY_EDITOR
@@ -200,6 +203,11 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
     internal static class WButtonMetadataCache
     {
         private static readonly Dictionary<Type, WButtonMethodMetadata[]> Cache = new();
+
+        internal static void ClearCache()
+        {
+            Cache.Clear();
+        }
 
         internal static IReadOnlyList<WButtonMethodMetadata> GetMetadata(Type inspectedType)
         {

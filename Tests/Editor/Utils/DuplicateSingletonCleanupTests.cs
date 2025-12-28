@@ -1,3 +1,6 @@
+// MIT License - Copyright (c) 2023 Eli Pinkerton
+// Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
+
 #if UNITY_EDITOR
 namespace WallstopStudios.UnityHelpers.Tests.Utils
 {
@@ -309,11 +312,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
 
             // Don't use Track() - these become persistent assets managed by CleanupTestAssets()
             CleanupEnabledSingleton canonical =
-                ScriptableObject.CreateInstance<CleanupEnabledSingleton>();
+                ScriptableObject.CreateInstance<CleanupEnabledSingleton>(); // UNH-SUPPRESS: Asset managed by CleanupTestAssets
             AssetDatabase.CreateAsset(canonical, canonicalPath);
 
             CleanupEnabledSingleton duplicate =
-                ScriptableObject.CreateInstance<CleanupEnabledSingleton>();
+                ScriptableObject.CreateInstance<CleanupEnabledSingleton>(); // UNH-SUPPRESS: Asset managed by CleanupTestAssets
             AssetDatabase.CreateAsset(duplicate, duplicatePath);
 
             AssetDatabase.SaveAssets();
@@ -355,11 +358,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
 
             // Don't use Track() - these become persistent assets managed by CleanupTestAssets()
             CleanupDisabledSingleton canonical =
-                ScriptableObject.CreateInstance<CleanupDisabledSingleton>();
+                ScriptableObject.CreateInstance<CleanupDisabledSingleton>(); // UNH-SUPPRESS: UNH002 - Asset managed by CleanupTestAssets
             AssetDatabase.CreateAsset(canonical, canonicalPath);
 
             CleanupDisabledSingleton duplicate =
-                ScriptableObject.CreateInstance<CleanupDisabledSingleton>();
+                ScriptableObject.CreateInstance<CleanupDisabledSingleton>(); // UNH-SUPPRESS: UNH002 - Asset managed by CleanupTestAssets
             AssetDatabase.CreateAsset(duplicate, duplicatePath);
 
             AssetDatabase.SaveAssets();
@@ -401,13 +404,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
 
             // Don't use Track() - these become persistent assets managed by CleanupTestAssets()
             CleanupWithDataSingleton canonical =
-                ScriptableObject.CreateInstance<CleanupWithDataSingleton>();
+                ScriptableObject.CreateInstance<CleanupWithDataSingleton>(); // UNH-SUPPRESS: UNH002 - Asset managed by CleanupTestAssets
             canonical.TestValue = 42;
             canonical.TestString = "canonical";
             AssetDatabase.CreateAsset(canonical, canonicalPath);
 
             CleanupWithDataSingleton duplicate =
-                ScriptableObject.CreateInstance<CleanupWithDataSingleton>();
+                ScriptableObject.CreateInstance<CleanupWithDataSingleton>(); // UNH-SUPPRESS: UNH002 - Asset managed by CleanupTestAssets
             duplicate.TestValue = 99;
             duplicate.TestString = "different";
             AssetDatabase.CreateAsset(duplicate, duplicatePath);
@@ -453,15 +456,15 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
 
             // Don't use Track() - these become persistent assets managed by CleanupTestAssets()
             CleanupEnabledSingleton canonical =
-                ScriptableObject.CreateInstance<CleanupEnabledSingleton>();
+                ScriptableObject.CreateInstance<CleanupEnabledSingleton>(); // UNH-SUPPRESS: UNH002 - Asset managed by CleanupTestAssets
             AssetDatabase.CreateAsset(canonical, canonicalPath);
 
             CleanupEnabledSingleton duplicate1 =
-                ScriptableObject.CreateInstance<CleanupEnabledSingleton>();
+                ScriptableObject.CreateInstance<CleanupEnabledSingleton>(); // UNH-SUPPRESS: UNH002 - Asset managed by CleanupTestAssets
             AssetDatabase.CreateAsset(duplicate1, duplicatePath1);
 
             CleanupEnabledSingleton duplicate2 =
-                ScriptableObject.CreateInstance<CleanupEnabledSingleton>();
+                ScriptableObject.CreateInstance<CleanupEnabledSingleton>(); // UNH-SUPPRESS: UNH002 - Asset managed by CleanupTestAssets
             AssetDatabase.CreateAsset(duplicate2, duplicatePath2);
 
             AssetDatabase.SaveAssets();
@@ -519,11 +522,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
 
             // Don't use Track() - these become persistent assets managed by CleanupTestAssets()
             CleanupEnabledSingleton canonical =
-                ScriptableObject.CreateInstance<CleanupEnabledSingleton>();
+                ScriptableObject.CreateInstance<CleanupEnabledSingleton>(); // UNH-SUPPRESS: UNH002 - Asset managed by CleanupTestAssets
             AssetDatabase.CreateAsset(canonical, canonicalPath);
 
             CleanupEnabledSingleton duplicate =
-                ScriptableObject.CreateInstance<CleanupEnabledSingleton>();
+                ScriptableObject.CreateInstance<CleanupEnabledSingleton>(); // UNH-SUPPRESS: UNH002 - Asset managed by CleanupTestAssets
             AssetDatabase.CreateAsset(duplicate, duplicatePath);
 
             AssetDatabase.SaveAssets();
@@ -619,17 +622,17 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
 
             // Don't use Track() - these become persistent assets managed by CleanupTestAssets()
             CleanupEnabledSingleton canonical =
-                ScriptableObject.CreateInstance<CleanupEnabledSingleton>();
+                ScriptableObject.CreateInstance<CleanupEnabledSingleton>(); // UNH-SUPPRESS: UNH002 - Asset managed by CleanupTestAssets
             AssetDatabase.CreateAsset(canonical, canonicalPath);
 
             CleanupEnabledSingleton duplicate =
-                ScriptableObject.CreateInstance<CleanupEnabledSingleton>();
+                ScriptableObject.CreateInstance<CleanupEnabledSingleton>(); // UNH-SUPPRESS: UNH002 - Asset managed by CleanupTestAssets
             AssetDatabase.CreateAsset(duplicate, duplicatePath);
 
             // IMPORTANT: Use a non-singleton ScriptableObject type for the "other asset"
             // Using a singleton type would cause EnsureSingletonAssets to relocate it,
             // making the folder empty and causing it to be deleted.
-            ScriptableObject otherAsset = ScriptableObject.CreateInstance<DummyScriptable>();
+            ScriptableObject otherAsset = ScriptableObject.CreateInstance<DummyScriptable>(); // UNH-SUPPRESS: UNH002 - Asset managed by CleanupTestAssets
             AssetDatabase.CreateAsset(otherAsset, otherAssetPath);
 
             AssetDatabase.SaveAssets();
@@ -678,7 +681,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
 
             // Don't use Track() - these become persistent assets managed by CleanupTestAssets()
             CleanupEnabledSingleton duplicate =
-                ScriptableObject.CreateInstance<CleanupEnabledSingleton>();
+                ScriptableObject.CreateInstance<CleanupEnabledSingleton>(); // UNH-SUPPRESS: UNH002 - Asset managed by CleanupTestAssets
             AssetDatabase.CreateAsset(duplicate, duplicatePath);
 
             AssetDatabase.SaveAssets();
@@ -711,7 +714,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
 
             // Don't use Track() - these become persistent assets managed by CleanupTestAssets()
             CleanupEnabledSingleton canonical =
-                ScriptableObject.CreateInstance<CleanupEnabledSingleton>();
+                ScriptableObject.CreateInstance<CleanupEnabledSingleton>(); // UNH-SUPPRESS: UNH002 - Asset managed by CleanupTestAssets
             AssetDatabase.CreateAsset(canonical, canonicalPath);
 
             AssetDatabase.SaveAssets();
@@ -745,13 +748,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
 
             // Don't use Track() - these become persistent assets managed by CleanupTestAssets()
             CleanupWithDataSingleton canonical =
-                ScriptableObject.CreateInstance<CleanupWithDataSingleton>();
+                ScriptableObject.CreateInstance<CleanupWithDataSingleton>(); // UNH-SUPPRESS: UNH002 - Asset managed by CleanupTestAssets
             canonical.TestValue = 42;
             canonical.TestString = "test";
             AssetDatabase.CreateAsset(canonical, canonicalPath);
 
             CleanupWithDataSingleton duplicate =
-                ScriptableObject.CreateInstance<CleanupWithDataSingleton>();
+                ScriptableObject.CreateInstance<CleanupWithDataSingleton>(); // UNH-SUPPRESS: UNH002 - Asset managed by CleanupTestAssets
             duplicate.TestValue = 42;
             duplicate.TestString = "test";
             AssetDatabase.CreateAsset(duplicate, duplicatePath);
@@ -840,11 +843,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             string duplicatePath = Level4 + "/CleanupEnabledSingleton.asset";
 
             CleanupEnabledSingleton canonical =
-                ScriptableObject.CreateInstance<CleanupEnabledSingleton>();
+                ScriptableObject.CreateInstance<CleanupEnabledSingleton>(); // UNH-SUPPRESS: UNH002 - Asset managed by CleanupTestAssets
             AssetDatabase.CreateAsset(canonical, canonicalPath);
 
             CleanupEnabledSingleton duplicate =
-                ScriptableObject.CreateInstance<CleanupEnabledSingleton>();
+                ScriptableObject.CreateInstance<CleanupEnabledSingleton>(); // UNH-SUPPRESS: UNH002 - Asset managed by CleanupTestAssets
             AssetDatabase.CreateAsset(duplicate, duplicatePath);
 
             AssetDatabase.SaveAssets();
@@ -914,15 +917,15 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             string siblingAssetPath = SiblingFolder + "/SiblingAsset.asset";
 
             CleanupEnabledSingleton canonical =
-                ScriptableObject.CreateInstance<CleanupEnabledSingleton>();
+                ScriptableObject.CreateInstance<CleanupEnabledSingleton>(); // UNH-SUPPRESS: UNH002 - Asset managed by CleanupTestAssets
             AssetDatabase.CreateAsset(canonical, canonicalPath);
 
             CleanupEnabledSingleton duplicate =
-                ScriptableObject.CreateInstance<CleanupEnabledSingleton>();
+                ScriptableObject.CreateInstance<CleanupEnabledSingleton>(); // UNH-SUPPRESS: UNH002 - Asset managed by CleanupTestAssets
             AssetDatabase.CreateAsset(duplicate, duplicatePath);
 
             // Create a sibling asset in the parent folder
-            ScriptableObject siblingAsset = ScriptableObject.CreateInstance<DummyScriptable>();
+            ScriptableObject siblingAsset = ScriptableObject.CreateInstance<DummyScriptable>(); // UNH-SUPPRESS: UNH002 - Asset managed by CleanupTestAssets
             AssetDatabase.CreateAsset(siblingAsset, siblingAssetPath);
 
             AssetDatabase.SaveAssets();
@@ -993,11 +996,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             string duplicatePath = AssetSubfolder + "/CleanupEnabledSingleton.asset";
 
             CleanupEnabledSingleton canonical =
-                ScriptableObject.CreateInstance<CleanupEnabledSingleton>();
+                ScriptableObject.CreateInstance<CleanupEnabledSingleton>(); // UNH-SUPPRESS: UNH002 - Asset managed by CleanupTestAssets
             AssetDatabase.CreateAsset(canonical, canonicalPath);
 
             CleanupEnabledSingleton duplicate =
-                ScriptableObject.CreateInstance<CleanupEnabledSingleton>();
+                ScriptableObject.CreateInstance<CleanupEnabledSingleton>(); // UNH-SUPPRESS: UNH002 - Asset managed by CleanupTestAssets
             AssetDatabase.CreateAsset(duplicate, duplicatePath);
 
             AssetDatabase.SaveAssets();

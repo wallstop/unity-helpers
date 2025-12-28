@@ -1,3 +1,6 @@
+// MIT License - Copyright (c) 2023 Eli Pinkerton
+// Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
+
 namespace WallstopStudios.UnityHelpers.Editor.CustomEditors
 {
 #if UNITY_EDITOR
@@ -631,7 +634,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomEditors
                         }
                         catch
                         {
-                            // Swalllow
+                            // Swallow
                         }
                     }
                     if (!Directory.Exists(initialBrowsePath))

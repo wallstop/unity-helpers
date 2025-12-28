@@ -1,3 +1,6 @@
+// MIT License - Copyright (c) 2023 Eli Pinkerton
+// Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
+
 namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 {
     using System;
@@ -11,6 +14,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
     using WallstopStudios.UnityHelpers.Tests.Core;
     using WallstopStudios.UnityHelpers.Tests.Editor.TestTypes;
     using WallstopStudios.UnityHelpers.Tests.TestUtils;
+    using EnumShared = WallstopStudios.UnityHelpers.Editor.CustomDrawers.Utils.EnumToggleButtonsShared;
 
     [TestFixture]
     public sealed class WEnumToggleButtonsDrawerTests : CommonTestBase
@@ -463,14 +467,13 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             bool usePagination
         )
         {
-            WEnumToggleButtonsDrawer.SelectionSummary summary =
-                WEnumToggleButtonsDrawer.BuildSelectionSummary(
-                    toggleSet,
-                    property,
-                    startIndex,
-                    visibleCount,
-                    usePagination
-                );
+            EnumShared.SelectionSummary summary = WEnumToggleButtonsDrawer.BuildSelectionSummary(
+                toggleSet,
+                property,
+                startIndex,
+                visibleCount,
+                usePagination
+            );
             return new SummaryResult(summary.HasSummary, summary.Content ?? GUIContent.none);
         }
 

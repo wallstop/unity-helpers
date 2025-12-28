@@ -9,7 +9,7 @@ This package includes two lightweight, production‑ready singleton helpers that
 - `RuntimeSingleton<T>` — a component singleton that ensures one instance exists in play mode, optionally persists across scenes, and self‑initializes when first accessed.
 - `ScriptableObjectSingleton<T>` — a configuration/data singleton backed by a single asset under `Resources/`, with an editor auto‑creator to keep assets present and correctly placed.
 
-> ODIN compatibility: When Odin Inspector is present (`ODIN_INSPECTOR` defined), these types derive from `SerializedMonoBehaviour` / `SerializedScriptableObject` for richer serialization. Without Odin, they fall back to Unity base types. No code changes required.
+> Odin compatibility: When Odin Inspector is present (`ODIN_INSPECTOR` defined), these types derive from `SerializedMonoBehaviour` / `SerializedScriptableObject` for richer serialization. Without Odin, they fall back to Unity base types. No code changes required.
 
 ## TL;DR — What Problem This Solves
 
@@ -69,7 +69,7 @@ float vol = AudioSettings.Instance.masterVolume;
 
 Contents
 
-- ODIN Compatibility
+- Odin Compatibility
 - When To Use / Not To Use
 - RuntimeSingleton<T>
   - Lifecycle diagram, examples, pitfalls
@@ -80,7 +80,7 @@ Contents
 
 <a id="odin-compatibility"></a>
 
-## ODIN Compatibility
+## Odin Compatibility
 
 - With Odin installed (symbol `ODIN_INSPECTOR`), base classes inherit from `SerializedMonoBehaviour` and `SerializedScriptableObject` to enable serialization of complex types (dictionaries, polymorphic fields) with Odin drawers.
 - Without Odin, bases inherit from Unity’s `MonoBehaviour`/`ScriptableObject` with no behavior change.
@@ -137,7 +137,7 @@ public sealed class GameServices : RuntimeSingleton<GameServices>
 GameServices.Instance.Log("Hello world");
 ```
 
-ODIN note: With Odin installed, the class inherits `SerializedMonoBehaviour`, enabling dictionaries and other complex serialized types.
+Odin note: With Odin installed, the class inherits `SerializedMonoBehaviour`, enabling dictionaries and other complex serialized types.
 
 Common pitfalls:
 
@@ -188,7 +188,7 @@ public sealed class AudioSettings : ScriptableObjectSingleton<AudioSettings>
 float vol = AudioSettings.Instance.musicVolume;
 ```
 
-ODIN note: With Odin installed, the class inherits `SerializedScriptableObject`, so you can safely serialize complex collections without custom drawers.
+Odin note: With Odin installed, the class inherits `SerializedScriptableObject`, so you can safely serialize complex collections without custom drawers.
 
 Asset management tips:
 
@@ -571,7 +571,7 @@ public void SettingsWithCustomValuesWork()
 - For scene-local managers, override `Preserve => false` to prevent cross-scene persistence.
 - Keep exactly one singleton asset under `Resources/` for each `ScriptableObjectSingleton<T>`; let the auto-creator relocate any strays.
 - Use `[ScriptableSingletonPath]` to group related settings; avoid deep nesting that hurts discoverability.
-- With ODIN installed, take advantage of `Serialized*` bases for complex serialized fields; without Odin, keep fields Unity-serializable.
+- With Odin installed, take advantage of `Serialized*` bases for complex serialized fields; without Odin, keep fields Unity-serializable.
 
 - Multiple ScriptableObject assets found: a warning is logged and the first by name is used. Resolve by keeping only one asset in Resources or by letting the auto‑creator relocate the correct one.
 - `Instance` returns null for ScriptableObject: Ensure the asset exists under `Resources/` and the type name or custom path matches.

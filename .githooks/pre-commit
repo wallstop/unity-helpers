@@ -1,12 +1,49 @@
-#!/usr/bin/env sh
+#!/usr/bin/env bash
 set -e
 
-# 0) Ensure .NET tools available (for CSharpier)
+# Source git staging helpers for safe index.lock handling
+# This prevents "fatal: Unable to create '.git/index.lock': File exists" errors
+# when using interactive git tools like lazygit that may hold locks
+SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+HELPERS_PATH="$SCRIPT_DIR/scripts/git-staging-helpers.sh"
+if [[ -f "$HELPERS_PATH" ]]; then
+    # shellcheck source=../scripts/git-staging-helpers.sh
+    source "$HELPERS_PATH"
+else
+    echo "Warning: git-staging-helpers.sh not found at $HELPERS_PATH" >&2
+    echo "Falling back to basic git add (may cause index.lock errors)" >&2
+    # Fallback: define basic versions of the functions
+    git_add_with_retry() {
+        git add -- "$@"
+    }
+    ensure_no_index_lock() {
+        return 0  # No-op fallback
+    }
+fi
+
+# CRITICAL: Wait for any external tool (lazygit, IDE, etc.) to release the index.lock
+# before starting hook operations. This is the primary fix for index.lock contention.
+# Without this, the hook may start while lazygit is still holding the lock.
+ensure_no_index_lock || {
+    echo "Warning: index.lock still held after waiting. Proceeding anyway, but operations may fail." >&2
+}
+
+# 0) Normalize line endings (LF -> CRLF for most files, LF for .sh)
+# This MUST run before any other formatting to prevent formatter diffs
+if command -v pwsh >/dev/null 2>&1; then
+  pwsh -NoProfile -File scripts/normalize-eol.ps1
+elif command -v powershell >/dev/null 2>&1; then
+  powershell -NoProfile -ExecutionPolicy Bypass -File scripts/normalize-eol.ps1
+else
+  echo "PowerShell not found. Skipping EOL normalization." >&2
+fi
+
+# 1) Ensure .NET tools available (for CSharpier)
 if command -v dotnet >/dev/null 2>&1; then
   dotnet tool restore >/dev/null 2>&1 || true
 fi
 
-# 1) Lint Markdown link text style (via Node wrapper -> PowerShell script)
+# 2) Lint Markdown link text style (via Node wrapper -> PowerShell script)
 if command -v node >/dev/null 2>&1; then
   node ./scripts/run-doc-link-lint.js
 else
@@ -28,7 +65,7 @@ else
   fi
 fi
 
-# 2) Format staged Markdown/JSON/YAML with Prettier and re-stage
+# 3) Format staged Markdown/JSON/YAML with Prettier and re-stage
 if ! command -v npx >/dev/null 2>&1; then
   echo "npx is required for formatting. Please install Node.js." >&2
   exit 1
@@ -41,24 +78,30 @@ MD_FILES=$(echo "$STAGED_FILES" | grep -E '\\.(md|markdown)$' || true)
 JSON_FILES=$(echo "$STAGED_FILES" | grep -E '\\.(json|asmdef|asmref)$' || true)
 YAML_FILES=$(echo "$STAGED_FILES" | grep -E '\\.(yml|yaml)$' || true)
 
-# Prettier format and re-add
+# Prettier format and re-add using retry logic to handle index.lock contention
 if [ -n "$MD_FILES" ]; then
   echo "$MD_FILES" | xargs npx --no-install prettier --write --log-level warn
-  echo "$MD_FILES" | xargs git add
+  # Use git_add_with_retry to handle concurrent git operations safely
+  # shellcheck disable=SC2086
+  git_add_with_retry $MD_FILES
 fi
 
 if [ -n "$JSON_FILES" ]; then
   echo "$JSON_FILES" | xargs npx --no-install prettier --write --log-level warn
-  echo "$JSON_FILES" | xargs git add
+  # Use git_add_with_retry to handle concurrent git operations safely
+  # shellcheck disable=SC2086
+  git_add_with_retry $JSON_FILES
 fi
 
 if [ -n "$YAML_FILES" ]; then
   echo "$YAML_FILES" | xargs npx --no-install prettier --write --log-level warn
-  echo "$YAML_FILES" | xargs git add
+  # Use git_add_with_retry to handle concurrent git operations safely
+  # shellcheck disable=SC2086
+  git_add_with_retry $YAML_FILES
 fi
 
-# 3) Format staged C# files with CSharpier (if available) and re-stage
-CS_FILES=$(echo "$STAGED_FILES" | grep -E '\\.cs$' || true)
+# 4) Format staged C# files with CSharpier (if available) and re-stage
+CS_FILES=$(echo "$STAGED_FILES" | grep -E '\\\.cs$' || true)
 if [ -n "$CS_FILES" ]; then
   if command -v pwsh >/dev/null 2>&1; then
     pwsh -NoProfile -File scripts/format-staged-csharp.ps1
@@ -69,15 +112,17 @@ if [ -n "$CS_FILES" ]; then
   fi
 fi
 
-# 4) Markdown lint for staged Markdown files
+# 5) Markdown lint for staged Markdown files
 if [ -n "$MD_FILES" ]; then
   npx --no-install markdownlint $MD_FILES --config .markdownlint.json --ignore-path .markdownlintignore
 fi
 
-# 5) Optional YAML lint on staged YAML (if yamllint present)
+# 6) YAML lint on staged YAML files
 if [ -n "$YAML_FILES" ]; then
   if command -v yamllint >/dev/null 2>&1; then
     echo "$YAML_FILES" | xargs yamllint -c .yamllint.yaml
+  else
+    echo "yamllint not found; skipping YAML lint (run 'npm run verify:tools' to check setup)." >&2
   fi
 fi
 

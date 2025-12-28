@@ -1,3 +1,6 @@
+// MIT License - Copyright (c) 2023 Eli Pinkerton
+// Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
+
 #if REFLEX_PRESENT
 namespace WallstopStudios.UnityHelpers.Tests.Integrations.Reflex
 {
@@ -28,7 +31,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.Reflex
         public void PublicExtensionMethodsAccessible()
         {
             MethodInfo method = typeof(ContainerRelationalExtensions).GetMethod(
-                "AssignRelationalComponents",
+                nameof(ContainerRelationalExtensions.AssignRelationalComponents),
                 BindingFlags.Public | BindingFlags.Static
             );
             Assert.NotNull(

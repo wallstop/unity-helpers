@@ -1,0 +1,158 @@
+---
+name: Deploy Documentation to GitHub Pages
+
+"on":
+  push:
+    branches:
+      - main
+    paths:
+      - "docs/**"
+      - "README.md"
+      - "CHANGELOG.md"
+      - "index.md"
+      - ".github/workflows/deploy-pages.yml"
+      - "_config.yml"
+      - "_includes/**"
+      - "Gemfile"
+      - "Gemfile.lock"
+      - "assets/**"
+  workflow_dispatch:
+    inputs:
+      debug_enabled:
+        description: "Enable debug output"
+        required: false
+        default: "false"
+        type: boolean
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Allow only one concurrent deployment, skipping runs queued between the run in-progress and latest queued.
+# However, do NOT cancel in-progress runs as we want to allow these production deployments to complete.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+env:
+  JEKYLL_ENV: production
+
+jobs:
+  build:
+    name: Build documentation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.2"
+          bundler-cache: true
+
+      - name: Setup Pages
+        id: pages
+        uses: actions/configure-pages@v5
+
+      - name: Install dependencies
+        run: bundle install
+
+      - name: Build with Jekyll
+        run: |
+          bundle exec jekyll build \
+            --baseurl "${{ steps.pages.outputs.base_path }}" \
+            --destination ./_site
+        env:
+          JEKYLL_ENV: production
+
+      - name: Validate build output
+        run: |
+          set -euo pipefail
+
+          echo "Validating Jekyll build output..."
+
+          # Check that _site directory exists and has content
+          if [ ! -d "_site" ]; then
+            echo "::error::Build failed - _site directory not found"
+            exit 1
+          fi
+
+          # Count generated files
+          html_count=$(find _site -name "*.html" -type f | wc -l)
+          total_count=$(find _site -type f | wc -l)
+
+          echo "📊 Build Statistics:"
+          echo "   HTML files: $html_count"
+          echo "   Total files: $total_count"
+
+          if [ "$html_count" -eq 0 ]; then
+            echo "::error::Build produced no HTML files"
+            exit 1
+          fi
+
+          # Check for index.html
+          if [ ! -f "_site/index.html" ]; then
+            echo "::error::Build missing index.html"
+            exit 1
+          fi
+
+          echo "✅ Build validation passed"
+
+      - name: Debug build output
+        if: github.event.inputs.debug_enabled == 'true'
+        run: |
+          echo "📁 Site structure:"
+          find _site -type f | head -50
+          echo ""
+          echo "📄 Index.html preview:"
+          head -30 _site/index.html || true
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./_site
+
+      - name: Build summary
+        run: |
+          {
+            echo "## 🏗️ Build Summary"
+            echo ""
+            echo "| Metric | Value |"
+            echo "|--------|-------|"
+            echo "| HTML Files | $(find _site -name '*.html' -type f | wc -l) |"
+            echo "| Total Files | $(find _site -type f | wc -l) |"
+            echo "| Total Size | $(du -sh _site | cut -f1) |"
+            echo "| Base Path | \`${{ steps.pages.outputs.base_path }}\` |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+      - name: Deployment summary
+        run: |
+          {
+            echo "## 🚀 Deployment Summary"
+            echo ""
+            echo "✅ **Successfully deployed to GitHub Pages**"
+            echo ""
+            echo "🔗 **Live URL**: ${{ steps.deployment.outputs.page_url }}"
+            echo ""
+            echo "| Metric | Value |"
+            echo "|--------|-------|"
+            echo "| Trigger | \`${{ github.event_name }}\` |"
+            echo "| Commit | \`${{ github.sha }}\` |"
+            echo "| Branch | \`${{ github.ref_name }}\` |"
+          } >> "$GITHUB_STEP_SUMMARY"

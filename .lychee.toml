@@ -31,3 +31,9 @@ exclude = [
   # Known flaky/unreliable sites that cause intermittent CI failures
   "^https?://bugs\\.python\\.org"
 ]
+
+# Exclude file paths (regex patterns) - avoid scanning third-party code
+exclude_path = [
+  "node_modules",
+  "\\.git"
+]

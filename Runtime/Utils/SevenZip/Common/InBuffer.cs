@@ -1,56 +1,59 @@
+// MIT License - Copyright (c) 2023 Eli Pinkerton
+// Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
+
 // InBuffer.cs
 
 namespace SevenZip.Buffer
 {
     public class InBuffer
     {
-        readonly byte[] m_Buffer;
-        uint m_Pos;
-        uint m_Limit;
-        readonly uint m_BufferSize;
-        System.IO.Stream m_Stream;
-        bool m_StreamWasExhausted;
-        ulong m_ProcessedSize;
+        private readonly byte[] _buffer;
+        private uint _position;
+        private uint _limit;
+        private readonly uint _bufferSize;
+        private System.IO.Stream _stream;
+        private bool _wasStreamExhausted;
+        private ulong _processedSize;
 
         public InBuffer(uint bufferSize)
         {
-            m_Buffer = new byte[bufferSize];
-            m_BufferSize = bufferSize;
+            _buffer = new byte[bufferSize];
+            _bufferSize = bufferSize;
         }
 
         public void Init(System.IO.Stream stream)
         {
-            m_Stream = stream;
-            m_ProcessedSize = 0;
-            m_Limit = 0;
-            m_Pos = 0;
-            m_StreamWasExhausted = false;
+            _stream = stream;
+            _processedSize = 0;
+            _limit = 0;
+            _position = 0;
+            _wasStreamExhausted = false;
         }
 
         public bool ReadBlock()
         {
-            if (m_StreamWasExhausted)
+            if (_wasStreamExhausted)
             {
                 return false;
             }
 
-            m_ProcessedSize += m_Pos;
-            int aNumProcessedBytes = m_Stream.Read(m_Buffer, 0, (int)m_BufferSize);
-            m_Pos = 0;
-            m_Limit = (uint)aNumProcessedBytes;
-            m_StreamWasExhausted = (aNumProcessedBytes == 0);
-            return (!m_StreamWasExhausted);
+            _processedSize += _position;
+            int aNumProcessedBytes = _stream.Read(_buffer, 0, (int)_bufferSize);
+            _position = 0;
+            _limit = (uint)aNumProcessedBytes;
+            _wasStreamExhausted = (aNumProcessedBytes == 0);
+            return (!_wasStreamExhausted);
         }
 
         public void ReleaseStream()
         {
             // m_Stream.Close();
-            m_Stream = null;
+            _stream = null;
         }
 
         public bool ReadByte(byte b) // check it
         {
-            if (m_Pos >= m_Limit)
+            if (_position >= _limit)
             {
                 if (!ReadBlock())
                 {
@@ -58,14 +61,14 @@ namespace SevenZip.Buffer
                 }
             }
 
-            b = m_Buffer[m_Pos++];
+            b = _buffer[_position++];
             return true;
         }
 
         public byte ReadByte()
         {
             // return (byte)m_Stream.ReadByte();
-            if (m_Pos >= m_Limit)
+            if (_position >= _limit)
             {
                 if (!ReadBlock())
                 {
@@ -73,12 +76,12 @@ namespace SevenZip.Buffer
                 }
             }
 
-            return m_Buffer[m_Pos++];
+            return _buffer[_position++];
         }
 
         public ulong GetProcessedSize()
         {
-            return m_ProcessedSize + m_Pos;
+            return _processedSize + _position;
         }
     }
 }

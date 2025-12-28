@@ -1,3 +1,6 @@
+// MIT License - Copyright (c) 2023 Eli Pinkerton
+// Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
+
 namespace WallstopStudios.UnityHelpers.Tests.Helper
 {
     using System.Collections.Generic;
@@ -50,7 +53,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             GameObject go = Track(new GameObject("ValueHelpers_Destroyed"));
             Assert.IsTrue(ValueHelpers.IsAssigned(go));
 
-            Object.Destroy(go);
+            Object.Destroy(go); // UNH-SUPPRESS: Test verifies IsAssigned returns false after destruction
             yield return null;
 
             Assert.IsFalse(ValueHelpers.IsAssigned(go));

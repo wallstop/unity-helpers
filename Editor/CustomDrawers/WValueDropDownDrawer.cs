@@ -1,3 +1,6 @@
+// MIT License - Copyright (c) 2023 Eli Pinkerton
+// Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
+
 namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 {
 #if UNITY_EDITOR
@@ -11,6 +14,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
     using WallstopStudios.UnityHelpers.Editor.CustomDrawers.Base;
+    using WallstopStudios.UnityHelpers.Editor.CustomDrawers.Utils;
     using WallstopStudios.UnityHelpers.Editor.Settings;
     using WallstopStudios.UnityHelpers.Utils;
 
@@ -32,46 +36,29 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             public string[] labels;
         }
 
-        private const float ButtonWidth = 24f;
-        private const float PageLabelWidth = 90f;
-        private const float PaginationButtonHeight = 20f;
-        private const float PopupWidth = 360f;
-        private const float OptionBottomPadding = 6f;
-        private const float OptionRowExtraHeight = 1.5f;
-        private const float EmptySearchHorizontalPadding = 32f;
-        private const float EmptySearchExtraPadding = 12f;
-        private const string EmptyResultsMessage = "No results match the current search.";
-        private static readonly GUIContent EmptyResultsContent = new(EmptyResultsMessage);
+        private const float ButtonWidth = DropDownShared.ButtonWidth;
+        private const float PageLabelWidth = DropDownShared.PageLabelWidth;
+        private const float PaginationButtonHeight = DropDownShared.PaginationButtonHeight;
+        private const float PopupWidth = DropDownShared.PopupWidth;
+        private const float OptionBottomPadding = DropDownShared.OptionBottomPadding;
+        private const float OptionRowExtraHeight = DropDownShared.OptionRowExtraHeight;
+        private const float EmptySearchHorizontalPadding =
+            DropDownShared.EmptySearchHorizontalPadding;
+        private const float EmptySearchExtraPadding = DropDownShared.EmptySearchExtraPadding;
+        private const string EmptyResultsMessage = DropDownShared.EmptyResultsMessage;
+        private static readonly GUIContent EmptyResultsContent = DropDownShared.EmptyResultsContent;
         private static float s_cachedOptionControlHeight = -1f;
         private static float s_cachedOptionRowHeight = -1f;
         private static readonly Dictionary<string, PopupState> PopupStates = new();
-        private static readonly Dictionary<int, string> IntToStringCache = new();
-        private static readonly Dictionary<(int, int), string> PaginationLabelCache = new();
         private static readonly Dictionary<string, DisplayLabelsCache> DisplayLabelsCaches = new(
             StringComparer.Ordinal
         );
         private static readonly Dictionary<object, string> FormattedOptionCache = new();
         private static readonly GUIContent ReusableDropDownButtonContent = new();
 
-        private static string GetCachedIntString(int value)
-        {
-            if (!IntToStringCache.TryGetValue(value, out string cached))
-            {
-                cached = value.ToString();
-                IntToStringCache[value] = cached;
-            }
-            return cached;
-        }
-
         private static string GetPaginationLabel(int page, int totalPages)
         {
-            (int, int) key = (page, totalPages);
-            if (!PaginationLabelCache.TryGetValue(key, out string cached))
-            {
-                cached = "Page " + GetCachedIntString(page) + "/" + GetCachedIntString(totalPages);
-                PaginationLabelCache[key] = cached;
-            }
-            return cached;
+            return DropDownShared.GetPaginationLabel(page, totalPages);
         }
 
         private static PopupState GetOrCreateState(string key)

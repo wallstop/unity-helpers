@@ -1,3 +1,6 @@
+// MIT License - Copyright (c) 2023 Eli Pinkerton
+// Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
+
 namespace WallstopStudios.UnityHelpers.Tests.Utils
 {
     using System;
@@ -38,7 +41,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                 {
                     if (inst != null)
                     {
-                        Object.DestroyImmediate(inst.gameObject);
+                        Object.DestroyImmediate(inst.gameObject); // UNH-SUPPRESS: Test cleanup for singleton instances
                     }
                 }
             }
@@ -285,7 +288,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             TestRuntimeSingleton instance1 = TestRuntimeSingleton.Instance;
             int instanceId1 = instance1.GetInstanceID();
 
-            Object.DestroyImmediate(instance1.gameObject);
+            Object.DestroyImmediate(instance1.gameObject); // UNH-SUPPRESS: Test verifies singleton recreation after destruction
 
             yield return null;
 
@@ -714,7 +717,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             Assert.AreNotSame(inactive, instance);
             Assert.IsTrue(instance.gameObject.activeSelf);
 
-            Object.DestroyImmediate(inactiveObject);
+            Object.DestroyImmediate(inactiveObject); // UNH-SUPPRESS: Test cleanup for inactive object
         }
 
         [Test]
@@ -780,7 +783,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             Assert.IsTrue(instance.gameObject.TryGetComponent(out Rigidbody foundRb));
             Assert.AreSame(rb, foundRb);
 
-            Object.DestroyImmediate(rb);
+            Object.DestroyImmediate(rb); // UNH-SUPPRESS: Test cleanup for added component
         }
 
         [Test]

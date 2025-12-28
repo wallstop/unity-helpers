@@ -7,10 +7,40 @@
 # The index.lock file is created by git during any operation that modifies the index.
 # When using tools like lazygit or running multiple hooks, concurrent operations can
 # cause "fatal: Unable to create '.git/index.lock': File exists" errors.
+#
+# Environment variables:
+#   GIT_STAGING_VERBOSE   - Set to "1" to enable verbose logging for debugging
+#   GIT_LOCK_INITIAL_WAIT_MS - Initial wait for lock at hook start (default: 10000)
+#
+# Usage:
+#   . $PSScriptRoot/git-staging-helpers.ps1
+#   Invoke-EnsureNoIndexLock  # Call at start of hook to wait for external tools
+#   Invoke-GitAddWithRetry -Items @("file.txt")
+
+# Script-scoped configuration
+$script:GitStagingVerbose = $env:GIT_STAGING_VERBOSE -eq "1"
+$script:GitLockInitialWaitMs = if ($env:GIT_LOCK_INITIAL_WAIT_MS) { [int]$env:GIT_LOCK_INITIAL_WAIT_MS } else { 10000 }
 
 # Script-scoped mutex for coordinating git operations within the same PowerShell session.
 # This prevents race conditions when multiple hooks run in parallel within a single process.
 $script:GitOperationMutex = $null
+
+function Write-GitStagingVerbose {
+    param([string]$Message)
+    if ($script:GitStagingVerbose) {
+        Write-Host "[git-staging] $Message" -ForegroundColor DarkGray
+    }
+}
+
+function Write-GitStagingWarning {
+    param([string]$Message)
+    Write-Warning "[git-staging] $Message"
+}
+
+function Write-GitStagingError {
+    param([string]$Message)
+    Write-Host "[git-staging] ERROR: $Message" -ForegroundColor Red
+}
 
 function Get-GitOperationMutex {
     if ($null -eq $script:GitOperationMutex) {
@@ -80,6 +110,92 @@ function Wait-ForGitIndexLock {
     return -not (Test-Path -LiteralPath $IndexLockPath)
 }
 
+<#
+.SYNOPSIS
+    Ensures no git index.lock exists before starting hook operations.
+
+.DESCRIPTION
+    This function should be called at the START of any git hook to wait for
+    external tools (like lazygit, GitKraken, IDE integrations) to finish.
+
+    When lazygit stages files, it holds index.lock during the staging operation.
+    If a hook starts before lazygit releases the lock, git add operations will fail.
+    This function waits for that lock to be released before proceeding.
+
+.PARAMETER MaxWaitMilliseconds
+    Maximum time to wait for lock to be released (default: GIT_LOCK_INITIAL_WAIT_MS or 10000).
+
+.PARAMETER PollIntervalMilliseconds
+    How often to check for lock (default: 50ms).
+
+.OUTPUTS
+    $true if lock was released or never existed.
+    $false if lock still exists after timeout.
+
+.EXAMPLE
+    # At the start of your hook:
+    if (-not (Invoke-EnsureNoIndexLock)) {
+        Write-Warning "index.lock still held by another process"
+    }
+#>
+function Invoke-EnsureNoIndexLock {
+    param(
+        [int]$MaxWaitMilliseconds = $script:GitLockInitialWaitMs,
+        [int]$PollIntervalMilliseconds = 50
+    )
+
+    try {
+        $repositoryInfo = Get-GitRepositoryInfo
+        $indexLockPath = $repositoryInfo.IndexLockPath
+    } catch {
+        Write-GitStagingVerbose "Could not get repository info: $_"
+        return $true  # Can't check lock, assume it's fine
+    }
+
+    if (-not (Test-Path -LiteralPath $indexLockPath)) {
+        Write-GitStagingVerbose "No index.lock present, proceeding immediately"
+        return $true
+    }
+
+    Write-GitStagingVerbose "index.lock exists, waiting up to ${MaxWaitMilliseconds}ms for external tool to finish..."
+
+    $elapsed = 0
+    $lastLog = 0
+    while ((Test-Path -LiteralPath $indexLockPath) -and $elapsed -lt $MaxWaitMilliseconds) {
+        Start-Sleep -Milliseconds $PollIntervalMilliseconds
+        $elapsed += $PollIntervalMilliseconds
+
+        # Log progress every second in verbose mode
+        if ($script:GitStagingVerbose -and ($elapsed - $lastLog) -ge 1000) {
+            Write-GitStagingVerbose "Still waiting for index.lock... (${elapsed}ms/${MaxWaitMilliseconds}ms)"
+            $lastLog = $elapsed
+        }
+    }
+
+    if (Test-Path -LiteralPath $indexLockPath) {
+        Write-GitStagingWarning "index.lock still exists after waiting ${MaxWaitMilliseconds}ms"
+        Write-GitStagingWarning "Another process may be holding the lock. Operations may fail."
+        Write-GitStagingWarning "Lock file: $indexLockPath"
+
+        # Try to identify what's holding the lock (for debugging on Windows)
+        if ($script:GitStagingVerbose) {
+            try {
+                # Use handle.exe or Get-Process to find lock holder if available
+                $lockFileInfo = Get-Item -LiteralPath $indexLockPath -ErrorAction SilentlyContinue
+                if ($lockFileInfo) {
+                    Write-GitStagingVerbose "Lock file created: $($lockFileInfo.CreationTime)"
+                }
+            } catch {
+                # Ignore errors trying to identify lock holder
+            }
+        }
+        return $false
+    }
+
+    Write-GitStagingVerbose "index.lock released after ${elapsed}ms, proceeding"
+    return $true
+}
+
 function Get-StagedPathsForGlobs {
     param(
         [string[]]$DefaultPaths,
@@ -132,8 +248,11 @@ function Invoke-GitAddWithRetry {
     )
 
     if (-not $Items -or $Items.Count -eq 0) {
+        Write-GitStagingVerbose "git_add_with_retry: no files to add, returning success"
         return 0
     }
+
+    Write-GitStagingVerbose "git_add_with_retry: staging $($Items.Count) file(s)"
 
     $gitArgs = @('add', '--')
     $gitArgs += $Items
@@ -145,51 +264,88 @@ function Invoke-GitAddWithRetry {
         # Try to acquire the mutex with a timeout
         try {
             $mutexAcquired = $mutex.WaitOne(10000) # 10 second timeout
+            if ($mutexAcquired) {
+                Write-GitStagingVerbose "Acquired process mutex for git operation"
+            }
         } catch [System.Threading.AbandonedMutexException] {
             # Another process crashed while holding the mutex; we now own it
             $mutexAcquired = $true
+            Write-GitStagingVerbose "Acquired abandoned mutex (previous process crashed)"
         } catch {
             # Mutex failed, continue without it
             $mutexAcquired = $false
+            Write-GitStagingVerbose "Could not acquire mutex, proceeding without"
         }
 
         for ($attempt = 1; $attempt -le $MaxAttempts; $attempt++) {
             # Wait for any existing lock to be released before attempting
             if ($IndexLockPath -and (Test-Path -LiteralPath $IndexLockPath)) {
+                Write-GitStagingVerbose "index.lock exists before attempt $attempt, waiting..."
                 $lockCleared = Wait-ForGitIndexLock -IndexLockPath $IndexLockPath -MaxWaitMilliseconds 5000 -PollIntervalMilliseconds 50
                 if (-not $lockCleared) {
                     if (-not $Quiet) {
-                        Write-Warning "git index.lock still exists after waiting; attempting git add anyway (attempt $attempt/$MaxAttempts)"
+                        Write-GitStagingWarning "index.lock still exists after waiting; attempting git add anyway (attempt $attempt/$MaxAttempts)"
+                    }
+                } else {
+                    Write-GitStagingVerbose "index.lock released, proceeding with attempt $attempt"
+                }
+            }
+
+            # Capture stderr for better error messages
+            $stderrFile = [System.IO.Path]::GetTempFileName()
+            try {
+                & git @gitArgs 2>$stderrFile
+                $exitCode = $LASTEXITCODE
+
+                if ($exitCode -eq 0) {
+                    Write-GitStagingVerbose "git add succeeded on attempt $attempt"
+                    return 0
+                }
+
+                $gitStderr = Get-Content -Path $stderrFile -Raw -ErrorAction SilentlyContinue
+                Write-GitStagingVerbose "git add failed with exit code $exitCode on attempt $attempt"
+                if ($gitStderr) {
+                    Write-GitStagingVerbose "git stderr: $gitStderr"
+                }
+
+                # Determine if we should retry (exit code 128 or index.lock error message)
+                $shouldRetry = $exitCode -eq 128
+                if (-not $shouldRetry -and $gitStderr) {
+                    if ($gitStderr -match "index\.lock" -or $gitStderr -match "Unable to create") {
+                        $shouldRetry = $true
                     }
                 }
-            }
 
-            & git @gitArgs 2>$null
-            if ($LASTEXITCODE -eq 0) {
-                return 0
-            }
-
-            $lockExists = $IndexLockPath -and (Test-Path -LiteralPath $IndexLockPath)
-            if ($LASTEXITCODE -eq 128 -and $attempt -lt $MaxAttempts) {
-                # Exponential backoff with jitter, capped at MaxDelayMilliseconds
-                $baseDelay = [Math]::Min($InitialDelayMilliseconds * [Math]::Pow(1.4, $attempt - 1), $MaxDelayMilliseconds)
-                $jitter = Get-Random -Minimum 0 -Maximum ([int]($baseDelay * 0.4))
-                $delay = [int]$baseDelay + $jitter
-                if (-not $Quiet) {
-                    Write-Warning "git add failed (exit code 128), retrying in ${delay}ms (attempt $attempt/$MaxAttempts)..."
+                if ($shouldRetry -and $attempt -lt $MaxAttempts) {
+                    # Exponential backoff with jitter, capped at MaxDelayMilliseconds
+                    $baseDelay = [Math]::Min($InitialDelayMilliseconds * [Math]::Pow(1.4, $attempt - 1), $MaxDelayMilliseconds)
+                    $jitter = Get-Random -Minimum 0 -Maximum ([int]($baseDelay * 0.4))
+                    $delay = [int]$baseDelay + $jitter
+                    if (-not $Quiet) {
+                        Write-GitStagingWarning "git add failed (exit code $exitCode), retrying in ${delay}ms (attempt $attempt/$MaxAttempts)..."
+                    }
+                    Start-Sleep -Milliseconds $delay
+                    continue
                 }
-                Start-Sleep -Milliseconds $delay
-                continue
-            }
 
-            return $LASTEXITCODE
+                # Non-retryable failure - show the actual error
+                if ($gitStderr -and -not $Quiet) {
+                    Write-GitStagingError "git add failed with non-retryable error: $gitStderr"
+                }
+
+                return $exitCode
+            } finally {
+                Remove-Item -Path $stderrFile -Force -ErrorAction SilentlyContinue
+            }
         }
 
+        Write-GitStagingError "git add failed after $MaxAttempts attempts"
         return 128
     } finally {
         if ($mutexAcquired -and $null -ne $mutex) {
             try {
                 $mutex.ReleaseMutex()
+                Write-GitStagingVerbose "Released process mutex"
             } catch {
                 # Ignore errors releasing mutex
             }

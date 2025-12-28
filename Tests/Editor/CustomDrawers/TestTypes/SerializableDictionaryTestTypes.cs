@@ -1,3 +1,6 @@
+// MIT License - Copyright (c) 2023 Eli Pinkerton
+// Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
+
 namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers.TestTypes
 {
     using System;
@@ -5,7 +8,6 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers.TestTypes
     using UnityEngine;
     using UnityEngine.Serialization;
     using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
-    using WallstopStudios.UnityHelpers.Editor.Settings;
 
     [Serializable]
     public sealed class IntStringDictionary : SerializableDictionary<int, string> { }

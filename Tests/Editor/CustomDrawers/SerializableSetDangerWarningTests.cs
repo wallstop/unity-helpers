@@ -1,3 +1,6 @@
+// MIT License - Copyright (c) 2023 Eli Pinkerton
+// Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
+
 namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 {
     using NUnit.Framework;
@@ -147,7 +150,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         public void ValueIsValidReturnsFalseForDestroyedGameObject()
         {
             GameObject go = Track(new GameObject("ToBeDestroyed"));
-            Object.DestroyImmediate(go);
+            Object.DestroyImmediate(go); // UNH-SUPPRESS: Testing destroyed object validation
             bool result = SerializableSetPropertyDrawer.ValueIsValid(typeof(GameObject), go);
             Assert.IsFalse(result, "Destroyed GameObject should not be considered valid.");
         }
@@ -171,7 +174,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         public void ValueIsValidReturnsFalseForDestroyedScriptableObject()
         {
             TestData data = CreateScriptableObject<TestData>();
-            Object.DestroyImmediate(data);
+            Object.DestroyImmediate(data); // UNH-SUPPRESS: Testing destroyed object validation
             bool result = SerializableSetPropertyDrawer.ValueIsValid(typeof(TestData), data);
             Assert.IsFalse(result, "Destroyed ScriptableObject should not be considered valid.");
         }
@@ -344,7 +347,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         public void IsNullUnityObjectValueReturnsTrueForDestroyedGameObject()
         {
             GameObject go = Track(new GameObject("ToDestroy"));
-            Object.DestroyImmediate(go);
+            Object.DestroyImmediate(go); // UNH-SUPPRESS: Testing destroyed object null detection
             bool result = SerializableSetPropertyDrawer.IsNullUnityObjectValue(
                 typeof(GameObject),
                 go
@@ -377,7 +380,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         public void IsNullUnityObjectValueReturnsTrueForDestroyedScriptableObject()
         {
             TestData data = CreateScriptableObject<TestData>();
-            Object.DestroyImmediate(data);
+            Object.DestroyImmediate(data); // UNH-SUPPRESS: Testing destroyed object null detection
             bool result = SerializableSetPropertyDrawer.IsNullUnityObjectValue(
                 typeof(TestData),
                 data

@@ -1,3 +1,6 @@
+// MIT License - Copyright (c) 2023 Eli Pinkerton
+// Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
+
 #if UNITY_EDITOR
 namespace WallstopStudios.UnityHelpers.Tests.Settings
 {
@@ -6,7 +9,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
     using System.Linq;
     using NUnit.Framework;
     using UnityEditor;
-    using UnityEditorInternal;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
     using WallstopStudios.UnityHelpers.Editor.CustomDrawers;
@@ -1833,58 +1835,23 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
             string expectedFieldDescription
         )
         {
-            Type settingsType = typeof(UnityHelpersSettings);
-            Type propertyNamesType = typeof(UnityHelpersSettings.SerializedPropertyNames);
-
-            System.Reflection.FieldInfo constantField = propertyNamesType.GetField(
-                constantName,
-                System.Reflection.BindingFlags.Public
-                    | System.Reflection.BindingFlags.NonPublic
-                    | System.Reflection.BindingFlags.Static
-            );
-            Assert.IsNotNull(
-                constantField,
-                $"SerializedPropertyNames should have a constant named '{constantName}'."
-            );
-
-            string actualFieldName = (string)constantField.GetValue(null);
+            string actualFieldName =
+                UnityHelpersSettings.SerializedPropertyNames.GetPropertyNameValue(constantName);
             Assert.IsNotNull(
                 actualFieldName,
                 $"SerializedPropertyNames.{constantName} should have a non-null value."
             );
 
-            System.Reflection.FieldInfo targetField = settingsType.GetField(
-                actualFieldName,
-                System.Reflection.BindingFlags.Instance
-                    | System.Reflection.BindingFlags.NonPublic
-                    | System.Reflection.BindingFlags.Public
-            );
+            UnityHelpersSettings settings = UnityHelpersSettings.instance;
+            using SerializedObject serialized = new(settings);
+            serialized.Update();
 
-            string availableFields = string.Join(
-                ", ",
-                settingsType
-                    .GetFields(
-                        System.Reflection.BindingFlags.Instance
-                            | System.Reflection.BindingFlags.NonPublic
-                            | System.Reflection.BindingFlags.Public
-                    )
-                    .Where(f =>
-                        f.Name.Contains(
-                            expectedFieldDescription.Replace("FoldoutTweenEnabled", ""),
-                            StringComparison.OrdinalIgnoreCase
-                        )
-                        || f.Name.Contains(
-                            actualFieldName.TrimStart('_'),
-                            StringComparison.OrdinalIgnoreCase
-                        )
-                    )
-                    .Select(f => f.Name)
-            );
-
+            SerializedProperty property = serialized.FindProperty(actualFieldName);
             Assert.IsNotNull(
-                targetField,
-                $"SerializedPropertyNames.{constantName} = \"{actualFieldName}\" should reference an actual field on {settingsType.Name}. "
-                    + $"Related fields found: [{availableFields}]. "
+                property,
+                $"SerializedPropertyNames.{constantName} = \"{actualFieldName}\" should reference an actual "
+                    + $"serialized field on {nameof(UnityHelpersSettings)}. "
+                    + $"Expected field description: {expectedFieldDescription}. "
                     + $"This typically indicates a field was renamed without updating the constant."
             );
         }
@@ -1927,15 +1894,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
         [TestCase(nameof(UnityHelpersSettings.SerializedPropertyNames.InlineEditorFoldoutSpeed))]
         public void SerializedPropertyNamesResolvesToSerializedProperty(string constantName)
         {
-            Type propertyNamesType = typeof(UnityHelpersSettings.SerializedPropertyNames);
-            System.Reflection.FieldInfo constantField = propertyNamesType.GetField(
-                constantName,
-                System.Reflection.BindingFlags.Public
-                    | System.Reflection.BindingFlags.NonPublic
-                    | System.Reflection.BindingFlags.Static
+            string fieldName = UnityHelpersSettings.SerializedPropertyNames.GetPropertyNameValue(
+                constantName
             );
-
-            string fieldName = (string)constantField.GetValue(null);
 
             UnityHelpersSettings settings = UnityHelpersSettings.instance;
             using SerializedObject serialized = new(settings);
@@ -1951,8 +1912,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
         }
 
         /// <summary>
-        /// Validates that reflection-based field access for tween settings matches the SerializedPropertyNames constants.
-        /// This specifically tests the pattern used by TweenDisabledScope helper classes in tests.
+        /// Validates that tween settings can be found via SerializedObject with correct property type.
+        /// This validates the pattern used by TweenDisabledScope helper classes in tests.
         /// </summary>
         [Test]
         [TestCase(
@@ -1999,43 +1960,54 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
             nameof(UnityHelpersSettings.SerializedPropertyNames.InlineEditorFoldoutSpeed),
             typeof(float)
         )]
-        public void TweenFieldsAreAccessibleViaReflectionWithCorrectType(
+        public void TweenFieldsHaveCorrectSerializedPropertyType(
             string constantName,
             Type expectedFieldType
         )
         {
-            Type propertyNamesType = typeof(UnityHelpersSettings.SerializedPropertyNames);
-            System.Reflection.FieldInfo constantField = propertyNamesType.GetField(
-                constantName,
-                System.Reflection.BindingFlags.Public
-                    | System.Reflection.BindingFlags.NonPublic
-                    | System.Reflection.BindingFlags.Static
-            );
-
-            string fieldName = (string)constantField.GetValue(null);
-
-            System.Reflection.FieldInfo targetField = typeof(UnityHelpersSettings).GetField(
-                fieldName,
-                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic
-            );
-
-            Assert.IsNotNull(
-                targetField,
-                $"Field '{fieldName}' from SerializedPropertyNames.{constantName} should be accessible via reflection."
-            );
-
-            Assert.AreEqual(
-                expectedFieldType,
-                targetField.FieldType,
-                $"Field '{fieldName}' should be of type {expectedFieldType.Name}."
+            string fieldName = UnityHelpersSettings.SerializedPropertyNames.GetPropertyNameValue(
+                constantName
             );
 
             UnityHelpersSettings settings = UnityHelpersSettings.instance;
-            object value = targetField.GetValue(settings);
+            using SerializedObject serialized = new(settings);
+            serialized.Update();
+
+            SerializedProperty property = serialized.FindProperty(fieldName);
             Assert.IsNotNull(
-                value,
-                $"Field '{fieldName}' value should be retrievable from UnityHelpersSettings.instance."
+                property,
+                $"Field '{fieldName}' from SerializedPropertyNames.{constantName} should be accessible via SerializedObject."
             );
+
+            SerializedPropertyType expectedPropertyType = GetExpectedPropertyType(
+                expectedFieldType
+            );
+            Assert.AreEqual(
+                expectedPropertyType,
+                property.propertyType,
+                $"Field '{fieldName}' should be of type {expectedFieldType.Name} (SerializedPropertyType.{expectedPropertyType})."
+            );
+        }
+
+        private static SerializedPropertyType GetExpectedPropertyType(Type type)
+        {
+            if (type == typeof(bool))
+            {
+                return SerializedPropertyType.Boolean;
+            }
+            if (type == typeof(float))
+            {
+                return SerializedPropertyType.Float;
+            }
+            if (type == typeof(int))
+            {
+                return SerializedPropertyType.Integer;
+            }
+            if (type == typeof(string))
+            {
+                return SerializedPropertyType.String;
+            }
+            return SerializedPropertyType.Generic;
         }
 
         /// <summary>

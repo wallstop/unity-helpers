@@ -1,3 +1,6 @@
+// MIT License - Copyright (c) 2023 Eli Pinkerton
+// Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
+
 namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
 {
     using System;
@@ -279,7 +282,7 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
             string tempPrefabPath = Root + "/TempPrefab.prefab";
             GameObject prefab = PrefabUtility.SaveAsPrefabAsset(go, tempPrefabPath);
             Track(prefab);
-            Object.DestroyImmediate(go);
+            Object.DestroyImmediate(go); // UNH-SUPPRESS: Intentional cleanup of temp object
             _trackedObjects.Remove(go);
 
             CreatePayloadAsset();
@@ -658,7 +661,7 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
             DetectAssetChangeProcessor.IncludeTestAssets = true;
 
             // Destroy before processing (don't track since we destroy immediately)
-            Object.DestroyImmediate(go);
+            Object.DestroyImmediate(go); // UNH-SUPPRESS: Testing destroyed object handling
 
             // Act - Should handle destroyed objects gracefully
             Assert.DoesNotThrow(() =>
@@ -929,7 +932,7 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
             {
                 if (handler != null && handler.gameObject != null)
                 {
-                    Object.DestroyImmediate(handler.gameObject);
+                    Object.DestroyImmediate(handler.gameObject); // UNH-SUPPRESS: Test cleanup
                 }
             }
 
@@ -939,7 +942,7 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
             {
                 if (handler != null && handler.gameObject != null)
                 {
-                    Object.DestroyImmediate(handler.gameObject);
+                    Object.DestroyImmediate(handler.gameObject); // UNH-SUPPRESS: Test cleanup
                 }
             }
 
@@ -949,7 +952,7 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
             {
                 if (handler != null && handler.gameObject != null)
                 {
-                    Object.DestroyImmediate(handler.gameObject);
+                    Object.DestroyImmediate(handler.gameObject); // UNH-SUPPRESS: Test cleanup
                 }
             }
 
@@ -959,15 +962,17 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
             {
                 if (handler != null && handler.gameObject != null)
                 {
-                    Object.DestroyImmediate(handler.gameObject);
+                    Object.DestroyImmediate(handler.gameObject); // UNH-SUPPRESS: Test cleanup
                 }
             }
         }
 
-        private static void CreatePayloadAsset()
+        private void CreatePayloadAsset()
         {
             EnsureFolder();
-            TestDetectableAsset payload = ScriptableObject.CreateInstance<TestDetectableAsset>();
+            TestDetectableAsset payload = Track(
+                ScriptableObject.CreateInstance<TestDetectableAsset>()
+            );
             AssetDatabase.CreateAsset(payload, PayloadAssetPath);
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
@@ -980,7 +985,7 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
             GameObject go = new(typeof(T).Name);
             go.AddComponent<T>();
             GameObject prefab = PrefabUtility.SaveAsPrefabAsset(go, path);
-            Object.DestroyImmediate(go);
+            Object.DestroyImmediate(go); // UNH-SUPPRESS: Intentional cleanup after saving prefab
             AssetDatabase.Refresh();
             return prefab;
         }
@@ -994,7 +999,7 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
             child.AddComponent<TestNestedPrefabHandler>();
 
             GameObject prefab = PrefabUtility.SaveAsPrefabAsset(root, path);
-            Object.DestroyImmediate(root);
+            Object.DestroyImmediate(root); // UNH-SUPPRESS: Intentional cleanup after saving prefab
             AssetDatabase.Refresh();
             return prefab;
         }
@@ -1007,7 +1012,7 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
             go.AddComponent<TestPrefabAssetChangeHandler>();
 
             GameObject prefab = PrefabUtility.SaveAsPrefabAsset(go, path);
-            Object.DestroyImmediate(go);
+            Object.DestroyImmediate(go); // UNH-SUPPRESS: Intentional cleanup after saving prefab
             AssetDatabase.Refresh();
             return prefab;
         }

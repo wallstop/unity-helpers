@@ -1,3 +1,6 @@
+// MIT License - Copyright (c) 2023 Eli Pinkerton
+// Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
+
 namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 {
     using System;
@@ -724,7 +727,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         public void IsScriptableSingletonTypeWithDestroyedObjectReturnsFalse()
         {
             RegularScriptableObject target = CreateScriptableObject<RegularScriptableObject>();
-            Object.DestroyImmediate(target);
+            Object.DestroyImmediate(target); // UNH-SUPPRESS: Testing destroyed object handling
 
             // Unity's null check should handle destroyed objects
             bool result = SerializableDictionaryPropertyDrawer.IsScriptableSingletonType(target);

@@ -1,3 +1,7 @@
+// MIT License - Copyright (c) 2023 Eli Pinkerton
+// Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
+
+// UNH-SUPPRESS: This IS the CommonTestBase class
 namespace WallstopStudios.UnityHelpers.Tests.Core
 {
     using System;
@@ -171,7 +175,20 @@ namespace WallstopStudios.UnityHelpers.Tests.Core
                 {
                     if (obj != null)
                     {
-                        Object.DestroyImmediate(obj);
+#if UNITY_EDITOR
+                        // If the object is a persisted asset, use AssetDatabase.DeleteAsset
+                        // DestroyImmediate without allowDestroyingAssets=true will fail for assets
+                        if (UnityEditor.EditorUtility.IsPersistent(obj))
+                        {
+                            string assetPath = UnityEditor.AssetDatabase.GetAssetPath(obj);
+                            if (!string.IsNullOrEmpty(assetPath))
+                            {
+                                UnityEditor.AssetDatabase.DeleteAsset(assetPath);
+                                continue;
+                            }
+                        }
+#endif
+                        Object.DestroyImmediate(obj); // UNH-SUPPRESS: Required for EditMode test cleanup
                     }
                 }
                 _trackedObjects.Clear();
@@ -211,7 +228,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Core
                         continue;
                     }
 
-                    Object.Destroy(obj);
+                    Object.Destroy(obj); // UNH-SUPPRESS: Required for PlayMode test cleanup
                     yield return null;
                 }
                 _trackedObjects.Clear();
@@ -240,7 +257,20 @@ namespace WallstopStudios.UnityHelpers.Tests.Core
                 {
                     if (obj != null)
                     {
-                        Object.DestroyImmediate(obj);
+#if UNITY_EDITOR
+                        // If the object is a persisted asset, use AssetDatabase.DeleteAsset
+                        // DestroyImmediate without allowDestroyingAssets=true will fail for assets
+                        if (UnityEditor.EditorUtility.IsPersistent(obj))
+                        {
+                            string assetPath = UnityEditor.AssetDatabase.GetAssetPath(obj);
+                            if (!string.IsNullOrEmpty(assetPath))
+                            {
+                                UnityEditor.AssetDatabase.DeleteAsset(assetPath);
+                                continue;
+                            }
+                        }
+#endif
+                        Object.DestroyImmediate(obj); // UNH-SUPPRESS: Required for final test cleanup
                     }
                 }
                 _trackedObjects.Clear();

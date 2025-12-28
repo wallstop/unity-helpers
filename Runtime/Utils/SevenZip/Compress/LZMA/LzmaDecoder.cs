@@ -1,3 +1,6 @@
+// MIT License - Copyright (c) 2023 Eli Pinkerton
+// Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
+
 // LzmaDecoder.cs
 
 namespace SevenZip.Compression.LZMA
@@ -7,74 +10,74 @@ namespace SevenZip.Compression.LZMA
 
     public class Decoder : ICoder, ISetDecoderProperties // ,System.IO.Stream
     {
-        class LenDecoder
+        private class LenDecoder
         {
-            BitDecoder m_Choice = new();
-            BitDecoder m_Choice2 = new();
-            readonly BitTreeDecoder[] m_LowCoder = new BitTreeDecoder[Base.kNumPosStatesMax];
-            readonly BitTreeDecoder[] m_MidCoder = new BitTreeDecoder[Base.kNumPosStatesMax];
-            BitTreeDecoder m_HighCoder = new(Base.kNumHighLenBits);
-            uint m_NumPosStates = 0;
+            private BitDecoder _choice = new();
+            private BitDecoder _choice2 = new();
+            private readonly BitTreeDecoder[] _lowCoder = new BitTreeDecoder[Base.KNumPosStatesMax];
+            private readonly BitTreeDecoder[] _midCoder = new BitTreeDecoder[Base.KNumPosStatesMax];
+            private BitTreeDecoder _highCoder = new(Base.KNumHighLenBits);
+            private uint _numPosStates = 0;
 
             public void Create(uint numPosStates)
             {
-                for (uint posState = m_NumPosStates; posState < numPosStates; posState++)
+                for (uint posState = _numPosStates; posState < numPosStates; posState++)
                 {
-                    m_LowCoder[posState] = new BitTreeDecoder(Base.kNumLowLenBits);
-                    m_MidCoder[posState] = new BitTreeDecoder(Base.kNumMidLenBits);
+                    _lowCoder[posState] = new BitTreeDecoder(Base.KNumLowLenBits);
+                    _midCoder[posState] = new BitTreeDecoder(Base.KNumMidLenBits);
                 }
-                m_NumPosStates = numPosStates;
+                _numPosStates = numPosStates;
             }
 
             public void Init()
             {
-                m_Choice.Init();
-                for (uint posState = 0; posState < m_NumPosStates; posState++)
+                _choice.Init();
+                for (uint posState = 0; posState < _numPosStates; posState++)
                 {
-                    m_LowCoder[posState].Init();
-                    m_MidCoder[posState].Init();
+                    _lowCoder[posState].Init();
+                    _midCoder[posState].Init();
                 }
-                m_Choice2.Init();
-                m_HighCoder.Init();
+                _choice2.Init();
+                _highCoder.Init();
             }
 
             public uint Decode(RangeCoder.Decoder rangeDecoder, uint posState)
             {
-                if (m_Choice.Decode(rangeDecoder) == 0)
+                if (_choice.Decode(rangeDecoder) == 0)
                 {
-                    return m_LowCoder[posState].Decode(rangeDecoder);
+                    return _lowCoder[posState].Decode(rangeDecoder);
                 }
 
-                uint symbol = Base.kNumLowLenSymbols;
-                if (m_Choice2.Decode(rangeDecoder) == 0)
+                uint symbol = Base.KNumLowLenSymbols;
+                if (_choice2.Decode(rangeDecoder) == 0)
                 {
-                    symbol += m_MidCoder[posState].Decode(rangeDecoder);
+                    symbol += _midCoder[posState].Decode(rangeDecoder);
                 }
                 else
                 {
-                    symbol += Base.kNumMidLenSymbols;
-                    symbol += m_HighCoder.Decode(rangeDecoder);
+                    symbol += Base.KNumMidLenSymbols;
+                    symbol += _highCoder.Decode(rangeDecoder);
                 }
                 return symbol;
             }
         }
 
-        class LiteralDecoder
+        private class LiteralDecoder
         {
-            struct Decoder2
+            private struct Decoder2
             {
-                BitDecoder[] m_Decoders;
+                private BitDecoder[] _decoders;
 
                 public void Create()
                 {
-                    m_Decoders = new BitDecoder[0x300];
+                    _decoders = new BitDecoder[0x300];
                 }
 
                 public void Init()
                 {
                     for (int i = 0; i < 0x300; i++)
                     {
-                        m_Decoders[i].Init();
+                        _decoders[i].Init();
                     }
                 }
 
@@ -83,7 +86,7 @@ namespace SevenZip.Compression.LZMA
                     uint symbol = 1;
                     do
                     {
-                        symbol = (symbol << 1) | m_Decoders[symbol].Decode(rangeDecoder);
+                        symbol = (symbol << 1) | _decoders[symbol].Decode(rangeDecoder);
                     } while (symbol < 0x100);
                     return (byte)symbol;
                 }
@@ -95,13 +98,13 @@ namespace SevenZip.Compression.LZMA
                     {
                         uint matchBit = (uint)(matchByte >> 7) & 1;
                         matchByte <<= 1;
-                        uint bit = m_Decoders[((1 + matchBit) << 8) + symbol].Decode(rangeDecoder);
+                        uint bit = _decoders[((1 + matchBit) << 8) + symbol].Decode(rangeDecoder);
                         symbol = (symbol << 1) | bit;
                         if (matchBit != bit)
                         {
                             while (symbol < 0x100)
                             {
-                                symbol = (symbol << 1) | m_Decoders[symbol].Decode(rangeDecoder);
+                                symbol = (symbol << 1) | _decoders[symbol].Decode(rangeDecoder);
                             }
 
                             break;
@@ -111,47 +114,46 @@ namespace SevenZip.Compression.LZMA
                 }
             }
 
-            Decoder2[] m_Coders;
-            int m_NumPrevBits;
-            int m_NumPosBits;
-            uint m_PosMask;
+            private Decoder2[] _coders;
+            private int _numPrevBits;
+            private int _numPosBits;
+            private uint _posMask;
 
             public void Create(int numPosBits, int numPrevBits)
             {
-                if (m_Coders != null && m_NumPrevBits == numPrevBits && m_NumPosBits == numPosBits)
+                if (_coders != null && _numPrevBits == numPrevBits && _numPosBits == numPosBits)
                 {
                     return;
                 }
 
-                m_NumPosBits = numPosBits;
-                m_PosMask = ((uint)1 << numPosBits) - 1;
-                m_NumPrevBits = numPrevBits;
-                uint numStates = (uint)1 << (m_NumPrevBits + m_NumPosBits);
-                m_Coders = new Decoder2[numStates];
+                _numPosBits = numPosBits;
+                _posMask = ((uint)1 << numPosBits) - 1;
+                _numPrevBits = numPrevBits;
+                uint numStates = (uint)1 << (_numPrevBits + _numPosBits);
+                _coders = new Decoder2[numStates];
                 for (uint i = 0; i < numStates; i++)
                 {
-                    m_Coders[i].Create();
+                    _coders[i].Create();
                 }
             }
 
             public void Init()
             {
-                uint numStates = (uint)1 << (m_NumPrevBits + m_NumPosBits);
+                uint numStates = (uint)1 << (_numPrevBits + _numPosBits);
                 for (uint i = 0; i < numStates; i++)
                 {
-                    m_Coders[i].Init();
+                    _coders[i].Init();
                 }
             }
 
-            uint GetState(uint pos, byte prevByte)
+            private uint GetState(uint pos, byte prevByte)
             {
-                return ((pos & m_PosMask) << m_NumPrevBits)
-                    + (uint)(prevByte >> (8 - m_NumPrevBits));
+                return ((pos & _posMask) << _numPrevBits) + (uint)(prevByte >> (8 - _numPrevBits));
             }
 
             public byte DecodeNormal(RangeCoder.Decoder rangeDecoder, uint pos, byte prevByte)
             {
-                return m_Coders[GetState(pos, prevByte)].DecodeNormal(rangeDecoder);
+                return _coders[GetState(pos, prevByte)].DecodeNormal(rangeDecoder);
             }
 
             public byte DecodeWithMatchByte(
@@ -161,66 +163,68 @@ namespace SevenZip.Compression.LZMA
                 byte matchByte
             )
             {
-                return m_Coders[GetState(pos, prevByte)]
+                return _coders[GetState(pos, prevByte)]
                     .DecodeWithMatchByte(rangeDecoder, matchByte);
             }
         };
 
-        readonly LZ.OutWindow m_OutWindow = new();
-        readonly RangeCoder.Decoder m_RangeDecoder = new();
+        private readonly LZ.OutWindow _outWindow = new();
+        private readonly RangeCoder.Decoder _rangeDecoder = new();
 
-        readonly BitDecoder[] m_IsMatchDecoders = new BitDecoder[
-            Base.kNumStates << Base.kNumPosStatesBitsMax
+        private readonly BitDecoder[] _isMatchDecoders = new BitDecoder[
+            Base.KNumStates << Base.KNumPosStatesBitsMax
         ];
 
-        readonly BitDecoder[] m_IsRepDecoders = new BitDecoder[Base.kNumStates];
-        readonly BitDecoder[] m_IsRepG0Decoders = new BitDecoder[Base.kNumStates];
-        readonly BitDecoder[] m_IsRepG1Decoders = new BitDecoder[Base.kNumStates];
-        readonly BitDecoder[] m_IsRepG2Decoders = new BitDecoder[Base.kNumStates];
+        private readonly BitDecoder[] _isRepDecoders = new BitDecoder[Base.KNumStates];
+        private readonly BitDecoder[] _isRepG0Decoders = new BitDecoder[Base.KNumStates];
+        private readonly BitDecoder[] _isRepG1Decoders = new BitDecoder[Base.KNumStates];
+        private readonly BitDecoder[] _isRepG2Decoders = new BitDecoder[Base.KNumStates];
 
-        readonly BitDecoder[] m_IsRep0LongDecoders = new BitDecoder[
-            Base.kNumStates << Base.kNumPosStatesBitsMax
+        private readonly BitDecoder[] _isRep0LongDecoders = new BitDecoder[
+            Base.KNumStates << Base.KNumPosStatesBitsMax
         ];
 
-        readonly BitTreeDecoder[] m_PosSlotDecoder = new BitTreeDecoder[Base.kNumLenToPosStates];
-
-        readonly BitDecoder[] m_PosDecoders = new BitDecoder[
-            Base.kNumFullDistances - Base.kEndPosModelIndex
+        private readonly BitTreeDecoder[] _posSlotDecoder = new BitTreeDecoder[
+            Base.KNumLenToPosStates
         ];
 
-        BitTreeDecoder m_PosAlignDecoder = new(Base.kNumAlignBits);
+        private readonly BitDecoder[] _posDecoders = new BitDecoder[
+            Base.KNumFullDistances - Base.KEndPosModelIndex
+        ];
 
-        readonly LenDecoder m_LenDecoder = new();
-        readonly LenDecoder m_RepLenDecoder = new();
+        private BitTreeDecoder _posAlignDecoder = new(Base.KNumAlignBits);
 
-        readonly LiteralDecoder m_LiteralDecoder = new();
+        private readonly LenDecoder _lenDecoder = new();
+        private readonly LenDecoder _repLenDecoder = new();
 
-        uint m_DictionarySize;
-        uint m_DictionarySizeCheck;
+        private readonly LiteralDecoder _literalDecoder = new();
 
-        uint m_PosStateMask;
+        private uint _dictionarySize;
+        private uint _dictionarySizeCheck;
+
+        private uint _posStateMask;
 
         public Decoder()
         {
-            m_DictionarySize = 0xFFFFFFFF;
-            for (int i = 0; i < Base.kNumLenToPosStates; i++)
+            _dictionarySize = 0xFFFFFFFF;
+            for (int i = 0; i < Base.KNumLenToPosStates; i++)
             {
-                m_PosSlotDecoder[i] = new BitTreeDecoder(Base.kNumPosSlotBits);
+                _posSlotDecoder[i] = new BitTreeDecoder(Base.KNumPosSlotBits);
             }
         }
 
-        void SetDictionarySize(uint dictionarySize)
+        private void SetDictionarySize(uint dictionarySize)
         {
-            if (m_DictionarySize != dictionarySize)
+            if (_dictionarySize != dictionarySize)
             {
-                m_DictionarySize = dictionarySize;
-                m_DictionarySizeCheck = Math.Max(m_DictionarySize, 1);
-                uint blockSize = Math.Max(m_DictionarySizeCheck, (1 << 12));
-                m_OutWindow.Create(blockSize);
+                _dictionarySize = dictionarySize;
+                _dictionarySizeCheck = Math.Max(_dictionarySize, 1);
+                uint blockSize = Math.Max(_dictionarySizeCheck, (1 << 12));
+                _outWindow.Create(blockSize);
             }
         }
 
-        void SetLiteralProperties(int lp, int lc)
+        private void SetLiteralProperties(int lp, int lc)
         {
             if (lp > 8)
             {
@@ -232,59 +236,59 @@ namespace SevenZip.Compression.LZMA
                 throw new InvalidParamException();
             }
 
-            m_LiteralDecoder.Create(lp, lc);
+            _literalDecoder.Create(lp, lc);
         }
 
-        void SetPosBitsProperties(int pb)
+        private void SetPosBitsProperties(int pb)
         {
-            if (pb > Base.kNumPosStatesBitsMax)
+            if (pb > Base.KNumPosStatesBitsMax)
             {
                 throw new InvalidParamException();
             }
 
             uint numPosStates = (uint)1 << pb;
-            m_LenDecoder.Create(numPosStates);
-            m_RepLenDecoder.Create(numPosStates);
-            m_PosStateMask = numPosStates - 1;
+            _lenDecoder.Create(numPosStates);
+            _repLenDecoder.Create(numPosStates);
+            _posStateMask = numPosStates - 1;
         }
 
-        bool _solid = false;
+        private bool _solid = false;
 
-        void Init(System.IO.Stream inStream, System.IO.Stream outStream)
+        private void Init(System.IO.Stream inStream, System.IO.Stream outStream)
         {
-            m_RangeDecoder.Init(inStream);
-            m_OutWindow.Init(outStream, _solid);
+            _rangeDecoder.Init(inStream);
+            _outWindow.Init(outStream, _solid);
 
             uint i;
-            for (i = 0; i < Base.kNumStates; i++)
+            for (i = 0; i < Base.KNumStates; i++)
             {
-                for (uint j = 0; j <= m_PosStateMask; j++)
+                for (uint j = 0; j <= _posStateMask; j++)
                 {
-                    uint index = (i << Base.kNumPosStatesBitsMax) + j;
-                    m_IsMatchDecoders[index].Init();
-                    m_IsRep0LongDecoders[index].Init();
+                    uint index = (i << Base.KNumPosStatesBitsMax) + j;
+                    _isMatchDecoders[index].Init();
+                    _isRep0LongDecoders[index].Init();
                 }
-                m_IsRepDecoders[i].Init();
-                m_IsRepG0Decoders[i].Init();
-                m_IsRepG1Decoders[i].Init();
-                m_IsRepG2Decoders[i].Init();
+                _isRepDecoders[i].Init();
+                _isRepG0Decoders[i].Init();
+                _isRepG1Decoders[i].Init();
+                _isRepG2Decoders[i].Init();
             }
 
-            m_LiteralDecoder.Init();
-            for (i = 0; i < Base.kNumLenToPosStates; i++)
+            _literalDecoder.Init();
+            for (i = 0; i < Base.KNumLenToPosStates; i++)
             {
-                m_PosSlotDecoder[i].Init();
+                _posSlotDecoder[i].Init();
             }
 
             // m_PosSpecDecoder.Init();
-            for (i = 0; i < Base.kNumFullDistances - Base.kEndPosModelIndex; i++)
+            for (i = 0; i < Base.KNumFullDistances - Base.KEndPosModelIndex; i++)
             {
-                m_PosDecoders[i].Init();
+                _posDecoders[i].Init();
             }
 
-            m_LenDecoder.Init();
-            m_RepLenDecoder.Init();
-            m_PosAlignDecoder.Init();
+            _lenDecoder.Init();
+            _repLenDecoder.Init();
+            _posAlignDecoder.Init();
         }
 
         public void Code(
@@ -309,16 +313,16 @@ namespace SevenZip.Compression.LZMA
             if (nowPos64 < outSize64)
             {
                 if (
-                    m_IsMatchDecoders[state.Index << Base.kNumPosStatesBitsMax]
-                        .Decode(m_RangeDecoder) != 0
+                    _isMatchDecoders[state.index << Base.KNumPosStatesBitsMax].Decode(_rangeDecoder)
+                    != 0
                 )
                 {
                     throw new DataErrorException();
                 }
 
                 state.UpdateChar();
-                byte b = m_LiteralDecoder.DecodeNormal(m_RangeDecoder, 0, 0);
-                m_OutWindow.PutByte(b);
+                byte b = _literalDecoder.DecodeNormal(_rangeDecoder, 0, 0);
+                _outWindow.PutByte(b);
                 nowPos64++;
             }
             while (nowPos64 < outSize64)
@@ -326,52 +330,52 @@ namespace SevenZip.Compression.LZMA
                 // UInt64 next = Math.Min(nowPos64 + (1 << 18), outSize64);
                 // while(nowPos64 < next)
                 {
-                    uint posState = (uint)nowPos64 & m_PosStateMask;
+                    uint posState = (uint)nowPos64 & _posStateMask;
                     if (
-                        m_IsMatchDecoders[(state.Index << Base.kNumPosStatesBitsMax) + posState]
-                            .Decode(m_RangeDecoder) == 0
+                        _isMatchDecoders[(state.index << Base.KNumPosStatesBitsMax) + posState]
+                            .Decode(_rangeDecoder) == 0
                     )
                     {
                         byte b;
-                        byte prevByte = m_OutWindow.GetByte(0);
+                        byte prevByte = _outWindow.GetByte(0);
                         if (!state.IsCharState())
                         {
-                            b = m_LiteralDecoder.DecodeWithMatchByte(
-                                m_RangeDecoder,
+                            b = _literalDecoder.DecodeWithMatchByte(
+                                _rangeDecoder,
                                 (uint)nowPos64,
                                 prevByte,
-                                m_OutWindow.GetByte(rep0)
+                                _outWindow.GetByte(rep0)
                             );
                         }
                         else
                         {
-                            b = m_LiteralDecoder.DecodeNormal(
-                                m_RangeDecoder,
+                            b = _literalDecoder.DecodeNormal(
+                                _rangeDecoder,
                                 (uint)nowPos64,
                                 prevByte
                             );
                         }
 
-                        m_OutWindow.PutByte(b);
+                        _outWindow.PutByte(b);
                         state.UpdateChar();
                         nowPos64++;
                     }
                     else
                     {
                         uint len;
-                        if (m_IsRepDecoders[state.Index].Decode(m_RangeDecoder) == 1)
+                        if (_isRepDecoders[state.index].Decode(_rangeDecoder) == 1)
                         {
-                            if (m_IsRepG0Decoders[state.Index].Decode(m_RangeDecoder) == 0)
+                            if (_isRepG0Decoders[state.index].Decode(_rangeDecoder) == 0)
                             {
                                 if (
-                                    m_IsRep0LongDecoders[
-                                        (state.Index << Base.kNumPosStatesBitsMax) + posState
+                                    _isRep0LongDecoders[
+                                        (state.index << Base.KNumPosStatesBitsMax) + posState
                                     ]
-                                        .Decode(m_RangeDecoder) == 0
+                                        .Decode(_rangeDecoder) == 0
                                 )
                                 {
                                     state.UpdateShortRep();
-                                    m_OutWindow.PutByte(m_OutWindow.GetByte(rep0));
+                                    _outWindow.PutByte(_outWindow.GetByte(rep0));
                                     nowPos64++;
                                     continue;
                                 }
@@ -379,13 +383,13 @@ namespace SevenZip.Compression.LZMA
                             else
                             {
                                 UInt32 distance;
-                                if (m_IsRepG1Decoders[state.Index].Decode(m_RangeDecoder) == 0)
+                                if (_isRepG1Decoders[state.index].Decode(_rangeDecoder) == 0)
                                 {
                                     distance = rep1;
                                 }
                                 else
                                 {
-                                    if (m_IsRepG2Decoders[state.Index].Decode(m_RangeDecoder) == 0)
+                                    if (_isRepG2Decoders[state.index].Decode(_rangeDecoder) == 0)
                                     {
                                         distance = rep2;
                                     }
@@ -400,8 +404,7 @@ namespace SevenZip.Compression.LZMA
                                 rep0 = distance;
                             }
                             len =
-                                m_RepLenDecoder.Decode(m_RangeDecoder, posState)
-                                + Base.kMatchMinLen;
+                                _repLenDecoder.Decode(_rangeDecoder, posState) + Base.KMatchMinLen;
                             state.UpdateRep();
                         }
                         else
@@ -409,31 +412,31 @@ namespace SevenZip.Compression.LZMA
                             rep3 = rep2;
                             rep2 = rep1;
                             rep1 = rep0;
-                            len = Base.kMatchMinLen + m_LenDecoder.Decode(m_RangeDecoder, posState);
+                            len = Base.KMatchMinLen + _lenDecoder.Decode(_rangeDecoder, posState);
                             state.UpdateMatch();
-                            uint posSlot = m_PosSlotDecoder[Base.GetLenToPosState(len)]
-                                .Decode(m_RangeDecoder);
-                            if (posSlot >= Base.kStartPosModelIndex)
+                            uint posSlot = _posSlotDecoder[Base.GetLenToPosState(len)]
+                                .Decode(_rangeDecoder);
+                            if (posSlot >= Base.KStartPosModelIndex)
                             {
                                 int numDirectBits = (int)((posSlot >> 1) - 1);
                                 rep0 = ((2 | (posSlot & 1)) << numDirectBits);
-                                if (posSlot < Base.kEndPosModelIndex)
+                                if (posSlot < Base.KEndPosModelIndex)
                                 {
                                     rep0 += BitTreeDecoder.ReverseDecode(
-                                        m_PosDecoders,
+                                        _posDecoders,
                                         rep0 - posSlot - 1,
-                                        m_RangeDecoder,
+                                        _rangeDecoder,
                                         numDirectBits
                                     );
                                 }
                                 else
                                 {
                                     rep0 += (
-                                        m_RangeDecoder.DecodeDirectBits(
-                                            numDirectBits - Base.kNumAlignBits
-                                        ) << Base.kNumAlignBits
+                                        _rangeDecoder.DecodeDirectBits(
+                                            numDirectBits - Base.KNumAlignBits
+                                        ) << Base.KNumAlignBits
                                     );
-                                    rep0 += m_PosAlignDecoder.ReverseDecode(m_RangeDecoder);
+                                    rep0 += _posAlignDecoder.ReverseDecode(_rangeDecoder);
                                 }
                             }
                             else
@@ -441,10 +444,7 @@ namespace SevenZip.Compression.LZMA
                                 rep0 = posSlot;
                             }
                         }
-                        if (
-                            rep0 >= m_OutWindow.TrainSize + nowPos64
-                            || rep0 >= m_DictionarySizeCheck
-                        )
+                        if (rep0 >= _outWindow.trainSize + nowPos64 || rep0 >= _dictionarySizeCheck)
                         {
                             if (rep0 == 0xFFFFFFFF)
                             {
@@ -453,14 +453,14 @@ namespace SevenZip.Compression.LZMA
 
                             throw new DataErrorException();
                         }
-                        m_OutWindow.CopyBlock(rep0, len);
+                        _outWindow.CopyBlock(rep0, len);
                         nowPos64 += len;
                     }
                 }
             }
-            m_OutWindow.Flush();
-            m_OutWindow.ReleaseStream();
-            m_RangeDecoder.ReleaseStream();
+            _outWindow.Flush();
+            _outWindow.ReleaseStream();
+            _rangeDecoder.ReleaseStream();
         }
 
         public void SetDecoderProperties(byte[] properties)
@@ -474,7 +474,7 @@ namespace SevenZip.Compression.LZMA
             int remainder = properties[0] / 9;
             int lp = remainder % 5;
             int pb = remainder / 5;
-            if (pb > Base.kNumPosStatesBitsMax)
+            if (pb > Base.KNumPosStatesBitsMax)
             {
                 throw new InvalidParamException();
             }
@@ -493,7 +493,7 @@ namespace SevenZip.Compression.LZMA
         public bool Train(System.IO.Stream stream)
         {
             _solid = true;
-            return m_OutWindow.Train(stream);
+            return _outWindow.Train(stream);
         }
 
         /*

@@ -1,3 +1,6 @@
+// MIT License - Copyright (c) 2023 Eli Pinkerton
+// Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
+
 #if VCONTAINER_PRESENT
 namespace WallstopStudios.UnityHelpers.Tests.Integrations.VContainer
 {
@@ -5,7 +8,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.VContainer
     using NUnit.Framework;
     using WallstopStudios.UnityHelpers.Integrations.VContainer;
 
-    public class VContainerIntegrationCompilationTests
+    public sealed class VContainerIntegrationCompilationTests
     {
         [Test]
         public void CanReferenceVContainerIntegrationTypes()
@@ -28,7 +31,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.VContainer
         public void PublicAPIAccessible()
         {
             MethodInfo method = typeof(RelationalComponentsBuilderExtensions).GetMethod(
-                "RegisterRelationalComponents"
+                nameof(RelationalComponentsBuilderExtensions.RegisterRelationalComponents)
             );
             Assert.NotNull(
                 method,

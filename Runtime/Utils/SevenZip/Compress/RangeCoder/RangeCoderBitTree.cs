@@ -1,11 +1,14 @@
+// MIT License - Copyright (c) 2023 Eli Pinkerton
+// Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
+
 namespace SevenZip.Compression.RangeCoder
 {
     using System;
 
-    struct BitTreeEncoder
+    internal readonly struct BitTreeEncoder
     {
-        readonly BitEncoder[] Models;
-        readonly int NumBitLevels;
+        private readonly BitEncoder[] Models;
+        private readonly int NumBitLevels;
 
         public BitTreeEncoder(int numBitLevels)
         {
@@ -111,10 +114,10 @@ namespace SevenZip.Compression.RangeCoder
         }
     }
 
-    struct BitTreeDecoder
+    internal readonly struct BitTreeDecoder
     {
-        readonly BitDecoder[] Models;
-        readonly int NumBitLevels;
+        private readonly BitDecoder[] Models;
+        private readonly int NumBitLevels;
 
         public BitTreeDecoder(int numBitLevels)
         {

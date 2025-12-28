@@ -1,3 +1,6 @@
+// MIT License - Copyright (c) 2023 Eli Pinkerton
+// Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
+
 #if ZENJECT_PRESENT
 namespace WallstopStudios.UnityHelpers.Tests.Integrations.Zenject
 {
@@ -5,7 +8,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.Zenject
     using NUnit.Framework;
     using WallstopStudios.UnityHelpers.Integrations.Zenject;
 
-    public class ZenjectIntegrationCompilationTests
+    public sealed class ZenjectIntegrationCompilationTests
     {
         [Test]
         public void CanReferenceZenjectIntegrationTypes()
@@ -28,7 +31,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.Zenject
         public void PublicAPIAccessible()
         {
             MethodInfo method = typeof(DiContainerRelationalExtensions).GetMethod(
-                "AssignRelationalComponents"
+                nameof(DiContainerRelationalExtensions.AssignRelationalComponents)
             );
             Assert.NotNull(
                 method,

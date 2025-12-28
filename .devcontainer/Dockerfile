@@ -19,6 +19,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 # - unzip: Required for extracting some binaries
 # - wget: Alternative to curl for downloads
 # - ca-certificates: Ensure SSL certificates are available
+# - shellcheck: Shell script linter (used by actionlint for enhanced checks)
 #
 # Additional tools installed from GitHub releases:
 # - fd: Fast file finder (better find)
@@ -33,6 +34,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 # - dust: Visual disk usage (better du)
 # - procs: Modern process viewer (better ps)
 # - tokei: Code statistics
+# - actionlint: GitHub Actions workflow linter
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ripgrep \
     jq \
@@ -45,6 +47,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     unzip \
     wget \
     ca-certificates \
+    shellcheck \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
@@ -193,6 +196,18 @@ RUN LYCHEE_VERSION="0.21.0" \
     | tar -xz -C /usr/local/bin \
     && chmod +x /usr/local/bin/lychee
 
+# Install actionlint (GitHub Actions workflow linter) from GitHub releases
+# https://github.com/rhysd/actionlint - validates workflow syntax and detects common errors
+RUN ACTIONLINT_VERSION="1.7.7" \
+    && case "${TARGETARCH}" in \
+        amd64) ACTIONLINT_ARCH="linux_amd64" ;; \
+        arm64) ACTIONLINT_ARCH="linux_arm64" ;; \
+        *) echo "Unsupported TARGETARCH: ${TARGETARCH}" >&2; exit 1 ;; \
+    esac \
+    && curl -fsSL "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_${ACTIONLINT_ARCH}.tar.gz" \
+    | tar -xz -C /usr/local/bin actionlint \
+    && chmod +x /usr/local/bin/actionlint
+
 # Install PowerShell
 RUN wget -q https://packages.microsoft.com/config/debian/12/packages-microsoft-prod.deb \
     && dpkg -i packages-microsoft-prod.deb \
@@ -215,6 +230,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python3-venv \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
+
+# Install yamllint (YAML linter) via pip
+# Using --break-system-packages to allow global install in container
+# https://yamllint.readthedocs.io/ - validates YAML syntax and style
+RUN pip3 install --break-system-packages yamllint
 
 # Install Node.js (latest LTS) and npm from NodeSource
 RUN curl -fsSL https://deb.nodesource.com/setup_lts.x | bash - \
@@ -263,14 +283,61 @@ RUN { \
     } >> /etc/bash.bashrc
 
 # Enable VS Code shell integration
-# This sources the shell integration script that VS Code injects into the environment
+# VS Code automatically injects shell integration when terminal.integrated.shellIntegration.enabled is true.
+# This manual fallback ensures shell integration works in edge cases (sub-shells, reconnections, etc.)
+# See: https://code.visualstudio.com/docs/terminal/shell-integration
 RUN { \
     echo ''; \
-    echo '# VS Code shell integration'; \
+    echo '# VS Code shell integration (manual fallback)'; \
+    echo '# Automatic injection is enabled via devcontainer.json settings.'; \
+    echo '# This provides a fallback for sub-shells and edge cases.'; \
     echo 'if [[ "$TERM_PROGRAM" == "vscode" ]]; then'; \
-    echo '    builtin . "$VSCODE_SHELL_INTEGRATION"'; \
+    echo '    # Check if VS Code has injected the integration script path'; \
+    echo '    if [[ -n "$VSCODE_SHELL_INTEGRATION" && -f "$VSCODE_SHELL_INTEGRATION" ]]; then'; \
+    echo '        builtin source "$VSCODE_SHELL_INTEGRATION"'; \
+    echo '    elif command -v code &> /dev/null; then'; \
+    echo '        # Fallback: use code CLI to locate the script'; \
+    echo '        _vscode_shell_integration="$(code --locate-shell-integration-path bash 2>/dev/null)"'; \
+    echo '        if [[ -n "$_vscode_shell_integration" && -f "$_vscode_shell_integration" ]]; then'; \
+    echo '            builtin source "$_vscode_shell_integration"'; \
+    echo '        fi'; \
+    echo '        unset _vscode_shell_integration'; \
+    echo '    fi'; \
     echo 'fi'; \
     } >> /etc/bash.bashrc
+
+# Enable VS Code shell integration for zsh (installed via common-utils feature)
+# See: https://code.visualstudio.com/docs/terminal/shell-integration
+RUN { \
+    echo ''; \
+    echo '# VS Code shell integration (manual fallback)'; \
+    echo 'if [[ "$TERM_PROGRAM" == "vscode" ]]; then'; \
+    echo '    if [[ -n "$VSCODE_SHELL_INTEGRATION" && -f "$VSCODE_SHELL_INTEGRATION" ]]; then'; \
+    echo '        builtin source "$VSCODE_SHELL_INTEGRATION"'; \
+    echo '    elif command -v code &> /dev/null; then'; \
+    echo '        _vscode_shell_integration="$(code --locate-shell-integration-path zsh 2>/dev/null)"'; \
+    echo '        if [[ -n "$_vscode_shell_integration" && -f "$_vscode_shell_integration" ]]; then'; \
+    echo '            builtin source "$_vscode_shell_integration"'; \
+    echo '        fi'; \
+    echo '        unset _vscode_shell_integration'; \
+    echo '    fi'; \
+    echo 'fi'; \
+    } >> /etc/zsh/zshrc
+
+# Enable VS Code shell integration for PowerShell
+# See: https://code.visualstudio.com/docs/terminal/shell-integration
+RUN mkdir -p /opt/microsoft/powershell/7 \
+    && { \
+    echo '# VS Code shell integration (manual fallback)'; \
+    echo 'if ($env:TERM_PROGRAM -eq "vscode") {'; \
+    echo '    if ($env:VSCODE_SHELL_INTEGRATION -and (Test-Path $env:VSCODE_SHELL_INTEGRATION)) {'; \
+    echo '        . $env:VSCODE_SHELL_INTEGRATION'; \
+    echo '    } elseif (Get-Command code -ErrorAction SilentlyContinue) {'; \
+    echo '        $script = code --locate-shell-integration-path pwsh 2>$null'; \
+    echo '        if ($script -and (Test-Path $script)) { . $script }'; \
+    echo '    }'; \
+    echo '}'; \
+    } >> /opt/microsoft/powershell/7/profile.ps1
 
 # Ensure dotnet tools are on the PATH for both root and vscode users
 ENV PATH="${PATH}:/root/.dotnet/tools:/home/vscode/.dotnet/tools"

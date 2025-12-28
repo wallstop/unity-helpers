@@ -1,3 +1,6 @@
+// MIT License - Copyright (c) 2023 Eli Pinkerton
+// Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
+
 #pragma warning disable CS0169 // Field is never used
 namespace WallstopStudios.UnityHelpers.Tests.Runtime.Performance
 {

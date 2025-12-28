@@ -1,3 +1,6 @@
+// MIT License - Copyright (c) 2023 Eli Pinkerton
+// Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
+
 namespace WallstopStudios.UnityHelpers.Tests.Attributes
 {
     using System;
@@ -37,7 +40,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
             holder.unityObject = gameObject;
             Assert.DoesNotThrow(() => holder.CheckForNulls());
 
-            UnityEngine.Object.DestroyImmediate(gameObject);
+            UnityEngine.Object.DestroyImmediate(gameObject); // UNH-SUPPRESS: Test verifies null detection after immediate destruction
             _trackedObjects.Remove(gameObject);
             Assert.Throws<ArgumentNullException>(() => holder.CheckForNulls());
         }

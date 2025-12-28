@@ -1,3 +1,6 @@
+// MIT License - Copyright (c) 2023 Eli Pinkerton
+// Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
+
 namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 {
 #if UNITY_EDITOR
@@ -9,23 +12,13 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
     using UnityEngine.UIElements;
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Editor.CustomDrawers.Base;
+    using WallstopStudios.UnityHelpers.Editor.CustomDrawers.Utils;
     using WallstopStudios.UnityHelpers.Editor.Settings;
 
     [CustomPropertyDrawer(typeof(IntDropDownAttribute))]
     public sealed class IntDropDownDrawer : PropertyDrawer
     {
-        private static readonly Dictionary<int, string> IntToStringCache = new();
         private static readonly Dictionary<int, string[]> DisplayOptionsCache = new();
-
-        private static string GetCachedIntString(int value)
-        {
-            if (!IntToStringCache.TryGetValue(value, out string cached))
-            {
-                cached = value.ToString();
-                IntToStringCache[value] = cached;
-            }
-            return cached;
-        }
 
         private static string[] GetOrCreateDisplayOptions(int[] options)
         {
@@ -34,7 +27,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return Array.Empty<string>();
             }
 
-            int hashCode = ComputeOptionsHash(options);
+            int hashCode = DropDownShared.ComputeOptionsHash(options);
             if (DisplayOptionsCache.TryGetValue(hashCode, out string[] cached))
             {
                 if (cached.Length == options.Length)
@@ -45,7 +38,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                         if (
                             !string.Equals(
                                 cached[i],
-                                GetCachedIntString(options[i]),
+                                DropDownShared.GetCachedIntString(options[i]),
                                 StringComparison.Ordinal
                             )
                         )
@@ -63,23 +56,10 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             string[] displayOptions = new string[options.Length];
             for (int i = 0; i < options.Length; i++)
             {
-                displayOptions[i] = GetCachedIntString(options[i]);
+                displayOptions[i] = DropDownShared.GetCachedIntString(options[i]);
             }
             DisplayOptionsCache[hashCode] = displayOptions;
             return displayOptions;
-        }
-
-        private static int ComputeOptionsHash(int[] options)
-        {
-            unchecked
-            {
-                int hash = 17;
-                for (int i = 0; i < options.Length; i++)
-                {
-                    hash = hash * 31 + options[i];
-                }
-                return hash;
-            }
         }
 
         /// <summary>
@@ -179,7 +159,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             string displayValue =
                 selectedIndex >= 0 && selectedIndex < displayedOptions.Length
                     ? displayedOptions[selectedIndex]
-                    : GetCachedIntString(currentValue);
+                    : DropDownShared.GetCachedIntString(currentValue);
 
             Rect labelRect = new(
                 position.x,
@@ -271,7 +251,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 int selectedIndex = Array.IndexOf(_options, currentValue);
                 return selectedIndex >= 0 && selectedIndex < _displayedOptions.Length
                     ? _displayedOptions[selectedIndex]
-                    : GetCachedIntString(currentValue);
+                    : DropDownShared.GetCachedIntString(currentValue);
             }
 
             protected override int GetFieldValue(SerializedProperty property)
@@ -317,7 +297,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             {
                 return optionIndex >= 0 && optionIndex < _displayedOptions.Length
                     ? _displayedOptions[optionIndex]
-                    : GetCachedIntString(_options[optionIndex]);
+                    : DropDownShared.GetCachedIntString(_options[optionIndex]);
             }
 
             protected override int GetCurrentSelectionIndex(SerializedProperty property)

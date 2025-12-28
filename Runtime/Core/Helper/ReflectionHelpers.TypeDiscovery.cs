@@ -1,3 +1,6 @@
+// MIT License - Copyright (c) 2023 Eli Pinkerton
+// Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
+
 #if !((UNITY_WEBGL && !UNITY_EDITOR) || ENABLE_IL2CPP)
 #define EMIT_DYNAMIC_IL
 #define SUPPORT_EXPRESSION_COMPILE

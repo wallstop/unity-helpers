@@ -24,7 +24,11 @@
     "DOTNET_NOLOGO": "1"
   },
   // Run any post-create commands
-  "postCreateCommand": "dotnet tool restore || true && git config --global --add safe.directory ${containerWorkspaceFolder}",
+  // 1. Restore .NET tools (CSharpier, etc.)
+  // 2. Install npm dependencies (markdownlint-cli, cspell, prettier)
+  // 3. Install git hooks
+  // 4. Mark workspace as safe directory
+  "postCreateCommand": "dotnet tool restore || true && npm install && npm run hooks:install && git config --global --add safe.directory ${containerWorkspaceFolder}",
   // VS Code customizations
   "customizations": {
     "vscode": {
@@ -41,6 +45,12 @@
       "settings": {
         "terminal.integrated.defaultProfile.linux": "bash",
         "terminal.integrated.shellIntegration.enabled": true,
+        "terminal.integrated.shellIntegration.decorationsEnabled": "both",
+        "terminal.integrated.shellIntegration.showCommandGuide": true,
+        "terminal.integrated.stickyScroll.enabled": true,
+        "terminal.integrated.suggest.enabled": true,
+        "terminal.integrated.suggest.quickSuggestions": true,
+        "terminal.integrated.suggest.suggestOnTriggerCharacters": true,
         "dotnet.defaultSolution": "disable",
         "editor.formatOnSave": true,
         "editor.defaultFormatter": "csharpier.csharpier-vscode",

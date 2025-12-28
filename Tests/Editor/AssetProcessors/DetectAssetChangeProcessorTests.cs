@@ -1,3 +1,6 @@
+// MIT License - Copyright (c) 2023 Eli Pinkerton
+// Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
+
 namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
 {
     using System;
@@ -878,24 +881,27 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
             );
         }
 
-        private static void CreatePayloadAsset()
+        private void CreatePayloadAsset()
         {
-            TestDetectableAsset payload = ScriptableObject.CreateInstance<TestDetectableAsset>();
+            TestDetectableAsset payload = Track(
+                ScriptableObject.CreateInstance<TestDetectableAsset>()
+            );
             AssetDatabase.CreateAsset(payload, PayloadAssetPath);
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
         }
 
-        private static void CreateAlternatePayloadAsset()
+        private void CreateAlternatePayloadAsset()
         {
-            TestAlternateDetectableAsset payload =
-                ScriptableObject.CreateInstance<TestAlternateDetectableAsset>();
+            TestAlternateDetectableAsset payload = Track(
+                ScriptableObject.CreateInstance<TestAlternateDetectableAsset>()
+            );
             AssetDatabase.CreateAsset(payload, AlternatePayloadAssetPath);
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
         }
 
-        private static void EnsureHandlerAsset<T>(string assetPath)
+        private void EnsureHandlerAsset<T>(string assetPath)
             where T : ScriptableObject
         {
             if (AssetDatabase.LoadAssetAtPath<T>(assetPath) != null)
@@ -903,7 +909,7 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
                 return;
             }
 
-            T handler = ScriptableObject.CreateInstance<T>();
+            T handler = Track(ScriptableObject.CreateInstance<T>());
             AssetDatabase.CreateAsset(handler, assetPath);
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();

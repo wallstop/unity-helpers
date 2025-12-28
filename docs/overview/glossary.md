@@ -26,13 +26,13 @@ Quick reference for terms used throughout Unity Helpers documentation.
 - Examples: QuadTree2D, KdTree2D, RTree2D
 - See: [Spatial Trees](../features/spatial/spatial-trees-2d-guide.md)
 
-### ODIN Compatibility
+### Odin Compatibility
 
 - Automatic integration with Odin Inspector when installed
 - Base classes switch from MonoBehaviour → SerializedMonoBehaviour
 - Enables serialization of dictionaries, polymorphic fields, etc.
 - No code changes required - works automatically via #if ODIN_INSPECTOR
-- See: [Singletons - ODIN Compatibility](../features/utilities/singletons.md#odin-compatibility)
+- See: [Singletons - Odin Compatibility](../features/utilities/singletons.md#odin-compatibility)
 
 ### Pooled Buffers
 

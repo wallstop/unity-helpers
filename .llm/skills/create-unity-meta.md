@@ -19,6 +19,19 @@ Unity requires a corresponding `.meta` file for every asset. Missing `.meta` fil
 
 ---
 
+## Exception: Dot Folders
+
+**Do NOT generate `.meta` files** for anything inside folders that start with `.` (dot folders). These include:
+
+- `.llm/` — LLM agent instructions and skills
+- `.github/` — GitHub workflows and configuration
+- `.git/` — Git repository data
+- `.vscode/` — VS Code workspace settings
+
+Unity automatically ignores these folders, so meta files are unnecessary and would clutter the repository.
+
+---
+
 ## Command
 
 ```bash

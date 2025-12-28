@@ -1,3 +1,6 @@
+// MIT License - Copyright (c) 2023 Eli Pinkerton
+// Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
+
 namespace WallstopStudios.UnityHelpers.Tests.Helper
 {
     using System;
@@ -65,7 +68,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
 
             string assetPath = Path.Combine(folder, "Dummy.asset").SanitizePath();
             // Don't use Track() - asset becomes persistent via CreateAsset and is cleaned up in finally block
-            DummyScriptableObject asset = ScriptableObject.CreateInstance<DummyScriptableObject>();
+            DummyScriptableObject asset = ScriptableObject.CreateInstance<DummyScriptableObject>(); // UNH-SUPPRESS: Asset becomes persistent via CreateAsset and is cleaned up in finally block
             try
             {
                 AssetDatabase.CreateAsset(asset, assetPath);

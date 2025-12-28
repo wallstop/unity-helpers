@@ -1,3 +1,6 @@
+// MIT License - Copyright (c) 2023 Eli Pinkerton
+// Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
+
 // lint-disable unity-file-naming - NameCollision classes intentionally test name collision detection
 namespace WallstopStudios.UnityHelpers.Tests.Utils
 {
@@ -1146,7 +1149,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         public IEnumerator SafeDestroyInstanceHandlesPartialAssetCreation()
         {
             // Create a ScriptableObject instance
-            ScriptableObject instance = ScriptableObject.CreateInstance<CaseMismatch>();
+            ScriptableObject instance = ScriptableObject.CreateInstance<CaseMismatch>(); // UNH-SUPPRESS: UNH002 - Testing partial asset creation
             Assert.IsNotNull(instance, "Instance should be created");
 
             string testPath = TestRoot + "/SafeDestroyTest.asset";
@@ -1184,7 +1187,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                 {
                     if (instance != null)
                     {
-                        Object.DestroyImmediate(instance, true);
+                        Object.DestroyImmediate(instance, true); // UNH-SUPPRESS: UNH001 - Testing DestroyImmediate behavior
                     }
                 },
                 "DestroyImmediate with allowDestroyingAssets=true should not throw"
@@ -1261,7 +1264,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             yield return null;
 
             // Create a ScriptableObject and write a partial file to simulate failed creation
-            ScriptableObject instance = ScriptableObject.CreateInstance<CaseMismatch>();
+            ScriptableObject instance = ScriptableObject.CreateInstance<CaseMismatch>(); // UNH-SUPPRESS: UNH002 - Testing cleanup logic
 
             // Write partial content to disk (simulating Unity writing but failing to import)
             File.WriteAllText(absolutePath, "partial yaml content");
@@ -1280,7 +1283,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                     {
                         File.Delete(metaPath);
                     }
-                    Object.DestroyImmediate(instance, true);
+                    Object.DestroyImmediate(instance, true); // UNH-SUPPRESS: UNH001 - Testing cleanup behavior
                 },
                 "Cleanup should not throw even with partial files"
             );

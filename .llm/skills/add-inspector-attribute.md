@@ -236,6 +236,128 @@ public enum ItemRarity
 
 ---
 
+## Odin Inspector Compatibility
+
+All Unity Helpers inspector attributes are designed to work seamlessly with Odin Inspector. When Odin is installed (`ODIN_INSPECTOR` define symbol present), dedicated Odin drawers automatically activate.
+
+### Attribute Comparison
+
+| Unity Helpers              | Odin Equivalent       | Unity Helpers Advantages                           |
+| -------------------------- | --------------------- | -------------------------------------------------- |
+| `[WGroup]` / `[WGroupEnd]` | `[FoldoutGroup]`      | No Odin dependency; colored themes                 |
+| `[WButton]`                | `[Button]`            | `async Task`, `CancellationToken` support          |
+| `[WShowIf]`                | `[ShowIf]`            | More comparison operators (`GreaterOrEqual`, etc.) |
+| `[WEnumToggleButtons]`     | `[EnumToggleButtons]` | Identical appearance; no dependency                |
+| `[WInLineEditor]`          | `[InlineEditor]`      | Configurable height and scrolling                  |
+| `[WValueDropDown]`         | `[ValueDropdown]`     | Same functionality                                 |
+| `[WReadOnly]`              | `[ReadOnly]`          | Identical behavior                                 |
+| `[WNotNull]`               | `[Required]`          | Runtime validation via extension method            |
+| `[ValidateAssignment]`     | `[ValidateInput]`     | Validation during assignment                       |
+
+### When Odin Inspector is Installed
+
+1. **SerializedMonoBehaviour Support**: Full compatibility with Odin's enhanced serialization
+2. **SerializedScriptableObject Support**: Complex types (dictionaries, interfaces) serialize properly
+3. **Automatic Drawer Selection**: Odin drawers handle `[W*]` attributes on Odin types
+4. **Mixed Usage**: Can use both Unity Helpers and Odin attributes on same class
+
+### Behavior Parity
+
+All attributes maintain **identical behavior** whether Odin is installed or not:
+
+```csharp
+// Works identically with or without Odin
+public class MyBehaviour : MonoBehaviour
+{
+    [WShowIf(nameof(useCustomSettings))]
+    [SerializeField] private float customValue;
+
+    [WButton("Reset")]
+    private void Reset() { }
+}
+
+// Also works with Odin base classes
+public class MyOdinBehaviour : SerializedMonoBehaviour
+{
+    [WShowIf(nameof(useCustomSettings))]  // Unity Helpers attribute works on Odin types
+    [SerializeField] private float customValue;
+
+    [WButton("Reset")]  // Unity Helpers button on Odin type
+    private void Reset() { }
+}
+```
+
+### Choosing Between Unity Helpers and Odin Attributes
+
+| Scenario                                      | Recommendation                                     |
+| --------------------------------------------- | -------------------------------------------------- |
+| Project without Odin                          | Use Unity Helpers attributes                       |
+| Project with Odin                             | Either works; Unity Helpers for async buttons      |
+| Shared code/packages                          | Use Unity Helpers (no external dependency)         |
+| Need Odin's `[InlineProperty]`, `[TableList]` | Use Odin (features not available in Unity Helpers) |
+| Need async/cancellable buttons                | Use Unity Helpers `[WButton]`                      |
+
+### Technical Implementation Details
+
+When Odin is installed, dedicated `OdinAttributeDrawer` implementations handle Unity Helpers attributes:
+
+| Unity Helpers Attribute | Odin Drawer Class              | Shared Utility                |
+| ----------------------- | ------------------------------ | ----------------------------- |
+| `[WEnumToggleButtons]`  | `WEnumToggleButtonsOdinDrawer` | `EnumToggleButtonsShared.cs`  |
+| `[WShowIf]`             | `WShowIfOdinDrawer`            | `ShowIfConditionEvaluator.cs` |
+| `[WInLineEditor]`       | `WInLineEditorOdinDrawer`      | `InLineEditorShared.cs`       |
+| `[WValueDropDown]`      | `WValueDropDownOdinDrawer`     | `DropDownShared.cs`           |
+| `[IntDropDown]`         | `IntDropDownOdinDrawer`        | `DropDownShared.cs`           |
+| `[StringInList]`        | `StringInListOdinDrawer`       | `DropDownShared.cs`           |
+| `[WNotNull]`            | `WNotNullOdinDrawer`           | `ValidationShared.cs`         |
+| `[ValidateAssignment]`  | `ValidateAssignmentOdinDrawer` | `ValidationShared.cs`         |
+| `[WReadOnly]`           | `WReadOnlyOdinDrawer`          | -                             |
+
+### Odin Property Tree Access
+
+Odin drawers use `InspectorProperty` instead of `SerializedProperty`, enabling:
+
+```csharp
+// Attribute access
+WShowIfAttribute showIf = this.Attribute;  // Strongly typed
+
+// Value access (works with interfaces, dictionaries, etc.)
+TValue currentValue = this.ValueEntry.SmartValue;
+
+// Parent navigation (for condition evaluation)
+InspectorProperty parent = this.Property.Parent;
+InspectorProperty sibling = parent?.Children.Get(conditionMemberName);
+object conditionValue = sibling?.ValueEntry?.WeakSmartValue;
+```
+
+### SerializedMonoBehaviour/SerializedScriptableObject Support
+
+Unity Helpers attributes work on Odin's enhanced base classes which support:
+
+- **Interface serialization**: `[SerializeField] private IMyInterface myField;`
+- **Dictionary serialization**: `[SerializeField] private Dictionary<string, MyClass> lookup;`
+- **Polymorphic lists**: `[SerializeField] private List<BaseClass> items;`
+
+```csharp
+// All Unity Helpers attributes work on Odin base classes
+public class MyOdinComponent : SerializedMonoBehaviour
+{
+    [WEnumToggleButtons]
+    [SerializeField] private MyFlags flags;
+
+    [WShowIf(nameof(useCustomConfig))]
+    [SerializeField] private IConfigProvider configProvider;  // Interface serialization
+
+    [WInLineEditor]
+    [SerializeField] private Dictionary<string, ScriptableObject> assets;  // Dictionary support
+
+    [WButton("Process All")]
+    private async Task ProcessAllAsync(CancellationToken token) { }
+}
+```
+
+---
+
 ## Complete Example
 
 ```csharp

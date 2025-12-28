@@ -1,3 +1,6 @@
+// MIT License - Copyright (c) 2023 Eli Pinkerton
+// Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
+
 namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 {
     using System;
@@ -14,84 +17,16 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
     using WallstopStudios.UnityHelpers.Editor.Utils;
     using WallstopStudios.UnityHelpers.Editor.Utils.WButton;
     using WallstopStudios.UnityHelpers.Utils;
+    using CacheHelper = WallstopStudios.UnityHelpers.Editor.CustomDrawers.Utils.EditorDrawerCacheHelper;
+    using EnumShared = WallstopStudios.UnityHelpers.Editor.CustomDrawers.Utils.EnumToggleButtonsShared;
 
     [CustomPropertyDrawer(typeof(WEnumToggleButtonsAttribute))]
     public sealed class WEnumToggleButtonsDrawer : PropertyDrawer
     {
-        private const float ToolbarSpacing = 6f;
-        private const float ToolbarButtonGap = 8f;
-        private const float MinButtonWidth = 68f;
-        private const float ToolbarButtonMinWidth = 60f;
-        private const float PaginationButtonWidth = 22f;
-        private const float PaginationLabelMinWidth = 80f;
-        private const float SummarySpacing = 2f;
         private const float ContentWidthPadding = 24f;
         private const float VerticalPadding = 5f;
 
-        private static readonly GUIContent FirstPageContent = EditorGUIUtility.TrTextContent(
-            "<<",
-            "First Page"
-        );
-        private static readonly GUIContent PreviousPageContent = EditorGUIUtility.TrTextContent(
-            "<",
-            "Previous Page"
-        );
-        private static readonly GUIContent NextPageContent = EditorGUIUtility.TrTextContent(
-            ">",
-            "Next Page"
-        );
-        private static readonly GUIContent LastPageContent = EditorGUIUtility.TrTextContent(
-            ">>",
-            "Last Page"
-        );
-        private static readonly GUIContent SelectAllContent = new("All");
-        private static readonly GUIContent SelectNoneContent = new("None");
         private static readonly GUIContent OutOfViewContent = new();
-        private static GUIStyle _summaryStyle;
-        private static GUIStyle SummaryStyle
-        {
-            get
-            {
-                if (_summaryStyle == null)
-                {
-                    _summaryStyle = new GUIStyle(EditorStyles.wordWrappedMiniLabel)
-                    {
-                        fontStyle = FontStyle.Italic,
-                    };
-                }
-                return _summaryStyle;
-            }
-        }
-        private static readonly Dictionary<ButtonStyleCacheKey, GUIStyle> ButtonStyleCache = new(
-            new ButtonStyleCacheKeyComparer()
-        );
-        private static readonly Dictionary<Color, Texture2D> SolidTextureCache = new(
-            new ColorComparer()
-        );
-        private static readonly Dictionary<int, string> IntToStringCache = new();
-        private static readonly Dictionary<(int, int), string> PaginationLabelCache = new();
-
-        private static string GetCachedIntString(int value)
-        {
-            if (!IntToStringCache.TryGetValue(value, out string cached))
-            {
-                cached = value.ToString();
-                IntToStringCache[value] = cached;
-            }
-            return cached;
-        }
-
-        private static string GetPaginationLabel(int page, int totalPages)
-        {
-            (int, int) key = (page, totalPages);
-            if (!PaginationLabelCache.TryGetValue(key, out string cached))
-            {
-                cached =
-                    "Page " + GetCachedIntString(page) + " / " + GetCachedIntString(totalPages);
-                PaginationLabelCache[key] = cached;
-            }
-            return cached;
-        }
 
         internal static void ClearCache()
         {
@@ -123,7 +58,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             if (estimatedWidth <= 0f || float.IsNaN(estimatedWidth))
             {
-                estimatedWidth = MinButtonWidth;
+                estimatedWidth = EnumShared.MinButtonWidth;
             }
 
             return estimatedWidth;
@@ -150,7 +85,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             float extraHeight = 0f;
             if (showToolbarControls)
             {
-                extraHeight = EditorGUIUtility.singleLineHeight + ToolbarSpacing;
+                extraHeight = EditorGUIUtility.singleLineHeight + EnumShared.ToolbarSpacing;
             }
 
             bool usePagination = WEnumToggleButtonsUtility.ShouldPaginate(
@@ -170,7 +105,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     );
                 startIndex = state.StartIndex;
                 visibleCount = state.VisibleCount;
-                extraHeight += EditorGUIUtility.singleLineHeight + ToolbarSpacing;
+                extraHeight += EditorGUIUtility.singleLineHeight + EnumShared.ToolbarSpacing;
             }
 
             if (visibleCount <= 0)
@@ -178,7 +113,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return EditorGUI.GetPropertyHeight(property, label, true);
             }
 
-            SelectionSummary summary = BuildSelectionSummary(
+            EnumShared.SelectionSummary summary = BuildSelectionSummary(
                 toggleSet,
                 property,
                 startIndex,
@@ -216,14 +151,17 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 visibleCount,
                 estimatedWidth,
                 EditorGUIUtility.singleLineHeight,
-                ToolbarSpacing,
-                MinButtonWidth
+                EnumShared.ToolbarSpacing,
+                EnumShared.MinButtonWidth
             );
 
             if (summary.HasSummary)
             {
-                float summaryHeight = SummaryStyle.CalcHeight(summary.Content, estimatedWidth);
-                extraHeight += summaryHeight + SummarySpacing;
+                float summaryHeight = EnumShared.SummaryStyle.CalcHeight(
+                    summary.Content,
+                    estimatedWidth
+                );
+                extraHeight += summaryHeight + EnumShared.SummarySpacing;
             }
 
             return extraHeight + metrics.TotalHeight + VerticalPadding * 2f;
@@ -266,7 +204,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 startIndex = paginationState.StartIndex;
                 visibleCount = paginationState.VisibleCount;
             }
-            SelectionSummary summary = BuildSelectionSummary(
+            EnumShared.SelectionSummary summary = BuildSelectionSummary(
                 toggleSet,
                 property,
                 startIndex,
@@ -322,7 +260,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     EditorGUIUtility.singleLineHeight
                 );
                 DrawToolbar(toolbarRect, toggleSet, property, toggleAttribute, palette);
-                currentY += toolbarRect.height + ToolbarSpacing;
+                currentY += toolbarRect.height + EnumShared.ToolbarSpacing;
             }
 
             if (usePagination)
@@ -334,15 +272,18 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     EditorGUIUtility.singleLineHeight
                 );
                 DrawPagination(paginationRect, paginationState);
-                currentY += paginationRect.height + ToolbarSpacing;
+                currentY += paginationRect.height + EnumShared.ToolbarSpacing;
             }
 
             if (summary.HasSummary)
             {
-                float summaryHeight = SummaryStyle.CalcHeight(summary.Content, contentRect.width);
+                float summaryHeight = EnumShared.SummaryStyle.CalcHeight(
+                    summary.Content,
+                    contentRect.width
+                );
                 Rect summaryRect = new(contentRect.x, currentY, contentRect.width, summaryHeight);
-                EditorGUI.LabelField(summaryRect, summary.Content, SummaryStyle);
-                currentY += summaryHeight + SummarySpacing;
+                EditorGUI.LabelField(summaryRect, summary.Content, EnumShared.SummaryStyle);
+                currentY += summaryHeight + EnumShared.SummarySpacing;
             }
 
             LayoutMetrics metrics = WEnumToggleButtonsUtility.CalculateLayout(
@@ -350,8 +291,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 visibleCount,
                 contentRect.width,
                 EditorGUIUtility.singleLineHeight,
-                ToolbarSpacing,
-                MinButtonWidth
+                EnumShared.ToolbarSpacing,
+                EnumShared.MinButtonWidth
             );
 
             Rect buttonsRect = new(
@@ -409,20 +350,24 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             if (alignedPair)
             {
                 // Calculate widths: each button gets half minus half the gap
-                float availableWidth = rect.width - ToolbarButtonGap;
+                float availableWidth = rect.width - EnumShared.ToolbarButtonGap;
                 float buttonWidth = Mathf.Max(
-                    ToolbarButtonMinWidth,
+                    EnumShared.ToolbarButtonMinWidth,
                     Mathf.Floor(availableWidth * 0.5f)
                 );
 
                 // Draw "All" button as standalone (not joined)
                 Rect selectAllRect = new(rect.x, rect.y, buttonWidth, rect.height);
                 bool allActive = WEnumToggleButtonsUtility.AreAllFlagsSelected(property, toggleSet);
-                GUIStyle allStyle = GetButtonStyle(ButtonSegment.Single, allActive, palette);
+                GUIStyle allStyle = EnumShared.GetButtonStyle(
+                    EnumShared.ButtonSegment.Single,
+                    allActive,
+                    palette
+                );
                 bool selectAllPressed = GUI.Toggle(
                     selectAllRect,
                     allActive,
-                    SelectAllContent,
+                    EnumShared.AllContent,
                     allStyle
                 );
 
@@ -434,17 +379,21 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
                 // Draw "None" button as standalone (not joined) with gap
                 Rect selectNoneRect = new(
-                    selectAllRect.xMax + ToolbarButtonGap,
+                    selectAllRect.xMax + EnumShared.ToolbarButtonGap,
                     rect.y,
-                    rect.width - buttonWidth - ToolbarButtonGap,
+                    rect.width - buttonWidth - EnumShared.ToolbarButtonGap,
                     rect.height
                 );
                 bool noneActive = WEnumToggleButtonsUtility.AreNoFlagsSelected(property);
-                GUIStyle noneStyle = GetButtonStyle(ButtonSegment.Single, noneActive, palette);
+                GUIStyle noneStyle = EnumShared.GetButtonStyle(
+                    EnumShared.ButtonSegment.Single,
+                    noneActive,
+                    palette
+                );
                 bool selectNonePressed = GUI.Toggle(
                     selectNoneRect,
                     noneActive,
-                    SelectNoneContent,
+                    EnumShared.NoneContent,
                     noneStyle
                 );
 
@@ -457,8 +406,12 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             else if (drawSelectAll)
             {
                 bool allActive = WEnumToggleButtonsUtility.AreAllFlagsSelected(property, toggleSet);
-                GUIStyle style = GetButtonStyle(ButtonSegment.Single, allActive, palette);
-                bool selectAllPressed = GUI.Toggle(rect, allActive, SelectAllContent, style);
+                GUIStyle style = EnumShared.GetButtonStyle(
+                    EnumShared.ButtonSegment.Single,
+                    allActive,
+                    palette
+                );
+                bool selectAllPressed = GUI.Toggle(rect, allActive, EnumShared.AllContent, style);
 
                 if (selectAllPressed && !allActive)
                 {
@@ -469,8 +422,17 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             else if (drawSelectNone)
             {
                 bool noneActive = WEnumToggleButtonsUtility.AreNoFlagsSelected(property);
-                GUIStyle style = GetButtonStyle(ButtonSegment.Single, noneActive, palette);
-                bool selectNonePressed = GUI.Toggle(rect, noneActive, SelectNoneContent, style);
+                GUIStyle style = EnumShared.GetButtonStyle(
+                    EnumShared.ButtonSegment.Single,
+                    noneActive,
+                    palette
+                );
+                bool selectNonePressed = GUI.Toggle(
+                    rect,
+                    noneActive,
+                    EnumShared.NoneContent,
+                    style
+                );
 
                 if (selectNonePressed && !noneActive)
                 {
@@ -490,10 +452,10 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return;
             }
 
-            float spacing = ToolbarSpacing;
-            float buttonWidth = Mathf.Min(PaginationButtonWidth, rect.width * 0.2f);
+            float spacing = EnumShared.ToolbarSpacing;
+            float buttonWidth = Mathf.Min(EnumShared.PaginationButtonWidth, rect.width * 0.2f);
             float labelWidth = Mathf.Max(
-                PaginationLabelMinWidth,
+                EnumShared.PaginationLabelMinWidth,
                 rect.width - (buttonWidth * 4f) - spacing * 4f
             );
 
@@ -518,12 +480,12 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             bool canNavigateForward = state.PageIndex < state.TotalPages - 1;
 
             GUI.enabled = originalEnabled && canNavigateBackward;
-            if (GUI.Button(firstRect, FirstPageContent, EditorStyles.miniButtonLeft))
+            if (GUI.Button(firstRect, EnumShared.FirstPageContent, EditorStyles.miniButtonLeft))
             {
                 state.PageIndex = 0;
             }
 
-            if (GUI.Button(prevRect, PreviousPageContent, EditorStyles.miniButtonMid))
+            if (GUI.Button(prevRect, EnumShared.PrevPageContent, EditorStyles.miniButtonMid))
             {
                 state.PageIndex = Mathf.Max(0, state.PageIndex - 1);
             }
@@ -531,17 +493,17 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             GUI.Label(
                 labelRect,
-                GetPaginationLabel(state.PageIndex + 1, state.TotalPages),
+                CacheHelper.GetPaginationLabel(state.PageIndex + 1, state.TotalPages),
                 EditorStyles.miniLabel
             );
 
             GUI.enabled = originalEnabled && canNavigateForward;
-            if (GUI.Button(nextRect, NextPageContent, EditorStyles.miniButtonMid))
+            if (GUI.Button(nextRect, EnumShared.NextPageContent, EditorStyles.miniButtonMid))
             {
                 state.PageIndex = Mathf.Min(state.TotalPages - 1, state.PageIndex + 1);
             }
 
-            if (GUI.Button(lastRect, LastPageContent, EditorStyles.miniButtonRight))
+            if (GUI.Button(lastRect, EnumShared.LastPageContent, EditorStyles.miniButtonRight))
             {
                 state.PageIndex = state.TotalPages - 1;
             }
@@ -561,12 +523,12 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         )
         {
             bool isActive = WEnumToggleButtonsUtility.IsOptionActive(property, toggleSet, option);
-            ButtonSegment segment = ResolveButtonSegment(
+            EnumShared.ButtonSegment segment = EnumShared.ResolveButtonSegment(
                 visibleIndex,
                 visibleCount,
                 metrics.Columns
             );
-            GUIStyle style = GetButtonStyle(segment, isActive, palette);
+            GUIStyle style = EnumShared.GetButtonStyle(segment, isActive, palette);
             bool newState = GUI.Toggle(rect, isActive, option.Label, style);
 
             if (newState == isActive)
@@ -578,7 +540,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             property.serializedObject.ApplyModifiedProperties();
         }
 
-        internal static SelectionSummary BuildSelectionSummary(
+        internal static EnumShared.SelectionSummary BuildSelectionSummary(
             ToggleSet toggleSet,
             SerializedProperty property,
             int startIndex,
@@ -588,7 +550,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         {
             if (!usePagination || toggleSet.IsEmpty || property == null)
             {
-                return SelectionSummary.None;
+                return EnumShared.SelectionSummary.None;
             }
 
             int endIndex = startIndex + visibleCount;
@@ -620,271 +582,17 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
                 if (outOfView == null || outOfView.Count == 0)
                 {
-                    return SelectionSummary.None;
+                    return EnumShared.SelectionSummary.None;
                 }
 
                 string joined = string.Join(", ", outOfView);
                 string text = $"Current (out of view): {joined}";
                 OutOfViewContent.text = text;
-                return new SelectionSummary(true, OutOfViewContent);
+                return new EnumShared.SelectionSummary(true, OutOfViewContent);
             }
             finally
             {
                 outOfViewLease.Dispose();
-            }
-        }
-
-        private static ButtonSegment ResolveButtonSegment(int index, int total, int columns)
-        {
-            if (columns <= 1)
-            {
-                return ButtonSegment.Single;
-            }
-
-            int columnIndex = index % columns;
-            bool isFirst = columnIndex == 0;
-            bool isLast = columnIndex == columns - 1 || index == total - 1;
-
-            if (isFirst && isLast)
-            {
-                return ButtonSegment.Single;
-            }
-
-            if (isFirst)
-            {
-                return ButtonSegment.Left;
-            }
-
-            if (isLast)
-            {
-                return ButtonSegment.Right;
-            }
-
-            return ButtonSegment.Middle;
-        }
-
-        private static GUIStyle GetButtonStyle(
-            ButtonSegment segment,
-            bool isActive,
-            UnityHelpersSettings.WEnumToggleButtonsPaletteEntry palette
-        )
-        {
-            ButtonStyleCacheKey key = new(segment, isActive, palette);
-            if (ButtonStyleCache.TryGetValue(key, out GUIStyle cached))
-            {
-                return cached;
-            }
-
-            GUIStyle basis = segment switch
-            {
-                ButtonSegment.Left => EditorStyles.miniButtonLeft,
-                ButtonSegment.Middle => EditorStyles.miniButtonMid,
-                ButtonSegment.Right => EditorStyles.miniButtonRight,
-                _ => EditorStyles.miniButton,
-            };
-
-            GUIStyle style = new(basis)
-            {
-                name = $"WEnumToggleButtons/{segment}/{(isActive ? "Active" : "Inactive")}",
-            };
-
-            Color baseBackground = isActive
-                ? palette.SelectedBackgroundColor
-                : palette.InactiveBackgroundColor;
-            Color hoverBackground = WButtonColorUtility.GetHoverColor(baseBackground);
-            Color activeBackground = WButtonColorUtility.GetActiveColor(baseBackground);
-            Color textColor = isActive ? palette.SelectedTextColor : palette.InactiveTextColor;
-
-            ConfigureButtonStyle(
-                style,
-                baseBackground,
-                hoverBackground,
-                activeBackground,
-                textColor
-            );
-
-            ButtonStyleCache[key] = style;
-            return style;
-        }
-
-        private static void ConfigureButtonStyle(
-            GUIStyle style,
-            Color normalBackground,
-            Color hoverBackground,
-            Color activeBackground,
-            Color textColor
-        )
-        {
-            Texture2D normalTexture = GetSolidTexture(normalBackground);
-            Texture2D hoverTexture = GetSolidTexture(hoverBackground);
-            Texture2D activeTexture = GetSolidTexture(activeBackground);
-
-            style.normal.background = normalTexture;
-            style.normal.textColor = textColor;
-
-            style.focused.background = normalTexture;
-            style.focused.textColor = textColor;
-
-            style.onNormal.background = normalTexture;
-            style.onNormal.textColor = textColor;
-
-            style.onFocused.background = normalTexture;
-            style.onFocused.textColor = textColor;
-
-            style.hover.background = hoverTexture;
-            style.hover.textColor = textColor;
-
-            style.onHover.background = hoverTexture;
-            style.onHover.textColor = textColor;
-
-            style.active.background = activeTexture;
-            style.active.textColor = textColor;
-
-            style.onActive.background = activeTexture;
-            style.onActive.textColor = textColor;
-        }
-
-        private static Texture2D GetSolidTexture(Color color)
-        {
-            if (SolidTextureCache.TryGetValue(color, out Texture2D cached))
-            {
-                return cached;
-            }
-
-            Texture2D texture = new(1, 1, TextureFormat.RGBA32, false)
-            {
-                hideFlags = HideFlags.HideAndDontSave,
-                wrapMode = TextureWrapMode.Clamp,
-                filterMode = FilterMode.Point,
-            };
-            texture.SetPixel(0, 0, color);
-            texture.Apply(false, true);
-            SolidTextureCache[color] = texture;
-            return texture;
-        }
-
-        internal readonly struct SelectionSummary
-        {
-            internal static SelectionSummary None { get; } = new(false, GUIContent.none);
-
-            internal SelectionSummary(bool hasSummary, GUIContent content)
-            {
-                HasSummary = hasSummary;
-                Content = content ?? GUIContent.none;
-            }
-
-            internal bool HasSummary { get; }
-
-            internal GUIContent Content { get; }
-        }
-
-        private enum ButtonSegment
-        {
-            Single = 0,
-            Left = 1,
-            Middle = 2,
-            Right = 3,
-        }
-
-        private readonly struct ButtonStyleCacheKey : IEquatable<ButtonStyleCacheKey>
-        {
-            internal ButtonStyleCacheKey(
-                ButtonSegment segment,
-                bool isActive,
-                UnityHelpersSettings.WEnumToggleButtonsPaletteEntry palette
-            )
-            {
-                Segment = segment;
-                IsActive = isActive;
-                SelectedBackground = palette.SelectedBackgroundColor;
-                SelectedText = palette.SelectedTextColor;
-                InactiveBackground = palette.InactiveBackgroundColor;
-                InactiveText = palette.InactiveTextColor;
-            }
-
-            internal ButtonSegment Segment { get; }
-
-            internal bool IsActive { get; }
-
-            private Color SelectedBackground { get; }
-
-            private Color SelectedText { get; }
-
-            private Color InactiveBackground { get; }
-
-            private Color InactiveText { get; }
-
-            public bool Equals(ButtonStyleCacheKey other)
-            {
-                return Segment == other.Segment
-                    && IsActive == other.IsActive
-                    && ColorComparer.AreEqual(SelectedBackground, other.SelectedBackground)
-                    && ColorComparer.AreEqual(SelectedText, other.SelectedText)
-                    && ColorComparer.AreEqual(InactiveBackground, other.InactiveBackground)
-                    && ColorComparer.AreEqual(InactiveText, other.InactiveText);
-            }
-
-            public override bool Equals(object obj)
-            {
-                return obj is ButtonStyleCacheKey other && Equals(other);
-            }
-
-            public override int GetHashCode()
-            {
-                return Objects.HashCode(
-                    Segment,
-                    IsActive,
-                    SelectedBackground.r,
-                    SelectedBackground.g,
-                    SelectedBackground.b,
-                    SelectedBackground.a,
-                    SelectedText.r,
-                    SelectedText.g,
-                    SelectedText.b,
-                    SelectedText.a,
-                    InactiveBackground.r,
-                    InactiveBackground.g,
-                    InactiveBackground.b,
-                    InactiveBackground.a,
-                    InactiveText.r,
-                    InactiveText.g,
-                    InactiveText.b,
-                    InactiveText.a
-                );
-            }
-        }
-
-        private sealed class ButtonStyleCacheKeyComparer : IEqualityComparer<ButtonStyleCacheKey>
-        {
-            public bool Equals(ButtonStyleCacheKey x, ButtonStyleCacheKey y)
-            {
-                return x.Equals(y);
-            }
-
-            public int GetHashCode(ButtonStyleCacheKey obj)
-            {
-                return obj.GetHashCode();
-            }
-        }
-
-        private sealed class ColorComparer : IEqualityComparer<Color>
-        {
-            public bool Equals(Color x, Color y)
-            {
-                return AreEqual(x, y);
-            }
-
-            public int GetHashCode(Color obj)
-            {
-                return Objects.HashCode(obj.r, obj.g, obj.b, obj.a);
-            }
-
-            internal static bool AreEqual(Color x, Color y)
-            {
-                return Mathf.Approximately(x.r, y.r)
-                    && Mathf.Approximately(x.g, y.g)
-                    && Mathf.Approximately(x.b, y.b)
-                    && Mathf.Approximately(x.a, y.a);
             }
         }
     }

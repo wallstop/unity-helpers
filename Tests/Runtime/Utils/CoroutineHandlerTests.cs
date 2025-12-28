@@ -1,3 +1,6 @@
+// MIT License - Copyright (c) 2023 Eli Pinkerton
+// Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
+
 namespace WallstopStudios.UnityHelpers.Tests.Utils
 {
     using System.Collections;
@@ -342,7 +345,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
 
             int countBeforeDestroy = counter;
 
-            Object.Destroy(instance.gameObject);
+            Object.Destroy(instance.gameObject); // UNH-SUPPRESS: Test verifies coroutine stops after destruction
 
             yield return null;
             yield return null;

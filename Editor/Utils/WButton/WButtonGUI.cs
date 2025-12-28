@@ -1,3 +1,6 @@
+// MIT License - Copyright (c) 2023 Eli Pinkerton
+// Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
+
 namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
 {
 #if UNITY_EDITOR
@@ -166,7 +169,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
         {
             if (editor == null)
             {
-                throw new ArgumentNullException(nameof(editor));
+                return false;
             }
 
             UnityEngine.Object[] targets = editor.targets;

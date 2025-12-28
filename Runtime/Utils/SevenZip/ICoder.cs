@@ -1,3 +1,6 @@
+// MIT License - Copyright (c) 2023 Eli Pinkerton
+// Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
+
 // ICoder.h
 
 namespace SevenZip
@@ -7,7 +10,7 @@ namespace SevenZip
     /// <summary>
     /// The exception that is thrown when an error in input stream occurs during decoding.
     /// </summary>
-    class DataErrorException : ApplicationException
+    internal class DataErrorException : ApplicationException
     {
         public DataErrorException()
             : base("Data Error") { }
@@ -16,7 +19,7 @@ namespace SevenZip
     /// <summary>
     /// The exception that is thrown when the value of an argument is outside the allowable range.
     /// </summary>
-    class InvalidParamException : ApplicationException
+    internal class InvalidParamException : ApplicationException
     {
         public InvalidParamException()
             : base("Invalid Parameter") { }
@@ -80,7 +83,7 @@ namespace SevenZip
   */
 
     /// <summary>
-    /// Provides the fields that represent properties idenitifiers for compressing.
+    /// Provides the fields that represent properties identifiers for compressing.
     /// </summary>
     public enum CoderPropID
     {
@@ -135,7 +138,7 @@ namespace SevenZip
         MatchFinder,
 
         /// <summary>
-        /// Specifies the number of match finder cyckes.
+        /// Specifies the number of match finder cycles.
         /// </summary>
         MatchFinderCycles,
 

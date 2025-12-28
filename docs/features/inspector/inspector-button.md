@@ -21,6 +21,8 @@ The `[WButton]` attribute exposes methods as clickable buttons in the Unity insp
 - [Configuration](#configuration)
 - [Best Practices](#best-practices)
 - [Examples](#examples)
+- [Using WButton with Custom Editors](#using-wbutton-with-custom-editors)
+- [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -1141,6 +1143,168 @@ public class AnimationTester : MonoBehaviour
 ```
 
 ![Animation buttons triggering visual effects](../../images/inspector/buttons/animation-tester-coroutines.gif)
+
+---
+
+## Using WButton with Custom Editors
+
+### Overview
+
+WButton works automatically with:
+
+- All Unity Objects (`MonoBehaviour`, `ScriptableObject`, etc.)
+- **Odin Inspector's `SerializedMonoBehaviour` and `SerializedScriptableObject`** (when `ODIN_INSPECTOR` is defined)
+
+**When do you need `WButtonEditorHelper`?**
+
+Only when you create **custom Odin editors** that override the default behavior. For example, if you create a `CustomEditor` that inherits from `OdinEditor` for a specific type, you'll need to integrate WButton manually.
+
+---
+
+### Automatic Integration with Odin Inspector
+
+**No setup required!** WButton automatically works with Odin's base types:
+
+```csharp
+#if ODIN_INSPECTOR
+using Sirenix.OdinInspector;
+#endif
+using UnityEngine;
+using WallstopStudios.UnityHelpers.Core.Attributes;
+
+#if ODIN_INSPECTOR
+public class MyComponent : SerializedMonoBehaviour
+#else
+public class MyComponent : MonoBehaviour
+#endif
+{
+    [WButton("Test Button")]
+    private void TestMethod()
+    {
+        Debug.Log("Button clicked!");
+    }
+}
+```
+
+WButton will appear automatically in the inspector - no additional code needed!
+
+---
+
+### Integration with Custom Odin Editors
+
+If you create a **custom Odin editor** for your type, you need to manually integrate WButton using `WButtonEditorHelper`:
+
+```csharp
+#if UNITY_EDITOR && ODIN_INSPECTOR
+using Sirenix.OdinInspector.Editor;
+using UnityEditor;
+using WallstopStudios.UnityHelpers.Editor.Utils.WButton;
+
+// Custom editor for a specific type
+[CustomEditor(typeof(MyComponent))]
+public class MyComponentEditor : OdinEditor
+{
+    private WButtonEditorHelper _wButtonHelper;
+
+    protected override void OnEnable()
+    {
+        base.OnEnable();
+        _wButtonHelper = new WButtonEditorHelper();
+    }
+
+    public override void OnInspectorGUI()
+    {
+        // Draw WButtons at top (optional - based on your settings)
+        _wButtonHelper.DrawButtonsAtTop(this);
+
+        // Draw Odin inspector
+        base.OnInspectorGUI();
+
+        // Draw WButtons at bottom and process any invocations
+        _wButtonHelper.DrawButtonsAtBottomAndProcessInvocations(this);
+    }
+}
+#endif
+```
+
+---
+
+### Integration with Standard Custom Editors
+
+For standard Unity custom editors:
+
+```csharp
+#if UNITY_EDITOR
+using UnityEditor;
+using UnityEngine;
+using WallstopStudios.UnityHelpers.Editor.Utils.WButton;
+
+[CustomEditor(typeof(MyComponent))]
+public class MyComponentEditor : Editor
+{
+    private WButtonEditorHelper _wButtonHelper;
+
+    private void OnEnable()
+    {
+        _wButtonHelper = new WButtonEditorHelper();
+    }
+
+    public override void OnInspectorGUI()
+    {
+        serializedObject.Update();
+
+        // Draw WButtons at top
+        _wButtonHelper.DrawButtonsAtTop(this);
+
+        // Draw your custom inspector
+        DrawDefaultInspector();
+
+        serializedObject.ApplyModifiedProperties();
+
+        // Draw WButtons at bottom and process invocations
+        _wButtonHelper.DrawButtonsAtBottomAndProcessInvocations(this);
+    }
+}
+#endif
+```
+
+---
+
+### WButtonEditorHelper API
+
+The `WButtonEditorHelper` class provides several methods for different use cases:
+
+| Method                                             | Description                                                            |
+| -------------------------------------------------- | ---------------------------------------------------------------------- |
+| `DrawButtonsAtTop(Editor)`                         | Draws buttons configured for top placement                             |
+| `DrawButtonsAtBottom(Editor)`                      | Draws buttons configured for bottom placement                          |
+| `ProcessInvocations()`                             | Processes any triggered button invocations                             |
+| `DrawButtonsAtBottomAndProcessInvocations(Editor)` | Convenience method combining bottom drawing + processing (most common) |
+| `DrawAllButtonsAndProcessInvocations(Editor)`      | Draws all buttons in one location regardless of placement settings     |
+
+**Key Points:**
+
+1. Create one `WButtonEditorHelper` instance per editor (typically in `OnEnable`)
+2. Call `DrawButtonsAtTop` before your inspector content
+3. Call `DrawButtonsAtBottomAndProcessInvocations` after your inspector content
+4. Always call `ProcessInvocations()` after all button drawing is complete
+
+---
+
+### Single Location Button Drawing
+
+If you prefer all buttons in one location regardless of placement settings:
+
+```csharp
+public override void OnInspectorGUI()
+{
+    // Your inspector code here
+    DrawDefaultInspector();
+
+    // Draw all buttons at the end
+    _wButtonHelper.DrawAllButtonsAndProcessInvocations(this);
+}
+```
 
 ---
 

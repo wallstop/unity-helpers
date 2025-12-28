@@ -1,8 +1,11 @@
+// MIT License - Copyright (c) 2023 Eli Pinkerton
+// Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
+
 // Common/CRC.cs
 
 namespace SevenZip
 {
-    class CRC
+    internal struct CRC
     {
         public static readonly uint[] Table;
 
@@ -29,7 +32,12 @@ namespace SevenZip
             }
         }
 
-        uint _value = 0xFFFFFFFF;
+        private uint _value;
+
+        public CRC(bool unused)
+        {
+            _value = 0xFFFFFFFF;
+        }
 
         public void Init()
         {
@@ -54,15 +62,14 @@ namespace SevenZip
             return _value ^ 0xFFFFFFFF;
         }
 
-        static uint CalculateDigest(byte[] data, uint offset, uint size)
+        private static uint CalculateDigest(byte[] data, uint offset, uint size)
         {
-            CRC crc = new();
-            // crc.Init();
+            CRC crc = new(true);
             crc.Update(data, offset, size);
             return crc.GetDigest();
         }
 
-        static bool VerifyDigest(uint digest, byte[] data, uint offset, uint size)
+        private static bool VerifyDigest(uint digest, byte[] data, uint offset, uint size)
         {
             return (CalculateDigest(data, offset, size) == digest);
         }
