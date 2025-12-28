@@ -2,7 +2,7 @@
 set -e
 
 # Mirror key CI checks before pushing
-# These checks are optional - if tools aren't installed, warn and skip.
+# Auto-fix formatting issues where possible, then verify.
 # CI will catch any issues that slip through.
 
 # Ensure Node is available
@@ -13,11 +13,23 @@ else
   if [ ! -d "node_modules" ]; then
     echo "node_modules not found. Run 'npm install' to enable local pre-push checks, or skip - CI will validate." >&2
   else
-    # 1) Prettier checks (Markdown, JSON, asmdef/asmref, YAML)
+    # 1) Prettier checks (Markdown, JSON, asmdef/asmref, YAML, JS)
+    # Auto-fix first, then verify. If verification fails, the user needs to commit the fixes.
     if npx --no-install prettier --version >/dev/null 2>&1; then
-      npx --no-install prettier --check "**/*.{md,markdown}" || exit 1
-      npx --no-install prettier --check "**/*.{json,asmdef,asmref}" || exit 1
-      npx --no-install prettier --check "**/*.{yml,yaml}" || exit 1
+      echo "Checking formatting..."
+      if ! npx --no-install prettier --check "**/*.{md,markdown,json,asmdef,asmref,yml,yaml,js}" 2>/dev/null; then
+        echo ""
+        echo "=== Prettier formatting issues detected ==="
+        echo "Auto-fixing formatting..."
+        npx --no-install prettier --write "**/*.{md,markdown,json,asmdef,asmref,yml,yaml,js}" --log-level warn
+        echo ""
+        echo "Files have been auto-formatted. Please:"
+        echo "  1. Review the changes: git diff"
+        echo "  2. Stage and commit: git add -A && git commit --amend --no-edit"
+        echo "  3. Push again: git push"
+        echo ""
+        exit 1
+      fi
     else
       echo "prettier not installed; skipping format check. Run 'npm install' or CI will validate." >&2
     fi

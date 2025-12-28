@@ -1,0 +1,382 @@
+/* Unity Helpers - Theme Styles */
+/* Default: Dark mode (Unity Editor-inspired) */
+
+:root {
+  /* Light theme colors */
+  --light-bg-primary: #f5f5f5;
+  --light-bg-secondary: #ffffff;
+  --light-bg-code: #f0f0f0;
+  --light-text-primary: #222222;
+  --light-text-secondary: #555555;
+  --light-text-muted: #777777;
+  --light-border: #d0d0d0;
+  --light-link: #0969da;
+  --light-link-hover: #0550ae;
+  --light-accent: #3e8ed0;
+  --light-code-bg: #f6f8fa;
+  --light-inline-code-bg: #eff1f3;
+  --light-selection: #b4d5fe;
+
+  /* Dark theme colors (Unity Editor-inspired) */
+  --dark-bg-primary: #1e1e1e;
+  --dark-bg-secondary: #252526;
+  --dark-bg-code: #2d2d2d;
+  --dark-text-primary: #d4d4d4;
+  --dark-text-secondary: #b0b0b0;
+  --dark-text-muted: #808080;
+  --dark-border: #3c3c3c;
+  --dark-link: #569cd6;
+  --dark-link-hover: #9cdcfe;
+  --dark-accent: #4ec9b0;
+  --dark-code-bg: #1e1e1e;
+  --dark-inline-code-bg: #3c3c3c;
+  --dark-selection: #264f78;
+
+  /* Unity-specific accent colors */
+  --unity-blue: #00aaff;
+  --unity-orange: #f5a623;
+  --unity-green: #7fc97f;
+  --unity-purple: #b48ead;
+}
+
+/* Dark theme (default) */
+[data-theme="dark"] {
+  --bg-primary: var(--dark-bg-primary);
+  --bg-secondary: var(--dark-bg-secondary);
+  --bg-code: var(--dark-bg-code);
+  --text-primary: var(--dark-text-primary);
+  --text-secondary: var(--dark-text-secondary);
+  --text-muted: var(--dark-text-muted);
+  --border-color: var(--dark-border);
+  --link-color: var(--dark-link);
+  --link-hover: var(--dark-link-hover);
+  --accent-color: var(--dark-accent);
+  --code-bg: var(--dark-code-bg);
+  --inline-code-bg: var(--dark-inline-code-bg);
+  --selection-bg: var(--dark-selection);
+}
+
+/* Light theme */
+[data-theme="light"] {
+  --bg-primary: var(--light-bg-primary);
+  --bg-secondary: var(--light-bg-secondary);
+  --bg-code: var(--light-bg-code);
+  --text-primary: var(--light-text-primary);
+  --text-secondary: var(--light-text-secondary);
+  --text-muted: var(--light-text-muted);
+  --border-color: var(--light-border);
+  --link-color: var(--light-link);
+  --link-hover: var(--light-link-hover);
+  --accent-color: var(--light-accent);
+  --code-bg: var(--light-code-bg);
+  --inline-code-bg: var(--light-inline-code-bg);
+  --selection-bg: var(--light-selection);
+}
+
+/* Apply theme to body */
+body {
+  background-color: var(--bg-primary) !important;
+  color: var(--text-primary) !important;
+  transition:
+    background-color 0.3s ease,
+    color 0.3s ease;
+}
+
+/* Main content wrapper */
+.wrapper {
+  background-color: var(--bg-primary) !important;
+}
+
+/* Headers */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  color: var(--text-primary) !important;
+}
+
+/* Paragraphs and general text */
+p,
+li,
+td,
+th {
+  color: var(--text-secondary) !important;
+}
+
+/* Links */
+a {
+  color: var(--link-color) !important;
+  transition: color 0.2s ease;
+}
+
+a:hover {
+  color: var(--link-hover) !important;
+}
+
+/* Code blocks */
+pre {
+  background-color: var(--code-bg) !important;
+  border: 1px solid var(--border-color) !important;
+  border-radius: 6px;
+  padding: 16px !important;
+  overflow-x: auto;
+}
+
+pre code {
+  background-color: transparent !important;
+  color: var(--text-primary) !important;
+}
+
+/* Inline code */
+code {
+  background-color: var(--inline-code-bg) !important;
+  color: var(--text-primary) !important;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.9em;
+}
+
+/* Tables */
+table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1em 0;
+}
+
+th,
+td {
+  border: 1px solid var(--border-color) !important;
+  padding: 8px 12px;
+}
+
+th {
+  background-color: var(--bg-secondary) !important;
+}
+
+tr:nth-child(even) {
+  background-color: var(--bg-secondary) !important;
+}
+
+/* Blockquotes */
+blockquote {
+  border-left: 4px solid var(--accent-color) !important;
+  background-color: var(--bg-secondary) !important;
+  color: var(--text-secondary) !important;
+  padding: 10px 20px;
+  margin: 1em 0;
+}
+
+/* Horizontal rules */
+hr {
+  border: none;
+  border-top: 1px solid var(--border-color) !important;
+}
+
+/* Selection */
+::selection {
+  background-color: var(--selection-bg);
+  color: var(--text-primary);
+}
+
+/* Scrollbar (webkit browsers) */
+[data-theme="dark"] ::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+[data-theme="dark"] ::-webkit-scrollbar-track {
+  background: var(--dark-bg-secondary);
+}
+
+[data-theme="dark"] ::-webkit-scrollbar-thumb {
+  background: var(--dark-border);
+  border-radius: 5px;
+}
+
+[data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
+  background: var(--dark-text-muted);
+}
+
+/* Theme toggle button */
+.theme-toggle {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 1000;
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: var(--text-primary) !important;
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.theme-toggle:hover {
+  background-color: var(--border-color);
+}
+
+.theme-toggle svg {
+  width: 18px;
+  height: 18px;
+  fill: currentColor;
+}
+
+.theme-toggle .sun-icon {
+  display: none;
+}
+
+.theme-toggle .moon-icon {
+  display: block;
+}
+
+[data-theme="light"] .theme-toggle .sun-icon {
+  display: block;
+}
+
+[data-theme="light"] .theme-toggle .moon-icon {
+  display: none;
+}
+
+/* Header section styling */
+header {
+  background-color: var(--bg-secondary) !important;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 20px;
+  margin-bottom: 20px;
+}
+
+header h1 {
+  color: var(--unity-blue) !important;
+}
+
+/* Section wrapper */
+section {
+  background-color: var(--bg-primary) !important;
+}
+
+/* Footer */
+footer {
+  background-color: var(--bg-secondary) !important;
+  border-top: 1px solid var(--border-color);
+  color: var(--text-muted) !important;
+}
+
+footer small {
+  color: var(--text-muted) !important;
+}
+
+/* Navigation links in header */
+header a {
+  color: var(--link-color) !important;
+}
+
+/* Strong/bold text */
+strong,
+b {
+  color: var(--text-primary) !important;
+}
+
+/* Emphasis */
+em,
+i {
+  color: var(--text-secondary) !important;
+}
+
+/* Details/summary elements */
+details {
+  background-color: var(--bg-secondary) !important;
+  border: 1px solid var(--border-color) !important;
+  border-radius: 6px;
+  padding: 10px;
+  margin: 1em 0;
+}
+
+summary {
+  cursor: pointer;
+  color: var(--text-primary) !important;
+  font-weight: 600;
+}
+
+/* Syntax highlighting adjustments for dark mode */
+[data-theme="dark"] .highlight .c,
+[data-theme="dark"] .highlight .c1,
+[data-theme="dark"] .highlight .cm {
+  color: #6a9955 !important;
+} /* Comments */
+[data-theme="dark"] .highlight .k,
+[data-theme="dark"] .highlight .kd,
+[data-theme="dark"] .highlight .kn {
+  color: #569cd6 !important;
+} /* Keywords */
+[data-theme="dark"] .highlight .s,
+[data-theme="dark"] .highlight .s1,
+[data-theme="dark"] .highlight .s2 {
+  color: #ce9178 !important;
+} /* Strings */
+[data-theme="dark"] .highlight .n,
+[data-theme="dark"] .highlight .na,
+[data-theme="dark"] .highlight .nb {
+  color: #9cdcfe !important;
+} /* Names */
+[data-theme="dark"] .highlight .nf {
+  color: #dcdcaa !important;
+} /* Function names */
+[data-theme="dark"] .highlight .nc {
+  color: #4ec9b0 !important;
+} /* Class names */
+[data-theme="dark"] .highlight .m,
+[data-theme="dark"] .highlight .mi,
+[data-theme="dark"] .highlight .mf {
+  color: #b5cea8 !important;
+} /* Numbers */
+[data-theme="dark"] .highlight .o,
+[data-theme="dark"] .highlight .p {
+  color: #d4d4d4 !important;
+} /* Operators, punctuation */
+
+/* Image styling */
+img {
+  max-width: 100%;
+  border-radius: 6px;
+}
+
+/* Ensure mermaid diagrams respect theme */
+.mermaid {
+  background-color: transparent !important;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .theme-toggle {
+    top: 8px;
+    right: 8px;
+    padding: 6px 10px;
+    font-size: 12px;
+  }
+
+  .theme-toggle span {
+    display: none;
+  }
+}
+
+/* Print styles - always use light theme */
+@media print {
+  body {
+    background-color: #ffffff !important;
+    color: #000000 !important;
+  }
+
+  .theme-toggle {
+    display: none !important;
+  }
+}

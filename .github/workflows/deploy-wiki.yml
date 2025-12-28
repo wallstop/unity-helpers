@@ -115,18 +115,18 @@ jobs:
           # Copy README as Home page
           echo "Creating Home.md from README.md..."
           cp main/README.md wiki/Home.md
-          ((pages_created++)) || true
+          pages_created=$((pages_created + 1))
 
           # Copy CHANGELOG
           echo "Creating CHANGELOG.md..."
           cp main/CHANGELOG.md wiki/CHANGELOG.md
-          ((pages_created++)) || true
+          pages_created=$((pages_created + 1))
 
           # Copy index.md if it exists and differs from README
           if [ -f "main/index.md" ]; then
             echo "Creating Index.md..."
             cp main/index.md wiki/Index.md
-            ((pages_created++)) || true
+            pages_created=$((pages_created + 1))
           fi
 
           # Process and copy docs with proper structure
@@ -150,7 +150,7 @@ jobs:
             # Copy file
             cp "$file" "../../wiki/$wiki_name"
             echo "  📄 Created: $wiki_name (from $file)"
-            ((pages_created++)) || true
+            pages_created=$((pages_created + 1))
           done
 
           # Copy images - handle nested image directories
@@ -160,7 +160,7 @@ jobs:
               mkdir -p "../../wiki/$(dirname "$img")"
               cp "$img" "../../wiki/$img"
               echo "  🖼️  Copied: $img"
-              ((images_copied++)) || true
+              images_copied=$((images_copied + 1))
             done
           fi
 
@@ -202,7 +202,7 @@ jobs:
               new_hash=$(md5sum "$file" | cut -d' ' -f1)
               if [ "$original_hash" != "$new_hash" ]; then
                 echo "  🔗 Fixed links in: $file"
-                ((links_fixed++)) || true
+                links_fixed=$((links_fixed + 1))
               fi
             fi
           done
@@ -308,7 +308,7 @@ jobs:
           for page in "${required_pages[@]}"; do
             if [ ! -f "$page" ]; then
               echo "::error::Required page missing: $page"
-              ((errors++)) || true
+              errors=$((errors + 1))
             fi
           done
 
@@ -316,7 +316,7 @@ jobs:
           while IFS= read -r -d '' file; do
             if [ ! -s "$file" ]; then
               echo "::warning::Empty file detected: $file"
-              ((warnings++)) || true
+              warnings=$((warnings + 1))
             fi
           done < <(find . -name "*.md" -print0)
 

@@ -23,13 +23,7 @@ const REPO_ROOT = path.resolve(__dirname, "..");
 const DEFAULT_OUTPUT_DIR = path.join(REPO_ROOT, "artifacts", "code-samples");
 
 // Patterns to identify incomplete/partial samples
-const PARTIAL_MARKERS = [
-  "// ...",
-  "/* ... */",
-  "// (existing code)",
-  "// (omitted)",
-  "...",
-];
+const PARTIAL_MARKERS = ["// ...", "/* ... */", "// (existing code)", "// (omitted)", "..."];
 
 // Common using directives for Unity/UnityHelpers code
 const COMMON_USINGS = `using System;
@@ -54,7 +48,7 @@ function parseArgs() {
     extractOnly: false,
     verbose: false,
     outputDir: DEFAULT_OUTPUT_DIR,
-    includePartial: false,
+    includePartial: false
   };
 
   for (let i = 0; i < args.length; i++) {
@@ -89,7 +83,7 @@ function findMarkdownFiles(rootDir) {
     "Temp",
     "obj",
     "artifacts",
-    "Logs",
+    "Logs"
   ]);
 
   function walk(dir) {
@@ -136,7 +130,7 @@ function extractCodeBlocks(content, filePath) {
       code: code,
       filePath: filePath,
       lineNumber: lineNumber,
-      raw: match[0],
+      raw: match[0]
     });
 
     // Update for next iteration
@@ -162,9 +156,7 @@ function isCompleteSample(code, includePartial) {
   const hasClass = /\bclass\s+\w+/.test(code);
   const hasStruct = /\bstruct\s+\w+/.test(code);
   const hasInterface = /\binterface\s+\w+/.test(code);
-  const hasMethod = /\b(void|int|float|bool|string|async|Task)\s+\w+\s*\(/.test(
-    code
-  );
+  const hasMethod = /\b(void|int|float|bool|string|async|Task)\s+\w+\s*\(/.test(code);
   const hasNamespace = /\bnamespace\s+\w+/.test(code);
   const hasUsing = /\busing\s+[\w.]+;/.test(code);
 
@@ -243,10 +235,8 @@ function generateReport(samples, outputDir) {
       line: s.lineNumber,
       language: s.language,
       isComplete: s.isComplete,
-      generatedFile: s.generatedFile
-        ? path.relative(outputDir, s.generatedFile)
-        : null,
-    })),
+      generatedFile: s.generatedFile ? path.relative(outputDir, s.generatedFile) : null
+    }))
   };
 
   return report;
@@ -281,9 +271,7 @@ function extractSamples(options) {
 
   console.log(`   Total code blocks: ${allSamples.length}`);
   console.log(`   C# code blocks: ${csharpSamples.length}`);
-  console.log(
-    `   Complete samples: ${csharpSamples.filter((s) => s.isComplete).length}`
-  );
+  console.log(`   Complete samples: ${csharpSamples.filter((s) => s.isComplete).length}`);
 
   return { allSamples, csharpSamples };
 }
@@ -336,10 +324,7 @@ function generateAssemblyDefinition(outputDir) {
   const asmdef = {
     name: "WallstopStudios.UnityHelpers.CodeSamples",
     rootNamespace: "WallstopStudios.UnityHelpers.CodeSamples",
-    references: [
-      "WallstopStudios.UnityHelpers",
-      "WallstopStudios.UnityHelpers.Editor",
-    ],
+    references: ["WallstopStudios.UnityHelpers", "WallstopStudios.UnityHelpers.Editor"],
     includePlatforms: ["Editor"],
     excludePlatforms: [],
     allowUnsafeCode: false,
@@ -348,13 +333,10 @@ function generateAssemblyDefinition(outputDir) {
     autoReferenced: false,
     defineConstraints: [],
     versionDefines: [],
-    noEngineReferences: false,
+    noEngineReferences: false
   };
 
-  const asmdefPath = path.join(
-    outputDir,
-    "WallstopStudios.UnityHelpers.CodeSamples.asmdef"
-  );
+  const asmdefPath = path.join(outputDir, "WallstopStudios.UnityHelpers.CodeSamples.asmdef");
   fs.writeFileSync(asmdefPath, JSON.stringify(asmdef, null, 2), "utf8");
   console.log(`   Generated: ${path.basename(asmdefPath)}`);
 }
@@ -414,9 +396,7 @@ function main() {
 
   // Exit with error if no samples found (CI check)
   if (csharpSamples.length === 0) {
-    console.warn(
-      "\n⚠️ Warning: No C# code samples found in documentation!"
-    );
+    console.warn("\n⚠️ Warning: No C# code samples found in documentation!");
     process.exit(0);
   }
 }
