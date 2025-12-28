@@ -2,22 +2,36 @@
 set -e
 
 # Mirror key CI checks before pushing
+# These checks are optional - if tools aren't installed, warn and skip.
+# CI will catch any issues that slip through.
 
 # Ensure Node is available
 if ! command -v npx >/dev/null 2>&1; then
-  echo "npx is required. Please install Node.js." >&2
-  exit 1
+  echo "npx not found; skipping Node-based checks. CI will validate." >&2
+else
+  # Check if npm dependencies are installed
+  if [ ! -d "node_modules" ]; then
+    echo "node_modules not found. Run 'npm install' to enable local pre-push checks, or skip - CI will validate." >&2
+  else
+    # 1) Prettier checks (Markdown, JSON, asmdef/asmref, YAML)
+    if npx --no-install prettier --version >/dev/null 2>&1; then
+      npx --no-install prettier --check "**/*.{md,markdown}" || exit 1
+      npx --no-install prettier --check "**/*.{json,asmdef,asmref}" || exit 1
+      npx --no-install prettier --check "**/*.{yml,yaml}" || exit 1
+    else
+      echo "prettier not installed; skipping format check. Run 'npm install' or CI will validate." >&2
+    fi
+
+    # 2) Markdownlint (uses repo config and ignore list)
+    if npx --no-install markdownlint --version >/dev/null 2>&1; then
+      npx --no-install markdownlint "**/*.md" "**/*.markdown" --config .markdownlint.json --ignore-path .markdownlintignore || exit 1
+    else
+      echo "markdownlint not installed; skipping markdown lint. Run 'npm install' or CI will validate." >&2
+    fi
+  fi
 fi
 
-# 1) Prettier checks (Markdown, JSON, asmdef/asmref, YAML)
-npx --no-install prettier --check "**/*.{md,markdown}" || exit 1
-npx --no-install prettier --check "**/*.{json,asmdef,asmref}" || exit 1
-npx --no-install prettier --check "**/*.{yml,yaml}" || exit 1
-
-# 2) Markdownlint (uses repo config and ignore list)
-npx --no-install markdownlint "**/*.md" "**/*.markdown" --config .markdownlint.json --ignore-path .markdownlintignore || exit 1
-
-# 3) EOL policy (CRLF, no UTF-8 BOM)
+# EOL policy (CRLF, no UTF-8 BOM)
 if command -v pwsh >/dev/null 2>&1; then
   pwsh -NoProfile -File scripts/check-eol.ps1 -VerboseOutput
 elif command -v powershell >/dev/null 2>&1; then
@@ -26,21 +40,21 @@ else
   echo "PowerShell not found; skipping EOL validation." >&2
 fi
 
-# 4) Optional YAML lint (if yamllint installed)
+# Optional YAML lint (if yamllint installed)
 if command -v yamllint >/dev/null 2>&1; then
   yamllint -c .yamllint.yaml .
 else
   echo "yamllint not found; skipping YAML lint. CI will catch issues." >&2
 fi
 
-# 5) Optional external link check (if lychee installed)
+# Optional external link check (if lychee installed)
 if command -v lychee >/dev/null 2>&1; then
   lychee -c .lychee.toml --no-progress --verbose "./**/*.md"
 else
   echo "lychee not found; skipping external link check. CI will run lychee." >&2
 fi
 
-# 6) Test lifecycle lint
+# Test lifecycle lint
 if command -v pwsh >/dev/null 2>&1; then
   pwsh -NoProfile -File scripts/lint-tests.ps1 -VerboseOutput
 elif command -v powershell >/dev/null 2>&1; then

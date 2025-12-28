@@ -27,6 +27,10 @@
 *.meta      text eol=crlf
 *.ps1       text eol=crlf
 
+# Shell scripts and git hooks MUST have LF line endings (Unix requirement)
+*.sh        text eol=lf
+.githooks/* text eol=lf
+
 ###############################################################################
 # Set default behavior for command prompt diff.
 #
