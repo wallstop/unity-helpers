@@ -69,16 +69,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
         {
             OdinValidateAssignmentScriptableObjectTarget target =
                 CreateScriptableObject<OdinValidateAssignmentScriptableObjectTarget>();
-            Editor editor = Editor.CreateEditor(target);
+            Editor editor = Track(Editor.CreateEditor(target));
 
-            try
-            {
-                Assert.That(editor, Is.Not.Null, "Editor should be created for target");
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            Assert.That(editor, Is.Not.Null, "Editor should be created for target");
         }
 
         [Test]
@@ -86,20 +79,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
         {
             OdinValidateAssignmentMonoBehaviourTarget target = NewGameObject("ValidateAssignmentMB")
                 .AddComponent<OdinValidateAssignmentMonoBehaviourTarget>();
-            Editor editor = Editor.CreateEditor(target);
+            Editor editor = Track(Editor.CreateEditor(target));
 
-            try
-            {
-                Assert.That(
-                    editor,
-                    Is.Not.Null,
-                    "Editor should be created for MonoBehaviour target"
-                );
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            Assert.That(editor, Is.Not.Null, "Editor should be created for MonoBehaviour target");
         }
 
         [UnityTest]
@@ -107,36 +89,29 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
         {
             OdinValidateAssignmentScriptableObjectTarget target =
                 CreateScriptableObject<OdinValidateAssignmentScriptableObjectTarget>();
-            Editor editor = Editor.CreateEditor(target);
+            Editor editor = Track(Editor.CreateEditor(target));
             bool testCompleted = false;
             Exception caughtException = null;
 
-            try
+            yield return TestIMGUIExecutor.Run(() =>
             {
-                yield return TestIMGUIExecutor.Run(() =>
+                try
                 {
-                    try
-                    {
-                        editor.OnInspectorGUI();
-                        testCompleted = true;
-                    }
-                    catch (Exception ex)
-                    {
-                        caughtException = ex;
-                    }
-                });
+                    editor.OnInspectorGUI();
+                    testCompleted = true;
+                }
+                catch (Exception ex)
+                {
+                    caughtException = ex;
+                }
+            });
 
-                Assert.That(
-                    caughtException,
-                    Is.Null,
-                    $"OnInspectorGUI should not throw for ScriptableObject. Exception: {caughtException}"
-                );
-                Assert.That(testCompleted, Is.True);
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            Assert.That(
+                caughtException,
+                Is.Null,
+                $"OnInspectorGUI should not throw for ScriptableObject. Exception: {caughtException}"
+            );
+            Assert.That(testCompleted, Is.True);
         }
 
         [UnityTest]
@@ -144,36 +119,29 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
         {
             OdinValidateAssignmentMonoBehaviourTarget target = NewGameObject("ValidateAssignmentMB")
                 .AddComponent<OdinValidateAssignmentMonoBehaviourTarget>();
-            Editor editor = Editor.CreateEditor(target);
+            Editor editor = Track(Editor.CreateEditor(target));
             bool testCompleted = false;
             Exception caughtException = null;
 
-            try
+            yield return TestIMGUIExecutor.Run(() =>
             {
-                yield return TestIMGUIExecutor.Run(() =>
+                try
                 {
-                    try
-                    {
-                        editor.OnInspectorGUI();
-                        testCompleted = true;
-                    }
-                    catch (Exception ex)
-                    {
-                        caughtException = ex;
-                    }
-                });
+                    editor.OnInspectorGUI();
+                    testCompleted = true;
+                }
+                catch (Exception ex)
+                {
+                    caughtException = ex;
+                }
+            });
 
-                Assert.That(
-                    caughtException,
-                    Is.Null,
-                    $"OnInspectorGUI should not throw for MonoBehaviour. Exception: {caughtException}"
-                );
-                Assert.That(testCompleted, Is.True);
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            Assert.That(
+                caughtException,
+                Is.Null,
+                $"OnInspectorGUI should not throw for MonoBehaviour. Exception: {caughtException}"
+            );
+            Assert.That(testCompleted, Is.True);
         }
 
         [UnityTest]
@@ -182,36 +150,29 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
             OdinValidateAssignmentNullObjectTarget target =
                 CreateScriptableObject<OdinValidateAssignmentNullObjectTarget>();
             target.validateObject = null;
-            Editor editor = Editor.CreateEditor(target);
+            Editor editor = Track(Editor.CreateEditor(target));
             bool testCompleted = false;
             Exception caughtException = null;
 
-            try
+            yield return TestIMGUIExecutor.Run(() =>
             {
-                yield return TestIMGUIExecutor.Run(() =>
+                try
                 {
-                    try
-                    {
-                        editor.OnInspectorGUI();
-                        testCompleted = true;
-                    }
-                    catch (Exception ex)
-                    {
-                        caughtException = ex;
-                    }
-                });
+                    editor.OnInspectorGUI();
+                    testCompleted = true;
+                }
+                catch (Exception ex)
+                {
+                    caughtException = ex;
+                }
+            });
 
-                Assert.That(
-                    caughtException,
-                    Is.Null,
-                    $"OnInspectorGUI should not throw when object is null. Exception: {caughtException}"
-                );
-                Assert.That(testCompleted, Is.True);
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            Assert.That(
+                caughtException,
+                Is.Null,
+                $"OnInspectorGUI should not throw when object is null. Exception: {caughtException}"
+            );
+            Assert.That(testCompleted, Is.True);
         }
 
         [UnityTest]
@@ -220,36 +181,29 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
             OdinValidateAssignmentNullObjectTarget target =
                 CreateScriptableObject<OdinValidateAssignmentNullObjectTarget>();
             target.validateObject = NewGameObject("ValidObject");
-            Editor editor = Editor.CreateEditor(target);
+            Editor editor = Track(Editor.CreateEditor(target));
             bool testCompleted = false;
             Exception caughtException = null;
 
-            try
+            yield return TestIMGUIExecutor.Run(() =>
             {
-                yield return TestIMGUIExecutor.Run(() =>
+                try
                 {
-                    try
-                    {
-                        editor.OnInspectorGUI();
-                        testCompleted = true;
-                    }
-                    catch (Exception ex)
-                    {
-                        caughtException = ex;
-                    }
-                });
+                    editor.OnInspectorGUI();
+                    testCompleted = true;
+                }
+                catch (Exception ex)
+                {
+                    caughtException = ex;
+                }
+            });
 
-                Assert.That(
-                    caughtException,
-                    Is.Null,
-                    $"OnInspectorGUI should not throw when object is not null. Exception: {caughtException}"
-                );
-                Assert.That(testCompleted, Is.True);
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            Assert.That(
+                caughtException,
+                Is.Null,
+                $"OnInspectorGUI should not throw when object is not null. Exception: {caughtException}"
+            );
+            Assert.That(testCompleted, Is.True);
         }
 
         [UnityTest]
@@ -258,36 +212,29 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
             OdinValidateAssignmentStringTarget target =
                 CreateScriptableObject<OdinValidateAssignmentStringTarget>();
             target.validateString = "";
-            Editor editor = Editor.CreateEditor(target);
+            Editor editor = Track(Editor.CreateEditor(target));
             bool testCompleted = false;
             Exception caughtException = null;
 
-            try
+            yield return TestIMGUIExecutor.Run(() =>
             {
-                yield return TestIMGUIExecutor.Run(() =>
+                try
                 {
-                    try
-                    {
-                        editor.OnInspectorGUI();
-                        testCompleted = true;
-                    }
-                    catch (Exception ex)
-                    {
-                        caughtException = ex;
-                    }
-                });
+                    editor.OnInspectorGUI();
+                    testCompleted = true;
+                }
+                catch (Exception ex)
+                {
+                    caughtException = ex;
+                }
+            });
 
-                Assert.That(
-                    caughtException,
-                    Is.Null,
-                    $"OnInspectorGUI should not throw when string is empty. Exception: {caughtException}"
-                );
-                Assert.That(testCompleted, Is.True);
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            Assert.That(
+                caughtException,
+                Is.Null,
+                $"OnInspectorGUI should not throw when string is empty. Exception: {caughtException}"
+            );
+            Assert.That(testCompleted, Is.True);
         }
 
         [UnityTest]
@@ -296,36 +243,29 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
             OdinValidateAssignmentStringTarget target =
                 CreateScriptableObject<OdinValidateAssignmentStringTarget>();
             target.validateString = "   ";
-            Editor editor = Editor.CreateEditor(target);
+            Editor editor = Track(Editor.CreateEditor(target));
             bool testCompleted = false;
             Exception caughtException = null;
 
-            try
+            yield return TestIMGUIExecutor.Run(() =>
             {
-                yield return TestIMGUIExecutor.Run(() =>
+                try
                 {
-                    try
-                    {
-                        editor.OnInspectorGUI();
-                        testCompleted = true;
-                    }
-                    catch (Exception ex)
-                    {
-                        caughtException = ex;
-                    }
-                });
+                    editor.OnInspectorGUI();
+                    testCompleted = true;
+                }
+                catch (Exception ex)
+                {
+                    caughtException = ex;
+                }
+            });
 
-                Assert.That(
-                    caughtException,
-                    Is.Null,
-                    $"OnInspectorGUI should not throw when string is whitespace. Exception: {caughtException}"
-                );
-                Assert.That(testCompleted, Is.True);
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            Assert.That(
+                caughtException,
+                Is.Null,
+                $"OnInspectorGUI should not throw when string is whitespace. Exception: {caughtException}"
+            );
+            Assert.That(testCompleted, Is.True);
         }
 
         [UnityTest]
@@ -334,36 +274,29 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
             OdinValidateAssignmentStringTarget target =
                 CreateScriptableObject<OdinValidateAssignmentStringTarget>();
             target.validateString = null;
-            Editor editor = Editor.CreateEditor(target);
+            Editor editor = Track(Editor.CreateEditor(target));
             bool testCompleted = false;
             Exception caughtException = null;
 
-            try
+            yield return TestIMGUIExecutor.Run(() =>
             {
-                yield return TestIMGUIExecutor.Run(() =>
+                try
                 {
-                    try
-                    {
-                        editor.OnInspectorGUI();
-                        testCompleted = true;
-                    }
-                    catch (Exception ex)
-                    {
-                        caughtException = ex;
-                    }
-                });
+                    editor.OnInspectorGUI();
+                    testCompleted = true;
+                }
+                catch (Exception ex)
+                {
+                    caughtException = ex;
+                }
+            });
 
-                Assert.That(
-                    caughtException,
-                    Is.Null,
-                    $"OnInspectorGUI should not throw when string is null. Exception: {caughtException}"
-                );
-                Assert.That(testCompleted, Is.True);
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            Assert.That(
+                caughtException,
+                Is.Null,
+                $"OnInspectorGUI should not throw when string is null. Exception: {caughtException}"
+            );
+            Assert.That(testCompleted, Is.True);
         }
 
         [UnityTest]
@@ -372,36 +305,29 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
             OdinValidateAssignmentStringTarget target =
                 CreateScriptableObject<OdinValidateAssignmentStringTarget>();
             target.validateString = "Valid string content";
-            Editor editor = Editor.CreateEditor(target);
+            Editor editor = Track(Editor.CreateEditor(target));
             bool testCompleted = false;
             Exception caughtException = null;
 
-            try
+            yield return TestIMGUIExecutor.Run(() =>
             {
-                yield return TestIMGUIExecutor.Run(() =>
+                try
                 {
-                    try
-                    {
-                        editor.OnInspectorGUI();
-                        testCompleted = true;
-                    }
-                    catch (Exception ex)
-                    {
-                        caughtException = ex;
-                    }
-                });
+                    editor.OnInspectorGUI();
+                    testCompleted = true;
+                }
+                catch (Exception ex)
+                {
+                    caughtException = ex;
+                }
+            });
 
-                Assert.That(
-                    caughtException,
-                    Is.Null,
-                    $"OnInspectorGUI should not throw when string has content. Exception: {caughtException}"
-                );
-                Assert.That(testCompleted, Is.True);
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            Assert.That(
+                caughtException,
+                Is.Null,
+                $"OnInspectorGUI should not throw when string has content. Exception: {caughtException}"
+            );
+            Assert.That(testCompleted, Is.True);
         }
 
         [UnityTest]
@@ -410,36 +336,29 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
             OdinValidateAssignmentListTarget target =
                 CreateScriptableObject<OdinValidateAssignmentListTarget>();
             target.validateList = new List<string>();
-            Editor editor = Editor.CreateEditor(target);
+            Editor editor = Track(Editor.CreateEditor(target));
             bool testCompleted = false;
             Exception caughtException = null;
 
-            try
+            yield return TestIMGUIExecutor.Run(() =>
             {
-                yield return TestIMGUIExecutor.Run(() =>
+                try
                 {
-                    try
-                    {
-                        editor.OnInspectorGUI();
-                        testCompleted = true;
-                    }
-                    catch (Exception ex)
-                    {
-                        caughtException = ex;
-                    }
-                });
+                    editor.OnInspectorGUI();
+                    testCompleted = true;
+                }
+                catch (Exception ex)
+                {
+                    caughtException = ex;
+                }
+            });
 
-                Assert.That(
-                    caughtException,
-                    Is.Null,
-                    $"OnInspectorGUI should not throw when list is empty. Exception: {caughtException}"
-                );
-                Assert.That(testCompleted, Is.True);
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            Assert.That(
+                caughtException,
+                Is.Null,
+                $"OnInspectorGUI should not throw when list is empty. Exception: {caughtException}"
+            );
+            Assert.That(testCompleted, Is.True);
         }
 
         [UnityTest]
@@ -448,36 +367,29 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
             OdinValidateAssignmentListTarget target =
                 CreateScriptableObject<OdinValidateAssignmentListTarget>();
             target.validateList = null;
-            Editor editor = Editor.CreateEditor(target);
+            Editor editor = Track(Editor.CreateEditor(target));
             bool testCompleted = false;
             Exception caughtException = null;
 
-            try
+            yield return TestIMGUIExecutor.Run(() =>
             {
-                yield return TestIMGUIExecutor.Run(() =>
+                try
                 {
-                    try
-                    {
-                        editor.OnInspectorGUI();
-                        testCompleted = true;
-                    }
-                    catch (Exception ex)
-                    {
-                        caughtException = ex;
-                    }
-                });
+                    editor.OnInspectorGUI();
+                    testCompleted = true;
+                }
+                catch (Exception ex)
+                {
+                    caughtException = ex;
+                }
+            });
 
-                Assert.That(
-                    caughtException,
-                    Is.Null,
-                    $"OnInspectorGUI should not throw when list is null. Exception: {caughtException}"
-                );
-                Assert.That(testCompleted, Is.True);
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            Assert.That(
+                caughtException,
+                Is.Null,
+                $"OnInspectorGUI should not throw when list is null. Exception: {caughtException}"
+            );
+            Assert.That(testCompleted, Is.True);
         }
 
         [UnityTest]
@@ -486,36 +398,29 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
             OdinValidateAssignmentListTarget target =
                 CreateScriptableObject<OdinValidateAssignmentListTarget>();
             target.validateList = new List<string> { "item1", "item2" };
-            Editor editor = Editor.CreateEditor(target);
+            Editor editor = Track(Editor.CreateEditor(target));
             bool testCompleted = false;
             Exception caughtException = null;
 
-            try
+            yield return TestIMGUIExecutor.Run(() =>
             {
-                yield return TestIMGUIExecutor.Run(() =>
+                try
                 {
-                    try
-                    {
-                        editor.OnInspectorGUI();
-                        testCompleted = true;
-                    }
-                    catch (Exception ex)
-                    {
-                        caughtException = ex;
-                    }
-                });
+                    editor.OnInspectorGUI();
+                    testCompleted = true;
+                }
+                catch (Exception ex)
+                {
+                    caughtException = ex;
+                }
+            });
 
-                Assert.That(
-                    caughtException,
-                    Is.Null,
-                    $"OnInspectorGUI should not throw when list has elements. Exception: {caughtException}"
-                );
-                Assert.That(testCompleted, Is.True);
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            Assert.That(
+                caughtException,
+                Is.Null,
+                $"OnInspectorGUI should not throw when list has elements. Exception: {caughtException}"
+            );
+            Assert.That(testCompleted, Is.True);
         }
 
         [UnityTest]
@@ -524,36 +429,29 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
             OdinValidateAssignmentArrayTarget target =
                 CreateScriptableObject<OdinValidateAssignmentArrayTarget>();
             target.validateArray = new int[0];
-            Editor editor = Editor.CreateEditor(target);
+            Editor editor = Track(Editor.CreateEditor(target));
             bool testCompleted = false;
             Exception caughtException = null;
 
-            try
+            yield return TestIMGUIExecutor.Run(() =>
             {
-                yield return TestIMGUIExecutor.Run(() =>
+                try
                 {
-                    try
-                    {
-                        editor.OnInspectorGUI();
-                        testCompleted = true;
-                    }
-                    catch (Exception ex)
-                    {
-                        caughtException = ex;
-                    }
-                });
+                    editor.OnInspectorGUI();
+                    testCompleted = true;
+                }
+                catch (Exception ex)
+                {
+                    caughtException = ex;
+                }
+            });
 
-                Assert.That(
-                    caughtException,
-                    Is.Null,
-                    $"OnInspectorGUI should not throw when array is empty. Exception: {caughtException}"
-                );
-                Assert.That(testCompleted, Is.True);
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            Assert.That(
+                caughtException,
+                Is.Null,
+                $"OnInspectorGUI should not throw when array is empty. Exception: {caughtException}"
+            );
+            Assert.That(testCompleted, Is.True);
         }
 
         [UnityTest]
@@ -562,36 +460,29 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
             OdinValidateAssignmentArrayTarget target =
                 CreateScriptableObject<OdinValidateAssignmentArrayTarget>();
             target.validateArray = null;
-            Editor editor = Editor.CreateEditor(target);
+            Editor editor = Track(Editor.CreateEditor(target));
             bool testCompleted = false;
             Exception caughtException = null;
 
-            try
+            yield return TestIMGUIExecutor.Run(() =>
             {
-                yield return TestIMGUIExecutor.Run(() =>
+                try
                 {
-                    try
-                    {
-                        editor.OnInspectorGUI();
-                        testCompleted = true;
-                    }
-                    catch (Exception ex)
-                    {
-                        caughtException = ex;
-                    }
-                });
+                    editor.OnInspectorGUI();
+                    testCompleted = true;
+                }
+                catch (Exception ex)
+                {
+                    caughtException = ex;
+                }
+            });
 
-                Assert.That(
-                    caughtException,
-                    Is.Null,
-                    $"OnInspectorGUI should not throw when array is null. Exception: {caughtException}"
-                );
-                Assert.That(testCompleted, Is.True);
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            Assert.That(
+                caughtException,
+                Is.Null,
+                $"OnInspectorGUI should not throw when array is null. Exception: {caughtException}"
+            );
+            Assert.That(testCompleted, Is.True);
         }
 
         [UnityTest]
@@ -600,36 +491,29 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
             OdinValidateAssignmentArrayTarget target =
                 CreateScriptableObject<OdinValidateAssignmentArrayTarget>();
             target.validateArray = new int[] { 1, 2, 3 };
-            Editor editor = Editor.CreateEditor(target);
+            Editor editor = Track(Editor.CreateEditor(target));
             bool testCompleted = false;
             Exception caughtException = null;
 
-            try
+            yield return TestIMGUIExecutor.Run(() =>
             {
-                yield return TestIMGUIExecutor.Run(() =>
+                try
                 {
-                    try
-                    {
-                        editor.OnInspectorGUI();
-                        testCompleted = true;
-                    }
-                    catch (Exception ex)
-                    {
-                        caughtException = ex;
-                    }
-                });
+                    editor.OnInspectorGUI();
+                    testCompleted = true;
+                }
+                catch (Exception ex)
+                {
+                    caughtException = ex;
+                }
+            });
 
-                Assert.That(
-                    caughtException,
-                    Is.Null,
-                    $"OnInspectorGUI should not throw when array has elements. Exception: {caughtException}"
-                );
-                Assert.That(testCompleted, Is.True);
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            Assert.That(
+                caughtException,
+                Is.Null,
+                $"OnInspectorGUI should not throw when array has elements. Exception: {caughtException}"
+            );
+            Assert.That(testCompleted, Is.True);
         }
 
         [UnityTest]
@@ -638,36 +522,29 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
             OdinValidateAssignmentDictionaryTarget target =
                 CreateScriptableObject<OdinValidateAssignmentDictionaryTarget>();
             target.validateDictionary = new Dictionary<string, int>();
-            Editor editor = Editor.CreateEditor(target);
+            Editor editor = Track(Editor.CreateEditor(target));
             bool testCompleted = false;
             Exception caughtException = null;
 
-            try
+            yield return TestIMGUIExecutor.Run(() =>
             {
-                yield return TestIMGUIExecutor.Run(() =>
+                try
                 {
-                    try
-                    {
-                        editor.OnInspectorGUI();
-                        testCompleted = true;
-                    }
-                    catch (Exception ex)
-                    {
-                        caughtException = ex;
-                    }
-                });
+                    editor.OnInspectorGUI();
+                    testCompleted = true;
+                }
+                catch (Exception ex)
+                {
+                    caughtException = ex;
+                }
+            });
 
-                Assert.That(
-                    caughtException,
-                    Is.Null,
-                    $"OnInspectorGUI should not throw when dictionary is empty. Exception: {caughtException}"
-                );
-                Assert.That(testCompleted, Is.True);
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            Assert.That(
+                caughtException,
+                Is.Null,
+                $"OnInspectorGUI should not throw when dictionary is empty. Exception: {caughtException}"
+            );
+            Assert.That(testCompleted, Is.True);
         }
 
         [UnityTest]
@@ -680,36 +557,29 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
                 { "key1", 1 },
                 { "key2", 2 },
             };
-            Editor editor = Editor.CreateEditor(target);
+            Editor editor = Track(Editor.CreateEditor(target));
             bool testCompleted = false;
             Exception caughtException = null;
 
-            try
+            yield return TestIMGUIExecutor.Run(() =>
             {
-                yield return TestIMGUIExecutor.Run(() =>
+                try
                 {
-                    try
-                    {
-                        editor.OnInspectorGUI();
-                        testCompleted = true;
-                    }
-                    catch (Exception ex)
-                    {
-                        caughtException = ex;
-                    }
-                });
+                    editor.OnInspectorGUI();
+                    testCompleted = true;
+                }
+                catch (Exception ex)
+                {
+                    caughtException = ex;
+                }
+            });
 
-                Assert.That(
-                    caughtException,
-                    Is.Null,
-                    $"OnInspectorGUI should not throw when dictionary has elements. Exception: {caughtException}"
-                );
-                Assert.That(testCompleted, Is.True);
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            Assert.That(
+                caughtException,
+                Is.Null,
+                $"OnInspectorGUI should not throw when dictionary has elements. Exception: {caughtException}"
+            );
+            Assert.That(testCompleted, Is.True);
         }
 
         [UnityTest]
@@ -718,36 +588,29 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
             OdinValidateAssignmentHashSetTarget target =
                 CreateScriptableObject<OdinValidateAssignmentHashSetTarget>();
             target.validateHashSet = new HashSet<int>();
-            Editor editor = Editor.CreateEditor(target);
+            Editor editor = Track(Editor.CreateEditor(target));
             bool testCompleted = false;
             Exception caughtException = null;
 
-            try
+            yield return TestIMGUIExecutor.Run(() =>
             {
-                yield return TestIMGUIExecutor.Run(() =>
+                try
                 {
-                    try
-                    {
-                        editor.OnInspectorGUI();
-                        testCompleted = true;
-                    }
-                    catch (Exception ex)
-                    {
-                        caughtException = ex;
-                    }
-                });
+                    editor.OnInspectorGUI();
+                    testCompleted = true;
+                }
+                catch (Exception ex)
+                {
+                    caughtException = ex;
+                }
+            });
 
-                Assert.That(
-                    caughtException,
-                    Is.Null,
-                    $"OnInspectorGUI should not throw when HashSet is empty. Exception: {caughtException}"
-                );
-                Assert.That(testCompleted, Is.True);
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            Assert.That(
+                caughtException,
+                Is.Null,
+                $"OnInspectorGUI should not throw when HashSet is empty. Exception: {caughtException}"
+            );
+            Assert.That(testCompleted, Is.True);
         }
 
         [UnityTest]
@@ -756,36 +619,29 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
             OdinValidateAssignmentHashSetTarget target =
                 CreateScriptableObject<OdinValidateAssignmentHashSetTarget>();
             target.validateHashSet = new HashSet<int> { 1, 2, 3 };
-            Editor editor = Editor.CreateEditor(target);
+            Editor editor = Track(Editor.CreateEditor(target));
             bool testCompleted = false;
             Exception caughtException = null;
 
-            try
+            yield return TestIMGUIExecutor.Run(() =>
             {
-                yield return TestIMGUIExecutor.Run(() =>
+                try
                 {
-                    try
-                    {
-                        editor.OnInspectorGUI();
-                        testCompleted = true;
-                    }
-                    catch (Exception ex)
-                    {
-                        caughtException = ex;
-                    }
-                });
+                    editor.OnInspectorGUI();
+                    testCompleted = true;
+                }
+                catch (Exception ex)
+                {
+                    caughtException = ex;
+                }
+            });
 
-                Assert.That(
-                    caughtException,
-                    Is.Null,
-                    $"OnInspectorGUI should not throw when HashSet has elements. Exception: {caughtException}"
-                );
-                Assert.That(testCompleted, Is.True);
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            Assert.That(
+                caughtException,
+                Is.Null,
+                $"OnInspectorGUI should not throw when HashSet has elements. Exception: {caughtException}"
+            );
+            Assert.That(testCompleted, Is.True);
         }
 
         [UnityTest]
@@ -794,36 +650,29 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
             OdinValidateAssignmentCustomMessageTarget target =
                 CreateScriptableObject<OdinValidateAssignmentCustomMessageTarget>();
             target.validateWithCustomMessage = null;
-            Editor editor = Editor.CreateEditor(target);
+            Editor editor = Track(Editor.CreateEditor(target));
             bool testCompleted = false;
             Exception caughtException = null;
 
-            try
+            yield return TestIMGUIExecutor.Run(() =>
             {
-                yield return TestIMGUIExecutor.Run(() =>
+                try
                 {
-                    try
-                    {
-                        editor.OnInspectorGUI();
-                        testCompleted = true;
-                    }
-                    catch (Exception ex)
-                    {
-                        caughtException = ex;
-                    }
-                });
+                    editor.OnInspectorGUI();
+                    testCompleted = true;
+                }
+                catch (Exception ex)
+                {
+                    caughtException = ex;
+                }
+            });
 
-                Assert.That(
-                    caughtException,
-                    Is.Null,
-                    $"OnInspectorGUI should not throw when custom message is specified. Exception: {caughtException}"
-                );
-                Assert.That(testCompleted, Is.True);
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            Assert.That(
+                caughtException,
+                Is.Null,
+                $"OnInspectorGUI should not throw when custom message is specified. Exception: {caughtException}"
+            );
+            Assert.That(testCompleted, Is.True);
         }
 
         [UnityTest]
@@ -832,36 +681,29 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
             OdinValidateAssignmentWarningTypeTarget target =
                 CreateScriptableObject<OdinValidateAssignmentWarningTypeTarget>();
             target.validateWarning = "";
-            Editor editor = Editor.CreateEditor(target);
+            Editor editor = Track(Editor.CreateEditor(target));
             bool testCompleted = false;
             Exception caughtException = null;
 
-            try
+            yield return TestIMGUIExecutor.Run(() =>
             {
-                yield return TestIMGUIExecutor.Run(() =>
+                try
                 {
-                    try
-                    {
-                        editor.OnInspectorGUI();
-                        testCompleted = true;
-                    }
-                    catch (Exception ex)
-                    {
-                        caughtException = ex;
-                    }
-                });
+                    editor.OnInspectorGUI();
+                    testCompleted = true;
+                }
+                catch (Exception ex)
+                {
+                    caughtException = ex;
+                }
+            });
 
-                Assert.That(
-                    caughtException,
-                    Is.Null,
-                    $"OnInspectorGUI should not throw for Warning message type. Exception: {caughtException}"
-                );
-                Assert.That(testCompleted, Is.True);
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            Assert.That(
+                caughtException,
+                Is.Null,
+                $"OnInspectorGUI should not throw for Warning message type. Exception: {caughtException}"
+            );
+            Assert.That(testCompleted, Is.True);
         }
 
         [UnityTest]
@@ -870,36 +712,29 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
             OdinValidateAssignmentErrorTypeTarget target =
                 CreateScriptableObject<OdinValidateAssignmentErrorTypeTarget>();
             target.validateError = "";
-            Editor editor = Editor.CreateEditor(target);
+            Editor editor = Track(Editor.CreateEditor(target));
             bool testCompleted = false;
             Exception caughtException = null;
 
-            try
+            yield return TestIMGUIExecutor.Run(() =>
             {
-                yield return TestIMGUIExecutor.Run(() =>
+                try
                 {
-                    try
-                    {
-                        editor.OnInspectorGUI();
-                        testCompleted = true;
-                    }
-                    catch (Exception ex)
-                    {
-                        caughtException = ex;
-                    }
-                });
+                    editor.OnInspectorGUI();
+                    testCompleted = true;
+                }
+                catch (Exception ex)
+                {
+                    caughtException = ex;
+                }
+            });
 
-                Assert.That(
-                    caughtException,
-                    Is.Null,
-                    $"OnInspectorGUI should not throw for Error message type. Exception: {caughtException}"
-                );
-                Assert.That(testCompleted, Is.True);
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            Assert.That(
+                caughtException,
+                Is.Null,
+                $"OnInspectorGUI should not throw for Error message type. Exception: {caughtException}"
+            );
+            Assert.That(testCompleted, Is.True);
         }
 
         [UnityTest]
@@ -908,36 +743,29 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
             OdinValidateAssignmentErrorWithCustomMessageTarget target =
                 CreateScriptableObject<OdinValidateAssignmentErrorWithCustomMessageTarget>();
             target.validateErrorCustom = new List<Transform>();
-            Editor editor = Editor.CreateEditor(target);
+            Editor editor = Track(Editor.CreateEditor(target));
             bool testCompleted = false;
             Exception caughtException = null;
 
-            try
+            yield return TestIMGUIExecutor.Run(() =>
             {
-                yield return TestIMGUIExecutor.Run(() =>
+                try
                 {
-                    try
-                    {
-                        editor.OnInspectorGUI();
-                        testCompleted = true;
-                    }
-                    catch (Exception ex)
-                    {
-                        caughtException = ex;
-                    }
-                });
+                    editor.OnInspectorGUI();
+                    testCompleted = true;
+                }
+                catch (Exception ex)
+                {
+                    caughtException = ex;
+                }
+            });
 
-                Assert.That(
-                    caughtException,
-                    Is.Null,
-                    $"OnInspectorGUI should not throw for Error type with custom message. Exception: {caughtException}"
-                );
-                Assert.That(testCompleted, Is.True);
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            Assert.That(
+                caughtException,
+                Is.Null,
+                $"OnInspectorGUI should not throw for Error type with custom message. Exception: {caughtException}"
+            );
+            Assert.That(testCompleted, Is.True);
         }
 
         [UnityTest]
@@ -948,36 +776,29 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
             target.validateObject = null;
             target.validateString = "";
             target.validateList = new List<int>();
-            Editor editor = Editor.CreateEditor(target);
+            Editor editor = Track(Editor.CreateEditor(target));
             bool testCompleted = false;
             Exception caughtException = null;
 
-            try
+            yield return TestIMGUIExecutor.Run(() =>
             {
-                yield return TestIMGUIExecutor.Run(() =>
+                try
                 {
-                    try
-                    {
-                        editor.OnInspectorGUI();
-                        testCompleted = true;
-                    }
-                    catch (Exception ex)
-                    {
-                        caughtException = ex;
-                    }
-                });
+                    editor.OnInspectorGUI();
+                    testCompleted = true;
+                }
+                catch (Exception ex)
+                {
+                    caughtException = ex;
+                }
+            });
 
-                Assert.That(
-                    caughtException,
-                    Is.Null,
-                    $"OnInspectorGUI should not throw for multiple invalid fields. Exception: {caughtException}"
-                );
-                Assert.That(testCompleted, Is.True);
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            Assert.That(
+                caughtException,
+                Is.Null,
+                $"OnInspectorGUI should not throw for multiple invalid fields. Exception: {caughtException}"
+            );
+            Assert.That(testCompleted, Is.True);
         }
 
         [UnityTest]
@@ -988,36 +809,29 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
             target.validateObject = NewGameObject("ValidObject");
             target.validateString = "";
             target.validateList = new List<int> { 1, 2, 3 };
-            Editor editor = Editor.CreateEditor(target);
+            Editor editor = Track(Editor.CreateEditor(target));
             bool testCompleted = false;
             Exception caughtException = null;
 
-            try
+            yield return TestIMGUIExecutor.Run(() =>
             {
-                yield return TestIMGUIExecutor.Run(() =>
+                try
                 {
-                    try
-                    {
-                        editor.OnInspectorGUI();
-                        testCompleted = true;
-                    }
-                    catch (Exception ex)
-                    {
-                        caughtException = ex;
-                    }
-                });
+                    editor.OnInspectorGUI();
+                    testCompleted = true;
+                }
+                catch (Exception ex)
+                {
+                    caughtException = ex;
+                }
+            });
 
-                Assert.That(
-                    caughtException,
-                    Is.Null,
-                    $"OnInspectorGUI should not throw for mixed valid and invalid fields. Exception: {caughtException}"
-                );
-                Assert.That(testCompleted, Is.True);
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            Assert.That(
+                caughtException,
+                Is.Null,
+                $"OnInspectorGUI should not throw for mixed valid and invalid fields. Exception: {caughtException}"
+            );
+            Assert.That(testCompleted, Is.True);
         }
 
         [UnityTest]
@@ -1027,37 +841,31 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
                 CreateScriptableObject<OdinValidateAssignmentNullObjectTarget>();
             GameObject validObject = NewGameObject("DestroyedObject");
             target.validateObject = validObject;
-            UnityEngine.Object.DestroyImmediate(validObject);
-            Editor editor = Editor.CreateEditor(target);
+            UnityEngine.Object.DestroyImmediate(validObject); // UNH-SUPPRESS: Test verifies behavior when referenced object is destroyed
+            _trackedObjects.Remove(validObject);
+            Editor editor = Track(Editor.CreateEditor(target));
             bool testCompleted = false;
             Exception caughtException = null;
 
-            try
+            yield return TestIMGUIExecutor.Run(() =>
             {
-                yield return TestIMGUIExecutor.Run(() =>
+                try
                 {
-                    try
-                    {
-                        editor.OnInspectorGUI();
-                        testCompleted = true;
-                    }
-                    catch (Exception ex)
-                    {
-                        caughtException = ex;
-                    }
-                });
+                    editor.OnInspectorGUI();
+                    testCompleted = true;
+                }
+                catch (Exception ex)
+                {
+                    caughtException = ex;
+                }
+            });
 
-                Assert.That(
-                    caughtException,
-                    Is.Null,
-                    $"OnInspectorGUI should not throw when referenced object is destroyed. Exception: {caughtException}"
-                );
-                Assert.That(testCompleted, Is.True);
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            Assert.That(
+                caughtException,
+                Is.Null,
+                $"OnInspectorGUI should not throw when referenced object is destroyed. Exception: {caughtException}"
+            );
+            Assert.That(testCompleted, Is.True);
         }
 
         [UnityTest]
@@ -1066,36 +874,29 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
             OdinValidateAssignmentWithOtherAttributesTarget target =
                 CreateScriptableObject<OdinValidateAssignmentWithOtherAttributesTarget>();
             target.validateWithTooltip = "";
-            Editor editor = Editor.CreateEditor(target);
+            Editor editor = Track(Editor.CreateEditor(target));
             bool testCompleted = false;
             Exception caughtException = null;
 
-            try
+            yield return TestIMGUIExecutor.Run(() =>
             {
-                yield return TestIMGUIExecutor.Run(() =>
+                try
                 {
-                    try
-                    {
-                        editor.OnInspectorGUI();
-                        testCompleted = true;
-                    }
-                    catch (Exception ex)
-                    {
-                        caughtException = ex;
-                    }
-                });
+                    editor.OnInspectorGUI();
+                    testCompleted = true;
+                }
+                catch (Exception ex)
+                {
+                    caughtException = ex;
+                }
+            });
 
-                Assert.That(
-                    caughtException,
-                    Is.Null,
-                    $"OnInspectorGUI should not throw for ValidateAssignment combined with other attributes. Exception: {caughtException}"
-                );
-                Assert.That(testCompleted, Is.True);
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            Assert.That(
+                caughtException,
+                Is.Null,
+                $"OnInspectorGUI should not throw for ValidateAssignment combined with other attributes. Exception: {caughtException}"
+            );
+            Assert.That(testCompleted, Is.True);
         }
 
         [UnityTest]
@@ -1105,36 +906,29 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
                 .AddComponent<OdinValidateAssignmentMonoBehaviourFieldsTarget>();
             target.validateTransform = null;
             target.validateName = "";
-            Editor editor = Editor.CreateEditor(target);
+            Editor editor = Track(Editor.CreateEditor(target));
             bool testCompleted = false;
             Exception caughtException = null;
 
-            try
+            yield return TestIMGUIExecutor.Run(() =>
             {
-                yield return TestIMGUIExecutor.Run(() =>
+                try
                 {
-                    try
-                    {
-                        editor.OnInspectorGUI();
-                        testCompleted = true;
-                    }
-                    catch (Exception ex)
-                    {
-                        caughtException = ex;
-                    }
-                });
+                    editor.OnInspectorGUI();
+                    testCompleted = true;
+                }
+                catch (Exception ex)
+                {
+                    caughtException = ex;
+                }
+            });
 
-                Assert.That(
-                    caughtException,
-                    Is.Null,
-                    $"OnInspectorGUI should not throw for MonoBehaviour with invalid fields. Exception: {caughtException}"
-                );
-                Assert.That(testCompleted, Is.True);
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            Assert.That(
+                caughtException,
+                Is.Null,
+                $"OnInspectorGUI should not throw for MonoBehaviour with invalid fields. Exception: {caughtException}"
+            );
+            Assert.That(testCompleted, Is.True);
         }
 
         [UnityTest]
@@ -1143,36 +937,29 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
             OdinValidateAssignmentEmptyCustomMessageTarget target =
                 CreateScriptableObject<OdinValidateAssignmentEmptyCustomMessageTarget>();
             target.validateEmptyMessage = null;
-            Editor editor = Editor.CreateEditor(target);
+            Editor editor = Track(Editor.CreateEditor(target));
             bool testCompleted = false;
             Exception caughtException = null;
 
-            try
+            yield return TestIMGUIExecutor.Run(() =>
             {
-                yield return TestIMGUIExecutor.Run(() =>
+                try
                 {
-                    try
-                    {
-                        editor.OnInspectorGUI();
-                        testCompleted = true;
-                    }
-                    catch (Exception ex)
-                    {
-                        caughtException = ex;
-                    }
-                });
+                    editor.OnInspectorGUI();
+                    testCompleted = true;
+                }
+                catch (Exception ex)
+                {
+                    caughtException = ex;
+                }
+            });
 
-                Assert.That(
-                    caughtException,
-                    Is.Null,
-                    $"OnInspectorGUI should not throw when custom message is empty. Exception: {caughtException}"
-                );
-                Assert.That(testCompleted, Is.True);
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            Assert.That(
+                caughtException,
+                Is.Null,
+                $"OnInspectorGUI should not throw when custom message is empty. Exception: {caughtException}"
+            );
+            Assert.That(testCompleted, Is.True);
         }
 
         [Test]
@@ -1257,36 +1044,29 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
             OdinValidateAssignmentQueueTarget target =
                 CreateScriptableObject<OdinValidateAssignmentQueueTarget>();
             target.validateQueue = new Queue<string>();
-            Editor editor = Editor.CreateEditor(target);
+            Editor editor = Track(Editor.CreateEditor(target));
             bool testCompleted = false;
             Exception caughtException = null;
 
-            try
+            yield return TestIMGUIExecutor.Run(() =>
             {
-                yield return TestIMGUIExecutor.Run(() =>
+                try
                 {
-                    try
-                    {
-                        editor.OnInspectorGUI();
-                        testCompleted = true;
-                    }
-                    catch (Exception ex)
-                    {
-                        caughtException = ex;
-                    }
-                });
+                    editor.OnInspectorGUI();
+                    testCompleted = true;
+                }
+                catch (Exception ex)
+                {
+                    caughtException = ex;
+                }
+            });
 
-                Assert.That(
-                    caughtException,
-                    Is.Null,
-                    $"OnInspectorGUI should not throw when Queue is empty. Exception: {caughtException}"
-                );
-                Assert.That(testCompleted, Is.True);
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            Assert.That(
+                caughtException,
+                Is.Null,
+                $"OnInspectorGUI should not throw when Queue is empty. Exception: {caughtException}"
+            );
+            Assert.That(testCompleted, Is.True);
         }
 
         [UnityTest]
@@ -1295,36 +1075,29 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
             OdinValidateAssignmentQueueTarget target =
                 CreateScriptableObject<OdinValidateAssignmentQueueTarget>();
             target.validateQueue = new Queue<string>(new[] { "a", "b", "c" });
-            Editor editor = Editor.CreateEditor(target);
+            Editor editor = Track(Editor.CreateEditor(target));
             bool testCompleted = false;
             Exception caughtException = null;
 
-            try
+            yield return TestIMGUIExecutor.Run(() =>
             {
-                yield return TestIMGUIExecutor.Run(() =>
+                try
                 {
-                    try
-                    {
-                        editor.OnInspectorGUI();
-                        testCompleted = true;
-                    }
-                    catch (Exception ex)
-                    {
-                        caughtException = ex;
-                    }
-                });
+                    editor.OnInspectorGUI();
+                    testCompleted = true;
+                }
+                catch (Exception ex)
+                {
+                    caughtException = ex;
+                }
+            });
 
-                Assert.That(
-                    caughtException,
-                    Is.Null,
-                    $"OnInspectorGUI should not throw when Queue has elements. Exception: {caughtException}"
-                );
-                Assert.That(testCompleted, Is.True);
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            Assert.That(
+                caughtException,
+                Is.Null,
+                $"OnInspectorGUI should not throw when Queue has elements. Exception: {caughtException}"
+            );
+            Assert.That(testCompleted, Is.True);
         }
 
         [UnityTest]
@@ -1333,36 +1106,29 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
             OdinValidateAssignmentStackTarget target =
                 CreateScriptableObject<OdinValidateAssignmentStackTarget>();
             target.validateStack = new Stack<int>();
-            Editor editor = Editor.CreateEditor(target);
+            Editor editor = Track(Editor.CreateEditor(target));
             bool testCompleted = false;
             Exception caughtException = null;
 
-            try
+            yield return TestIMGUIExecutor.Run(() =>
             {
-                yield return TestIMGUIExecutor.Run(() =>
+                try
                 {
-                    try
-                    {
-                        editor.OnInspectorGUI();
-                        testCompleted = true;
-                    }
-                    catch (Exception ex)
-                    {
-                        caughtException = ex;
-                    }
-                });
+                    editor.OnInspectorGUI();
+                    testCompleted = true;
+                }
+                catch (Exception ex)
+                {
+                    caughtException = ex;
+                }
+            });
 
-                Assert.That(
-                    caughtException,
-                    Is.Null,
-                    $"OnInspectorGUI should not throw when Stack is empty. Exception: {caughtException}"
-                );
-                Assert.That(testCompleted, Is.True);
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            Assert.That(
+                caughtException,
+                Is.Null,
+                $"OnInspectorGUI should not throw when Stack is empty. Exception: {caughtException}"
+            );
+            Assert.That(testCompleted, Is.True);
         }
 
         [UnityTest]
@@ -1371,36 +1137,29 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
             OdinValidateAssignmentStackTarget target =
                 CreateScriptableObject<OdinValidateAssignmentStackTarget>();
             target.validateStack = new Stack<int>(new[] { 1, 2, 3 });
-            Editor editor = Editor.CreateEditor(target);
+            Editor editor = Track(Editor.CreateEditor(target));
             bool testCompleted = false;
             Exception caughtException = null;
 
-            try
+            yield return TestIMGUIExecutor.Run(() =>
             {
-                yield return TestIMGUIExecutor.Run(() =>
+                try
                 {
-                    try
-                    {
-                        editor.OnInspectorGUI();
-                        testCompleted = true;
-                    }
-                    catch (Exception ex)
-                    {
-                        caughtException = ex;
-                    }
-                });
+                    editor.OnInspectorGUI();
+                    testCompleted = true;
+                }
+                catch (Exception ex)
+                {
+                    caughtException = ex;
+                }
+            });
 
-                Assert.That(
-                    caughtException,
-                    Is.Null,
-                    $"OnInspectorGUI should not throw when Stack has elements. Exception: {caughtException}"
-                );
-                Assert.That(testCompleted, Is.True);
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            Assert.That(
+                caughtException,
+                Is.Null,
+                $"OnInspectorGUI should not throw when Stack has elements. Exception: {caughtException}"
+            );
+            Assert.That(testCompleted, Is.True);
         }
 
         [UnityTest]
@@ -1412,36 +1171,29 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
             target.validString = "Valid String";
             target.validList = new List<int> { 1, 2, 3 };
             target.validArray = new float[] { 1.0f, 2.0f };
-            Editor editor = Editor.CreateEditor(target);
+            Editor editor = Track(Editor.CreateEditor(target));
             bool testCompleted = false;
             Exception caughtException = null;
 
-            try
+            yield return TestIMGUIExecutor.Run(() =>
             {
-                yield return TestIMGUIExecutor.Run(() =>
+                try
                 {
-                    try
-                    {
-                        editor.OnInspectorGUI();
-                        testCompleted = true;
-                    }
-                    catch (Exception ex)
-                    {
-                        caughtException = ex;
-                    }
-                });
+                    editor.OnInspectorGUI();
+                    testCompleted = true;
+                }
+                catch (Exception ex)
+                {
+                    caughtException = ex;
+                }
+            });
 
-                Assert.That(
-                    caughtException,
-                    Is.Null,
-                    $"OnInspectorGUI should not throw for all valid values. Exception: {caughtException}"
-                );
-                Assert.That(testCompleted, Is.True);
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            Assert.That(
+                caughtException,
+                Is.Null,
+                $"OnInspectorGUI should not throw for all valid values. Exception: {caughtException}"
+            );
+            Assert.That(testCompleted, Is.True);
         }
     }
 #endif

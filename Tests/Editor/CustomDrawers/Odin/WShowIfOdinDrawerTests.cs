@@ -509,9 +509,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
         public void IsNullComparisonHandlesDestroyedUnityObject()
         {
             OdinShowIfReferenceTarget target = CreateScriptableObject<OdinShowIfReferenceTarget>();
-            GameObject go = new GameObject("ToBeDestroyed");
+            GameObject go = Track(new GameObject("ToBeDestroyed"));
             target.objectReference = go;
             UnityEngine.Object.DestroyImmediate(go); // UNH-SUPPRESS: Testing destroyed object handling
+            _trackedObjects.Remove(go);
             target.objectReference = null;
 
             (bool success, bool shouldShow) = EvaluateCondition(
@@ -582,9 +583,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
         public void IsNullComparisonHandlesDestroyedGameObjectWithReferenceRetained()
         {
             OdinShowIfReferenceTarget target = CreateScriptableObject<OdinShowIfReferenceTarget>();
-            GameObject go = new GameObject("ToBeDestroyedRetained");
+            GameObject go = Track(new GameObject("ToBeDestroyedRetained"));
             target.objectReference = go;
             UnityEngine.Object.DestroyImmediate(go); // UNH-SUPPRESS: Testing destroyed object handling
+            _trackedObjects.Remove(go);
 
             (bool success, bool shouldShow) = EvaluateCondition(
                 target,
@@ -611,9 +613,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
         public void IsNotNullComparisonHandlesDestroyedGameObjectWithReferenceRetained()
         {
             OdinShowIfReferenceTarget target = CreateScriptableObject<OdinShowIfReferenceTarget>();
-            GameObject go = new GameObject("ToBeDestroyedRetainedNotNull");
+            GameObject go = Track(new GameObject("ToBeDestroyedRetainedNotNull"));
             target.objectReference = go;
             UnityEngine.Object.DestroyImmediate(go); // UNH-SUPPRESS: Testing destroyed object handling
+            _trackedObjects.Remove(go);
 
             (bool success, bool shouldShow) = EvaluateCondition(
                 target,
@@ -640,10 +643,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
         public void IsNullComparisonHandlesDestroyedScriptableObject()
         {
             OdinShowIfReferenceTarget target = CreateScriptableObject<OdinShowIfReferenceTarget>();
-            ScriptableObject so = ScriptableObject.CreateInstance<OdinShowIfReferenceTarget>();
+            ScriptableObject so = Track(
+                ScriptableObject.CreateInstance<OdinShowIfReferenceTarget>()
+            );
             GameObject wrapper = Track(new GameObject("SOWrapper"));
             target.objectReference = wrapper;
             UnityEngine.Object.DestroyImmediate(wrapper); // UNH-SUPPRESS: Testing destroyed object handling
+            _trackedObjects.Remove(wrapper);
 
             (bool success, bool shouldShow) = EvaluateCondition(
                 target,
@@ -654,7 +660,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
                 )
             );
 
-            UnityEngine.Object.DestroyImmediate(so);
+            UnityEngine.Object.DestroyImmediate(so); // UNH-SUPPRESS: Cleanup temporary SO
+            _trackedObjects.Remove(so);
 
             Assert.That(success, Is.True, "Condition evaluation should succeed for destroyed SO");
             Assert.That(
@@ -1137,36 +1144,29 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
         {
             OdinShowIfMonoBehaviour target = NewGameObject("ShowIfTest")
                 .AddComponent<OdinShowIfMonoBehaviour>();
-            Editor editor = Editor.CreateEditor(target);
+            Editor editor = Track(Editor.CreateEditor(target));
             bool testCompleted = false;
             Exception caughtException = null;
 
-            try
+            yield return TestIMGUIExecutor.Run(() =>
             {
-                yield return TestIMGUIExecutor.Run(() =>
+                try
                 {
-                    try
-                    {
-                        editor.OnInspectorGUI();
-                        testCompleted = true;
-                    }
-                    catch (Exception ex)
-                    {
-                        caughtException = ex;
-                    }
-                });
+                    editor.OnInspectorGUI();
+                    testCompleted = true;
+                }
+                catch (Exception ex)
+                {
+                    caughtException = ex;
+                }
+            });
 
-                Assert.That(
-                    caughtException,
-                    Is.Null,
-                    $"OnInspectorGUI should not throw. Exception: {caughtException}"
-                );
-                Assert.That(testCompleted, Is.True);
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            Assert.That(
+                caughtException,
+                Is.Null,
+                $"OnInspectorGUI should not throw. Exception: {caughtException}"
+            );
+            Assert.That(testCompleted, Is.True);
         }
 
         [UnityTest]
@@ -1174,111 +1174,97 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
         {
             OdinShowIfScriptableObject target =
                 CreateScriptableObject<OdinShowIfScriptableObject>();
-            Editor editor = Editor.CreateEditor(target);
+            Editor editor = Track(Editor.CreateEditor(target));
             bool testCompleted = false;
             Exception caughtException = null;
 
-            try
+            yield return TestIMGUIExecutor.Run(() =>
             {
-                yield return TestIMGUIExecutor.Run(() =>
+                try
                 {
-                    try
-                    {
-                        editor.OnInspectorGUI();
-                        testCompleted = true;
-                    }
-                    catch (Exception ex)
-                    {
-                        caughtException = ex;
-                    }
-                });
+                    editor.OnInspectorGUI();
+                    testCompleted = true;
+                }
+                catch (Exception ex)
+                {
+                    caughtException = ex;
+                }
+            });
 
-                Assert.That(
-                    caughtException,
-                    Is.Null,
-                    $"OnInspectorGUI should not throw. Exception: {caughtException}"
-                );
-                Assert.That(testCompleted, Is.True);
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            Assert.That(
+                caughtException,
+                Is.Null,
+                $"OnInspectorGUI should not throw. Exception: {caughtException}"
+            );
+            Assert.That(testCompleted, Is.True);
         }
 
         [UnityTest]
         public IEnumerator MultipleWShowIfFieldsInSameObjectDoNotThrow()
         {
             OdinShowIfMultipleFields target = CreateScriptableObject<OdinShowIfMultipleFields>();
-            Editor editor = Editor.CreateEditor(target);
+            Editor editor = Track(Editor.CreateEditor(target));
             bool testCompleted = false;
             Exception caughtException = null;
 
-            try
+            target.boolCondition = true;
+            yield return TestIMGUIExecutor.Run(() =>
             {
-                target.boolCondition = true;
-                yield return TestIMGUIExecutor.Run(() =>
+                try
                 {
-                    try
-                    {
-                        editor.OnInspectorGUI();
-                    }
-                    catch (Exception ex)
-                    {
-                        caughtException = ex;
-                    }
-                });
-                Assert.That(
-                    caughtException,
-                    Is.Null,
-                    $"OnInspectorGUI should not throw (boolCondition=true). Exception: {caughtException}"
-                );
+                    editor.OnInspectorGUI();
+                }
+                catch (Exception ex)
+                {
+                    caughtException = ex;
+                }
+            });
+            Assert.That(
+                caughtException,
+                Is.Null,
+                $"OnInspectorGUI should not throw (boolCondition=true). Exception: {caughtException}"
+            );
 
-                target.boolCondition = false;
-                target.intCondition = 5;
-                caughtException = null;
-                yield return TestIMGUIExecutor.Run(() =>
-                {
-                    try
-                    {
-                        editor.OnInspectorGUI();
-                    }
-                    catch (Exception ex)
-                    {
-                        caughtException = ex;
-                    }
-                });
-                Assert.That(
-                    caughtException,
-                    Is.Null,
-                    $"OnInspectorGUI should not throw (intCondition=5). Exception: {caughtException}"
-                );
-
-                target.enumCondition = TestModeEnum.ModeA;
-                caughtException = null;
-                yield return TestIMGUIExecutor.Run(() =>
-                {
-                    try
-                    {
-                        editor.OnInspectorGUI();
-                        testCompleted = true;
-                    }
-                    catch (Exception ex)
-                    {
-                        caughtException = ex;
-                    }
-                });
-                Assert.That(
-                    caughtException,
-                    Is.Null,
-                    $"OnInspectorGUI should not throw (enumCondition=ModeA). Exception: {caughtException}"
-                );
-                Assert.That(testCompleted, Is.True);
-            }
-            finally
+            target.boolCondition = false;
+            target.intCondition = 5;
+            caughtException = null;
+            yield return TestIMGUIExecutor.Run(() =>
             {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+                try
+                {
+                    editor.OnInspectorGUI();
+                }
+                catch (Exception ex)
+                {
+                    caughtException = ex;
+                }
+            });
+            Assert.That(
+                caughtException,
+                Is.Null,
+                $"OnInspectorGUI should not throw (intCondition=5). Exception: {caughtException}"
+            );
+
+            target.enumCondition = TestModeEnum.ModeA;
+            caughtException = null;
+            yield return TestIMGUIExecutor.Run(() =>
+            {
+                try
+                {
+                    editor.OnInspectorGUI();
+                    testCompleted = true;
+                }
+                catch (Exception ex)
+                {
+                    caughtException = ex;
+                }
+            });
+            Assert.That(
+                caughtException,
+                Is.Null,
+                $"OnInspectorGUI should not throw (enumCondition=ModeA). Exception: {caughtException}"
+            );
+            Assert.That(testCompleted, Is.True);
         }
 
         [UnityTest]
@@ -1286,44 +1272,37 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
         {
             OdinShowIfScriptableObject target =
                 CreateScriptableObject<OdinShowIfScriptableObject>();
-            Editor editor = Editor.CreateEditor(target);
+            Editor editor = Track(Editor.CreateEditor(target));
             bool testCompleted = false;
             Exception caughtException = null;
 
-            try
+            for (int i = 0; i < 10; i++)
             {
-                for (int i = 0; i < 10; i++)
+                target.showDependent = i % 2 == 0;
+                int iteration = i;
+                caughtException = null;
+                yield return TestIMGUIExecutor.Run(() =>
                 {
-                    target.showDependent = i % 2 == 0;
-                    int iteration = i;
-                    caughtException = null;
-                    yield return TestIMGUIExecutor.Run(() =>
+                    try
                     {
-                        try
+                        editor.OnInspectorGUI();
+                        if (iteration == 9)
                         {
-                            editor.OnInspectorGUI();
-                            if (iteration == 9)
-                            {
-                                testCompleted = true;
-                            }
+                            testCompleted = true;
                         }
-                        catch (Exception ex)
-                        {
-                            caughtException = ex;
-                        }
-                    });
-                    Assert.That(
-                        caughtException,
-                        Is.Null,
-                        $"OnInspectorGUI should not throw (iteration {i}). Exception: {caughtException}"
-                    );
-                }
-                Assert.That(testCompleted, Is.True);
+                    }
+                    catch (Exception ex)
+                    {
+                        caughtException = ex;
+                    }
+                });
+                Assert.That(
+                    caughtException,
+                    Is.Null,
+                    $"OnInspectorGUI should not throw (iteration {i}). Exception: {caughtException}"
+                );
             }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            Assert.That(testCompleted, Is.True);
         }
 
         [Test]

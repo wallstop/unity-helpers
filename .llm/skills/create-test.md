@@ -737,6 +737,132 @@ public sealed class MyOdinDrawerTests : CommonTestBase
 
 ---
 
+## Unity Object Lifecycle Management (CRITICAL)
+
+**MANDATORY**: All Unity objects created in tests MUST be tracked for automatic cleanup. The lint script `scripts/lint-tests.ps1` enforces these rules. Run it after every test change.
+
+### Lint Rules Enforced
+
+| Rule      | Description                                                                                     |
+| --------- | ----------------------------------------------------------------------------------------------- |
+| `UNH001`  | Avoid direct `DestroyImmediate`/`Destroy` in tests; track object and let teardown clean up     |
+| `UNH002`  | Unity object allocation must be tracked: wrap with `Track()`                                   |
+| `UNH003`  | Test class creates Unity objects but doesn't inherit from `CommonTestBase`                     |
+
+### Required Pattern: Track All Unity Objects
+
+**ALWAYS** wrap Unity object creation with `Track()`:
+
+```csharp
+// ✅ CORRECT - Objects tracked for automatic cleanup
+public sealed class MyDrawerTests : CommonTestBase
+{
+    [Test]
+    public void DrawerCreatesEditorSuccessfully()
+    {
+        MyTarget target = CreateScriptableObject<MyTarget>();
+        Editor editor = Track(Editor.CreateEditor(target));
+
+        Assert.That(editor, Is.Not.Null);
+    }
+}
+```
+
+### Forbidden Pattern: Manual DestroyImmediate
+
+**NEVER** use try-finally blocks with `DestroyImmediate` for cleanup:
+
+```csharp
+// ❌ FORBIDDEN - Manual cleanup causes UNH001 lint errors
+Editor editor = Editor.CreateEditor(target);
+try
+{
+    editor.OnInspectorGUI();
+}
+finally
+{
+    UnityEngine.Object.DestroyImmediate(editor);  // UNH001 violation!
+}
+
+// ✅ CORRECT - Track() handles cleanup automatically
+Editor editor = Track(Editor.CreateEditor(target));
+editor.OnInspectorGUI();
+```
+
+### Exception: Intentional Destroy Tests
+
+When testing behavior after an object is destroyed, use `// UNH-SUPPRESS` comment:
+
+```csharp
+[Test]
+public void InspectorHandlesDestroyedTargetGracefully()
+{
+    MyTarget target = CreateScriptableObject<MyTarget>();
+    Editor editor = Track(Editor.CreateEditor(target));
+
+    editor.OnInspectorGUI();
+
+    UnityEngine.Object.DestroyImmediate(target); // UNH-SUPPRESS: Test verifies behavior after target destroyed
+    _trackedObjects.Remove(target);
+
+    Assert.DoesNotThrow(() => editor.OnInspectorGUI());
+}
+```
+
+### Track Methods Reference
+
+| Method                         | Use For                                             |
+| ------------------------------ | --------------------------------------------------- |
+| `CreateScriptableObject<T>()`  | Creating test `ScriptableObject` targets            |
+| `NewGameObject(name)`          | Creating test `GameObject` instances                |
+| `Track(obj)`                   | Any Unity object (`Editor`, `Material`, `Texture2D`) |
+| `TrackDisposable(disposable)`  | `IDisposable` resources                              |
+| `TrackAssetPath(path)`         | Created asset files that need deletion              |
+| `_trackedObjects.Remove(obj)`  | Remove from tracking after intentional destroy      |
+
+### Async Test Pattern
+
+For `[UnityTest]` with `IEnumerator`, still use `Track()`:
+
+```csharp
+[UnityTest]
+public IEnumerator OnInspectorGuiDoesNotThrowForTarget()
+{
+    MyTarget target = CreateScriptableObject<MyTarget>();
+    Editor editor = Track(Editor.CreateEditor(target));
+    bool completed = false;
+    Exception caught = null;
+
+    yield return TestIMGUIExecutor.Run(() =>
+    {
+        try
+        {
+            editor.OnInspectorGUI();
+            completed = true;
+        }
+        catch (Exception ex)
+        {
+            caught = ex;
+        }
+    });
+
+    Assert.That(caught, Is.Null);
+    Assert.That(completed, Is.True);
+}
+```
+
+### Run Lint After Every Change
+
+**MANDATORY**: Run the test lint script after any test file changes:
+
+```bash
+pwsh -NoProfile -File scripts/lint-tests.ps1
+```
+
+Fix all `UNH001`, `UNH002`, and `UNH003` errors before committing.
+
+---
+
 ## Example: Comprehensive Data-Driven Test Class
 
 ```csharp

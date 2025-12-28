@@ -31,16 +31,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
         {
             OdinEnumToggleButtonsRegularTarget target =
                 CreateScriptableObject<OdinEnumToggleButtonsRegularTarget>();
-            Editor editor = Editor.CreateEditor(target);
+            Editor editor = Track(Editor.CreateEditor(target));
 
-            try
-            {
-                Assert.That(editor, Is.Not.Null, "Editor should be created for target");
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            Assert.That(editor, Is.Not.Null, "Editor should be created for target");
         }
 
         [Test]
@@ -48,16 +41,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
         {
             OdinEnumToggleButtonsFlagsTarget target =
                 CreateScriptableObject<OdinEnumToggleButtonsFlagsTarget>();
-            Editor editor = Editor.CreateEditor(target);
+            Editor editor = Track(Editor.CreateEditor(target));
 
-            try
-            {
-                Assert.That(editor, Is.Not.Null, "Editor should be created for flags target");
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            Assert.That(editor, Is.Not.Null, "Editor should be created for flags target");
         }
 
         [UnityTest]
@@ -70,20 +56,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
 
             OdinEnumToggleButtonsMonoBehaviour target = NewGameObject("EnumToggleMB")
                 .AddComponent<OdinEnumToggleButtonsMonoBehaviour>();
-            Editor editor = Editor.CreateEditor(target);
+            Editor editor = Track(Editor.CreateEditor(target));
 
-            try
-            {
-                Assert.That(
-                    editor,
-                    Is.Not.Null,
-                    "Editor should be created for MonoBehaviour target"
-                );
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            Assert.That(editor, Is.Not.Null, "Editor should be created for MonoBehaviour target");
         }
 
         [UnityTest]
@@ -91,36 +66,29 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
         {
             OdinEnumToggleButtonsRegularTarget target =
                 CreateScriptableObject<OdinEnumToggleButtonsRegularTarget>();
-            Editor editor = Editor.CreateEditor(target);
+            Editor editor = Track(Editor.CreateEditor(target));
             bool testCompleted = false;
             Exception caughtException = null;
 
-            try
+            yield return TestIMGUIExecutor.Run(() =>
             {
-                yield return TestIMGUIExecutor.Run(() =>
+                try
                 {
-                    try
-                    {
-                        editor.OnInspectorGUI();
-                        testCompleted = true;
-                    }
-                    catch (Exception ex)
-                    {
-                        caughtException = ex;
-                    }
-                });
+                    editor.OnInspectorGUI();
+                    testCompleted = true;
+                }
+                catch (Exception ex)
+                {
+                    caughtException = ex;
+                }
+            });
 
-                Assert.That(
-                    caughtException,
-                    Is.Null,
-                    $"OnInspectorGUI should not throw for regular enum. Exception: {caughtException}"
-                );
-                Assert.That(testCompleted, Is.True);
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            Assert.That(
+                caughtException,
+                Is.Null,
+                $"OnInspectorGUI should not throw for regular enum. Exception: {caughtException}"
+            );
+            Assert.That(testCompleted, Is.True);
         }
 
         [UnityTest]
@@ -128,36 +96,29 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
         {
             OdinEnumToggleButtonsFlagsTarget target =
                 CreateScriptableObject<OdinEnumToggleButtonsFlagsTarget>();
-            Editor editor = Editor.CreateEditor(target);
+            Editor editor = Track(Editor.CreateEditor(target));
             bool testCompleted = false;
             Exception caughtException = null;
 
-            try
+            yield return TestIMGUIExecutor.Run(() =>
             {
-                yield return TestIMGUIExecutor.Run(() =>
+                try
                 {
-                    try
-                    {
-                        editor.OnInspectorGUI();
-                        testCompleted = true;
-                    }
-                    catch (Exception ex)
-                    {
-                        caughtException = ex;
-                    }
-                });
+                    editor.OnInspectorGUI();
+                    testCompleted = true;
+                }
+                catch (Exception ex)
+                {
+                    caughtException = ex;
+                }
+            });
 
-                Assert.That(
-                    caughtException,
-                    Is.Null,
-                    $"OnInspectorGUI should not throw for flags enum. Exception: {caughtException}"
-                );
-                Assert.That(testCompleted, Is.True);
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            Assert.That(
+                caughtException,
+                Is.Null,
+                $"OnInspectorGUI should not throw for flags enum. Exception: {caughtException}"
+            );
+            Assert.That(testCompleted, Is.True);
         }
 
         [UnityTest]
@@ -165,36 +126,29 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
         {
             OdinEnumToggleButtonsMonoBehaviour target = NewGameObject("EnumToggleMB")
                 .AddComponent<OdinEnumToggleButtonsMonoBehaviour>();
-            Editor editor = Editor.CreateEditor(target);
+            Editor editor = Track(Editor.CreateEditor(target));
             bool testCompleted = false;
             Exception caughtException = null;
 
-            try
+            yield return TestIMGUIExecutor.Run(() =>
             {
-                yield return TestIMGUIExecutor.Run(() =>
+                try
                 {
-                    try
-                    {
-                        editor.OnInspectorGUI();
-                        testCompleted = true;
-                    }
-                    catch (Exception ex)
-                    {
-                        caughtException = ex;
-                    }
-                });
+                    editor.OnInspectorGUI();
+                    testCompleted = true;
+                }
+                catch (Exception ex)
+                {
+                    caughtException = ex;
+                }
+            });
 
-                Assert.That(
-                    caughtException,
-                    Is.Null,
-                    $"OnInspectorGUI should not throw for MonoBehaviour. Exception: {caughtException}"
-                );
-                Assert.That(testCompleted, Is.True);
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            Assert.That(
+                caughtException,
+                Is.Null,
+                $"OnInspectorGUI should not throw for MonoBehaviour. Exception: {caughtException}"
+            );
+            Assert.That(testCompleted, Is.True);
         }
 
         [UnityTest]
@@ -202,39 +156,32 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
         {
             OdinEnumToggleButtonsRegularTarget target =
                 CreateScriptableObject<OdinEnumToggleButtonsRegularTarget>();
-            Editor editor = Editor.CreateEditor(target);
+            Editor editor = Track(Editor.CreateEditor(target));
             bool testCompleted = false;
             Exception caughtException = null;
 
-            try
+            yield return TestIMGUIExecutor.Run(() =>
             {
-                yield return TestIMGUIExecutor.Run(() =>
+                try
                 {
-                    try
+                    for (int i = 0; i < 10; i++)
                     {
-                        for (int i = 0; i < 10; i++)
-                        {
-                            editor.OnInspectorGUI();
-                        }
-                        testCompleted = true;
+                        editor.OnInspectorGUI();
                     }
-                    catch (Exception ex)
-                    {
-                        caughtException = ex;
-                    }
-                });
+                    testCompleted = true;
+                }
+                catch (Exception ex)
+                {
+                    caughtException = ex;
+                }
+            });
 
-                Assert.That(
-                    caughtException,
-                    Is.Null,
-                    $"Repeated OnInspectorGUI calls should not throw. Exception: {caughtException}"
-                );
-                Assert.That(testCompleted, Is.True);
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            Assert.That(
+                caughtException,
+                Is.Null,
+                $"Repeated OnInspectorGUI calls should not throw. Exception: {caughtException}"
+            );
+            Assert.That(testCompleted, Is.True);
         }
 
         [Test]
@@ -589,43 +536,35 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
             OdinEnumToggleButtonsRegularTarget target2 =
                 CreateScriptableObject<OdinEnumToggleButtonsRegularTarget>();
 
-            Editor editor1 = Editor.CreateEditor(target1);
-            Editor editor2 = Editor.CreateEditor(target2);
+            Editor editor1 = Track(Editor.CreateEditor(target1));
+            Editor editor2 = Track(Editor.CreateEditor(target2));
             bool testCompleted = false;
             Exception caughtException = null;
 
-            try
-            {
-                Assert.That(editor1, Is.Not.Null);
-                Assert.That(editor2, Is.Not.Null);
-                Assert.That(editor1, Is.Not.SameAs(editor2));
+            Assert.That(editor1, Is.Not.Null);
+            Assert.That(editor2, Is.Not.Null);
+            Assert.That(editor1, Is.Not.SameAs(editor2));
 
-                yield return TestIMGUIExecutor.Run(() =>
+            yield return TestIMGUIExecutor.Run(() =>
+            {
+                try
                 {
-                    try
-                    {
-                        editor1.OnInspectorGUI();
-                        editor2.OnInspectorGUI();
-                        testCompleted = true;
-                    }
-                    catch (Exception ex)
-                    {
-                        caughtException = ex;
-                    }
-                });
+                    editor1.OnInspectorGUI();
+                    editor2.OnInspectorGUI();
+                    testCompleted = true;
+                }
+                catch (Exception ex)
+                {
+                    caughtException = ex;
+                }
+            });
 
-                Assert.That(
-                    caughtException,
-                    Is.Null,
-                    $"OnInspectorGUI should not throw for multiple editors. Exception: {caughtException}"
-                );
-                Assert.That(testCompleted, Is.True);
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor1);
-                UnityEngine.Object.DestroyImmediate(editor2);
-            }
+            Assert.That(
+                caughtException,
+                Is.Null,
+                $"OnInspectorGUI should not throw for multiple editors. Exception: {caughtException}"
+            );
+            Assert.That(testCompleted, Is.True);
         }
 
         [UnityTest]
@@ -637,38 +576,31 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
                 CreateScriptableObject<OdinEnumToggleButtonsRegularTarget>();
 
             UnityEngine.Object[] targets = new UnityEngine.Object[] { target1, target2 };
-            Editor editor = Editor.CreateEditor(targets);
+            Editor editor = Track(Editor.CreateEditor(targets));
             bool testCompleted = false;
             Exception caughtException = null;
 
-            try
-            {
-                Assert.That(editor, Is.Not.Null);
+            Assert.That(editor, Is.Not.Null);
 
-                yield return TestIMGUIExecutor.Run(() =>
+            yield return TestIMGUIExecutor.Run(() =>
+            {
+                try
                 {
-                    try
-                    {
-                        editor.OnInspectorGUI();
-                        testCompleted = true;
-                    }
-                    catch (Exception ex)
-                    {
-                        caughtException = ex;
-                    }
-                });
+                    editor.OnInspectorGUI();
+                    testCompleted = true;
+                }
+                catch (Exception ex)
+                {
+                    caughtException = ex;
+                }
+            });
 
-                Assert.That(
-                    caughtException,
-                    Is.Null,
-                    $"OnInspectorGUI should not throw for multiple objects. Exception: {caughtException}"
-                );
-                Assert.That(testCompleted, Is.True);
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            Assert.That(
+                caughtException,
+                Is.Null,
+                $"OnInspectorGUI should not throw for multiple objects. Exception: {caughtException}"
+            );
+            Assert.That(testCompleted, Is.True);
         }
 
         [UnityTest]
@@ -677,56 +609,50 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
             GameObject go = NewGameObject("EnumToggleMB");
             OdinEnumToggleButtonsMonoBehaviour target =
                 go.AddComponent<OdinEnumToggleButtonsMonoBehaviour>();
-            Editor editor = Editor.CreateEditor(target);
+            Editor editor = Track(Editor.CreateEditor(target));
             bool testCompleted = false;
             Exception caughtException = null;
 
-            try
+            yield return TestIMGUIExecutor.Run(() =>
             {
-                yield return TestIMGUIExecutor.Run(() =>
+                try
                 {
-                    try
-                    {
-                        editor.OnInspectorGUI();
-                    }
-                    catch (Exception ex)
-                    {
-                        caughtException = ex;
-                    }
-                });
-
-                Assert.That(
-                    caughtException,
-                    Is.Null,
-                    $"First OnInspectorGUI should not throw. Exception: {caughtException}"
-                );
-
-                UnityEngine.Object.DestroyImmediate(target);
-
-                yield return TestIMGUIExecutor.Run(() =>
+                    editor.OnInspectorGUI();
+                }
+                catch (Exception ex)
                 {
-                    try
-                    {
-                        editor.OnInspectorGUI();
-                        testCompleted = true;
-                    }
-                    catch (Exception ex)
-                    {
-                        caughtException = ex;
-                    }
-                });
+                    caughtException = ex;
+                }
+            });
 
-                Assert.That(
-                    caughtException,
-                    Is.Null,
-                    $"OnInspectorGUI should not throw after target destroyed. Exception: {caughtException}"
-                );
-                Assert.That(testCompleted, Is.True);
-            }
-            finally
+            Assert.That(
+                caughtException,
+                Is.Null,
+                $"First OnInspectorGUI should not throw. Exception: {caughtException}"
+            );
+
+            UnityEngine.Object.DestroyImmediate(target); // UNH-SUPPRESS: Test verifies behavior after target destroyed
+            _trackedObjects.Remove(target);
+
+            yield return TestIMGUIExecutor.Run(() =>
             {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+                try
+                {
+                    editor.OnInspectorGUI();
+                    testCompleted = true;
+                }
+                catch (Exception ex)
+                {
+                    caughtException = ex;
+                }
+            });
+
+            Assert.That(
+                caughtException,
+                Is.Null,
+                $"OnInspectorGUI should not throw after target destroyed. Exception: {caughtException}"
+            );
+            Assert.That(testCompleted, Is.True);
         }
 
         [UnityTest]
@@ -734,36 +660,29 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
         {
             OdinEnumToggleButtonsAllConfigs target =
                 CreateScriptableObject<OdinEnumToggleButtonsAllConfigs>();
-            Editor editor = Editor.CreateEditor(target);
+            Editor editor = Track(Editor.CreateEditor(target));
             bool testCompleted = false;
             Exception caughtException = null;
 
-            try
+            yield return TestIMGUIExecutor.Run(() =>
             {
-                yield return TestIMGUIExecutor.Run(() =>
+                try
                 {
-                    try
-                    {
-                        editor.OnInspectorGUI();
-                        testCompleted = true;
-                    }
-                    catch (Exception ex)
-                    {
-                        caughtException = ex;
-                    }
-                });
+                    editor.OnInspectorGUI();
+                    testCompleted = true;
+                }
+                catch (Exception ex)
+                {
+                    caughtException = ex;
+                }
+            });
 
-                Assert.That(
-                    caughtException,
-                    Is.Null,
-                    $"OnInspectorGUI should not throw for all attribute configurations. Exception: {caughtException}"
-                );
-                Assert.That(testCompleted, Is.True);
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            Assert.That(
+                caughtException,
+                Is.Null,
+                $"OnInspectorGUI should not throw for all attribute configurations. Exception: {caughtException}"
+            );
+            Assert.That(testCompleted, Is.True);
         }
 
         [UnityTest]
@@ -771,36 +690,29 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
         {
             OdinEnumToggleButtonsCustomLayout target =
                 CreateScriptableObject<OdinEnumToggleButtonsCustomLayout>();
-            Editor editor = Editor.CreateEditor(target);
+            Editor editor = Track(Editor.CreateEditor(target));
             bool testCompleted = false;
             Exception caughtException = null;
 
-            try
+            yield return TestIMGUIExecutor.Run(() =>
             {
-                yield return TestIMGUIExecutor.Run(() =>
+                try
                 {
-                    try
-                    {
-                        editor.OnInspectorGUI();
-                        testCompleted = true;
-                    }
-                    catch (Exception ex)
-                    {
-                        caughtException = ex;
-                    }
-                });
+                    editor.OnInspectorGUI();
+                    testCompleted = true;
+                }
+                catch (Exception ex)
+                {
+                    caughtException = ex;
+                }
+            });
 
-                Assert.That(
-                    caughtException,
-                    Is.Null,
-                    $"OnInspectorGUI should not throw with custom buttons per row. Exception: {caughtException}"
-                );
-                Assert.That(testCompleted, Is.True);
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            Assert.That(
+                caughtException,
+                Is.Null,
+                $"OnInspectorGUI should not throw with custom buttons per row. Exception: {caughtException}"
+            );
+            Assert.That(testCompleted, Is.True);
         }
 
         [UnityTest]
@@ -808,36 +720,29 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
         {
             OdinEnumToggleButtonsToolbar target =
                 CreateScriptableObject<OdinEnumToggleButtonsToolbar>();
-            Editor editor = Editor.CreateEditor(target);
+            Editor editor = Track(Editor.CreateEditor(target));
             bool testCompleted = false;
             Exception caughtException = null;
 
-            try
+            yield return TestIMGUIExecutor.Run(() =>
             {
-                yield return TestIMGUIExecutor.Run(() =>
+                try
                 {
-                    try
-                    {
-                        editor.OnInspectorGUI();
-                        testCompleted = true;
-                    }
-                    catch (Exception ex)
-                    {
-                        caughtException = ex;
-                    }
-                });
+                    editor.OnInspectorGUI();
+                    testCompleted = true;
+                }
+                catch (Exception ex)
+                {
+                    caughtException = ex;
+                }
+            });
 
-                Assert.That(
-                    caughtException,
-                    Is.Null,
-                    $"OnInspectorGUI should not throw with select all/none buttons. Exception: {caughtException}"
-                );
-                Assert.That(testCompleted, Is.True);
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            Assert.That(
+                caughtException,
+                Is.Null,
+                $"OnInspectorGUI should not throw with select all/none buttons. Exception: {caughtException}"
+            );
+            Assert.That(testCompleted, Is.True);
         }
 
         [UnityTest]
@@ -845,36 +750,29 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
         {
             OdinEnumToggleButtonsPaginated target =
                 CreateScriptableObject<OdinEnumToggleButtonsPaginated>();
-            Editor editor = Editor.CreateEditor(target);
+            Editor editor = Track(Editor.CreateEditor(target));
             bool testCompleted = false;
             Exception caughtException = null;
 
-            try
+            yield return TestIMGUIExecutor.Run(() =>
             {
-                yield return TestIMGUIExecutor.Run(() =>
+                try
                 {
-                    try
-                    {
-                        editor.OnInspectorGUI();
-                        testCompleted = true;
-                    }
-                    catch (Exception ex)
-                    {
-                        caughtException = ex;
-                    }
-                });
+                    editor.OnInspectorGUI();
+                    testCompleted = true;
+                }
+                catch (Exception ex)
+                {
+                    caughtException = ex;
+                }
+            });
 
-                Assert.That(
-                    caughtException,
-                    Is.Null,
-                    $"OnInspectorGUI should not throw with pagination. Exception: {caughtException}"
-                );
-                Assert.That(testCompleted, Is.True);
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            Assert.That(
+                caughtException,
+                Is.Null,
+                $"OnInspectorGUI should not throw with pagination. Exception: {caughtException}"
+            );
+            Assert.That(testCompleted, Is.True);
         }
 
         [UnityTest]
@@ -882,36 +780,29 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
         {
             OdinEnumToggleButtonsLargeEnum target =
                 CreateScriptableObject<OdinEnumToggleButtonsLargeEnum>();
-            Editor editor = Editor.CreateEditor(target);
+            Editor editor = Track(Editor.CreateEditor(target));
             bool testCompleted = false;
             Exception caughtException = null;
 
-            try
+            yield return TestIMGUIExecutor.Run(() =>
             {
-                yield return TestIMGUIExecutor.Run(() =>
+                try
                 {
-                    try
-                    {
-                        editor.OnInspectorGUI();
-                        testCompleted = true;
-                    }
-                    catch (Exception ex)
-                    {
-                        caughtException = ex;
-                    }
-                });
+                    editor.OnInspectorGUI();
+                    testCompleted = true;
+                }
+                catch (Exception ex)
+                {
+                    caughtException = ex;
+                }
+            });
 
-                Assert.That(
-                    caughtException,
-                    Is.Null,
-                    $"OnInspectorGUI should not throw for large enum with pagination. Exception: {caughtException}"
-                );
-                Assert.That(testCompleted, Is.True);
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            Assert.That(
+                caughtException,
+                Is.Null,
+                $"OnInspectorGUI should not throw for large enum with pagination. Exception: {caughtException}"
+            );
+            Assert.That(testCompleted, Is.True);
         }
 
         [UnityTest]
@@ -919,36 +810,29 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
         {
             OdinEnumToggleButtonsColorKey target =
                 CreateScriptableObject<OdinEnumToggleButtonsColorKey>();
-            Editor editor = Editor.CreateEditor(target);
+            Editor editor = Track(Editor.CreateEditor(target));
             bool testCompleted = false;
             Exception caughtException = null;
 
-            try
+            yield return TestIMGUIExecutor.Run(() =>
             {
-                yield return TestIMGUIExecutor.Run(() =>
+                try
                 {
-                    try
-                    {
-                        editor.OnInspectorGUI();
-                        testCompleted = true;
-                    }
-                    catch (Exception ex)
-                    {
-                        caughtException = ex;
-                    }
-                });
+                    editor.OnInspectorGUI();
+                    testCompleted = true;
+                }
+                catch (Exception ex)
+                {
+                    caughtException = ex;
+                }
+            });
 
-                Assert.That(
-                    caughtException,
-                    Is.Null,
-                    $"OnInspectorGUI should not throw with color key. Exception: {caughtException}"
-                );
-                Assert.That(testCompleted, Is.True);
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            Assert.That(
+                caughtException,
+                Is.Null,
+                $"OnInspectorGUI should not throw with color key. Exception: {caughtException}"
+            );
+            Assert.That(testCompleted, Is.True);
         }
 
         [UnityTest]
@@ -956,36 +840,29 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
         {
             OdinEnumToggleButtonsMultipleFields target =
                 CreateScriptableObject<OdinEnumToggleButtonsMultipleFields>();
-            Editor editor = Editor.CreateEditor(target);
+            Editor editor = Track(Editor.CreateEditor(target));
             bool testCompleted = false;
             Exception caughtException = null;
 
-            try
+            yield return TestIMGUIExecutor.Run(() =>
             {
-                yield return TestIMGUIExecutor.Run(() =>
+                try
                 {
-                    try
-                    {
-                        editor.OnInspectorGUI();
-                        testCompleted = true;
-                    }
-                    catch (Exception ex)
-                    {
-                        caughtException = ex;
-                    }
-                });
+                    editor.OnInspectorGUI();
+                    testCompleted = true;
+                }
+                catch (Exception ex)
+                {
+                    caughtException = ex;
+                }
+            });
 
-                Assert.That(
-                    caughtException,
-                    Is.Null,
-                    $"OnInspectorGUI should not throw with multiple enum fields. Exception: {caughtException}"
-                );
-                Assert.That(testCompleted, Is.True);
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            Assert.That(
+                caughtException,
+                Is.Null,
+                $"OnInspectorGUI should not throw with multiple enum fields. Exception: {caughtException}"
+            );
+            Assert.That(testCompleted, Is.True);
         }
 
         [Test]

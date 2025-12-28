@@ -32,16 +32,17 @@ This single command runs ALL CI/CD checks locally, ensuring your changes will pa
 
 ### Linter Commands by File Type
 
-| File Type Changed         | Command to Run IMMEDIATELY           | Notes                                       |
-| ------------------------- | ------------------------------------ | ------------------------------------------- |
-| Documentation (`.md`)     | `npm run lint:spelling`              | Add valid terms to `cspell.json` if needed  |
-| Documentation (`.md`)     | `npm run lint:docs`                  | Check for broken links, backtick `.md` refs |
-| Documentation (`.md`)     | `npm run lint:markdown`              | Markdownlint rules (MD032, MD009, etc.)     |
-| GitHub Workflows (`.yml`) | `actionlint`                         | **MANDATORY** for `.github/workflows/*.yml` |
-| C# code (`.cs`)           | `dotnet tool run csharpier format .` | Auto-fix formatting                         |
-| C# code (`.cs`)           | `npm run lint:csharp-naming`         | Check for underscore violations             |
-| JSON/asmdef/asmref        | `npm run format:json:check`          | Check formatting                            |
-| YAML (non-workflow)       | `npm run format:yaml:check`          | Check formatting                            |
+| File Type Changed         | Command to Run IMMEDIATELY                   | Notes                                       |
+| ------------------------- | -------------------------------------------- | ------------------------------------------- |
+| Documentation (`.md`)     | `npm run lint:spelling`                      | Add valid terms to `cspell.json` if needed  |
+| Documentation (`.md`)     | `npm run lint:docs`                          | Check for broken links, backtick `.md` refs |
+| Documentation (`.md`)     | `npm run lint:markdown`                      | Markdownlint rules (MD032, MD009, etc.)     |
+| GitHub Workflows (`.yml`) | `actionlint`                                 | **MANDATORY** for `.github/workflows/*.yml` |
+| C# code (`.cs`)           | `dotnet tool run csharpier format .`         | Auto-fix formatting                         |
+| C# code (`.cs`)           | `npm run lint:csharp-naming`                 | Check for underscore violations             |
+| Test files (`.cs`)        | `pwsh -NoProfile -File scripts/lint-tests.ps1` | **MANDATORY** Track() usage, no manual destroy |
+| JSON/asmdef/asmref        | `npm run format:json:check`                  | Check formatting                            |
+| YAML (non-workflow)       | `npm run format:yaml:check`                  | Check formatting                            |
 
 ### Documentation Changes Workflow
 
@@ -88,6 +89,42 @@ dotnet tool run csharpier format .
 # 2. Check naming conventions
 npm run lint:csharp-naming
 ```
+
+### Test File Changes Workflow (MANDATORY)
+
+After **ANY** change to test files in `Tests/`:
+
+```bash
+# MANDATORY - check test lifecycle patterns
+pwsh -NoProfile -File scripts/lint-tests.ps1
+```
+
+**What the lint checks**:
+
+| Rule     | Description                                                               |
+| -------- | ------------------------------------------------------------------------- |
+| `UNH001` | No manual `DestroyImmediate`/`Destroy` — use `Track()` for cleanup        |
+| `UNH002` | All Unity object allocations must be wrapped with `Track()`               |
+| `UNH003` | Test classes creating Unity objects must inherit from `CommonTestBase`    |
+
+**How to fix**:
+
+```csharp
+// ❌ UNH001 violation - manual destroy
+Editor editor = Editor.CreateEditor(target);
+try { ... }
+finally { UnityEngine.Object.DestroyImmediate(editor); }
+
+// ✅ Correct - Track() handles cleanup
+Editor editor = Track(Editor.CreateEditor(target));
+// ... test code (no try-finally needed)
+
+// For intentional destroy tests, add UNH-SUPPRESS comment:
+UnityEngine.Object.DestroyImmediate(target); // UNH-SUPPRESS: Test verifies destroy behavior
+_trackedObjects.Remove(target);
+```
+
+See [create-test](create-test.md#unity-object-lifecycle-management-critical) for detailed patterns.
 
 ### The "Fix Before Moving On" Rule
 

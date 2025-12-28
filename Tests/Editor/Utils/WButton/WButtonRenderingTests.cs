@@ -1010,7 +1010,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Utils.WButton
             Dictionary<WButtonGroupKey, WButtonPaginationState> paginationStates = new();
             Dictionary<WButtonGroupKey, bool> foldoutStates = new();
 
-            Object.DestroyImmediate(asset);
+            Object.DestroyImmediate(asset); // UNH-SUPPRESS: Test verifies behavior when target is destroyed
             _trackedObjects.Remove(asset);
 
             bool drawn = WButtonGUI.DrawButtons(
@@ -1036,7 +1036,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Utils.WButton
             Dictionary<WButtonGroupKey, WButtonPaginationState> paginationStates = new();
             Dictionary<WButtonGroupKey, bool> foldoutStates = new();
 
-            Object.DestroyImmediate(asset);
+            Object.DestroyImmediate(asset); // UNH-SUPPRESS: Test verifies no throw when target is destroyed
             _trackedObjects.Remove(asset);
 
             Assert.DoesNotThrow(

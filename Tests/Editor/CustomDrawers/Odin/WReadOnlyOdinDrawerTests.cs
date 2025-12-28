@@ -70,16 +70,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
         {
             OdinReadOnlyScriptableObjectTarget target =
                 CreateScriptableObject<OdinReadOnlyScriptableObjectTarget>();
-            Editor editor = Editor.CreateEditor(target);
+            Editor editor = Track(Editor.CreateEditor(target));
 
-            try
-            {
-                Assert.That(editor, Is.Not.Null, "Editor should be created for target");
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            Assert.That(editor, Is.Not.Null, "Editor should be created for target");
         }
 
         [Test]
@@ -87,20 +80,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
         {
             OdinReadOnlyMonoBehaviourTarget target = NewGameObject("ReadOnlyMB")
                 .AddComponent<OdinReadOnlyMonoBehaviourTarget>();
-            Editor editor = Editor.CreateEditor(target);
+            Editor editor = Track(Editor.CreateEditor(target));
 
-            try
-            {
-                Assert.That(
-                    editor,
-                    Is.Not.Null,
-                    "Editor should be created for MonoBehaviour target"
-                );
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            Assert.That(editor, Is.Not.Null, "Editor should be created for MonoBehaviour target");
         }
 
         [UnityTest]
@@ -108,36 +90,29 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
         {
             OdinReadOnlyScriptableObjectTarget target =
                 CreateScriptableObject<OdinReadOnlyScriptableObjectTarget>();
-            Editor editor = Editor.CreateEditor(target);
+            Editor editor = Track(Editor.CreateEditor(target));
             bool testCompleted = false;
             Exception caughtException = null;
 
-            try
+            yield return TestIMGUIExecutor.Run(() =>
             {
-                yield return TestIMGUIExecutor.Run(() =>
+                try
                 {
-                    try
-                    {
-                        editor.OnInspectorGUI();
-                        testCompleted = true;
-                    }
-                    catch (Exception ex)
-                    {
-                        caughtException = ex;
-                    }
-                });
+                    editor.OnInspectorGUI();
+                    testCompleted = true;
+                }
+                catch (Exception ex)
+                {
+                    caughtException = ex;
+                }
+            });
 
-                Assert.That(
-                    caughtException,
-                    Is.Null,
-                    $"OnInspectorGUI should not throw for ScriptableObject. Exception: {caughtException}"
-                );
-                Assert.That(testCompleted, Is.True);
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            Assert.That(
+                caughtException,
+                Is.Null,
+                $"OnInspectorGUI should not throw for ScriptableObject. Exception: {caughtException}"
+            );
+            Assert.That(testCompleted, Is.True);
         }
 
         [UnityTest]
@@ -145,36 +120,29 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
         {
             OdinReadOnlyMonoBehaviourTarget target = NewGameObject("ReadOnlyMB")
                 .AddComponent<OdinReadOnlyMonoBehaviourTarget>();
-            Editor editor = Editor.CreateEditor(target);
+            Editor editor = Track(Editor.CreateEditor(target));
             bool testCompleted = false;
             Exception caughtException = null;
 
-            try
+            yield return TestIMGUIExecutor.Run(() =>
             {
-                yield return TestIMGUIExecutor.Run(() =>
+                try
                 {
-                    try
-                    {
-                        editor.OnInspectorGUI();
-                        testCompleted = true;
-                    }
-                    catch (Exception ex)
-                    {
-                        caughtException = ex;
-                    }
-                });
+                    editor.OnInspectorGUI();
+                    testCompleted = true;
+                }
+                catch (Exception ex)
+                {
+                    caughtException = ex;
+                }
+            });
 
-                Assert.That(
-                    caughtException,
-                    Is.Null,
-                    $"OnInspectorGUI should not throw for MonoBehaviour. Exception: {caughtException}"
-                );
-                Assert.That(testCompleted, Is.True);
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            Assert.That(
+                caughtException,
+                Is.Null,
+                $"OnInspectorGUI should not throw for MonoBehaviour. Exception: {caughtException}"
+            );
+            Assert.That(testCompleted, Is.True);
         }
 
         [UnityTest]
@@ -182,36 +150,29 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
         {
             OdinReadOnlyStringTarget target = CreateScriptableObject<OdinReadOnlyStringTarget>();
             target.readOnlyString = "Test Value";
-            Editor editor = Editor.CreateEditor(target);
+            Editor editor = Track(Editor.CreateEditor(target));
             bool testCompleted = false;
             Exception caughtException = null;
 
-            try
+            yield return TestIMGUIExecutor.Run(() =>
             {
-                yield return TestIMGUIExecutor.Run(() =>
+                try
                 {
-                    try
-                    {
-                        editor.OnInspectorGUI();
-                        testCompleted = true;
-                    }
-                    catch (Exception ex)
-                    {
-                        caughtException = ex;
-                    }
-                });
+                    editor.OnInspectorGUI();
+                    testCompleted = true;
+                }
+                catch (Exception ex)
+                {
+                    caughtException = ex;
+                }
+            });
 
-                Assert.That(
-                    caughtException,
-                    Is.Null,
-                    $"OnInspectorGUI should not throw for read-only string field. Exception: {caughtException}"
-                );
-                Assert.That(testCompleted, Is.True);
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            Assert.That(
+                caughtException,
+                Is.Null,
+                $"OnInspectorGUI should not throw for read-only string field. Exception: {caughtException}"
+            );
+            Assert.That(testCompleted, Is.True);
         }
 
         [UnityTest]
@@ -219,36 +180,29 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
         {
             OdinReadOnlyIntTarget target = CreateScriptableObject<OdinReadOnlyIntTarget>();
             target.readOnlyInt = 42;
-            Editor editor = Editor.CreateEditor(target);
+            Editor editor = Track(Editor.CreateEditor(target));
             bool testCompleted = false;
             Exception caughtException = null;
 
-            try
+            yield return TestIMGUIExecutor.Run(() =>
             {
-                yield return TestIMGUIExecutor.Run(() =>
+                try
                 {
-                    try
-                    {
-                        editor.OnInspectorGUI();
-                        testCompleted = true;
-                    }
-                    catch (Exception ex)
-                    {
-                        caughtException = ex;
-                    }
-                });
+                    editor.OnInspectorGUI();
+                    testCompleted = true;
+                }
+                catch (Exception ex)
+                {
+                    caughtException = ex;
+                }
+            });
 
-                Assert.That(
-                    caughtException,
-                    Is.Null,
-                    $"OnInspectorGUI should not throw for read-only int field. Exception: {caughtException}"
-                );
-                Assert.That(testCompleted, Is.True);
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            Assert.That(
+                caughtException,
+                Is.Null,
+                $"OnInspectorGUI should not throw for read-only int field. Exception: {caughtException}"
+            );
+            Assert.That(testCompleted, Is.True);
         }
 
         [UnityTest]
@@ -256,36 +210,29 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
         {
             OdinReadOnlyFloatTarget target = CreateScriptableObject<OdinReadOnlyFloatTarget>();
             target.readOnlyFloat = 3.14f;
-            Editor editor = Editor.CreateEditor(target);
+            Editor editor = Track(Editor.CreateEditor(target));
             bool testCompleted = false;
             Exception caughtException = null;
 
-            try
+            yield return TestIMGUIExecutor.Run(() =>
             {
-                yield return TestIMGUIExecutor.Run(() =>
+                try
                 {
-                    try
-                    {
-                        editor.OnInspectorGUI();
-                        testCompleted = true;
-                    }
-                    catch (Exception ex)
-                    {
-                        caughtException = ex;
-                    }
-                });
+                    editor.OnInspectorGUI();
+                    testCompleted = true;
+                }
+                catch (Exception ex)
+                {
+                    caughtException = ex;
+                }
+            });
 
-                Assert.That(
-                    caughtException,
-                    Is.Null,
-                    $"OnInspectorGUI should not throw for read-only float field. Exception: {caughtException}"
-                );
-                Assert.That(testCompleted, Is.True);
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            Assert.That(
+                caughtException,
+                Is.Null,
+                $"OnInspectorGUI should not throw for read-only float field. Exception: {caughtException}"
+            );
+            Assert.That(testCompleted, Is.True);
         }
 
         [UnityTest]
@@ -294,36 +241,29 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
             OdinReadOnlyObjectReferenceTarget target =
                 CreateScriptableObject<OdinReadOnlyObjectReferenceTarget>();
             target.readOnlyObject = CreateScriptableObject<OdinReferencedObject>();
-            Editor editor = Editor.CreateEditor(target);
+            Editor editor = Track(Editor.CreateEditor(target));
             bool testCompleted = false;
             Exception caughtException = null;
 
-            try
+            yield return TestIMGUIExecutor.Run(() =>
             {
-                yield return TestIMGUIExecutor.Run(() =>
+                try
                 {
-                    try
-                    {
-                        editor.OnInspectorGUI();
-                        testCompleted = true;
-                    }
-                    catch (Exception ex)
-                    {
-                        caughtException = ex;
-                    }
-                });
+                    editor.OnInspectorGUI();
+                    testCompleted = true;
+                }
+                catch (Exception ex)
+                {
+                    caughtException = ex;
+                }
+            });
 
-                Assert.That(
-                    caughtException,
-                    Is.Null,
-                    $"OnInspectorGUI should not throw for read-only object reference field. Exception: {caughtException}"
-                );
-                Assert.That(testCompleted, Is.True);
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            Assert.That(
+                caughtException,
+                Is.Null,
+                $"OnInspectorGUI should not throw for read-only object reference field. Exception: {caughtException}"
+            );
+            Assert.That(testCompleted, Is.True);
         }
 
         [UnityTest]
@@ -332,36 +272,29 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
             OdinReadOnlyObjectReferenceTarget target =
                 CreateScriptableObject<OdinReadOnlyObjectReferenceTarget>();
             target.readOnlyObject = null;
-            Editor editor = Editor.CreateEditor(target);
+            Editor editor = Track(Editor.CreateEditor(target));
             bool testCompleted = false;
             Exception caughtException = null;
 
-            try
+            yield return TestIMGUIExecutor.Run(() =>
             {
-                yield return TestIMGUIExecutor.Run(() =>
+                try
                 {
-                    try
-                    {
-                        editor.OnInspectorGUI();
-                        testCompleted = true;
-                    }
-                    catch (Exception ex)
-                    {
-                        caughtException = ex;
-                    }
-                });
+                    editor.OnInspectorGUI();
+                    testCompleted = true;
+                }
+                catch (Exception ex)
+                {
+                    caughtException = ex;
+                }
+            });
 
-                Assert.That(
-                    caughtException,
-                    Is.Null,
-                    $"OnInspectorGUI should not throw for null read-only object reference field. Exception: {caughtException}"
-                );
-                Assert.That(testCompleted, Is.True);
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            Assert.That(
+                caughtException,
+                Is.Null,
+                $"OnInspectorGUI should not throw for null read-only object reference field. Exception: {caughtException}"
+            );
+            Assert.That(testCompleted, Is.True);
         }
 
         [UnityTest]
@@ -369,36 +302,29 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
         {
             OdinReadOnlyBoolTarget target = CreateScriptableObject<OdinReadOnlyBoolTarget>();
             target.readOnlyBool = true;
-            Editor editor = Editor.CreateEditor(target);
+            Editor editor = Track(Editor.CreateEditor(target));
             bool testCompleted = false;
             Exception caughtException = null;
 
-            try
+            yield return TestIMGUIExecutor.Run(() =>
             {
-                yield return TestIMGUIExecutor.Run(() =>
+                try
                 {
-                    try
-                    {
-                        editor.OnInspectorGUI();
-                        testCompleted = true;
-                    }
-                    catch (Exception ex)
-                    {
-                        caughtException = ex;
-                    }
-                });
+                    editor.OnInspectorGUI();
+                    testCompleted = true;
+                }
+                catch (Exception ex)
+                {
+                    caughtException = ex;
+                }
+            });
 
-                Assert.That(
-                    caughtException,
-                    Is.Null,
-                    $"OnInspectorGUI should not throw for read-only bool field. Exception: {caughtException}"
-                );
-                Assert.That(testCompleted, Is.True);
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            Assert.That(
+                caughtException,
+                Is.Null,
+                $"OnInspectorGUI should not throw for read-only bool field. Exception: {caughtException}"
+            );
+            Assert.That(testCompleted, Is.True);
         }
 
         [UnityTest]
@@ -406,36 +332,29 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
         {
             OdinReadOnlyVectorTarget target = CreateScriptableObject<OdinReadOnlyVectorTarget>();
             target.readOnlyVector = new Vector3(1f, 2f, 3f);
-            Editor editor = Editor.CreateEditor(target);
+            Editor editor = Track(Editor.CreateEditor(target));
             bool testCompleted = false;
             Exception caughtException = null;
 
-            try
+            yield return TestIMGUIExecutor.Run(() =>
             {
-                yield return TestIMGUIExecutor.Run(() =>
+                try
                 {
-                    try
-                    {
-                        editor.OnInspectorGUI();
-                        testCompleted = true;
-                    }
-                    catch (Exception ex)
-                    {
-                        caughtException = ex;
-                    }
-                });
+                    editor.OnInspectorGUI();
+                    testCompleted = true;
+                }
+                catch (Exception ex)
+                {
+                    caughtException = ex;
+                }
+            });
 
-                Assert.That(
-                    caughtException,
-                    Is.Null,
-                    $"OnInspectorGUI should not throw for read-only Vector3 field. Exception: {caughtException}"
-                );
-                Assert.That(testCompleted, Is.True);
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            Assert.That(
+                caughtException,
+                Is.Null,
+                $"OnInspectorGUI should not throw for read-only Vector3 field. Exception: {caughtException}"
+            );
+            Assert.That(testCompleted, Is.True);
         }
 
         [UnityTest]
@@ -443,36 +362,29 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
         {
             OdinReadOnlyColorTarget target = CreateScriptableObject<OdinReadOnlyColorTarget>();
             target.readOnlyColor = Color.red;
-            Editor editor = Editor.CreateEditor(target);
+            Editor editor = Track(Editor.CreateEditor(target));
             bool testCompleted = false;
             Exception caughtException = null;
 
-            try
+            yield return TestIMGUIExecutor.Run(() =>
             {
-                yield return TestIMGUIExecutor.Run(() =>
+                try
                 {
-                    try
-                    {
-                        editor.OnInspectorGUI();
-                        testCompleted = true;
-                    }
-                    catch (Exception ex)
-                    {
-                        caughtException = ex;
-                    }
-                });
+                    editor.OnInspectorGUI();
+                    testCompleted = true;
+                }
+                catch (Exception ex)
+                {
+                    caughtException = ex;
+                }
+            });
 
-                Assert.That(
-                    caughtException,
-                    Is.Null,
-                    $"OnInspectorGUI should not throw for read-only Color field. Exception: {caughtException}"
-                );
-                Assert.That(testCompleted, Is.True);
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            Assert.That(
+                caughtException,
+                Is.Null,
+                $"OnInspectorGUI should not throw for read-only Color field. Exception: {caughtException}"
+            );
+            Assert.That(testCompleted, Is.True);
         }
 
         [UnityTest]
@@ -480,36 +392,29 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
         {
             OdinReadOnlyEnumTarget target = CreateScriptableObject<OdinReadOnlyEnumTarget>();
             target.readOnlyEnum = OdinTestEnum.Value2;
-            Editor editor = Editor.CreateEditor(target);
+            Editor editor = Track(Editor.CreateEditor(target));
             bool testCompleted = false;
             Exception caughtException = null;
 
-            try
+            yield return TestIMGUIExecutor.Run(() =>
             {
-                yield return TestIMGUIExecutor.Run(() =>
+                try
                 {
-                    try
-                    {
-                        editor.OnInspectorGUI();
-                        testCompleted = true;
-                    }
-                    catch (Exception ex)
-                    {
-                        caughtException = ex;
-                    }
-                });
+                    editor.OnInspectorGUI();
+                    testCompleted = true;
+                }
+                catch (Exception ex)
+                {
+                    caughtException = ex;
+                }
+            });
 
-                Assert.That(
-                    caughtException,
-                    Is.Null,
-                    $"OnInspectorGUI should not throw for read-only enum field. Exception: {caughtException}"
-                );
-                Assert.That(testCompleted, Is.True);
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            Assert.That(
+                caughtException,
+                Is.Null,
+                $"OnInspectorGUI should not throw for read-only enum field. Exception: {caughtException}"
+            );
+            Assert.That(testCompleted, Is.True);
         }
 
         [UnityTest]
@@ -517,36 +422,29 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
         {
             OdinReadOnlyArrayTarget target = CreateScriptableObject<OdinReadOnlyArrayTarget>();
             target.readOnlyArray = new[] { 1, 2, 3 };
-            Editor editor = Editor.CreateEditor(target);
+            Editor editor = Track(Editor.CreateEditor(target));
             bool testCompleted = false;
             Exception caughtException = null;
 
-            try
+            yield return TestIMGUIExecutor.Run(() =>
             {
-                yield return TestIMGUIExecutor.Run(() =>
+                try
                 {
-                    try
-                    {
-                        editor.OnInspectorGUI();
-                        testCompleted = true;
-                    }
-                    catch (Exception ex)
-                    {
-                        caughtException = ex;
-                    }
-                });
+                    editor.OnInspectorGUI();
+                    testCompleted = true;
+                }
+                catch (Exception ex)
+                {
+                    caughtException = ex;
+                }
+            });
 
-                Assert.That(
-                    caughtException,
-                    Is.Null,
-                    $"OnInspectorGUI should not throw for read-only array field. Exception: {caughtException}"
-                );
-                Assert.That(testCompleted, Is.True);
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            Assert.That(
+                caughtException,
+                Is.Null,
+                $"OnInspectorGUI should not throw for read-only array field. Exception: {caughtException}"
+            );
+            Assert.That(testCompleted, Is.True);
         }
 
         [UnityTest]
@@ -554,36 +452,29 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
         {
             OdinReadOnlyListTarget target = CreateScriptableObject<OdinReadOnlyListTarget>();
             target.readOnlyList = new List<string> { "a", "b", "c" };
-            Editor editor = Editor.CreateEditor(target);
+            Editor editor = Track(Editor.CreateEditor(target));
             bool testCompleted = false;
             Exception caughtException = null;
 
-            try
+            yield return TestIMGUIExecutor.Run(() =>
             {
-                yield return TestIMGUIExecutor.Run(() =>
+                try
                 {
-                    try
-                    {
-                        editor.OnInspectorGUI();
-                        testCompleted = true;
-                    }
-                    catch (Exception ex)
-                    {
-                        caughtException = ex;
-                    }
-                });
+                    editor.OnInspectorGUI();
+                    testCompleted = true;
+                }
+                catch (Exception ex)
+                {
+                    caughtException = ex;
+                }
+            });
 
-                Assert.That(
-                    caughtException,
-                    Is.Null,
-                    $"OnInspectorGUI should not throw for read-only list field. Exception: {caughtException}"
-                );
-                Assert.That(testCompleted, Is.True);
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            Assert.That(
+                caughtException,
+                Is.Null,
+                $"OnInspectorGUI should not throw for read-only list field. Exception: {caughtException}"
+            );
+            Assert.That(testCompleted, Is.True);
         }
 
         [UnityTest]
@@ -594,36 +485,29 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
             target.readOnlyInt = 100;
             target.readOnlyString = "Test";
             target.readOnlyFloat = 1.5f;
-            Editor editor = Editor.CreateEditor(target);
+            Editor editor = Track(Editor.CreateEditor(target));
             bool testCompleted = false;
             Exception caughtException = null;
 
-            try
+            yield return TestIMGUIExecutor.Run(() =>
             {
-                yield return TestIMGUIExecutor.Run(() =>
+                try
                 {
-                    try
-                    {
-                        editor.OnInspectorGUI();
-                        testCompleted = true;
-                    }
-                    catch (Exception ex)
-                    {
-                        caughtException = ex;
-                    }
-                });
+                    editor.OnInspectorGUI();
+                    testCompleted = true;
+                }
+                catch (Exception ex)
+                {
+                    caughtException = ex;
+                }
+            });
 
-                Assert.That(
-                    caughtException,
-                    Is.Null,
-                    $"OnInspectorGUI should not throw for multiple read-only fields. Exception: {caughtException}"
-                );
-                Assert.That(testCompleted, Is.True);
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            Assert.That(
+                caughtException,
+                Is.Null,
+                $"OnInspectorGUI should not throw for multiple read-only fields. Exception: {caughtException}"
+            );
+            Assert.That(testCompleted, Is.True);
         }
 
         [UnityTest]
@@ -633,36 +517,29 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
                 CreateScriptableObject<OdinReadOnlyMixedFieldsTarget>();
             target.readOnlyField = "Read Only";
             target.editableField = "Editable";
-            Editor editor = Editor.CreateEditor(target);
+            Editor editor = Track(Editor.CreateEditor(target));
             bool testCompleted = false;
             Exception caughtException = null;
 
-            try
+            yield return TestIMGUIExecutor.Run(() =>
             {
-                yield return TestIMGUIExecutor.Run(() =>
+                try
                 {
-                    try
-                    {
-                        editor.OnInspectorGUI();
-                        testCompleted = true;
-                    }
-                    catch (Exception ex)
-                    {
-                        caughtException = ex;
-                    }
-                });
+                    editor.OnInspectorGUI();
+                    testCompleted = true;
+                }
+                catch (Exception ex)
+                {
+                    caughtException = ex;
+                }
+            });
 
-                Assert.That(
-                    caughtException,
-                    Is.Null,
-                    $"OnInspectorGUI should not throw for mixed read-only and editable fields. Exception: {caughtException}"
-                );
-                Assert.That(testCompleted, Is.True);
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            Assert.That(
+                caughtException,
+                Is.Null,
+                $"OnInspectorGUI should not throw for mixed read-only and editable fields. Exception: {caughtException}"
+            );
+            Assert.That(testCompleted, Is.True);
         }
 
         [UnityTest]
@@ -671,7 +548,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
             bool initialGuiEnabled = GUI.enabled;
             OdinReadOnlyScriptableObjectTarget target =
                 CreateScriptableObject<OdinReadOnlyScriptableObjectTarget>();
-            Editor editor = Editor.CreateEditor(target);
+            Editor editor = Track(Editor.CreateEditor(target));
             bool testCompleted = false;
             Exception caughtException = null;
             bool guiEnabledAfterDraw = false;
@@ -718,7 +595,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
             bool initialGuiEnabled = GUI.enabled;
             OdinReadOnlyScriptableObjectTarget target =
                 CreateScriptableObject<OdinReadOnlyScriptableObjectTarget>();
-            Editor editor = Editor.CreateEditor(target);
+            Editor editor = Track(Editor.CreateEditor(target));
             bool testCompleted = false;
             Exception caughtException = null;
             bool guiEnabledAfterDraw = true;
@@ -769,36 +646,29 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
                 intValue = 10,
                 stringValue = "Test",
             };
-            Editor editor = Editor.CreateEditor(target);
+            Editor editor = Track(Editor.CreateEditor(target));
             bool testCompleted = false;
             Exception caughtException = null;
 
-            try
+            yield return TestIMGUIExecutor.Run(() =>
             {
-                yield return TestIMGUIExecutor.Run(() =>
+                try
                 {
-                    try
-                    {
-                        editor.OnInspectorGUI();
-                        testCompleted = true;
-                    }
-                    catch (Exception ex)
-                    {
-                        caughtException = ex;
-                    }
-                });
+                    editor.OnInspectorGUI();
+                    testCompleted = true;
+                }
+                catch (Exception ex)
+                {
+                    caughtException = ex;
+                }
+            });
 
-                Assert.That(
-                    caughtException,
-                    Is.Null,
-                    $"OnInspectorGUI should not throw for read-only serializable class field. Exception: {caughtException}"
-                );
-                Assert.That(testCompleted, Is.True);
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            Assert.That(
+                caughtException,
+                Is.Null,
+                $"OnInspectorGUI should not throw for read-only serializable class field. Exception: {caughtException}"
+            );
+            Assert.That(testCompleted, Is.True);
         }
 
         [UnityTest]
@@ -806,36 +676,29 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
         {
             OdinReadOnlyStructTarget target = CreateScriptableObject<OdinReadOnlyStructTarget>();
             target.readOnlyRect = new Rect(0, 0, 100, 100);
-            Editor editor = Editor.CreateEditor(target);
+            Editor editor = Track(Editor.CreateEditor(target));
             bool testCompleted = false;
             Exception caughtException = null;
 
-            try
+            yield return TestIMGUIExecutor.Run(() =>
             {
-                yield return TestIMGUIExecutor.Run(() =>
+                try
                 {
-                    try
-                    {
-                        editor.OnInspectorGUI();
-                        testCompleted = true;
-                    }
-                    catch (Exception ex)
-                    {
-                        caughtException = ex;
-                    }
-                });
+                    editor.OnInspectorGUI();
+                    testCompleted = true;
+                }
+                catch (Exception ex)
+                {
+                    caughtException = ex;
+                }
+            });
 
-                Assert.That(
-                    caughtException,
-                    Is.Null,
-                    $"OnInspectorGUI should not throw for read-only struct field. Exception: {caughtException}"
-                );
-                Assert.That(testCompleted, Is.True);
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            Assert.That(
+                caughtException,
+                Is.Null,
+                $"OnInspectorGUI should not throw for read-only struct field. Exception: {caughtException}"
+            );
+            Assert.That(testCompleted, Is.True);
         }
 
         [UnityTest]
@@ -843,36 +706,29 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
         {
             OdinReadOnlyDoubleTarget target = CreateScriptableObject<OdinReadOnlyDoubleTarget>();
             target.readOnlyDouble = 3.14159265358979;
-            Editor editor = Editor.CreateEditor(target);
+            Editor editor = Track(Editor.CreateEditor(target));
             bool testCompleted = false;
             Exception caughtException = null;
 
-            try
+            yield return TestIMGUIExecutor.Run(() =>
             {
-                yield return TestIMGUIExecutor.Run(() =>
+                try
                 {
-                    try
-                    {
-                        editor.OnInspectorGUI();
-                        testCompleted = true;
-                    }
-                    catch (Exception ex)
-                    {
-                        caughtException = ex;
-                    }
-                });
+                    editor.OnInspectorGUI();
+                    testCompleted = true;
+                }
+                catch (Exception ex)
+                {
+                    caughtException = ex;
+                }
+            });
 
-                Assert.That(
-                    caughtException,
-                    Is.Null,
-                    $"OnInspectorGUI should not throw for read-only double field. Exception: {caughtException}"
-                );
-                Assert.That(testCompleted, Is.True);
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            Assert.That(
+                caughtException,
+                Is.Null,
+                $"OnInspectorGUI should not throw for read-only double field. Exception: {caughtException}"
+            );
+            Assert.That(testCompleted, Is.True);
         }
 
         [UnityTest]
@@ -880,36 +736,29 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
         {
             OdinReadOnlyLongTarget target = CreateScriptableObject<OdinReadOnlyLongTarget>();
             target.readOnlyLong = 9223372036854775807L;
-            Editor editor = Editor.CreateEditor(target);
+            Editor editor = Track(Editor.CreateEditor(target));
             bool testCompleted = false;
             Exception caughtException = null;
 
-            try
+            yield return TestIMGUIExecutor.Run(() =>
             {
-                yield return TestIMGUIExecutor.Run(() =>
+                try
                 {
-                    try
-                    {
-                        editor.OnInspectorGUI();
-                        testCompleted = true;
-                    }
-                    catch (Exception ex)
-                    {
-                        caughtException = ex;
-                    }
-                });
+                    editor.OnInspectorGUI();
+                    testCompleted = true;
+                }
+                catch (Exception ex)
+                {
+                    caughtException = ex;
+                }
+            });
 
-                Assert.That(
-                    caughtException,
-                    Is.Null,
-                    $"OnInspectorGUI should not throw for read-only long field. Exception: {caughtException}"
-                );
-                Assert.That(testCompleted, Is.True);
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            Assert.That(
+                caughtException,
+                Is.Null,
+                $"OnInspectorGUI should not throw for read-only long field. Exception: {caughtException}"
+            );
+            Assert.That(testCompleted, Is.True);
         }
 
         [UnityTest]
@@ -918,36 +767,29 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
             OdinReadOnlyAnimationCurveTarget target =
                 CreateScriptableObject<OdinReadOnlyAnimationCurveTarget>();
             target.readOnlyCurve = AnimationCurve.Linear(0, 0, 1, 1);
-            Editor editor = Editor.CreateEditor(target);
+            Editor editor = Track(Editor.CreateEditor(target));
             bool testCompleted = false;
             Exception caughtException = null;
 
-            try
+            yield return TestIMGUIExecutor.Run(() =>
             {
-                yield return TestIMGUIExecutor.Run(() =>
+                try
                 {
-                    try
-                    {
-                        editor.OnInspectorGUI();
-                        testCompleted = true;
-                    }
-                    catch (Exception ex)
-                    {
-                        caughtException = ex;
-                    }
-                });
+                    editor.OnInspectorGUI();
+                    testCompleted = true;
+                }
+                catch (Exception ex)
+                {
+                    caughtException = ex;
+                }
+            });
 
-                Assert.That(
-                    caughtException,
-                    Is.Null,
-                    $"OnInspectorGUI should not throw for read-only AnimationCurve field. Exception: {caughtException}"
-                );
-                Assert.That(testCompleted, Is.True);
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            Assert.That(
+                caughtException,
+                Is.Null,
+                $"OnInspectorGUI should not throw for read-only AnimationCurve field. Exception: {caughtException}"
+            );
+            Assert.That(testCompleted, Is.True);
         }
 
         [UnityTest]
@@ -956,36 +798,29 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
             OdinReadOnlyGradientTarget target =
                 CreateScriptableObject<OdinReadOnlyGradientTarget>();
             target.readOnlyGradient = new Gradient();
-            Editor editor = Editor.CreateEditor(target);
+            Editor editor = Track(Editor.CreateEditor(target));
             bool testCompleted = false;
             Exception caughtException = null;
 
-            try
+            yield return TestIMGUIExecutor.Run(() =>
             {
-                yield return TestIMGUIExecutor.Run(() =>
+                try
                 {
-                    try
-                    {
-                        editor.OnInspectorGUI();
-                        testCompleted = true;
-                    }
-                    catch (Exception ex)
-                    {
-                        caughtException = ex;
-                    }
-                });
+                    editor.OnInspectorGUI();
+                    testCompleted = true;
+                }
+                catch (Exception ex)
+                {
+                    caughtException = ex;
+                }
+            });
 
-                Assert.That(
-                    caughtException,
-                    Is.Null,
-                    $"OnInspectorGUI should not throw for read-only Gradient field. Exception: {caughtException}"
-                );
-                Assert.That(testCompleted, Is.True);
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            Assert.That(
+                caughtException,
+                Is.Null,
+                $"OnInspectorGUI should not throw for read-only Gradient field. Exception: {caughtException}"
+            );
+            Assert.That(testCompleted, Is.True);
         }
 
         [UnityTest]
@@ -994,36 +829,29 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
             OdinReadOnlyLayerMaskTarget target =
                 CreateScriptableObject<OdinReadOnlyLayerMaskTarget>();
             target.readOnlyLayerMask = 1;
-            Editor editor = Editor.CreateEditor(target);
+            Editor editor = Track(Editor.CreateEditor(target));
             bool testCompleted = false;
             Exception caughtException = null;
 
-            try
+            yield return TestIMGUIExecutor.Run(() =>
             {
-                yield return TestIMGUIExecutor.Run(() =>
+                try
                 {
-                    try
-                    {
-                        editor.OnInspectorGUI();
-                        testCompleted = true;
-                    }
-                    catch (Exception ex)
-                    {
-                        caughtException = ex;
-                    }
-                });
+                    editor.OnInspectorGUI();
+                    testCompleted = true;
+                }
+                catch (Exception ex)
+                {
+                    caughtException = ex;
+                }
+            });
 
-                Assert.That(
-                    caughtException,
-                    Is.Null,
-                    $"OnInspectorGUI should not throw for read-only LayerMask field. Exception: {caughtException}"
-                );
-                Assert.That(testCompleted, Is.True);
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            Assert.That(
+                caughtException,
+                Is.Null,
+                $"OnInspectorGUI should not throw for read-only LayerMask field. Exception: {caughtException}"
+            );
+            Assert.That(testCompleted, Is.True);
         }
 
         [UnityTest]
@@ -1032,36 +860,29 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
             OdinReadOnlyQuaternionTarget target =
                 CreateScriptableObject<OdinReadOnlyQuaternionTarget>();
             target.readOnlyQuaternion = Quaternion.identity;
-            Editor editor = Editor.CreateEditor(target);
+            Editor editor = Track(Editor.CreateEditor(target));
             bool testCompleted = false;
             Exception caughtException = null;
 
-            try
+            yield return TestIMGUIExecutor.Run(() =>
             {
-                yield return TestIMGUIExecutor.Run(() =>
+                try
                 {
-                    try
-                    {
-                        editor.OnInspectorGUI();
-                        testCompleted = true;
-                    }
-                    catch (Exception ex)
-                    {
-                        caughtException = ex;
-                    }
-                });
+                    editor.OnInspectorGUI();
+                    testCompleted = true;
+                }
+                catch (Exception ex)
+                {
+                    caughtException = ex;
+                }
+            });
 
-                Assert.That(
-                    caughtException,
-                    Is.Null,
-                    $"OnInspectorGUI should not throw for read-only Quaternion field. Exception: {caughtException}"
-                );
-                Assert.That(testCompleted, Is.True);
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            Assert.That(
+                caughtException,
+                Is.Null,
+                $"OnInspectorGUI should not throw for read-only Quaternion field. Exception: {caughtException}"
+            );
+            Assert.That(testCompleted, Is.True);
         }
 
         [UnityTest]
@@ -1069,36 +890,29 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
         {
             OdinReadOnlyBoundsTarget target = CreateScriptableObject<OdinReadOnlyBoundsTarget>();
             target.readOnlyBounds = new Bounds(Vector3.zero, Vector3.one);
-            Editor editor = Editor.CreateEditor(target);
+            Editor editor = Track(Editor.CreateEditor(target));
             bool testCompleted = false;
             Exception caughtException = null;
 
-            try
+            yield return TestIMGUIExecutor.Run(() =>
             {
-                yield return TestIMGUIExecutor.Run(() =>
+                try
                 {
-                    try
-                    {
-                        editor.OnInspectorGUI();
-                        testCompleted = true;
-                    }
-                    catch (Exception ex)
-                    {
-                        caughtException = ex;
-                    }
-                });
+                    editor.OnInspectorGUI();
+                    testCompleted = true;
+                }
+                catch (Exception ex)
+                {
+                    caughtException = ex;
+                }
+            });
 
-                Assert.That(
-                    caughtException,
-                    Is.Null,
-                    $"OnInspectorGUI should not throw for read-only Bounds field. Exception: {caughtException}"
-                );
-                Assert.That(testCompleted, Is.True);
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            Assert.That(
+                caughtException,
+                Is.Null,
+                $"OnInspectorGUI should not throw for read-only Bounds field. Exception: {caughtException}"
+            );
+            Assert.That(testCompleted, Is.True);
         }
 
         [UnityTest]
@@ -1106,36 +920,29 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
         {
             OdinReadOnlyVector2Target target = CreateScriptableObject<OdinReadOnlyVector2Target>();
             target.readOnlyVector2 = new Vector2(1f, 2f);
-            Editor editor = Editor.CreateEditor(target);
+            Editor editor = Track(Editor.CreateEditor(target));
             bool testCompleted = false;
             Exception caughtException = null;
 
-            try
+            yield return TestIMGUIExecutor.Run(() =>
             {
-                yield return TestIMGUIExecutor.Run(() =>
+                try
                 {
-                    try
-                    {
-                        editor.OnInspectorGUI();
-                        testCompleted = true;
-                    }
-                    catch (Exception ex)
-                    {
-                        caughtException = ex;
-                    }
-                });
+                    editor.OnInspectorGUI();
+                    testCompleted = true;
+                }
+                catch (Exception ex)
+                {
+                    caughtException = ex;
+                }
+            });
 
-                Assert.That(
-                    caughtException,
-                    Is.Null,
-                    $"OnInspectorGUI should not throw for read-only Vector2 field. Exception: {caughtException}"
-                );
-                Assert.That(testCompleted, Is.True);
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            Assert.That(
+                caughtException,
+                Is.Null,
+                $"OnInspectorGUI should not throw for read-only Vector2 field. Exception: {caughtException}"
+            );
+            Assert.That(testCompleted, Is.True);
         }
 
         [UnityTest]
@@ -1143,36 +950,29 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
         {
             OdinReadOnlyVector4Target target = CreateScriptableObject<OdinReadOnlyVector4Target>();
             target.readOnlyVector4 = new Vector4(1f, 2f, 3f, 4f);
-            Editor editor = Editor.CreateEditor(target);
+            Editor editor = Track(Editor.CreateEditor(target));
             bool testCompleted = false;
             Exception caughtException = null;
 
-            try
+            yield return TestIMGUIExecutor.Run(() =>
             {
-                yield return TestIMGUIExecutor.Run(() =>
+                try
                 {
-                    try
-                    {
-                        editor.OnInspectorGUI();
-                        testCompleted = true;
-                    }
-                    catch (Exception ex)
-                    {
-                        caughtException = ex;
-                    }
-                });
+                    editor.OnInspectorGUI();
+                    testCompleted = true;
+                }
+                catch (Exception ex)
+                {
+                    caughtException = ex;
+                }
+            });
 
-                Assert.That(
-                    caughtException,
-                    Is.Null,
-                    $"OnInspectorGUI should not throw for read-only Vector4 field. Exception: {caughtException}"
-                );
-                Assert.That(testCompleted, Is.True);
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            Assert.That(
+                caughtException,
+                Is.Null,
+                $"OnInspectorGUI should not throw for read-only Vector4 field. Exception: {caughtException}"
+            );
+            Assert.That(testCompleted, Is.True);
         }
 
         [UnityTest]
@@ -1181,36 +981,29 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
             OdinReadOnlyVector2IntTarget target =
                 CreateScriptableObject<OdinReadOnlyVector2IntTarget>();
             target.readOnlyVector2Int = new Vector2Int(1, 2);
-            Editor editor = Editor.CreateEditor(target);
+            Editor editor = Track(Editor.CreateEditor(target));
             bool testCompleted = false;
             Exception caughtException = null;
 
-            try
+            yield return TestIMGUIExecutor.Run(() =>
             {
-                yield return TestIMGUIExecutor.Run(() =>
+                try
                 {
-                    try
-                    {
-                        editor.OnInspectorGUI();
-                        testCompleted = true;
-                    }
-                    catch (Exception ex)
-                    {
-                        caughtException = ex;
-                    }
-                });
+                    editor.OnInspectorGUI();
+                    testCompleted = true;
+                }
+                catch (Exception ex)
+                {
+                    caughtException = ex;
+                }
+            });
 
-                Assert.That(
-                    caughtException,
-                    Is.Null,
-                    $"OnInspectorGUI should not throw for read-only Vector2Int field. Exception: {caughtException}"
-                );
-                Assert.That(testCompleted, Is.True);
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            Assert.That(
+                caughtException,
+                Is.Null,
+                $"OnInspectorGUI should not throw for read-only Vector2Int field. Exception: {caughtException}"
+            );
+            Assert.That(testCompleted, Is.True);
         }
 
         [UnityTest]
@@ -1219,36 +1012,29 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
             OdinReadOnlyVector3IntTarget target =
                 CreateScriptableObject<OdinReadOnlyVector3IntTarget>();
             target.readOnlyVector3Int = new Vector3Int(1, 2, 3);
-            Editor editor = Editor.CreateEditor(target);
+            Editor editor = Track(Editor.CreateEditor(target));
             bool testCompleted = false;
             Exception caughtException = null;
 
-            try
+            yield return TestIMGUIExecutor.Run(() =>
             {
-                yield return TestIMGUIExecutor.Run(() =>
+                try
                 {
-                    try
-                    {
-                        editor.OnInspectorGUI();
-                        testCompleted = true;
-                    }
-                    catch (Exception ex)
-                    {
-                        caughtException = ex;
-                    }
-                });
+                    editor.OnInspectorGUI();
+                    testCompleted = true;
+                }
+                catch (Exception ex)
+                {
+                    caughtException = ex;
+                }
+            });
 
-                Assert.That(
-                    caughtException,
-                    Is.Null,
-                    $"OnInspectorGUI should not throw for read-only Vector3Int field. Exception: {caughtException}"
-                );
-                Assert.That(testCompleted, Is.True);
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            Assert.That(
+                caughtException,
+                Is.Null,
+                $"OnInspectorGUI should not throw for read-only Vector3Int field. Exception: {caughtException}"
+            );
+            Assert.That(testCompleted, Is.True);
         }
 
         [UnityTest]
@@ -1257,36 +1043,29 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
             OdinReadOnlyDictionaryTarget target =
                 CreateScriptableObject<OdinReadOnlyDictionaryTarget>();
             target.readOnlyDictionary = new Dictionary<string, int> { { "one", 1 }, { "two", 2 } };
-            Editor editor = Editor.CreateEditor(target);
+            Editor editor = Track(Editor.CreateEditor(target));
             bool testCompleted = false;
             Exception caughtException = null;
 
-            try
+            yield return TestIMGUIExecutor.Run(() =>
             {
-                yield return TestIMGUIExecutor.Run(() =>
+                try
                 {
-                    try
-                    {
-                        editor.OnInspectorGUI();
-                        testCompleted = true;
-                    }
-                    catch (Exception ex)
-                    {
-                        caughtException = ex;
-                    }
-                });
+                    editor.OnInspectorGUI();
+                    testCompleted = true;
+                }
+                catch (Exception ex)
+                {
+                    caughtException = ex;
+                }
+            });
 
-                Assert.That(
-                    caughtException,
-                    Is.Null,
-                    $"OnInspectorGUI should not throw for read-only dictionary field. Exception: {caughtException}"
-                );
-                Assert.That(testCompleted, Is.True);
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            Assert.That(
+                caughtException,
+                Is.Null,
+                $"OnInspectorGUI should not throw for read-only dictionary field. Exception: {caughtException}"
+            );
+            Assert.That(testCompleted, Is.True);
         }
 
         [UnityTest]
@@ -1296,36 +1075,29 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
                 CreateScriptableObject<OdinReadOnlyWithOtherAttributesTarget>();
             target.readOnlyWithRange = 50;
             target.readOnlyWithTooltip = "Tooltip text";
-            Editor editor = Editor.CreateEditor(target);
+            Editor editor = Track(Editor.CreateEditor(target));
             bool testCompleted = false;
             Exception caughtException = null;
 
-            try
+            yield return TestIMGUIExecutor.Run(() =>
             {
-                yield return TestIMGUIExecutor.Run(() =>
+                try
                 {
-                    try
-                    {
-                        editor.OnInspectorGUI();
-                        testCompleted = true;
-                    }
-                    catch (Exception ex)
-                    {
-                        caughtException = ex;
-                    }
-                });
+                    editor.OnInspectorGUI();
+                    testCompleted = true;
+                }
+                catch (Exception ex)
+                {
+                    caughtException = ex;
+                }
+            });
 
-                Assert.That(
-                    caughtException,
-                    Is.Null,
-                    $"OnInspectorGUI should not throw for read-only fields with other Odin attributes. Exception: {caughtException}"
-                );
-                Assert.That(testCompleted, Is.True);
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            Assert.That(
+                caughtException,
+                Is.Null,
+                $"OnInspectorGUI should not throw for read-only fields with other Odin attributes. Exception: {caughtException}"
+            );
+            Assert.That(testCompleted, Is.True);
         }
     }
 #endif

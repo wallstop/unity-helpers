@@ -482,7 +482,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Utils.WButton
 
             helper.DrawAllButtonsAndProcessInvocations(editor);
 
-            UnityEngine.Object.DestroyImmediate(editor);
+            UnityEngine.Object.DestroyImmediate(editor); // UNH-SUPPRESS: Test verifies cleanup behavior after editor destroyed
             _trackedObjects.Remove(editor);
 
             Assert.DoesNotThrow(
@@ -930,9 +930,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Utils.WButton
                     helper.DrawAllButtonsAndProcessInvocations(editor);
                 }
 
-                UnityEngine.Object.DestroyImmediate(editor);
+                UnityEngine.Object.DestroyImmediate(editor); // UNH-SUPPRESS: Simulating editor session cleanup
                 _trackedObjects.Remove(editor);
-                UnityEngine.Object.DestroyImmediate(target);
+                UnityEngine.Object.DestroyImmediate(target); // UNH-SUPPRESS: Simulating session cleanup
                 _trackedObjects.Remove(target);
 
                 ClearWButtonCaches();
@@ -1328,21 +1328,21 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Utils.WButton
         [Test]
         public void WButtonStateRepositoryUsesWeakReferences()
         {
-            InheritanceTargetConcreteWithWButton target =
-                ScriptableObject.CreateInstance<InheritanceTargetConcreteWithWButton>();
+            InheritanceTargetConcreteWithWButton target = Track(
+                ScriptableObject.CreateInstance<InheritanceTargetConcreteWithWButton>()
+            );
             WButtonTargetState state1 = WButtonStateRepository.GetOrCreate(target);
             WButtonTargetState state2 = WButtonStateRepository.GetOrCreate(target);
 
             Assert.That(state1, Is.SameAs(state2), "Same target should return same state instance");
-
-            UnityEngine.Object.DestroyImmediate(target);
         }
 
         [Test]
         public void StateCleanupWhenTargetDestroyedDoesNotThrow()
         {
-            IntegrationTargetSimple target =
-                ScriptableObject.CreateInstance<IntegrationTargetSimple>();
+            IntegrationTargetSimple target = Track(
+                ScriptableObject.CreateInstance<IntegrationTargetSimple>()
+            );
 
             IReadOnlyList<WButtonMethodMetadata> metadata = WButtonMetadataCache.GetMetadata(
                 typeof(IntegrationTargetSimple)
@@ -1364,7 +1364,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Utils.WButton
                 10
             );
 
-            UnityEngine.Object.DestroyImmediate(target);
+            UnityEngine.Object.DestroyImmediate(target); // UNH-SUPPRESS: Test verifies GC behavior after target destruction
 
             Assert.DoesNotThrow(
                 () => GC.Collect(2, GCCollectionMode.Forced, blocking: true),

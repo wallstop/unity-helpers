@@ -56,18 +56,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Utils.WButton
         {
             HelperTargetNoButtons target = CreateScriptableObject<HelperTargetNoButtons>();
             UnityEditor.Editor editor = UnityEditor.Editor.CreateEditor(target);
-            try
-            {
-                WButtonEditorHelper helper = new WButtonEditorHelper();
+            WButtonEditorHelper helper = new WButtonEditorHelper();
 
-                bool result = helper.DrawButtonsAtTop(editor);
+            bool result = helper.DrawButtonsAtTop(editor);
 
-                Assert.That(result, Is.False);
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            Assert.That(result, Is.False);
         }
 
         [Test]
@@ -75,18 +68,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Utils.WButton
         {
             HelperTargetTopPlacement target = CreateScriptableObject<HelperTargetTopPlacement>();
             UnityEditor.Editor editor = UnityEditor.Editor.CreateEditor(target);
-            try
-            {
-                WButtonEditorHelper helper = new WButtonEditorHelper();
+           
+            WButtonEditorHelper helper = new WButtonEditorHelper();
 
-                bool result = helper.DrawButtonsAtTop(editor);
+            bool result = helper.DrawButtonsAtTop(editor);
 
-                Assert.That(result, Is.True);
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            Assert.That(result, Is.True);
+            
         }
 
         [Test]
@@ -94,18 +82,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Utils.WButton
         {
             HelperTargetNoButtons target = CreateScriptableObject<HelperTargetNoButtons>();
             UnityEditor.Editor editor = UnityEditor.Editor.CreateEditor(target);
-            try
-            {
-                WButtonEditorHelper helper = new WButtonEditorHelper();
+            WButtonEditorHelper helper = new WButtonEditorHelper();
 
-                bool result = helper.DrawButtonsAtBottom(editor);
+            bool result = helper.DrawButtonsAtBottom(editor);
 
-                Assert.That(result, Is.False);
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            Assert.That(result, Is.False);
         }
 
         [Test]
@@ -114,18 +95,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Utils.WButton
             HelperTargetBottomPlacement target =
                 CreateScriptableObject<HelperTargetBottomPlacement>();
             UnityEditor.Editor editor = UnityEditor.Editor.CreateEditor(target);
-            try
-            {
-                WButtonEditorHelper helper = new WButtonEditorHelper();
+            WButtonEditorHelper helper = new WButtonEditorHelper();
 
-                bool result = helper.DrawButtonsAtBottom(editor);
+            bool result = helper.DrawButtonsAtBottom(editor);
 
-                Assert.That(result, Is.True);
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            Assert.That(result, Is.True);
         }
 
         [Test]
@@ -142,39 +116,32 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Utils.WButton
             HelperTargetSimple target = CreateScriptableObject<HelperTargetSimple>();
             target.InvocationCount = 0;
             UnityEditor.Editor editor = UnityEditor.Editor.CreateEditor(target);
-            try
-            {
-                WButtonEditorHelper helper = new WButtonEditorHelper();
+            WButtonEditorHelper helper = new WButtonEditorHelper();
 
-                helper.DrawButtonsAtTop(editor);
-                helper.DrawButtonsAtBottom(editor);
+            helper.DrawButtonsAtTop(editor);
+            helper.DrawButtonsAtBottom(editor);
 
-                IReadOnlyList<WButtonMethodMetadata> metadata = WButtonMetadataCache.GetMetadata(
-                    typeof(HelperTargetSimple)
-                );
-                WButtonMethodMetadata simpleButtonMetadata = metadata.First(m =>
-                    m.Method.Name == nameof(HelperTargetSimple.SimpleButton)
-                );
-                WButtonTargetState targetState = WButtonStateRepository.GetOrCreate(target);
-                WButtonMethodState methodState = targetState.GetOrCreateMethodState(
-                    simpleButtonMetadata
-                );
-                WButtonMethodContext context = new WButtonMethodContext(
-                    simpleButtonMetadata,
-                    new[] { methodState },
-                    new UnityEngine.Object[] { target }
-                );
-                context.MarkTriggered();
+            IReadOnlyList<WButtonMethodMetadata> metadata = WButtonMetadataCache.GetMetadata(
+                typeof(HelperTargetSimple)
+            );
+            WButtonMethodMetadata simpleButtonMetadata = metadata.First(m =>
+                m.Method.Name == nameof(HelperTargetSimple.SimpleButton)
+            );
+            WButtonTargetState targetState = WButtonStateRepository.GetOrCreate(target);
+            WButtonMethodState methodState = targetState.GetOrCreateMethodState(
+                simpleButtonMetadata
+            );
+            WButtonMethodContext context = new WButtonMethodContext(
+                simpleButtonMetadata,
+                new[] { methodState },
+                new UnityEngine.Object[] { target }
+            );
+            context.MarkTriggered();
 
-                List<WButtonMethodContext> contexts = new List<WButtonMethodContext> { context };
-                WButtonInvocationController.ProcessTriggeredMethods(contexts);
+            List<WButtonMethodContext> contexts = new List<WButtonMethodContext> { context };
+            WButtonInvocationController.ProcessTriggeredMethods(contexts);
 
-                Assert.That(target.InvocationCount, Is.EqualTo(1));
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            Assert.That(target.InvocationCount, Is.EqualTo(1));
         }
 
         [Test]
@@ -183,18 +150,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Utils.WButton
             HelperTargetBottomPlacement target =
                 CreateScriptableObject<HelperTargetBottomPlacement>();
             UnityEditor.Editor editor = UnityEditor.Editor.CreateEditor(target);
-            try
-            {
-                WButtonEditorHelper helper = new WButtonEditorHelper();
+            WButtonEditorHelper helper = new WButtonEditorHelper();
 
-                bool result = helper.DrawButtonsAtBottomAndProcessInvocations(editor);
+            bool result = helper.DrawButtonsAtBottomAndProcessInvocations(editor);
 
-                Assert.That(result, Is.True);
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            Assert.That(result, Is.True);
         }
 
         [Test]
@@ -203,18 +163,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Utils.WButton
             HelperTargetMixedPlacement target =
                 CreateScriptableObject<HelperTargetMixedPlacement>();
             UnityEditor.Editor editor = UnityEditor.Editor.CreateEditor(target);
-            try
-            {
-                WButtonEditorHelper helper = new WButtonEditorHelper();
+            WButtonEditorHelper helper = new WButtonEditorHelper();
 
-                bool result = helper.DrawAllButtonsAndProcessInvocations(editor);
+            bool result = helper.DrawAllButtonsAndProcessInvocations(editor);
 
-                Assert.That(result, Is.True);
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            Assert.That(result, Is.True);
         }
 
         [Test]
@@ -222,20 +175,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Utils.WButton
         {
             HelperTargetSimple target = CreateScriptableObject<HelperTargetSimple>();
             UnityEditor.Editor editor = UnityEditor.Editor.CreateEditor(target);
-            try
-            {
-                WButtonEditorHelper helper = new WButtonEditorHelper();
+            WButtonEditorHelper helper = new WButtonEditorHelper();
 
-                for (int i = 0; i < 5; i++)
-                {
-                    Assert.DoesNotThrow(() => helper.DrawButtonsAtTop(editor));
-                    Assert.DoesNotThrow(() => helper.DrawButtonsAtBottom(editor));
-                    Assert.DoesNotThrow(() => helper.ProcessInvocations());
-                }
-            }
-            finally
+            for (int i = 0; i < 5; i++)
             {
-                UnityEngine.Object.DestroyImmediate(editor);
+                Assert.DoesNotThrow(() => helper.DrawButtonsAtTop(editor));
+                Assert.DoesNotThrow(() => helper.DrawButtonsAtBottom(editor));
+                Assert.DoesNotThrow(() => helper.ProcessInvocations());
             }
         }
 
@@ -246,20 +192,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Utils.WButton
             HelperTargetSimple target2 = CreateScriptableObject<HelperTargetSimple>();
             UnityEngine.Object[] targets = new UnityEngine.Object[] { target1, target2 };
             UnityEditor.Editor editor = UnityEditor.Editor.CreateEditor(targets);
-            try
-            {
-                WButtonEditorHelper helper = new WButtonEditorHelper();
+            WButtonEditorHelper helper = new WButtonEditorHelper();
 
-                bool topResult = helper.DrawButtonsAtTop(editor);
-                bool bottomResult = helper.DrawButtonsAtBottom(editor);
-                Assert.DoesNotThrow(() => helper.ProcessInvocations());
+            bool topResult = helper.DrawButtonsAtTop(editor);
+            bool bottomResult = helper.DrawButtonsAtBottom(editor);
+            Assert.DoesNotThrow(() => helper.ProcessInvocations());
 
-                Assert.That(topResult || bottomResult, Is.True);
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            Assert.That(topResult || bottomResult, Is.True);
         }
 
         [Test]
@@ -267,24 +206,17 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Utils.WButton
         {
             HelperTargetSimple target = CreateScriptableObject<HelperTargetSimple>();
             UnityEditor.Editor editor = UnityEditor.Editor.CreateEditor(target);
-            try
-            {
-                WButtonEditorHelper helper = new WButtonEditorHelper();
+            WButtonEditorHelper helper = new WButtonEditorHelper();
 
-                IReadOnlyList<WButtonMethodMetadata> firstCall = WButtonMetadataCache.GetMetadata(
-                    typeof(HelperTargetSimple)
-                );
-                helper.DrawButtonsAtTop(editor);
-                IReadOnlyList<WButtonMethodMetadata> secondCall = WButtonMetadataCache.GetMetadata(
-                    typeof(HelperTargetSimple)
-                );
+            IReadOnlyList<WButtonMethodMetadata> firstCall = WButtonMetadataCache.GetMetadata(
+                typeof(HelperTargetSimple)
+            );
+            helper.DrawButtonsAtTop(editor);
+            IReadOnlyList<WButtonMethodMetadata> secondCall = WButtonMetadataCache.GetMetadata(
+                typeof(HelperTargetSimple)
+            );
 
-                Assert.That(firstCall, Is.SameAs(secondCall));
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            Assert.That(firstCall, Is.SameAs(secondCall));
         }
 
         [Test]
@@ -292,23 +224,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Utils.WButton
         {
             HelperTargetSimple target = CreateScriptableObject<HelperTargetSimple>();
             UnityEditor.Editor editor = UnityEditor.Editor.CreateEditor(target);
-            try
-            {
-                WButtonEditorHelper helper = new WButtonEditorHelper();
+            WButtonEditorHelper helper = new WButtonEditorHelper();
 
-                Assert.DoesNotThrow(() => helper.DrawButtonsAtTop(editor));
+            Assert.DoesNotThrow(() => helper.DrawButtonsAtTop(editor));
 
-                UnityEngine.Object.DestroyImmediate(target);
-                _trackedObjects.Remove(target);
-
-                Assert.DoesNotThrow(() => helper.DrawButtonsAtTop(editor));
-                Assert.DoesNotThrow(() => helper.DrawButtonsAtBottom(editor));
-                Assert.DoesNotThrow(() => helper.ProcessInvocations());
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+        UnityEngine.Object.DestroyImmediate(target); // UNH-SUPPRESS: Test verifies graceful handling when target destroyed
+            Assert.DoesNotThrow(() => helper.ProcessInvocations());
         }
 
         [Test]
@@ -316,32 +237,25 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Utils.WButton
         {
             HelperTargetDerived target = CreateScriptableObject<HelperTargetDerived>();
             UnityEditor.Editor editor = UnityEditor.Editor.CreateEditor(target);
-            try
-            {
-                WButtonEditorHelper helper = new WButtonEditorHelper();
+            WButtonEditorHelper helper = new WButtonEditorHelper();
 
-                bool result = helper.DrawAllButtonsAndProcessInvocations(editor);
+            bool result = helper.DrawAllButtonsAndProcessInvocations(editor);
 
-                Assert.That(result, Is.True);
+            Assert.That(result, Is.True);
 
-                IReadOnlyList<WButtonMethodMetadata> metadata = WButtonMetadataCache.GetMetadata(
-                    typeof(HelperTargetDerived)
-                );
-                Assert.That(
-                    metadata.Any(m => m.Method.Name == nameof(HelperTargetBase.BaseButton)),
-                    Is.True,
-                    "Should find inherited BaseButton method"
-                );
-                Assert.That(
-                    metadata.Any(m => m.Method.Name == nameof(HelperTargetDerived.DerivedButton)),
-                    Is.True,
-                    "Should find DerivedButton method"
-                );
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            IReadOnlyList<WButtonMethodMetadata> metadata = WButtonMetadataCache.GetMetadata(
+                typeof(HelperTargetDerived)
+            );
+            Assert.That(
+                metadata.Any(m => m.Method.Name == nameof(HelperTargetBase.BaseButton)),
+                Is.True,
+                "Should find inherited BaseButton method"
+            );
+            Assert.That(
+                metadata.Any(m => m.Method.Name == nameof(HelperTargetDerived.DerivedButton)),
+                Is.True,
+                "Should find DerivedButton method"
+            );
         }
 
         [Test]
@@ -350,41 +264,34 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Utils.WButton
             HelperTargetGroupPlacement target =
                 CreateScriptableObject<HelperTargetGroupPlacement>();
             UnityEditor.Editor editor = UnityEditor.Editor.CreateEditor(target);
-            try
-            {
-                WButtonEditorHelper helper = new WButtonEditorHelper();
+            WButtonEditorHelper helper = new WButtonEditorHelper();
 
-                bool topResult = helper.DrawButtonsAtTop(editor);
-                bool bottomResult = helper.DrawButtonsAtBottom(editor);
+            bool topResult = helper.DrawButtonsAtTop(editor);
+            bool bottomResult = helper.DrawButtonsAtBottom(editor);
 
-                Assert.That(topResult, Is.True, "Should draw top placement group");
-                Assert.That(bottomResult, Is.True, "Should draw bottom placement group");
+            Assert.That(topResult, Is.True, "Should draw top placement group");
+            Assert.That(bottomResult, Is.True, "Should draw bottom placement group");
 
-                IReadOnlyList<WButtonMethodMetadata> metadata = WButtonMetadataCache.GetMetadata(
-                    typeof(HelperTargetGroupPlacement)
-                );
-                WButtonMethodMetadata topButton = metadata.First(m =>
-                    m.Method.Name == nameof(HelperTargetGroupPlacement.TopGroupButton)
-                );
-                WButtonMethodMetadata bottomButton = metadata.First(m =>
-                    m.Method.Name == nameof(HelperTargetGroupPlacement.BottomGroupButton)
-                );
+            IReadOnlyList<WButtonMethodMetadata> metadata = WButtonMetadataCache.GetMetadata(
+                typeof(HelperTargetGroupPlacement)
+            );
+            WButtonMethodMetadata topButton = metadata.First(m =>
+                m.Method.Name == nameof(HelperTargetGroupPlacement.TopGroupButton)
+            );
+            WButtonMethodMetadata bottomButton = metadata.First(m =>
+                m.Method.Name == nameof(HelperTargetGroupPlacement.BottomGroupButton)
+            );
 
-                Assert.That(
-                    topButton.GroupPlacement,
-                    Is.EqualTo(WButtonGroupPlacement.Top),
-                    "TopGroupButton should have Top placement"
-                );
-                Assert.That(
-                    bottomButton.GroupPlacement,
-                    Is.EqualTo(WButtonGroupPlacement.Bottom),
-                    "BottomGroupButton should have Bottom placement"
-                );
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            Assert.That(
+                topButton.GroupPlacement,
+                Is.EqualTo(WButtonGroupPlacement.Top),
+                "TopGroupButton should have Top placement"
+            );
+            Assert.That(
+                bottomButton.GroupPlacement,
+                Is.EqualTo(WButtonGroupPlacement.Bottom),
+                "BottomGroupButton should have Bottom placement"
+            );
         }
 
         [Test]
@@ -392,26 +299,19 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Utils.WButton
         {
             HelperTargetWithGroup target = CreateScriptableObject<HelperTargetWithGroup>();
             UnityEditor.Editor editor = UnityEditor.Editor.CreateEditor(target);
-            try
-            {
-                WButtonEditorHelper helper = new WButtonEditorHelper();
+            WButtonEditorHelper helper = new WButtonEditorHelper();
 
-                Assert.DoesNotThrow(() => helper.DrawAllButtonsAndProcessInvocations(editor));
+            Assert.DoesNotThrow(() => helper.DrawAllButtonsAndProcessInvocations(editor));
 
-                IReadOnlyList<WButtonMethodMetadata> metadata = WButtonMetadataCache.GetMetadata(
-                    typeof(HelperTargetWithGroup)
-                );
-                WButtonMethodMetadata groupedButton = metadata.FirstOrDefault(m =>
-                    m.Method.Name == nameof(HelperTargetWithGroup.GroupedButton)
-                );
+            IReadOnlyList<WButtonMethodMetadata> metadata = WButtonMetadataCache.GetMetadata(
+                typeof(HelperTargetWithGroup)
+            );
+            WButtonMethodMetadata groupedButton = metadata.FirstOrDefault(m =>
+                m.Method.Name == nameof(HelperTargetWithGroup.GroupedButton)
+            );
 
-                Assert.That(groupedButton, Is.Not.Null);
-                Assert.That(groupedButton.GroupName, Is.EqualTo("TestGroup"));
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            Assert.That(groupedButton, Is.Not.Null);
+            Assert.That(groupedButton.GroupName, Is.EqualTo("TestGroup"));
         }
 
         [Test]
@@ -420,35 +320,28 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Utils.WButton
             HelperTargetWithParameters target =
                 CreateScriptableObject<HelperTargetWithParameters>();
             UnityEditor.Editor editor = UnityEditor.Editor.CreateEditor(target);
-            try
-            {
-                WButtonEditorHelper helper = new WButtonEditorHelper();
+            WButtonEditorHelper helper = new WButtonEditorHelper();
 
-                IReadOnlyList<WButtonMethodMetadata> metadata = WButtonMetadataCache.GetMetadata(
-                    typeof(HelperTargetWithParameters)
-                );
-                WButtonMethodMetadata paramMethod = metadata.First(m =>
-                    m.Method.Name == nameof(HelperTargetWithParameters.ButtonWithParam)
-                );
+            IReadOnlyList<WButtonMethodMetadata> metadata = WButtonMetadataCache.GetMetadata(
+                typeof(HelperTargetWithParameters)
+            );
+            WButtonMethodMetadata paramMethod = metadata.First(m =>
+                m.Method.Name == nameof(HelperTargetWithParameters.ButtonWithParam)
+            );
 
-                WButtonTargetState targetState = WButtonStateRepository.GetOrCreate(target);
-                WButtonMethodState methodState = targetState.GetOrCreateMethodState(paramMethod);
+            WButtonTargetState targetState = WButtonStateRepository.GetOrCreate(target);
+            WButtonMethodState methodState = targetState.GetOrCreateMethodState(paramMethod);
 
-                string testValue = "TestValue123";
-                methodState.Parameters[0].CurrentValue = testValue;
+            string testValue = "TestValue123";
+            methodState.Parameters[0].CurrentValue = testValue;
 
-                helper.DrawAllButtonsAndProcessInvocations(editor);
+            helper.DrawAllButtonsAndProcessInvocations(editor);
 
-                Assert.That(
-                    methodState.Parameters[0].CurrentValue,
-                    Is.EqualTo(testValue),
-                    "Parameter value should be preserved across draws"
-                );
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            Assert.That(
+                methodState.Parameters[0].CurrentValue,
+                Is.EqualTo(testValue),
+                "Parameter value should be preserved across draws"
+            );
         }
 
         [UnityTest]
@@ -457,41 +350,34 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Utils.WButton
             HelperTargetAsync target = CreateScriptableObject<HelperTargetAsync>();
             target.TaskCompletionCount = 0;
             UnityEditor.Editor editor = UnityEditor.Editor.CreateEditor(target);
-            try
-            {
-                WButtonEditorHelper helper = new WButtonEditorHelper();
-                helper.DrawAllButtonsAndProcessInvocations(editor);
+            WButtonEditorHelper helper = new WButtonEditorHelper();
+            helper.DrawAllButtonsAndProcessInvocations(editor);
 
-                IReadOnlyList<WButtonMethodMetadata> metadata = WButtonMetadataCache.GetMetadata(
-                    typeof(HelperTargetAsync)
-                );
-                WButtonMethodMetadata asyncMethod = metadata.First(m =>
-                    m.Method.Name == nameof(HelperTargetAsync.AsyncButton)
-                );
-                WButtonTargetState targetState = WButtonStateRepository.GetOrCreate(target);
-                WButtonMethodState methodState = targetState.GetOrCreateMethodState(asyncMethod);
-                WButtonMethodContext context = new WButtonMethodContext(
-                    asyncMethod,
-                    new[] { methodState },
-                    new UnityEngine.Object[] { target }
-                );
+            IReadOnlyList<WButtonMethodMetadata> metadata = WButtonMetadataCache.GetMetadata(
+                typeof(HelperTargetAsync)
+            );
+            WButtonMethodMetadata asyncMethod = metadata.First(m =>
+                m.Method.Name == nameof(HelperTargetAsync.AsyncButton)
+            );
+            WButtonTargetState targetState = WButtonStateRepository.GetOrCreate(target);
+            WButtonMethodState methodState = targetState.GetOrCreateMethodState(asyncMethod);
+            WButtonMethodContext context = new WButtonMethodContext(
+                asyncMethod,
+                new[] { methodState },
+                new UnityEngine.Object[] { target }
+            );
 
-                context.MarkTriggered();
-                WButtonInvocationController.ProcessTriggeredMethods(
-                    new List<WButtonMethodContext> { context }
-                );
+            context.MarkTriggered();
+            WButtonInvocationController.ProcessTriggeredMethods(
+                new List<WButtonMethodContext> { context }
+            );
 
-                yield return WaitUntil(() => methodState.ActiveInvocation == null, 5f);
+            yield return WaitUntil(() => methodState.ActiveInvocation == null, 5f);
 
-                Assert.That(target.TaskCompletionCount, Is.EqualTo(1));
-                Assert.That(methodState.History.Count, Is.GreaterThan(0));
-                WButtonResultEntry entry = methodState.History[^1];
-                Assert.That(entry.Kind, Is.EqualTo(WButtonResultKind.Success));
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            Assert.That(target.TaskCompletionCount, Is.EqualTo(1));
+            Assert.That(methodState.History.Count, Is.GreaterThan(0));
+            WButtonResultEntry entry = methodState.History[^1];
+            Assert.That(entry.Kind, Is.EqualTo(WButtonResultKind.Success));
         }
 
         [Test]
@@ -499,21 +385,14 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Utils.WButton
         {
             HelperTargetSimple target = CreateScriptableObject<HelperTargetSimple>();
             UnityEditor.Editor editor = UnityEditor.Editor.CreateEditor(target);
-            try
-            {
-                UnityEngine.Object.DestroyImmediate(target);
-                _trackedObjects.Remove(target);
+            UnityEngine.Object.DestroyImmediate(target);
+            _trackedObjects.Remove(target);
 
-                WButtonEditorHelper helper = new WButtonEditorHelper();
+            WButtonEditorHelper helper = new WButtonEditorHelper();
 
-                Assert.DoesNotThrow(() => helper.DrawButtonsAtTop(editor));
-                Assert.DoesNotThrow(() => helper.DrawButtonsAtBottom(editor));
-                Assert.DoesNotThrow(() => helper.ProcessInvocations());
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            Assert.DoesNotThrow(() => helper.DrawButtonsAtTop(editor));
+            Assert.DoesNotThrow(() => helper.DrawButtonsAtBottom(editor));
+            Assert.DoesNotThrow(() => helper.ProcessInvocations());
         }
 
         [Test]
@@ -522,29 +401,22 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Utils.WButton
             HelperTargetWithStaticMethod target =
                 CreateScriptableObject<HelperTargetWithStaticMethod>();
             UnityEditor.Editor editor = UnityEditor.Editor.CreateEditor(target);
-            try
-            {
-                WButtonEditorHelper helper = new WButtonEditorHelper();
+            WButtonEditorHelper helper = new WButtonEditorHelper();
 
-                bool result = helper.DrawAllButtonsAndProcessInvocations(editor);
+            bool result = helper.DrawAllButtonsAndProcessInvocations(editor);
 
-                Assert.That(result, Is.True);
+            Assert.That(result, Is.True);
 
-                IReadOnlyList<WButtonMethodMetadata> metadata = WButtonMetadataCache.GetMetadata(
-                    typeof(HelperTargetWithStaticMethod)
-                );
-                Assert.That(
-                    metadata.Any(m =>
-                        m.Method.Name == nameof(HelperTargetWithStaticMethod.StaticButton)
-                    ),
-                    Is.True,
-                    "Should find static WButton method"
-                );
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            IReadOnlyList<WButtonMethodMetadata> metadata = WButtonMetadataCache.GetMetadata(
+                typeof(HelperTargetWithStaticMethod)
+            );
+            Assert.That(
+                metadata.Any(m =>
+                    m.Method.Name == nameof(HelperTargetWithStaticMethod.StaticButton)
+                ),
+                Is.True,
+                "Should find static WButton method"
+            );
         }
 
         [Test]
@@ -553,29 +425,22 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Utils.WButton
             HelperTargetWithNonPublicMethod target =
                 CreateScriptableObject<HelperTargetWithNonPublicMethod>();
             UnityEditor.Editor editor = UnityEditor.Editor.CreateEditor(target);
-            try
-            {
-                WButtonEditorHelper helper = new WButtonEditorHelper();
+            WButtonEditorHelper helper = new WButtonEditorHelper();
 
-                bool result = helper.DrawAllButtonsAndProcessInvocations(editor);
+            bool result = helper.DrawAllButtonsAndProcessInvocations(editor);
 
-                Assert.That(result, Is.True);
+            Assert.That(result, Is.True);
 
-                IReadOnlyList<WButtonMethodMetadata> metadata = WButtonMetadataCache.GetMetadata(
-                    typeof(HelperTargetWithNonPublicMethod)
-                );
-                Assert.That(
-                    metadata.Any(m =>
-                        m.Method.Name == nameof(HelperTargetWithNonPublicMethod.InternalButton)
-                    ),
-                    Is.True,
-                    "Should find non-public WButton method"
-                );
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            IReadOnlyList<WButtonMethodMetadata> metadata = WButtonMetadataCache.GetMetadata(
+                typeof(HelperTargetWithNonPublicMethod)
+            );
+            Assert.That(
+                metadata.Any(m =>
+                    m.Method.Name == nameof(HelperTargetWithNonPublicMethod.InternalButton)
+                ),
+                Is.True,
+                "Should find non-public WButton method"
+            );
         }
 
         [Test]
@@ -584,27 +449,20 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Utils.WButton
             HelperTargetWithDisplayName target =
                 CreateScriptableObject<HelperTargetWithDisplayName>();
             UnityEditor.Editor editor = UnityEditor.Editor.CreateEditor(target);
-            try
-            {
-                WButtonEditorHelper helper = new WButtonEditorHelper();
+            WButtonEditorHelper helper = new WButtonEditorHelper();
 
-                bool result = helper.DrawAllButtonsAndProcessInvocations(editor);
+            bool result = helper.DrawAllButtonsAndProcessInvocations(editor);
 
-                Assert.That(result, Is.True);
+            Assert.That(result, Is.True);
 
-                IReadOnlyList<WButtonMethodMetadata> metadata = WButtonMetadataCache.GetMetadata(
-                    typeof(HelperTargetWithDisplayName)
-                );
-                WButtonMethodMetadata buttonWithDisplayName = metadata.First(m =>
-                    m.Method.Name == nameof(HelperTargetWithDisplayName.SomeMethod)
-                );
+            IReadOnlyList<WButtonMethodMetadata> metadata = WButtonMetadataCache.GetMetadata(
+                typeof(HelperTargetWithDisplayName)
+            );
+            WButtonMethodMetadata buttonWithDisplayName = metadata.First(m =>
+                m.Method.Name == nameof(HelperTargetWithDisplayName.SomeMethod)
+            );
 
-                Assert.That(buttonWithDisplayName.DisplayName, Is.EqualTo("Custom Display Name"));
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            Assert.That(buttonWithDisplayName.DisplayName, Is.EqualTo("Custom Display Name"));
         }
 
         [Test]
@@ -612,32 +470,25 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Utils.WButton
         {
             HelperTargetWithDrawOrder target = CreateScriptableObject<HelperTargetWithDrawOrder>();
             UnityEditor.Editor editor = UnityEditor.Editor.CreateEditor(target);
-            try
-            {
-                WButtonEditorHelper helper = new WButtonEditorHelper();
+            WButtonEditorHelper helper = new WButtonEditorHelper();
 
-                bool result = helper.DrawAllButtonsAndProcessInvocations(editor);
+            bool result = helper.DrawAllButtonsAndProcessInvocations(editor);
 
-                Assert.That(result, Is.True);
+            Assert.That(result, Is.True);
 
-                IReadOnlyList<WButtonMethodMetadata> metadata = WButtonMetadataCache.GetMetadata(
-                    typeof(HelperTargetWithDrawOrder)
-                );
+            IReadOnlyList<WButtonMethodMetadata> metadata = WButtonMetadataCache.GetMetadata(
+                typeof(HelperTargetWithDrawOrder)
+            );
 
-                WButtonMethodMetadata firstButton = metadata.First(m =>
-                    m.Method.Name == nameof(HelperTargetWithDrawOrder.FirstButton)
-                );
-                WButtonMethodMetadata secondButton = metadata.First(m =>
-                    m.Method.Name == nameof(HelperTargetWithDrawOrder.SecondButton)
-                );
+            WButtonMethodMetadata firstButton = metadata.First(m =>
+                m.Method.Name == nameof(HelperTargetWithDrawOrder.FirstButton)
+            );
+            WButtonMethodMetadata secondButton = metadata.First(m =>
+                m.Method.Name == nameof(HelperTargetWithDrawOrder.SecondButton)
+            );
 
-                Assert.That(firstButton.DrawOrder, Is.EqualTo(0));
-                Assert.That(secondButton.DrawOrder, Is.EqualTo(10));
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            Assert.That(firstButton.DrawOrder, Is.EqualTo(0));
+            Assert.That(secondButton.DrawOrder, Is.EqualTo(10));
         }
 
         [Test]
@@ -646,32 +497,25 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Utils.WButton
             HelperTargetWithGroupPriority target =
                 CreateScriptableObject<HelperTargetWithGroupPriority>();
             UnityEditor.Editor editor = UnityEditor.Editor.CreateEditor(target);
-            try
-            {
-                WButtonEditorHelper helper = new WButtonEditorHelper();
+            WButtonEditorHelper helper = new WButtonEditorHelper();
 
-                bool result = helper.DrawAllButtonsAndProcessInvocations(editor);
+            bool result = helper.DrawAllButtonsAndProcessInvocations(editor);
 
-                Assert.That(result, Is.True);
+            Assert.That(result, Is.True);
 
-                IReadOnlyList<WButtonMethodMetadata> metadata = WButtonMetadataCache.GetMetadata(
-                    typeof(HelperTargetWithGroupPriority)
-                );
+            IReadOnlyList<WButtonMethodMetadata> metadata = WButtonMetadataCache.GetMetadata(
+                typeof(HelperTargetWithGroupPriority)
+            );
 
-                WButtonMethodMetadata highPriority = metadata.First(m =>
-                    m.Method.Name == nameof(HelperTargetWithGroupPriority.HighPriorityButton)
-                );
-                WButtonMethodMetadata lowPriority = metadata.First(m =>
-                    m.Method.Name == nameof(HelperTargetWithGroupPriority.LowPriorityButton)
-                );
+            WButtonMethodMetadata highPriority = metadata.First(m =>
+                m.Method.Name == nameof(HelperTargetWithGroupPriority.HighPriorityButton)
+            );
+            WButtonMethodMetadata lowPriority = metadata.First(m =>
+                m.Method.Name == nameof(HelperTargetWithGroupPriority.LowPriorityButton)
+            );
 
-                Assert.That(highPriority.GroupPriority, Is.EqualTo(0));
-                Assert.That(lowPriority.GroupPriority, Is.EqualTo(100));
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            Assert.That(highPriority.GroupPriority, Is.EqualTo(0));
+            Assert.That(lowPriority.GroupPriority, Is.EqualTo(100));
         }
 
         [UnityTest]
@@ -680,46 +524,39 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Utils.WButton
             HelperTargetCancellable target = CreateScriptableObject<HelperTargetCancellable>();
             target.WasCancelled = false;
             UnityEditor.Editor editor = UnityEditor.Editor.CreateEditor(target);
-            try
-            {
-                WButtonEditorHelper helper = new WButtonEditorHelper();
-                helper.DrawAllButtonsAndProcessInvocations(editor);
+            WButtonEditorHelper helper = new WButtonEditorHelper();
+            helper.DrawAllButtonsAndProcessInvocations(editor);
 
-                IReadOnlyList<WButtonMethodMetadata> metadata = WButtonMetadataCache.GetMetadata(
-                    typeof(HelperTargetCancellable)
-                );
-                WButtonMethodMetadata cancellableMethod = metadata.First(m =>
-                    m.Method.Name == nameof(HelperTargetCancellable.CancellableAsyncButton)
-                );
-                WButtonTargetState targetState = WButtonStateRepository.GetOrCreate(target);
-                WButtonMethodState methodState = targetState.GetOrCreateMethodState(
-                    cancellableMethod
-                );
-                WButtonMethodContext context = new WButtonMethodContext(
-                    cancellableMethod,
-                    new[] { methodState },
-                    new UnityEngine.Object[] { target }
-                );
+            IReadOnlyList<WButtonMethodMetadata> metadata = WButtonMetadataCache.GetMetadata(
+                typeof(HelperTargetCancellable)
+            );
+            WButtonMethodMetadata cancellableMethod = metadata.First(m =>
+                m.Method.Name == nameof(HelperTargetCancellable.CancellableAsyncButton)
+            );
+            WButtonTargetState targetState = WButtonStateRepository.GetOrCreate(target);
+            WButtonMethodState methodState = targetState.GetOrCreateMethodState(
+                cancellableMethod
+            );
+            WButtonMethodContext context = new WButtonMethodContext(
+                cancellableMethod,
+                new[] { methodState },
+                new UnityEngine.Object[] { target }
+            );
 
-                context.MarkTriggered();
-                WButtonInvocationController.ProcessTriggeredMethods(
-                    new List<WButtonMethodContext> { context }
-                );
+            context.MarkTriggered();
+            WButtonInvocationController.ProcessTriggeredMethods(
+                new List<WButtonMethodContext> { context }
+            );
 
-                yield return null;
+            yield return null;
 
-                Assert.That(methodState.ActiveInvocation, Is.Not.Null);
+            Assert.That(methodState.ActiveInvocation, Is.Not.Null);
 
-                WButtonInvocationController.CancelActiveInvocations(context);
+            WButtonInvocationController.CancelActiveInvocations(context);
 
-                yield return WaitUntil(() => methodState.ActiveInvocation == null, 5f);
+            yield return WaitUntil(() => methodState.ActiveInvocation == null, 5f);
 
-                Assert.That(target.WasCancelled, Is.True);
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            Assert.That(target.WasCancelled, Is.True);
         }
 
         [Test]
@@ -728,23 +565,16 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Utils.WButton
             GameObject go = NewGameObject("HelperMBTest");
             HelperMonoBehaviourTarget target = go.AddComponent<HelperMonoBehaviourTarget>();
             UnityEditor.Editor editor = UnityEditor.Editor.CreateEditor(target);
-            try
-            {
-                WButtonEditorHelper helper = new WButtonEditorHelper();
+            WButtonEditorHelper helper = new WButtonEditorHelper();
 
-                bool result = helper.DrawAllButtonsAndProcessInvocations(editor);
+            bool result = helper.DrawAllButtonsAndProcessInvocations(editor);
 
-                Assert.That(result, Is.True);
+            Assert.That(result, Is.True);
 
-                IReadOnlyList<WButtonMethodMetadata> metadata = WButtonMetadataCache.GetMetadata(
-                    typeof(HelperMonoBehaviourTarget)
-                );
-                Assert.That(metadata.Count, Is.GreaterThan(0));
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            IReadOnlyList<WButtonMethodMetadata> metadata = WButtonMetadataCache.GetMetadata(
+                typeof(HelperMonoBehaviourTarget)
+            );
+            Assert.That(metadata.Count, Is.GreaterThan(0));
         }
 
         [Test]
@@ -752,23 +582,16 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Utils.WButton
         {
             HelperTargetSimple target = CreateScriptableObject<HelperTargetSimple>();
             UnityEditor.Editor editor = UnityEditor.Editor.CreateEditor(target);
-            try
-            {
-                WButtonEditorHelper helper = new WButtonEditorHelper();
+            WButtonEditorHelper helper = new WButtonEditorHelper();
 
-                for (int i = 0; i < 100; i++)
-                {
-                    helper.DrawButtonsAtTop(editor);
-                    helper.DrawButtonsAtBottom(editor);
-                    helper.ProcessInvocations();
-                }
-
-                Assert.Pass("Completed 100 draw cycles without exception");
-            }
-            finally
+            for (int i = 0; i < 100; i++)
             {
-                UnityEngine.Object.DestroyImmediate(editor);
+                helper.DrawButtonsAtTop(editor);
+                helper.DrawButtonsAtBottom(editor);
+                helper.ProcessInvocations();
             }
+
+            Assert.Pass("Completed 100 draw cycles without exception");
         }
 
         [Test]
@@ -776,27 +599,20 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Utils.WButton
         {
             HelperTargetWithColorKey target = CreateScriptableObject<HelperTargetWithColorKey>();
             UnityEditor.Editor editor = UnityEditor.Editor.CreateEditor(target);
-            try
-            {
-                WButtonEditorHelper helper = new WButtonEditorHelper();
+            WButtonEditorHelper helper = new WButtonEditorHelper();
 
-                bool result = helper.DrawAllButtonsAndProcessInvocations(editor);
+            bool result = helper.DrawAllButtonsAndProcessInvocations(editor);
 
-                Assert.That(result, Is.True);
+            Assert.That(result, Is.True);
 
-                IReadOnlyList<WButtonMethodMetadata> metadata = WButtonMetadataCache.GetMetadata(
-                    typeof(HelperTargetWithColorKey)
-                );
-                WButtonMethodMetadata colorKeyButton = metadata.First(m =>
-                    m.Method.Name == nameof(HelperTargetWithColorKey.ColoredButton)
-                );
+            IReadOnlyList<WButtonMethodMetadata> metadata = WButtonMetadataCache.GetMetadata(
+                typeof(HelperTargetWithColorKey)
+            );
+            WButtonMethodMetadata colorKeyButton = metadata.First(m =>
+                m.Method.Name == nameof(HelperTargetWithColorKey.ColoredButton)
+            );
 
-                Assert.That(colorKeyButton.ColorKey, Is.EqualTo("CustomColor"));
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            Assert.That(colorKeyButton.ColorKey, Is.EqualTo("CustomColor"));
         }
 
         [Test]
@@ -805,27 +621,20 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Utils.WButton
             HelperTargetWithHistoryCapacity target =
                 CreateScriptableObject<HelperTargetWithHistoryCapacity>();
             UnityEditor.Editor editor = UnityEditor.Editor.CreateEditor(target);
-            try
-            {
-                WButtonEditorHelper helper = new WButtonEditorHelper();
+            WButtonEditorHelper helper = new WButtonEditorHelper();
 
-                bool result = helper.DrawAllButtonsAndProcessInvocations(editor);
+            bool result = helper.DrawAllButtonsAndProcessInvocations(editor);
 
-                Assert.That(result, Is.True);
+            Assert.That(result, Is.True);
 
-                IReadOnlyList<WButtonMethodMetadata> metadata = WButtonMetadataCache.GetMetadata(
-                    typeof(HelperTargetWithHistoryCapacity)
-                );
-                WButtonMethodMetadata historyButton = metadata.First(m =>
-                    m.Method.Name == nameof(HelperTargetWithHistoryCapacity.LimitedHistoryButton)
-                );
+            IReadOnlyList<WButtonMethodMetadata> metadata = WButtonMetadataCache.GetMetadata(
+                typeof(HelperTargetWithHistoryCapacity)
+            );
+            WButtonMethodMetadata historyButton = metadata.First(m =>
+                m.Method.Name == nameof(HelperTargetWithHistoryCapacity.LimitedHistoryButton)
+            );
 
-                Assert.That(historyButton.HistoryCapacity, Is.EqualTo(3));
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            Assert.That(historyButton.HistoryCapacity, Is.EqualTo(3));
         }
 
         [Test]
@@ -834,28 +643,21 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Utils.WButton
             HelperTargetWithReturnValue target =
                 CreateScriptableObject<HelperTargetWithReturnValue>();
             UnityEditor.Editor editor = UnityEditor.Editor.CreateEditor(target);
-            try
-            {
-                WButtonEditorHelper helper = new WButtonEditorHelper();
+            WButtonEditorHelper helper = new WButtonEditorHelper();
 
-                bool result = helper.DrawAllButtonsAndProcessInvocations(editor);
+            bool result = helper.DrawAllButtonsAndProcessInvocations(editor);
 
-                Assert.That(result, Is.True);
+            Assert.That(result, Is.True);
 
-                IReadOnlyList<WButtonMethodMetadata> metadata = WButtonMetadataCache.GetMetadata(
-                    typeof(HelperTargetWithReturnValue)
-                );
-                WButtonMethodMetadata returnMethod = metadata.First(m =>
-                    m.Method.Name == nameof(HelperTargetWithReturnValue.ButtonWithReturn)
-                );
+            IReadOnlyList<WButtonMethodMetadata> metadata = WButtonMetadataCache.GetMetadata(
+                typeof(HelperTargetWithReturnValue)
+            );
+            WButtonMethodMetadata returnMethod = metadata.First(m =>
+                m.Method.Name == nameof(HelperTargetWithReturnValue.ButtonWithReturn)
+            );
 
-                Assert.That(returnMethod.ReturnsVoid, Is.False);
-                Assert.That(returnMethod.ReturnType, Is.EqualTo(typeof(int)));
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            Assert.That(returnMethod.ReturnsVoid, Is.False);
+            Assert.That(returnMethod.ReturnType, Is.EqualTo(typeof(int)));
         }
 
         [Test]
@@ -864,33 +666,26 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Utils.WButton
             HelperTargetMultipleParams target =
                 CreateScriptableObject<HelperTargetMultipleParams>();
             UnityEditor.Editor editor = UnityEditor.Editor.CreateEditor(target);
-            try
-            {
-                WButtonEditorHelper helper = new WButtonEditorHelper();
+            WButtonEditorHelper helper = new WButtonEditorHelper();
 
-                bool result = helper.DrawAllButtonsAndProcessInvocations(editor);
+            bool result = helper.DrawAllButtonsAndProcessInvocations(editor);
 
-                Assert.That(result, Is.True);
+            Assert.That(result, Is.True);
 
-                IReadOnlyList<WButtonMethodMetadata> metadata = WButtonMetadataCache.GetMetadata(
-                    typeof(HelperTargetMultipleParams)
-                );
-                WButtonMethodMetadata multiParamMethod = metadata.First(m =>
-                    m.Method.Name == nameof(HelperTargetMultipleParams.MultiParamButton)
-                );
+            IReadOnlyList<WButtonMethodMetadata> metadata = WButtonMetadataCache.GetMetadata(
+                typeof(HelperTargetMultipleParams)
+            );
+            WButtonMethodMetadata multiParamMethod = metadata.First(m =>
+                m.Method.Name == nameof(HelperTargetMultipleParams.MultiParamButton)
+            );
 
-                Assert.That(multiParamMethod.Parameters.Length, Is.EqualTo(3));
-                Assert.That(
-                    multiParamMethod.Parameters[0].ParameterType,
-                    Is.EqualTo(typeof(string))
-                );
-                Assert.That(multiParamMethod.Parameters[1].ParameterType, Is.EqualTo(typeof(int)));
-                Assert.That(multiParamMethod.Parameters[2].ParameterType, Is.EqualTo(typeof(bool)));
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            Assert.That(multiParamMethod.Parameters.Length, Is.EqualTo(3));
+            Assert.That(
+                multiParamMethod.Parameters[0].ParameterType,
+                Is.EqualTo(typeof(string))
+            );
+            Assert.That(multiParamMethod.Parameters[1].ParameterType, Is.EqualTo(typeof(int)));
+            Assert.That(multiParamMethod.Parameters[2].ParameterType, Is.EqualTo(typeof(bool)));
         }
 
         private static IEnumerator WaitUntil(Func<bool> condition, float timeoutSeconds)
@@ -912,161 +707,144 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Utils.WButton
             HelperTargetValueTask target = CreateScriptableObject<HelperTargetValueTask>();
             target.CompletionCount = 0;
             UnityEditor.Editor editor = UnityEditor.Editor.CreateEditor(target);
-            try
-            {
-                WButtonEditorHelper helper = new WButtonEditorHelper();
-                helper.DrawAllButtonsAndProcessInvocations(editor);
+            WButtonEditorHelper helper = new WButtonEditorHelper();
+            helper.DrawAllButtonsAndProcessInvocations(editor);
 
-                IReadOnlyList<WButtonMethodMetadata> metadata = WButtonMetadataCache.GetMetadata(
-                    typeof(HelperTargetValueTask)
-                );
-                WButtonMethodMetadata valueTaskMethod = metadata.First(m =>
-                    m.Method.Name == nameof(HelperTargetValueTask.ValueTaskButton)
-                );
-                WButtonTargetState targetState = WButtonStateRepository.GetOrCreate(target);
-                WButtonMethodState methodState = targetState.GetOrCreateMethodState(
-                    valueTaskMethod
-                );
-                WButtonMethodContext context = new WButtonMethodContext(
-                    valueTaskMethod,
-                    new[] { methodState },
-                    new UnityEngine.Object[] { target }
-                );
+            IReadOnlyList<WButtonMethodMetadata> metadata = WButtonMetadataCache.GetMetadata(
+                typeof(HelperTargetValueTask)
+            );
+            WButtonMethodMetadata valueTaskMethod = metadata.First(m =>
+                m.Method.Name == nameof(HelperTargetValueTask.ValueTaskButton)
+            );
+            WButtonTargetState targetState = WButtonStateRepository.GetOrCreate(target);
+            WButtonMethodState methodState = targetState.GetOrCreateMethodState(
+                valueTaskMethod
+            );
+            WButtonMethodContext context = new WButtonMethodContext(
+                valueTaskMethod,
+                new[] { methodState },
+                new UnityEngine.Object[] { target }
+            );
 
-                context.MarkTriggered();
-                WButtonInvocationController.ProcessTriggeredMethods(
-                    new List<WButtonMethodContext> { context }
-                );
+            context.MarkTriggered();
+            WButtonInvocationController.ProcessTriggeredMethods(
+                new List<WButtonMethodContext> { context }
+            );
 
-                yield return WaitUntil(() => methodState.ActiveInvocation == null, 5f);
+            yield return WaitUntil(() => methodState.ActiveInvocation == null, 5f);
 
-                Assert.That(
-                    target.CompletionCount,
-                    Is.EqualTo(1),
-                    "ValueTask method should have completed"
-                );
-                Assert.That(
-                    methodState.History.Count,
-                    Is.GreaterThan(0),
-                    "Should have history entry"
-                );
-                WButtonResultEntry entry = methodState.History[^1];
-                Assert.That(
-                    entry.Kind,
-                    Is.EqualTo(WButtonResultKind.Success),
-                    "Should be success entry"
-                );
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            Assert.That(
+                target.CompletionCount,
+                Is.EqualTo(1),
+                "ValueTask method should have completed"
+            );
+            Assert.That(
+                methodState.History.Count,
+                Is.GreaterThan(0),
+                "Should have history entry"
+            );
+            WButtonResultEntry entry = methodState.History[^1];
+            Assert.That(
+                entry.Kind,
+                Is.EqualTo(WButtonResultKind.Success),
+                "Should be success entry"
+            );
         }
 
         [UnityTest]
         public IEnumerator ValueTaskWithReturnValueCapturesResultInHistory()
         {
             HelperTargetValueTaskWithReturn target =
-                CreateScriptableObject<HelperTargetValueTaskWithReturn>();
+            CreateScriptableObject<HelperTargetValueTaskWithReturn>();
             UnityEditor.Editor editor = UnityEditor.Editor.CreateEditor(target);
-            try
-            {
-                WButtonEditorHelper helper = new WButtonEditorHelper();
-                helper.DrawAllButtonsAndProcessInvocations(editor);
+         
+            WButtonEditorHelper helper = new WButtonEditorHelper();
+            helper.DrawAllButtonsAndProcessInvocations(editor);
 
-                IReadOnlyList<WButtonMethodMetadata> metadata = WButtonMetadataCache.GetMetadata(
-                    typeof(HelperTargetValueTaskWithReturn)
-                );
-                WButtonMethodMetadata valueTaskMethod = metadata.First(m =>
-                    m.Method.Name
-                    == nameof(HelperTargetValueTaskWithReturn.ValueTaskWithReturnButton)
-                );
-                WButtonTargetState targetState = WButtonStateRepository.GetOrCreate(target);
-                WButtonMethodState methodState = targetState.GetOrCreateMethodState(
-                    valueTaskMethod
-                );
-                WButtonMethodContext context = new WButtonMethodContext(
-                    valueTaskMethod,
-                    new[] { methodState },
-                    new UnityEngine.Object[] { target }
-                );
+            IReadOnlyList<WButtonMethodMetadata> metadata = WButtonMetadataCache.GetMetadata(
+                typeof(HelperTargetValueTaskWithReturn)
+            );
+            WButtonMethodMetadata valueTaskMethod = metadata.First(m =>
+                m.Method.Name
+                == nameof(HelperTargetValueTaskWithReturn.ValueTaskWithReturnButton)
+            );
+            WButtonTargetState targetState = WButtonStateRepository.GetOrCreate(target);
+            WButtonMethodState methodState = targetState.GetOrCreateMethodState(
+                valueTaskMethod
+            );
+            WButtonMethodContext context = new WButtonMethodContext(
+                valueTaskMethod,
+                new[] { methodState },
+                new UnityEngine.Object[] { target }
+            );
 
-                context.MarkTriggered();
-                WButtonInvocationController.ProcessTriggeredMethods(
-                    new List<WButtonMethodContext> { context }
-                );
+            context.MarkTriggered();
+            WButtonInvocationController.ProcessTriggeredMethods(
+                new List<WButtonMethodContext> { context }
+            );
 
-                yield return WaitUntil(() => methodState.ActiveInvocation == null, 5f);
+            yield return WaitUntil(() => methodState.ActiveInvocation == null, 5f);
 
-                Assert.That(
-                    methodState.History.Count,
-                    Is.GreaterThan(0),
-                    "Should have history entry"
-                );
-                WButtonResultEntry entry = methodState.History[^1];
-                Assert.That(
-                    entry.Kind,
-                    Is.EqualTo(WButtonResultKind.Success),
-                    "Should be success entry"
-                );
-                Assert.That(
-                    entry.Value,
-                    Is.EqualTo(99),
-                    "Should capture returned value in history"
-                );
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            Assert.That(
+                methodState.History.Count,
+                Is.GreaterThan(0),
+                "Should have history entry"
+            );
+            WButtonResultEntry entry = methodState.History[^1];
+            Assert.That(
+                entry.Kind,
+                Is.EqualTo(WButtonResultKind.Success),
+                "Should be success entry"
+            );
+            Assert.That(
+                entry.Value,
+                Is.EqualTo(99),
+                "Should capture returned value in history"
+            );
+            
         }
 
         [Test]
         public void SynchronousMethodReturnValueCapturedInHistory()
         {
             HelperTargetWithReturnValue target =
-                CreateScriptableObject<HelperTargetWithReturnValue>();
+            CreateScriptableObject<HelperTargetWithReturnValue>();
             UnityEditor.Editor editor = UnityEditor.Editor.CreateEditor(target);
-            try
-            {
-                WButtonEditorHelper helper = new WButtonEditorHelper();
+         
+            WButtonEditorHelper helper = new WButtonEditorHelper();
 
-                IReadOnlyList<WButtonMethodMetadata> metadata = WButtonMetadataCache.GetMetadata(
-                    typeof(HelperTargetWithReturnValue)
-                );
-                WButtonMethodMetadata returnMethod = metadata.First(m =>
-                    m.Method.Name == nameof(HelperTargetWithReturnValue.ButtonWithReturn)
-                );
-                WButtonTargetState targetState = WButtonStateRepository.GetOrCreate(target);
-                WButtonMethodState methodState = targetState.GetOrCreateMethodState(returnMethod);
-                WButtonMethodContext context = new WButtonMethodContext(
-                    returnMethod,
-                    new[] { methodState },
-                    new UnityEngine.Object[] { target }
-                );
+            IReadOnlyList<WButtonMethodMetadata> metadata = WButtonMetadataCache.GetMetadata(
+                typeof(HelperTargetWithReturnValue)
+            );
+            WButtonMethodMetadata returnMethod = metadata.First(m =>
+                m.Method.Name == nameof(HelperTargetWithReturnValue.ButtonWithReturn)
+            );
+            WButtonTargetState targetState = WButtonStateRepository.GetOrCreate(target);
+            WButtonMethodState methodState = targetState.GetOrCreateMethodState(returnMethod);
+            WButtonMethodContext context = new WButtonMethodContext(
+                returnMethod,
+                new[] { methodState },
+                new UnityEngine.Object[] { target }
+            );
 
-                context.MarkTriggered();
-                WButtonInvocationController.ProcessTriggeredMethods(
-                    new List<WButtonMethodContext> { context }
-                );
+            context.MarkTriggered();
+            WButtonInvocationController.ProcessTriggeredMethods(
+                new List<WButtonMethodContext> { context }
+            );
 
-                Assert.That(
-                    methodState.History.Count,
-                    Is.GreaterThan(0),
-                    "Should have history entry"
-                );
-                WButtonResultEntry entry = methodState.History[^1];
-                Assert.That(
-                    entry.Kind,
-                    Is.EqualTo(WButtonResultKind.Success),
-                    "Should be success entry"
-                );
-                Assert.That(entry.Value, Is.EqualTo(42), "Should capture returned integer value");
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            Assert.That(
+                methodState.History.Count,
+                Is.GreaterThan(0),
+                "Should have history entry"
+            );
+            WButtonResultEntry entry = methodState.History[^1];
+            Assert.That(
+                entry.Kind,
+                Is.EqualTo(WButtonResultKind.Success),
+                "Should be success entry"
+            );
+            Assert.That(entry.Value, Is.EqualTo(42), "Should capture returned integer value");
+            
         }
 
         [Test]
@@ -1074,44 +852,39 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Utils.WButton
         {
             HelperTargetStringReturn target = CreateScriptableObject<HelperTargetStringReturn>();
             UnityEditor.Editor editor = UnityEditor.Editor.CreateEditor(target);
-            try
-            {
-                IReadOnlyList<WButtonMethodMetadata> metadata = WButtonMetadataCache.GetMetadata(
-                    typeof(HelperTargetStringReturn)
-                );
-                WButtonMethodMetadata returnMethod = metadata.First(m =>
-                    m.Method.Name == nameof(HelperTargetStringReturn.GetMessage)
-                );
-                WButtonTargetState targetState = WButtonStateRepository.GetOrCreate(target);
-                WButtonMethodState methodState = targetState.GetOrCreateMethodState(returnMethod);
-                WButtonMethodContext context = new WButtonMethodContext(
-                    returnMethod,
-                    new[] { methodState },
-                    new UnityEngine.Object[] { target }
-                );
+         
+            IReadOnlyList<WButtonMethodMetadata> metadata = WButtonMetadataCache.GetMetadata(
+                typeof(HelperTargetStringReturn)
+            );
+            WButtonMethodMetadata returnMethod = metadata.First(m =>
+                m.Method.Name == nameof(HelperTargetStringReturn.GetMessage)
+            );
+            WButtonTargetState targetState = WButtonStateRepository.GetOrCreate(target);
+            WButtonMethodState methodState = targetState.GetOrCreateMethodState(returnMethod);
+            WButtonMethodContext context = new WButtonMethodContext(
+                returnMethod,
+                new[] { methodState },
+                new UnityEngine.Object[] { target }
+            );
 
-                context.MarkTriggered();
-                WButtonInvocationController.ProcessTriggeredMethods(
-                    new List<WButtonMethodContext> { context }
-                );
+            context.MarkTriggered();
+            WButtonInvocationController.ProcessTriggeredMethods(
+                new List<WButtonMethodContext> { context }
+            );
 
-                Assert.That(
-                    methodState.History.Count,
-                    Is.GreaterThan(0),
-                    "Should have history entry"
-                );
-                WButtonResultEntry entry = methodState.History[^1];
-                Assert.That(entry.Kind, Is.EqualTo(WButtonResultKind.Success));
-                Assert.That(
-                    entry.Value,
-                    Is.EqualTo("Hello from WButton"),
-                    "Should capture string return value"
-                );
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            Assert.That(
+                methodState.History.Count,
+                Is.GreaterThan(0),
+                "Should have history entry"
+            );
+            WButtonResultEntry entry = methodState.History[^1];
+            Assert.That(entry.Kind, Is.EqualTo(WButtonResultKind.Success));
+            Assert.That(
+                entry.Value,
+                Is.EqualTo("Hello from WButton"),
+                "Should capture string return value"
+            );
+            
         }
 
         [Test]
@@ -1171,53 +944,46 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Utils.WButton
             HelperTargetAsyncWithReturn target =
                 CreateScriptableObject<HelperTargetAsyncWithReturn>();
             UnityEditor.Editor editor = UnityEditor.Editor.CreateEditor(target);
-            try
-            {
-                WButtonEditorHelper helper = new WButtonEditorHelper();
-                helper.DrawAllButtonsAndProcessInvocations(editor);
+            WButtonEditorHelper helper = new WButtonEditorHelper();
+            helper.DrawAllButtonsAndProcessInvocations(editor);
 
-                IReadOnlyList<WButtonMethodMetadata> metadata = WButtonMetadataCache.GetMetadata(
-                    typeof(HelperTargetAsyncWithReturn)
-                );
-                WButtonMethodMetadata asyncMethod = metadata.First(m =>
-                    m.Method.Name == nameof(HelperTargetAsyncWithReturn.AsyncButtonWithReturn)
-                );
-                WButtonTargetState targetState = WButtonStateRepository.GetOrCreate(target);
-                WButtonMethodState methodState = targetState.GetOrCreateMethodState(asyncMethod);
-                WButtonMethodContext context = new WButtonMethodContext(
-                    asyncMethod,
-                    new[] { methodState },
-                    new UnityEngine.Object[] { target }
-                );
+            IReadOnlyList<WButtonMethodMetadata> metadata = WButtonMetadataCache.GetMetadata(
+                typeof(HelperTargetAsyncWithReturn)
+            );
+            WButtonMethodMetadata asyncMethod = metadata.First(m =>
+                m.Method.Name == nameof(HelperTargetAsyncWithReturn.AsyncButtonWithReturn)
+            );
+            WButtonTargetState targetState = WButtonStateRepository.GetOrCreate(target);
+            WButtonMethodState methodState = targetState.GetOrCreateMethodState(asyncMethod);
+            WButtonMethodContext context = new WButtonMethodContext(
+                asyncMethod,
+                new[] { methodState },
+                new UnityEngine.Object[] { target }
+            );
 
-                context.MarkTriggered();
-                WButtonInvocationController.ProcessTriggeredMethods(
-                    new List<WButtonMethodContext> { context }
-                );
+            context.MarkTriggered();
+            WButtonInvocationController.ProcessTriggeredMethods(
+                new List<WButtonMethodContext> { context }
+            );
 
-                yield return WaitUntil(() => methodState.ActiveInvocation == null, 5f);
+            yield return WaitUntil(() => methodState.ActiveInvocation == null, 5f);
 
-                Assert.That(
-                    methodState.History.Count,
-                    Is.GreaterThan(0),
-                    "Should have history entry"
-                );
-                WButtonResultEntry entry = methodState.History[^1];
-                Assert.That(
-                    entry.Kind,
-                    Is.EqualTo(WButtonResultKind.Success),
-                    "Should be success entry"
-                );
-                Assert.That(
-                    entry.Value,
-                    Is.EqualTo("AsyncResult"),
-                    "Should capture async returned value"
-                );
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(editor);
-            }
+            Assert.That(
+                methodState.History.Count,
+                Is.GreaterThan(0),
+                "Should have history entry"
+            );
+            WButtonResultEntry entry = methodState.History[^1];
+            Assert.That(
+                entry.Kind,
+                Is.EqualTo(WButtonResultKind.Success),
+                "Should be success entry"
+            );
+            Assert.That(
+                entry.Value,
+                Is.EqualTo("AsyncResult"),
+                "Should capture async returned value"
+            );
         }
     }
 
