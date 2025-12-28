@@ -939,7 +939,7 @@ public class CharacterConfig : MonoBehaviour
 ## See Also
 
 - **[Inspector Overview](../inspector/inspector-overview.md)** - Complete inspector features overview
-- **[Serialization Guide](serialization.md)** - JSON/Protobuf serialization
+- **[Serialization Guide](./serialization.md)** - JSON/Protobuf serialization
 - **[Data Structures](../utilities/data-structures.md)** - Other data structures
 - **[Editor Tools Guide](../editor-tools/editor-tools-guide.md)** - Editor utilities
 

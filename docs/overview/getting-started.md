@@ -93,7 +93,7 @@ Jump directly to the solution you need:
 Comprehensive deep-dive (best for team leads and senior developers):
 
 1. Read [Main Documentation](../../README.md) - Full feature overview
-2. Review [Features Documentation](index.md) - Detailed API documentation
+2. Review [Features Documentation](./index.md) - Detailed API documentation
 3. Explore category-specific guides as needed
 
 ### 💡 Path 3: "I Learn Best from Examples"
@@ -370,8 +370,8 @@ Pick one feature that solves your immediate problem:
 **Core Guides:**
 
 - [Main README](../../README.md) - Complete feature overview
-- [Feature Index](index.md) - Alphabetical reference
-- [Glossary](glossary.md) - Term definitions
+- [Feature Index](./index.md) - Alphabetical reference
+- [Glossary](./glossary.md) - Term definitions
 - [Odin Migration Guide](../guides/odin-migration-guide.md) - Migrate from Odin Inspector
 
 **Deep Dives:**

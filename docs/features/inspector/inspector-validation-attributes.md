@@ -690,6 +690,6 @@ public class GameConfig : ScriptableObject
 
 ## See Also
 
-- **[Inspector Grouping Attributes](inspector-grouping-attributes.md)** - Organize related fields
-- **[Inspector Conditional Display](inspector-conditional-display.md)** - Show/hide fields conditionally
+- **[Inspector Grouping Attributes](./inspector-grouping-attributes.md)** - Organize related fields
+- **[Inspector Conditional Display](./inspector-conditional-display.md)** - Show/hide fields conditionally
 - **[Relational Components](../relational-components/relational-components.md)** - Auto-wire component references

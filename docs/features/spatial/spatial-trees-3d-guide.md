@@ -72,7 +72,7 @@ Notes
 
 - These trees are immutable: rebuild when positions/bounds change significantly.
 - For lots of moving points, consider `SpatialHash3D` for broad‑phase neighborhood queries.
-- See [Spatial Tree Semantics](spatial-tree-semantics.md) for boundary behavior and edge cases.
+- See [Spatial Tree Semantics](./spatial-tree-semantics.md) for boundary behavior and edge cases.
 
 ---
 
@@ -106,7 +106,7 @@ void Update()
 
 > 📖 For the complete buffering guide including pooled buffers and GC impact analysis, see:
 >
-> - [Zero-Allocation Queries (2D Guide)](spatial-trees-2d-guide.md#-zero-allocation-queries-the-performance-killer-feature) — detailed examples
+> - [Zero-Allocation Queries (2D Guide)](./spatial-trees-2d-guide.md#-zero-allocation-queries-the-performance-killer-feature) — detailed examples
 > - [Buffering Pattern](../../../README.md#buffering-pattern) — project-wide pooling utilities
 
 ## Structures
@@ -151,4 +151,4 @@ void Update()
 - Boundary inclusion: 3D variants can differ at exact boundaries. Normalize to half‑open or add small epsilons.
 - For details and performance data, see:
   - [3D Performance Benchmarks](../../performance/spatial-tree-3d-performance.md)
-  - [Spatial Tree Semantics](spatial-tree-semantics.md)
+  - [Spatial Tree Semantics](./spatial-tree-semantics.md)

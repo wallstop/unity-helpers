@@ -37,6 +37,21 @@
   --unity-orange: #f5a623;
   --unity-green: #7fc97f;
   --unity-purple: #b48ead;
+
+  /* Default theme variables (dark) - applied before data-theme is set */
+  --bg-primary: var(--dark-bg-primary);
+  --bg-secondary: var(--dark-bg-secondary);
+  --bg-code: var(--dark-bg-code);
+  --text-primary: var(--dark-text-primary);
+  --text-secondary: var(--dark-text-secondary);
+  --text-muted: var(--dark-text-muted);
+  --border-color: var(--dark-border);
+  --link-color: var(--dark-link);
+  --link-hover: var(--dark-link-hover);
+  --accent-color: var(--dark-accent);
+  --code-bg: var(--dark-code-bg);
+  --inline-code-bg: var(--dark-inline-code-bg);
+  --selection-bg: var(--dark-selection);
 }
 
 /* Dark theme (default) */
@@ -85,6 +100,66 @@ body {
 /* Main content wrapper */
 .wrapper {
   background-color: var(--bg-primary) !important;
+}
+
+/* Comprehensive Minimal theme overrides - ensure no background boxes */
+.wrapper,
+.wrapper > *,
+.inner,
+header,
+header *,
+section,
+section *,
+footer,
+footer * {
+  background-color: transparent !important;
+  box-shadow: none !important;
+}
+
+/* Re-apply backgrounds only to root containers */
+body {
+  background-color: var(--bg-primary) !important;
+}
+
+header {
+  background-color: var(--bg-primary) !important;
+  border-bottom: 1px solid var(--border-color) !important;
+}
+
+header h1 {
+  background-color: transparent !important;
+}
+
+section {
+  background-color: var(--bg-primary) !important;
+}
+
+footer {
+  background-color: var(--bg-primary) !important;
+  border-top: 1px solid var(--border-color) !important;
+}
+
+/* Minimal theme logo/banner specific overrides */
+header ul {
+  background-color: transparent !important;
+}
+
+header li {
+  background-color: transparent !important;
+}
+
+/* Downloads buttons in sidebar */
+.downloads {
+  background-color: transparent !important;
+}
+
+.downloads a {
+  background-color: var(--bg-secondary) !important;
+  border: 1px solid var(--border-color) !important;
+}
+
+.downloads a:hover {
+  background-color: var(--border-color) !important;
 }
 
 /* Headers */
@@ -249,7 +324,7 @@ hr {
 
 /* Header section styling */
 header {
-  background-color: var(--bg-secondary) !important;
+  background-color: var(--bg-primary) !important;
   border-bottom: 1px solid var(--border-color);
   padding-bottom: 20px;
   margin-bottom: 20px;
@@ -266,7 +341,7 @@ section {
 
 /* Footer */
 footer {
-  background-color: var(--bg-secondary) !important;
+  background-color: var(--bg-primary) !important;
   border-top: 1px solid var(--border-color);
   color: var(--text-muted) !important;
 }

@@ -185,7 +185,7 @@ public class WInLineEditorAnimation : MonoBehaviour
 >
 > _Smooth expand/collapse animation with configurable speed_
 
-**See also:** [Inspector Settings Reference](inspector-settings.md#inline-editor-settings) for complete settings documentation.
+**See also:** [Inspector Settings Reference](./inspector-settings.md#inline-editor-settings) for complete settings documentation.
 
 ---
 
@@ -366,9 +366,9 @@ public class AudioManager : MonoBehaviour
 
 ## See Also
 
-- **[Inspector Overview](inspector-overview.md)** - Complete inspector features overview
-- **[Inspector Grouping Attributes](inspector-grouping-attributes.md)** - WGroup layouts
-- **[Inspector Settings](inspector-settings.md#inline-editor-settings)** - Global configuration
+- **[Inspector Overview](./inspector-overview.md)** - Complete inspector features overview
+- **[Inspector Grouping Attributes](./inspector-grouping-attributes.md)** - WGroup layouts
+- **[Inspector Settings](./inspector-settings.md#inline-editor-settings)** - Global configuration
 
 ---
 

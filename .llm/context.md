@@ -132,6 +132,7 @@ Invoke these skills for specific tasks:
 | [add-inspector-attribute](skills/add-inspector-attribute.md)             | Improving editor UX with attributes              |
 | [debug-il2cpp](skills/debug-il2cpp.md)                                   | IL2CPP build issues or AOT errors                |
 | [integrate-optional-dependency](skills/integrate-optional-dependency.md) | Odin, VContainer, Zenject integration patterns   |
+| [github-pages](skills/github-pages.md)                                   | GitHub Pages, Jekyll, markdown link format       |
 
 ---
 
@@ -213,6 +214,7 @@ See [create-csharp-file](skills/create-csharp-file.md) for detailed rules. Key p
 24. **Run CSharpier IMMEDIATELY after ANY C# file change** — `dotnet tool run csharpier format .` MUST be run after EVERY `.cs` file modification, even single-line edits; do NOT batch formatting until task completion; extra blank lines and spacing issues are common CI/CD failures that are easily preventable (see [format-code](skills/format-code.md) and [validate-before-commit](skills/validate-before-commit.md#c-changes-workflow))
 25. **Verify GitHub Actions configuration files exist AND are on the default branch** — Before creating/modifying workflows, confirm all required config files exist (e.g., `release-drafter.yml` workflow requires `.github/release-drafter.yml` config); missing configs cause runtime failures NOT caught by `actionlint`; **CRITICAL**: Some actions (like `release-drafter`) require config files to exist on the **default branch (main)** at runtime—if adding both workflow AND config in the same PR, either: (1) disable/comment out triggers until config is merged to main, or (2) merge config file first in a separate PR (see [validate-before-commit](skills/validate-before-commit.md#github-actions-configuration-file-requirements-mandatory))
 26. **NEVER use `((var++))` in bash scripts with `set -e`** — The expression `((var++))` returns the pre-increment value; when `var` is 0, it returns 0 (falsy), causing `set -e` to exit the script; use `var=$((var + 1))` instead (assignment always succeeds); see [validate-before-commit](skills/validate-before-commit.md#bash-arithmetic-safety-in-cicd-critical)
+27. **GitHub Pages markdown links MUST use `./` or `../` prefix** — All internal markdown links MUST use explicit relative paths (e.g., `./docs/guide` not `docs/guide`); without the prefix, `jekyll-relative-links` fails to convert links and they render as raw file downloads; run `npm run validate:docs` to check link format (see [github-pages](skills/github-pages.md))
 
 ---
 

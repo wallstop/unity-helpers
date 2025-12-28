@@ -555,10 +555,10 @@ WButtonHistorySize: 10
 
 ## See Also
 
-- **[Inspector Overview](inspector-overview.md)** - Complete inspector features overview
-- **[Inspector Grouping Attributes](inspector-grouping-attributes.md)** - WGroup layouts
-- **[Inspector Buttons](inspector-button.md)** - WButton
-- **[Inspector Selection Attributes](inspector-selection-attributes.md)** - WEnumToggleButtons
+- **[Inspector Overview](./inspector-overview.md)** - Complete inspector features overview
+- **[Inspector Grouping Attributes](./inspector-grouping-attributes.md)** - WGroup layouts
+- **[Inspector Buttons](./inspector-button.md)** - WButton
+- **[Inspector Selection Attributes](./inspector-selection-attributes.md)** - WEnumToggleButtons
 
 ---
 
