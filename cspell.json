@@ -756,6 +756,7 @@
         "vectorization",
         "performant",
         "pipefail",
+        "sed",
         "suboptimal",
         "unoptimized",
         "optimizable",

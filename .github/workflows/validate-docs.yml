@@ -34,45 +34,87 @@ jobs:
 
           errors=0
 
+          # URL-decode function (handles %XX encoding like %20 for spaces)
+          urldecode() {
+            local url_encoded="${1//+/ }"
+            printf '%b' "${url_encoded//%/\\x}"
+          }
+
+          # Remove inline code spans (content between backticks) from a line
+          # This prevents example links in inline code from being parsed
+          strip_inline_code() {
+            local line
+            line="$1"
+            # Remove content between backticks (handles single and double backticks)
+            # Using sed to handle multiple inline code spans per line
+            # shellcheck disable=SC2016
+            echo "$line" | sed -E 's/``[^`]*``//g; s/`[^`]*`//g'
+          }
+
           # Find all markdown files
           while IFS= read -r -d '' mdfile; do
             dir=$(dirname "$mdfile")
+            in_code_block=false
 
-            # Extract markdown links: [text](link)
-            # Filter to only internal links (not http, https, #, mailto)
-            # Use process substitution to avoid subshell (pipe creates subshell, losing error count)
-            while read -r link; do
-              # Skip external links, anchors, and mailto
-              if [[ "$link" =~ ^https?:// ]] || [[ "$link" =~ ^# ]] || [[ "$link" =~ ^mailto: ]]; then
+            # Process file line by line to track code blocks
+            while IFS= read -r line || [[ -n "$line" ]]; do
+              # Check for code fence start/end (``` or ~~~)
+              # Store fence pattern in variable to avoid shellcheck regex parse issues
+              fence_pattern='^[[:space:]]*(```|~~~)'
+              if [[ "$line" =~ $fence_pattern ]]; then
+                if [[ "$in_code_block" == "true" ]]; then
+                  in_code_block=false
+                else
+                  in_code_block=true
+                fi
                 continue
               fi
 
-              # Remove anchor from link if present
-              link_without_anchor="${link%%#*}"
-
-              # Skip if empty (was just an anchor)
-              if [[ -z "$link_without_anchor" ]]; then
+              # Skip lines inside code blocks
+              if [[ "$in_code_block" == "true" ]]; then
                 continue
               fi
 
-              # Resolve the link path relative to the markdown file's directory
-              if [[ "$link_without_anchor" == /* ]]; then
-                # Absolute path from repo root
-                target_path=".${link_without_anchor}"
-              else
-                # Relative path
-                target_path="$dir/$link_without_anchor"
-              fi
+              # Strip inline code before extracting links (example links in backticks)
+              stripped_line=$(strip_inline_code "$line")
 
-              # Normalize the path
-              target_path=$(realpath -m "$target_path" 2>/dev/null || echo "$target_path")
+              # Extract markdown links from this line: [text](link)
+              while read -r link; do
+                # Skip external links, anchors, and mailto
+                if [[ "$link" =~ ^https?:// ]] || [[ "$link" =~ ^# ]] || [[ "$link" =~ ^mailto: ]]; then
+                  continue
+                fi
 
-              # Check if target exists
-              if [[ ! -e "$target_path" ]]; then
-                echo "❌ Broken link in $mdfile: $link -> $target_path (file not found)"
-                errors=$((errors + 1))
-              fi
-            done < <(grep -oP '\]\(\K[^)]+(?=\))' "$mdfile" 2>/dev/null || true)
+                # Remove anchor from link if present
+                link_without_anchor="${link%%#*}"
+
+                # Skip if empty (was just an anchor)
+                if [[ -z "$link_without_anchor" ]]; then
+                  continue
+                fi
+
+                # URL-decode the path (handles %20 for spaces, etc.)
+                decoded_path=$(urldecode "$link_without_anchor")
+
+                # Resolve the link path relative to the markdown file's directory
+                if [[ "$decoded_path" == /* ]]; then
+                  # Absolute path from repo root
+                  target_path=".${decoded_path}"
+                else
+                  # Relative path
+                  target_path="$dir/$decoded_path"
+                fi
+
+                # Normalize the path
+                target_path=$(realpath -m "$target_path" 2>/dev/null || echo "$target_path")
+
+                # Check if target exists
+                if [[ ! -e "$target_path" ]]; then
+                  echo "❌ Broken link in $mdfile: $link -> $target_path (file not found)"
+                  errors=$((errors + 1))
+                fi
+              done < <(echo "$stripped_line" | grep -oP '\]\(\K[^)]+(?=\))' 2>/dev/null || true)
+            done < "$mdfile"
           done < <(find . -name "*.md" -type f -not -path "./node_modules/*" -print0)
 
           if [[ $errors -gt 0 ]]; then
@@ -99,17 +141,53 @@ jobs:
 
           # Find links that don't start with ./, ../, http, https, #, or mailto
           # These are internal links that should have a relative prefix
+          # IMPORTANT: Skip content inside code blocks (```) and inline code (backticks)
 
-          # Pattern explanation:
-          # - \]\( - matches ](
-          # - [^).]+ - matches characters that aren't ) or . (to exclude ./ and ../)
-          # - We then filter to exclude http, #, mailto, and links starting with ./
+          # Remove inline code spans (content between backticks) from a line
+          strip_inline_code() {
+            local line
+            line="$1"
+            # shellcheck disable=SC2016
+            echo "$line" | sed -E 's/``[^`]*``//g; s/`[^`]*`//g'
+          }
 
-          violations=$(grep -rn --include="*.md" -E '\]\([^)]+\)' . \
-            --exclude-dir=node_modules \
-            2>/dev/null | \
-            grep -vE '\]\(\.\./|\]\(\./|\]\(https?://|\]\(#|\]\(mailto:' | \
-            grep -E '\]\([a-zA-Z]' || true)
+          violations=""
+          
+          while IFS= read -r -d '' mdfile; do
+            in_code_block=false
+            line_num=0
+
+            while IFS= read -r line || [[ -n "$line" ]]; do
+              line_num=$((line_num + 1))
+
+              # Check for code fence start/end (``` or ~~~)
+              # Store fence pattern in variable to avoid shellcheck regex parse issues
+              fence_pattern='^[[:space:]]*(```|~~~)'
+              if [[ "$line" =~ $fence_pattern ]]; then
+                if [[ "$in_code_block" == "true" ]]; then
+                  in_code_block=false
+                else
+                  in_code_block=true
+                fi
+                continue
+              fi
+
+              # Skip lines inside code blocks
+              if [[ "$in_code_block" == "true" ]]; then
+                continue
+              fi
+
+              # Strip inline code before checking links (example links in backticks)
+              stripped_line=$(strip_inline_code "$line")
+
+              # Check for links missing relative prefix (./ or ../)
+              # Match ](something) where something starts with a letter (not ./ ../ http # mailto)
+              if echo "$stripped_line" | grep -qE '\]\([a-zA-Z]' && \
+                 ! echo "$stripped_line" | grep -qE '\]\(\.\./|\]\(\./|\]\(https?://|\]\(#|\]\(mailto:'; then
+                violations="${violations}${mdfile}:${line_num}:${line}"$'\n'
+              fi
+            done < "$mdfile"
+          done < <(find . -name "*.md" -type f -not -path "./node_modules/*" -print0)
 
           if [[ -n "$violations" ]]; then
             echo "❌ Found markdown links missing relative prefix (./ or ../):"

@@ -602,6 +602,110 @@ npm run lint:docs
 
 ---
 
+## CI Markdown Link Validation
+
+> **⚠️ IMPORTANT**: The CI pipeline runs TWO separate link validation jobs with different purposes. Understanding both is critical to avoiding CI failures.
+
+### CI Link Validation Jobs
+
+The `validate-docs.yml` workflow runs two complementary link checks:
+
+| Job                    | Purpose                                                               | Script                              |
+| ---------------------- | --------------------------------------------------------------------- | ----------------------------------- |
+| `validate-links`       | Verifies all internal markdown links point to existing files          | `.github/scripts/validate-links.sh` |
+| `validate-link-format` | Ensures all internal links use proper `./` or `../` relative prefixes | `.github/scripts/validate-links.sh` |
+
+**Both jobs must pass for CI to succeed.**
+
+### What CI Validates
+
+#### `validate-links` Job: Link Targets Exist
+
+This job checks that every internal markdown link points to a file that actually exists:
+
+- Handles URL-encoded paths (e.g., `%20` for spaces, `%28` for `(`)
+- Resolves paths relative to the linking file's location
+- Reports specific line numbers for broken links
+
+#### `validate-link-format` Job: Proper Relative Prefixes
+
+This job ensures all internal links use explicit relative path prefixes:
+
+- ✅ Links starting with `./` (same directory or subdirectory)
+- ✅ Links starting with `../` (parent directory)
+- ❌ Bare paths without `./` or `../` prefix (e.g., just the filename)
+
+### Content CI Automatically Skips
+
+Both CI validation scripts intelligently skip content that shouldn't be validated:
+
+| Skipped Content                | Example                                    | Why Skipped                         |
+| ------------------------------ | ------------------------------------------ | ----------------------------------- |
+| Fenced code blocks             | ` ```markdown ... ``` ` or `~~~ ...`       | Example/documentation code          |
+| Inline code backticks          | Code wrapped in single backticks           | Code references, not links          |
+| External links (http/https)    | Links to `https://` or `http://` URLs      | External URLs, not local files      |
+| Anchor-only links              | Links like `#section-name`                 | Same-page navigation                |
+| mailto: links                  | Links starting with `mailto:`              | Email links, not file references    |
+| Image references               | Image syntax (exclamation mark + brackets) | Images handled differently          |
+| Reference-style link footnotes | Footnote definitions like `[1]: path`      | Processed separately where relevant |
+
+### Why Local Linting Might Miss Issues
+
+> **⚠️ WARNING**: The local `npm run lint:docs` command and the CI bash scripts use different implementations. Always run BOTH to catch all issues.
+
+**Potential differences between local and CI validation:**
+
+| Aspect                | Local (`lint:docs`)      | CI (bash scripts)             |
+| --------------------- | ------------------------ | ----------------------------- |
+| Implementation        | PowerShell script        | Bash scripts                  |
+| Code block detection  | Regex-based              | State machine in bash         |
+| URL decoding          | PowerShell methods       | `sed` transformations         |
+| Path resolution       | PowerShell path handling | Bash path resolution          |
+| Edge case handling    | May differ slightly      | May catch different edge case |
+| Inline code detection | May use different regex  | Uses awk/sed patterns         |
+
+**Best Practice:**
+
+```bash
+# ALWAYS run local linting before pushing
+npm run lint:docs
+
+# This catches most issues locally, but CI may still find edge cases
+# If CI fails with link errors that local linting missed, investigate the specific pattern
+```
+
+### Debugging CI Link Validation Failures
+
+When CI reports a link error that local linting missed:
+
+1. **Check the exact error message** — CI reports file path and line number
+2. **Look for edge cases:**
+   - URL-encoded characters in paths (`%20`, `%28`, `%29`)
+   - Links inside complex markdown structures
+   - Mixed content on the same line (inline code + links)
+3. **Verify the fix locally:**
+   ```bash
+   npm run lint:docs
+   ```
+4. **If the pattern is a known false positive**, consider whether the content structure can be refactored
+
+### Quick Reference: CI Validation Rules
+
+```text
+Link Pattern                         CI Result    Notes
+------------------------------------  -----------  -------------------------------------
+[text](./file.md)                     ✅ PASS      Proper relative prefix, file exists
+[text](../folder/file.md)             ✅ PASS      Parent directory navigation
+[text](file.md)                       ❌ FAIL      Missing ./ prefix
+[text](folder/file.md)                ❌ FAIL      Missing ./ prefix
+[text](./nonexistent.md)              ❌ FAIL      File does not exist
+[text](https://example.com)           ⏭️ SKIP      External link
+[text](#anchor)                       ⏭️ SKIP      Anchor-only link
+`some-file.md`                        ⏭️ SKIP      Inline code, not a link
+```
+
+---
+
 ## What Gets Validated
 
 The `npm run validate:prepush` command runs these checks in order:

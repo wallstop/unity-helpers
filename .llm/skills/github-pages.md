@@ -114,18 +114,45 @@ The `jekyll-relative-links` plugin converts markdown links to HTML links during 
 
 ### Escaping Example Links
 
-When documenting link format (showing correct/incorrect examples), **escape all examples** so the linter doesn't parse them:
+When documenting link format (showing correct/incorrect examples), the CI workflow and local linter automatically skip content that is properly escaped.
+
+#### What the CI Handles Automatically
+
+The CI workflow (`lint-doc-links.yml`) now properly handles:
+
+- **Fenced code blocks** (` ``` ` or `~~~`) — all content inside is skipped
+- **Inline backticks** — content inside single backticks is skipped
+- **URL-encoded paths** — `%20` and other encodings are properly decoded before validation
+
+This means you can safely show example link syntax in documentation without triggering false positives.
+
+#### Best Practices for Example Links
+
+**For multi-line examples**: Use fenced code blocks with the `text` language specifier:
 
 ```text
-<!-- Example patterns (use text code blocks for safety) -->
 ❌ WRONG: ]\(file.md)        →  Missing ./ prefix
 ✅ CORRECT: ]\(./file.md)    →  Proper relative path
-
-Note: In actual docs, use [text](./file) format.
-The backslash escapes above prevent linter parsing.
 ```
 
-**Why**: Unescaped example links trigger false positive lint errors because:
+**For brief inline examples**: Use single backticks with escaped brackets:
+
+```text
+Use the format ]\(./file.md) for internal links (shown escaped).
+```
+
+**Legacy escape pattern**: The escaped bracket pattern prevents the linter from parsing it as a link:
+
+```text
+<!-- Still works but less preferred -->
+]\(file.md)  →  Escaped, linter skips this
+```
+
+#### Local vs CI Validation
+
+> **Note**: Local `npm run lint:docs` runs the PowerShell linter (`scripts/lint-doc-links.ps1`) which has similar but not identical logic to the CI bash scripts. Both handle code blocks and backticks, but minor edge cases may differ. Always verify CI passes after local validation.
+
+**Why escaping matters**: Unescaped example links trigger false positive lint errors because:
 
 1. "Wrong" examples intentionally lack `./` prefix
 2. Example paths don't point to real files

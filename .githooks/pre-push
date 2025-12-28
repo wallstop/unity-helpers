@@ -40,6 +40,11 @@ else
     else
       echo "markdownlint not installed; skipping markdown lint. Run 'npm install' or CI will validate." >&2
     fi
+
+    # 3) Doc link lint (validates internal links, relative prefixes, and broken references)
+    # This runs the same PowerShell linter as the CI to catch issues before push
+    echo "Checking documentation links..."
+    node ./scripts/run-doc-link-lint.js || exit 1
   fi
 fi
 

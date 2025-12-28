@@ -135,6 +135,9 @@ $fileExtensionPattern = [regex]'^`(\*)?\.[\w]+`$'
 $imagePattern = [regex]'!\[[^\]]*\]\((?<target>[^)]+)\)'
 $imageReferencePattern = [regex]'!\[[^\]]*\]\[(?<label>[^\]]+)\]'
 $definitionPattern = [regex]'^\s*\[(?<label>[^\]]+)\]:\s*(?<rest>.+)$'
+# Pattern to detect internal links missing ./ or ../ prefix (starts with letter, not a scheme)
+# This is CRITICAL for GitHub Pages - jekyll-relative-links requires explicit relative paths
+$missingRelativePrefixPattern = [regex]'\]\((?<target>[a-zA-Z][^)]*)\)'
 
 $violationCount = 0
 $codeDocsPattern = [regex]'(?i)docs[\\/][A-Za-z0-9._/\\-]+\.md(?:#[A-Za-z0-9_\-]+)?'
@@ -234,6 +237,24 @@ $mdFiles | ForEach-Object {
                 $violationCount++
                 Write-Violation -File $file -LineNumber $lineNo -Message "Link text is a filename; use human-readable text for $target" -Line $line
             }
+        }
+
+        # Check for internal links missing ./ or ../ relative prefix
+        # This is CRITICAL for GitHub Pages - jekyll-relative-links requires explicit relative paths
+        # Skip: external links (http/https/mailto), anchors (#), images (!), and links already with ./
+        # IMPORTANT: First strip inline code (backticks) to avoid false positives from example links
+        $lineWithoutInlineCode = $line -replace '``[^`]*``', '' -replace '`[^`]*`', ''
+        foreach ($match in $missingRelativePrefixPattern.Matches($lineWithoutInlineCode)) {
+            $target = $match.Groups['target'].Value
+            # Skip external links (http:// https:// mailto: etc.)
+            if ($target -match '^[a-zA-Z][a-zA-Z0-9+\.-]*:') { continue }
+            # Skip if target is empty or starts with ./ or ../
+            if ($target -match '^\.\.?/') { continue }
+            # Skip anchor-only links
+            if ($target.StartsWith('#')) { continue }
+            # This is a bare path without relative prefix - flag it
+            $violationCount++
+            Write-Violation -File $file -LineNumber $lineNo -Message "Internal link '$target' missing relative prefix (./ or ../); jekyll-relative-links requires explicit relative paths" -Line $line
         }
 
         foreach ($match in $standardLinkPattern.Matches($line)) {
