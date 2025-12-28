@@ -115,18 +115,18 @@ jobs:
           # Copy README as Home page
           echo "Creating Home.md from README.md..."
           cp main/README.md wiki/Home.md
-          ((pages_created++))
+          ((pages_created++)) || true
 
           # Copy CHANGELOG
           echo "Creating CHANGELOG.md..."
           cp main/CHANGELOG.md wiki/CHANGELOG.md
-          ((pages_created++))
+          ((pages_created++)) || true
 
           # Copy index.md if it exists and differs from README
           if [ -f "main/index.md" ]; then
             echo "Creating Index.md..."
             cp main/index.md wiki/Index.md
-            ((pages_created++))
+            ((pages_created++)) || true
           fi
 
           # Process and copy docs with proper structure
@@ -308,7 +308,7 @@ jobs:
           for page in "${required_pages[@]}"; do
             if [ ! -f "$page" ]; then
               echo "::error::Required page missing: $page"
-              ((errors++))
+              ((errors++)) || true
             fi
           done
 
@@ -316,7 +316,7 @@ jobs:
           while IFS= read -r -d '' file; do
             if [ ! -s "$file" ]; then
               echo "::warning::Empty file detected: $file"
-              ((warnings++))
+              ((warnings++)) || true
             fi
           done < <(find . -name "*.md" -print0)
 
