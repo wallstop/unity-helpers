@@ -19,7 +19,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools
         private static readonly ImportAssetOptions RefreshOptions =
             ImportAssetOptions.ForceUpdate | ImportAssetOptions.ForceSynchronousImport;
 
-        private static Func<bool> isCompilationPendingEvaluator = () =>
+        internal static Func<bool> isCompilationPendingEvaluator = () =>
             EditorApplication.isCompiling;
 
         internal static Func<bool> IsCompilationPendingEvaluator

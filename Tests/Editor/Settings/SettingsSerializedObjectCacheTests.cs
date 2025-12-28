@@ -862,19 +862,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
         }
 
         /// <summary>
-        /// Helper method to simulate calling the internal GetOrCreateCachedSerializedObject.
-        /// Uses reflection since the method is private.
+        /// Helper method to call the internal GetOrCreateCachedSerializedObject.
         /// </summary>
         private static SerializedObject GetCachedSerializedObject(UnityHelpersSettings settings)
         {
-            System.Reflection.MethodInfo method = typeof(UnityHelpersSettings).GetMethod(
-                "GetOrCreateCachedSerializedObject",
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static
-            );
-            Assert.IsNotNull(method, "GetOrCreateCachedSerializedObject method should exist.");
-
-            object result = method.Invoke(null, new object[] { settings });
-            return result as SerializedObject;
+            return UnityHelpersSettings.GetOrCreateCachedSerializedObject(settings);
         }
 
         /// <summary>
@@ -882,17 +874,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
         /// </summary>
         private static SerializedObject GetCachedSerializedObjectWithNull()
         {
-            System.Reflection.MethodInfo method = typeof(UnityHelpersSettings).GetMethod(
-                "GetOrCreateCachedSerializedObject",
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static
-            );
-            if (method == null)
-            {
-                return null;
-            }
-
-            object result = method.Invoke(null, new object[] { null });
-            return result as SerializedObject;
+            return UnityHelpersSettings.GetOrCreateCachedSerializedObject(null);
         }
     }
 }

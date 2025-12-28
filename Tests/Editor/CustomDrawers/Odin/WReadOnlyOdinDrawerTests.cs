@@ -4,7 +4,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
     using System;
     using System.Collections;
     using System.Collections.Generic;
-    using System.Reflection;
     using NUnit.Framework;
     using Sirenix.OdinInspector.Editor;
     using UnityEditor;
@@ -755,18 +754,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
                 GUI.enabled = initialGuiEnabled;
                 UnityEngine.Object.DestroyImmediate(editor);
             }
-        }
-
-        [Test]
-        public void DrawPropertyLayoutMethodExists()
-        {
-            Type drawerType = typeof(WReadOnlyOdinDrawer);
-            MethodInfo drawMethod = drawerType.GetMethod(
-                "DrawPropertyLayout",
-                BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public
-            );
-
-            Assert.That(drawMethod, Is.Not.Null, "DrawPropertyLayout method should exist");
         }
 
         [UnityTest]

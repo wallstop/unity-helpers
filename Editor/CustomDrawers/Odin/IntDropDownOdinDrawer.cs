@@ -164,7 +164,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             Property.ValueEntry.WeakSmartValue = value;
         }
 
-        private static string[] GetOrCreateDisplayOptions(int[] options)
+        internal static string[] GetOrCreateDisplayOptions(int[] options)
         {
             if (options == null || options.Length == 0)
             {

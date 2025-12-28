@@ -107,10 +107,10 @@ namespace WallstopStudios.UnityHelpers.Tests.WGroup
                 Has.Count.EqualTo(4),
                 () => $"Should have 4 properties in group.\n{FormatLayoutDiagnostics(layout)}"
             );
-            Assert.That(group.PropertyPaths, Contains.Item("intField"));
-            Assert.That(group.PropertyPaths, Contains.Item("floatField"));
-            Assert.That(group.PropertyPaths, Contains.Item("stringField"));
-            Assert.That(group.PropertyPaths, Contains.Item("boolField"));
+            Assert.That(group.PropertyPaths, Contains.Item(nameof(SimpleFieldsTarget.intField)));
+            Assert.That(group.PropertyPaths, Contains.Item(nameof(SimpleFieldsTarget.floatField)));
+            Assert.That(group.PropertyPaths, Contains.Item(nameof(SimpleFieldsTarget.stringField)));
+            Assert.That(group.PropertyPaths, Contains.Item(nameof(SimpleFieldsTarget.boolField)));
         }
 
         [Test]
@@ -132,9 +132,9 @@ namespace WallstopStudios.UnityHelpers.Tests.WGroup
                 Has.Count.EqualTo(3),
                 () => $"Should have 3 list properties in group.\n{FormatLayoutDiagnostics(layout)}"
             );
-            Assert.That(group.PropertyPaths, Contains.Item("intList"));
-            Assert.That(group.PropertyPaths, Contains.Item("stringList"));
-            Assert.That(group.PropertyPaths, Contains.Item("floatList"));
+            Assert.That(group.PropertyPaths, Contains.Item(nameof(ListFieldsTarget.intList)));
+            Assert.That(group.PropertyPaths, Contains.Item(nameof(ListFieldsTarget.stringList)));
+            Assert.That(group.PropertyPaths, Contains.Item(nameof(ListFieldsTarget.floatList)));
         }
 
         [Test]
@@ -156,9 +156,9 @@ namespace WallstopStudios.UnityHelpers.Tests.WGroup
                 Has.Count.EqualTo(3),
                 () => $"Should have 3 array properties in group.\n{FormatLayoutDiagnostics(layout)}"
             );
-            Assert.That(group.PropertyPaths, Contains.Item("intArray"));
-            Assert.That(group.PropertyPaths, Contains.Item("stringArray"));
-            Assert.That(group.PropertyPaths, Contains.Item("floatArray"));
+            Assert.That(group.PropertyPaths, Contains.Item(nameof(ArrayFieldsTarget.intArray)));
+            Assert.That(group.PropertyPaths, Contains.Item(nameof(ArrayFieldsTarget.stringArray)));
+            Assert.That(group.PropertyPaths, Contains.Item(nameof(ArrayFieldsTarget.floatArray)));
         }
 
         [Test]
@@ -181,8 +181,14 @@ namespace WallstopStudios.UnityHelpers.Tests.WGroup
                 () =>
                     $"Should have 2 nested properties in group.\n{FormatLayoutDiagnostics(layout)}"
             );
-            Assert.That(group.PropertyPaths, Contains.Item("nestedData"));
-            Assert.That(group.PropertyPaths, Contains.Item("anotherNestedData"));
+            Assert.That(
+                group.PropertyPaths,
+                Contains.Item(nameof(SerializableClassTarget.nestedData))
+            );
+            Assert.That(
+                group.PropertyPaths,
+                Contains.Item(nameof(SerializableClassTarget.anotherNestedData))
+            );
         }
 
         [Test]
@@ -192,7 +198,9 @@ namespace WallstopStudios.UnityHelpers.Tests.WGroup
             target.intList = new List<int> { 1, 2, 3 };
             using SerializedObject serializedObject = new(target);
 
-            SerializedProperty listProperty = serializedObject.FindProperty("intList");
+            SerializedProperty listProperty = serializedObject.FindProperty(
+                nameof(ListFieldsTarget.intList)
+            );
 
             Assert.That(
                 listProperty.hasVisibleChildren,
@@ -208,7 +216,9 @@ namespace WallstopStudios.UnityHelpers.Tests.WGroup
             target.intArray = new[] { 1, 2, 3 };
             using SerializedObject serializedObject = new(target);
 
-            SerializedProperty arrayProperty = serializedObject.FindProperty("intArray");
+            SerializedProperty arrayProperty = serializedObject.FindProperty(
+                nameof(ArrayFieldsTarget.intArray)
+            );
 
             Assert.That(
                 arrayProperty.hasVisibleChildren,
@@ -223,7 +233,9 @@ namespace WallstopStudios.UnityHelpers.Tests.WGroup
             EmptyCollectionsTarget target = CreateScriptableObject<EmptyCollectionsTarget>();
             using SerializedObject serializedObject = new(target);
 
-            SerializedProperty emptyListProperty = serializedObject.FindProperty("emptyList");
+            SerializedProperty emptyListProperty = serializedObject.FindProperty(
+                nameof(EmptyCollectionsTarget.emptyList)
+            );
 
             Assert.That(
                 emptyListProperty.hasVisibleChildren,
@@ -238,7 +250,9 @@ namespace WallstopStudios.UnityHelpers.Tests.WGroup
             EmptyCollectionsTarget target = CreateScriptableObject<EmptyCollectionsTarget>();
             using SerializedObject serializedObject = new(target);
 
-            SerializedProperty emptyArrayProperty = serializedObject.FindProperty("emptyArray");
+            SerializedProperty emptyArrayProperty = serializedObject.FindProperty(
+                nameof(EmptyCollectionsTarget.emptyArray)
+            );
 
             Assert.That(
                 emptyArrayProperty.hasVisibleChildren,
@@ -253,7 +267,9 @@ namespace WallstopStudios.UnityHelpers.Tests.WGroup
             SerializableClassTarget target = CreateScriptableObject<SerializableClassTarget>();
             using SerializedObject serializedObject = new(target);
 
-            SerializedProperty nestedProperty = serializedObject.FindProperty("nestedData");
+            SerializedProperty nestedProperty = serializedObject.FindProperty(
+                nameof(SerializableClassTarget.nestedData)
+            );
 
             Assert.That(
                 nestedProperty.hasVisibleChildren,
@@ -268,7 +284,9 @@ namespace WallstopStudios.UnityHelpers.Tests.WGroup
             SimpleFieldsTarget target = CreateScriptableObject<SimpleFieldsTarget>();
             using SerializedObject serializedObject = new(target);
 
-            SerializedProperty intProperty = serializedObject.FindProperty("intField");
+            SerializedProperty intProperty = serializedObject.FindProperty(
+                nameof(SimpleFieldsTarget.intField)
+            );
 
             Assert.That(
                 intProperty.hasVisibleChildren,
@@ -283,7 +301,9 @@ namespace WallstopStudios.UnityHelpers.Tests.WGroup
             SimpleFieldsTarget target = CreateScriptableObject<SimpleFieldsTarget>();
             using SerializedObject serializedObject = new(target);
 
-            SerializedProperty stringProperty = serializedObject.FindProperty("stringField");
+            SerializedProperty stringProperty = serializedObject.FindProperty(
+                nameof(SimpleFieldsTarget.stringField)
+            );
 
             Assert.That(
                 stringProperty.hasVisibleChildren,
@@ -373,7 +393,7 @@ namespace WallstopStudios.UnityHelpers.Tests.WGroup
 
             Assert.That(
                 inner.PropertyPaths,
-                Contains.Item("innerList"),
+                Contains.Item(nameof(NestedGroupsTarget.innerList)),
                 "Inner group should contain innerList."
             );
         }
@@ -385,7 +405,9 @@ namespace WallstopStudios.UnityHelpers.Tests.WGroup
             target.level3List = new List<int> { 1, 2, 3 };
             using SerializedObject serializedObject = new(target);
 
-            SerializedProperty level3ListProperty = serializedObject.FindProperty("level3List");
+            SerializedProperty level3ListProperty = serializedObject.FindProperty(
+                nameof(ThreeLevelGroupsTarget.level3List)
+            );
 
             Assert.That(
                 level3ListProperty.hasVisibleChildren,
@@ -413,11 +435,11 @@ namespace WallstopStudios.UnityHelpers.Tests.WGroup
                 Has.Count.EqualTo(5),
                 () => $"Should have 5 mixed properties.\n{FormatLayoutDiagnostics(layout)}"
             );
-            Assert.That(group.PropertyPaths, Contains.Item("simpleInt"));
-            Assert.That(group.PropertyPaths, Contains.Item("listField"));
-            Assert.That(group.PropertyPaths, Contains.Item("simpleString"));
-            Assert.That(group.PropertyPaths, Contains.Item("nestedField"));
-            Assert.That(group.PropertyPaths, Contains.Item("simpleFloat"));
+            Assert.That(group.PropertyPaths, Contains.Item(nameof(MixedFieldsTarget.simpleInt)));
+            Assert.That(group.PropertyPaths, Contains.Item(nameof(MixedFieldsTarget.listField)));
+            Assert.That(group.PropertyPaths, Contains.Item(nameof(MixedFieldsTarget.simpleString)));
+            Assert.That(group.PropertyPaths, Contains.Item(nameof(MixedFieldsTarget.nestedField)));
+            Assert.That(group.PropertyPaths, Contains.Item(nameof(MixedFieldsTarget.simpleFloat)));
         }
 
         [Test]
@@ -426,7 +448,9 @@ namespace WallstopStudios.UnityHelpers.Tests.WGroup
             SingleElementTarget target = CreateScriptableObject<SingleElementTarget>();
             using SerializedObject serializedObject = new(target);
 
-            SerializedProperty singleItemList = serializedObject.FindProperty("singleItemList");
+            SerializedProperty singleItemList = serializedObject.FindProperty(
+                nameof(SingleElementTarget.singleItemList)
+            );
 
             Assert.That(
                 singleItemList.hasVisibleChildren,
@@ -441,7 +465,9 @@ namespace WallstopStudios.UnityHelpers.Tests.WGroup
             SingleElementTarget target = CreateScriptableObject<SingleElementTarget>();
             using SerializedObject serializedObject = new(target);
 
-            SerializedProperty singleItemArray = serializedObject.FindProperty("singleItemArray");
+            SerializedProperty singleItemArray = serializedObject.FindProperty(
+                nameof(SingleElementTarget.singleItemArray)
+            );
 
             Assert.That(
                 singleItemArray.hasVisibleChildren,
@@ -463,7 +489,9 @@ namespace WallstopStudios.UnityHelpers.Tests.WGroup
             };
             using SerializedObject serializedObject = new(target);
 
-            SerializedProperty wrappedListProperty = serializedObject.FindProperty("wrappedLists");
+            SerializedProperty wrappedListProperty = serializedObject.FindProperty(
+                nameof(WrappedNestedListTarget.wrappedLists)
+            );
 
             Assert.That(
                 wrappedListProperty.hasVisibleChildren,
@@ -478,7 +506,9 @@ namespace WallstopStudios.UnityHelpers.Tests.WGroup
             DeepNestingTarget target = CreateScriptableObject<DeepNestingTarget>();
             using SerializedObject serializedObject = new(target);
 
-            SerializedProperty deepDataProperty = serializedObject.FindProperty("deepData");
+            SerializedProperty deepDataProperty = serializedObject.FindProperty(
+                nameof(DeepNestingTarget.deepData)
+            );
 
             Assert.That(
                 deepDataProperty.hasVisibleChildren,
@@ -512,11 +542,26 @@ namespace WallstopStudios.UnityHelpers.Tests.WGroup
                 () => $"GroupC should exist.\n{FormatLayoutDiagnostics(layout)}"
             );
 
-            Assert.That(groupA.PropertyPaths, Contains.Item("intA"));
-            Assert.That(groupA.PropertyPaths, Contains.Item("floatA"));
-            Assert.That(groupB.PropertyPaths, Contains.Item("listB"));
-            Assert.That(groupB.PropertyPaths, Contains.Item("arrayB"));
-            Assert.That(groupC.PropertyPaths, Contains.Item("nestedC"));
+            Assert.That(
+                groupA.PropertyPaths,
+                Contains.Item(nameof(SiblingGroupsWithDifferentTypesTarget.intA))
+            );
+            Assert.That(
+                groupA.PropertyPaths,
+                Contains.Item(nameof(SiblingGroupsWithDifferentTypesTarget.floatA))
+            );
+            Assert.That(
+                groupB.PropertyPaths,
+                Contains.Item(nameof(SiblingGroupsWithDifferentTypesTarget.listB))
+            );
+            Assert.That(
+                groupB.PropertyPaths,
+                Contains.Item(nameof(SiblingGroupsWithDifferentTypesTarget.arrayB))
+            );
+            Assert.That(
+                groupC.PropertyPaths,
+                Contains.Item(nameof(SiblingGroupsWithDifferentTypesTarget.nestedC))
+            );
         }
 
         [Test]
@@ -529,22 +574,22 @@ namespace WallstopStudios.UnityHelpers.Tests.WGroup
 
             Assert.That(
                 layout.GroupedPaths,
-                Does.Not.Contain("beforeGroup"),
+                Does.Not.Contain(nameof(IndentRestorationTarget.beforeGroup)),
                 "beforeGroup should not be in any group."
             );
             Assert.That(
                 layout.GroupedPaths,
-                Does.Not.Contain("afterGroup"),
+                Does.Not.Contain(nameof(IndentRestorationTarget.afterGroup)),
                 "afterGroup should not be in any group."
             );
             Assert.That(
                 layout.GroupedPaths,
-                Contains.Item("middleList"),
+                Contains.Item(nameof(IndentRestorationTarget.middleList)),
                 "middleList should be in the group."
             );
             Assert.That(
                 layout.GroupedPaths,
-                Contains.Item("middleNested"),
+                Contains.Item(nameof(IndentRestorationTarget.middleNested)),
                 "middleNested should be in the group."
             );
         }
@@ -577,7 +622,10 @@ namespace WallstopStudios.UnityHelpers.Tests.WGroup
             Assert.That(middle.ParentGroupName, Is.EqualTo("Outer").IgnoreCase);
             Assert.That(deepest.ParentGroupName, Is.EqualTo("MiddleNested").IgnoreCase);
 
-            Assert.That(deepest.PropertyPaths, Contains.Item("deepestArray"));
+            Assert.That(
+                deepest.PropertyPaths,
+                Contains.Item(nameof(ComplexCombinedTarget.deepestArray))
+            );
         }
 
         /// <summary>
@@ -592,7 +640,13 @@ namespace WallstopStudios.UnityHelpers.Tests.WGroup
                 typeof(SimpleFieldsTarget),
                 "Primitives",
                 4,
-                new[] { "intField", "floatField", "stringField", "boolField" }
+                new[]
+                {
+                    nameof(SimpleFieldsTarget.intField),
+                    nameof(SimpleFieldsTarget.floatField),
+                    nameof(SimpleFieldsTarget.stringField),
+                    nameof(SimpleFieldsTarget.boolField),
+                }
             ).SetName("SimpleFields.HasAllFourPrimitives");
 
             // ListFieldsTarget: 3 list fields with InfiniteAutoInclude
@@ -600,7 +654,12 @@ namespace WallstopStudios.UnityHelpers.Tests.WGroup
                 typeof(ListFieldsTarget),
                 "Lists",
                 3,
-                new[] { "intList", "stringList", "floatList" }
+                new[]
+                {
+                    nameof(ListFieldsTarget.intList),
+                    nameof(ListFieldsTarget.stringList),
+                    nameof(ListFieldsTarget.floatList),
+                }
             ).SetName("ListFields.HasAllThreeLists");
 
             // ArrayFieldsTarget: 3 array fields with InfiniteAutoInclude
@@ -608,7 +667,12 @@ namespace WallstopStudios.UnityHelpers.Tests.WGroup
                 typeof(ArrayFieldsTarget),
                 "Arrays",
                 3,
-                new[] { "intArray", "stringArray", "floatArray" }
+                new[]
+                {
+                    nameof(ArrayFieldsTarget.intArray),
+                    nameof(ArrayFieldsTarget.stringArray),
+                    nameof(ArrayFieldsTarget.floatArray),
+                }
             ).SetName("ArrayFields.HasAllThreeArrays");
 
             // SerializableClassTarget: 2 nested fields
@@ -616,7 +680,11 @@ namespace WallstopStudios.UnityHelpers.Tests.WGroup
                 typeof(SerializableClassTarget),
                 "Nested",
                 2,
-                new[] { "nestedData", "anotherNestedData" }
+                new[]
+                {
+                    nameof(SerializableClassTarget.nestedData),
+                    nameof(SerializableClassTarget.anotherNestedData),
+                }
             ).SetName("SerializableClass.HasBothNestedFields");
 
             // MixedFieldsTarget: 5 mixed fields
@@ -624,7 +692,14 @@ namespace WallstopStudios.UnityHelpers.Tests.WGroup
                 typeof(MixedFieldsTarget),
                 "Mixed",
                 5,
-                new[] { "simpleInt", "listField", "simpleString", "nestedField", "simpleFloat" }
+                new[]
+                {
+                    nameof(MixedFieldsTarget.simpleInt),
+                    nameof(MixedFieldsTarget.listField),
+                    nameof(MixedFieldsTarget.simpleString),
+                    nameof(MixedFieldsTarget.nestedField),
+                    nameof(MixedFieldsTarget.simpleFloat),
+                }
             ).SetName("MixedFields.HasAllFiveMixedFields");
         }
 
@@ -674,7 +749,7 @@ namespace WallstopStudios.UnityHelpers.Tests.WGroup
             yield return new TestCaseData(
                 typeof(SiblingGroupsWithDifferentTypesTarget),
                 "GroupC",
-                "afterAllGroups"
+                nameof(SiblingGroupsWithDifferentTypesTarget.afterAllGroups)
             ).SetName("WGroupEndOnly.DoesNotIncludeTerminatingField");
         }
 

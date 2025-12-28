@@ -135,6 +135,20 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             return null;
         }
+
+        /// <summary>
+        /// Gets the value of the condition field from the parent object.
+        /// </summary>
+        /// <remarks>
+        /// This method is internal to allow testing without reflection.
+        /// </remarks>
+        /// <param name="parent">The parent object containing the condition field.</param>
+        /// <param name="conditionField">The name of the condition field.</param>
+        /// <returns>The value of the condition field, or null if not found.</returns>
+        internal static object GetConditionValueForTest(object parent, string conditionField)
+        {
+            return GetConditionValue(parent, conditionField);
+        }
     }
 #endif
 }

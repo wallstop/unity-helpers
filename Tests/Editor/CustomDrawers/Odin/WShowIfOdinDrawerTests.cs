@@ -4,7 +4,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
     using System;
     using System.Collections;
     using System.Collections.Generic;
-    using System.Reflection;
     using NUnit.Framework;
     using UnityEditor;
     using UnityEngine;
@@ -24,26 +23,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
     [TestFixture]
     public sealed class WShowIfOdinDrawerTests : CommonTestBase
     {
-        private static readonly MethodInfo TryEvaluateConditionMethod;
-        private static readonly MethodInfo GetConditionValueMethod;
-
-        static WShowIfOdinDrawerTests()
-        {
-            // TryEvaluateCondition is in ShowIfConditionEvaluator, not WShowIfOdinDrawer
-            Type evaluatorType = typeof(ShowIfConditionEvaluator);
-            TryEvaluateConditionMethod = evaluatorType.GetMethod(
-                "TryEvaluateCondition",
-                BindingFlags.Static | BindingFlags.Public
-            );
-
-            // GetConditionValue is a private static method in WShowIfOdinDrawer
-            Type drawerType = typeof(WShowIfOdinDrawer);
-            GetConditionValueMethod = drawerType.GetMethod(
-                "GetConditionValue",
-                BindingFlags.Static | BindingFlags.NonPublic
-            );
-        }
-
         [Test]
         public void BoolConditionTrueShowsField()
         {
@@ -964,9 +943,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
         {
             OdinShowIfBoolTarget target = CreateScriptableObject<OdinShowIfBoolTarget>();
 
-            object conditionValue = GetConditionValueMethod?.Invoke(
-                null,
-                new object[] { target, "nonExistentField" }
+            object conditionValue = WShowIfOdinDrawer.GetConditionValueForTest(
+                target,
+                "nonExistentField"
             );
 
             Assert.That(conditionValue, Is.Null, "Non-existent field should return null");
@@ -975,10 +954,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
         [Test]
         public void NullParentValueHandledGracefully()
         {
-            object conditionValue = GetConditionValueMethod?.Invoke(
-                null,
-                new object[] { null, "someField" }
-            );
+            object conditionValue = WShowIfOdinDrawer.GetConditionValueForTest(null, "someField");
 
             Assert.That(conditionValue, Is.Null, "Null parent should return null condition value");
         }
@@ -988,9 +964,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
         {
             OdinShowIfBoolTarget target = CreateScriptableObject<OdinShowIfBoolTarget>();
 
-            object conditionValue = GetConditionValueMethod?.Invoke(
-                null,
-                new object[] { target, string.Empty }
+            object conditionValue = WShowIfOdinDrawer.GetConditionValueForTest(
+                target,
+                string.Empty
             );
 
             Assert.That(conditionValue, Is.Null, "Empty condition field name should return null");
@@ -1028,30 +1004,16 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
             WShowIfAttribute attribute
         )
         {
-            Assert.That(
-                GetConditionValueMethod,
-                Is.Not.Null,
-                "GetConditionValue method not found on WShowIfOdinDrawer. "
-                    + "Ensure the method exists as a private static method."
-            );
-            Assert.That(
-                TryEvaluateConditionMethod,
-                Is.Not.Null,
-                "TryEvaluateCondition method not found on ShowIfConditionEvaluator. "
-                    + "Ensure the method exists as a public static method."
+            object conditionValue = WShowIfOdinDrawer.GetConditionValueForTest(
+                target,
+                attribute.conditionField
             );
 
-            object conditionValue = GetConditionValueMethod.Invoke(
-                null,
-                new object[] { target, attribute.conditionField }
+            bool success = ShowIfConditionEvaluator.TryEvaluateCondition(
+                conditionValue,
+                attribute,
+                out bool shouldShow
             );
-
-            object[] parameters = new object[] { conditionValue, attribute, false };
-            object result = TryEvaluateConditionMethod.Invoke(null, parameters);
-            Assert.That(result, Is.Not.Null, "TryEvaluateCondition returned null unexpectedly.");
-
-            bool success = (bool)result;
-            bool shouldShow = (bool)parameters[2];
 
             return (success, shouldShow);
         }

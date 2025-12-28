@@ -7,6 +7,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Utils.WButton
     using System.Threading;
     using System.Threading.Tasks;
     using NUnit.Framework;
+    using UnityEditor;
     using UnityEngine;
     using UnityEngine.TestTools;
     using WallstopStudios.UnityHelpers.Core.Attributes;
@@ -36,21 +37,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Utils.WButton
 
         private static void ClearWButtonCaches()
         {
-            // Clear metadata cache via reflection since it's internal
-            System.Type metadataCacheType = typeof(WButtonEditorHelper).Assembly.GetType(
-                "WallstopStudios.UnityHelpers.Editor.Utils.WButton.WButtonMetadataCache"
-            );
-            if (metadataCacheType != null)
-            {
-                System.Reflection.FieldInfo cacheField = metadataCacheType.GetField(
-                    "Cache",
-                    System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic
-                );
-                if (cacheField != null && cacheField.GetValue(null) is IDictionary dict)
-                {
-                    dict.Clear();
-                }
-            }
+            WButtonMetadataCache.ClearCache();
         }
 
         [Test]
@@ -558,10 +545,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Utils.WButton
         }
 
         [Test]
-        public void HelperWorksWithPrivateWButtonMethods()
+        public void HelperWorksWithNonPublicWButtonMethods()
         {
-            HelperTargetWithPrivateMethod target =
-                CreateScriptableObject<HelperTargetWithPrivateMethod>();
+            HelperTargetWithNonPublicMethod target =
+                CreateScriptableObject<HelperTargetWithNonPublicMethod>();
             UnityEditor.Editor editor = UnityEditor.Editor.CreateEditor(target);
             try
             {
@@ -572,12 +559,14 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Utils.WButton
                 Assert.That(result, Is.True);
 
                 IReadOnlyList<WButtonMethodMetadata> metadata = WButtonMetadataCache.GetMetadata(
-                    typeof(HelperTargetWithPrivateMethod)
+                    typeof(HelperTargetWithNonPublicMethod)
                 );
                 Assert.That(
-                    metadata.Any(m => m.Method.Name == "PrivateButton"),
+                    metadata.Any(m =>
+                        m.Method.Name == nameof(HelperTargetWithNonPublicMethod.InternalButton)
+                    ),
                     Is.True,
-                    "Should find private WButton method"
+                    "Should find non-public WButton method"
                 );
             }
             finally
@@ -1330,14 +1319,14 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Utils.WButton
         }
     }
 
-    internal sealed class HelperTargetWithPrivateMethod : ScriptableObject
+    internal sealed class HelperTargetWithNonPublicMethod : ScriptableObject
     {
-        public int PrivateCallCount;
+        public int InternalCallCount;
 
         [WButton]
-        private void PrivateButton()
+        internal void InternalButton()
         {
-            PrivateCallCount++;
+            InternalCallCount++;
         }
     }
 

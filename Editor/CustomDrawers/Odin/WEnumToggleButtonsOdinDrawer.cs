@@ -602,7 +602,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             return new EnumShared.SelectionSummary(true, OutOfViewContent);
         }
 
-        private static ulong CalculateAllFlagsMask(EnumShared.ToggleOption[] options)
+        internal static ulong CalculateAllFlagsMask(EnumShared.ToggleOption[] options)
         {
             ulong mask = 0UL;
             for (int index = 0; index < options.Length; index += 1)
@@ -616,7 +616,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             return mask;
         }
 
-        private static EnumShared.ToggleOption[] GetCachedEnumOptions(Type enumType)
+        internal static EnumShared.ToggleOption[] GetCachedEnumOptions(Type enumType)
         {
             if (enumType == null || !enumType.IsEnum)
             {
@@ -637,7 +637,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             return options;
         }
 
-        private static EnumShared.ToggleOption[] BuildEnumOptions(Type enumType, bool isFlags)
+        internal static EnumShared.ToggleOption[] BuildEnumOptions(Type enumType, bool isFlags)
         {
             Array values = Enum.GetValues(enumType);
             List<EnumShared.ToggleOption> options = new(values.Length);
@@ -680,7 +680,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             return options.ToArray();
         }
 
-        private static bool ShouldPaginate(
+        internal static bool ShouldPaginate(
             WEnumToggleButtonsAttribute attribute,
             int optionCount,
             out int pageSize
@@ -695,7 +695,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             return optionCount > pageSize;
         }
 
-        private static int ResolvePageSize(WEnumToggleButtonsAttribute attribute)
+        internal static int ResolvePageSize(WEnumToggleButtonsAttribute attribute)
         {
             int overrideSize = attribute?.PageSize ?? 0;
             if (overrideSize > 0)

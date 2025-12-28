@@ -1968,6 +1968,52 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             internal const string WEnumToggleButtonsInactiveText = nameof(
                 WEnumToggleButtonsCustomColor._inactiveTextColor
             );
+
+            /// <summary>
+            /// Gets the serialized property name value for the given constant name.
+            /// Exposed for testing to avoid reflection-based field access.
+            /// </summary>
+            internal static string GetPropertyNameValue(string constantName)
+            {
+                return constantName switch
+                {
+                    nameof(SerializableTypeIgnorePatterns) => SerializableTypeIgnorePatterns,
+                    nameof(SerializableTypePatternsInitialized) =>
+                        SerializableTypePatternsInitialized,
+                    nameof(SerializableTypePattern) => SerializableTypePattern,
+                    nameof(LegacyWButtonPriorityColors) => LegacyWButtonPriorityColors,
+                    nameof(WButtonCustomColors) => WButtonCustomColors,
+                    nameof(WGroupFoldoutsStartCollapsed) => WGroupFoldoutsStartCollapsed,
+                    nameof(WGroupFoldoutTweenEnabled) => WGroupFoldoutTweenEnabled,
+                    nameof(WGroupFoldoutSpeed) => WGroupFoldoutSpeed,
+                    nameof(WEnumToggleButtonsCustomColors) => WEnumToggleButtonsCustomColors,
+                    nameof(InlineEditorFoldoutBehavior) => InlineEditorFoldoutBehavior,
+                    nameof(InlineEditorFoldoutTweenEnabled) => InlineEditorFoldoutTweenEnabled,
+                    nameof(InlineEditorFoldoutSpeed) => InlineEditorFoldoutSpeed,
+                    nameof(WButtonFoldoutTweenEnabled) => WButtonFoldoutTweenEnabled,
+                    nameof(SerializableDictionaryFoldoutTweenEnabled) =>
+                        SerializableDictionaryFoldoutTweenEnabled,
+                    nameof(SerializableSortedDictionaryFoldoutTweenEnabled) =>
+                        SerializableSortedDictionaryFoldoutTweenEnabled,
+                    nameof(SerializableSetFoldoutTweenEnabled) =>
+                        SerializableSetFoldoutTweenEnabled,
+                    nameof(SerializableSortedSetFoldoutTweenEnabled) =>
+                        SerializableSortedSetFoldoutTweenEnabled,
+                    nameof(FoldoutTweenSettingsInitialized) => FoldoutTweenSettingsInitialized,
+                    nameof(DetectAssetChangeLoopWindowSeconds) =>
+                        DetectAssetChangeLoopWindowSeconds,
+                    nameof(WButtonPriority) => WButtonPriority,
+                    nameof(WButtonCustomColorButton) => WButtonCustomColorButton,
+                    nameof(WButtonCustomColorText) => WButtonCustomColorText,
+                    nameof(WEnumToggleButtonsSelectedBackground) =>
+                        WEnumToggleButtonsSelectedBackground,
+                    nameof(WEnumToggleButtonsSelectedText) => WEnumToggleButtonsSelectedText,
+                    nameof(WEnumToggleButtonsInactiveBackground) =>
+                        WEnumToggleButtonsInactiveBackground,
+                    nameof(WEnumToggleButtonsInactiveText) => WEnumToggleButtonsInactiveText,
+                    _ => null,
+                };
+            }
         }
 
         /// <summary>
@@ -3404,7 +3450,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         /// Caching the SerializedObject preserves property expansion states (isExpanded)
         /// across frames, preventing foldouts from unexpectedly re-expanding.
         /// </summary>
-        private static SerializedObject GetOrCreateCachedSerializedObject(
+        internal static SerializedObject GetOrCreateCachedSerializedObject(
             UnityHelpersSettings settings
         )
         {

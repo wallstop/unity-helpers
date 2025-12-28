@@ -3,11 +3,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
 #if UNITY_EDITOR && ODIN_INSPECTOR
     using System;
     using System.Collections;
-    using System.Reflection;
     using NUnit.Framework;
     using UnityEditor;
     using UnityEngine.TestTools;
     using WallstopStudios.UnityHelpers.Editor.CustomDrawers;
+    using WallstopStudios.UnityHelpers.Editor.CustomDrawers.Utils;
     using WallstopStudios.UnityHelpers.Tests.Core;
     using WallstopStudios.UnityHelpers.Tests.Editor.TestTypes.Odin.ValueDropDown;
     using WallstopStudios.UnityHelpers.Tests.Editor.TestTypes.SharedEnums;
@@ -22,36 +22,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
     [TestFixture]
     public sealed class WValueDropDownOdinDrawerTests : CommonTestBase
     {
-        private static readonly MethodInfo FindSelectedIndexMethod;
-        private static readonly MethodInfo ValuesMatchMethod;
-        private static readonly MethodInfo GetDisplayOptionsMethod;
-        private static readonly MethodInfo FormatOptionMethod;
-
-        static WValueDropDownOdinDrawerTests()
-        {
-            Type drawerType = typeof(WValueDropDownOdinDrawer);
-
-            FindSelectedIndexMethod = drawerType.GetMethod(
-                "FindSelectedIndex",
-                BindingFlags.Static | BindingFlags.NonPublic
-            );
-
-            ValuesMatchMethod = drawerType.GetMethod(
-                "ValuesMatch",
-                BindingFlags.Static | BindingFlags.NonPublic
-            );
-
-            GetDisplayOptionsMethod = drawerType.GetMethod(
-                "GetDisplayOptions",
-                BindingFlags.Static | BindingFlags.NonPublic
-            );
-
-            FormatOptionMethod = drawerType.GetMethod(
-                "FormatOption",
-                BindingFlags.Static | BindingFlags.NonPublic
-            );
-        }
-
         [Test]
         public void DrawerRegistrationForScriptableObjectIsCorrect()
         {
@@ -400,7 +370,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
             object[] options = { "Alpha", "Beta", "Gamma" };
             object currentValue = "Beta";
 
-            int index = (int)FindSelectedIndexMethod.Invoke(null, new[] { currentValue, options });
+            int index = WValueDropDownOdinDrawer.FindSelectedIndex(currentValue, options);
 
             Assert.That(index, Is.EqualTo(1), "Index should be 1 for 'Beta'");
         }
@@ -411,7 +381,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
             object[] options = { "Alpha", "Beta", "Gamma" };
             object currentValue = "Delta";
 
-            int index = (int)FindSelectedIndexMethod.Invoke(null, new[] { currentValue, options });
+            int index = WValueDropDownOdinDrawer.FindSelectedIndex(currentValue, options);
 
             Assert.That(index, Is.EqualTo(-1), "Index should be -1 for non-matching value");
         }
@@ -421,7 +391,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
         {
             object[] options = { "Alpha", "Beta", "Gamma" };
 
-            int index = (int)FindSelectedIndexMethod.Invoke(null, new object[] { null, options });
+            int index = WValueDropDownOdinDrawer.FindSelectedIndex(null, options);
 
             Assert.That(index, Is.EqualTo(-1), "Index should be -1 for null value");
         }
@@ -431,7 +401,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
         {
             object value = new object();
 
-            bool match = (bool)ValuesMatchMethod.Invoke(null, new[] { value, value });
+            bool match = DropDownShared.ValuesMatch(value, value);
 
             Assert.That(match, Is.True, "Same reference should match");
         }
@@ -442,7 +412,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
             string value1 = "Test";
             string value2 = "Test";
 
-            bool match = (bool)ValuesMatchMethod.Invoke(null, new object[] { value1, value2 });
+            bool match = DropDownShared.ValuesMatch(value1, value2);
 
             Assert.That(match, Is.True, "Equal strings should match");
         }
@@ -453,7 +423,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
             object value1 = null;
             object value2 = "Test";
 
-            bool match = (bool)ValuesMatchMethod.Invoke(null, new[] { value1, value2 });
+            bool match = DropDownShared.ValuesMatch(value1, value2);
 
             Assert.That(match, Is.False, "Null and non-null should not match");
         }
@@ -464,7 +434,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
             int value1 = 42;
             long value2 = 42L;
 
-            bool match = (bool)ValuesMatchMethod.Invoke(null, new object[] { value1, value2 });
+            bool match = DropDownShared.ValuesMatch(value1, value2);
 
             Assert.That(match, Is.True, "Numerically equal values should match");
         }
@@ -475,7 +445,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
             TestDropDownMode enumValue = TestDropDownMode.ModeB;
             int intValue = 1;
 
-            bool match = (bool)ValuesMatchMethod.Invoke(null, new object[] { enumValue, intValue });
+            bool match = DropDownShared.ValuesMatch(enumValue, intValue);
 
             Assert.That(match, Is.True, "Enum and its underlying int value should match");
         }
@@ -485,8 +455,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
         {
             object[] options = { "Alpha", 42, TestDropDownMode.ModeA };
 
-            string[] displayOptions = (string[])
-                GetDisplayOptionsMethod.Invoke(null, new object[] { options });
+            string[] displayOptions = WValueDropDownOdinDrawer.GetDisplayOptions(options);
 
             Assert.That(displayOptions, Is.Not.Null);
             Assert.That(displayOptions.Length, Is.EqualTo(3));
@@ -498,7 +467,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
         [Test]
         public void FormatOptionReturnsNullStringForNull()
         {
-            string formatted = (string)FormatOptionMethod.Invoke(null, new object[] { null });
+            string formatted = DropDownShared.FormatOption(null);
 
             Assert.That(formatted, Is.EqualTo("(null)"));
         }
@@ -506,8 +475,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
         [Test]
         public void FormatOptionReturnsEnumName()
         {
-            string formatted = (string)
-                FormatOptionMethod.Invoke(null, new object[] { TestDropDownMode.ModeC });
+            string formatted = DropDownShared.FormatOption(TestDropDownMode.ModeC);
 
             Assert.That(formatted, Is.EqualTo("ModeC"));
         }
@@ -515,7 +483,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
         [Test]
         public void FormatOptionReturnsIntAsString()
         {
-            string formatted = (string)FormatOptionMethod.Invoke(null, new object[] { 123 });
+            string formatted = DropDownShared.FormatOption(123);
 
             Assert.That(formatted, Is.EqualTo("123"));
         }

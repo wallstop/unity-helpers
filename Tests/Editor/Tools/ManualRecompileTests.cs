@@ -338,14 +338,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Tools
         [Test]
         public void IsCompilationPendingHandlesNullEvaluatorGracefully()
         {
-            // Force the evaluator to null through reflection to test defensive check
-            System.Reflection.FieldInfo field = typeof(ManualRecompile).GetField(
-                "isCompilationPendingEvaluator",
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static
-            );
-            Assert.IsNotNull(field, "Should be able to access isCompilationPendingEvaluator field");
-
-            field.SetValue(null, null);
+            // Force the evaluator to null directly to test defensive check
+            ManualRecompile.isCompilationPendingEvaluator = null;
 
             ManualRecompile.SkipCompilationRequestForTests = true;
             bool assetsRefreshed = false;

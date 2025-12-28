@@ -3,7 +3,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
 #if UNITY_EDITOR && ODIN_INSPECTOR
     using System;
     using System.Collections;
-    using System.Reflection;
     using NUnit.Framework;
     using UnityEditor;
     using WallstopStudios.UnityHelpers.Editor.CustomDrawers;
@@ -21,26 +20,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
     [TestFixture]
     public sealed class IntDropDownOdinDrawerTests : CommonTestBase
     {
-        private static readonly MethodInfo GetOrCreateDisplayOptionsMethod;
-        private static readonly MethodInfo GetCachedIntStringMethod;
-
-        static IntDropDownOdinDrawerTests()
-        {
-            Type drawerType = typeof(IntDropDownOdinDrawer);
-
-            GetOrCreateDisplayOptionsMethod = drawerType.GetMethod(
-                "GetOrCreateDisplayOptions",
-                BindingFlags.Static | BindingFlags.NonPublic
-            );
-
-            // GetCachedIntString is in DropDownShared, not IntDropDownOdinDrawer
-            Type sharedType = typeof(DropDownShared);
-            GetCachedIntStringMethod = sharedType.GetMethod(
-                "GetCachedIntString",
-                BindingFlags.Static | BindingFlags.Public
-            );
-        }
-
         [Test]
         public void DrawerRegistrationForScriptableObjectIsCorrect()
         {
@@ -463,8 +442,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
         {
             int[] options = { 10, 20, 30 };
 
-            string[] displayOptions = (string[])
-                GetOrCreateDisplayOptionsMethod.Invoke(null, new object[] { options });
+            string[] displayOptions = IntDropDownOdinDrawer.GetOrCreateDisplayOptions(options);
 
             Assert.That(displayOptions, Is.Not.Null);
             Assert.That(displayOptions.Length, Is.EqualTo(3));
@@ -476,8 +454,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
         [Test]
         public void GetOrCreateDisplayOptionsReturnsEmptyForNull()
         {
-            string[] displayOptions = (string[])
-                GetOrCreateDisplayOptionsMethod.Invoke(null, new object[] { null });
+            string[] displayOptions = IntDropDownOdinDrawer.GetOrCreateDisplayOptions(null);
 
             Assert.That(displayOptions, Is.Not.Null);
             Assert.That(displayOptions.Length, Is.EqualTo(0));
@@ -488,8 +465,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
         {
             int[] options = Array.Empty<int>();
 
-            string[] displayOptions = (string[])
-                GetOrCreateDisplayOptionsMethod.Invoke(null, new object[] { options });
+            string[] displayOptions = IntDropDownOdinDrawer.GetOrCreateDisplayOptions(options);
 
             Assert.That(displayOptions, Is.Not.Null);
             Assert.That(displayOptions.Length, Is.EqualTo(0));
@@ -500,7 +476,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
         {
             int value = 42;
 
-            string result = (string)GetCachedIntStringMethod.Invoke(null, new object[] { value });
+            string result = DropDownShared.GetCachedIntString(value);
 
             Assert.That(result, Is.EqualTo("42"));
         }
@@ -510,8 +486,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
         {
             int value = 123;
 
-            string result1 = (string)GetCachedIntStringMethod.Invoke(null, new object[] { value });
-            string result2 = (string)GetCachedIntStringMethod.Invoke(null, new object[] { value });
+            string result1 = DropDownShared.GetCachedIntString(value);
+            string result2 = DropDownShared.GetCachedIntString(value);
 
             Assert.That(result1, Is.EqualTo("123"));
             Assert.That(result1, Is.SameAs(result2), "Cached string should be same reference");
@@ -522,10 +498,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
         {
             int[] options = { 1, 2, 3, 4, 5 };
 
-            string[] result1 = (string[])
-                GetOrCreateDisplayOptionsMethod.Invoke(null, new object[] { options });
-            string[] result2 = (string[])
-                GetOrCreateDisplayOptionsMethod.Invoke(null, new object[] { options });
+            string[] result1 = IntDropDownOdinDrawer.GetOrCreateDisplayOptions(options);
+            string[] result2 = IntDropDownOdinDrawer.GetOrCreateDisplayOptions(options);
 
             Assert.That(result1, Is.Not.Null);
             Assert.That(result2, Is.Not.Null);

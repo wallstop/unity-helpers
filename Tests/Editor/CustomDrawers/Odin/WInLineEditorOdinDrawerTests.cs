@@ -3,12 +3,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
 #if UNITY_EDITOR && ODIN_INSPECTOR
     using System;
     using System.Collections;
-    using System.Collections.Generic;
-    using System.Reflection;
     using NUnit.Framework;
-    using Sirenix.OdinInspector;
-    using Sirenix.OdinInspector.Editor;
-    using UnityEditor;
     using UnityEngine;
     using UnityEngine.TestTools;
     using WallstopStudios.UnityHelpers.Core.Attributes;
@@ -27,63 +22,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
     [TestFixture]
     public sealed class WInLineEditorOdinDrawerTests : CommonTestBase
     {
-        private static readonly MethodInfo ResolveModeMethod;
-        private static readonly MethodInfo GetFoldoutStateMethod;
-        private static readonly MethodInfo GetOrCreateEditorMethod;
-        private static readonly FieldInfo FoldoutStatesField;
-        private static readonly FieldInfo EditorCacheField;
-
-        static WInLineEditorOdinDrawerTests()
-        {
-            // Methods and fields are now in InLineEditorShared, not WInLineEditorOdinDrawer
-            Type sharedType = typeof(InLineEditorShared);
-
-            ResolveModeMethod = sharedType.GetMethod(
-                "ResolveMode",
-                BindingFlags.Static | BindingFlags.Public
-            );
-
-            GetFoldoutStateMethod = sharedType.GetMethod(
-                "GetFoldoutState",
-                BindingFlags.Static | BindingFlags.Public
-            );
-
-            GetOrCreateEditorMethod = sharedType.GetMethod(
-                "GetOrCreateEditor",
-                BindingFlags.Static | BindingFlags.Public
-            );
-
-            FoldoutStatesField = sharedType.GetField(
-                "FoldoutStates",
-                BindingFlags.Static | BindingFlags.NonPublic
-            );
-
-            EditorCacheField = sharedType.GetField(
-                "EditorCache",
-                BindingFlags.Static | BindingFlags.NonPublic
-            );
-
-            // Diagnostic checks - these will help identify reflection failures early
-            if (ResolveModeMethod == null)
-            {
-                UnityEngine.Debug.LogError(
-                    $"[WInLineEditorOdinDrawerTests] Failed to find ResolveMode method on {sharedType.FullName}"
-                );
-            }
-            if (GetFoldoutStateMethod == null)
-            {
-                UnityEngine.Debug.LogError(
-                    $"[WInLineEditorOdinDrawerTests] Failed to find GetFoldoutState method on {sharedType.FullName}"
-                );
-            }
-            if (GetOrCreateEditorMethod == null)
-            {
-                UnityEngine.Debug.LogError(
-                    $"[WInLineEditorOdinDrawerTests] Failed to find GetOrCreateEditor method on {sharedType.FullName}"
-                );
-            }
-        }
-
         public override void BaseSetUp()
         {
             base.BaseSetUp();
@@ -296,16 +234,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
         [Test]
         public void ResolveModeReturnsAlwaysExpandedForAlwaysExpandedAttribute()
         {
-            Assert.That(
-                ResolveModeMethod,
-                Is.Not.Null,
-                "ResolveModeMethod reflection failed - method not found on InLineEditorShared"
-            );
-
             WInLineEditorAttribute attribute = new(WInLineEditorMode.AlwaysExpanded);
 
-            WInLineEditorMode resolvedMode = (WInLineEditorMode)
-                ResolveModeMethod.Invoke(null, new object[] { attribute });
+            WInLineEditorMode resolvedMode = InLineEditorShared.ResolveMode(attribute);
 
             Assert.That(
                 resolvedMode,
@@ -317,16 +248,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
         [Test]
         public void ResolveModeReturnsFoldoutExpandedForFoldoutExpandedAttribute()
         {
-            Assert.That(
-                ResolveModeMethod,
-                Is.Not.Null,
-                "ResolveModeMethod reflection failed - method not found on InLineEditorShared"
-            );
-
             WInLineEditorAttribute attribute = new(WInLineEditorMode.FoldoutExpanded);
 
-            WInLineEditorMode resolvedMode = (WInLineEditorMode)
-                ResolveModeMethod.Invoke(null, new object[] { attribute });
+            WInLineEditorMode resolvedMode = InLineEditorShared.ResolveMode(attribute);
 
             Assert.That(
                 resolvedMode,
@@ -338,16 +262,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
         [Test]
         public void ResolveModeReturnsFoldoutCollapsedForFoldoutCollapsedAttribute()
         {
-            Assert.That(
-                ResolveModeMethod,
-                Is.Not.Null,
-                "ResolveModeMethod reflection failed - method not found on InLineEditorShared"
-            );
-
             WInLineEditorAttribute attribute = new(WInLineEditorMode.FoldoutCollapsed);
 
-            WInLineEditorMode resolvedMode = (WInLineEditorMode)
-                ResolveModeMethod.Invoke(null, new object[] { attribute });
+            WInLineEditorMode resolvedMode = InLineEditorShared.ResolveMode(attribute);
 
             Assert.That(
                 resolvedMode,
@@ -359,19 +276,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
         [Test]
         public void GetFoldoutStateReturnsTrueForAlwaysExpanded()
         {
-            Assert.That(
-                GetFoldoutStateMethod,
-                Is.Not.Null,
-                "GetFoldoutStateMethod reflection failed - method not found on InLineEditorShared"
-            );
-
             string foldoutKey = "test::alwaysExpanded";
 
-            bool foldoutState = (bool)
-                GetFoldoutStateMethod.Invoke(
-                    null,
-                    new object[] { foldoutKey, WInLineEditorMode.AlwaysExpanded }
-                );
+            bool foldoutState = InLineEditorShared.GetFoldoutState(
+                foldoutKey,
+                WInLineEditorMode.AlwaysExpanded
+            );
 
             Assert.That(
                 foldoutState,
@@ -383,19 +293,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
         [Test]
         public void GetFoldoutStateReturnsTrueForFoldoutExpanded()
         {
-            Assert.That(
-                GetFoldoutStateMethod,
-                Is.Not.Null,
-                "GetFoldoutStateMethod reflection failed - method not found on InLineEditorShared"
-            );
-
             string foldoutKey = "test::foldoutExpanded";
 
-            bool foldoutState = (bool)
-                GetFoldoutStateMethod.Invoke(
-                    null,
-                    new object[] { foldoutKey, WInLineEditorMode.FoldoutExpanded }
-                );
+            bool foldoutState = InLineEditorShared.GetFoldoutState(
+                foldoutKey,
+                WInLineEditorMode.FoldoutExpanded
+            );
 
             Assert.That(
                 foldoutState,
@@ -407,19 +310,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
         [Test]
         public void GetFoldoutStateReturnsFalseForFoldoutCollapsed()
         {
-            Assert.That(
-                GetFoldoutStateMethod,
-                Is.Not.Null,
-                "GetFoldoutStateMethod reflection failed - method not found on InLineEditorShared"
-            );
-
             string foldoutKey = "test::foldoutCollapsed";
 
-            bool foldoutState = (bool)
-                GetFoldoutStateMethod.Invoke(
-                    null,
-                    new object[] { foldoutKey, WInLineEditorMode.FoldoutCollapsed }
-                );
+            bool foldoutState = InLineEditorShared.GetFoldoutState(
+                foldoutKey,
+                WInLineEditorMode.FoldoutCollapsed
+            );
 
             Assert.That(
                 foldoutState,
@@ -572,16 +468,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
         [Test]
         public void UseSettingsModeResolvesCorrectly()
         {
-            Assert.That(
-                ResolveModeMethod,
-                Is.Not.Null,
-                "ResolveModeMethod reflection failed - method not found on InLineEditorShared"
-            );
-
             WInLineEditorAttribute attribute = new(WInLineEditorMode.UseSettings);
 
-            WInLineEditorMode resolvedMode = (WInLineEditorMode)
-                ResolveModeMethod.Invoke(null, new object[] { attribute });
+            WInLineEditorMode resolvedMode = InLineEditorShared.ResolveMode(attribute);
 
             Assert.That(
                 resolvedMode,
@@ -593,19 +482,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
         [Test]
         public void EditorCachingWorks()
         {
-            Assert.That(
-                GetOrCreateEditorMethod,
-                Is.Not.Null,
-                "GetOrCreateEditorMethod reflection failed - method not found on InLineEditorShared"
-            );
-
             OdinReferencedScriptableObject referencedObject =
                 CreateScriptableObject<OdinReferencedScriptableObject>();
 
-            UnityEditor.Editor editor1 = (UnityEditor.Editor)
-                GetOrCreateEditorMethod.Invoke(null, new object[] { referencedObject });
-            UnityEditor.Editor editor2 = (UnityEditor.Editor)
-                GetOrCreateEditorMethod.Invoke(null, new object[] { referencedObject });
+            UnityEditor.Editor editor1 = InLineEditorShared.GetOrCreateEditor(referencedObject);
+            UnityEditor.Editor editor2 = InLineEditorShared.GetOrCreateEditor(referencedObject);
 
             try
             {
@@ -626,14 +507,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
         [Test]
         public void EditorCachingReturnsNullForNullObject()
         {
-            Assert.That(
-                GetOrCreateEditorMethod,
-                Is.Not.Null,
-                "GetOrCreateEditorMethod reflection failed - method not found on InLineEditorShared"
-            );
-
-            UnityEditor.Editor editor = (UnityEditor.Editor)
-                GetOrCreateEditorMethod.Invoke(null, new object[] { null });
+            UnityEditor.Editor editor = InLineEditorShared.GetOrCreateEditor(null);
 
             Assert.That(editor, Is.Null, "Editor should be null for null object");
         }
@@ -1201,12 +1075,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
         [Test]
         public void AllFoldoutModesCanBeSetAndRetrieved()
         {
-            Assert.That(
-                GetFoldoutStateMethod,
-                Is.Not.Null,
-                "GetFoldoutStateMethod reflection failed - method not found on InLineEditorShared"
-            );
-
             WInLineEditorMode[] modes = new[]
             {
                 WInLineEditorMode.AlwaysExpanded,
@@ -1219,8 +1087,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
                 string foldoutKey = $"test::mode::{mode}";
                 bool expectedState = mode != WInLineEditorMode.FoldoutCollapsed;
 
-                bool state = (bool)
-                    GetFoldoutStateMethod.Invoke(null, new object[] { foldoutKey, mode });
+                bool state = InLineEditorShared.GetFoldoutState(foldoutKey, mode);
 
                 Assert.That(
                     state,

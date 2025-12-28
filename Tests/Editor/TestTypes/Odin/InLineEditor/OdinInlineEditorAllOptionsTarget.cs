@@ -1,6 +1,7 @@
 namespace WallstopStudios.UnityHelpers.Tests.Editor.TestTypes.Odin.InLineEditor
 {
 #if UNITY_EDITOR && ODIN_INSPECTOR
+
     using Sirenix.OdinInspector;
     using WallstopStudios.UnityHelpers.Core.Attributes;
 
@@ -20,5 +21,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.TestTypes.Odin.InLineEditor
         )]
         public OdinReferencedScriptableObject allOptionsReference;
     }
+
 #endif
 }

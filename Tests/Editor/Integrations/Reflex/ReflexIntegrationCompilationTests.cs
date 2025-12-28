@@ -28,7 +28,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.Reflex
         public void PublicExtensionMethodsAccessible()
         {
             MethodInfo method = typeof(ContainerRelationalExtensions).GetMethod(
-                "AssignRelationalComponents",
+                nameof(ContainerRelationalExtensions.AssignRelationalComponents),
                 BindingFlags.Public | BindingFlags.Static
             );
             Assert.NotNull(

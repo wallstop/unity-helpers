@@ -14,13 +14,13 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomEditors
     public sealed class SourceFolderEntryDrawer : PropertyDrawer
     {
         private const string HistoryToolName = nameof(SourceFolderEntryDrawer);
-        private static readonly Dictionary<string, bool> RegexesFoldoutState = new(
+        internal static readonly Dictionary<string, bool> RegexesFoldoutState = new(
             StringComparer.Ordinal
         );
-        private static readonly Dictionary<string, bool> ExcludeRegexesFoldoutState = new(
+        internal static readonly Dictionary<string, bool> ExcludeRegexesFoldoutState = new(
             StringComparer.Ordinal
         );
-        private static readonly Dictionary<string, bool> ExcludePathPrefixesFoldoutState = new(
+        internal static readonly Dictionary<string, bool> ExcludePathPrefixesFoldoutState = new(
             StringComparer.Ordinal
         );
 
@@ -660,7 +660,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomEditors
                 ) + ".folderList";
         }
 
-        private static string GetRegexFoldoutKey(SerializedProperty property)
+        internal static string GetRegexFoldoutKey(SerializedProperty property)
         {
             return (
                     property.serializedObject.targetObject != null
@@ -671,7 +671,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomEditors
                 + ".regexesList";
         }
 
-        private static string GetExcludeRegexFoldoutKey(SerializedProperty property)
+        internal static string GetExcludeRegexFoldoutKey(SerializedProperty property)
         {
             return (
                     property.serializedObject.targetObject != null
@@ -682,7 +682,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomEditors
                 + ".excludeRegexesList";
         }
 
-        private static string GetExcludePathFoldoutKey(SerializedProperty property)
+        internal static string GetExcludePathFoldoutKey(SerializedProperty property)
         {
             return (
                     property.serializedObject.targetObject != null

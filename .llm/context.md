@@ -95,6 +95,8 @@ Invoke these skills for specific tasks:
 | [format-code](skills/format-code.md)                             | After any C# file changes                           |
 | [search-codebase](skills/search-codebase.md)                     | Finding code, files, or patterns                    |
 | [git-safe-operations](skills/git-safe-operations.md)             | Scripts or hooks that interact with git index       |
+| [avoid-reflection](skills/avoid-reflection.md)                   | **ALL code** — never reflect on our own types       |
+| [avoid-magic-strings](skills/avoid-magic-strings.md)             | **ALL code** — use nameof() not strings             |
 
 ### Performance Skills
 
@@ -190,6 +192,8 @@ See [create-csharp-file](skills/create-csharp-file.md) for detailed rules. Key p
 11. **ALWAYS update documentation** — Docs, XML docs, code samples, and CHANGELOG for every change (see [update-documentation](skills/update-documentation.md))
 12. **ALWAYS write exhaustive tests** — Normal, negative, edge cases, extreme scenarios, and "the impossible" (see [create-test](skills/create-test.md))
 13. **Enums MUST have explicit integer values** — EVERY enum member requires `= N`; first member MUST be `None`/`Unknown` with `= 0` and `[Obsolete]` (non-error) (see [create-enum](skills/create-enum.md))
+14. **NEVER use reflection on our own code** — Use `internal` + `[InternalsVisibleTo]` for test access; reflection is fragile and untraceable (see [avoid-reflection](skills/avoid-reflection.md))
+15. **NEVER use magic strings for code identifiers** — Use `nameof()` for members and `typeof()` for types; strings break silently on rename (see [avoid-magic-strings](skills/avoid-magic-strings.md))
 
 ---
 
@@ -294,6 +298,61 @@ ReflectionHelpers.TryGetField(type, "name", out FieldInfo field);
 [MethodImpl(MethodImplOptions.AggressiveInlining)]
 public int GetHashCode() => _cachedHash;
 ```
+
+---
+
+## Reflection & Magic Strings
+
+**MANDATORY**: Reflection and magic strings are FORBIDDEN for WallstopStudios code. This applies to ALL code (production, editor, tests).
+
+### Reflection Rules
+
+| Forbidden                            | Use Instead                                    |
+| ------------------------------------ | ---------------------------------------------- |
+| `typeof(OurType).GetMethod("name")`  | `internal` method + `[InternalsVisibleTo]`     |
+| `typeof(OurType).GetField("name")`   | `internal` field + `[InternalsVisibleTo]`      |
+| `Activator.CreateInstance(ourType)`  | Direct constructor or factory method           |
+| Reflection to access private members | Make `internal` and grant test assembly access |
+
+**Why reflection is forbidden on our code:**
+
+- **Fragile**: Breaks silently on rename/refactor
+- **Untraceable**: IDE "Find All References" misses reflection calls
+- **Slow**: Orders of magnitude slower than direct access
+- **Unnecessary**: We control the code—use `internal` visibility
+
+### Magic String Rules
+
+| Forbidden                                   | Use Instead                                   |
+| ------------------------------------------- | --------------------------------------------- |
+| `"MethodName"` for serialization callbacks  | `nameof(MethodName)`                          |
+| `"fieldName"` for property paths            | `nameof(fieldName)`                           |
+| `"TypeName"` for type references            | `typeof(TypeName).Name` or `nameof(TypeName)` |
+| String literals referencing our identifiers | `nameof()` for compile-time safety            |
+
+**Why magic strings are forbidden:**
+
+- **Silent breakage**: Renaming breaks functionality with no compiler error
+- **No refactoring support**: IDE rename operations miss string references
+- **No IntelliSense**: Typos compile successfully but fail at runtime
+
+### Test Access Pattern
+
+```csharp
+// In AssemblyInfo.cs (production assembly)
+[assembly: InternalsVisibleTo("WallstopStudios.UnityHelpers.Tests.Editor")]
+[assembly: InternalsVisibleTo("WallstopStudios.UnityHelpers.Tests.Runtime")]
+
+// In production code - use internal instead of private
+internal void MethodNeedingTestAccess() { }
+internal int _fieldNeedingTestAccess;
+
+// In test code - access directly, no reflection needed
+_instance.MethodNeedingTestAccess();
+Assert.AreEqual(expected, _instance._fieldNeedingTestAccess);
+```
+
+See [avoid-reflection](skills/avoid-reflection.md) and [avoid-magic-strings](skills/avoid-magic-strings.md) for complete guidelines.
 
 ---
 

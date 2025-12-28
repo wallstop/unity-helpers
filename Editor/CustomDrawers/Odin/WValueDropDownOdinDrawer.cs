@@ -153,7 +153,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             Property.ValueEntry.WeakSmartValue = newValue;
         }
 
-        private static int FindSelectedIndex(object currentValue, object[] options)
+        internal static int FindSelectedIndex(object currentValue, object[] options)
         {
             if (currentValue == null)
             {
@@ -171,7 +171,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             return -1;
         }
 
-        private static string[] GetDisplayOptions(object[] options)
+        internal static string[] GetDisplayOptions(object[] options)
         {
             string[] displayOptions = new string[options.Length];
             for (int i = 0; i < options.Length; i++)

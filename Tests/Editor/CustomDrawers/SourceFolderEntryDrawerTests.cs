@@ -3,8 +3,6 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 #if UNITY_EDITOR
     using System;
     using System.Collections;
-    using System.Collections.Generic;
-    using System.Reflection;
     using NUnit.Framework;
     using UnityEditor;
     using UnityEngine;
@@ -188,7 +186,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             entryProp.isExpanded = true;
 
             // Expand the Regexes foldout
-            SetFoldoutState("RegexesFoldoutState", GetRegexFoldoutKey(entryProp), true);
+            SetRegexesFoldoutState(SourceFolderEntryDrawer.GetRegexFoldoutKey(entryProp), true);
             _serializedConfig.ApplyModifiedProperties();
 
             float heightEmpty = _drawer.GetPropertyHeight(entryProp, GUIContent.none);
@@ -231,13 +229,13 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             entryProp.isExpanded = true;
 
             // Collapse the Regexes foldout
-            SetFoldoutState("RegexesFoldoutState", GetRegexFoldoutKey(entryProp), false);
+            SetRegexesFoldoutState(SourceFolderEntryDrawer.GetRegexFoldoutKey(entryProp), false);
             _serializedConfig.ApplyModifiedProperties();
 
             float heightCollapsed = _drawer.GetPropertyHeight(entryProp, GUIContent.none);
 
             // Expand the Regexes foldout
-            SetFoldoutState("RegexesFoldoutState", GetRegexFoldoutKey(entryProp), true);
+            SetRegexesFoldoutState(SourceFolderEntryDrawer.GetRegexFoldoutKey(entryProp), true);
 
             float heightExpanded = _drawer.GetPropertyHeight(entryProp, GUIContent.none);
 
@@ -358,17 +356,15 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             entryProp.isExpanded = true;
 
             // Collapse exclude regexes foldout
-            SetFoldoutState(
-                "ExcludeRegexesFoldoutState",
-                GetExcludeRegexFoldoutKey(entryProp),
+            SetExcludeRegexesFoldoutState(
+                SourceFolderEntryDrawer.GetExcludeRegexFoldoutKey(entryProp),
                 false
             );
             float heightCollapsed = _drawer.GetPropertyHeight(entryProp, GUIContent.none);
 
             // Expand exclude regexes foldout
-            SetFoldoutState(
-                "ExcludeRegexesFoldoutState",
-                GetExcludeRegexFoldoutKey(entryProp),
+            SetExcludeRegexesFoldoutState(
+                SourceFolderEntryDrawer.GetExcludeRegexFoldoutKey(entryProp),
                 true
             );
             float heightExpanded = _drawer.GetPropertyHeight(entryProp, GUIContent.none);
@@ -392,17 +388,15 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             entryProp.isExpanded = true;
 
             // Collapse exclude path prefixes foldout
-            SetFoldoutState(
-                "ExcludePathPrefixesFoldoutState",
-                GetExcludePathFoldoutKey(entryProp),
+            SetExcludePathPrefixesFoldoutState(
+                SourceFolderEntryDrawer.GetExcludePathFoldoutKey(entryProp),
                 false
             );
             float heightCollapsed = _drawer.GetPropertyHeight(entryProp, GUIContent.none);
 
             // Expand exclude path prefixes foldout
-            SetFoldoutState(
-                "ExcludePathPrefixesFoldoutState",
-                GetExcludePathFoldoutKey(entryProp),
+            SetExcludePathPrefixesFoldoutState(
+                SourceFolderEntryDrawer.GetExcludePathFoldoutKey(entryProp),
                 true
             );
             float heightExpanded = _drawer.GetPropertyHeight(entryProp, GUIContent.none);
@@ -561,7 +555,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             _serializedConfig.Update();
             SerializedProperty entryProp = _sourceFolderEntriesProperty.GetArrayElementAtIndex(0);
             entryProp.isExpanded = true;
-            SetFoldoutState("RegexesFoldoutState", GetRegexFoldoutKey(entryProp), true);
+            SetRegexesFoldoutState(SourceFolderEntryDrawer.GetRegexFoldoutKey(entryProp), true);
             _serializedConfig.ApplyModifiedProperties();
 
             float height = _drawer.GetPropertyHeight(entryProp, GUIContent.none);
@@ -687,48 +681,19 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             );
         }
 
-        private void SetFoldoutState(string fieldName, string key, bool value)
+        private static void SetRegexesFoldoutState(string key, bool value)
         {
-            FieldInfo field = typeof(SourceFolderEntryDrawer).GetField(
-                fieldName,
-                BindingFlags.NonPublic | BindingFlags.Static
-            );
-            if (field != null)
-            {
-                Dictionary<string, bool> dict =
-                    field.GetValue(null) as System.Collections.Generic.Dictionary<string, bool>;
-                if (dict != null)
-                {
-                    dict[key] = value;
-                }
-            }
+            SourceFolderEntryDrawer.RegexesFoldoutState[key] = value;
         }
 
-        private string GetRegexFoldoutKey(SerializedProperty property)
+        private static void SetExcludeRegexesFoldoutState(string key, bool value)
         {
-            MethodInfo method = typeof(SourceFolderEntryDrawer).GetMethod(
-                "GetRegexFoldoutKey",
-                BindingFlags.NonPublic | BindingFlags.Static
-            );
-            return method?.Invoke(null, new object[] { property }) as string ?? string.Empty;
+            SourceFolderEntryDrawer.ExcludeRegexesFoldoutState[key] = value;
         }
 
-        private string GetExcludeRegexFoldoutKey(SerializedProperty property)
+        private static void SetExcludePathPrefixesFoldoutState(string key, bool value)
         {
-            MethodInfo method = typeof(SourceFolderEntryDrawer).GetMethod(
-                "GetExcludeRegexFoldoutKey",
-                BindingFlags.NonPublic | BindingFlags.Static
-            );
-            return method?.Invoke(null, new object[] { property }) as string ?? string.Empty;
-        }
-
-        private string GetExcludePathFoldoutKey(SerializedProperty property)
-        {
-            MethodInfo method = typeof(SourceFolderEntryDrawer).GetMethod(
-                "GetExcludePathFoldoutKey",
-                BindingFlags.NonPublic | BindingFlags.Static
-            );
-            return method?.Invoke(null, new object[] { property }) as string ?? string.Empty;
+            SourceFolderEntryDrawer.ExcludePathPrefixesFoldoutState[key] = value;
         }
     }
 #endif

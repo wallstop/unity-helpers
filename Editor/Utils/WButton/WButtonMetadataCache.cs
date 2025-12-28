@@ -201,6 +201,11 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
     {
         private static readonly Dictionary<Type, WButtonMethodMetadata[]> Cache = new();
 
+        internal static void ClearCache()
+        {
+            Cache.Clear();
+        }
+
         internal static IReadOnlyList<WButtonMethodMetadata> GetMetadata(Type inspectedType)
         {
             if (inspectedType == null)

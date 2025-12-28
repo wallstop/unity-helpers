@@ -146,8 +146,14 @@ namespace WallstopStudios.UnityHelpers.Tests.WGroup
                 () =>
                     $"Group A should have 2 properties but has {groupA.PropertyPaths.Count}: [{string.Join(", ", groupA.PropertyPaths)}].\n{FormatLayoutDiagnostics(layout)}"
             );
-            Assert.That(groupA.PropertyPaths, Contains.Item("fieldA1"));
-            Assert.That(groupA.PropertyPaths, Contains.Item("fieldA2"));
+            Assert.That(
+                groupA.PropertyPaths,
+                Contains.Item(nameof(WGroupLayoutTestTarget.fieldA1))
+            );
+            Assert.That(
+                groupA.PropertyPaths,
+                Contains.Item(nameof(WGroupLayoutTestTarget.fieldA2))
+            );
 
             // Get Group B
             Assert.That(
@@ -161,8 +167,14 @@ namespace WallstopStudios.UnityHelpers.Tests.WGroup
                 () =>
                     $"Group B should have 2 properties but has {groupB.PropertyPaths.Count}: [{string.Join(", ", groupB.PropertyPaths)}].\n{FormatLayoutDiagnostics(layout)}"
             );
-            Assert.That(groupB.PropertyPaths, Contains.Item("fieldB1"));
-            Assert.That(groupB.PropertyPaths, Contains.Item("fieldB2"));
+            Assert.That(
+                groupB.PropertyPaths,
+                Contains.Item(nameof(WGroupLayoutTestTarget.fieldB1))
+            );
+            Assert.That(
+                groupB.PropertyPaths,
+                Contains.Item(nameof(WGroupLayoutTestTarget.fieldB2))
+            );
 
             // Get Group C
             Assert.That(
@@ -176,7 +188,10 @@ namespace WallstopStudios.UnityHelpers.Tests.WGroup
                 () =>
                     $"Group C should have 1 property but has {groupC.PropertyPaths.Count}: [{string.Join(", ", groupC.PropertyPaths)}].\n{FormatLayoutDiagnostics(layout)}"
             );
-            Assert.That(groupC.PropertyPaths, Contains.Item("fieldC1"));
+            Assert.That(
+                groupC.PropertyPaths,
+                Contains.Item(nameof(WGroupLayoutTestTarget.fieldC1))
+            );
         }
 
         [Test]
@@ -319,14 +334,15 @@ namespace WallstopStudios.UnityHelpers.Tests.WGroup
             // ungroupedField should not be in any group
             Assert.That(
                 layout.GroupedPaths,
-                Does.Not.Contain("ungroupedField"),
+                Does.Not.Contain(nameof(WGroupLayoutTestTarget.ungroupedField)),
                 () =>
                     $"ungroupedField should not be in any group but was found in GroupedPaths.\n{FormatLayoutDiagnostics(layout)}"
             );
 
             // But it should appear in operations
             bool foundInOperations = layout.Operations.Any(op =>
-                op.Type == WGroupDrawOperationType.Property && op.PropertyPath == "ungroupedField"
+                op.Type == WGroupDrawOperationType.Property
+                && op.PropertyPath == nameof(WGroupLayoutTestTarget.ungroupedField)
             );
             Assert.That(
                 foundInOperations,
@@ -346,10 +362,16 @@ namespace WallstopStudios.UnityHelpers.Tests.WGroup
             WGroupLayout layout = WGroupLayoutBuilder.Build(serializedObject, "m_Script");
 
             Assert.That(layout.TryGetGroup("First", out WGroupDefinition first), Is.True);
-            Assert.That(first.AnchorPropertyPath, Is.EqualTo("first1"));
+            Assert.That(
+                first.AnchorPropertyPath,
+                Is.EqualTo(nameof(WGroupDeclarationOrderTestTarget.first1))
+            );
 
             Assert.That(layout.TryGetGroup("Second", out WGroupDefinition second), Is.True);
-            Assert.That(second.AnchorPropertyPath, Is.EqualTo("second1"));
+            Assert.That(
+                second.AnchorPropertyPath,
+                Is.EqualTo(nameof(WGroupDeclarationOrderTestTarget.second1))
+            );
         }
 
         [Test]
@@ -438,8 +460,14 @@ namespace WallstopStudios.UnityHelpers.Tests.WGroup
                 () =>
                     $"First group should have 2 properties but has {first.PropertyPaths.Count}: [{string.Join(", ", first.PropertyPaths)}].\n{FormatLayoutDiagnostics(layout)}"
             );
-            Assert.That(first.PropertyPaths, Contains.Item("first1"));
-            Assert.That(first.PropertyPaths, Contains.Item("first2"));
+            Assert.That(
+                first.PropertyPaths,
+                Contains.Item(nameof(WGroupDeclarationOrderTestTarget.first1))
+            );
+            Assert.That(
+                first.PropertyPaths,
+                Contains.Item(nameof(WGroupDeclarationOrderTestTarget.first2))
+            );
 
             // Second group should have second1 and second2
             Assert.That(
@@ -453,8 +481,14 @@ namespace WallstopStudios.UnityHelpers.Tests.WGroup
                 () =>
                     $"Second group should have 2 properties but has {second.PropertyPaths.Count}: [{string.Join(", ", second.PropertyPaths)}].\n{FormatLayoutDiagnostics(layout)}"
             );
-            Assert.That(second.PropertyPaths, Contains.Item("second1"));
-            Assert.That(second.PropertyPaths, Contains.Item("second2"));
+            Assert.That(
+                second.PropertyPaths,
+                Contains.Item(nameof(WGroupDeclarationOrderTestTarget.second1))
+            );
+            Assert.That(
+                second.PropertyPaths,
+                Contains.Item(nameof(WGroupDeclarationOrderTestTarget.second2))
+            );
         }
 
         /// <summary>
@@ -556,7 +590,9 @@ namespace WallstopStudios.UnityHelpers.Tests.WGroup
             );
 
             // Assert: Check if notAutoIncluded is in the group
-            bool notAutoIncludedInGroup = layout.GroupedPaths.Contains("notAutoIncluded");
+            bool notAutoIncludedInGroup = layout.GroupedPaths.Contains(
+                nameof(WGroupAutoIncludeTestTarget.notAutoIncluded)
+            );
             Assert.That(
                 notAutoIncludedInGroup,
                 Is.EqualTo(expectNotAutoIncludedInGroup),
@@ -629,7 +665,9 @@ namespace WallstopStudios.UnityHelpers.Tests.WGroup
             WGroupLayout layout = WGroupLayoutBuilder.Build(serializedObject, "m_Script");
 
             // Assert: Check if ungroupedField is in any group
-            bool ungroupedFieldInGroups = layout.GroupedPaths.Contains("ungroupedField");
+            bool ungroupedFieldInGroups = layout.GroupedPaths.Contains(
+                nameof(WGroupLayoutTestTarget.ungroupedField)
+            );
             Assert.That(
                 ungroupedFieldInGroups,
                 Is.EqualTo(expectUngroupedInAnyGroup),
@@ -655,7 +693,7 @@ namespace WallstopStudios.UnityHelpers.Tests.WGroup
             {
                 Assert.That(
                     group.PropertyPaths,
-                    Contains.Item("ungroupedField"),
+                    Contains.Item(nameof(WGroupLayoutTestTarget.ungroupedField)),
                     () =>
                         $"Mode={mode}: ungroupedField expected in {expectedCapturingGroup}.\n{FormatLayoutDiagnostics(layout)}"
                 );
@@ -677,7 +715,12 @@ namespace WallstopStudios.UnityHelpers.Tests.WGroup
                 UnityHelpersSettings.WGroupAutoIncludeMode.None,
                 0,
                 3, // Explicit Group: explicitGroupFirst, captured1, captured2
-                new[] { "explicitGroupFirst", "captured1", "captured2" }
+                new[]
+                {
+                    nameof(WGroupExplicitAutoIncludeTestTarget.explicitGroupFirst),
+                    nameof(WGroupExplicitAutoIncludeTestTarget.captured1),
+                    nameof(WGroupExplicitAutoIncludeTestTarget.captured2),
+                }
             ).SetName("ExplicitCount.OverridesGlobalNone");
 
             // Even with global Infinite mode, explicit count should only capture 2 fields
@@ -685,7 +728,12 @@ namespace WallstopStudios.UnityHelpers.Tests.WGroup
                 UnityHelpersSettings.WGroupAutoIncludeMode.Infinite,
                 0,
                 3, // Explicit Group: explicitGroupFirst, captured1, captured2 (not notCaptured)
-                new[] { "explicitGroupFirst", "captured1", "captured2" }
+                new[]
+                {
+                    nameof(WGroupExplicitAutoIncludeTestTarget.explicitGroupFirst),
+                    nameof(WGroupExplicitAutoIncludeTestTarget.captured1),
+                    nameof(WGroupExplicitAutoIncludeTestTarget.captured2),
+                }
             ).SetName("ExplicitCount.OverridesGlobalInfinite");
 
             // Even with global Finite(5) mode, explicit count should only capture 2 fields
@@ -693,7 +741,12 @@ namespace WallstopStudios.UnityHelpers.Tests.WGroup
                 UnityHelpersSettings.WGroupAutoIncludeMode.Finite,
                 5,
                 3, // Explicit Group: explicitGroupFirst, captured1, captured2
-                new[] { "explicitGroupFirst", "captured1", "captured2" }
+                new[]
+                {
+                    nameof(WGroupExplicitAutoIncludeTestTarget.explicitGroupFirst),
+                    nameof(WGroupExplicitAutoIncludeTestTarget.captured1),
+                    nameof(WGroupExplicitAutoIncludeTestTarget.captured2),
+                }
             ).SetName("ExplicitCount.OverridesGlobalFiniteHigher");
 
             // Even with global Finite(1) mode, explicit count should capture 2 fields
@@ -701,7 +754,12 @@ namespace WallstopStudios.UnityHelpers.Tests.WGroup
                 UnityHelpersSettings.WGroupAutoIncludeMode.Finite,
                 1,
                 3, // Explicit Group: explicitGroupFirst, captured1, captured2
-                new[] { "explicitGroupFirst", "captured1", "captured2" }
+                new[]
+                {
+                    nameof(WGroupExplicitAutoIncludeTestTarget.explicitGroupFirst),
+                    nameof(WGroupExplicitAutoIncludeTestTarget.captured1),
+                    nameof(WGroupExplicitAutoIncludeTestTarget.captured2),
+                }
             ).SetName("ExplicitCount.OverridesGlobalFiniteLower");
         }
 
@@ -753,7 +811,9 @@ namespace WallstopStudios.UnityHelpers.Tests.WGroup
 
             // Assert: notCaptured should NOT be in any group
             Assert.That(
-                layout.GroupedPaths.Contains("notCaptured"),
+                layout.GroupedPaths.Contains(
+                    nameof(WGroupExplicitAutoIncludeTestTarget.notCaptured)
+                ),
                 Is.False,
                 () =>
                     $"notCaptured should NOT be in any group with explicit count=2.\n{FormatLayoutDiagnostics(layout)}"
@@ -797,10 +857,10 @@ namespace WallstopStudios.UnityHelpers.Tests.WGroup
             // Verify all expected properties
             string[] expectedProperties =
             {
-                "infiniteGroupFirst",
-                "capturedA",
-                "capturedB",
-                "capturedC",
+                nameof(WGroupInfiniteAutoIncludeTestTarget.infiniteGroupFirst),
+                nameof(WGroupInfiniteAutoIncludeTestTarget.capturedA),
+                nameof(WGroupInfiniteAutoIncludeTestTarget.capturedB),
+                nameof(WGroupInfiniteAutoIncludeTestTarget.capturedC),
             };
             foreach (string expectedProperty in expectedProperties)
             {
@@ -849,19 +909,19 @@ namespace WallstopStudios.UnityHelpers.Tests.WGroup
 
             Assert.That(
                 group.PropertyPaths,
-                Contains.Item("zeroGroupFirst"),
+                Contains.Item(nameof(WGroupZeroAutoIncludeTestTarget.zeroGroupFirst)),
                 () =>
                     $"Zero Group should contain 'zeroGroupFirst'.\n{FormatLayoutDiagnostics(layout)}"
             );
 
             // Verify subsequent fields are NOT in any group
             Assert.That(
-                layout.GroupedPaths.Contains("notCaptured1"),
+                layout.GroupedPaths.Contains(nameof(WGroupZeroAutoIncludeTestTarget.notCaptured1)),
                 Is.False,
                 () => $"notCaptured1 should NOT be in any group.\n{FormatLayoutDiagnostics(layout)}"
             );
             Assert.That(
-                layout.GroupedPaths.Contains("notCaptured2"),
+                layout.GroupedPaths.Contains(nameof(WGroupZeroAutoIncludeTestTarget.notCaptured2)),
                 Is.False,
                 () => $"notCaptured2 should NOT be in any group.\n{FormatLayoutDiagnostics(layout)}"
             );
@@ -946,27 +1006,27 @@ namespace WallstopStudios.UnityHelpers.Tests.WGroup
 
             // Should contain visible fields
             Assert.That(
-                group.PropertyPaths.Contains("groupAnchor"),
+                group.PropertyPaths.Contains(nameof(WGroupHideInInspectorTestTarget.groupAnchor)),
                 Is.True,
                 () => $"groupAnchor should be in the group.\n{FormatLayoutDiagnostics(layout)}"
             );
             Assert.That(
-                group.PropertyPaths.Contains("visibleField1"),
+                group.PropertyPaths.Contains(nameof(WGroupHideInInspectorTestTarget.visibleField1)),
                 Is.True,
                 () => $"visibleField1 should be auto-included.\n{FormatLayoutDiagnostics(layout)}"
             );
             Assert.That(
-                group.PropertyPaths.Contains("visibleField2"),
+                group.PropertyPaths.Contains(nameof(WGroupHideInInspectorTestTarget.visibleField2)),
                 Is.True,
                 () => $"visibleField2 should be auto-included.\n{FormatLayoutDiagnostics(layout)}"
             );
             Assert.That(
-                group.PropertyPaths.Contains("visibleField3"),
+                group.PropertyPaths.Contains(nameof(WGroupHideInInspectorTestTarget.visibleField3)),
                 Is.True,
                 () => $"visibleField3 should be auto-included.\n{FormatLayoutDiagnostics(layout)}"
             );
             Assert.That(
-                group.PropertyPaths.Contains("visibleField4"),
+                group.PropertyPaths.Contains(nameof(WGroupHideInInspectorTestTarget.visibleField4)),
                 Is.True,
                 () => $"visibleField4 should be auto-included.\n{FormatLayoutDiagnostics(layout)}"
             );
@@ -1010,14 +1070,18 @@ namespace WallstopStudios.UnityHelpers.Tests.WGroup
 
             // Should also contain the anchor
             Assert.That(
-                group.PropertyPaths.Contains("groupAnchor"),
+                group.PropertyPaths.Contains(
+                    nameof(WGroupExplicitHiddenFieldTestTarget.groupAnchor)
+                ),
                 Is.True,
                 () => $"groupAnchor should be in the group.\n{FormatLayoutDiagnostics(layout)}"
             );
 
             // Visible field should NOT be in the group (no auto-include, not explicitly grouped)
             Assert.That(
-                group.PropertyPaths.Contains("visibleField"),
+                group.PropertyPaths.Contains(
+                    nameof(WGroupExplicitHiddenFieldTestTarget.visibleField)
+                ),
                 Is.False,
                 () =>
                     $"visibleField should NOT be in the group (no auto-include).\n{FormatLayoutDiagnostics(layout)}"
@@ -1061,17 +1125,23 @@ namespace WallstopStudios.UnityHelpers.Tests.WGroup
 
             // Should contain visible fields
             Assert.That(
-                group.PropertyPaths.Contains("groupAnchor"),
+                group.PropertyPaths.Contains(
+                    nameof(WGroupHideInInspectorInfiniteTestTarget.groupAnchor)
+                ),
                 Is.True,
                 () => $"groupAnchor should be in the group.\n{FormatLayoutDiagnostics(layout)}"
             );
             Assert.That(
-                group.PropertyPaths.Contains("visibleField1"),
+                group.PropertyPaths.Contains(
+                    nameof(WGroupHideInInspectorInfiniteTestTarget.visibleField1)
+                ),
                 Is.True,
                 () => $"visibleField1 should be auto-included.\n{FormatLayoutDiagnostics(layout)}"
             );
             Assert.That(
-                group.PropertyPaths.Contains("visibleField2"),
+                group.PropertyPaths.Contains(
+                    nameof(WGroupHideInInspectorInfiniteTestTarget.visibleField2)
+                ),
                 Is.True,
                 () => $"visibleField2 should be auto-included.\n{FormatLayoutDiagnostics(layout)}"
             );
@@ -1113,13 +1183,17 @@ namespace WallstopStudios.UnityHelpers.Tests.WGroup
 
             // Assert: Visible fields should NOT be in HiddenPropertyPaths
             Assert.That(
-                layout.HiddenPropertyPaths.Contains("visibleField1"),
+                layout.HiddenPropertyPaths.Contains(
+                    nameof(WGroupUngroupedHiddenFieldTestTarget.visibleField1)
+                ),
                 Is.False,
                 () =>
                     $"visibleField1 should NOT be in HiddenPropertyPaths.\n{FormatLayoutDiagnostics(layout)}"
             );
             Assert.That(
-                layout.HiddenPropertyPaths.Contains("visibleField2"),
+                layout.HiddenPropertyPaths.Contains(
+                    nameof(WGroupUngroupedHiddenFieldTestTarget.visibleField2)
+                ),
                 Is.False,
                 () =>
                     $"visibleField2 should NOT be in HiddenPropertyPaths.\n{FormatLayoutDiagnostics(layout)}"
@@ -1180,7 +1254,12 @@ namespace WallstopStudios.UnityHelpers.Tests.WGroup
                             $"_ungroupedHiddenField2 operation should have IsHiddenInInspector=true.\n{FormatLayoutDiagnostics(layout)}"
                     );
                 }
-                else if (string.Equals(op.PropertyPath, "visibleField1"))
+                else if (
+                    string.Equals(
+                        op.PropertyPath,
+                        nameof(WGroupUngroupedHiddenFieldTestTarget.visibleField1)
+                    )
+                )
                 {
                     foundVisibleField1 = true;
                     Assert.That(
@@ -1190,7 +1269,12 @@ namespace WallstopStudios.UnityHelpers.Tests.WGroup
                             $"visibleField1 operation should have IsHiddenInInspector=false.\n{FormatLayoutDiagnostics(layout)}"
                     );
                 }
-                else if (string.Equals(op.PropertyPath, "visibleField2"))
+                else if (
+                    string.Equals(
+                        op.PropertyPath,
+                        nameof(WGroupUngroupedHiddenFieldTestTarget.visibleField2)
+                    )
+                )
                 {
                     foundVisibleField2 = true;
                     Assert.That(

@@ -5,6 +5,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Utils.WButton
     using System.Collections;
     using System.Collections.Generic;
     using System.Linq;
+    using System.Threading;
     using System.Threading.Tasks;
     using NUnit.Framework;
     using UnityEditor;
@@ -1192,7 +1193,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Utils.WButton
                 typeof(InheritanceTargetDerivedOverride)
             );
 
-            int virtualButtonCount = metadata.Count(m => m.Method.Name == "VirtualButton");
+            int virtualButtonCount = metadata.Count(m =>
+                m.Method.Name == nameof(InheritanceTargetDerivedOverride.VirtualButton)
+            );
             Assert.That(
                 virtualButtonCount,
                 Is.EqualTo(1),
@@ -1208,7 +1211,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Utils.WButton
             );
 
             bool hasVirtualMethod = metadata.Any(m =>
-                m.Method.Name == "VirtualMethodNotOverriddenAsWButton"
+                m.Method.Name
+                == nameof(
+                    InheritanceTargetVirtualNonWButtonBase.VirtualMethodNotOverriddenAsWButton
+                )
             );
             Assert.That(
                 hasVirtualMethod,

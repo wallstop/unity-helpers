@@ -3,7 +3,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
 #if UNITY_EDITOR && ODIN_INSPECTOR
     using System;
     using System.Collections;
-    using System.Reflection;
     using NUnit.Framework;
     using UnityEditor;
     using UnityEngine;
@@ -24,71 +23,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
     [TestFixture]
     public sealed class WEnumToggleButtonsOdinDrawerTests : CommonTestBase
     {
-        private static readonly MethodInfo GetCachedEnumOptionsMethod;
-        private static readonly MethodInfo BuildEnumOptionsMethod;
-        private static readonly MethodInfo CalculateAllFlagsMaskMethod;
-        private static readonly MethodInfo ShouldPaginateMethod;
-        private static readonly MethodInfo ResolvePageSizeMethod;
-        private static readonly MethodInfo ConvertToUInt64Method;
-        private static readonly MethodInfo IsPowerOfTwoMethod;
-        private static readonly MethodInfo ResolveButtonSegmentMethod;
-        private static readonly Type OdinToggleOptionType;
-        private static readonly Type ButtonSegmentType;
-
-        static WEnumToggleButtonsOdinDrawerTests()
-        {
-            Type drawerType = typeof(WEnumToggleButtonsOdinDrawer);
-
-            GetCachedEnumOptionsMethod = drawerType.GetMethod(
-                "GetCachedEnumOptions",
-                BindingFlags.Static | BindingFlags.NonPublic
-            );
-
-            BuildEnumOptionsMethod = drawerType.GetMethod(
-                "BuildEnumOptions",
-                BindingFlags.Static | BindingFlags.NonPublic
-            );
-
-            CalculateAllFlagsMaskMethod = drawerType.GetMethod(
-                "CalculateAllFlagsMask",
-                BindingFlags.Static | BindingFlags.NonPublic
-            );
-
-            ShouldPaginateMethod = drawerType.GetMethod(
-                "ShouldPaginate",
-                BindingFlags.Static | BindingFlags.NonPublic
-            );
-
-            ResolvePageSizeMethod = drawerType.GetMethod(
-                "ResolvePageSize",
-                BindingFlags.Static | BindingFlags.NonPublic
-            );
-
-            Type sharedType = typeof(EnumToggleButtonsShared);
-
-            ConvertToUInt64Method = sharedType.GetMethod(
-                "ConvertToUInt64",
-                BindingFlags.Static | BindingFlags.Public
-            );
-
-            IsPowerOfTwoMethod = sharedType.GetMethod(
-                "IsPowerOfTwo",
-                BindingFlags.Static | BindingFlags.Public
-            );
-
-            ResolveButtonSegmentMethod = sharedType.GetMethod(
-                "ResolveButtonSegment",
-                BindingFlags.Static | BindingFlags.Public
-            );
-
-            OdinToggleOptionType = drawerType.GetNestedType(
-                "OdinToggleOption",
-                BindingFlags.NonPublic
-            );
-
-            ButtonSegmentType = drawerType.GetNestedType("ButtonSegment", BindingFlags.NonPublic);
-        }
-
         [Test]
         public void DrawerRegistrationForRegularEnumIsCorrect()
         {
@@ -303,7 +237,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
         [Test]
         public void GetCachedEnumOptionsReturnsOptionsForRegularEnum()
         {
-            Array options = InvokeGetCachedEnumOptions(typeof(SimpleTestEnum));
+            EnumToggleButtonsShared.ToggleOption[] options = GetCachedEnumOptions(
+                typeof(SimpleTestEnum)
+            );
 
             Assert.That(options, Is.Not.Null, "Options should not be null");
             Assert.That(options.Length, Is.EqualTo(3), "SimpleTestEnum has 3 values");
@@ -312,7 +248,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
         [Test]
         public void GetCachedEnumOptionsReturnsOptionsForFlagsEnum()
         {
-            Array options = InvokeGetCachedEnumOptions(typeof(TestFlagsEnum));
+            EnumToggleButtonsShared.ToggleOption[] options = GetCachedEnumOptions(
+                typeof(TestFlagsEnum)
+            );
 
             Assert.That(options, Is.Not.Null, "Options should not be null");
             Assert.That(
@@ -325,7 +263,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
         [Test]
         public void GetCachedEnumOptionsReturnsNullForNonEnumType()
         {
-            Array options = InvokeGetCachedEnumOptions(typeof(int));
+            EnumToggleButtonsShared.ToggleOption[] options = GetCachedEnumOptions(typeof(int));
 
             Assert.That(options, Is.Null, "Options should be null for non-enum type");
         }
@@ -333,7 +271,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
         [Test]
         public void GetCachedEnumOptionsReturnsNullForNullType()
         {
-            Array options = InvokeGetCachedEnumOptions(null);
+            EnumToggleButtonsShared.ToggleOption[] options = GetCachedEnumOptions(null);
 
             Assert.That(options, Is.Null, "Options should be null for null type");
         }
@@ -341,8 +279,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
         [Test]
         public void GetCachedEnumOptionsCachesResults()
         {
-            Array options1 = InvokeGetCachedEnumOptions(typeof(SimpleTestEnum));
-            Array options2 = InvokeGetCachedEnumOptions(typeof(SimpleTestEnum));
+            EnumToggleButtonsShared.ToggleOption[] options1 = GetCachedEnumOptions(
+                typeof(SimpleTestEnum)
+            );
+            EnumToggleButtonsShared.ToggleOption[] options2 = GetCachedEnumOptions(
+                typeof(SimpleTestEnum)
+            );
 
             Assert.That(
                 options1,
@@ -354,7 +296,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
         [Test]
         public void BuildEnumOptionsExcludesCompositeFlags()
         {
-            Array options = InvokeBuildEnumOptions(
+            EnumToggleButtonsShared.ToggleOption[] options = BuildEnumOptions(
                 typeof(TestFlagsEnumWithComposite),
                 isFlags: true
             );
@@ -376,7 +318,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
             int expectedCount
         )
         {
-            Array options = InvokeGetCachedEnumOptions(enumType);
+            EnumToggleButtonsShared.ToggleOption[] options = GetCachedEnumOptions(enumType);
 
             Assert.That(options, Is.Not.Null, "Options should not be null");
             Assert.That(
@@ -389,8 +331,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
         [Test]
         public void CalculateAllFlagsMaskReturnsCorrectMask()
         {
-            Array options = InvokeGetCachedEnumOptions(typeof(TestFlagsEnum));
-            ulong mask = InvokeCalculateAllFlagsMask(options);
+            EnumToggleButtonsShared.ToggleOption[] options = GetCachedEnumOptions(
+                typeof(TestFlagsEnum)
+            );
+            ulong mask = CalculateAllFlagsMask(options);
 
             ulong expectedMask = (ulong)(
                 TestFlagsEnum.FlagA | TestFlagsEnum.FlagB | TestFlagsEnum.FlagC
@@ -401,8 +345,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
         [Test]
         public void CalculateAllFlagsMaskExcludesZeroFlag()
         {
-            Array options = InvokeGetCachedEnumOptions(typeof(TestFlagsEnum));
-            ulong mask = InvokeCalculateAllFlagsMask(options);
+            EnumToggleButtonsShared.ToggleOption[] options = GetCachedEnumOptions(
+                typeof(TestFlagsEnum)
+            );
+            ulong mask = CalculateAllFlagsMask(options);
 
             Assert.That(mask, Is.Not.EqualTo(0UL), "Mask should not be zero");
             Assert.That((mask & 0UL), Is.EqualTo(0UL), "Zero flag should not affect the mask");
@@ -446,7 +392,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
         [TestCase((1UL << 63) + 1UL, false)] // 9223372036854775809 (one more than largest power of 2)
         public void IsPowerOfTwoReturnsCorrectResult(ulong value, bool expectedResult)
         {
-            bool result = InvokeIsPowerOfTwo(value);
+            bool result = IsPowerOfTwo(value);
 
             Assert.That(
                 result,
@@ -463,7 +409,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
             ulong expectedValue
         )
         {
-            ulong result = InvokeConvertToUInt64(enumValue);
+            ulong result = ConvertToUInt64(enumValue);
 
             Assert.That(
                 result,
@@ -482,7 +428,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
             ulong expectedValue
         )
         {
-            ulong result = InvokeConvertToUInt64(enumValue);
+            ulong result = ConvertToUInt64(enumValue);
 
             Assert.That(
                 result,
@@ -494,7 +440,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
         [Test]
         public void ConvertToUInt64ReturnsZeroForNull()
         {
-            ulong result = InvokeConvertToUInt64(null);
+            ulong result = ConvertToUInt64(null);
 
             Assert.That(result, Is.EqualTo(0UL), "ConvertToUInt64(null) should return 0");
         }
@@ -546,7 +492,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
             int expectedSegment
         )
         {
-            int result = InvokeResolveButtonSegment(index, total, columns);
+            int result = ResolveButtonSegment(index, total, columns);
 
             Assert.That(
                 result,
@@ -572,7 +518,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
                 pageSize: defaultPageSize
             );
 
-            (bool shouldPaginate, int pageSize) = InvokeShouldPaginate(attribute, optionCount);
+            (bool shouldPaginate, int pageSize) = ShouldPaginate(attribute, optionCount);
 
             if (optionCount > defaultPageSize)
             {
@@ -603,7 +549,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
                 pageSize: 8
             );
 
-            (bool shouldPaginate, int _) = InvokeShouldPaginate(attribute, 100);
+            (bool shouldPaginate, int _) = ShouldPaginate(attribute, 100);
 
             Assert.That(
                 shouldPaginate,
@@ -626,7 +572,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
                 pageSize: attributePageSize
             );
 
-            int pageSize = InvokeResolvePageSize(attribute);
+            int pageSize = ResolvePageSize(attribute);
 
             Assert.That(pageSize, Is.GreaterThan(0), "Page size should be positive");
             Assert.That(pageSize, Is.LessThanOrEqualTo(100), "Page size should be reasonable");
@@ -1046,7 +992,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
                 CreateScriptableObject<OdinEnumToggleButtonsFlagsTarget>();
             target.flags = TestFlagsEnum.FlagA | TestFlagsEnum.FlagB;
 
-            ulong mask = InvokeConvertToUInt64(target.flags);
+            ulong mask = ConvertToUInt64(target.flags);
             ulong expectedMask = (ulong)(TestFlagsEnum.FlagA | TestFlagsEnum.FlagB);
 
             Assert.That(
@@ -1063,59 +1009,61 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
                 CreateScriptableObject<OdinEnumToggleButtonsRegularTarget>();
             target.enumValue = SimpleTestEnum.OptionB;
 
-            ulong mask = InvokeConvertToUInt64(target.enumValue);
+            ulong mask = ConvertToUInt64(target.enumValue);
 
             Assert.That(mask, Is.EqualTo(1UL), "Regular enum should have single value");
         }
 
-        private static Array InvokeGetCachedEnumOptions(Type enumType)
+        private static EnumToggleButtonsShared.ToggleOption[] GetCachedEnumOptions(Type enumType)
         {
-            return (Array)GetCachedEnumOptionsMethod?.Invoke(null, new object[] { enumType });
+            return WEnumToggleButtonsOdinDrawer.GetCachedEnumOptions(enumType);
         }
 
-        private static Array InvokeBuildEnumOptions(Type enumType, bool isFlags)
+        private static EnumToggleButtonsShared.ToggleOption[] BuildEnumOptions(
+            Type enumType,
+            bool isFlags
+        )
         {
-            return (Array)BuildEnumOptionsMethod?.Invoke(null, new object[] { enumType, isFlags });
+            return WEnumToggleButtonsOdinDrawer.BuildEnumOptions(enumType, isFlags);
         }
 
-        private static ulong InvokeCalculateAllFlagsMask(Array options)
+        private static ulong CalculateAllFlagsMask(EnumToggleButtonsShared.ToggleOption[] options)
         {
-            return (ulong)CalculateAllFlagsMaskMethod?.Invoke(null, new object[] { options })!;
+            return WEnumToggleButtonsOdinDrawer.CalculateAllFlagsMask(options);
         }
 
-        private static (bool shouldPaginate, int pageSize) InvokeShouldPaginate(
+        private static (bool shouldPaginate, int pageSize) ShouldPaginate(
             WEnumToggleButtonsAttribute attribute,
             int optionCount
         )
         {
-            object[] parameters = new object[] { attribute, optionCount, 0 };
-            bool result = (bool)ShouldPaginateMethod?.Invoke(null, parameters)!;
-            int pageSize = (int)parameters[2];
+            int pageSize = 0;
+            bool result = WEnumToggleButtonsOdinDrawer.ShouldPaginate(
+                attribute,
+                optionCount,
+                out pageSize
+            );
             return (result, pageSize);
         }
 
-        private static int InvokeResolvePageSize(WEnumToggleButtonsAttribute attribute)
+        private static int ResolvePageSize(WEnumToggleButtonsAttribute attribute)
         {
-            return (int)ResolvePageSizeMethod?.Invoke(null, new object[] { attribute })!;
+            return WEnumToggleButtonsOdinDrawer.ResolvePageSize(attribute);
         }
 
-        private static ulong InvokeConvertToUInt64(object value)
+        private static ulong ConvertToUInt64(object value)
         {
-            return (ulong)ConvertToUInt64Method?.Invoke(null, new object[] { value })!;
+            return EnumToggleButtonsShared.ConvertToUInt64(value);
         }
 
-        private static bool InvokeIsPowerOfTwo(ulong value)
+        private static bool IsPowerOfTwo(ulong value)
         {
-            return (bool)IsPowerOfTwoMethod?.Invoke(null, new object[] { value })!;
+            return EnumToggleButtonsShared.IsPowerOfTwo(value);
         }
 
-        private static int InvokeResolveButtonSegment(int index, int total, int columns)
+        private static int ResolveButtonSegment(int index, int total, int columns)
         {
-            object result = ResolveButtonSegmentMethod?.Invoke(
-                null,
-                new object[] { index, total, columns }
-            );
-            return Convert.ToInt32(result);
+            return (int)EnumToggleButtonsShared.ResolveButtonSegment(index, total, columns);
         }
     }
 #endif

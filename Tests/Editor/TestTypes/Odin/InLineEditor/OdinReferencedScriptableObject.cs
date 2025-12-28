@@ -1,6 +1,7 @@
 namespace WallstopStudios.UnityHelpers.Tests.Editor.TestTypes.Odin.InLineEditor
 {
 #if UNITY_EDITOR && ODIN_INSPECTOR
+
     using Sirenix.OdinInspector;
 
     /// <summary>
@@ -9,9 +10,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.TestTypes.Odin.InLineEditor
     internal sealed class OdinReferencedScriptableObject : SerializedScriptableObject
     {
         public int intValue;
+
         public string stringValue;
+
         public float floatValue;
+
         public bool boolValue;
     }
+
 #endif
 }

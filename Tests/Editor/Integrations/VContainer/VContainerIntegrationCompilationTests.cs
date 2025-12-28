@@ -5,7 +5,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.VContainer
     using NUnit.Framework;
     using WallstopStudios.UnityHelpers.Integrations.VContainer;
 
-    public class VContainerIntegrationCompilationTests
+    public sealed class VContainerIntegrationCompilationTests
     {
         [Test]
         public void CanReferenceVContainerIntegrationTypes()
@@ -28,7 +28,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.VContainer
         public void PublicAPIAccessible()
         {
             MethodInfo method = typeof(RelationalComponentsBuilderExtensions).GetMethod(
-                "RegisterRelationalComponents"
+                nameof(RelationalComponentsBuilderExtensions.RegisterRelationalComponents)
             );
             Assert.NotNull(
                 method,

@@ -3,7 +3,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
 #if UNITY_EDITOR && ODIN_INSPECTOR
     using System;
     using System.Collections;
-    using System.Reflection;
     using NUnit.Framework;
     using UnityEditor;
     using UnityEngine.TestTools;
@@ -21,18 +20,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
     [TestFixture]
     public sealed class StringInListOdinDrawerTests : CommonTestBase
     {
-        private static readonly MethodInfo GetDisplayOptionsMethod;
-
-        static StringInListOdinDrawerTests()
-        {
-            Type drawerType = typeof(StringInListOdinDrawer);
-
-            GetDisplayOptionsMethod = drawerType.GetMethod(
-                "GetDisplayOptions",
-                BindingFlags.Static | BindingFlags.NonPublic
-            );
-        }
-
         [Test]
         public void DrawerRegistrationForScriptableObjectIsCorrect()
         {
