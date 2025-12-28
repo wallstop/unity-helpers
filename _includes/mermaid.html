@@ -1,7 +1,8 @@
 <!-- Mermaid.js for diagram rendering -->
 <!-- Supports light/dark theme switching -->
+<!-- Using pinned version 11.4.0 for stability -->
 <script type="module">
-  import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+  import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11.4.0/dist/mermaid.esm.min.mjs";
 
   // Get current theme
   function getCurrentTheme() {
@@ -14,10 +15,11 @@
   }
 
   // Initialize mermaid with theme-aware configuration
+  // Note: startOnLoad is false - we manually call mermaid.run() after DOMContentLoaded
   function initMermaid() {
     const currentTheme = getCurrentTheme();
     mermaid.initialize({
-      startOnLoad: true,
+      startOnLoad: false,
       theme: getMermaidTheme(currentTheme),
       securityLevel: "loose",
       flowchart: {
@@ -65,7 +67,7 @@
 
       if (originalCode) {
         diagram.removeAttribute("data-processed");
-        diagram.innerHTML = originalCode;
+        diagram.textContent = originalCode;
       }
     }
 
@@ -73,11 +75,12 @@
     await mermaid.run();
   };
 
-  // Initialize on load
-  initMermaid();
-
-  // Re-render mermaid diagrams after page load
+  // Initialize and render mermaid diagrams after DOM is ready
+  // Single render point to avoid duplicate diagram IDs
   document.addEventListener("DOMContentLoaded", function () {
+    // Initialize mermaid configuration
+    initMermaid();
+
     // Store original mermaid code before first render
     const diagrams = document.querySelectorAll(".mermaid");
     diagrams.forEach(function (diagram) {
@@ -87,6 +90,7 @@
       }
     });
 
+    // Single explicit render call
     mermaid.run();
   });
 </script>

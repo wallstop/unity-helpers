@@ -4,13 +4,10 @@
 .DESCRIPTION
     Reads the version from package.json and updates the version badge in the
     unity-helpers-banner.svg file. Automatically stages the SVG if modified.
-.PARAMETER StagedOnly
-    Only run if package.json is staged for commit.
+    Runs on every commit to ensure the banner is always in sync.
 #>
 [CmdletBinding()]
-param(
-    [switch]$StagedOnly
-)
+param()
 
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
@@ -37,15 +34,6 @@ try {
 # before starting operations. This prevents contention with interactive git tools.
 if (-not (Invoke-EnsureNoIndexLock)) {
     Write-Warning "index.lock still held after waiting. Proceeding anyway, but operations may fail."
-}
-
-# Check if we should run
-if ($StagedOnly) {
-    $stagedFiles = git diff --cached --name-only 2>$null
-    if ($stagedFiles -notcontains 'package.json') {
-        Write-Host 'package.json not staged, skipping banner version sync.'
-        exit 0
-    }
 }
 
 # Verify files exist
