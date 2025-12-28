@@ -35,6 +35,8 @@ npx prettier --write .
 
 ### C# Formatting (CSharpier)
 
+> **⚠️ CRITICAL**: Pre-push hooks and CI/CD will REJECT commits with CSharpier formatting issues. Run CSharpier **IMMEDIATELY** after editing ANY `.cs` file — not at the end of a task!
+
 ````bash
 dotnet tool run csharpier format .
 
@@ -68,12 +70,20 @@ Run **IMMEDIATELY** after:
 
 ### CSharpier (C# files)
 
-Run after:
+> **⚠️ CRITICAL**: Run CSharpier **IMMEDIATELY** after ANY C# file change. Do NOT wait until the end of a task or batch edits. CI/CD will fail if formatting is not applied, and extra blank lines or spacing issues are common causes of lint failures.
+
+Run **IMMEDIATELY** after:
 
 - Creating a new `.cs` file
-- Modifying an existing `.cs` file
-- Batch edits across multiple files
-- Before asking user to review changes
+- Modifying an existing `.cs` file (even a single line change)
+- ANY edit to ANY `.cs` file — no exceptions
+
+**NEVER:**
+
+- Batch multiple C# file edits before running CSharpier
+- Wait until "before commit" to format
+- Assume the code is already formatted correctly
+- Skip formatting because "it's just a small change"
 
 ### EOL Normalization
 

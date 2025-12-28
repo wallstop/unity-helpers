@@ -68,13 +68,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Utils.WButton
         {
             HelperTargetTopPlacement target = CreateScriptableObject<HelperTargetTopPlacement>();
             UnityEditor.Editor editor = UnityEditor.Editor.CreateEditor(target);
-           
+
             WButtonEditorHelper helper = new WButtonEditorHelper();
 
             bool result = helper.DrawButtonsAtTop(editor);
 
             Assert.That(result, Is.True);
-            
         }
 
         [Test]
@@ -228,7 +227,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Utils.WButton
 
             Assert.DoesNotThrow(() => helper.DrawButtonsAtTop(editor));
 
-        UnityEngine.Object.DestroyImmediate(target); // UNH-SUPPRESS: Test verifies graceful handling when target destroyed
+            UnityEngine.Object.DestroyImmediate(target); // UNH-SUPPRESS: Test verifies graceful handling when target destroyed
             Assert.DoesNotThrow(() => helper.ProcessInvocations());
         }
 
@@ -534,9 +533,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Utils.WButton
                 m.Method.Name == nameof(HelperTargetCancellable.CancellableAsyncButton)
             );
             WButtonTargetState targetState = WButtonStateRepository.GetOrCreate(target);
-            WButtonMethodState methodState = targetState.GetOrCreateMethodState(
-                cancellableMethod
-            );
+            WButtonMethodState methodState = targetState.GetOrCreateMethodState(cancellableMethod);
             WButtonMethodContext context = new WButtonMethodContext(
                 cancellableMethod,
                 new[] { methodState },
@@ -680,10 +677,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Utils.WButton
             );
 
             Assert.That(multiParamMethod.Parameters.Length, Is.EqualTo(3));
-            Assert.That(
-                multiParamMethod.Parameters[0].ParameterType,
-                Is.EqualTo(typeof(string))
-            );
+            Assert.That(multiParamMethod.Parameters[0].ParameterType, Is.EqualTo(typeof(string)));
             Assert.That(multiParamMethod.Parameters[1].ParameterType, Is.EqualTo(typeof(int)));
             Assert.That(multiParamMethod.Parameters[2].ParameterType, Is.EqualTo(typeof(bool)));
         }
@@ -717,9 +711,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Utils.WButton
                 m.Method.Name == nameof(HelperTargetValueTask.ValueTaskButton)
             );
             WButtonTargetState targetState = WButtonStateRepository.GetOrCreate(target);
-            WButtonMethodState methodState = targetState.GetOrCreateMethodState(
-                valueTaskMethod
-            );
+            WButtonMethodState methodState = targetState.GetOrCreateMethodState(valueTaskMethod);
             WButtonMethodContext context = new WButtonMethodContext(
                 valueTaskMethod,
                 new[] { methodState },
@@ -738,11 +730,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Utils.WButton
                 Is.EqualTo(1),
                 "ValueTask method should have completed"
             );
-            Assert.That(
-                methodState.History.Count,
-                Is.GreaterThan(0),
-                "Should have history entry"
-            );
+            Assert.That(methodState.History.Count, Is.GreaterThan(0), "Should have history entry");
             WButtonResultEntry entry = methodState.History[^1];
             Assert.That(
                 entry.Kind,
@@ -755,9 +743,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Utils.WButton
         public IEnumerator ValueTaskWithReturnValueCapturesResultInHistory()
         {
             HelperTargetValueTaskWithReturn target =
-            CreateScriptableObject<HelperTargetValueTaskWithReturn>();
+                CreateScriptableObject<HelperTargetValueTaskWithReturn>();
             UnityEditor.Editor editor = UnityEditor.Editor.CreateEditor(target);
-         
+
             WButtonEditorHelper helper = new WButtonEditorHelper();
             helper.DrawAllButtonsAndProcessInvocations(editor);
 
@@ -765,13 +753,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Utils.WButton
                 typeof(HelperTargetValueTaskWithReturn)
             );
             WButtonMethodMetadata valueTaskMethod = metadata.First(m =>
-                m.Method.Name
-                == nameof(HelperTargetValueTaskWithReturn.ValueTaskWithReturnButton)
+                m.Method.Name == nameof(HelperTargetValueTaskWithReturn.ValueTaskWithReturnButton)
             );
             WButtonTargetState targetState = WButtonStateRepository.GetOrCreate(target);
-            WButtonMethodState methodState = targetState.GetOrCreateMethodState(
-                valueTaskMethod
-            );
+            WButtonMethodState methodState = targetState.GetOrCreateMethodState(valueTaskMethod);
             WButtonMethodContext context = new WButtonMethodContext(
                 valueTaskMethod,
                 new[] { methodState },
@@ -785,32 +770,23 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Utils.WButton
 
             yield return WaitUntil(() => methodState.ActiveInvocation == null, 5f);
 
-            Assert.That(
-                methodState.History.Count,
-                Is.GreaterThan(0),
-                "Should have history entry"
-            );
+            Assert.That(methodState.History.Count, Is.GreaterThan(0), "Should have history entry");
             WButtonResultEntry entry = methodState.History[^1];
             Assert.That(
                 entry.Kind,
                 Is.EqualTo(WButtonResultKind.Success),
                 "Should be success entry"
             );
-            Assert.That(
-                entry.Value,
-                Is.EqualTo(99),
-                "Should capture returned value in history"
-            );
-            
+            Assert.That(entry.Value, Is.EqualTo(99), "Should capture returned value in history");
         }
 
         [Test]
         public void SynchronousMethodReturnValueCapturedInHistory()
         {
             HelperTargetWithReturnValue target =
-            CreateScriptableObject<HelperTargetWithReturnValue>();
+                CreateScriptableObject<HelperTargetWithReturnValue>();
             UnityEditor.Editor editor = UnityEditor.Editor.CreateEditor(target);
-         
+
             WButtonEditorHelper helper = new WButtonEditorHelper();
 
             IReadOnlyList<WButtonMethodMetadata> metadata = WButtonMetadataCache.GetMetadata(
@@ -832,11 +808,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Utils.WButton
                 new List<WButtonMethodContext> { context }
             );
 
-            Assert.That(
-                methodState.History.Count,
-                Is.GreaterThan(0),
-                "Should have history entry"
-            );
+            Assert.That(methodState.History.Count, Is.GreaterThan(0), "Should have history entry");
             WButtonResultEntry entry = methodState.History[^1];
             Assert.That(
                 entry.Kind,
@@ -844,7 +816,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Utils.WButton
                 "Should be success entry"
             );
             Assert.That(entry.Value, Is.EqualTo(42), "Should capture returned integer value");
-            
         }
 
         [Test]
@@ -852,7 +823,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Utils.WButton
         {
             HelperTargetStringReturn target = CreateScriptableObject<HelperTargetStringReturn>();
             UnityEditor.Editor editor = UnityEditor.Editor.CreateEditor(target);
-         
+
             IReadOnlyList<WButtonMethodMetadata> metadata = WButtonMetadataCache.GetMetadata(
                 typeof(HelperTargetStringReturn)
             );
@@ -872,11 +843,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Utils.WButton
                 new List<WButtonMethodContext> { context }
             );
 
-            Assert.That(
-                methodState.History.Count,
-                Is.GreaterThan(0),
-                "Should have history entry"
-            );
+            Assert.That(methodState.History.Count, Is.GreaterThan(0), "Should have history entry");
             WButtonResultEntry entry = methodState.History[^1];
             Assert.That(entry.Kind, Is.EqualTo(WButtonResultKind.Success));
             Assert.That(
@@ -884,7 +851,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Utils.WButton
                 Is.EqualTo("Hello from WButton"),
                 "Should capture string return value"
             );
-            
         }
 
         [Test]
@@ -968,11 +934,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Utils.WButton
 
             yield return WaitUntil(() => methodState.ActiveInvocation == null, 5f);
 
-            Assert.That(
-                methodState.History.Count,
-                Is.GreaterThan(0),
-                "Should have history entry"
-            );
+            Assert.That(methodState.History.Count, Is.GreaterThan(0), "Should have history entry");
             WButtonResultEntry entry = methodState.History[^1];
             Assert.That(
                 entry.Kind,

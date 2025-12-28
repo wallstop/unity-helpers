@@ -42,7 +42,7 @@ This single command runs ALL CI/CD checks locally, ensuring your changes will pa
 | YAML (non-workflow)       | `npx prettier --write <file>`                  | **MANDATORY** — Prettier formats YAML too      |
 | GitHub Workflows (`.yml`) | `npx prettier --write <file>`                  | Format FIRST, then run actionlint              |
 | GitHub Workflows (`.yml`) | `actionlint`                                   | **MANDATORY** for `.github/workflows/*.yml`    |
-| C# code (`.cs`)           | `dotnet tool run csharpier format .`           | Auto-fix formatting (CSharpier, not Prettier)  |
+| C# code (`.cs`)           | `dotnet tool run csharpier format .`           | **RUN IMMEDIATELY** after ANY edit (not later) |
 | C# code (`.cs`)           | `npm run lint:csharp-naming`                   | Check for underscore violations                |
 | Test files (`.cs`)        | `pwsh -NoProfile -File scripts/lint-tests.ps1` | **MANDATORY** Track() usage, no manual destroy |
 
@@ -121,15 +121,36 @@ actionlint
 
 ### C# Changes Workflow
 
-After **ANY** change to `.cs` files:
+> **⚠️ CRITICAL**: Run CSharpier **IMMEDIATELY** after EVERY C# file modification. Do NOT accumulate changes. Extra blank lines, spacing issues, and formatting inconsistencies are common CI/CD failures that are easily preventable.
+
+After **ANY** change to `.cs` files (even a single line):
 
 ```bash
-# 1. Auto-format code
+# 1. Auto-format code — RUN IMMEDIATELY, NOT LATER!
 dotnet tool run csharpier format .
 
 # 2. Check naming conventions
 npm run lint:csharp-naming
 ```
+
+**Common CSharpier Failures:**
+
+- Extra blank lines between methods or at end of file
+- Incorrect indentation after editing
+- Spacing around operators or braces
+- Line length violations
+
+**The "Format After Every Edit" Rule:**
+
+1. Edit a `.cs` file
+2. **IMMEDIATELY** run `dotnet tool run csharpier format .`
+3. Only then proceed to the next edit or file
+
+**NEVER:**
+
+- "I'll format everything at the end" — Issues compound and are harder to track
+- "It's just a small change" — Small changes still cause formatting drift
+- "The existing code was already formatted" — Your edit may have introduced issues
 
 ### Test File Changes Workflow (MANDATORY)
 
@@ -578,6 +599,38 @@ actionlint .github/workflows/specific-workflow.yml
 # Run with shellcheck integration (recommended for shell script validation)
 actionlint -shellcheck=/usr/bin/shellcheck
 ```
+
+### GitHub Actions Configuration File Requirements (MANDATORY)
+
+> **⚠️ CRITICAL**: Many GitHub Actions workflows depend on external configuration files. Missing configuration files cause runtime CI/CD failures that are NOT caught by `actionlint`.
+
+**Before creating or modifying a workflow, verify ALL required configuration files exist:**
+
+| Workflow                            | Required Configuration File         | Location                        |
+| ----------------------------------- | ----------------------------------- | ------------------------------- |
+| `release-drafter.yml`               | `release-drafter.yml`               | `.github/release-drafter.yml`   |
+| Dependabot workflows                | `dependabot.yml`                    | `.github/dependabot.yml`        |
+| Labeler workflows                   | `labeler.yml` or similar            | `.github/labeler.yml`           |
+| Workflows using `config-name` input | The file specified in `config-name` | Usually `.github/<config-name>` |
+
+**Checklist when adding/modifying workflows:**
+
+- [ ] Identify all `config-name` or similar inputs in actions
+- [ ] Verify referenced configuration files exist in `.github/`
+- [ ] Create missing configuration files BEFORE the workflow runs
+- [ ] Generate `.meta` files for new configuration files in `.github/`
+- [ ] Test workflow in a branch if possible
+
+**Example: Release Drafter requires `.github/release-drafter.yml`**
+
+```yaml
+# .github/workflows/release-drafter.yml
+- uses: release-drafter/release-drafter@v6
+  with:
+    config-name: release-drafter.yml # ← References .github/release-drafter.yml
+```
+
+If `.github/release-drafter.yml` doesn't exist, the workflow will fail at runtime with "Unable to find configuration".
 
 ### Common Workflow Configuration Errors
 

@@ -93,7 +93,7 @@ Invoke these skills for specific tasks:
 | [create-enum](skills/create-enum.md)                             | Creating a new `enum` type                              |
 | [create-scriptable-object](skills/create-scriptable-object.md)   | Creating ScriptableObject data assets                   |
 | [create-editor-tool](skills/create-editor-tool.md)               | Creating Editor windows, drawers, inspectors            |
-| [format-code](skills/format-code.md)                             | After any C# file changes                               |
+| [format-code](skills/format-code.md)                             | **IMMEDIATELY** after ANY C# file change (not batched!) |
 | [search-codebase](skills/search-codebase.md)                     | Finding code, files, or patterns                        |
 | [git-safe-operations](skills/git-safe-operations.md)             | Scripts or hooks that interact with git index           |
 | [avoid-reflection](skills/avoid-reflection.md)                   | **ALL code** — never reflect on our own types           |
@@ -209,6 +209,8 @@ See [create-csharp-file](skills/create-csharp-file.md) for detailed rules. Key p
 21. **Run linters IMMEDIATELY after EVERY change** — Do NOT wait until task completion; run appropriate linters after each file modification: `npm run lint:spelling` for docs (add valid terms to `cspell.json`), `npm run lint:docs` + `npm run lint:markdown` for markdown, `actionlint` for workflows, `dotnet tool run csharpier format .` for C#; fix issues before moving to next file (see [validate-before-commit](skills/validate-before-commit.md#mandatory-run-linters-immediately-after-every-change))
 22. **Track ALL Unity objects in tests** — Use `Track()` wrapper for `Editor.CreateEditor()`, `new GameObject()`, `ScriptableObject.CreateInstance()`, etc.; NEVER use manual `DestroyImmediate` in finally blocks; run `pwsh -NoProfile -File scripts/lint-tests.ps1` **IMMEDIATELY** after ANY test changes (pre-push hook enforces this); use `// UNH-SUPPRESS` comment only when intentionally testing destroy behavior (see [create-test](skills/create-test.md#unity-object-lifecycle-management-critical))
 23. **Run Prettier IMMEDIATELY after editing non-C# files** — `npx prettier --write <file>` MUST be run after ANY change to `.md`, `.json`, `.yaml`, `.yml`, or config files; pre-push hooks REJECT commits with Prettier issues; use `npx prettier --check .` to verify all files (see [validate-before-commit](skills/validate-before-commit.md#prettiermarkdown-formatting))
+24. **Run CSharpier IMMEDIATELY after ANY C# file change** — `dotnet tool run csharpier format .` MUST be run after EVERY `.cs` file modification, even single-line edits; do NOT batch formatting until task completion; extra blank lines and spacing issues are common CI/CD failures that are easily preventable (see [format-code](skills/format-code.md) and [validate-before-commit](skills/validate-before-commit.md#c-changes-workflow))
+25. **Verify GitHub Actions configuration files exist** — Before creating/modifying workflows, confirm all required config files exist (e.g., `release-drafter.yml` workflow requires `.github/release-drafter.yml` config); missing configs cause runtime failures NOT caught by `actionlint` (see [validate-before-commit](skills/validate-before-commit.md#github-actions-configuration-file-requirements-mandatory))
 
 ---
 
