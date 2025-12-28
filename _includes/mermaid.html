@@ -1,25 +1,92 @@
 <!-- Mermaid.js for diagram rendering -->
-<!-- Uses built-in themes only, no custom theming -->
+<!-- Supports light/dark theme switching -->
 <script type="module">
-  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+  import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
 
-  // Initialize mermaid with default/built-in theme
-  // No custom theming - relies on mermaid's built-in themes
-  mermaid.initialize({
-    startOnLoad: true,
-    theme: 'default',
-    securityLevel: 'loose',
-    flowchart: {
-      useMaxWidth: true,
-      htmlLabels: true
-    },
-    sequence: {
-      useMaxWidth: true
+  // Get current theme
+  function getCurrentTheme() {
+    return document.documentElement.getAttribute("data-theme") || "dark";
+  }
+
+  // Get mermaid theme based on site theme
+  function getMermaidTheme(siteTheme) {
+    return siteTheme === "dark" ? "dark" : "default";
+  }
+
+  // Initialize mermaid with theme-aware configuration
+  function initMermaid() {
+    var currentTheme = getCurrentTheme();
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: getMermaidTheme(currentTheme),
+      securityLevel: "loose",
+      flowchart: {
+        useMaxWidth: true,
+        htmlLabels: true
+      },
+      sequence: {
+        useMaxWidth: true
+      }
+    });
+  }
+
+  // Re-render mermaid diagrams with new theme
+  window.updateMermaidTheme = async function (newTheme) {
+    var diagrams = document.querySelectorAll(".mermaid");
+    if (diagrams.length === 0) return;
+
+    // Re-initialize with new theme
+    mermaid.initialize({
+      startOnLoad: false,
+      theme: getMermaidTheme(newTheme),
+      securityLevel: "loose",
+      flowchart: {
+        useMaxWidth: true,
+        htmlLabels: true
+      },
+      sequence: {
+        useMaxWidth: true
+      }
+    });
+
+    // Re-render each diagram
+    for (var i = 0; i < diagrams.length; i++) {
+      var diagram = diagrams[i];
+      var originalCode = diagram.getAttribute("data-original-code");
+
+      // Store original code on first render
+      if (!originalCode) {
+        var code = diagram.textContent || diagram.innerText;
+        if (code.trim()) {
+          diagram.setAttribute("data-original-code", code.trim());
+          originalCode = code.trim();
+        }
+      }
+
+      if (originalCode) {
+        diagram.removeAttribute("data-processed");
+        diagram.innerHTML = originalCode;
+      }
     }
-  });
+
+    // Re-run mermaid
+    await mermaid.run();
+  };
+
+  // Initialize on load
+  initMermaid();
 
   // Re-render mermaid diagrams after page load
-  document.addEventListener('DOMContentLoaded', function() {
+  document.addEventListener("DOMContentLoaded", function () {
+    // Store original mermaid code before first render
+    var diagrams = document.querySelectorAll(".mermaid");
+    diagrams.forEach(function (diagram) {
+      var code = diagram.textContent || diagram.innerText;
+      if (code.trim() && !diagram.getAttribute("data-original-code")) {
+        diagram.setAttribute("data-original-code", code.trim());
+      }
+    });
+
     mermaid.run();
   });
 </script>
