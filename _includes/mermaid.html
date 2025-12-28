@@ -15,7 +15,7 @@
 
   // Initialize mermaid with theme-aware configuration
   function initMermaid() {
-    var currentTheme = getCurrentTheme();
+    const currentTheme = getCurrentTheme();
     mermaid.initialize({
       startOnLoad: true,
       theme: getMermaidTheme(currentTheme),
@@ -32,7 +32,7 @@
 
   // Re-render mermaid diagrams with new theme
   window.updateMermaidTheme = async function (newTheme) {
-    var diagrams = document.querySelectorAll(".mermaid");
+    const diagrams = document.querySelectorAll(".mermaid");
     if (diagrams.length === 0) return;
 
     // Re-initialize with new theme
@@ -50,13 +50,13 @@
     });
 
     // Re-render each diagram
-    for (var i = 0; i < diagrams.length; i++) {
-      var diagram = diagrams[i];
-      var originalCode = diagram.getAttribute("data-original-code");
+    for (let i = 0; i < diagrams.length; i++) {
+      const diagram = diagrams[i];
+      let originalCode = diagram.getAttribute("data-original-code");
 
       // Store original code on first render
       if (!originalCode) {
-        var code = diagram.textContent || diagram.innerText;
+        const code = diagram.textContent || diagram.innerText;
         if (code.trim()) {
           diagram.setAttribute("data-original-code", code.trim());
           originalCode = code.trim();
@@ -79,9 +79,9 @@
   // Re-render mermaid diagrams after page load
   document.addEventListener("DOMContentLoaded", function () {
     // Store original mermaid code before first render
-    var diagrams = document.querySelectorAll(".mermaid");
+    const diagrams = document.querySelectorAll(".mermaid");
     diagrams.forEach(function (diagram) {
-      var code = diagram.textContent || diagram.innerText;
+      const code = diagram.textContent || diagram.innerText;
       if (code.trim() && !diagram.getAttribute("data-original-code")) {
         diagram.setAttribute("data-original-code", code.trim());
       }

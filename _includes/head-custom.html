@@ -6,8 +6,8 @@
 <script>
   (function () {
     // Check for saved theme preference or default to dark
-    var savedTheme = localStorage.getItem("unity-helpers-theme");
-    var theme = savedTheme || "dark";
+    const savedTheme = localStorage.getItem("unity-helpers-theme");
+    const theme = savedTheme || "dark";
     document.documentElement.setAttribute("data-theme", theme);
   })();
 </script>
@@ -33,7 +33,7 @@
 <script>
   document.addEventListener("DOMContentLoaded", function () {
     // Create theme toggle button
-    var toggle = document.createElement("button");
+    const toggle = document.createElement("button");
     toggle.className = "theme-toggle";
     toggle.setAttribute("aria-label", "Toggle theme");
     toggle.setAttribute("title", "Toggle light/dark theme");
@@ -49,8 +49,8 @@
 
     // Add click handler
     toggle.addEventListener("click", function () {
-      var currentTheme = document.documentElement.getAttribute("data-theme");
-      var newTheme = currentTheme === "dark" ? "light" : "dark";
+      const currentTheme = document.documentElement.getAttribute("data-theme");
+      const newTheme = currentTheme === "dark" ? "light" : "dark";
       document.documentElement.setAttribute("data-theme", newTheme);
       localStorage.setItem("unity-helpers-theme", newTheme);
 
