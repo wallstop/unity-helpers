@@ -32,30 +32,71 @@ This single command runs ALL CI/CD checks locally, ensuring your changes will pa
 
 ### Linter Commands by File Type
 
-| File Type Changed         | Command to Run IMMEDIATELY                   | Notes                                       |
-| ------------------------- | -------------------------------------------- | ------------------------------------------- |
-| Documentation (`.md`)     | `npm run lint:spelling`                      | Add valid terms to `cspell.json` if needed  |
-| Documentation (`.md`)     | `npm run lint:docs`                          | Check for broken links, backtick `.md` refs |
-| Documentation (`.md`)     | `npm run lint:markdown`                      | Markdownlint rules (MD032, MD009, etc.)     |
-| GitHub Workflows (`.yml`) | `actionlint`                                 | **MANDATORY** for `.github/workflows/*.yml` |
-| C# code (`.cs`)           | `dotnet tool run csharpier format .`         | Auto-fix formatting                         |
-| C# code (`.cs`)           | `npm run lint:csharp-naming`                 | Check for underscore violations             |
+| File Type Changed         | Command to Run IMMEDIATELY                     | Notes                                          |
+| ------------------------- | ---------------------------------------------- | ---------------------------------------------- |
+| Documentation (`.md`)     | `npx prettier --write <file>`                  | **MANDATORY** — Run FIRST after any edit       |
+| Documentation (`.md`)     | `npm run lint:spelling`                        | Add valid terms to `cspell.json` if needed     |
+| Documentation (`.md`)     | `npm run lint:docs`                            | Check for broken links, backtick `.md` refs    |
+| Documentation (`.md`)     | `npm run lint:markdown`                        | Markdownlint rules (MD032, MD009, etc.)        |
+| JSON/asmdef/asmref        | `npx prettier --write <file>`                  | **MANDATORY** — Prettier formats JSON too      |
+| YAML (non-workflow)       | `npx prettier --write <file>`                  | **MANDATORY** — Prettier formats YAML too      |
+| GitHub Workflows (`.yml`) | `npx prettier --write <file>`                  | Format FIRST, then run actionlint              |
+| GitHub Workflows (`.yml`) | `actionlint`                                   | **MANDATORY** for `.github/workflows/*.yml`    |
+| C# code (`.cs`)           | `dotnet tool run csharpier format .`           | Auto-fix formatting (CSharpier, not Prettier)  |
+| C# code (`.cs`)           | `npm run lint:csharp-naming`                   | Check for underscore violations                |
 | Test files (`.cs`)        | `pwsh -NoProfile -File scripts/lint-tests.ps1` | **MANDATORY** Track() usage, no manual destroy |
-| JSON/asmdef/asmref        | `npm run format:json:check`                  | Check formatting                            |
-| YAML (non-workflow)       | `npm run format:yaml:check`                  | Check formatting                            |
+
+### Prettier/Markdown Formatting
+
+> **⚠️ CRITICAL**: Pre-push hooks will REJECT commits with Prettier formatting issues. Run Prettier IMMEDIATELY after editing ANY non-C# file.
+
+**Prettier applies to ALL of these file types** (not just C#):
+
+- Markdown (`.md`)
+- JSON (`.json`, `.asmdef`, `.asmref`)
+- YAML (`.yml`, `.yaml`)
+- Config files
+
+```bash
+# Fix a specific file IMMEDIATELY after editing
+npx prettier --write <file>
+
+# Examples:
+npx prettier --write .llm/skills/create-test.md
+npx prettier --write package.json
+npx prettier --write .github/workflows/ci.yml
+
+# Verify ALL files before commit/push
+npx prettier --check .
+
+# Auto-fix ALL files at once
+npx prettier --write .
+```
+
+**Key distinction:**
+
+| File Type       | Formatter | Command                              |
+| --------------- | --------- | ------------------------------------ |
+| C# (`.cs`)      | CSharpier | `dotnet tool run csharpier format .` |
+| Everything else | Prettier  | `npx prettier --write <file>`        |
+
+---
 
 ### Documentation Changes Workflow
 
 After **ANY** change to markdown files:
 
 ```bash
-# 1. Check spelling FIRST (most common failure)
+# 1. Format with Prettier FIRST (pre-push hook requirement)
+npx prettier --write <file>
+
+# 2. Check spelling (most common failure)
 npm run lint:spelling
 
-# 2. If spelling errors found with valid technical terms, add to cspell.json:
+# 3. If spelling errors found with valid technical terms, add to cspell.json:
 # Edit cspell.json and add terms to the "words" array
 
-# 3. Check links and formatting
+# 4. Check links and formatting
 npm run lint:docs
 npm run lint:markdown
 ```
@@ -101,11 +142,11 @@ pwsh -NoProfile -File scripts/lint-tests.ps1
 
 **What the lint checks**:
 
-| Rule     | Description                                                               |
-| -------- | ------------------------------------------------------------------------- |
-| `UNH001` | No manual `DestroyImmediate`/`Destroy` — use `Track()` for cleanup        |
-| `UNH002` | All Unity object allocations must be wrapped with `Track()`               |
-| `UNH003` | Test classes creating Unity objects must inherit from `CommonTestBase`    |
+| Rule     | Description                                                            |
+| -------- | ---------------------------------------------------------------------- |
+| `UNH001` | No manual `DestroyImmediate`/`Destroy` — use `Track()` for cleanup     |
+| `UNH002` | All Unity object allocations must be wrapped with `Track()`            |
+| `UNH003` | Test classes creating Unity objects must inherit from `CommonTestBase` |
 
 **How to fix**:
 

@@ -1,16 +1,42 @@
 # Skill: Format Code
 
-**Trigger**: After creating or modifying ANY C# file.
+**Trigger**: After creating or modifying ANY file.
 
 ---
 
 ## Commands
 
-### C# Formatting
+### Prettier (Markdown, JSON, YAML, Config Files)
+
+> **⚠️ CRITICAL**: Pre-push hooks REJECT commits with Prettier issues. Run Prettier IMMEDIATELY after editing ANY non-C# file.
 
 ```bash
-dotnet tool run csharpier format .
+# Format a specific file (RECOMMENDED - run immediately after each edit)
+npx prettier --write <file>
+
+# Examples:
+npx prettier --write .llm/skills/create-test.md
+npx prettier --write package.json
+npx prettier --write .github/workflows/ci.yml
+
+# Check all files for formatting issues
+npx prettier --check .
+
+# Auto-fix all files at once
+npx prettier --write .
 ```
+
+**File types handled by Prettier:**
+
+- Markdown (`.md`)
+- JSON (`.json`, `.asmdef`, `.asmref`)
+- YAML (`.yml`, `.yaml`)
+- Config files (`.prettierrc`, etc.)
+
+### C# Formatting (CSharpier)
+
+````bash
+dotnet tool run csharpier format .
 
 ### EOL Normalization (Critical!)
 
@@ -22,7 +48,7 @@ npm run eol:check
 
 # Auto-fix EOL issues
 npm run eol:fix
-```
+````
 
 > **Why CRLF?** Unity projects require consistent line endings. Linux dev containers create files with LF by default, causing diffs and CI failures.
 
@@ -30,14 +56,28 @@ npm run eol:fix
 
 ## When to Run
 
-Run formatting after:
+### Prettier (non-C# files)
+
+Run **IMMEDIATELY** after:
+
+- Editing ANY markdown file (`.md`)
+- Editing ANY JSON file (`.json`, `.asmdef`, `.asmref`)
+- Editing ANY YAML file (`.yml`, `.yaml`)
+- Editing config files
+- Before asking user to review changes
+
+### CSharpier (C# files)
+
+Run after:
 
 - Creating a new `.cs` file
 - Modifying an existing `.cs` file
 - Batch edits across multiple files
 - Before asking user to review changes
 
-Run EOL normalization:
+### EOL Normalization
+
+Run:
 
 - After creating ANY new file (`.cs`, `.meta`, `.json`, `.md`, `.yaml`, etc.)
 - Before committing (auto-runs in pre-commit hook)
@@ -68,17 +108,29 @@ Run EOL normalization:
 After making changes:
 
 ```bash
-# 1. Normalize line endings (for all file types)
-npm run eol:fix
+# 1. Format non-C# files with Prettier
+npx prettier --write <file>  # Or: npx prettier --write .
 
-# 2. Format C# code
+# 2. Format C# code with CSharpier
 dotnet tool run csharpier format .
 
-# 3. Generate meta files for any new files
+# 3. Normalize line endings (for all file types)
+npm run eol:fix
+
+# 4. Generate meta files for any new files
 ./scripts/generate-meta.sh <new-file-path>
 
-# 4. Check for errors (let user run in Unity)
+# 5. Check for errors (let user run in Unity)
 ```
+
+### Quick Reference: Which Formatter?
+
+| File Type         | Formatter | Command                              |
+| ----------------- | --------- | ------------------------------------ |
+| `.cs`             | CSharpier | `dotnet tool run csharpier format .` |
+| `.md`             | Prettier  | `npx prettier --write <file>`        |
+| `.json`/`.asmdef` | Prettier  | `npx prettier --write <file>`        |
+| `.yml`/`.yaml`    | Prettier  | `npx prettier --write <file>`        |
 
 ---
 

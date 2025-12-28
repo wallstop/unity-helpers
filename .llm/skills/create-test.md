@@ -743,11 +743,11 @@ public sealed class MyOdinDrawerTests : CommonTestBase
 
 ### Lint Rules Enforced
 
-| Rule      | Description                                                                                     |
-| --------- | ----------------------------------------------------------------------------------------------- |
-| `UNH001`  | Avoid direct `DestroyImmediate`/`Destroy` in tests; track object and let teardown clean up     |
-| `UNH002`  | Unity object allocation must be tracked: wrap with `Track()`                                   |
-| `UNH003`  | Test class creates Unity objects but doesn't inherit from `CommonTestBase`                     |
+| Rule     | Description                                                                                |
+| -------- | ------------------------------------------------------------------------------------------ |
+| `UNH001` | Avoid direct `DestroyImmediate`/`Destroy` in tests; track object and let teardown clean up |
+| `UNH002` | Unity object allocation must be tracked: wrap with `Track()`                               |
+| `UNH003` | Test class creates Unity objects but doesn't inherit from `CommonTestBase`                 |
 
 ### Required Pattern: Track All Unity Objects
 
@@ -811,14 +811,14 @@ public void InspectorHandlesDestroyedTargetGracefully()
 
 ### Track Methods Reference
 
-| Method                         | Use For                                             |
-| ------------------------------ | --------------------------------------------------- |
-| `CreateScriptableObject<T>()`  | Creating test `ScriptableObject` targets            |
-| `NewGameObject(name)`          | Creating test `GameObject` instances                |
-| `Track(obj)`                   | Any Unity object (`Editor`, `Material`, `Texture2D`) |
-| `TrackDisposable(disposable)`  | `IDisposable` resources                              |
-| `TrackAssetPath(path)`         | Created asset files that need deletion              |
-| `_trackedObjects.Remove(obj)`  | Remove from tracking after intentional destroy      |
+| Method                        | Use For                                              |
+| ----------------------------- | ---------------------------------------------------- |
+| `CreateScriptableObject<T>()` | Creating test `ScriptableObject` targets             |
+| `NewGameObject(name)`         | Creating test `GameObject` instances                 |
+| `Track(obj)`                  | Any Unity object (`Editor`, `Material`, `Texture2D`) |
+| `TrackDisposable(disposable)` | `IDisposable` resources                              |
+| `TrackAssetPath(path)`        | Created asset files that need deletion               |
+| `_trackedObjects.Remove(obj)` | Remove from tracking after intentional destroy       |
 
 ### Async Test Pattern
 
