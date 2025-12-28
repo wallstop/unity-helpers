@@ -133,10 +133,12 @@ npm run lint:csharp-naming
 
 ### Test File Changes Workflow (MANDATORY)
 
+> **⚠️ CRITICAL**: The test lifecycle linter runs on **pre-push**. Failing to run it locally will result in **rejected pushes**.
+
 After **ANY** change to test files in `Tests/`:
 
 ```bash
-# MANDATORY - check test lifecycle patterns
+# MANDATORY - run IMMEDIATELY after each test file change
 pwsh -NoProfile -File scripts/lint-tests.ps1
 ```
 
@@ -160,10 +162,21 @@ finally { UnityEngine.Object.DestroyImmediate(editor); }
 Editor editor = Track(Editor.CreateEditor(target));
 // ... test code (no try-finally needed)
 
-// For intentional destroy tests, add UNH-SUPPRESS comment:
+// For intentional destroy tests, add UNH-SUPPRESS comment on the SAME LINE:
 UnityEngine.Object.DestroyImmediate(target); // UNH-SUPPRESS: Test verifies destroy behavior
 _trackedObjects.Remove(target);
 ```
+
+**When to use `// UNH-SUPPRESS`:**
+
+- Testing behavior after object destruction
+- Verifying error handling for destroyed objects
+- Testing cleanup edge cases
+
+**When NOT to use `// UNH-SUPPRESS`:**
+
+- Normal test cleanup (use `Track()` instead)
+- Avoiding linter errors for convenience (fix the underlying issue)
 
 See [create-test](create-test.md#unity-object-lifecycle-management-critical) for detailed patterns.
 

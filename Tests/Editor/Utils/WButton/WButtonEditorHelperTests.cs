@@ -385,7 +385,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Utils.WButton
         {
             HelperTargetSimple target = CreateScriptableObject<HelperTargetSimple>();
             UnityEditor.Editor editor = UnityEditor.Editor.CreateEditor(target);
-            UnityEngine.Object.DestroyImmediate(target);
+            UnityEngine.Object.DestroyImmediate(target); // UNH-SUPPRESS: Test verifies graceful handling when targets array contains destroyed objects
             _trackedObjects.Remove(target);
 
             WButtonEditorHelper helper = new WButtonEditorHelper();

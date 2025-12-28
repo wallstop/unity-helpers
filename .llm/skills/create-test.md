@@ -749,6 +749,16 @@ public sealed class MyOdinDrawerTests : CommonTestBase
 | `UNH002` | Unity object allocation must be tracked: wrap with `Track()`                               |
 | `UNH003` | Test class creates Unity objects but doesn't inherit from `CommonTestBase`                 |
 
+### ⚠️ MANDATORY: Run Lint After EVERY Test Change
+
+> **CRITICAL**: Run the test lifecycle linter IMMEDIATELY after ANY modification to test files. Do NOT wait until the end of your task.
+
+```bash
+pwsh -NoProfile -File scripts/lint-tests.ps1
+```
+
+This linter is also run by the pre-push git hook. Failing to run it locally will result in rejected pushes.
+
 ### Required Pattern: Track All Unity Objects
 
 **ALWAYS** wrap Unity object creation with `Track()`:
@@ -789,9 +799,31 @@ Editor editor = Track(Editor.CreateEditor(target));
 editor.OnInspectorGUI();
 ```
 
-### Exception: Intentional Destroy Tests
+### Exception: Using `// UNH-SUPPRESS` Comments
 
-When testing behavior after an object is destroyed, use `// UNH-SUPPRESS` comment:
+The `// UNH-SUPPRESS` comment tells the linter to skip checking that specific line. Use it **ONLY** when:
+
+1. **Testing destroy behavior** — Intentionally destroying objects to verify error handling
+2. **Testing destroyed state** — Verifying code handles destroyed objects gracefully
+3. **Testing cleanup edge cases** — Ensuring cleanup code doesn't double-destroy
+
+#### UNH-SUPPRESS Syntax
+
+Place the comment on the **same line** as the `DestroyImmediate` call:
+
+```csharp
+// ✅ CORRECT - Comment on same line
+UnityEngine.Object.DestroyImmediate(target); // UNH-SUPPRESS: Test verifies behavior after target destroyed
+
+// ✅ CORRECT - With explanation
+Object.DestroyImmediate(target); // UNH-SUPPRESS: Intentionally destroy to test null handling
+
+// ❌ WRONG - Comment on different line (will NOT suppress)
+// UNH-SUPPRESS: This won't work
+UnityEngine.Object.DestroyImmediate(target);
+```
+
+#### Complete Example: Testing Destroyed Object Handling
 
 ```csharp
 [Test]
@@ -803,10 +835,29 @@ public void InspectorHandlesDestroyedTargetGracefully()
     editor.OnInspectorGUI();
 
     UnityEngine.Object.DestroyImmediate(target); // UNH-SUPPRESS: Test verifies behavior after target destroyed
-    _trackedObjects.Remove(target);
+    _trackedObjects.Remove(target); // Remove from tracking to prevent double-destroy in teardown
 
     Assert.DoesNotThrow(() => editor.OnInspectorGUI());
 }
+```
+
+#### When NOT to Use UNH-SUPPRESS
+
+```csharp
+// ❌ WRONG - Don't use suppress for normal cleanup
+try
+{
+    editor.OnInspectorGUI();
+}
+finally
+{
+    UnityEngine.Object.DestroyImmediate(editor); // UNH-SUPPRESS  <-- DON'T DO THIS
+}
+
+// ✅ CORRECT - Use Track() instead
+Editor editor = Track(Editor.CreateEditor(target));
+editor.OnInspectorGUI();
+// Cleanup handled automatically by CommonTestBase
 ```
 
 ### Track Methods Reference
@@ -851,15 +902,31 @@ public IEnumerator OnInspectorGuiDoesNotThrowForTarget()
 }
 ```
 
-### Run Lint After Every Change
+### Run Lint After Every Change (MANDATORY)
 
-**MANDATORY**: Run the test lint script after any test file changes:
+> **⚠️ CRITICAL**: Run the test lint script **IMMEDIATELY** after any test file modification. Do NOT batch changes or wait until the end of a task.
 
 ```bash
 pwsh -NoProfile -File scripts/lint-tests.ps1
 ```
 
-Fix all `UNH001`, `UNH002`, and `UNH003` errors before committing.
+**The linter runs automatically on pre-push.** If you skip local linting, your push WILL be rejected.
+
+**Fix workflow:**
+
+1. Make a test file change
+2. Run `pwsh -NoProfile -File scripts/lint-tests.ps1`
+3. Fix any `UNH001`, `UNH002`, or `UNH003` errors
+4. Re-run linter to confirm fix
+5. Only then proceed to next change
+
+**Common fixes:**
+
+| Error    | Fix                                                                                           |
+| -------- | --------------------------------------------------------------------------------------------- |
+| `UNH001` | Remove `DestroyImmediate`; use `Track()` OR add `// UNH-SUPPRESS` if testing destroy behavior |
+| `UNH002` | Wrap object creation with `Track()`: `Track(new GameObject())`                                |
+| `UNH003` | Add `: CommonTestBase` or `: EditorCommonTestBase` to test class                              |
 
 ---
 
