@@ -712,6 +712,91 @@ These errors are often NOT caught by actionlint but cause runtime failures:
 | Missing `permissions`         | "Resource not accessible by integration"          | Add explicit permissions block for required scopes      |
 | Typo in secret name           | Empty value or "secret not found"                 | Verify secret name matches repository settings          |
 
+### Bash Arithmetic Safety in CI/CD (CRITICAL)
+
+> **⚠️ CRITICAL**: The expression `((var++))` where `var` is 0 will cause scripts using `set -e` to exit immediately. This is a subtle bug that causes CI/CD failures.
+
+**The Problem:**
+
+When using `set -euo pipefail` (common in CI/CD for strict error handling):
+
+- `((var++))` returns the value BEFORE increment
+- If `var` is `0`, the return value is `0`
+- Bash treats `0` as falsy/failure (exit code 1)
+- `set -e` causes the script to exit on non-zero exit codes
+- **Result**: Script exits unexpectedly on the first iteration
+
+```yaml
+# ❌ BUG - Script exits when count is 0
+- name: Process items
+  run: |
+    set -euo pipefail
+    count=0
+    for item in "${items[@]}"; do
+      process "$item"
+      ((count++))  # ← FAILS when count=0, script exits!
+    done
+    echo "Processed $count items"
+```
+
+**Why This Happens:**
+
+```bash
+count=0
+((count++))   # Returns 0 (pre-increment value), exit code 1
+echo $?       # Prints: 1 (failure!)
+
+count=1
+((count++))   # Returns 1 (pre-increment value), exit code 0
+echo $?       # Prints: 0 (success)
+```
+
+**Safe Alternatives:**
+
+| Pattern               | Description                                | Recommendation       |
+| --------------------- | ------------------------------------------ | -------------------- |
+| `((var++)) \|\| true` | Always succeeds, ignores return value      | Quick fix            |
+| `var=$((var + 1))`    | Assignment always succeeds                 | **RECOMMENDED**      |
+| `: $((var++))`        | Null command with arithmetic side-effect   | Alternative          |
+| `((++var))`           | Pre-increment returns new value (1, not 0) | Works but less clear |
+
+```yaml
+# ✅ CORRECT - Assignment always succeeds
+- name: Process items
+  run: |
+    set -euo pipefail
+    count=0
+    for item in "${items[@]}"; do
+      process "$item"
+      count=$((count + 1))  # ← Assignment always succeeds
+    done
+    echo "Processed $count items"
+
+# ✅ CORRECT - Alternative with || true
+- name: Process items
+  run: |
+    set -euo pipefail
+    count=0
+    for item in "${items[@]}"; do
+      process "$item"
+      ((count++)) || true  # ← Explicit success fallback
+    done
+    echo "Processed $count items"
+```
+
+**When to Watch Out:**
+
+- Counter variables starting at 0
+- Loop iteration counters
+- Any arithmetic expression used as a statement (not in a condition)
+- Scripts using `set -e` or `set -euo pipefail`
+
+**Detection:**
+
+actionlint with shellcheck integration may not catch this pattern. Manually review any `((var++))` expressions in workflow scripts, especially when `set -e` is enabled.
+
+---
+
 ### Common actionlint/shellcheck Errors
 
 | Error Code | Description                      | Fix                                                |
