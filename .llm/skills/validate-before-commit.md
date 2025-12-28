@@ -32,16 +32,16 @@ This single command runs ALL CI/CD checks locally, ensuring your changes will pa
 
 ### Linter Commands by File Type
 
-| File Type Changed | Command to Run IMMEDIATELY | Notes |
-| --- | --- | --- |
-| Documentation (`.md`) | `npm run lint:spelling` | Add valid terms to `cspell.json` if needed |
-| Documentation (`.md`) | `npm run lint:docs` | Check for broken links, backtick `.md` refs |
-| Documentation (`.md`) | `npm run lint:markdown` | Markdownlint rules (MD032, MD009, etc.) |
-| GitHub Workflows (`.yml`) | `actionlint` | **MANDATORY** for `.github/workflows/*.yml` |
-| C# code (`.cs`) | `dotnet tool run csharpier format .` | Auto-fix formatting |
-| C# code (`.cs`) | `npm run lint:csharp-naming` | Check for underscore violations |
-| JSON/asmdef/asmref | `npm run format:json:check` | Check formatting |
-| YAML (non-workflow) | `npm run format:yaml:check` | Check formatting |
+| File Type Changed         | Command to Run IMMEDIATELY           | Notes                                       |
+| ------------------------- | ------------------------------------ | ------------------------------------------- |
+| Documentation (`.md`)     | `npm run lint:spelling`              | Add valid terms to `cspell.json` if needed  |
+| Documentation (`.md`)     | `npm run lint:docs`                  | Check for broken links, backtick `.md` refs |
+| Documentation (`.md`)     | `npm run lint:markdown`              | Markdownlint rules (MD032, MD009, etc.)     |
+| GitHub Workflows (`.yml`) | `actionlint`                         | **MANDATORY** for `.github/workflows/*.yml` |
+| C# code (`.cs`)           | `dotnet tool run csharpier format .` | Auto-fix formatting                         |
+| C# code (`.cs`)           | `npm run lint:csharp-naming`         | Check for underscore violations             |
+| JSON/asmdef/asmref        | `npm run format:json:check`          | Check formatting                            |
+| YAML (non-workflow)       | `npm run format:yaml:check`          | Check formatting                            |
 
 ### Documentation Changes Workflow
 
