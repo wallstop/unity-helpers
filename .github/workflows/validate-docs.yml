@@ -40,7 +40,8 @@ jobs:
 
             # Extract markdown links: [text](link)
             # Filter to only internal links (not http, https, #, mailto)
-            grep -oP '\]\(\K[^)]+(?=\))' "$mdfile" 2>/dev/null | while read -r link; do
+            # Use process substitution to avoid subshell (pipe creates subshell, losing error count)
+            while read -r link; do
               # Skip external links, anchors, and mailto
               if [[ "$link" =~ ^https?:// ]] || [[ "$link" =~ ^# ]] || [[ "$link" =~ ^mailto: ]]; then
                 continue
@@ -71,7 +72,7 @@ jobs:
                 echo "❌ Broken link in $mdfile: $link -> $target_path (file not found)"
                 errors=$((errors + 1))
               fi
-            done
+            done < <(grep -oP '\]\(\K[^)]+(?=\))' "$mdfile" 2>/dev/null || true)
           done < <(find . -name "*.md" -type f -not -path "./node_modules/*" -print0)
 
           if [[ $errors -gt 0 ]]; then

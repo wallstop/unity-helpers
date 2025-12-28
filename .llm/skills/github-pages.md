@@ -93,18 +93,24 @@ npm run lint:docs
 
 ### Why This Matters
 
-The `jekyll-relative-links` plugin converts `.md` links to `.html` links during build. However, it **only recognizes** links with explicit relative prefixes (`./` or `../`).
+The `jekyll-relative-links` plugin converts markdown links to HTML links during the Jekyll build process. However, the plugin has a critical limitation: **it ONLY recognizes links that use explicit relative path prefixes (`./` or `../`)**.
 
-**Without the prefix:**
+**Technical Detail**: The plugin's path matching regex specifically looks for relative path indicators. Bare paths are NOT recognized as relative links and are passed through unchanged.
 
-- Link renders as raw `.md` file download
-- 404 errors on GitHub Pages
-- Links work locally but break in production
+**Without the prefix** (bare paths):
 
-**With the prefix:**
+- Plugin ignores the link entirely — no conversion occurs
+- Link renders as raw markdown file download (browser downloads the source)
+- 404 errors on GitHub Pages (the file doesn't exist at the expected URL)
+- Links may appear to work locally but break in production
 
-- Link correctly converts to HTML page
-- Works both locally and on GitHub Pages
+**With the prefix** (explicit relative paths):
+
+- Plugin recognizes and processes the link
+- Link correctly converts to HTML extension
+- Works consistently both locally and on GitHub Pages
+
+**Validation**: Run `npm run lint:docs` to catch missing `./` prefixes before committing. This command checks all documentation links and will fail if any links are missing the required relative path prefix.
 
 ### Examples
 

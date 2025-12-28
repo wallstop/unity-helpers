@@ -73,19 +73,19 @@ This single command runs ALL CI/CD checks locally, ensuring your changes will pa
 
 ### Linter Commands by File Type
 
-| File Type Changed         | Command to Run IMMEDIATELY                     | Notes                                          |
-| ------------------------- | ---------------------------------------------- | ---------------------------------------------- |
-| Documentation (`.md`)     | `npx prettier --write <file>`                  | **MANDATORY** — Run FIRST after any edit       |
-| Documentation (`.md`)     | `npm run lint:spelling`                        | Add valid terms to `cspell.json` if needed     |
-| Documentation (`.md`)     | `npm run lint:docs`                            | Check for broken links, backtick `.md` refs    |
-| Documentation (`.md`)     | `npm run lint:markdown`                        | Markdownlint rules (MD032, MD009, etc.)        |
-| JSON/asmdef/asmref        | `npx prettier --write <file>`                  | **MANDATORY** — Prettier formats JSON too      |
-| YAML (non-workflow)       | `npx prettier --write <file>`                  | **MANDATORY** — Prettier formats YAML too      |
-| GitHub Workflows (`.yml`) | `npx prettier --write <file>`                  | Format FIRST, then run actionlint              |
-| GitHub Workflows (`.yml`) | `actionlint`                                   | **MANDATORY** for `.github/workflows/*.yml`    |
-| C# code (`.cs`)           | `dotnet tool run csharpier format .`           | **RUN IMMEDIATELY** after ANY edit (not later) |
-| C# code (`.cs`)           | `npm run lint:csharp-naming`                   | Check for underscore violations                |
-| Test files (`.cs`)        | `pwsh -NoProfile -File scripts/lint-tests.ps1` | **MANDATORY** Track() usage, no manual destroy |
+| File Type Changed         | Command to Run IMMEDIATELY                     | Notes                                                                                 |
+| ------------------------- | ---------------------------------------------- | ------------------------------------------------------------------------------------- |
+| Documentation (`.md`)     | `npx prettier --write <file>`                  | **MANDATORY** — Run FIRST after any edit                                              |
+| Documentation (`.md`)     | `npm run lint:spelling`                        | Add valid terms to `cspell.json` if needed                                            |
+| Documentation (`.md`)     | `npm run lint:docs`                            | **CRITICAL** — Validates link targets AND link format (requires `./` or `../` prefix) |
+| Documentation (`.md`)     | `npm run lint:markdown`                        | Markdownlint rules (MD032, MD009, etc.)                                               |
+| JSON/asmdef/asmref        | `npx prettier --write <file>`                  | **MANDATORY** — Prettier formats JSON too                                             |
+| YAML (non-workflow)       | `npx prettier --write <file>`                  | **MANDATORY** — Prettier formats YAML too                                             |
+| GitHub Workflows (`.yml`) | `npx prettier --write <file>`                  | Format FIRST, then run actionlint                                                     |
+| GitHub Workflows (`.yml`) | `actionlint`                                   | **MANDATORY** for `.github/workflows/*.yml`                                           |
+| C# code (`.cs`)           | `dotnet tool run csharpier format .`           | **RUN IMMEDIATELY** after ANY edit (not later)                                        |
+| C# code (`.cs`)           | `npm run lint:csharp-naming`                   | Check for underscore violations                                                       |
+| Test files (`.cs`)        | `pwsh -NoProfile -File scripts/lint-tests.ps1` | **MANDATORY** Track() usage, no manual destroy                                        |
 
 ### Prettier/Markdown Formatting
 
@@ -267,28 +267,68 @@ npm run lint:docs
 
 ### Markdown Link Path Requirements
 
-> **⚠️ CRITICAL**: Internal markdown links MUST use relative path prefixes (`./` or `../`). Bare paths will cause link validation failures.
+> **🚨🚨🚨 CRITICAL: ALL internal markdown links MUST use `./` or `../` prefix 🚨🚨🚨**
+>
+> This is a **MANDATORY** requirement. The `npm run lint:docs` command validates BOTH:
+>
+> 1. **Link targets exist** — the referenced file must be present
+> 2. **Link format is correct** — paths MUST start with `./` or `../`
+>
+> **Why this matters**: The Jekyll site uses `jekyll-relative-links` which requires explicit relative paths to resolve links correctly. Bare paths without a relative prefix will NOT work.
+
+#### Common Mistakes (AVOID THESE)
 
 ```markdown
-<!-- ❌ WRONG: Bare paths without relative prefix -->
+<!-- ❌ WRONG: Bare filename without ./ prefix -->
 
 See [context](context.md) for guidelines.
-Refer to [create-test](skills/create-test.md) for details.
-Check [features](docs/features/overview.md) for documentation.
 
-<!-- ✅ CORRECT: Relative paths with ./ or ../ prefix -->
+<!-- ❌ WRONG: Path to subdirectory without ./ prefix -->
+
+Refer to [create-test](skills/create-test.md) for details.
+
+<!-- ❌ WRONG: Path starting with folder name, not ./ -->
+
+Check [features](docs/features/overview.md) for documentation.
+```
+
+#### Correct Format (ALWAYS DO THIS)
+
+```markdown
+<!-- ✅ CORRECT: Same directory — use ./ prefix -->
 
 See [context](./context.md) for guidelines.
+
+<!-- ✅ CORRECT: Subdirectory — use ./ prefix -->
+
 Refer to [create-test](./skills/create-test.md) for details.
+
+<!-- ✅ CORRECT: Parent directory — use ../ prefix -->
+
 Check [features](../docs/features/overview.md) for documentation.
 ```
 
 **Fixing "missing relative prefix" errors:**
 
 1. Identify the link causing the error in the lint output
-2. Add `./` prefix for files in the same directory
+2. Add `./` prefix for files in the same directory or subdirectories
 3. Add `../` prefix (one or more) for files in parent directories
 4. Re-run `npm run lint:docs` to verify the fix
+
+**Quick Reference Table:**
+
+```text
+Link Pattern                       Status     Fix / Explanation
+---------------------------------  ---------  -----------------------------------------
+[text](file.md)                    ❌ WRONG   [text](./file.md)
+[text](folder/file.md)             ❌ WRONG   [text](./folder/file.md)
+[text](skills/file.md)             ❌ WRONG   [text](./skills/file.md)
+[text](./file.md)                  ✅ OK      Same directory
+[text](./folder/file.md)           ✅ OK      Subdirectory
+[text](../file.md)                 ✅ OK      Parent directory
+[text](../../folder/file.md)       ✅ OK      Multiple parent levels
+[text](https://example.com)        ✅ OK      External links don't need relative prefix
+```
 
 **Examples by link location:**
 
@@ -413,7 +453,7 @@ _trackedObjects.Remove(target);
 - Normal test cleanup (use `Track()` instead)
 - Avoiding linter errors for convenience (fix the underlying issue)
 
-See [create-test](create-test.md#unity-object-lifecycle-management-critical) for detailed patterns.
+See [create-test](./create-test.md#unity-object-lifecycle-management-critical) for detailed patterns.
 
 ### The "Fix Before Moving On" Rule
 
@@ -441,13 +481,18 @@ See [create-test](create-test.md#unity-object-lifecycle-management-critical) for
 See `context.md` for guidelines.
 Refer to `skills/create-test.md` for details.
 
-<!-- ✅ CORRECT: Proper markdown links -->
+<!-- ✅ CORRECT: Proper markdown links WITH relative prefix -->
 
-See [context](context.md) for guidelines.
-Refer to [create-test](skills/create-test.md) for details.
+See [context](./context.md) for guidelines.
+Refer to [create-test](./skills/create-test.md) for details.
 ```
 
-**The `npm run lint:docs` check will FAIL if backtick-wrapped `.md` references are found.**
+**The `npm run lint:docs` check validates TWO things:**
+
+1. **No backtick-wrapped `.md` references** — Use proper links instead
+2. **All internal links use `./` or `../` prefix** — Required for jekyll-relative-links
+
+> **Remember**: Even when converting backtick references to links, you MUST include the `./` or `../` prefix!
 
 ---
 
@@ -797,7 +842,7 @@ Before completing ANY task that adds features or fixes bugs, verify:
 - [ ] XML docs updated with new parameter names/types
 - [ ] Code samples updated throughout docs
 
-See [update-documentation](update-documentation.md) for complete guidelines.
+See [update-documentation](./update-documentation.md) for complete guidelines.
 
 ---
 
@@ -938,7 +983,7 @@ actionlint -shellcheck=/usr/bin/shellcheck
    - Merge to main
    - Update workflow to add real triggers (push, pull_request, etc.)
 
-**Example: Safe Release Drafter Setup**
+#### Example: Safe Release Drafter Setup
 
 ```yaml
 # .github/workflows/release-drafter.yml

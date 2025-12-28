@@ -162,11 +162,13 @@ int value = random.Next();  // Wrong: Method is NextInt()
 
 **NEVER use backtick-wrapped markdown file references.** Always use proper markdown links.
 
-| ❌ WRONG                                       | ✅ CORRECT                                           |
-| ---------------------------------------------- | ---------------------------------------------------- |
-| See \`some-file\` for details                  | See [some-file](some-file) for details               |
-| Refer to \`skills/create-test\` for guidelines | Refer to [create-test](./create-test) for guidelines |
-| Check \`context\` for rules                    | Check [context](context) for rules                   |
+```text
+❌ WRONG                                         ✅ CORRECT
+────────────────────────────────────────────────────────────────────────────────
+See `some-file` for details                      See [some-file](./some-file.md) for details
+Refer to `skills/create-test` for guidelines     Refer to [create-test](./create-test.md) for guidelines
+Check `context` for rules                        Check [context](../context.md) for rules
+```
 
 **Why this matters:**
 
@@ -177,30 +179,44 @@ int value = random.Next();  // Wrong: Method is NextInt()
 
 ### Internal Link Formatting
 
-**CRITICAL**: Internal markdown links MUST use `./` or `../` prefix for relative paths.
+**CRITICAL**: ALL internal markdown links MUST use `./` or `../` prefix for relative paths.
+
+> ⚠️ **MANDATORY**: Run `npm run lint:docs` IMMEDIATELY after ANY markdown change to catch link errors before they reach CI.
 
 **Wrong vs Correct Examples:**
 
 ```text
-❌ WRONG: [create-test](create-test)           →  ✅ CORRECT: [create-test](./create-test)
-✅ OK:    [context](../context)                →  ✅ CORRECT: [context](../context) (../ is OK)
-❌ WRONG: [features](features/core)            →  ✅ CORRECT: [features](./features/core)
-❌ WRONG: See [skill](skills/doc)              →  ✅ CORRECT: See [skill](./skills/doc)
+❌ WRONG                                        ✅ CORRECT
+────────────────────────────────────────────────────────────────────────────────
+[text](file.md)                                 [text](./file.md)
+[text](docs/guide.md)                           [text](./docs/guide.md)
+[create-test](create-test.md)                   [create-test](./create-test.md)
+[features](features/core.md)                    [features](./features/core.md)
+[skill](skills/doc.md)                          [skill](./skills/doc.md)
+[context](../context.md)                        [context](../context.md)  ← ../ is OK
 ```
 
-> **Note**: All examples above should include the `.md` extension in actual usage.
+**Rule**: Every relative link MUST start with either:
+
+- `./` — for files in the same directory or subdirectories
+- `../` — for files in parent directories
 
 **Why this matters:**
 
-- Links without `./` prefix may fail in some Markdown renderers
-- The doc link linter validates relative path prefixes
+- Links without `./` prefix WILL fail the doc link linter
+- CI will reject PRs with improperly formatted links
+- Some Markdown renderers fail to resolve links without explicit relative paths
 - Consistent link format prevents rendering issues on GitHub Pages
 
 ### Required Commands After Markdown Changes
 
+> ⚠️ **RUN IMMEDIATELY**: Execute `npm run lint:docs` right after ANY markdown edit—don't wait until you're "done."
+
 ```bash
-# MANDATORY: Run ALL of these after editing markdown files:
-npm run lint:docs         # Check documentation links (MUST PASS)
+# STEP 1: IMMEDIATELY after ANY markdown change:
+npm run lint:docs         # ← RUN THIS FIRST! Catches link errors early
+
+# STEP 2: Then run remaining linters:
 npm run lint:markdown     # Check markdownlint rules
 npm run lint:spelling     # Check spelling (MUST PASS)
 npm run format:md:check   # Check Prettier formatting
@@ -213,6 +229,16 @@ pwsh ./scripts/lint-doc-links.ps1 -VerboseOutput
 ```
 
 **STOP**: Do NOT mark documentation work complete until `npm run lint:docs` passes with zero errors.
+
+### Link Validation Checklist
+
+**Before committing ANY markdown file:**
+
+- [ ] ✅ All internal links use `./` or `../` prefix
+- [ ] ✅ No bare links like `` `[text](file)` `` — must be `` `[text](./file)` ``
+- [ ] ✅ No backtick-wrapped markdown file references
+- [ ] ✅ Ran `npm run lint:docs` and it passed with zero errors
+- [ ] ✅ All links resolve to existing files
 
 ### Code Block Language Specifiers
 
@@ -284,14 +310,15 @@ The button supports...
 
 **Before committing ANY markdown changes:**
 
-- [ ] **NO backtick-wrapped markdown file references** — use `[name](path/to/file)` links
+- [ ] **ALL internal links use `./` or `../` prefix** — `` `[text](./file)` `` NOT `` `[text](file)` ``
+- [ ] **NO backtick-wrapped markdown file references** — use `` `[name](./path/to/file)` `` links
 - [ ] All fenced code blocks have language specifiers
 - [ ] No emphasis (bold/italic) used as headings
 - [ ] Blank lines before and after code blocks
 - [ ] Blank lines before and after lists
 - [ ] Blank lines after headings
 - [ ] Proper heading hierarchy (no skipping levels)
-- [ ] `npm run lint:docs` passes (doc link validation)
+- [ ] **`npm run lint:docs` passes** ← Run IMMEDIATELY after any markdown change
 - [ ] `npm run lint:markdown` passes
 - [ ] `npm run format:md:check` passes
 
