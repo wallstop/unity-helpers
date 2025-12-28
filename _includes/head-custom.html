@@ -55,12 +55,18 @@
       localStorage.setItem("unity-helpers-theme", newTheme);
 
       // Update mermaid theme if diagrams exist
-      if (typeof mermaid !== "undefined" && document.querySelector(".mermaid")) {
+      // Check for window.updateMermaidTheme (mermaid is module-scoped, not global)
+      if (typeof window.updateMermaidTheme === "function" && document.querySelector(".mermaid")) {
         window.updateMermaidTheme(newTheme);
       }
     });
 
-    // Insert toggle into page
-    document.body.insertBefore(toggle, document.body.firstChild);
+    // Insert toggle after header if one exists, otherwise at start of body
+    const header = document.querySelector("header");
+    if (header && header.nextSibling) {
+      header.parentNode.insertBefore(toggle, header.nextSibling);
+    } else {
+      document.body.insertBefore(toggle, document.body.firstChild);
+    }
   });
 </script>

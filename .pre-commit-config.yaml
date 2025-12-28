@@ -3,9 +3,9 @@ repos:
     hooks:
       - id: sync-banner-version
         name: Sync banner version from package.json
-        entry: pwsh -NoProfile -File scripts/sync-banner-version.ps1 -StagedOnly
+        entry: pwsh -NoProfile -File scripts/sync-banner-version.ps1
         language: system
-        files: 'package\.json$'
+        always_run: true
         pass_filenames: false
         require_serial: true
         description: Updates the version in the SVG banner when package.json version changes.
