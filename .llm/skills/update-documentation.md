@@ -334,6 +334,67 @@ npm run format:md
 
 ---
 
+## Escaping Example Links in Documentation
+
+> **CRITICAL**: When showing link syntax examples in documentation, ALL examples MUST be escaped so the linter doesn't parse them as real links.
+
+### Why Escaping Matters
+
+Documentation that teaches link format often includes:
+
+- Examples of correct link syntax
+- Examples of INCORRECT link syntax (to show what NOT to do)
+- Reference tables showing patterns
+
+**Without escaping**, the linter will:
+
+- Try to resolve example paths as real files
+- Report false "file not found" errors
+- Flag intentionally "wrong" examples for missing `./` prefix
+
+### Escaping Methods
+
+#### Fenced Code Blocks (Recommended)
+
+Use `text` language specifier with escaped brackets:
+
+```text
+<!-- Examples with escaped brackets are NOT parsed -->
+Correct: ]\(./file)
+Wrong: ]\(file) -- missing prefix
+```
+
+#### Inline Backticks
+
+For brief inline mentions, escape the brackets:
+
+```text
+Use `]\(./file)` format not `]\(file)` format.
+```
+
+#### Text Tables
+
+For comparison tables, use `text` code blocks:
+
+```text
+❌ WRONG: [link](file.md)     →  ✅ CORRECT: [link](./file.md)
+```
+
+### Verification After Adding Examples
+
+```bash
+# MANDATORY: Run after adding any link examples to docs
+npm run lint:docs
+
+# If errors appear from example links, improve escaping
+```
+
+### Related
+
+See [validate-before-commit](./validate-before-commit.md#escaping-example-links-in-documentation) for detailed escaping patterns.
+
+---
+
 ## Spelling Validation
 
 **MANDATORY**: Run spelling checks after ANY documentation change.

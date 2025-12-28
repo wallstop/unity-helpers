@@ -169,7 +169,7 @@ npm run lint:docs      # Catches backtick .md refs AND inline code + link anti-p
 npm run lint:markdown  # Markdownlint rules (MD032, MD009, etc.)
 ```
 
-> **⚠️ IMPORTANT**: `npm run lint:docs` must be run after editing **ANY** markdown file in the entire repository — including `docs/`, the README, the CHANGELOG, the `.llm/` directory, and any other location. This catches broken links, backtick-wrapped markdown references, and the [inline code + link anti-pattern](#️-markdown-inline-code--link-anti-pattern).
+> **⚠️ IMPORTANT**: `npm run lint:docs` must be run after editing **ANY** markdown file in the entire repository — including `docs/`, the README, the CHANGELOG, the `.llm/` directory, and any other location. This catches broken links, backtick-wrapped markdown references, and the [inline code + link anti-pattern](#markdown-inline-code--link-anti-pattern).
 
 **Proactive Spelling Management**:
 
@@ -496,7 +496,7 @@ Refer to [create-test](./skills/create-test.md) for details.
 
 ---
 
-## ⚠️ Markdown Inline Code + Link Anti-pattern
+## Markdown Inline Code + Link Anti-pattern
 
 > **CRITICAL**: The doc link linter uses a regex that can produce false positives when backticks and `.md` links appear on the same line.
 
@@ -536,6 +536,69 @@ See [context](../context.md) for guidelines about the `.llm/` and `.llm/skills/`
 ### Detection
 
 This issue is caught by `npm run lint:docs`. Always run this command after **ANY** markdown file change (not just in `.llm/` but anywhere in the repository).
+
+---
+
+## Escaping Example Links in Documentation
+
+> **CRITICAL**: When writing documentation that SHOWS link syntax (teaching users proper format), example links MUST be escaped so the linter doesn't parse them as real links.
+
+### The Problem
+
+Documentation often needs to show examples of correct vs incorrect link format. If these examples are written as real markdown links, the linter will:
+
+1. Try to resolve them as actual links
+2. Report "file not found" errors for made-up example paths
+3. Flag them for missing `./` prefix (intentionally shown as "wrong")
+
+### How to Escape Example Links
+
+#### Method 1: Fenced Code Blocks (Recommended)
+
+Use fenced code blocks with `text` language specifier and escaped brackets:
+
+```text
+<!-- Examples with escaped brackets are NOT parsed by linter -->
+Correct format: ]\(./path/to/file)
+Wrong format: ]\(path/to/file) -- missing ./
+```
+
+#### Method 2: Inline Backticks for Short Examples
+
+For brief inline examples, escape brackets:
+
+```text
+Use `]\(./file)` format for links.
+Wrong: `]\(file)` — missing prefix.
+```
+
+#### Method 3: HTML Comments for Hidden Examples
+
+For reference patterns that shouldn't render:
+
+```markdown
+<!-- Example pattern: [text](./relative/path.md) -->
+```
+
+### Common Escaping Mistakes
+
+| Mistake                                     | Why It Fails                         | Fix                              |
+| ------------------------------------------- | ------------------------------------ | -------------------------------- |
+| Showing example link outside code block     | Linter parses it as real link        | Wrap in code fence               |
+| Using `text` specifier for markdown syntax  | Syntax highlighting missing (minor)  | Use `markdown` specifier         |
+| Forgetting to escape "wrong" examples       | Linter reports false errors          | Wrap ALL examples, good and bad  |
+| Mixing real and example links in same block | Linter may catch unintended patterns | Separate real links from samples |
+
+### Verification
+
+After adding or editing example links in documentation:
+
+```bash
+# This must pass without false positives from examples
+npm run lint:docs
+
+# If examples trigger errors, they need better escaping
+```
 
 ---
 

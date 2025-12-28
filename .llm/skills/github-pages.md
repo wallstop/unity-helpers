@@ -112,6 +112,27 @@ The `jekyll-relative-links` plugin converts markdown links to HTML links during 
 
 **Validation**: Run `npm run lint:docs` to catch missing `./` prefixes before committing. This command checks all documentation links and will fail if any links are missing the required relative path prefix.
 
+### Escaping Example Links
+
+When documenting link format (showing correct/incorrect examples), **escape all examples** so the linter doesn't parse them:
+
+```text
+<!-- Example patterns (use text code blocks for safety) -->
+❌ WRONG: ]\(file.md)        →  Missing ./ prefix
+✅ CORRECT: ]\(./file.md)    →  Proper relative path
+
+Note: In actual docs, use [text](./file) format.
+The backslash escapes above prevent linter parsing.
+```
+
+**Why**: Unescaped example links trigger false positive lint errors because:
+
+1. "Wrong" examples intentionally lack `./` prefix
+2. Example paths don't point to real files
+3. The linter cannot distinguish teaching examples from real links
+
+See [update-documentation](./update-documentation.md#escaping-example-links-in-documentation) for detailed escaping methods.
+
 ### Examples
 
 ```markdown
@@ -311,6 +332,7 @@ When CI fails on documentation PRs, here are the most common causes and fixes:
 | -------------------------------- | ----------------------------------------- | ------------------------------------------------------------- |
 | Missing `./` prefix on links     | `Link missing relative prefix`            | Add `./` to all internal links → run `npm run lint:docs`      |
 | Broken internal link             | `Link target does not exist`              | Fix the path or create missing file → run `npm run lint:docs` |
+| Unescaped example links          | `Link target does not exist` (for demos)  | Wrap example links in code blocks → run `npm run lint:docs`   |
 | Unknown words in spelling check  | `Unknown word: someWord`                  | Add word to `cspell.json` words array                         |
 | Trailing spaces in YAML          | `Delete trailing whitespace`              | Run `npx prettier --write <file>`                             |
 | Markdown formatting issues       | Various markdownlint errors               | Run `npm run lint:markdown`                                   |
