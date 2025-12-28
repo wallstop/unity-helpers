@@ -28,12 +28,22 @@ ensure_no_index_lock || {
     echo "Warning: index.lock still held after waiting. Proceeding anyway, but operations may fail." >&2
 }
 
-# 0) Ensure .NET tools available (for CSharpier)
+# 0) Normalize line endings (LF -> CRLF for most files, LF for .sh)
+# This MUST run before any other formatting to prevent formatter diffs
+if command -v pwsh >/dev/null 2>&1; then
+  pwsh -NoProfile -File scripts/normalize-eol.ps1
+elif command -v powershell >/dev/null 2>&1; then
+  powershell -NoProfile -ExecutionPolicy Bypass -File scripts/normalize-eol.ps1
+else
+  echo "PowerShell not found. Skipping EOL normalization." >&2
+fi
+
+# 1) Ensure .NET tools available (for CSharpier)
 if command -v dotnet >/dev/null 2>&1; then
   dotnet tool restore >/dev/null 2>&1 || true
 fi
 
-# 1) Lint Markdown link text style (via Node wrapper -> PowerShell script)
+# 2) Lint Markdown link text style (via Node wrapper -> PowerShell script)
 if command -v node >/dev/null 2>&1; then
   node ./scripts/run-doc-link-lint.js
 else
@@ -55,7 +65,7 @@ else
   fi
 fi
 
-# 2) Format staged Markdown/JSON/YAML with Prettier and re-stage
+# 3) Format staged Markdown/JSON/YAML with Prettier and re-stage
 if ! command -v npx >/dev/null 2>&1; then
   echo "npx is required for formatting. Please install Node.js." >&2
   exit 1
@@ -90,8 +100,8 @@ if [ -n "$YAML_FILES" ]; then
   git_add_with_retry $YAML_FILES
 fi
 
-# 3) Format staged C# files with CSharpier (if available) and re-stage
-CS_FILES=$(echo "$STAGED_FILES" | grep -E '\\.cs$' || true)
+# 4) Format staged C# files with CSharpier (if available) and re-stage
+CS_FILES=$(echo "$STAGED_FILES" | grep -E '\\\.cs$' || true)
 if [ -n "$CS_FILES" ]; then
   if command -v pwsh >/dev/null 2>&1; then
     pwsh -NoProfile -File scripts/format-staged-csharp.ps1
@@ -102,12 +112,12 @@ if [ -n "$CS_FILES" ]; then
   fi
 fi
 
-# 4) Markdown lint for staged Markdown files
+# 5) Markdown lint for staged Markdown files
 if [ -n "$MD_FILES" ]; then
   npx --no-install markdownlint $MD_FILES --config .markdownlint.json --ignore-path .markdownlintignore
 fi
 
-# 5) YAML lint on staged YAML files
+# 6) YAML lint on staged YAML files
 if [ -n "$YAML_FILES" ]; then
   if command -v yamllint >/dev/null 2>&1; then
     echo "$YAML_FILES" | xargs yamllint -c .yamllint.yaml
