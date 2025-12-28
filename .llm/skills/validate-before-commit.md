@@ -26,6 +26,47 @@ This single command runs ALL CI/CD checks locally, ensuring your changes will pa
 
 ---
 
+## 🚨🚨🚨 CRITICAL WARNING: PRETTIER MUST RUN IMMEDIATELY 🚨🚨🚨
+
+> **THIS IS THE #1 CAUSE OF CI/CD FAILURES. READ THIS CAREFULLY.**
+
+**Prettier MUST be run IMMEDIATELY after EVERY change to a non-C# file.** Not at the end. Not in batches. **IMMEDIATELY after each individual file modification.**
+
+### ❌ WRONG Workflow (DO NOT DO THIS)
+
+```text
+1. Edit file1.md
+2. Edit file2.json
+3. Edit file3.yml
+4. Run prettier at the end  ← TOO LATE! You will forget files and CI will fail.
+```
+
+### ✅ CORRECT Workflow (ALWAYS DO THIS)
+
+```text
+1. Edit file1.md
+2. npx prettier --write file1.md  ← IMMEDIATELY
+3. Verify: npx prettier --check file1.md
+4. Edit file2.json
+5. npx prettier --write file2.json  ← IMMEDIATELY
+6. Verify: npx prettier --check file2.json
+7. Edit file3.yml
+8. npx prettier --write file3.yml  ← IMMEDIATELY
+9. Verify: npx prettier --check file3.yml
+```
+
+**Why "at the end" fails:**
+
+- You WILL forget which files you touched
+- Running `prettier --write .` may not format all files you expect
+- Issues compound and become harder to track
+- Pre-push hooks WILL reject your commit
+- You waste time debugging what could have been caught instantly
+
+**The rule is simple:** Edit a file → Run Prettier on that file → Move on. No exceptions.
+
+---
+
 ## MANDATORY: Run Linters IMMEDIATELY After Every Change
 
 > **⚠️ CRITICAL**: Do NOT wait until the end of a task to run linters. Run the appropriate linter IMMEDIATELY after modifying ANY file. Fix issues before moving to the next file.
@@ -48,30 +89,57 @@ This single command runs ALL CI/CD checks locally, ensuring your changes will pa
 
 ### Prettier/Markdown Formatting
 
-> **⚠️ CRITICAL**: Pre-push hooks will REJECT commits with Prettier formatting issues. Run Prettier IMMEDIATELY after editing ANY non-C# file.
+> **🚨🚨🚨 ABSOLUTE REQUIREMENT 🚨🚨🚨**: Run Prettier **IMMEDIATELY** after editing **EACH** non-C# file. Not later. Not at the end. Not in batches. **IMMEDIATELY** after **EACH** file. Pre-push hooks **WILL REJECT** commits with Prettier formatting issues.
 
 **Prettier applies to ALL of these file types** (not just C#):
 
-- Markdown (`.md`)
+- Markdown (`.md`) — **including `.llm/` directory files!**
 - JSON (`.json`, `.asmdef`, `.asmref`)
 - YAML (`.yml`, `.yaml`)
 - Config files
 
+> **⚠️ REMINDER**: The `.llm/` directory is **NOT EXEMPT** from Prettier formatting. All markdown files in `.llm/`, `.llm/skills/`, and subdirectories MUST be formatted with Prettier after every edit.
+
+### The ONLY Correct Pattern
+
+**Every single time you modify a non-C# file, immediately run:**
+
 ```bash
-# Fix a specific file IMMEDIATELY after editing
+# Step 1: Edit the file
+# Step 2: IMMEDIATELY run Prettier on that specific file
 npx prettier --write <file>
 
-# Examples:
-npx prettier --write .llm/skills/create-test.md
-npx prettier --write package.json
-npx prettier --write .github/workflows/ci.yml
+# Step 3: Verify the file is formatted
+npx prettier --check <file>
 
-# Verify ALL files before commit/push
-npx prettier --check .
-
-# Auto-fix ALL files at once
-npx prettier --write .
+# Step 4: Only then move to the next file
 ```
+
+**Concrete workflow example:**
+
+```bash
+# You need to edit 3 files: context.md, package.json, and ci.yml
+
+# File 1: context.md
+# ... make your edits to context.md ...
+npx prettier --write .llm/context.md
+npx prettier --check .llm/context.md  # Verify - should show "All matched files use Prettier code style!"
+
+# File 2: package.json
+# ... make your edits to package.json ...
+npx prettier --write package.json
+npx prettier --check package.json  # Verify
+
+# File 3: ci.yml
+# ... make your edits to ci.yml ...
+npx prettier --write .github/workflows/ci.yml
+npx prettier --check .github/workflows/ci.yml  # Verify
+
+# Final verification before commit (catches anything you might have missed)
+npx prettier --check .
+```
+
+> **⚠️ "I'll run prettier at the end" is a mistake.** You WILL forget files. You WILL have CI failures. Run it after EACH file.
 
 **Key distinction:**
 
@@ -84,7 +152,7 @@ npx prettier --write .
 
 ### Documentation Changes Workflow
 
-After **ANY** change to markdown files:
+After **ANY** change to markdown files (anywhere in the repository, not just `.llm/`):
 
 ```bash
 # 1. Format with Prettier FIRST (pre-push hook requirement)
@@ -96,10 +164,12 @@ npm run lint:spelling
 # 3. If spelling errors found with valid technical terms, add to cspell.json:
 # Edit cspell.json and add terms to the "words" array
 
-# 4. Check links and formatting
-npm run lint:docs
-npm run lint:markdown
+# 4. Check links and formatting — MANDATORY for ALL markdown files
+npm run lint:docs      # Catches backtick .md refs AND inline code + link anti-patterns
+npm run lint:markdown  # Markdownlint rules (MD032, MD009, etc.)
 ```
+
+> **⚠️ IMPORTANT**: `npm run lint:docs` must be run after editing **ANY** markdown file in the entire repository — including `docs/`, the README, the CHANGELOG, the `.llm/` directory, and any other location. This catches broken links, backtick-wrapped markdown references, and the [inline code + link anti-pattern](#️-markdown-inline-code--link-anti-pattern).
 
 **Proactive Spelling Management**:
 
@@ -234,6 +304,49 @@ Refer to [create-test](skills/create-test.md) for details.
 ```
 
 **The `npm run lint:docs` check will FAIL if backtick-wrapped `.md` references are found.**
+
+---
+
+## ⚠️ Markdown Inline Code + Link Anti-pattern
+
+> **CRITICAL**: The doc link linter uses a regex that can produce false positives when backticks and `.md` links appear on the same line.
+
+### The Problem
+
+The linter regex `` \`[^\`\n]*[A-Za-z0-9_\-]+\.md[^\`\n]*\` `` looks for backtick-wrapped text containing `.md`. However, it can match **across** separate backtick sections if a markdown link appears between them.
+
+### Problematic Pattern
+
+```markdown
+<!-- ❌ WRONG: Linter matches from first ` to second `, capturing the link target -->
+
+Files in `.llm/` should follow [context](../context.md) guidelines in `.llm/skills/`.
+
+<!-- The regex sees: `.llm/` should follow [context](../context.md) guidelines in `.llm/skills/`
+     and matches "context.md" as a backtick-wrapped .md reference -->
+```
+
+### Solutions
+
+```markdown
+<!-- ✅ Option 1: Move link to a different line -->
+
+Files in `.llm/` and `.llm/skills/` should follow guidelines.
+See [context](../context.md) for details.
+
+<!-- ✅ Option 2: Restructure to avoid multiple backticks with link between -->
+
+The `.llm/` directory contains context files. See [context](../context.md) for guidelines.
+The `.llm/skills/` directory contains skill definitions.
+
+<!-- ✅ Option 3: Use the link before any backticks -->
+
+See [context](../context.md) for guidelines about the `.llm/` and `.llm/skills/` directories.
+```
+
+### Detection
+
+This issue is caught by `npm run lint:docs`. Always run this command after **ANY** markdown file change (not just in `.llm/` but anywhere in the repository).
 
 ---
 
@@ -512,6 +625,14 @@ npm run validate:prepush
 
 Before completing ANY task that adds features or fixes bugs, verify:
 
+### 🚨 FIRST: Prettier Self-Check (MANDATORY)
+
+- [ ] **Did I run `npx prettier --write <file>` IMMEDIATELY after EVERY non-C# file I touched?**
+- [ ] Did I verify each file with `npx prettier --check <file>` after formatting?
+- [ ] Final check: `npx prettier --check .` passes with no warnings?
+
+> If you cannot answer "yes" to all three, go back and run Prettier on each file you modified NOW.
+
 ### For New Features
 
 - [ ] Feature documentation added/updated in `docs/features/<category>/`
@@ -636,12 +757,12 @@ actionlint -shellcheck=/usr/bin/shellcheck
 
 **Actions Known to Require Default Branch Config:**
 
-| Action                             | Config Location                 | Reads From        |
-| ---------------------------------- | ------------------------------- | ----------------- |
-| `release-drafter/release-drafter`  | `.github/release-drafter.yml`   | Default branch    |
-| `actions/labeler`                  | `.github/labeler.yml`           | Default branch    |
-| `peter-evans/create-pull-request`  | Various config files            | Check action docs |
-| Dependabot                         | `.github/dependabot.yml`        | Default branch    |
+| Action                            | Config Location               | Reads From        |
+| --------------------------------- | ----------------------------- | ----------------- |
+| `release-drafter/release-drafter` | `.github/release-drafter.yml` | Default branch    |
+| `actions/labeler`                 | `.github/labeler.yml`         | Default branch    |
+| `peter-evans/create-pull-request` | Various config files          | Check action docs |
+| Dependabot                        | `.github/dependabot.yml`      | Default branch    |
 
 **Solutions (choose one):**
 
@@ -694,7 +815,7 @@ on:
 # .github/workflows/release-drafter.yml
 - uses: release-drafter/release-drafter@v6
   with:
-    config-name: release-drafter.yml  # ← References .github/release-drafter.yml
+    config-name: release-drafter.yml # ← References .github/release-drafter.yml
 ```
 
 If `.github/release-drafter.yml` doesn't exist, the workflow will fail at runtime with "Unable to find configuration".
@@ -753,12 +874,12 @@ echo $?       # Prints: 0 (success)
 
 **Safe Alternatives:**
 
-| Pattern                 | Description                             | Recommendation   |
-| ----------------------- | --------------------------------------- | ---------------- |
-| `var=$((var + 1))`      | Assignment always succeeds              | **RECOMMENDED**  |
-| `((var++)) \|\| true`   | Always succeeds, ignores return value   | Acceptable       |
-| `: $((var++))`          | Null command with arithmetic side-effect | Alternative     |
-| `((++var))`             | Pre-increment returns new value (1, not 0) | Works but less clear |
+| Pattern               | Description                                | Recommendation       |
+| --------------------- | ------------------------------------------ | -------------------- |
+| `var=$((var + 1))`    | Assignment always succeeds                 | **RECOMMENDED**      |
+| `((var++)) \|\| true` | Always succeeds, ignores return value      | Acceptable           |
+| `: $((var++))`        | Null command with arithmetic side-effect   | Alternative          |
+| `((++var))`           | Pre-increment returns new value (1, not 0) | Works but less clear |
 
 ```yaml
 # ✅ CORRECT - Assignment always succeeds (RECOMMENDED)
