@@ -26,12 +26,32 @@ This single command runs ALL CI/CD checks locally, ensuring your changes will pa
 
 ---
 
+## CRITICAL: Markdown Link Formatting
+
+**NEVER use backtick-wrapped `.md` file references.** This is a MANDATORY rule.
+
+```markdown
+<!-- ❌ WRONG: Will FAIL lint-doc-links -->
+
+See `context.md` for guidelines.
+Refer to `skills/create-test.md` for details.
+
+<!-- ✅ CORRECT: Proper markdown links -->
+
+See [context](context.md) for guidelines.
+Refer to [create-test](skills/create-test.md) for details.
+```
+
+**The `npm run lint:docs` check will FAIL if backtick-wrapped `.md` references are found.**
+
+---
+
 ## What Gets Validated
 
 The `npm run validate:prepush` command runs these checks in order:
 
 1. **validate:content** — Documentation and formatting
-   - `lint:docs` — Check markdown links
+   - `lint:docs` — **CRITICAL**: Check markdown links (no backtick `.md` refs!)
    - `lint:markdown` — Markdownlint rules
    - `format:md:check` — Prettier markdown formatting
    - `format:json:check` — Prettier JSON/asmdef formatting
@@ -48,6 +68,8 @@ The `npm run validate:prepush` command runs these checks in order:
 4. **lint:csharp-naming** — C# naming conventions
    - No underscores in method names
    - PascalCase for all methods
+
+**Note**: GitHub Actions workflows are validated by the separate `actionlint` CI job. See [GitHub Actions Workflow Linting](#github-actions-workflow-linting-mandatory) for local validation.
 
 ---
 
@@ -137,12 +159,30 @@ npm run lint:csharp-naming
 - Use PascalCase: `WhenInputIsNullReturnsDefault` NOT `When_Input_Is_Null_Returns_Default`
 - Test data names: Use dots `TestCase.Scenario.Expected` NOT underscores
 
-### Documentation Links
+### Documentation Links (MANDATORY)
 
 ```bash
-# Check for broken links in docs
+# Check for broken links in docs - MUST PASS before completing any doc task
 npm run lint:docs
+
+# For verbose output showing all checks:
+pwsh ./scripts/lint-doc-links.ps1 -VerboseOutput
 ```
+
+**This check catches:**
+
+- Broken links to non-existent files
+- Backtick-wrapped markdown file references (FORBIDDEN)
+- Invalid anchor links
+- Malformed markdown link syntax
+
+**Common failures and fixes:**
+
+| Error Type                               | Fix                                             |
+| ---------------------------------------- | ----------------------------------------------- |
+| Backtick-wrapped markdown file reference | Use `[readable-name](path/to/file)` link format |
+| Link target does not resolve             | Verify file exists and path is correct          |
+| Bare markdown mention without link       | Convert to proper `[text](target)` link         |
 
 ### End-of-Line Characters
 
@@ -168,6 +208,7 @@ npm run eol:fix
 | YAML Format + Lint           | `npm run format:yaml:check`         | `npm run format:yaml`                |
 | C# Naming Convention Lint    | `npm run lint:csharp-naming`        | Rename methods manually              |
 | Lint Docs Links              | `npm run lint:docs`                 | Fix broken links manually            |
+| **actionlint**               | `actionlint`                        | Fix shell/YAML errors manually       |
 
 ---
 
@@ -336,3 +377,110 @@ Ensure you're running in a shell that supports PowerShell:
 ```bash
 pwsh -NoProfile -File scripts/check-eol.ps1
 ```
+
+---
+
+## GitHub Actions Workflow Linting (MANDATORY)
+
+> **⚠️ CRITICAL**: CI/CD failures caused by workflow syntax errors are expensive to debug. ALWAYS validate workflows locally before committing!
+
+**ALWAYS run actionlint after ANY changes to `.github/workflows/*.yml` files.** The CI pipeline runs actionlint and will fail if errors are found.
+
+### Why This Matters
+
+- **Workflow syntax errors only surface at runtime** — You won't know about issues until CI fails
+- **Missing required parameters** cause cryptic error messages in GitHub Actions logs
+- **Security issues** (hardcoded secrets, injection vulnerabilities) are caught early
+- **Saves time** — Local validation takes seconds vs. waiting for CI to fail
+
+### Running actionlint Locally
+
+```bash
+# Install actionlint (one-time setup in dev container)
+curl -sfL https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-bash.sh | bash -s -- -b /usr/local/bin
+
+# Run actionlint on all workflow files (ALWAYS DO THIS)
+actionlint
+
+# Run on a specific workflow file
+actionlint .github/workflows/specific-workflow.yml
+
+# Run with shellcheck integration (recommended for shell script validation)
+actionlint -shellcheck=/usr/bin/shellcheck
+```
+
+### Common Workflow Configuration Errors
+
+These errors are often NOT caught by actionlint but cause runtime failures:
+
+| Issue                         | Symptom                                           | Fix                                                     |
+| ----------------------------- | ------------------------------------------------- | ------------------------------------------------------- |
+| Missing `config-name`         | "Unable to find configuration" in release-drafter | Add `config-name: release-drafter.yml` to action inputs |
+| Missing required action input | "Input required and not supplied"                 | Check action documentation for required inputs          |
+| Invalid trigger event         | Workflow never runs                               | Verify event name matches GitHub's supported events     |
+| Wrong `runs-on` value         | "No runner matching" error                        | Use valid runner labels (e.g., `ubuntu-latest`)         |
+| Missing `permissions`         | "Resource not accessible by integration"          | Add explicit permissions block for required scopes      |
+| Typo in secret name           | Empty value or "secret not found"                 | Verify secret name matches repository settings          |
+
+### Common actionlint/shellcheck Errors
+
+| Error Code | Description                      | Fix                                                |
+| ---------- | -------------------------------- | -------------------------------------------------- |
+| SC2129     | Multiple redirects to same file  | Use grouped commands: `{ cmd1; cmd2; } >> file`    |
+| SC2034     | Variable declared but not used   | Remove unused variable or use it                   |
+| SC2086     | Double quote to prevent globbing | Use `"$variable"` instead of `$variable`           |
+| SC2046     | Quote to prevent word splitting  | Use `"$(command)"` instead of `$(command)`         |
+| SC2155     | Declare and assign separately    | Use `local var; var=$(cmd)` not `local var=$(cmd)` |
+
+### SC2129: Grouped Redirects
+
+When writing multiple lines to the same file (e.g., `$GITHUB_STEP_SUMMARY`), use grouped commands:
+
+```yaml
+# ❌ WRONG - Multiple individual redirects (SC2129)
+- name: Summary
+  run: |
+    echo "## Summary" >> "$GITHUB_STEP_SUMMARY"
+    echo "" >> "$GITHUB_STEP_SUMMARY"
+    echo "| Key | Value |" >> "$GITHUB_STEP_SUMMARY"
+    echo "|-----|-------|" >> "$GITHUB_STEP_SUMMARY"
+
+# ✅ CORRECT - Grouped redirects
+- name: Summary
+  run: |
+    {
+      echo "## Summary"
+      echo ""
+      echo "| Key | Value |"
+      echo "|-----|-------|"
+    } >> "$GITHUB_STEP_SUMMARY"
+```
+
+### SC2034: Unused Variables
+
+```yaml
+# ❌ WRONG - Variable declared but never used
+- name: Process
+  run: |
+    unused_var=0
+    echo "Processing..."
+
+# ✅ CORRECT - Remove unused variable OR use it
+- name: Process
+  run: |
+    echo "Processing..."
+```
+
+### Workflow Validation Checklist
+
+Before committing workflow changes:
+
+- [ ] Run `actionlint` locally — **MANDATORY, NO EXCEPTIONS**
+- [ ] Fix ALL errors (CI will fail otherwise)
+- [ ] Verify all action inputs are provided (especially `config-name` for reusable configs)
+- [ ] Check that all referenced secrets exist in repository settings
+- [ ] Test workflows in a branch before merging to main
+- [ ] Use `${{ secrets.* }}` for sensitive values
+- [ ] Quote all variable expansions in shell scripts
+- [ ] Verify `runs-on` uses valid, available runner labels
+- [ ] Confirm trigger events are spelled correctly and valid for the workflow type

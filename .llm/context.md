@@ -80,23 +80,24 @@ Invoke these skills for specific tasks:
 
 ### Core Skills (Always Consider)
 
-| Skill                                                            | When to Use                                         |
-| ---------------------------------------------------------------- | --------------------------------------------------- |
-| [high-performance-csharp](skills/high-performance-csharp.md)     | **ALL code** (features, bugs, editor)               |
-| [defensive-programming](skills/defensive-programming.md)         | **ALL code** (features, bugs, editor)               |
-| [create-csharp-file](skills/create-csharp-file.md)               | Creating any new `.cs` file                         |
-| [create-unity-meta](skills/create-unity-meta.md)                 | **MANDATORY** after creating ANY new file or folder |
-| [create-test](skills/create-test.md)                             | Writing or modifying test files                     |
-| [investigate-test-failures](skills/investigate-test-failures.md) | **ANY test failure** — investigate before fixing    |
-| [update-documentation](skills/update-documentation.md)           | **MANDATORY** after ANY feature/bug fix/API change  |
-| [create-enum](skills/create-enum.md)                             | Creating a new `enum` type                          |
-| [create-scriptable-object](skills/create-scriptable-object.md)   | Creating ScriptableObject data assets               |
-| [create-editor-tool](skills/create-editor-tool.md)               | Creating Editor windows, drawers, inspectors        |
-| [format-code](skills/format-code.md)                             | After any C# file changes                           |
-| [search-codebase](skills/search-codebase.md)                     | Finding code, files, or patterns                    |
-| [git-safe-operations](skills/git-safe-operations.md)             | Scripts or hooks that interact with git index       |
-| [avoid-reflection](skills/avoid-reflection.md)                   | **ALL code** — never reflect on our own types       |
-| [avoid-magic-strings](skills/avoid-magic-strings.md)             | **ALL code** — use nameof() not strings             |
+| Skill                                                            | When to Use                                             |
+| ---------------------------------------------------------------- | ------------------------------------------------------- |
+| [high-performance-csharp](skills/high-performance-csharp.md)     | **ALL code** (features, bugs, editor)                   |
+| [defensive-programming](skills/defensive-programming.md)         | **ALL code** (features, bugs, editor)                   |
+| [create-csharp-file](skills/create-csharp-file.md)               | Creating any new `.cs` file                             |
+| [create-unity-meta](skills/create-unity-meta.md)                 | **MANDATORY** after creating ANY new file or folder     |
+| [create-test](skills/create-test.md)                             | Writing or modifying test files                         |
+| [investigate-test-failures](skills/investigate-test-failures.md) | **ANY test failure** — investigate before fixing        |
+| [update-documentation](skills/update-documentation.md)           | **MANDATORY** after ANY feature/bug fix/API change      |
+| [validate-before-commit](skills/validate-before-commit.md)       | **MANDATORY** before completing any task (run linters!) |
+| [create-enum](skills/create-enum.md)                             | Creating a new `enum` type                              |
+| [create-scriptable-object](skills/create-scriptable-object.md)   | Creating ScriptableObject data assets                   |
+| [create-editor-tool](skills/create-editor-tool.md)               | Creating Editor windows, drawers, inspectors            |
+| [format-code](skills/format-code.md)                             | After any C# file changes                               |
+| [search-codebase](skills/search-codebase.md)                     | Finding code, files, or patterns                        |
+| [git-safe-operations](skills/git-safe-operations.md)             | Scripts or hooks that interact with git index           |
+| [avoid-reflection](skills/avoid-reflection.md)                   | **ALL code** — never reflect on our own types           |
+| [avoid-magic-strings](skills/avoid-magic-strings.md)             | **ALL code** — use nameof() not strings                 |
 
 ### Performance Skills
 
@@ -197,11 +198,13 @@ See [create-csharp-file](skills/create-csharp-file.md) for detailed rules. Key p
 11. **ALWAYS update documentation** — Docs, XML docs, code samples, and CHANGELOG for every change (see [update-documentation](skills/update-documentation.md))
 12. **ALWAYS write exhaustive tests** — Normal, negative, edge cases, extreme scenarios, and "the impossible" (see [create-test](skills/create-test.md))
 13. **Enums MUST have explicit integer values** — EVERY enum member requires `= N`; first member MUST be `None`/`Unknown` with `= 0` and `[Obsolete]` (non-error) (see [create-enum](skills/create-enum.md))
-14. **NEVER use reflection on our own code** — Use `internal` + `[InternalsVisibleTo]` for test access; reflection is fragile and untraceable (see [avoid-reflection](skills/avoid-reflection.md))
-15. **NEVER use magic strings for code identifiers** — Use `nameof()` for members and `typeof()` for types; strings break silently on rename (see [avoid-magic-strings](skills/avoid-magic-strings.md))
-16. **Markdown code blocks REQUIRE language specifiers** — ALL fenced code blocks must have a language (`csharp`, `bash`, `text`, etc.); never use bare code fence blocks (see [update-documentation](skills/update-documentation.md#markdown-linting-and-quality))
-17. **NEVER use emphasis as headings** — Use proper `#` heading syntax, not **bold** or _italic_ text as section headers
-18. **Run markdown linters after doc changes** — `npm run lint:markdown` and `npm run format:md:check` must pass (see [validate-before-commit](skills/validate-before-commit.md))
+14. **NEVER use backtick-wrapped markdown file references** — Always use proper markdown links like `[readable-name](path/to/doc)` instead of wrapping filenames in backticks; run `npm run lint:docs` after ANY markdown change
+15. **NEVER use reflection on our own code** — Use `internal` + `[InternalsVisibleTo]` for test access; reflection is fragile and untraceable (see [avoid-reflection](skills/avoid-reflection.md))
+16. **NEVER use magic strings for code identifiers** — Use `nameof()` for members and `typeof()` for types; strings break silently on rename (see [avoid-magic-strings](skills/avoid-magic-strings.md))
+17. **Markdown code blocks REQUIRE language specifiers** — ALL fenced code blocks must have a language (`csharp`, `bash`, `text`, etc.); never use bare code fence blocks (see [update-documentation](skills/update-documentation.md#markdown-linting-and-quality))
+18. **NEVER use emphasis as headings** — Use proper `#` heading syntax, not **bold** or _italic_ text as section headers
+19. **Run markdown linters after doc changes** — `npm run lint:docs`, `npm run lint:markdown`, and `npm run format:md:check` must pass (see [validate-before-commit](skills/validate-before-commit.md))
+20. **Run actionlint after workflow changes** — `actionlint` MUST pass for ANY changes to `.github/workflows/*.yml` files; prevents runtime CI/CD failures from missing parameters (e.g., `config-name`), invalid triggers, and security issues (see [validate-before-commit](skills/validate-before-commit.md#github-actions-workflow-linting-mandatory))
 
 ---
 

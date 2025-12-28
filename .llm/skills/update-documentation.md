@@ -158,16 +158,39 @@ int value = random.Next();  // Wrong: Method is NextInt()
 
 **MANDATORY**: Run markdown linters after ANY changes to `.md` files.
 
+### CRITICAL: Markdown Link Formatting
+
+**NEVER use backtick-wrapped markdown file references.** Always use proper markdown links.
+
+| ❌ WRONG                                       | ✅ CORRECT                                                |
+| ---------------------------------------------- | --------------------------------------------------------- |
+| See \`some-file\` for details                  | See [some-file](some-file) for details                    |
+| Refer to \`skills/create-test\` for guidelines | Refer to [create-test](skills/create-test) for guidelines |
+| Check \`context\` for rules                    | Check [context](context) for rules                        |
+
+**Why this matters:**
+
+- Backtick-wrapped file names are NOT clickable links
+- The doc link linter (`./scripts/lint-doc-links.ps1`) will **fail** on backtick-wrapped markdown file references
+- Proper links enable navigation and link validation
+- CI will reject PRs with broken or improperly formatted links
+
 ### Required Commands After Markdown Changes
 
 ```bash
-# Always run BOTH of these after editing markdown files:
+# MANDATORY: Run ALL of these after editing markdown files:
+npm run lint:docs         # Check documentation links (MUST PASS)
 npm run lint:markdown     # Check markdownlint rules
 npm run format:md:check   # Check Prettier formatting
 
-# Or run full content validation:
+# Or run full content validation (includes all above):
 npm run validate:content
+
+# Alternative: Direct script invocation for verbose output:
+pwsh ./scripts/lint-doc-links.ps1 -VerboseOutput
 ```
+
+**STOP**: Do NOT mark documentation work complete until `npm run lint:docs` passes with zero errors.
 
 ### Code Block Language Specifiers
 
@@ -239,12 +262,14 @@ The button supports...
 
 **Before committing ANY markdown changes:**
 
+- [ ] **NO backtick-wrapped markdown file references** — use `[name](path/to/file)` links
 - [ ] All fenced code blocks have language specifiers
 - [ ] No emphasis (bold/italic) used as headings
 - [ ] Blank lines before and after code blocks
 - [ ] Blank lines before and after lists
 - [ ] Blank lines after headings
 - [ ] Proper heading hierarchy (no skipping levels)
+- [ ] `npm run lint:docs` passes (doc link validation)
 - [ ] `npm run lint:markdown` passes
 - [ ] `npm run format:md:check` passes
 

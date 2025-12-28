@@ -1,6 +1,6 @@
 # Skill: Unity Performance Patterns
 
-**Trigger**: When writing Unity-specific code, accessing Unity APIs, or working with MonoBehaviours, GameObjects, Physics, or other Unity systems. This skill complements `high-performance-csharp.md` with Unity-specific patterns.
+**Trigger**: When writing Unity-specific code, accessing Unity APIs, or working with MonoBehaviours, GameObjects, Physics, or other Unity systems. This skill complements [high-performance-csharp](high-performance-csharp.md) with Unity-specific patterns.
 
 ---
 

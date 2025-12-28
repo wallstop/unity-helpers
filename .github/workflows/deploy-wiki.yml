@@ -106,7 +106,6 @@ jobs:
 
           # Track statistics
           pages_created=0
-          pages_updated=0
           images_copied=0
 
           # Clear existing wiki content (except .git and special wiki files we'll regenerate)
@@ -416,25 +415,27 @@ jobs:
       - name: Summary
         if: always()
         run: |
-          echo "## Wiki Sync Summary" >> "$GITHUB_STEP_SUMMARY"
-          echo "" >> "$GITHUB_STEP_SUMMARY"
+          {
+            echo "## Wiki Sync Summary"
+            echo ""
 
-          if [ "${{ needs.check-wiki.outputs.wiki_exists }}" = "false" ]; then
-            echo "⚠️ **Wiki not available** - Please enable and initialize the wiki first." >> "$GITHUB_STEP_SUMMARY"
-          elif [ "${{ steps.changes.outputs.has_changes }}" = "false" ] && [ "${{ github.event.inputs.force_sync }}" != "true" ]; then
-            echo "✅ **No changes detected** - Wiki is already up to date." >> "$GITHUB_STEP_SUMMARY"
-          elif [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
-            echo "🔍 **Dry run completed** - No changes were pushed." >> "$GITHUB_STEP_SUMMARY"
-          else
-            echo "✅ **Wiki synced successfully**" >> "$GITHUB_STEP_SUMMARY"
-          fi
+            if [ "${{ needs.check-wiki.outputs.wiki_exists }}" = "false" ]; then
+              echo "⚠️ **Wiki not available** - Please enable and initialize the wiki first."
+            elif [ "${{ steps.changes.outputs.has_changes }}" = "false" ] && [ "${{ github.event.inputs.force_sync }}" != "true" ]; then
+              echo "✅ **No changes detected** - Wiki is already up to date."
+            elif [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
+              echo "🔍 **Dry run completed** - No changes were pushed."
+            else
+              echo "✅ **Wiki synced successfully**"
+            fi
 
-          echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "| Metric | Value |" >> "$GITHUB_STEP_SUMMARY"
-          echo "|--------|-------|" >> "$GITHUB_STEP_SUMMARY"
-          echo "| Trigger | \`${{ github.event_name }}\` |" >> "$GITHUB_STEP_SUMMARY"
-          echo "| Source Commit | \`${{ github.sha }}\` |" >> "$GITHUB_STEP_SUMMARY"
-          echo "| Wiki URL | [View Wiki](https://github.com/${{ github.repository }}/wiki) |" >> "$GITHUB_STEP_SUMMARY"
+            echo ""
+            echo "| Metric | Value |"
+            echo "|--------|-------|"
+            echo "| Trigger | \`${{ github.event_name }}\` |"
+            echo "| Source Commit | \`${{ github.sha }}\` |"
+            echo "| Wiki URL | [View Wiki](https://github.com/${{ github.repository }}/wiki) |"
+          } >> "$GITHUB_STEP_SUMMARY"
 
   # Notify on failure
   notify-failure:
@@ -445,15 +446,17 @@ jobs:
     steps:
       - name: Create failure summary
         run: |
-          echo "## ❌ Wiki Sync Failed" >> "$GITHUB_STEP_SUMMARY"
-          echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "The wiki synchronization workflow failed." >> "$GITHUB_STEP_SUMMARY"
-          echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "### Troubleshooting Steps" >> "$GITHUB_STEP_SUMMARY"
-          echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "1. **Check if wiki is enabled**: Go to Settings → Features → Wikis" >> "$GITHUB_STEP_SUMMARY"
-          echo "2. **Initialize wiki**: Create at least one page manually in the wiki" >> "$GITHUB_STEP_SUMMARY"
-          echo "3. **Check permissions**: Ensure GITHUB_TOKEN has write access" >> "$GITHUB_STEP_SUMMARY"
-          echo "4. **Review logs**: Check the workflow logs for specific errors" >> "$GITHUB_STEP_SUMMARY"
-          echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "[View Workflow Run](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})" >> "$GITHUB_STEP_SUMMARY"
+          {
+            echo "## ❌ Wiki Sync Failed"
+            echo ""
+            echo "The wiki synchronization workflow failed."
+            echo ""
+            echo "### Troubleshooting Steps"
+            echo ""
+            echo "1. **Check if wiki is enabled**: Go to Settings → Features → Wikis"
+            echo "2. **Initialize wiki**: Create at least one page manually in the wiki"
+            echo "3. **Check permissions**: Ensure GITHUB_TOKEN has write access"
+            echo "4. **Review logs**: Check the workflow logs for specific errors"
+            echo ""
+            echo "[View Workflow Run](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})"
+          } >> "$GITHUB_STEP_SUMMARY"

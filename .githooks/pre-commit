@@ -107,10 +107,12 @@ if [ -n "$MD_FILES" ]; then
   npx --no-install markdownlint $MD_FILES --config .markdownlint.json --ignore-path .markdownlintignore
 fi
 
-# 5) Optional YAML lint on staged YAML (if yamllint present)
+# 5) YAML lint on staged YAML files
 if [ -n "$YAML_FILES" ]; then
   if command -v yamllint >/dev/null 2>&1; then
     echo "$YAML_FILES" | xargs yamllint -c .yamllint.yaml
+  else
+    echo "yamllint not found; skipping YAML lint (run 'npm run verify:tools' to check setup)." >&2
   fi
 fi
 
