@@ -15,6 +15,12 @@ try {
   exit 1
 }
 
+# Wait for any external tool (lazygit, IDE, etc.) to release the index.lock
+# before starting operations. This prevents contention with interactive git tools.
+if (-not (Invoke-EnsureNoIndexLock)) {
+  Write-Warning "index.lock still held after waiting. Proceeding anyway, but operations may fail."
+}
+
 $prettierGlobs = @('*.md', '*.markdown', '*.json', '*.asmdef', '*.asmref', '*.yml', '*.yaml')
 $Paths = Get-StagedPathsForGlobs -DefaultPaths $Paths -Globs $prettierGlobs
 

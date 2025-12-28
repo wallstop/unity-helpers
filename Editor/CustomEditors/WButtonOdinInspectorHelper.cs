@@ -1,3 +1,6 @@
+// MIT License - Copyright (c) 2023 Eli Pinkerton
+// Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
+
 namespace WallstopStudios.UnityHelpers.Editor.CustomEditors
 {
 #if UNITY_EDITOR && ODIN_INSPECTOR
@@ -46,6 +49,19 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomEditors
             Dictionary<int, bool> groupFoldoutStates
         )
         {
+            // Check editor.target first using Unity's == operator to detect destroyed objects
+            // before accessing serializedObject, which would log an error if target is destroyed
+            if (editor == null || editor.target == null)
+            {
+                return;
+            }
+
+            SerializedObject serializedObject = editor.serializedObject;
+            if (serializedObject == null || serializedObject.targetObject == null)
+            {
+                return;
+            }
+
             using PooledResource<List<WButtonMethodContext>> triggeredContextsLease =
                 Buffers<WButtonMethodContext>.GetList(
                     4,

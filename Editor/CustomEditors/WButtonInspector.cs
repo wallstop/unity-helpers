@@ -1,3 +1,6 @@
+// MIT License - Copyright (c) 2023 Eli Pinkerton
+// Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
+
 namespace WallstopStudios.UnityHelpers.Editor.CustomEditors
 {
 #if UNITY_EDITOR
@@ -34,6 +37,11 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomEditors
 
         public override void OnInspectorGUI()
         {
+            if (serializedObject == null || serializedObject.targetObject == null)
+            {
+                return;
+            }
+
             using PooledResource<List<WButtonMethodContext>> triggeredContextsLease =
                 Buffers<WButtonMethodContext>.GetList(
                     4,

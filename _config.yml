@@ -15,6 +15,7 @@ plugins:
   - jekyll-seo-tag
   - jekyll-sitemap
   - jekyll-relative-links
+  - jekyll-include-cache
 
 # Markdown settings
 markdown: kramdown
@@ -26,6 +27,10 @@ kramdown:
     block:
       line_numbers: false
 
+# Mermaid configuration - use built-in theme, no custom theming
+mermaid:
+  version: "11"
+
 # Relative links
 relative_links:
   enabled: true
@@ -33,10 +38,12 @@ relative_links:
 
 # Include/Exclude
 include:
+  - _includes
   - docs
   - README.md
   - CHANGELOG.md
   - LICENSE
+  - assets
 
 exclude:
   - Gemfile

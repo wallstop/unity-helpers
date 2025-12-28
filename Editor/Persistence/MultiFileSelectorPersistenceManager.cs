@@ -1,3 +1,6 @@
+// MIT License - Copyright (c) 2023 Eli Pinkerton
+// Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
+
 // Editor-only utilities for MultiFileSelectorElement persistence cleanup and settings
 #if UNITY_EDITOR
 namespace WallstopStudios.UnityHelpers.Editor.Persistence

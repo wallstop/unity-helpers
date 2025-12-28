@@ -5,6 +5,7 @@ gem "jekyll-remote-theme"
 gem "jekyll-seo-tag"
 gem "jekyll-sitemap"
 gem "jekyll-relative-links"
+gem "jekyll-include-cache"
 gem "kramdown-parser-gfm"
 
 # Windows and JRuby compatibility

@@ -1,3 +1,6 @@
+// MIT License - Copyright (c) 2023 Eli Pinkerton
+// Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
+
 #if UNITY_EDITOR || UNITY_INCLUDE_TESTS || WALLSTOP_CONCAVE_HULL_STATS
 #define ENABLE_CONCAVE_HULL_STATS
 #endif

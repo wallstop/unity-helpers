@@ -211,7 +211,7 @@ Determine what code element the string refers to.
 
 ### Step 2: Check Accessibility
 
-If the member is private, consider changing it to `internal` (see [avoid-reflection.md](avoid-reflection.md) for `InternalsVisibleTo` setup).
+If the member is private, consider changing it to internal visibility. See the [Avoid Reflection](avoid-reflection.md) skill for InternalsVisibleTo setup details.
 
 ### Step 3: Replace with `nameof()` or `typeof()`
 
@@ -252,6 +252,6 @@ var typeName = typeof(PlayerController).FullName;
 
 ## See Also
 
-- [avoid-reflection.md](avoid-reflection.md) - Related rules for avoiding reflection and using `InternalsVisibleTo`
-- [defensive-programming.md](defensive-programming.md) - General defensive coding practices
-- [create-test.md](create-test.md) - Test creation guidelines including naming conventions
+- [Avoid Reflection](avoid-reflection.md) - Related rules for avoiding reflection and using `InternalsVisibleTo`
+- [Defensive Programming](defensive-programming.md) - General defensive coding practices
+- [Create Tests](create-test.md) - Test creation guidelines including naming conventions

@@ -18,6 +18,14 @@ try {
 } catch {
   # Not fatal for this script - we may just be linting without staging
 }
+
+# If we're going to fix files (and thus do git add), wait for any external tool
+# to release the index.lock before starting operations.
+if ($Fix -and $script:RepositoryInfo) {
+  if (-not (Invoke-EnsureNoIndexLock)) {
+    Write-Warning "index.lock still held after waiting. Proceeding anyway, but staging may fail."
+  }
+}
 function Write-Info($msg) {
   if ($VerboseOutput) { Write-Host "[lint-no-regions] $msg" -ForegroundColor Cyan }
 }

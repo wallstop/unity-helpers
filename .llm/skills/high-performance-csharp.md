@@ -13,6 +13,16 @@
 - Bug fixes (must not regress performance)
 - Test utilities (may run thousands of iterations)
 
+### Why Zero-Allocation Matters in Unity
+
+Unity uses the **Boehm-Demers-Weiser** garbage collector, which:
+
+- **Scans the entire heap** on every collection (non-generational)
+- **Does NOT compact memory** — leads to fragmentation
+- **Causes frame stutters** — "stop the world" during collection
+
+At 60 FPS with 1KB/frame allocation = **3.6 MB/minute** of garbage, triggering frequent GC pauses.
+
 **Never duplicate code — build abstractions.** When you see repetitive patterns:
 
 - Extract to lightweight, reusable abstractions
@@ -159,6 +169,38 @@ private static readonly Func<Type, FieldInfo[]> FieldsFactory =
 
 // Usage in ConcurrentDictionary
 fields = FieldCache.GetOrAdd(type, FieldsFactory);
+```
+
+### 2a. Delegate Assignment in Loops
+
+Assigning a delegate in a loop allocates each iteration:
+
+```csharp
+// ❌ BAD: Allocates 52 bytes per iteration (13MB for 256K iterations!)
+for (int i = 0; i < count; i++)
+{
+    Func<int> fn = MyFunction;  // Boxing each iteration
+    result += fn();
+}
+
+// ✅ GOOD: Assign once outside loop
+Func<int> fn = MyFunction;
+for (int i = 0; i < count; i++)
+{
+    result += fn();
+}
+```
+
+### 2b. Params Array Trap
+
+Methods with `params` allocate an array every call:
+
+```csharp
+// ❌ BAD: Allocates 36 bytes per call
+Mathf.Max(a, b, c);  // Calls Max(params int[] args)
+
+// ✅ GOOD: Chain 2-argument overloads (zero allocation)
+Mathf.Max(Mathf.Max(a, b), c);
 ```
 
 ### 3. Zero Dynamic Memory Allocation
@@ -365,6 +407,90 @@ public static bool operator ==(FastVector2Int lhs, FastVector2Int rhs)
 }
 ```
 
+### 7. Avoid foreach Boxing on Collections
+
+Unity's old Mono compiler boxes enumerators for `List<T>` (24 bytes per loop). Arrays are optimized but Lists are not:
+
+```csharp
+// ❌ BAD: Allocates 24 bytes on List<T>
+foreach (var item in myList) { }
+
+// ✅ GOOD: Zero allocation
+for (int i = 0; i < myList.Count; i++)
+{
+    var item = myList[i];
+}
+
+// Note: foreach on arrays is OK (Mono optimizes this)
+foreach (var item in myArray) { }  // Zero allocation
+```
+
+**For non-indexable collections (HashSet, Dictionary):**
+
+```csharp
+// ✅ Use struct enumerator directly
+var enumerator = hashSet.GetEnumerator();
+while (enumerator.MoveNext())
+{
+    var element = enumerator.Current;
+    // process
+}
+```
+
+### 8. Implement IEquatable<T> to Avoid Boxing
+
+Without `IEquatable<T>`, struct comparisons in collections cause boxing:
+
+```csharp
+// ❌ BAD: Allocates 4MB for 128K Contains calls!
+public struct BadStruct
+{
+    public int X, Y;
+}
+
+var list = new List<BadStruct>();
+list.Contains(someStruct);  // Boxes twice per call!
+
+// ✅ GOOD: Zero allocation
+public struct GoodStruct : IEquatable<GoodStruct>
+{
+    public int X, Y;
+
+    public bool Equals(GoodStruct other) => X == other.X && Y == other.Y;
+
+    public override bool Equals(object obj) =>
+        obj is GoodStruct other && Equals(other);
+
+    public override int GetHashCode() => HashCode.Combine(X, Y);
+
+    public static bool operator ==(GoodStruct a, GoodStruct b) => a.Equals(b);
+    public static bool operator !=(GoodStruct a, GoodStruct b) => !a.Equals(b);
+}
+```
+
+### 9. Enum Dictionary Keys Cause Boxing
+
+Enum keys box on every lookup unless you provide a custom comparer:
+
+```csharp
+// ❌ BAD: Allocates 4.5MB for 128K lookups!
+Dictionary<MyEnum, string> dict = new Dictionary<MyEnum, string>();
+var value = dict[MyEnum.SomeValue];  // Boxing per lookup!
+
+// ✅ GOOD: Custom comparer (zero allocation)
+public struct MyEnumComparer : IEqualityComparer<MyEnum>
+{
+    public bool Equals(MyEnum x, MyEnum y) => x == y;
+    public int GetHashCode(MyEnum obj) => (int)obj;
+}
+
+var dict = new Dictionary<MyEnum, string>(new MyEnumComparer());
+
+// ✅ ALTERNATIVE: Cast to int
+Dictionary<int, string> dict = new Dictionary<int, string>();
+dict[(int)MyEnum.SomeValue] = "value";
+```
+
 ---
 
 ## Editor Tooling Requirements
@@ -445,7 +571,12 @@ public Item GetFirst()
 | `new List<T>()`                        | Heap allocation                | `Buffers<T>.List.Get()`                  |
 | Lambda capturing locals                | Closure allocation             | Static lambda or explicit loop           |
 | Boxing (`object x = struct`)           | Heap allocation                | Generic methods                          |
+| `foreach` on `List<T>` (Mono)          | Enumerator boxing (24 bytes)   | `for` with indexer                       |
 | `foreach` on non-generic `IEnumerable` | Enumerator allocation          | `for` with indexer                       |
+| `params` methods                       | Array allocation per call      | Chain 2-arg overloads                    |
+| Delegate assignment in loops           | Boxing each iteration          | Assign once outside loop                 |
+| Enum dictionary keys                   | Boxing per lookup              | Custom `IEqualityComparer` or cast       |
+| Struct without `IEquatable<T>`         | Boxing in collections          | Implement `IEquatable<T>`                |
 | Reflection                             | Slow, fragile, uncached        | Direct access, interfaces, generics      |
 | Raw `GetField`/`GetMethod`             | Uncached, repeated lookups     | `ReflectionHelpers` (external APIs only) |
 | Duplicated code patterns               | Maintenance burden             | Extract to value-type abstraction        |
@@ -468,6 +599,142 @@ for (int i = 0; i < items.Count; i++)
 }
 string result = sb.ToString();
 ```
+
+---
+
+## Modern C# Zero-Allocation Patterns
+
+### Span<T> for Zero-Allocation Slicing
+
+`Span<T>` provides allocation-free views into contiguous memory:
+
+```csharp
+// ✅ Zero-allocation array slicing
+byte[] buffer = GetBuffer();
+Span<byte> header = buffer.AsSpan(0, 8);      // No allocation
+Span<byte> payload = buffer.AsSpan(8);         // No allocation
+
+// ✅ Zero-allocation string parsing
+public bool TryParseCoordinates(ReadOnlySpan<char> input, out int x, out int y)
+{
+    x = y = 0;
+    int commaIndex = input.IndexOf(',');
+    if (commaIndex < 0) return false;
+
+    ReadOnlySpan<char> xPart = input.Slice(0, commaIndex);
+    ReadOnlySpan<char> yPart = input.Slice(commaIndex + 1);
+
+    return int.TryParse(xPart, out x) && int.TryParse(yPart, out y);
+}
+
+// Usage
+string coord = "123,456";
+if (TryParseCoordinates(coord.AsSpan(), out int x, out int y)) { }
+```
+
+### stackalloc for Small Buffers
+
+```csharp
+// ✅ Stack allocation for small, fixed-size buffers
+public void ProcessSmallData(int count)
+{
+    // Stack allocate if small, heap allocate if large
+    Span<int> buffer = count <= 64
+        ? stackalloc int[count]
+        : new int[count];
+
+    // Use buffer...
+}
+```
+
+**Note**: `Span<T>` is a `ref struct` — cannot be used in async methods or stored in fields.
+
+### Value Tuples Over Classes
+
+```csharp
+// ❌ BAD: Allocates on heap
+public Tuple<int, int> FindMinMax(int[] input) { }
+
+// ✅ GOOD: Value type, stack allocated
+public (int min, int max) FindMinMax(int[] input)
+{
+    int min = int.MaxValue;
+    int max = int.MinValue;
+    for (int i = 0; i < input.Length; i++)
+    {
+        if (input[i] < min) min = input[i];
+        if (input[i] > max) max = input[i];
+    }
+    return (min, max);
+}
+
+// Usage with deconstruction
+var (minimum, maximum) = FindMinMax(values);
+```
+
+### Pass Large Structs by Reference
+
+```csharp
+// ❌ BAD: Copies entire struct
+public void ProcessData(LargeStruct data) { }
+
+// ✅ GOOD: Read-only reference, no copy
+public void ProcessData(in LargeStruct data) { }
+
+// ✅ GOOD: Modifiable reference
+public void UpdateData(ref LargeStruct data) { }
+
+// ✅ GOOD: Return by reference
+public ref readonly LargeStruct GetCachedData() => ref _cachedData;
+```
+
+### Implement IEquatable<T> to Avoid Boxing
+
+```csharp
+// ❌ BAD: GetHashCode and Equals cause boxing if not overridden
+public struct BadStruct { public int Value; }
+
+// ✅ GOOD: Implement IEquatable<T> to avoid boxing
+public readonly struct GoodStruct : IEquatable<GoodStruct>
+{
+    public readonly int Value;
+    private readonly int _hash;
+
+    public GoodStruct(int value)
+    {
+        Value = value;
+        _hash = value.GetHashCode();
+    }
+
+    public bool Equals(GoodStruct other) => Value == other.Value;
+    public override bool Equals(object obj) => obj is GoodStruct other && Equals(other);
+    public override int GetHashCode() => _hash;
+}
+```
+
+---
+
+## List Pre-allocation
+
+Lists grow by **doubling capacity**, causing allocations and copies:
+
+```csharp
+// ❌ BAD: Multiple reallocations as list grows
+List<Enemy> enemies = new List<Enemy>();
+for (int i = 0; i < 10000; i++)
+{
+    enemies.Add(GetEnemy(i));  // Reallocates at 4, 8, 16, 32...
+}
+
+// ✅ GOOD: Pre-allocate when size is known
+List<Enemy> enemies = new List<Enemy>(10000);
+for (int i = 0; i < 10000; i++)
+{
+    enemies.Add(GetEnemy(i));  // No reallocations
+}
+```
+
+**Memory impact**: Without pre-allocation, lists average **33% wasted capacity** and during resize temporarily use **3x memory**.
 
 ---
 
@@ -522,7 +789,10 @@ Before submitting any code, verify:
 ## Related Skills
 
 - [defensive-programming](defensive-programming.md) — Error handling patterns (MANDATORY companion skill)
+- [unity-performance-patterns](unity-performance-patterns.md) — Unity-specific optimizations (MANDATORY for Unity code)
+- [profile-debug-performance](profile-debug-performance.md) — Profiling and debugging performance
 - [use-pooling](use-pooling.md) — Detailed collection pooling patterns
 - [use-array-pool](use-array-pool.md) — Array pool selection guide
+- [refactor-to-zero-alloc](refactor-to-zero-alloc.md) — Migration guide for existing code
 - [performance-audit](performance-audit.md) — Performance review checklist
 - [create-editor-tool](create-editor-tool.md) — Editor-specific patterns

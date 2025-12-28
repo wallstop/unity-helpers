@@ -100,12 +100,17 @@ Invoke these skills for specific tasks:
 
 ### Performance Skills
 
-| Skill                                                      | When to Use                                   |
-| ---------------------------------------------------------- | --------------------------------------------- |
-| [performance-audit](skills/performance-audit.md)           | Reviewing performance-sensitive code          |
-| [refactor-to-zero-alloc](skills/refactor-to-zero-alloc.md) | Converting allocating code to zero-allocation |
-| [use-array-pool](skills/use-array-pool.md)                 | Working with temporary arrays                 |
-| [use-pooling](skills/use-pooling.md)                       | Working with temporary collections            |
+| Skill                                                              | When to Use                                       |
+| ------------------------------------------------------------------ | ------------------------------------------------- |
+| [unity-performance-patterns](skills/unity-performance-patterns.md) | Unity-specific optimizations (APIs, pooling)      |
+| [gc-architecture-unity](skills/gc-architecture-unity.md)           | Understanding Unity GC, incremental GC, manual GC |
+| [memory-allocation-traps](skills/memory-allocation-traps.md)       | Finding hidden allocation sources                 |
+| [profile-debug-performance](skills/profile-debug-performance.md)   | Profiling, debugging, measuring performance       |
+| [performance-audit](skills/performance-audit.md)                   | Reviewing performance-sensitive code              |
+| [refactor-to-zero-alloc](skills/refactor-to-zero-alloc.md)         | Converting allocating code to zero-allocation     |
+| [mobile-xr-optimization](skills/mobile-xr-optimization.md)         | Mobile, VR/AR, 90+ FPS targets                    |
+| [use-array-pool](skills/use-array-pool.md)                         | Working with temporary arrays                     |
+| [use-pooling](skills/use-pooling.md)                               | Working with temporary collections                |
 
 ### Feature Skills
 
@@ -194,12 +199,19 @@ See [create-csharp-file](skills/create-csharp-file.md) for detailed rules. Key p
 13. **Enums MUST have explicit integer values** — EVERY enum member requires `= N`; first member MUST be `None`/`Unknown` with `= 0` and `[Obsolete]` (non-error) (see [create-enum](skills/create-enum.md))
 14. **NEVER use reflection on our own code** — Use `internal` + `[InternalsVisibleTo]` for test access; reflection is fragile and untraceable (see [avoid-reflection](skills/avoid-reflection.md))
 15. **NEVER use magic strings for code identifiers** — Use `nameof()` for members and `typeof()` for types; strings break silently on rename (see [avoid-magic-strings](skills/avoid-magic-strings.md))
+16. **Markdown code blocks REQUIRE language specifiers** — ALL fenced code blocks must have a language (`csharp`, `bash`, `text`, etc.); never use bare code fence blocks (see [update-documentation](skills/update-documentation.md#markdown-linting-and-quality))
+17. **NEVER use emphasis as headings** — Use proper `#` heading syntax, not **bold** or _italic_ text as section headers
+18. **Run markdown linters after doc changes** — `npm run lint:markdown` and `npm run format:md:check` must pass (see [validate-before-commit](skills/validate-before-commit.md))
 
 ---
 
 ## Unity Meta Files (MANDATORY)
 
 **Every file and folder in this Unity package MUST have a corresponding `.meta` file.** Missing meta files break Unity asset references.
+
+### Exception: Dot Folders
+
+**Do NOT generate `.meta` files** for anything inside folders that start with `.` (e.g., `.llm/`, `.github/`, `.git/`). These are configuration/tooling folders that Unity ignores.
 
 ### When to Generate
 
@@ -263,11 +275,24 @@ See [create-unity-meta](skills/create-unity-meta.md) for full details.
 
 ## High-Performance C# Requirements
 
-**MANDATORY**: All code must follow [high-performance-csharp](skills/high-performance-csharp.md). This applies to:
+**MANDATORY**: All code must follow [high-performance-csharp](skills/high-performance-csharp.md) and [unity-performance-patterns](skills/unity-performance-patterns.md). This applies to:
 
 - **New features** — Design for zero allocation from the start
 - **Bug fixes** — Must not regress performance; improve if possible
 - **Editor tooling** — Inspectors run every frame; cache everything
+
+### Why Zero-Allocation Matters
+
+Unity uses the **Boehm-Demers-Weiser (BDW) garbage collector**:
+
+- **Non-generational** — Scans entire heap on every collection
+- **No compaction** — Memory fragments over time
+- **Stop-the-world** — Game freezes during GC
+- **Heap never shrinks** — Memory high-water mark persists until app restart
+
+At 60 FPS with 1KB/frame allocation = **3.6 MB/minute** of garbage = frequent GC stutters.
+
+See [gc-architecture-unity](skills/gc-architecture-unity.md) for detailed GC architecture information.
 
 ### Quick Rules
 
@@ -276,11 +301,25 @@ See [create-unity-meta](skills/create-unity-meta.md) for full details.
 | LINQ (`.Where`, `.Select`, `.Any`) | `for` loops                                     |
 | `new List<T>()` in methods         | `Buffers<T>.List.Get()`                         |
 | Closures capturing variables       | Static lambdas or explicit loops                |
+| `foreach` on `List<T>` (Mono)      | `for` loop with indexer (24 bytes/loop!)        |
+| `params` method calls              | Chain 2-argument overloads                      |
+| Delegate assignment in loops       | Assign once outside loop                        |
+| Enum dictionary keys               | Custom `IEqualityComparer` or cast to int       |
+| Struct without `IEquatable<T>`     | Implement `IEquatable<T>` to avoid boxing       |
 | Reflection on our code             | `internal` + `[InternalsVisibleTo]`, interfaces |
 | Reflection on external APIs        | `ReflectionHelpers` (last resort)               |
 | `string +` in loops                | `Buffers.StringBuilder`                         |
 | Duplicated code blocks             | Extract to shared abstraction                   |
 | Heavy class where struct suffices  | `readonly struct` with cached hash              |
+| `GetComponent<T>()` in Update      | Cache in Awake/Start                            |
+| `Camera.main` in Update            | Cache in Awake/Start                            |
+| `Physics.RaycastAll`               | `Physics.RaycastNonAlloc` + buffer              |
+| `gameObject.tag == "X"`            | `gameObject.CompareTag("X")`                    |
+| `new WaitForSeconds()` in loop     | Cache as field                                  |
+| `renderer.material` for changes    | `MaterialPropertyBlock`                         |
+| `SendMessage`/`BroadcastMessage`   | Direct interface calls (1000x faster)           |
+
+See [memory-allocation-traps](skills/memory-allocation-traps.md) for comprehensive hidden allocation sources.
 
 ### Required Patterns
 
@@ -291,12 +330,25 @@ using var lease = Buffers<T>.List.Get(out List<T> buffer);
 // Array pooling (variable sizes)
 using PooledArray<T> pooled = SystemArrayPool<T>.Get(count, out T[] array);
 
-// Cached reflection
+// Cached reflection (external APIs only)
 ReflectionHelpers.TryGetField(type, "name", out FieldInfo field);
 
 // Hot path inlining
 [MethodImpl(MethodImplOptions.AggressiveInlining)]
 public int GetHashCode() => _cachedHash;
+
+// IEquatable<T> for structs used in collections
+public struct MyStruct : IEquatable<MyStruct>
+{
+    public bool Equals(MyStruct other) => /* field comparison */;
+}
+
+// Custom comparer for enum dictionary keys
+public struct MyEnumComparer : IEqualityComparer<MyEnum>
+{
+    public bool Equals(MyEnum x, MyEnum y) => x == y;
+    public int GetHashCode(MyEnum obj) => (int)obj;
+}
 ```
 
 ---
@@ -600,6 +652,19 @@ bat --paging=never file.cs
 
 ✅ Allowed: `git status`, `git log`, `git diff`
 ❌ Forbidden: `git add`, `git commit`, `git push`, `git reset`
+
+#### Git Index Lock Safety (For Scripts)
+
+When writing or modifying scripts that interact with git (pre-commit hooks, formatters, linters), **ALWAYS use the shared helper modules** to prevent `index.lock` contention errors. This is critical when users run interactive git tools like lazygit, GitKraken, or IDE integrations that may hold locks.
+
+| Language   | Helper Module                     | Primary Function         |
+| ---------- | --------------------------------- | ------------------------ |
+| PowerShell | `scripts/git-staging-helpers.ps1` | `Invoke-GitAddWithRetry` |
+| Bash       | `scripts/git-staging-helpers.sh`  | `git_add_with_retry`     |
+
+**NEVER use raw `git add` in scripts** — always use the retry helpers.
+
+See [git-safe-operations](skills/git-safe-operations.md) for full documentation.
 
 ### Test Execution
 

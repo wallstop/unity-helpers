@@ -1,3 +1,6 @@
+// MIT License - Copyright (c) 2023 Eli Pinkerton
+// Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
+
 // UNH-SUPPRESS UNH003: TagsTestBase inherits from AttributeTagsTestBase which inherits from CommonTestBase
 namespace WallstopStudios.UnityHelpers.Tests.Tags.Helpers
 {

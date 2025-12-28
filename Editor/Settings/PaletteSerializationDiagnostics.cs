@@ -1,3 +1,6 @@
+// MIT License - Copyright (c) 2023 Eli Pinkerton
+// Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
+
 #pragma warning disable CS0162 // Unreachable code detected
 namespace WallstopStudios.UnityHelpers.Editor.Settings
 {

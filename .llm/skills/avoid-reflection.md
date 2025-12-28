@@ -233,6 +233,6 @@ var instance = Activator.CreateInstance(typeof(OurClass), true);
 
 ## See Also
 
-- [defensive-programming.md](defensive-programming.md) - General defensive coding practices
-- [create-test.md](create-test.md) - Test creation guidelines
-- [high-performance-csharp.md](high-performance-csharp.md) - Performance considerations (reflection is slow)
+- [Defensive Programming](defensive-programming.md) - General defensive coding practices
+- [Create Tests](create-test.md) - Test creation guidelines
+- [High-Performance C#](high-performance-csharp.md) - Performance considerations (reflection is slow)

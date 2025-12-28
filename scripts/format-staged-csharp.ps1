@@ -15,6 +15,12 @@ try {
   exit 1
 }
 
+# Wait for any external tool (lazygit, IDE, etc.) to release the index.lock
+# before starting operations. This prevents contention with interactive git tools.
+if (-not (Invoke-EnsureNoIndexLock)) {
+  Write-Warning "index.lock still held after waiting. Proceeding anyway, but operations may fail."
+}
+
 if (-not $Paths -or $Paths.Count -eq 0) {
   $Paths = Get-StagedPathsForGlobs -Globs @('*.cs')
 }

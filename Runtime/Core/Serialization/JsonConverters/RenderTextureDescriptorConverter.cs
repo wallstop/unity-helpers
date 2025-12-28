@@ -1,3 +1,6 @@
+// MIT License - Copyright (c) 2023 Eli Pinkerton
+// Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
+
 // Some properties vary across Unity versions; fields guarded with version defines
 namespace WallstopStudios.UnityHelpers.Core.Serialization.JsonConverters
 {

@@ -1,3 +1,6 @@
+// MIT License - Copyright (c) 2023 Eli Pinkerton
+// Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
+
 // Portions of this file are adapted from Unity Editor Toolbox (InlineEditorAttributeDrawer)
 // Copyright (c) 2017-2023 arimger
 // Licensed under the MIT License: https://github.com/arimger/Unity-Editor-Toolbox/blob/main/LICENSE.md

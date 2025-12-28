@@ -1,3 +1,6 @@
+// MIT License - Copyright (c) 2023 Eli Pinkerton
+// Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
+
 namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
 {
 #if UNITY_EDITOR && ODIN_INSPECTOR
@@ -735,7 +738,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
 
             bool testCompleted = false;
             Exception caughtException = null;
-            int failedIteration = -1;
 
             try
             {

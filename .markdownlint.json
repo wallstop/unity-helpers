@@ -19,5 +19,9 @@
   // Don’t flag the two trailing spaces used for hard line breaks in Markdown
   "MD009": { "strict": false },
   // Emoji/wide-character tables break MD060 alignment heuristics; disable to avoid noise
-  "MD060": false
+  "MD060": false,
+  // REQUIRE language specifiers on fenced code blocks
+  "MD040": true,
+  // DISALLOW emphasis (bold/italic) used as headings
+  "MD036": true
 }

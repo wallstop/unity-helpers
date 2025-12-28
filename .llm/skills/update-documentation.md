@@ -154,6 +154,112 @@ int value = random.Next();  // Wrong: Method is NextInt()
 
 ---
 
+## Markdown Linting and Quality
+
+**MANDATORY**: Run markdown linters after ANY changes to `.md` files.
+
+### Required Commands After Markdown Changes
+
+```bash
+# Always run BOTH of these after editing markdown files:
+npm run lint:markdown     # Check markdownlint rules
+npm run format:md:check   # Check Prettier formatting
+
+# Or run full content validation:
+npm run validate:content
+```
+
+### Code Block Language Specifiers
+
+**ALL fenced code blocks MUST have a language specifier.** Blocks without specifiers will fail linting.
+
+| Language   | Specifier    | Example Use Case                          |
+| ---------- | ------------ | ----------------------------------------- |
+| C#         | `csharp`     | All C# code examples                      |
+| Bash       | `bash`       | Terminal commands, shell scripts          |
+| PowerShell | `powershell` | Windows/PowerShell commands               |
+| JSON       | `json`       | Configuration files, API responses        |
+| YAML       | `yaml`       | Unity manifests, GitHub Actions           |
+| XML        | `xml`        | XML documentation, config files           |
+| Markdown   | `markdown`   | Markdown syntax examples                  |
+| Plain text | `text`       | File structures, command output, diagrams |
+
+````markdown
+<!-- ✅ CORRECT: Language specifier present -->
+
+```csharp
+public void Example() { }
+`` `
+
+<!-- ❌ WRONG: Missing language specifier -->
+
+`` `
+public void Example() { }
+`` `
+```
+````
+
+### Heading Rules
+
+**NEVER use emphasis (bold/italic) as a substitute for headings.** Use proper `#` heading syntax.
+
+```markdown
+<!-- ✅ CORRECT: Proper heading -->
+
+## Button Configuration
+
+The button supports...
+
+<!-- ❌ WRONG: Bold text used as heading -->
+
+**Button Configuration**
+
+The button supports...
+```
+
+**Why this matters:**
+
+- Proper headings create document structure for navigation
+- Screen readers and accessibility tools rely on heading hierarchy
+- Markdown linters enforce heading structure
+- Table of contents generation requires proper headings
+
+### Common Markdownlint Rules
+
+| Rule  | Issue                        | Fix                                             |
+| ----- | ---------------------------- | ----------------------------------------------- |
+| MD032 | No blank line around lists   | Add blank line before and after lists           |
+| MD031 | No blank line around fences  | Add blank line before and after code blocks     |
+| MD022 | No blank line after headings | Add blank line after `#` headings               |
+| MD040 | Fenced code without language | Add language specifier (`csharp`, `bash`, etc.) |
+| MD025 | Multiple top-level headings  | Only one `#` heading per document               |
+| MD009 | Trailing spaces              | Remove trailing whitespace (except line break)  |
+
+### Markdown Quality Checklist
+
+**Before committing ANY markdown changes:**
+
+- [ ] All fenced code blocks have language specifiers
+- [ ] No emphasis (bold/italic) used as headings
+- [ ] Blank lines before and after code blocks
+- [ ] Blank lines before and after lists
+- [ ] Blank lines after headings
+- [ ] Proper heading hierarchy (no skipping levels)
+- [ ] `npm run lint:markdown` passes
+- [ ] `npm run format:md:check` passes
+
+### Auto-Fix Commands
+
+```bash
+# Auto-fix Prettier formatting issues
+npm run format:md
+
+# Markdownlint issues usually require manual fixes
+# Review the error message and fix the specific issue
+```
+
+---
+
 ## CHANGELOG Format
 
 The CHANGELOG follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) format.

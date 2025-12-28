@@ -36,7 +36,7 @@ jobs:
         id: extract
         run: |
           node scripts/extract-code-samples.js --verbose --extract-only
-          
+
           # Check for extraction errors
           if [ ! -f artifacts/code-samples/extraction-report.json ]; then
             echo "❌ Failed to generate extraction report"
@@ -46,23 +46,25 @@ jobs:
       - name: Validate code sample syntax
         run: |
           echo "🔍 Checking code samples for common syntax issues..."
-          
+
           # Check for unbalanced braces in extracted samples
           ISSUES_FOUND=0
-          
+
           if [ -d artifacts/code-samples ]; then
             for file in artifacts/code-samples/*.cs; do
               if [ -f "$file" ]; then
                 # Count opening and closing braces
                 OPEN_BRACES=$(grep -o '{' "$file" 2>/dev/null | wc -l)
                 CLOSE_BRACES=$(grep -o '}' "$file" 2>/dev/null | wc -l)
-                
+
                 if [ "$OPEN_BRACES" != "$CLOSE_BRACES" ]; then
                   echo "⚠️ Unbalanced braces in $(basename "$file"): { = $OPEN_BRACES, } = $CLOSE_BRACES"
                   ISSUES_FOUND=$((ISSUES_FOUND + 1))
                 fi
-                
+
                 # Check for unclosed strings (odd number of quotes on a line)
+                # Read file content into a temporary variable to avoid SC2094
+                file_content=$(cat "$file")
                 while IFS= read -r line; do
                   QUOTES=$(echo "$line" | grep -o '"' | wc -l)
                   if [ $((QUOTES % 2)) -ne 0 ]; then
@@ -73,12 +75,12 @@ jobs:
                       break
                     fi
                   fi
-                done < "$file"
+                done <<< "$file_content"
               fi
             done
           fi
-          
-          if [ $ISSUES_FOUND -gt 0 ]; then
+
+          if [ "$ISSUES_FOUND" -gt 0 ]; then
             echo ""
             echo "❌ Found $ISSUES_FOUND syntax issues in code samples"
             echo "Please fix the code samples in your documentation"
@@ -96,21 +98,23 @@ jobs:
 
       - name: Generate Summary
         run: |
-          echo "## 📊 Code Sample Extraction Report" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          if [ -f artifacts/code-samples/extraction-report.json ]; then
-            TOTAL=$(jq '.totalSamples' artifacts/code-samples/extraction-report.json)
-            COMPLETE=$(jq '.completeSamples' artifacts/code-samples/extraction-report.json)
-            PARTIAL=$(jq '.partialSamples' artifacts/code-samples/extraction-report.json)
-            FILES=$(jq '.totalFiles' artifacts/code-samples/extraction-report.json)
-            echo "| Metric | Count |" >> $GITHUB_STEP_SUMMARY
-            echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
-            echo "| Markdown files scanned | $FILES |" >> $GITHUB_STEP_SUMMARY
-            echo "| Total C# samples | $TOTAL |" >> $GITHUB_STEP_SUMMARY
-            echo "| Complete samples | $COMPLETE |" >> $GITHUB_STEP_SUMMARY
-            echo "| Partial/snippet samples | $PARTIAL |" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "✅ Code sample extraction completed successfully" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "⚠️ No extraction report found." >> $GITHUB_STEP_SUMMARY
-          fi
+          {
+            echo "## 📊 Code Sample Extraction Report"
+            echo ""
+            if [ -f artifacts/code-samples/extraction-report.json ]; then
+              TOTAL=$(jq '.totalSamples' artifacts/code-samples/extraction-report.json)
+              COMPLETE=$(jq '.completeSamples' artifacts/code-samples/extraction-report.json)
+              PARTIAL=$(jq '.partialSamples' artifacts/code-samples/extraction-report.json)
+              FILES=$(jq '.totalFiles' artifacts/code-samples/extraction-report.json)
+              echo "| Metric | Count |"
+              echo "|--------|-------|"
+              echo "| Markdown files scanned | $FILES |"
+              echo "| Total C# samples | $TOTAL |"
+              echo "| Complete samples | $COMPLETE |"
+              echo "| Partial/snippet samples | $PARTIAL |"
+              echo ""
+              echo "✅ Code sample extraction completed successfully"
+            else
+              echo "⚠️ No extraction report found."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"

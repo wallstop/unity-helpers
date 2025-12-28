@@ -254,6 +254,35 @@ Quick summary:
 
 ---
 
+## Unity GameObject Pooling
+
+For GameObjects (bullets, enemies, effects), use Unity's `ObjectPool<T>`:
+
+```csharp
+using UnityEngine.Pool;
+
+private ObjectPool<GameObject> _bulletPool;
+
+void Awake()
+{
+    _bulletPool = new ObjectPool<GameObject>(
+        createFunc: () => Instantiate(_bulletPrefab),
+        actionOnGet: obj => obj.SetActive(true),
+        actionOnRelease: obj => obj.SetActive(false),
+        actionOnDestroy: obj => Destroy(obj),
+        defaultCapacity: 50,
+        maxSize: 200
+    );
+}
+
+public GameObject SpawnBullet() => _bulletPool.Get();
+public void ReturnBullet(GameObject bullet) => _bulletPool.Release(bullet);
+```
+
+See [unity-performance-patterns](unity-performance-patterns.md) for more Unity-specific pooling.
+
+---
+
 ## Performance Comparison
 
 ```csharp
@@ -293,3 +322,12 @@ void ProcessPooled()
 - Long-lived collections (class fields)
 - Collections returned to callers (unless copied)
 - Small, infrequent allocations
+
+---
+
+## Related Skills
+
+- [high-performance-csharp](high-performance-csharp.md) — Core performance patterns
+- [unity-performance-patterns](unity-performance-patterns.md) — Unity GameObject pooling
+- [use-array-pool](use-array-pool.md) — Array pooling guide
+- [refactor-to-zero-alloc](refactor-to-zero-alloc.md) — Migration patterns

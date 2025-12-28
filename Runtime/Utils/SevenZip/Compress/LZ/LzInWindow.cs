@@ -1,3 +1,6 @@
+// MIT License - Copyright (c) 2023 Eli Pinkerton
+// Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
+
 // LzInWindow.cs
 
 namespace SevenZip.Compression.LZ
@@ -16,7 +19,7 @@ namespace SevenZip.Compression.LZ
         public UInt32 bufferOffset;
 
         public UInt32 blockSize; // Size of Allocated memory block
-        public UInt32 pos; // offset (from _buffer) of curent byte
+        public UInt32 pos; // offset (from _buffer) of current byte
         private UInt32 _keepSizeBefore; // how many BYTEs must be kept in buffer before _pos
         private UInt32 _keepSizeAfter; // how many BYTEs must be kept buffer after _pos
         public UInt32 streamPos; // offset (from _buffer) of first not read byte from Stream

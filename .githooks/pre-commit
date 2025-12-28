@@ -1,5 +1,32 @@
-#!/usr/bin/env sh
+#!/usr/bin/env bash
 set -e
+
+# Source git staging helpers for safe index.lock handling
+# This prevents "fatal: Unable to create '.git/index.lock': File exists" errors
+# when using interactive git tools like lazygit that may hold locks
+SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+HELPERS_PATH="$SCRIPT_DIR/scripts/git-staging-helpers.sh"
+if [[ -f "$HELPERS_PATH" ]]; then
+    # shellcheck source=../scripts/git-staging-helpers.sh
+    source "$HELPERS_PATH"
+else
+    echo "Warning: git-staging-helpers.sh not found at $HELPERS_PATH" >&2
+    echo "Falling back to basic git add (may cause index.lock errors)" >&2
+    # Fallback: define basic versions of the functions
+    git_add_with_retry() {
+        git add -- "$@"
+    }
+    ensure_no_index_lock() {
+        return 0  # No-op fallback
+    }
+fi
+
+# CRITICAL: Wait for any external tool (lazygit, IDE, etc.) to release the index.lock
+# before starting hook operations. This is the primary fix for index.lock contention.
+# Without this, the hook may start while lazygit is still holding the lock.
+ensure_no_index_lock || {
+    echo "Warning: index.lock still held after waiting. Proceeding anyway, but operations may fail." >&2
+}
 
 # 0) Ensure .NET tools available (for CSharpier)
 if command -v dotnet >/dev/null 2>&1; then
@@ -41,20 +68,26 @@ MD_FILES=$(echo "$STAGED_FILES" | grep -E '\\.(md|markdown)$' || true)
 JSON_FILES=$(echo "$STAGED_FILES" | grep -E '\\.(json|asmdef|asmref)$' || true)
 YAML_FILES=$(echo "$STAGED_FILES" | grep -E '\\.(yml|yaml)$' || true)
 
-# Prettier format and re-add
+# Prettier format and re-add using retry logic to handle index.lock contention
 if [ -n "$MD_FILES" ]; then
   echo "$MD_FILES" | xargs npx --no-install prettier --write --log-level warn
-  echo "$MD_FILES" | xargs git add
+  # Use git_add_with_retry to handle concurrent git operations safely
+  # shellcheck disable=SC2086
+  git_add_with_retry $MD_FILES
 fi
 
 if [ -n "$JSON_FILES" ]; then
   echo "$JSON_FILES" | xargs npx --no-install prettier --write --log-level warn
-  echo "$JSON_FILES" | xargs git add
+  # Use git_add_with_retry to handle concurrent git operations safely
+  # shellcheck disable=SC2086
+  git_add_with_retry $JSON_FILES
 fi
 
 if [ -n "$YAML_FILES" ]; then
   echo "$YAML_FILES" | xargs npx --no-install prettier --write --log-level warn
-  echo "$YAML_FILES" | xargs git add
+  # Use git_add_with_retry to handle concurrent git operations safely
+  # shellcheck disable=SC2086
+  git_add_with_retry $YAML_FILES
 fi
 
 # 3) Format staged C# files with CSharpier (if available) and re-stage

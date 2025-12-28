@@ -13,12 +13,128 @@
 
 Follow these steps in order:
 
-1. **Identify allocations** - Find LINQ, new collections, closures, string operations
-2. **Convert LINQ to loops** - Replace iterator methods with explicit for loops
-3. **Eliminate closures** - Remove lambda captures and delegate allocations
-4. **Migrate to collection pooling** - Replace `new List<T>()` with `Buffers<T>`
-5. **Apply StringBuilder patterns** - Replace string concatenation
-6. **Use array pools** - Replace `new T[]` with appropriate pool
+1. **Eliminate LINQ** - LINQ is forbidden; replace with explicit loops or visitor patterns
+2. **Eliminate closures** - Remove lambda captures and delegate allocations
+3. **Migrate to collection pooling** - Replace `new List<T>()` with `Buffers<T>`
+4. **Apply StringBuilder patterns** - Replace string concatenation
+5. **Use array pools** - Replace `new T[]` with appropriate pool
+6. **Fix struct equality** - Implement `IEquatable<T>` on all structs
+7. **Address foreach boxing** - Replace `foreach` on `List<T>` with `for` loops
+
+---
+
+## Struct vs Class Decision Matrix
+
+Use this matrix to decide when to use structs vs classes:
+
+| Factor               | Use Struct          | Use Class                               |
+| -------------------- | ------------------- | --------------------------------------- |
+| Size                 | < 16 bytes          | > 16 bytes                              |
+| Copying frequency    | Low (pass by ref)   | High (need shared reference)            |
+| Number of references | Few (1-2)           | Many (3+)                               |
+| Inheritance needed   | No                  | Yes                                     |
+| Mutability           | Immutable preferred | Mutable OK                              |
+| Heap overhead        | N/A                 | 16 bytes header + 8 bytes per reference |
+
+**Memory Calculation Example (56-byte data):**
+
+```csharp
+// Class: 56 + 16 (header) + 8×2 (refs) = 88 bytes
+// Struct with 2 copies: 56 × 2 = 112 bytes (worse!)
+// Struct with 1 copy: 56 bytes (better!)
+```
+
+**Rule**: If you'll have 3+ references to the same data, use a class.
+
+---
+
+## LINQ is FORBIDDEN — Use Zero-Allocation Visitor Patterns
+
+**LINQ is NEVER acceptable in this codebase.** Every LINQ method allocates:
+
+- **Iterator object** — The `IEnumerator<T>` state machine
+- **Delegate allocation** — Every lambda/predicate passed
+- **Closure objects** — When lambdas capture variables
+
+Even "streaming" LINQ (`IEnumerable` without `ToList()`) still allocates the iterator and delegate on every call.
+
+### Zero-Allocation Visitor Pattern
+
+Instead of LINQ, use explicit loops with the visitor pattern:
+
+```csharp
+// ❌ FORBIDDEN: LINQ streaming (still allocates iterator + delegate!)
+IEnumerable<Event> events = GetEventsLazy();
+foreach (Event e in events.Where(e => e.IsRecent))
+{
+    ProcessEvent(e);
+}
+
+// ✅ REQUIRED: Zero-allocation visitor pattern
+public void VisitRecentEvents(IReadOnlyList<Event> events, Action<Event> visitor)
+{
+    for (int i = 0; i < events.Count; i++)
+    {
+        Event e = events[i];
+        if (e.IsRecent)
+        {
+            visitor(e);
+        }
+    }
+}
+
+// ✅ BETTER: Inline visitor logic to avoid delegate allocation
+for (int i = 0; i < events.Count; i++)
+{
+    Event e = events[i];
+    if (e.IsRecent)
+    {
+        ProcessEvent(e);
+    }
+}
+
+// ✅ BEST: Generic visitor with ref struct for complex state
+public ref struct EventVisitor
+{
+    public int ProcessedCount;
+    public int TotalDamage;
+
+    public void Visit(Event e)
+    {
+        if (e.IsRecent)
+        {
+            ProcessedCount++;
+            TotalDamage += e.Damage;
+        }
+    }
+}
+
+EventVisitor visitor = new EventVisitor();
+for (int i = 0; i < events.Count; i++)
+{
+    visitor.Visit(events[i]);
+}
+```
+
+### When LINQ Might Be Acceptable (Extremely Rare)
+
+LINQ is only acceptable when ALL of these conditions are met:
+
+1. **Editor-only code** — Never called at runtime
+2. **One-time initialization** — Called once during app startup, not per-frame
+3. **Complexity significantly reduced** — The LINQ version is dramatically clearer
+4. **Documented exception** — Comment explains why LINQ was chosen
+
+```csharp
+// Editor-only, one-time initialization — LINQ acceptable with documentation
+// LINQ Exception: Editor tool initialization, called once on domain reload
+private static readonly Dictionary<Type, MethodInfo[]> CachedMethods =
+    AppDomain.CurrentDomain.GetAssemblies()
+        .SelectMany(a => a.GetTypes())
+        .ToDictionary(t => t, t => t.GetMethods());
+```
+
+**When in doubt: DO NOT use LINQ.** The explicit loop is always safe.
 
 ---
 
@@ -34,7 +150,11 @@ Follow these steps in order:
 | String operations      | String allocation     | `string.Format`, `$"..."`, `+` in loops                              |
 | Array creation         | Heap allocation       | `new T[`, `new byte[`, `new int[`                                    |
 | Boxing                 | Box allocation        | Struct assigned to `object`, non-generic interfaces                  |
+| foreach on List        | Enumerator boxing     | `foreach` on `List<T>` (Mono compiler)                               |
 | foreach on non-generic | Enumerator allocation | `foreach` on `IEnumerable` (not `IEnumerable<T>`)                    |
+| params methods         | Array allocation      | Method calls with `params` parameters                                |
+| Delegate in loop       | Boxing                | `Func<>` or `Action<>` assigned inside loops                         |
+| Enum dictionary        | Boxing per lookup     | `Dictionary<MyEnum, T>` without custom comparer                      |
 
 ### How to Find Allocations
 
@@ -43,11 +163,14 @@ Follow these steps in order:
 // \.Where\(|\.Select\(|\.Any\(|\.First\(|\.ToList\(|\.ToArray\(
 // new List<|new Dictionary<|new HashSet<
 // => .*[^static]  (lambdas that might capture)
+// foreach.*List<  (foreach on List)
 ```
 
 ---
 
-## Step 2: LINQ → Loop Conversion
+## Step 2: LINQ → Zero-Allocation Loop/Visitor Conversion
+
+**LINQ is forbidden.** Convert all LINQ to explicit loops or visitor patterns. The patterns below show common LINQ operations and their zero-allocation replacements.
 
 ### Pattern: Where + FirstOrDefault
 
@@ -592,7 +715,8 @@ public void Method_ShouldNotAllocate_InSteadyState()
 
 When refactoring a method to zero-allocation:
 
-- [ ] Identify all LINQ usage → Convert to explicit `for` loops
+- [ ] **Eliminate ALL LINQ** → Convert to explicit `for` loops or visitor patterns
+- [ ] Consider visitor pattern for complex iteration logic
 - [ ] Find all closures → Use static lambdas or inline logic
 - [ ] Find `new List<T>()` → Use `Buffers<T>.List.Get()`
 - [ ] Find `new HashSet<T>()` → Use `Buffers<T>.HashSet.Get()`
@@ -609,6 +733,8 @@ When refactoring a method to zero-allocation:
 ## Related Skills
 
 - [high-performance-csharp](high-performance-csharp.md) - Core performance philosophy
+- [unity-performance-patterns](unity-performance-patterns.md) - Unity-specific patterns
+- [profile-debug-performance](profile-debug-performance.md) - Profiling guide
 - [use-pooling](use-pooling.md) - Detailed collection pooling patterns
 - [use-array-pool](use-array-pool.md) - Array pool selection guide
 - [performance-audit](performance-audit.md) - Performance review checklist

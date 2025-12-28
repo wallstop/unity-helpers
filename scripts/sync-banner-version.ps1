@@ -24,12 +24,19 @@ $packageJsonPath = Join-Path $repoRoot 'package.json'
 $bannerSvgPath = Join-Path $repoRoot 'docs/images/unity-helpers-banner.svg'
 
 # Get repository info for lock handling
+$repositoryInfo = $null
 try {
     Assert-GitAvailable | Out-Null
     $repositoryInfo = Get-GitRepositoryInfo
 } catch {
     Write-Error $_.Exception.Message
     exit 1
+}
+
+# Wait for any external tool (lazygit, IDE, etc.) to release the index.lock
+# before starting operations. This prevents contention with interactive git tools.
+if (-not (Invoke-EnsureNoIndexLock)) {
+    Write-Warning "index.lock still held after waiting. Proceeding anyway, but operations may fail."
 }
 
 # Check if we should run

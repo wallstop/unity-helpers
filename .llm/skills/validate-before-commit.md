@@ -86,6 +86,23 @@ Common fixes:
 - **MD009**: Remove trailing spaces
 - **MD022**: Add blank line after headings
 - **MD031**: Add blank line around fenced code blocks
+- **MD040**: Add language specifier to fenced code blocks (`csharp`, `bash`, `text`)
+- **MD036**: Don't use emphasis (bold/italic) as headings - use proper `#` headings
+
+### Fenced Code Block Language Specifiers
+
+**ALL fenced code blocks MUST have a language specifier.** Common specifiers:
+
+| Content Type      | Specifier    |
+| ----------------- | ------------ |
+| C# code           | `csharp`     |
+| Shell commands    | `bash`       |
+| PowerShell        | `powershell` |
+| JSON              | `json`       |
+| YAML              | `yaml`       |
+| XML               | `xml`        |
+| Plain text/output | `text`       |
+| Markdown examples | `markdown`   |
 
 ### JSON/asmdef/asmref Formatting
 

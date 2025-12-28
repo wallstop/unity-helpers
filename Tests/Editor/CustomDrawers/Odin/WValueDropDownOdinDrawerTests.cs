@@ -1,3 +1,6 @@
+// MIT License - Copyright (c) 2023 Eli Pinkerton
+// Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
+
 namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
 {
 #if UNITY_EDITOR && ODIN_INSPECTOR
@@ -461,7 +464,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
             Assert.That(displayOptions.Length, Is.EqualTo(3));
             Assert.That(displayOptions[0], Is.EqualTo("Alpha"));
             Assert.That(displayOptions[1], Is.EqualTo("42"));
-            Assert.That(displayOptions[2], Is.EqualTo("ModeA"));
+            Assert.That(displayOptions[2], Is.EqualTo("Mode A"));
         }
 
         [Test]
@@ -477,7 +480,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
         {
             string formatted = DropDownShared.FormatOption(TestDropDownMode.ModeC);
 
-            Assert.That(formatted, Is.EqualTo("ModeC"));
+            Assert.That(formatted, Is.EqualTo("Mode C"));
         }
 
         [Test]
@@ -486,6 +489,173 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
             string formatted = DropDownShared.FormatOption(123);
 
             Assert.That(formatted, Is.EqualTo("123"));
+        }
+
+        [TestCase(
+            TestDropDownMode.ModeA,
+            "Mode A",
+            TestName = "FormatOption.Enum.FirstValue.AddSpaces"
+        )]
+        [TestCase(
+            TestDropDownMode.ModeB,
+            "Mode B",
+            TestName = "FormatOption.Enum.MiddleValue.AddSpaces"
+        )]
+        [TestCase(
+            TestDropDownMode.ModeC,
+            "Mode C",
+            TestName = "FormatOption.Enum.LastValue.AddSpaces"
+        )]
+        public void FormatOptionHandlesEnumValuesWithSpacing(
+            TestDropDownMode enumValue,
+            string expected
+        )
+        {
+            string formatted = DropDownShared.FormatOption(enumValue);
+
+            Assert.That(
+                formatted,
+                Is.EqualTo(expected),
+                $"FormatOption should add spaces to PascalCase enum '{enumValue}'"
+            );
+        }
+
+        [TestCase(
+            TestModeEnum.ModeA,
+            "Mode A",
+            TestName = "FormatOption.TestModeEnum.ModeA.AddSpaces"
+        )]
+        [TestCase(
+            TestModeEnum.ModeB,
+            "Mode B",
+            TestName = "FormatOption.TestModeEnum.ModeB.AddSpaces"
+        )]
+        [TestCase(
+            TestModeEnum.ModeC,
+            "Mode C",
+            TestName = "FormatOption.TestModeEnum.ModeC.AddSpaces"
+        )]
+        public void FormatOptionHandlesTestModeEnumWithSpacing(
+            TestModeEnum enumValue,
+            string expected
+        )
+        {
+            string formatted = DropDownShared.FormatOption(enumValue);
+
+            Assert.That(
+                formatted,
+                Is.EqualTo(expected),
+                $"FormatOption should add spaces to enum value '{enumValue}'"
+            );
+        }
+
+        [TestCase(
+            SimpleTestEnum.OptionA,
+            "Option A",
+            TestName = "FormatOption.SimpleTestEnum.OptionA.AddSpaces"
+        )]
+        [TestCase(
+            SimpleTestEnum.OptionB,
+            "Option B",
+            TestName = "FormatOption.SimpleTestEnum.OptionB.AddSpaces"
+        )]
+        [TestCase(
+            SimpleTestEnum.OptionC,
+            "Option C",
+            TestName = "FormatOption.SimpleTestEnum.OptionC.AddSpaces"
+        )]
+        public void FormatOptionHandlesSimpleTestEnumWithSpacing(
+            SimpleTestEnum enumValue,
+            string expected
+        )
+        {
+            string formatted = DropDownShared.FormatOption(enumValue);
+
+            Assert.That(
+                formatted,
+                Is.EqualTo(expected),
+                $"FormatOption should add spaces to enum value '{enumValue}'"
+            );
+        }
+
+        [TestCase(0, "0", TestName = "FormatOption.Int.Zero.ReturnsString")]
+        [TestCase(1, "1", TestName = "FormatOption.Int.One.ReturnsString")]
+        [TestCase(-1, "-1", TestName = "FormatOption.Int.NegativeOne.ReturnsString")]
+        [TestCase(int.MaxValue, "2147483647", TestName = "FormatOption.Int.MaxValue.ReturnsString")]
+        [TestCase(
+            int.MinValue,
+            "-2147483648",
+            TestName = "FormatOption.Int.MinValue.ReturnsString"
+        )]
+        [TestCase(42, "42", TestName = "FormatOption.Int.FortyTwo.ReturnsString")]
+        public void FormatOptionHandlesIntegerEdgeCases(int intValue, string expected)
+        {
+            string formatted = DropDownShared.FormatOption(intValue);
+
+            Assert.That(
+                formatted,
+                Is.EqualTo(expected),
+                $"FormatOption should convert integer {intValue} to string '{expected}'"
+            );
+        }
+
+        [TestCase("", "", TestName = "FormatOption.String.Empty.ReturnsEmpty")]
+        [TestCase("Hello", "Hello", TestName = "FormatOption.String.Simple.ReturnsSame")]
+        [TestCase(
+            "Hello World",
+            "Hello World",
+            TestName = "FormatOption.String.WithSpace.ReturnsSame"
+        )]
+        [TestCase(
+            "  spaced  ",
+            "  spaced  ",
+            TestName = "FormatOption.String.Whitespace.PreservesSpaces"
+        )]
+        [TestCase(
+            "CamelCase",
+            "CamelCase",
+            TestName = "FormatOption.String.CamelCase.NoModification"
+        )]
+        public void FormatOptionHandlesStringInputs(string stringValue, string expected)
+        {
+            string formatted = DropDownShared.FormatOption(stringValue);
+
+            Assert.That(
+                formatted,
+                Is.EqualTo(expected),
+                $"FormatOption should return string '{stringValue}' as-is"
+            );
+        }
+
+        [TestCase(1.5f, TestName = "FormatOption.Float.ReturnsString")]
+        [TestCase(3.14159f, TestName = "FormatOption.Float.Pi.ReturnsString")]
+        public void FormatOptionHandlesFloatValues(float floatValue)
+        {
+            string formatted = DropDownShared.FormatOption(floatValue);
+
+            Assert.That(
+                formatted,
+                Is.Not.Null.And.Not.Empty,
+                $"FormatOption should return non-empty string for float {floatValue}"
+            );
+            Assert.That(
+                formatted,
+                Does.Contain(".").Or.Matches(@"\d+"),
+                $"FormatOption should return numeric representation for float {floatValue}"
+            );
+        }
+
+        [TestCase(1.5, TestName = "FormatOption.Double.ReturnsString")]
+        [TestCase(3.14159265359, TestName = "FormatOption.Double.Pi.ReturnsString")]
+        public void FormatOptionHandlesDoubleValues(double doubleValue)
+        {
+            string formatted = DropDownShared.FormatOption(doubleValue);
+
+            Assert.That(
+                formatted,
+                Is.Not.Null.And.Not.Empty,
+                $"FormatOption should return non-empty string for double {doubleValue}"
+            );
         }
 
         [UnityTest]

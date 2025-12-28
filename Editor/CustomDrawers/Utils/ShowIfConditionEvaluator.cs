@@ -1,3 +1,6 @@
+// MIT License - Copyright (c) 2023 Eli Pinkerton
+// Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
+
 namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers.Utils
 {
 #if UNITY_EDITOR
@@ -527,9 +530,13 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers.Utils
                 return true;
             }
 
+            // Use ReferenceEquals to check if the cast succeeded, avoiding Unity's
+            // overloaded == operator which returns true for destroyed objects.
+            // We want to detect destroyed objects here, not skip them.
             UnityEngine.Object unityObject = value as UnityEngine.Object;
-            if (unityObject != null)
+            if (!ReferenceEquals(unityObject, null))
             {
+                // Unity's == operator returns true for destroyed objects
                 return unityObject == null;
             }
 

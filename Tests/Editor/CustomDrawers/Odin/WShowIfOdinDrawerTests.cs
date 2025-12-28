@@ -1,3 +1,6 @@
+// MIT License - Copyright (c) 2023 Eli Pinkerton
+// Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
+
 namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
 {
 #if UNITY_EDITOR && ODIN_INSPECTOR
@@ -508,7 +511,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
             OdinShowIfReferenceTarget target = CreateScriptableObject<OdinShowIfReferenceTarget>();
             GameObject go = new GameObject("ToBeDestroyed");
             target.objectReference = go;
-            UnityEngine.Object.DestroyImmediate(go);
+            UnityEngine.Object.DestroyImmediate(go); // UNH-SUPPRESS: Testing destroyed object handling
+            target.objectReference = null;
 
             (bool success, bool shouldShow) = EvaluateCondition(
                 target,
@@ -524,6 +528,139 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
                 shouldShow,
                 Is.True,
                 "Field should show when destroyed Unity object checked with IsNull"
+            );
+        }
+
+        [TestCase(
+            true,
+            WShowIfComparison.IsNull,
+            false,
+            TestName = "IsNull.ValidReference.HidesField"
+        )]
+        [TestCase(
+            false,
+            WShowIfComparison.IsNull,
+            true,
+            TestName = "IsNull.NullReference.ShowsField"
+        )]
+        [TestCase(
+            true,
+            WShowIfComparison.IsNotNull,
+            true,
+            TestName = "IsNotNull.ValidReference.ShowsField"
+        )]
+        [TestCase(
+            false,
+            WShowIfComparison.IsNotNull,
+            false,
+            TestName = "IsNotNull.NullReference.HidesField"
+        )]
+        public void IsNullComparisonDataDriven(
+            bool hasReference,
+            WShowIfComparison comparison,
+            bool expectedShow
+        )
+        {
+            OdinShowIfReferenceTarget target = CreateScriptableObject<OdinShowIfReferenceTarget>();
+            target.objectReference = hasReference ? Track(new GameObject("TestObject")) : null;
+
+            (bool success, bool shouldShow) = EvaluateCondition(
+                target,
+                nameof(OdinShowIfReferenceTarget.objectReference),
+                new WShowIfAttribute(nameof(OdinShowIfReferenceTarget.objectReference), comparison)
+            );
+
+            Assert.That(success, Is.True, "Condition evaluation should succeed");
+            Assert.That(
+                shouldShow,
+                Is.EqualTo(expectedShow),
+                $"With hasReference={hasReference} and comparison={comparison}, expected show={expectedShow}"
+            );
+        }
+
+        [Test]
+        public void IsNullComparisonHandlesDestroyedGameObjectWithReferenceRetained()
+        {
+            OdinShowIfReferenceTarget target = CreateScriptableObject<OdinShowIfReferenceTarget>();
+            GameObject go = new GameObject("ToBeDestroyedRetained");
+            target.objectReference = go;
+            UnityEngine.Object.DestroyImmediate(go); // UNH-SUPPRESS: Testing destroyed object handling
+
+            (bool success, bool shouldShow) = EvaluateCondition(
+                target,
+                nameof(OdinShowIfReferenceTarget.objectReference),
+                new WShowIfAttribute(
+                    nameof(OdinShowIfReferenceTarget.objectReference),
+                    WShowIfComparison.IsNull
+                )
+            );
+
+            Assert.That(
+                success,
+                Is.True,
+                "Condition evaluation should succeed for destroyed object"
+            );
+            Assert.That(
+                shouldShow,
+                Is.True,
+                "Field should show when GameObject is destroyed but reference retained (Unity null)"
+            );
+        }
+
+        [Test]
+        public void IsNotNullComparisonHandlesDestroyedGameObjectWithReferenceRetained()
+        {
+            OdinShowIfReferenceTarget target = CreateScriptableObject<OdinShowIfReferenceTarget>();
+            GameObject go = new GameObject("ToBeDestroyedRetainedNotNull");
+            target.objectReference = go;
+            UnityEngine.Object.DestroyImmediate(go); // UNH-SUPPRESS: Testing destroyed object handling
+
+            (bool success, bool shouldShow) = EvaluateCondition(
+                target,
+                nameof(OdinShowIfReferenceTarget.objectReference),
+                new WShowIfAttribute(
+                    nameof(OdinShowIfReferenceTarget.objectReference),
+                    WShowIfComparison.IsNotNull
+                )
+            );
+
+            Assert.That(
+                success,
+                Is.True,
+                "Condition evaluation should succeed for destroyed object"
+            );
+            Assert.That(
+                shouldShow,
+                Is.False,
+                "Field should hide when GameObject is destroyed (Unity null) with IsNotNull"
+            );
+        }
+
+        [Test]
+        public void IsNullComparisonHandlesDestroyedScriptableObject()
+        {
+            OdinShowIfReferenceTarget target = CreateScriptableObject<OdinShowIfReferenceTarget>();
+            ScriptableObject so = ScriptableObject.CreateInstance<OdinShowIfReferenceTarget>();
+            GameObject wrapper = Track(new GameObject("SOWrapper"));
+            target.objectReference = wrapper;
+            UnityEngine.Object.DestroyImmediate(wrapper); // UNH-SUPPRESS: Testing destroyed object handling
+
+            (bool success, bool shouldShow) = EvaluateCondition(
+                target,
+                nameof(OdinShowIfReferenceTarget.objectReference),
+                new WShowIfAttribute(
+                    nameof(OdinShowIfReferenceTarget.objectReference),
+                    WShowIfComparison.IsNull
+                )
+            );
+
+            UnityEngine.Object.DestroyImmediate(so);
+
+            Assert.That(success, Is.True, "Condition evaluation should succeed for destroyed SO");
+            Assert.That(
+                shouldShow,
+                Is.True,
+                "Field should show when referenced object is destroyed with IsNull"
             );
         }
 
@@ -622,6 +759,103 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
             Assert.That(shouldShow, Is.False, "Field should hide when string is empty");
         }
 
+        [TestCase(
+            null,
+            WShowIfComparison.IsNullOrEmpty,
+            true,
+            TestName = "String.Null.IsNullOrEmpty.ShowsField"
+        )]
+        [TestCase(
+            "",
+            WShowIfComparison.IsNullOrEmpty,
+            true,
+            TestName = "String.Empty.IsNullOrEmpty.ShowsField"
+        )]
+        [TestCase(
+            "content",
+            WShowIfComparison.IsNullOrEmpty,
+            false,
+            TestName = "String.HasContent.IsNullOrEmpty.HidesField"
+        )]
+        [TestCase(
+            "  ",
+            WShowIfComparison.IsNullOrEmpty,
+            false,
+            TestName = "String.Whitespace.IsNullOrEmpty.HidesField"
+        )]
+        [TestCase(
+            null,
+            WShowIfComparison.IsNotNullOrEmpty,
+            false,
+            TestName = "String.Null.IsNotNullOrEmpty.HidesField"
+        )]
+        [TestCase(
+            "",
+            WShowIfComparison.IsNotNullOrEmpty,
+            false,
+            TestName = "String.Empty.IsNotNullOrEmpty.HidesField"
+        )]
+        [TestCase(
+            "content",
+            WShowIfComparison.IsNotNullOrEmpty,
+            true,
+            TestName = "String.HasContent.IsNotNullOrEmpty.ShowsField"
+        )]
+        [TestCase(
+            "  ",
+            WShowIfComparison.IsNotNullOrEmpty,
+            true,
+            TestName = "String.Whitespace.IsNotNullOrEmpty.ShowsField"
+        )]
+        public void IsNullOrEmptyStringComparisonDataDriven(
+            string stringValue,
+            WShowIfComparison comparison,
+            bool expectedShow
+        )
+        {
+            OdinShowIfStringTarget target = CreateScriptableObject<OdinShowIfStringTarget>();
+            target.stringCondition = stringValue;
+
+            (bool success, bool shouldShow) = EvaluateCondition(
+                target,
+                nameof(OdinShowIfStringTarget.stringCondition),
+                new WShowIfAttribute(nameof(OdinShowIfStringTarget.stringCondition), comparison)
+            );
+
+            Assert.That(success, Is.True, "Condition evaluation should succeed");
+            Assert.That(
+                shouldShow,
+                Is.EqualTo(expectedShow),
+                $"With stringValue='{stringValue ?? "(null)"}' and comparison={comparison}, expected show={expectedShow}"
+            );
+        }
+
+        [TestCase(null, TestName = "String.NullInput.HandlesGracefully")]
+        [TestCase("", TestName = "String.EmptyInput.HandlesGracefully")]
+        [TestCase("   ", TestName = "String.WhitespaceInput.HandlesGracefully")]
+        [TestCase("a", TestName = "String.SingleChar.HandlesGracefully")]
+        [TestCase("Hello World", TestName = "String.MultiWord.HandlesGracefully")]
+        public void IsNullOrEmptyStringHandlesVariousInputsGracefully(string stringValue)
+        {
+            OdinShowIfStringTarget target = CreateScriptableObject<OdinShowIfStringTarget>();
+            target.stringCondition = stringValue;
+
+            (bool success, bool shouldShow) = EvaluateCondition(
+                target,
+                nameof(OdinShowIfStringTarget.stringCondition),
+                new WShowIfAttribute(
+                    nameof(OdinShowIfStringTarget.stringCondition),
+                    WShowIfComparison.IsNullOrEmpty
+                )
+            );
+
+            Assert.That(
+                success,
+                Is.True,
+                $"Condition evaluation should succeed for input '{stringValue ?? "(null)"}'"
+            );
+        }
+
         [Test]
         public void IsNullOrEmptyShowsWhenCollectionIsEmpty()
         {
@@ -660,6 +894,160 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
 
             Assert.That(success, Is.True);
             Assert.That(shouldShow, Is.False, "Field should hide when collection has items");
+        }
+
+        [TestCase(
+            0,
+            WShowIfComparison.IsNullOrEmpty,
+            true,
+            TestName = "Collection.Empty.IsNullOrEmpty.ShowsField"
+        )]
+        [TestCase(
+            1,
+            WShowIfComparison.IsNullOrEmpty,
+            false,
+            TestName = "Collection.SingleItem.IsNullOrEmpty.HidesField"
+        )]
+        [TestCase(
+            3,
+            WShowIfComparison.IsNullOrEmpty,
+            false,
+            TestName = "Collection.MultipleItems.IsNullOrEmpty.HidesField"
+        )]
+        [TestCase(
+            0,
+            WShowIfComparison.IsNotNullOrEmpty,
+            false,
+            TestName = "Collection.Empty.IsNotNullOrEmpty.HidesField"
+        )]
+        [TestCase(
+            1,
+            WShowIfComparison.IsNotNullOrEmpty,
+            true,
+            TestName = "Collection.SingleItem.IsNotNullOrEmpty.ShowsField"
+        )]
+        [TestCase(
+            3,
+            WShowIfComparison.IsNotNullOrEmpty,
+            true,
+            TestName = "Collection.MultipleItems.IsNotNullOrEmpty.ShowsField"
+        )]
+        public void IsNullOrEmptyCollectionComparisonDataDriven(
+            int itemCount,
+            WShowIfComparison comparison,
+            bool expectedShow
+        )
+        {
+            OdinShowIfCollectionTarget target =
+                CreateScriptableObject<OdinShowIfCollectionTarget>();
+            target.listCondition = new List<int>();
+            for (int i = 0; i < itemCount; i++)
+            {
+                target.listCondition.Add(i);
+            }
+
+            (bool success, bool shouldShow) = EvaluateCondition(
+                target,
+                nameof(OdinShowIfCollectionTarget.listCondition),
+                new WShowIfAttribute(nameof(OdinShowIfCollectionTarget.listCondition), comparison)
+            );
+
+            Assert.That(success, Is.True, "Condition evaluation should succeed");
+            Assert.That(
+                shouldShow,
+                Is.EqualTo(expectedShow),
+                $"With itemCount={itemCount} and comparison={comparison}, expected show={expectedShow}"
+            );
+        }
+
+        [Test]
+        public void IsNullOrEmptyShowsWhenCollectionIsNull()
+        {
+            OdinShowIfCollectionTarget target =
+                CreateScriptableObject<OdinShowIfCollectionTarget>();
+            target.listCondition = null;
+
+            (bool success, bool shouldShow) = EvaluateCondition(
+                target,
+                nameof(OdinShowIfCollectionTarget.listCondition),
+                new WShowIfAttribute(
+                    nameof(OdinShowIfCollectionTarget.listCondition),
+                    WShowIfComparison.IsNullOrEmpty
+                )
+            );
+
+            Assert.That(
+                success,
+                Is.True,
+                "Condition evaluation should succeed for null collection"
+            );
+            Assert.That(
+                shouldShow,
+                Is.True,
+                "Field should show when collection is null with IsNullOrEmpty"
+            );
+        }
+
+        [Test]
+        public void IsNotNullOrEmptyHidesWhenCollectionIsNull()
+        {
+            OdinShowIfCollectionTarget target =
+                CreateScriptableObject<OdinShowIfCollectionTarget>();
+            target.listCondition = null;
+
+            (bool success, bool shouldShow) = EvaluateCondition(
+                target,
+                nameof(OdinShowIfCollectionTarget.listCondition),
+                new WShowIfAttribute(
+                    nameof(OdinShowIfCollectionTarget.listCondition),
+                    WShowIfComparison.IsNotNullOrEmpty
+                )
+            );
+
+            Assert.That(
+                success,
+                Is.True,
+                "Condition evaluation should succeed for null collection"
+            );
+            Assert.That(
+                shouldShow,
+                Is.False,
+                "Field should hide when collection is null with IsNotNullOrEmpty"
+            );
+        }
+
+        [TestCase(10, TestName = "Collection.TenItems.HandlesGracefully")]
+        [TestCase(100, TestName = "Collection.HundredItems.HandlesGracefully")]
+        [TestCase(1000, TestName = "Collection.ThousandItems.HandlesGracefully")]
+        public void IsNullOrEmptyCollectionHandlesLargeCollections(int itemCount)
+        {
+            OdinShowIfCollectionTarget target =
+                CreateScriptableObject<OdinShowIfCollectionTarget>();
+            target.listCondition = new List<int>(itemCount);
+            for (int i = 0; i < itemCount; i++)
+            {
+                target.listCondition.Add(i);
+            }
+
+            (bool success, bool shouldShow) = EvaluateCondition(
+                target,
+                nameof(OdinShowIfCollectionTarget.listCondition),
+                new WShowIfAttribute(
+                    nameof(OdinShowIfCollectionTarget.listCondition),
+                    WShowIfComparison.IsNullOrEmpty
+                )
+            );
+
+            Assert.That(
+                success,
+                Is.True,
+                $"Condition evaluation should succeed for {itemCount} items"
+            );
+            Assert.That(
+                shouldShow,
+                Is.False,
+                $"Field should hide when collection has {itemCount} items"
+            );
         }
 
         [Test]

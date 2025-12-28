@@ -1,3 +1,6 @@
+// MIT License - Copyright (c) 2023 Eli Pinkerton
+// Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
+
 /*
     IllusionFlow is a significant enhancement upon the classic XoroShiroRandom discovered by Will Stafford Parsons.
         

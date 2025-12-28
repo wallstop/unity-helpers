@@ -1,3 +1,6 @@
+// MIT License - Copyright (c) 2023 Eli Pinkerton
+// Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
+
 // lint-disable unity-file-naming - NameCollision classes intentionally test name collision detection
 namespace WallstopStudios.UnityHelpers.Tests.Utils
 {

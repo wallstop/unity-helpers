@@ -1,4 +1,4 @@
-name: Documentation Spelling Check
+name: Spelling Check
 
 on:
   push:
@@ -8,6 +8,13 @@ on:
       - "docs/**/*.md"
       - "README.md"
       - "CHANGELOG.md"
+      - "AGENTS.md"
+      - "CLAUDE.md"
+      - ".llm/**/*.md"
+      - ".github/**/*.md"
+      - "Runtime/**/*.cs"
+      - "Editor/**/*.cs"
+      - "Tests/**/*.cs"
       - "cspell.json"
       - ".github/workflows/spelling-check.yml"
   pull_request:
@@ -15,6 +22,13 @@ on:
       - "docs/**/*.md"
       - "README.md"
       - "CHANGELOG.md"
+      - "AGENTS.md"
+      - "CLAUDE.md"
+      - ".llm/**/*.md"
+      - ".github/**/*.md"
+      - "Runtime/**/*.cs"
+      - "Editor/**/*.cs"
+      - "Tests/**/*.cs"
       - "cspell.json"
       - ".github/workflows/spelling-check.yml"
 
@@ -47,20 +61,20 @@ jobs:
       - name: Run spell check
         id: spellcheck
         run: |
-          echo "🔍 Running spell check on documentation..."
-          
+          echo "🔍 Running spell check on documentation and code comments..."
+
           # Run cspell and capture output
           set +e
           OUTPUT=$(npm run lint:spelling 2>&1)
           EXIT_CODE=$?
           set -e
-          
+
           echo "$OUTPUT"
-          
+
           # Count misspellings
           MISSPELLING_COUNT=$(echo "$OUTPUT" | grep -c "Unknown word" || true)
-          
-          if [ $EXIT_CODE -ne 0 ] || [ $MISSPELLING_COUNT -gt 0 ]; then
+
+          if [ "$EXIT_CODE" -ne 0 ] || [ "$MISSPELLING_COUNT" -gt 0 ]; then
             echo ""
             echo "❌ Spelling check failed with $MISSPELLING_COUNT issues"
             echo ""
@@ -76,31 +90,32 @@ jobs:
             echo "- words: General words not fitting other categories"
             exit 1
           fi
-          
+
           echo "✅ No spelling issues found"
 
       - name: Generate Summary
         if: always()
         run: |
-          echo "## 📝 Spelling Check Results" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          
           # Re-run to get output for summary
           set +e
           OUTPUT=$(npm run lint:spelling 2>&1)
           MISSPELLING_COUNT=$(echo "$OUTPUT" | grep -c "Unknown word" || true)
           set -e
-          
-          if [ $MISSPELLING_COUNT -gt 0 ]; then
-            echo "❌ **Found $MISSPELLING_COUNT spelling issues**" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "### Issues Found:" >> $GITHUB_STEP_SUMMARY
-            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-            echo "$OUTPUT" | grep "Unknown word" | head -20 >> $GITHUB_STEP_SUMMARY
-            if [ $MISSPELLING_COUNT -gt 20 ]; then
-              echo "... and $((MISSPELLING_COUNT - 20)) more" >> $GITHUB_STEP_SUMMARY
+
+          {
+            echo "## 📝 Spelling Check Results"
+            echo ""
+            if [ "$MISSPELLING_COUNT" -gt 0 ]; then
+              echo "❌ **Found $MISSPELLING_COUNT spelling issues**"
+              echo ""
+              echo "### Issues Found:"
+              echo "\`\`\`"
+              echo "$OUTPUT" | grep "Unknown word" | head -20
+              if [ "$MISSPELLING_COUNT" -gt 20 ]; then
+                echo "... and $((MISSPELLING_COUNT - 20)) more"
+              fi
+              echo "\`\`\`"
+            else
+              echo "✅ **No spelling issues found**"
             fi
-            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "✅ **No spelling issues found**" >> $GITHUB_STEP_SUMMARY
-          fi
+          } >> "$GITHUB_STEP_SUMMARY"

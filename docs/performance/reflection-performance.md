@@ -8,7 +8,7 @@ Each run updates the table for the current operating system only. Sections that 
 
 <!-- REFLECTION_PERFORMANCE_WINDOWS_START -->
 
-Generated on 2025-12-25 07:10:56 UTC
+Generated on 2025-12-28 04:07:15 UTC
 
 ### Strategy: Default (auto)
 
@@ -16,32 +16,32 @@ Generated on 2025-12-25 07:10:56 UTC
 
 | Scenario                       | Helper (ops/sec) | System.Reflection (ops/sec) | Speedup vs Reflection |
 | ------------------------------ | ---------------- | --------------------------- | --------------------- |
-| Instance Field Get (boxed)     | 21.06M           | 7.16M                       | 2.94x                 |
-| Instance Field Set (boxed)     | 23.23M           | 5.42M                       | 4.29x                 |
-| Static Field Get (boxed)       | 23.07M           | 6.01M                       | 3.84x                 |
-| Static Field Set (boxed)       | 23.34M           | 6.17M                       | 3.78x                 |
-| Instance Property Get (boxed)  | 22.74M           | 21.29M                      | 1.07x                 |
-| Instance Property Set (boxed)  | 23.57M           | 2.02M                       | 11.68x                |
-| Static Property Get (boxed)    | 23.23M           | 22.92M                      | 1.01x                 |
-| Static Property Set (boxed)    | 3.84M            | 897.4K                      | 4.28x                 |
-| Instance Method Invoke (boxed) | 22.52M           | 1.94M                       | 11.60x                |
-| Static Method Invoke (boxed)   | 21.74M           | 2.58M                       | 8.42x                 |
-| Constructor Invoke (boxed)     | 21.40M           | 2.57M                       | 8.32x                 |
+| Instance Field Get (boxed)     | 20.08M           | 7.11M                       | 2.83x                 |
+| Instance Field Set (boxed)     | 21.69M           | 5.37M                       | 4.04x                 |
+| Static Field Get (boxed)       | 22.11M           | 8.60M                       | 2.57x                 |
+| Static Field Set (boxed)       | 23.12M           | 6.10M                       | 3.79x                 |
+| Instance Property Get (boxed)  | 22.84M           | 21.65M                      | 1.05x                 |
+| Instance Property Set (boxed)  | 23.87M           | 2.07M                       | 11.54x                |
+| Static Property Get (boxed)    | 24.17M           | 30.69M                      | 0.79x                 |
+| Static Property Set (boxed)    | 25.80M           | 2.04M                       | 12.66x                |
+| Instance Method Invoke (boxed) | 30.54M           | 1.41M                       | 21.65x                |
+| Static Method Invoke (boxed)   | 29.34M           | 2.14M                       | 13.73x                |
+| Constructor Invoke (boxed)     | 28.12M           | 1.47M                       | 19.11x                |
 
 #### Typed Access (no boxing)
 
 | Scenario                       | Helper (ops/sec) | Baseline Delegate (ops/sec) | System.Reflection (ops/sec) | Speedup vs Delegate | Speedup vs Reflection |
 | ------------------------------ | ---------------- | --------------------------- | --------------------------- | ------------------- | --------------------- |
-| Instance Field Get (typed)     | 595.57M          | 669.37M                     | 7.16M                       | 0.89x               | 83.20x                |
-| Instance Field Set (typed)     | 633.95M          | 663.46M                     | 5.42M                       | 0.96x               | 116.98x               |
-| Static Field Get (typed)       | 634.71M          | 687.62M                     | 6.01M                       | 0.92x               | 105.68x               |
-| Static Field Set (typed)       | 632.48M          | 661.35M                     | 6.17M                       | 0.96x               | 102.54x               |
-| Instance Property Get (typed)  | 570.10M          | 687.57M                     | 21.29M                      | 0.83x               | 26.77x                |
-| Instance Property Set (typed)  | 629.82M          | 694.80M                     | 2.02M                       | 0.91x               | 312.15x               |
-| Static Property Get (typed)    | 620.17M          | 683.29M                     | 22.92M                      | 0.91x               | 27.06x                |
-| Static Property Set (typed)    | 619.82M          | 653.10M                     | 897.4K                      | 0.95x               | 690.69x               |
-| Instance Method Invoke (typed) | 626.31M          | 681.23M                     | 1.94M                       | 0.92x               | 322.67x               |
-| Static Method Invoke (typed)   | 604.11M          | 678.21M                     | 2.58M                       | 0.89x               | 234.00x               |
+| Instance Field Get (typed)     | 663.86M          | 671.11M                     | 7.11M                       | 0.99x               | 93.40x                |
+| Instance Field Set (typed)     | 652.31M          | 707.21M                     | 5.37M                       | 0.92x               | 121.48x               |
+| Static Field Get (typed)       | 653.56M          | 702.19M                     | 8.60M                       | 0.93x               | 75.95x                |
+| Static Field Set (typed)       | 665.59M          | 718.36M                     | 6.10M                       | 0.93x               | 109.10x               |
+| Instance Property Get (typed)  | 671.55M          | 705.55M                     | 21.65M                      | 0.95x               | 31.02x                |
+| Instance Property Set (typed)  | 664.79M          | 702.45M                     | 2.07M                       | 0.95x               | 321.27x               |
+| Static Property Get (typed)    | 649.02M          | 705.64M                     | 30.69M                      | 0.92x               | 21.15x                |
+| Static Property Set (typed)    | 669.18M          | 695.59M                     | 2.04M                       | 0.96x               | 328.37x               |
+| Instance Method Invoke (typed) | 626.55M          | 682.12M                     | 1.41M                       | 0.92x               | 444.25x               |
+| Static Method Invoke (typed)   | 655.31M          | 694.11M                     | 2.14M                       | 0.94x               | 306.58x               |
 
 ### Strategy: Expressions
 
@@ -49,32 +49,32 @@ Generated on 2025-12-25 07:10:56 UTC
 
 | Scenario                       | Helper (ops/sec) | System.Reflection (ops/sec) | Speedup vs Reflection |
 | ------------------------------ | ---------------- | --------------------------- | --------------------- |
-| Instance Field Get (boxed)     | 24.85M           | 4.98M                       | 4.99x                 |
-| Instance Field Set (boxed)     | 23.87M           | 5.42M                       | 4.40x                 |
-| Static Field Get (boxed)       | 23.22M           | 8.61M                       | 2.70x                 |
-| Static Field Set (boxed)       | 22.90M           | 6.20M                       | 3.69x                 |
-| Instance Property Get (boxed)  | 23.49M           | 21.76M                      | 1.08x                 |
-| Instance Property Set (boxed)  | 23.40M           | 2.03M                       | 11.53x                |
-| Static Property Get (boxed)    | 21.53M           | 22.37M                      | 0.96x                 |
-| Static Property Set (boxed)    | 22.76M           | 2.89M                       | 7.88x                 |
-| Instance Method Invoke (boxed) | 22.07M           | 1.95M                       | 11.31x                |
-| Static Method Invoke (boxed)   | 22.73M           | 2.68M                       | 8.48x                 |
-| Constructor Invoke (boxed)     | 23.30M           | 2.56M                       | 9.09x                 |
+| Instance Field Get (boxed)     | 3.51M            | 1.25M                       | 2.81x                 |
+| Instance Field Set (boxed)     | 7.65M            | 5.42M                       | 1.41x                 |
+| Static Field Get (boxed)       | 21.73M           | 8.65M                       | 2.51x                 |
+| Static Field Set (boxed)       | 23.07M           | 6.14M                       | 3.76x                 |
+| Instance Property Get (boxed)  | 21.72M           | 30.55M                      | 0.71x                 |
+| Instance Property Set (boxed)  | 25.09M           | 2.05M                       | 12.22x                |
+| Static Property Get (boxed)    | 21.64M           | 19.87M                      | 1.09x                 |
+| Static Property Set (boxed)    | 22.67M           | 2.94M                       | 7.72x                 |
+| Instance Method Invoke (boxed) | 20.55M           | 1.94M                       | 10.59x                |
+| Static Method Invoke (boxed)   | 28.64M           | 2.18M                       | 13.13x                |
+| Constructor Invoke (boxed)     | 28.49M           | 2.02M                       | 14.13x                |
 
 #### Typed Access (no boxing)
 
 | Scenario                       | Helper (ops/sec) | Baseline Delegate (ops/sec) | System.Reflection (ops/sec) | Speedup vs Delegate | Speedup vs Reflection |
 | ------------------------------ | ---------------- | --------------------------- | --------------------------- | ------------------- | --------------------- |
-| Instance Field Get (typed)     | 611.19M          | 673.45M                     | 4.98M                       | 0.91x               | 122.69x               |
-| Instance Field Set (typed)     | 634.03M          | 664.03M                     | 5.42M                       | 0.95x               | 116.91x               |
-| Static Field Get (typed)       | 629.62M          | 685.31M                     | 8.61M                       | 0.92x               | 73.09x                |
-| Static Field Set (typed)       | 621.21M          | 658.76M                     | 6.20M                       | 0.94x               | 100.14x               |
-| Instance Property Get (typed)  | 568.99M          | 687.60M                     | 21.76M                      | 0.83x               | 26.15x                |
-| Instance Property Set (typed)  | 631.04M          | 696.82M                     | 2.03M                       | 0.91x               | 310.93x               |
-| Static Property Get (typed)    | 619.87M          | 681.20M                     | 22.37M                      | 0.91x               | 27.71x                |
-| Static Property Set (typed)    | 617.59M          | 655.72M                     | 2.89M                       | 0.94x               | 213.69x               |
-| Instance Method Invoke (typed) | 626.65M          | 681.10M                     | 1.95M                       | 0.92x               | 321.18x               |
-| Static Method Invoke (typed)   | 599.46M          | 677.00M                     | 2.68M                       | 0.89x               | 223.56x               |
+| Instance Field Get (typed)     | 665.23M          | 670.91M                     | 1.25M                       | 0.99x               | 532.60x               |
+| Instance Field Set (typed)     | 644.26M          | 677.03M                     | 5.42M                       | 0.95x               | 118.93x               |
+| Static Field Get (typed)       | 657.46M          | 684.99M                     | 8.65M                       | 0.96x               | 76.02x                |
+| Static Field Set (typed)       | 658.34M          | 765.59M                     | 6.14M                       | 0.86x               | 107.28x               |
+| Instance Property Get (typed)  | 671.90M          | 688.82M                     | 30.55M                      | 0.98x               | 22.00x                |
+| Instance Property Set (typed)  | 659.71M          | 685.09M                     | 2.05M                       | 0.96x               | 321.46x               |
+| Static Property Get (typed)    | 654.18M          | 744.91M                     | 19.87M                      | 0.88x               | 32.92x                |
+| Static Property Set (typed)    | 666.91M          | 664.26M                     | 2.94M                       | 1.00x               | 227.10x               |
+| Instance Method Invoke (typed) | 621.03M          | 682.41M                     | 1.94M                       | 0.91x               | 320.08x               |
+| Static Method Invoke (typed)   | 651.79M          | 684.81M                     | 2.18M                       | 0.95x               | 298.86x               |
 
 ### Strategy: Dynamic IL
 
@@ -82,32 +82,32 @@ Generated on 2025-12-25 07:10:56 UTC
 
 | Scenario                       | Helper (ops/sec) | System.Reflection (ops/sec) | Speedup vs Reflection |
 | ------------------------------ | ---------------- | --------------------------- | --------------------- |
-| Instance Field Get (boxed)     | 23.59M           | 7.26M                       | 3.25x                 |
-| Instance Field Set (boxed)     | 22.80M           | 5.40M                       | 4.22x                 |
-| Static Field Get (boxed)       | 22.56M           | 6.12M                       | 3.68x                 |
-| Static Field Set (boxed)       | 4.11M            | 1.99M                       | 2.07x                 |
-| Instance Property Get (boxed)  | 24.53M           | 21.17M                      | 1.16x                 |
-| Instance Property Set (boxed)  | 21.23M           | 2.03M                       | 10.47x                |
-| Static Property Get (boxed)    | 23.62M           | 22.35M                      | 1.06x                 |
-| Static Property Set (boxed)    | 23.33M           | 2.88M                       | 8.09x                 |
-| Instance Method Invoke (boxed) | 22.09M           | 1.95M                       | 11.36x                |
-| Static Method Invoke (boxed)   | 22.82M           | 2.66M                       | 8.57x                 |
-| Constructor Invoke (boxed)     | 22.52M           | 2.55M                       | 8.81x                 |
+| Instance Field Get (boxed)     | 28.88M           | 5.62M                       | 5.13x                 |
+| Instance Field Set (boxed)     | 22.39M           | 5.38M                       | 4.16x                 |
+| Static Field Get (boxed)       | 23.23M           | 8.63M                       | 2.69x                 |
+| Static Field Set (boxed)       | 22.21M           | 6.08M                       | 3.65x                 |
+| Instance Property Get (boxed)  | 23.22M           | 30.57M                      | 0.76x                 |
+| Instance Property Set (boxed)  | 25.64M           | 2.05M                       | 12.51x                |
+| Static Property Get (boxed)    | 21.53M           | 19.85M                      | 1.08x                 |
+| Static Property Set (boxed)    | 21.28M           | 2.90M                       | 7.33x                 |
+| Instance Method Invoke (boxed) | 23.59M           | 1.32M                       | 17.89x                |
+| Static Method Invoke (boxed)   | 3.72M            | 868.3K                      | 4.29x                 |
+| Constructor Invoke (boxed)     | 10.45M           | 2.53M                       | 4.13x                 |
 
 #### Typed Access (no boxing)
 
 | Scenario                       | Helper (ops/sec) | Baseline Delegate (ops/sec) | System.Reflection (ops/sec) | Speedup vs Delegate | Speedup vs Reflection |
 | ------------------------------ | ---------------- | --------------------------- | --------------------------- | ------------------- | --------------------- |
-| Instance Field Get (typed)     | 596.26M          | 666.42M                     | 7.26M                       | 0.89x               | 82.16x                |
-| Instance Field Set (typed)     | 627.45M          | 658.96M                     | 5.40M                       | 0.95x               | 116.21x               |
-| Static Field Get (typed)       | 629.88M          | 682.15M                     | 6.12M                       | 0.92x               | 102.87x               |
-| Static Field Set (typed)       | 630.40M          | 661.66M                     | 1.99M                       | 0.95x               | 316.88x               |
-| Instance Property Get (typed)  | 570.19M          | 690.25M                     | 21.17M                      | 0.83x               | 26.93x                |
-| Instance Property Set (typed)  | 632.19M          | 693.64M                     | 2.03M                       | 0.91x               | 311.68x               |
-| Static Property Get (typed)    | 622.38M          | 684.56M                     | 22.35M                      | 0.91x               | 27.85x                |
-| Static Property Set (typed)    | 615.09M          | 658.53M                     | 2.88M                       | 0.93x               | 213.33x               |
-| Instance Method Invoke (typed) | 626.10M          | 683.32M                     | 1.95M                       | 0.92x               | 321.86x               |
-| Static Method Invoke (typed)   | 596.76M          | 680.65M                     | 2.66M                       | 0.88x               | 224.16x               |
+| Instance Field Get (typed)     | 655.46M          | 681.96M                     | 5.62M                       | 0.96x               | 116.53x               |
+| Instance Field Set (typed)     | 648.29M          | 676.08M                     | 5.38M                       | 0.96x               | 120.58x               |
+| Static Field Get (typed)       | 653.08M          | 683.68M                     | 8.63M                       | 0.96x               | 75.72x                |
+| Static Field Set (typed)       | 667.92M          | 661.25M                     | 6.08M                       | 1.01x               | 109.90x               |
+| Instance Property Get (typed)  | 675.32M          | 767.07M                     | 30.57M                      | 0.88x               | 22.09x                |
+| Instance Property Set (typed)  | 657.65M          | 698.90M                     | 2.05M                       | 0.94x               | 320.98x               |
+| Static Property Get (typed)    | 653.13M          | 719.17M                     | 19.85M                      | 0.91x               | 32.90x                |
+| Static Property Set (typed)    | 670.54M          | 660.27M                     | 2.90M                       | 1.02x               | 230.83x               |
+| Instance Method Invoke (typed) | 629.16M          | 683.29M                     | 1.32M                       | 0.92x               | 477.12x               |
+| Static Method Invoke (typed)   | 654.90M          | 697.62M                     | 868.3K                      | 0.94x               | 754.19x               |
 
 ### Strategy: Reflection Fallback
 
@@ -115,32 +115,32 @@ Generated on 2025-12-25 07:10:56 UTC
 
 | Scenario                       | Helper (ops/sec) | System.Reflection (ops/sec) | Speedup vs Reflection |
 | ------------------------------ | ---------------- | --------------------------- | --------------------- |
-| Instance Field Get (boxed)     | 4.83M            | 7.28M                       | 0.66x                 |
-| Instance Field Set (boxed)     | 5.41M            | 5.42M                       | 1.00x                 |
-| Static Field Get (boxed)       | 5.72M            | 8.53M                       | 0.67x                 |
-| Static Field Set (boxed)       | 5.81M            | 6.09M                       | 0.95x                 |
-| Instance Property Get (boxed)  | 16.90M           | 21.40M                      | 0.79x                 |
-| Instance Property Set (boxed)  | 2.09M            | 2.04M                       | 1.03x                 |
-| Static Property Get (boxed)    | 20.78M           | 22.08M                      | 0.94x                 |
-| Static Property Set (boxed)    | 2.88M            | 2.87M                       | 1.00x                 |
-| Instance Method Invoke (boxed) | 1.30M            | 1.95M                       | 0.67x                 |
-| Static Method Invoke (boxed)   | 2.68M            | 2.64M                       | 1.01x                 |
-| Constructor Invoke (boxed)     | 2.55M            | 2.54M                       | 1.01x                 |
+| Instance Field Get (boxed)     | 7.26M            | 7.28M                       | 1.00x                 |
+| Instance Field Set (boxed)     | 5.08M            | 3.99M                       | 1.27x                 |
+| Static Field Get (boxed)       | 8.59M            | 8.65M                       | 0.99x                 |
+| Static Field Set (boxed)       | 6.07M            | 3.99M                       | 1.52x                 |
+| Instance Property Get (boxed)  | 30.60M           | 22.57M                      | 1.36x                 |
+| Instance Property Set (boxed)  | 2.05M            | 1.37M                       | 1.49x                 |
+| Static Property Get (boxed)    | 30.62M           | 21.71M                      | 1.41x                 |
+| Static Property Set (boxed)    | 2.87M            | 1.81M                       | 1.58x                 |
+| Instance Method Invoke (boxed) | 1.93M            | 1.94M                       | 1.00x                 |
+| Static Method Invoke (boxed)   | 2.62M            | 2.67M                       | 0.98x                 |
+| Constructor Invoke (boxed)     | 2.51M            | 2.52M                       | 1.00x                 |
 
 #### Typed Access (no boxing)
 
 | Scenario                       | Helper (ops/sec) | Baseline Delegate (ops/sec) | System.Reflection (ops/sec) | Speedup vs Delegate | Speedup vs Reflection |
 | ------------------------------ | ---------------- | --------------------------- | --------------------------- | ------------------- | --------------------- |
-| Instance Field Get (typed)     | 7.33M            | 664.64M                     | 7.28M                       | 0.01x               | 1.01x                 |
-| Instance Field Set (typed)     | 5.00M            | 658.53M                     | 5.42M                       | 0.01x               | 0.92x                 |
-| Static Field Get (typed)       | 6.44M            | 681.70M                     | 8.53M                       | 0.01x               | 0.75x                 |
-| Static Field Set (typed)       | 6.14M            | 661.08M                     | 6.09M                       | 0.01x               | 1.01x                 |
-| Instance Property Get (typed)  | 568.66M          | 689.25M                     | 21.40M                      | 0.83x               | 26.57x                |
-| Instance Property Set (typed)  | 628.51M          | 689.86M                     | 2.04M                       | 0.91x               | 308.55x               |
-| Static Property Get (typed)    | 618.31M          | 678.83M                     | 22.08M                      | 0.91x               | 28.00x                |
-| Static Property Set (typed)    | 616.37M          | 658.05M                     | 2.87M                       | 0.94x               | 214.50x               |
-| Instance Method Invoke (typed) | 625.62M          | 681.39M                     | 1.95M                       | 0.92x               | 321.34x               |
-| Static Method Invoke (typed)   | 594.19M          | 679.92M                     | 2.64M                       | 0.87x               | 224.99x               |
+| Instance Field Get (typed)     | 7.20M            | 734.18M                     | 7.28M                       | 0.01x               | 0.99x                 |
+| Instance Field Set (typed)     | 5.25M            | 677.79M                     | 3.99M                       | 0.01x               | 1.32x                 |
+| Static Field Get (typed)       | 5.47M            | 705.29M                     | 8.65M                       | 0.01x               | 0.63x                 |
+| Static Field Set (typed)       | 6.00M            | 698.12M                     | 3.99M                       | 0.01x               | 1.50x                 |
+| Instance Property Get (typed)  | 675.00M          | 846.23M                     | 22.57M                      | 0.80x               | 29.90x                |
+| Instance Property Set (typed)  | 660.66M          | 706.11M                     | 1.37M                       | 0.94x               | 482.31x               |
+| Static Property Get (typed)    | 655.51M          | 821.36M                     | 21.71M                      | 0.80x               | 30.19x                |
+| Static Property Set (typed)    | 662.58M          | 704.01M                     | 1.81M                       | 0.94x               | 365.45x               |
+| Instance Method Invoke (typed) | 598.54M          | 712.80M                     | 1.94M                       | 0.84x               | 308.09x               |
+| Static Method Invoke (typed)   | 656.81M          | 676.66M                     | 2.67M                       | 0.97x               | 246.15x               |
 
 <!-- REFLECTION_PERFORMANCE_WINDOWS_END -->
 
