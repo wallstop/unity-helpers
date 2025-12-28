@@ -26,6 +26,85 @@ This single command runs ALL CI/CD checks locally, ensuring your changes will pa
 
 ---
 
+## MANDATORY: Run Linters IMMEDIATELY After Every Change
+
+> **⚠️ CRITICAL**: Do NOT wait until the end of a task to run linters. Run the appropriate linter IMMEDIATELY after modifying ANY file. Fix issues before moving to the next file.
+
+### Linter Commands by File Type
+
+| File Type Changed | Command to Run IMMEDIATELY | Notes |
+| --- | --- | --- |
+| Documentation (`.md`) | `npm run lint:spelling` | Add valid terms to `cspell.json` if needed |
+| Documentation (`.md`) | `npm run lint:docs` | Check for broken links, backtick `.md` refs |
+| Documentation (`.md`) | `npm run lint:markdown` | Markdownlint rules (MD032, MD009, etc.) |
+| GitHub Workflows (`.yml`) | `actionlint` | **MANDATORY** for `.github/workflows/*.yml` |
+| C# code (`.cs`) | `dotnet tool run csharpier format .` | Auto-fix formatting |
+| C# code (`.cs`) | `npm run lint:csharp-naming` | Check for underscore violations |
+| JSON/asmdef/asmref | `npm run format:json:check` | Check formatting |
+| YAML (non-workflow) | `npm run format:yaml:check` | Check formatting |
+
+### Documentation Changes Workflow
+
+After **ANY** change to markdown files:
+
+```bash
+# 1. Check spelling FIRST (most common failure)
+npm run lint:spelling
+
+# 2. If spelling errors found with valid technical terms, add to cspell.json:
+# Edit cspell.json and add terms to the "words" array
+
+# 3. Check links and formatting
+npm run lint:docs
+npm run lint:markdown
+```
+
+**Proactive Spelling Management**:
+
+- When adding technical terms (class names, method names, package names), **proactively add them to `cspell.json`** BEFORE running the linter
+- Common terms to add: Unity API names, package identifiers, custom type names, acronyms
+- Keep the `words` array in `cspell.json` sorted alphabetically
+
+### Workflow Changes Workflow
+
+After **ANY** change to `.github/workflows/*.yml`:
+
+```bash
+# MANDATORY - run actionlint immediately
+actionlint
+
+# Fix ALL errors before committing
+# Common issues: SC2129 (grouped redirects), missing config-name, etc.
+```
+
+### C# Changes Workflow
+
+After **ANY** change to `.cs` files:
+
+```bash
+# 1. Auto-format code
+dotnet tool run csharpier format .
+
+# 2. Check naming conventions
+npm run lint:csharp-naming
+```
+
+### The "Fix Before Moving On" Rule
+
+1. **Make a change** to a file
+2. **Run the appropriate linter(s)** for that file type
+3. **Fix any issues** found
+4. **Only then** move to the next file or task
+
+**NEVER:**
+
+- Accumulate multiple file changes before running linters
+- Say "I'll fix linting at the end" — issues compound and become harder to debug
+- Commit files that haven't been linted
+- Assume previous code was correct — always verify after your changes
+
+---
+
 ## CRITICAL: Markdown Link Formatting
 
 **NEVER use backtick-wrapped `.md` file references.** This is a MANDATORY rule.

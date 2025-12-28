@@ -205,6 +205,7 @@ See [create-csharp-file](skills/create-csharp-file.md) for detailed rules. Key p
 18. **NEVER use emphasis as headings** — Use proper `#` heading syntax, not **bold** or _italic_ text as section headers
 19. **Run markdown linters after doc changes** — `npm run lint:docs`, `npm run lint:markdown`, and `npm run format:md:check` must pass (see [validate-before-commit](skills/validate-before-commit.md))
 20. **Run actionlint after workflow changes** — `actionlint` MUST pass for ANY changes to `.github/workflows/*.yml` files; prevents runtime CI/CD failures from missing parameters (e.g., `config-name`), invalid triggers, and security issues (see [validate-before-commit](skills/validate-before-commit.md#github-actions-workflow-linting-mandatory))
+21. **Run linters IMMEDIATELY after EVERY change** — Do NOT wait until task completion; run appropriate linters after each file modification: `npm run lint:spelling` for docs (add valid terms to `cspell.json`), `npm run lint:docs` + `npm run lint:markdown` for markdown, `actionlint` for workflows, `dotnet tool run csharpier format .` for C#; fix issues before moving to next file (see [validate-before-commit](skills/validate-before-commit.md#mandatory-run-linters-immediately-after-every-change))
 
 ---
 
