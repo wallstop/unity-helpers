@@ -162,11 +162,11 @@ int value = random.Next();  // Wrong: Method is NextInt()
 
 **NEVER use backtick-wrapped markdown file references.** Always use proper markdown links.
 
-| ❌ WRONG                                       | ✅ CORRECT                                                |
-| ---------------------------------------------- | --------------------------------------------------------- |
-| See \`some-file\` for details                  | See [some-file](some-file) for details                    |
-| Refer to \`skills/create-test\` for guidelines | Refer to [create-test](skills/create-test) for guidelines |
-| Check \`context\` for rules                    | Check [context](context) for rules                        |
+| ❌ WRONG                                       | ✅ CORRECT                                           |
+| ---------------------------------------------- | ---------------------------------------------------- |
+| See \`some-file\` for details                  | See [some-file](some-file) for details               |
+| Refer to \`skills/create-test\` for guidelines | Refer to [create-test](./create-test) for guidelines |
+| Check \`context\` for rules                    | Check [context](context) for rules                   |
 
 **Why this matters:**
 
@@ -175,12 +175,34 @@ int value = random.Next();  // Wrong: Method is NextInt()
 - Proper links enable navigation and link validation
 - CI will reject PRs with broken or improperly formatted links
 
+### Internal Link Formatting
+
+**CRITICAL**: Internal markdown links MUST use `./` or `../` prefix for relative paths.
+
+**Wrong vs Correct Examples:**
+
+```text
+❌ WRONG: [create-test](create-test)           →  ✅ CORRECT: [create-test](./create-test)
+✅ OK:    [context](../context)                →  ✅ CORRECT: [context](../context) (../ is OK)
+❌ WRONG: [features](features/core)            →  ✅ CORRECT: [features](./features/core)
+❌ WRONG: See [skill](skills/doc)              →  ✅ CORRECT: See [skill](./skills/doc)
+```
+
+> **Note**: All examples above should include the `.md` extension in actual usage.
+
+**Why this matters:**
+
+- Links without `./` prefix may fail in some Markdown renderers
+- The doc link linter validates relative path prefixes
+- Consistent link format prevents rendering issues on GitHub Pages
+
 ### Required Commands After Markdown Changes
 
 ```bash
 # MANDATORY: Run ALL of these after editing markdown files:
 npm run lint:docs         # Check documentation links (MUST PASS)
 npm run lint:markdown     # Check markdownlint rules
+npm run lint:spelling     # Check spelling (MUST PASS)
 npm run format:md:check   # Check Prettier formatting
 
 # Or run full content validation (includes all above):
@@ -282,6 +304,74 @@ npm run format:md
 # Markdownlint issues usually require manual fixes
 # Review the error message and fix the specific issue
 ```
+
+---
+
+## Spelling Validation
+
+**MANDATORY**: Run spelling checks after ANY documentation change.
+
+### Required Command
+
+```bash
+# MANDATORY: Run after ANY markdown or code comment changes:
+npm run lint:spelling
+```
+
+### Handling Spelling Errors
+
+When cspell flags a word:
+
+1. **If it's a typo**: Fix the spelling
+2. **If it's a valid technical term**: Add it to the appropriate dictionary in `cspell.json`
+
+### cspell.json Dictionary Categories
+
+The spelling configuration uses categorized dictionaries for maintainability:
+
+| Dictionary      | Purpose                           | Examples                                       |
+| --------------- | --------------------------------- | ---------------------------------------------- |
+| `unity-terms`   | Unity API names and types         | MonoBehaviour, ScriptableObject, GetComponent  |
+| `csharp-terms`  | C# language features and keywords | async, ValueTask, Nullable, stackalloc         |
+| `package-terms` | Package-specific types and names  | WGroup, SerializableDictionary, WButton, KGuid |
+| `tech-terms`    | Technical/industry terminology    | IL2CPP, PRNG, SEO, SSE, SIMD, OAuth            |
+| `words`         | General words not fitting above   | cancelable, performant, unoptimized            |
+
+### Adding Words to cspell.json
+
+When adding a new word, place it in the most specific applicable dictionary:
+
+```jsonc
+// In cspell.json, find the appropriate dictionary section:
+{
+  "dictionaryDefinitions": [
+    {
+      "name": "unity-terms",
+      "words": [
+        // Unity-specific API names go here
+        "MonoBehaviour",
+        "YourNewUnityTerm"
+      ]
+    },
+    {
+      "name": "package-terms",
+      "words": [
+        // Package-specific types go here
+        "WButton",
+        "YourNewPackageTerm"
+      ]
+    }
+  ]
+}
+```
+
+### Spelling Validation Checklist
+
+- [ ] Run `npm run lint:spelling` after documentation changes
+- [ ] Fix genuine typos in the source text
+- [ ] Add valid technical terms to the correct dictionary category
+- [ ] Keep dictionary entries alphabetically sorted (when possible)
+- [ ] Do NOT add common misspellings to suppress errors
 
 ---
 
@@ -667,10 +757,10 @@ public int GroupPriority { get; set; }
 
 This skill should be invoked alongside:
 
-- [create-csharp-file](create-csharp-file.md) — New files need XML docs
-- [create-test](create-test.md) — Test files serve as documentation
-- [validate-before-commit](validate-before-commit.md) — Validates doc formatting
-- [format-code](format-code.md) — Formats markdown and JSON docs
+- [create-csharp-file](./create-csharp-file.md) — New files need XML docs
+- [create-test](./create-test.md) — Test files serve as documentation
+- [validate-before-commit](./validate-before-commit.md) — Validates doc formatting
+- [format-code](./format-code.md) — Formats markdown and JSON docs
 
 ---
 

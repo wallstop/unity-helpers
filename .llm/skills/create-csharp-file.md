@@ -239,7 +239,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 #endif
 ```
 
-See [integrate-optional-dependency](integrate-optional-dependency.md) for complete patterns.
+See [integrate-optional-dependency](./integrate-optional-dependency.md) for complete patterns.
 
 ---
 
@@ -251,7 +251,7 @@ See [integrate-optional-dependency](integrate-optional-dependency.md) for comple
    ./scripts/generate-meta.sh <path-to-file.cs>
    ```
 
-   > ⚠️ See [create-unity-meta](create-unity-meta.md) for full details. This step is **mandatory** — every `.cs` file MUST have a corresponding `.meta` file.
+   > ⚠️ See [create-unity-meta](./create-unity-meta.md) for full details. This step is **mandatory** — every `.cs` file MUST have a corresponding `.meta` file.
 
 2. **Format code**:
 
@@ -270,12 +270,12 @@ See [integrate-optional-dependency](integrate-optional-dependency.md) for comple
    public int MyMethod(string paramName) { }
    ```
 
-   > See [update-documentation](update-documentation.md) for XML doc standards.
+   > See [update-documentation](./update-documentation.md) for XML doc standards.
 
 4. **Update CHANGELOG** for user-facing changes:
    - New features → `### Added` section
    - Bug fixes → `### Fixed` section
-   - See [update-documentation](update-documentation.md) for format
+   - See [update-documentation](./update-documentation.md) for format
 
 5. **Verify no errors**:
    - Check IDE for compilation errors
@@ -285,11 +285,11 @@ See [integrate-optional-dependency](integrate-optional-dependency.md) for comple
 
 ## Related Skills
 
-- [high-performance-csharp](high-performance-csharp.md) — Zero-allocation patterns (MANDATORY for all code)
-- [defensive-programming](defensive-programming.md) — Robust error handling (MANDATORY for all code)
-- [create-test](create-test.md) — Testing guidelines
-- [update-documentation](update-documentation.md) — Documentation standards
-- [create-unity-meta](create-unity-meta.md) — Meta file generation
+- [high-performance-csharp](./high-performance-csharp.md) — Zero-allocation patterns (MANDATORY for all code)
+- [defensive-programming](./defensive-programming.md) — Robust error handling (MANDATORY for all code)
+- [create-test](./create-test.md) — Testing guidelines
+- [update-documentation](./update-documentation.md) — Documentation standards
+- [create-unity-meta](./create-unity-meta.md) — Meta file generation
 
 ---
 

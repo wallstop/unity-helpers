@@ -207,5 +207,5 @@ npm run validate:prepush
 
 See also:
 
-- [Format Code](format-code.md) — Full formatting guide including C#
-- [Validate Before Commit](validate-before-commit.md) — Complete validation checklist
+- [Format Code](./format-code.md) — Full formatting guide including C#
+- [Validate Before Commit](./validate-before-commit.md) — Complete validation checklist

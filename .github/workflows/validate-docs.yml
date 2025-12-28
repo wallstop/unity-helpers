@@ -33,11 +33,11 @@ jobs:
           echo "🔍 Validating that internal markdown links point to existing files..."
 
           errors=0
-          
+
           # Find all markdown files
           while IFS= read -r -d '' mdfile; do
             dir=$(dirname "$mdfile")
-            
+
             # Extract markdown links: [text](link)
             # Filter to only internal links (not http, https, #, mailto)
             grep -oP '\]\(\K[^)]+(?=\))' "$mdfile" 2>/dev/null | while read -r link; do
@@ -45,15 +45,15 @@ jobs:
               if [[ "$link" =~ ^https?:// ]] || [[ "$link" =~ ^# ]] || [[ "$link" =~ ^mailto: ]]; then
                 continue
               fi
-              
+
               # Remove anchor from link if present
               link_without_anchor="${link%%#*}"
-              
+
               # Skip if empty (was just an anchor)
               if [[ -z "$link_without_anchor" ]]; then
                 continue
               fi
-              
+
               # Resolve the link path relative to the markdown file's directory
               if [[ "$link_without_anchor" == /* ]]; then
                 # Absolute path from repo root
@@ -62,10 +62,10 @@ jobs:
                 # Relative path
                 target_path="$dir/$link_without_anchor"
               fi
-              
+
               # Normalize the path
               target_path=$(realpath -m "$target_path" 2>/dev/null || echo "$target_path")
-              
+
               # Check if target exists
               if [[ ! -e "$target_path" ]]; then
                 echo "❌ Broken link in $mdfile: $link -> $target_path (file not found)"
@@ -79,7 +79,7 @@ jobs:
             echo "❌ Found $errors broken internal link(s)"
             exit 1
           fi
-          
+
           echo "✅ All internal links are valid"
 
   validate-link-format:
@@ -98,12 +98,12 @@ jobs:
 
           # Find links that don't start with ./, ../, http, https, #, or mailto
           # These are internal links that should have a relative prefix
-          
+
           # Pattern explanation:
           # - \]\( - matches ](
           # - [^).]+ - matches characters that aren't ) or . (to exclude ./ and ../)
           # - We then filter to exclude http, #, mailto, and links starting with ./
-          
+
           violations=$(grep -rn --include="*.md" -E '\]\([^)]+\)' . \
             --exclude-dir=node_modules \
             2>/dev/null | \

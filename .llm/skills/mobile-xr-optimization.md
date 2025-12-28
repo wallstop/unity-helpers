@@ -420,7 +420,7 @@ XRSettings.renderViewportScale = 0.5f;  // Reduce to 50%
 
 ## Related Skills
 
-- [high-performance-csharp](high-performance-csharp.md) — Zero-allocation patterns
-- [unity-performance-patterns](unity-performance-patterns.md) — Unity optimizations
-- [gc-architecture-unity](gc-architecture-unity.md) — Why allocations matter
-- [performance-audit](performance-audit.md) — Audit checklist
+- [high-performance-csharp](./high-performance-csharp.md) — Zero-allocation patterns
+- [unity-performance-patterns](./unity-performance-patterns.md) — Unity optimizations
+- [gc-architecture-unity](./gc-architecture-unity.md) — Why allocations matter
+- [performance-audit](./performance-audit.md) — Audit checklist

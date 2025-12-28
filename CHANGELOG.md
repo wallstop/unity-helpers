@@ -36,7 +36,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Added defensive null check in compilation pending evaluator to prevent silent `NullReferenceException`
   - The null evaluator scenario could occur when static field initialization failed or was corrupted during build operations without a domain reload
 
-See [the roadmap](docs/overview/roadmap.md) for details
+See [the roadmap](./docs/overview/roadmap.md) for details
 
 ## [3.0.4]
 

@@ -788,11 +788,11 @@ Before submitting any code, verify:
 
 ## Related Skills
 
-- [defensive-programming](defensive-programming.md) — Error handling patterns (MANDATORY companion skill)
-- [unity-performance-patterns](unity-performance-patterns.md) — Unity-specific optimizations (MANDATORY for Unity code)
-- [profile-debug-performance](profile-debug-performance.md) — Profiling and debugging performance
-- [use-pooling](use-pooling.md) — Detailed collection pooling patterns
-- [use-array-pool](use-array-pool.md) — Array pool selection guide
-- [refactor-to-zero-alloc](refactor-to-zero-alloc.md) — Migration guide for existing code
-- [performance-audit](performance-audit.md) — Performance review checklist
-- [create-editor-tool](create-editor-tool.md) — Editor-specific patterns
+- [defensive-programming](./defensive-programming.md) — Error handling patterns (MANDATORY companion skill)
+- [unity-performance-patterns](./unity-performance-patterns.md) — Unity-specific optimizations (MANDATORY for Unity code)
+- [profile-debug-performance](./profile-debug-performance.md) — Profiling and debugging performance
+- [use-pooling](./use-pooling.md) — Detailed collection pooling patterns
+- [use-array-pool](./use-array-pool.md) — Array pool selection guide
+- [refactor-to-zero-alloc](./refactor-to-zero-alloc.md) — Migration guide for existing code
+- [performance-audit](./performance-audit.md) — Performance review checklist
+- [create-editor-tool](./create-editor-tool.md) — Editor-specific patterns

@@ -375,7 +375,7 @@ public void ProcessItems_UnderBudget()
 
 ## Related Skills
 
-- [high-performance-csharp](high-performance-csharp.md) — Performance patterns
-- [unity-performance-patterns](unity-performance-patterns.md) — Unity-specific patterns
-- [performance-audit](performance-audit.md) — Code review checklist
-- [refactor-to-zero-alloc](refactor-to-zero-alloc.md) — Migration patterns
+- [high-performance-csharp](./high-performance-csharp.md) — Performance patterns
+- [unity-performance-patterns](./unity-performance-patterns.md) — Unity-specific patterns
+- [performance-audit](./performance-audit.md) — Code review checklist
+- [refactor-to-zero-alloc](./refactor-to-zero-alloc.md) — Migration patterns

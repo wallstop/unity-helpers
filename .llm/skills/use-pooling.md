@@ -245,7 +245,7 @@ public void GetItems(List<Item> result)
 
 ## Array Pooling
 
-For array pooling, see the [Array Pooling Guide](use-array-pool.md).
+For array pooling, see the [Array Pooling Guide](./use-array-pool.md).
 
 Quick summary:
 
@@ -279,7 +279,7 @@ public GameObject SpawnBullet() => _bulletPool.Get();
 public void ReturnBullet(GameObject bullet) => _bulletPool.Release(bullet);
 ```
 
-See [unity-performance-patterns](unity-performance-patterns.md) for more Unity-specific pooling.
+See [unity-performance-patterns](./unity-performance-patterns.md) for more Unity-specific pooling.
 
 ---
 
@@ -327,7 +327,7 @@ void ProcessPooled()
 
 ## Related Skills
 
-- [high-performance-csharp](high-performance-csharp.md) — Core performance patterns
-- [unity-performance-patterns](unity-performance-patterns.md) — Unity GameObject pooling
-- [use-array-pool](use-array-pool.md) — Array pooling guide
-- [refactor-to-zero-alloc](refactor-to-zero-alloc.md) — Migration patterns
+- [high-performance-csharp](./high-performance-csharp.md) — Core performance patterns
+- [unity-performance-patterns](./unity-performance-patterns.md) — Unity GameObject pooling
+- [use-array-pool](./use-array-pool.md) — Array pooling guide
+- [refactor-to-zero-alloc](./refactor-to-zero-alloc.md) — Migration patterns

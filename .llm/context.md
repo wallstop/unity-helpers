@@ -213,8 +213,9 @@ See [create-csharp-file](skills/create-csharp-file.md) for detailed rules. Key p
 23. **🚨🚨🚨 Run Prettier IMMEDIATELY after EVERY non-C# file change — NO BATCHING** — `npx prettier --write <file>` MUST be executed **IMMEDIATELY after EACH individual file modification**, NOT batched at task completion; applies to ALL: `.md`, `.json`, `.yaml`, `.yml`, `.js`, and config files—**including files in `.llm/` directory**; **WORKFLOW: edit file → IMMEDIATELY run `npx prettier --write <file>` → verify → proceed to next file**; pre-push hooks **WILL REJECT** commits with Prettier issues; **NO EXCEPTIONS, NO DELAYS, NO BATCHING**—always verify with `npx prettier --check .` before committing (see [validate-before-commit](skills/validate-before-commit.md#prettiermarkdown-formatting))
 24. **Run CSharpier IMMEDIATELY after ANY C# file change** — `dotnet tool run csharpier format .` MUST be run after EVERY `.cs` file modification, even single-line edits; do NOT batch formatting until task completion; extra blank lines and spacing issues are common CI/CD failures that are easily preventable (see [format-code](skills/format-code.md) and [validate-before-commit](skills/validate-before-commit.md#c-changes-workflow))
 25. **Verify GitHub Actions configuration files exist AND are on the default branch** — Before creating/modifying workflows, confirm all required config files exist (e.g., `release-drafter.yml` workflow requires `.github/release-drafter.yml` config); missing configs cause runtime failures NOT caught by `actionlint`; **CRITICAL**: Some actions (like `release-drafter`) require config files to exist on the **default branch (main)** at runtime—if adding both workflow AND config in the same PR, either: (1) disable/comment out triggers until config is merged to main, or (2) merge config file first in a separate PR (see [validate-before-commit](skills/validate-before-commit.md#github-actions-configuration-file-requirements-mandatory))
-26. **NEVER use `((var++))` in bash scripts with `set -e`** — The expression `((var++))` returns the pre-increment value; when `var` is 0, it returns 0 (falsy), causing `set -e` to exit the script; use `var=$((var + 1))` instead (assignment always succeeds); see [validate-before-commit](skills/validate-before-commit.md#bash-arithmetic-safety-in-cicd-critical)
-27. **GitHub Pages markdown links MUST use `./` or `../` prefix** — All internal markdown links MUST use explicit relative paths (e.g., `./docs/guide` not `docs/guide`); without the prefix, `jekyll-relative-links` fails to convert links and they render as raw file downloads; run `npm run validate:docs` to check link format (see [github-pages](skills/github-pages.md))
+26. **NEVER use `((var++))` in bash scripts with `set -e`** — The expression `((var++))` returns the pre-increment value; when `var` is 0, it returns 0 (falsy), causing `set -e` to exit the script; use `var=$((var + 1))` instead (assignment always succeeds); see [validate-before-commit](./skills/validate-before-commit.md#bash-arithmetic-safety-in-cicd-critical)
+27. **🚨 Internal markdown links MUST use `./` or `../` prefix** — ALL internal links in markdown MUST use explicit relative paths (`./docs/guide` or `../other-doc`, NEVER bare `docs/guide`); this applies to ALL `.md` files including docs, skills, CHANGELOG, and README; without the prefix, `jekyll-relative-links` fails to convert links causing broken pages or raw file downloads; run `npm run validate:docs` to verify (see [github-pages](./skills/github-pages.md))
+28. **🚨 Run `npm run lint:spelling` after docs/comments changes** — Spell check MUST pass after modifying any markdown file or C# XML comments; when adding valid technical terms (Unity APIs, package-specific names, abbreviations), add them to the appropriate dictionary in `cspell.json` (see cspell quick reference below); NEVER ignore spelling errors—fix typos or add legitimate terms to dictionary
 
 ---
 
@@ -253,7 +254,22 @@ Generate a `.meta` file **immediately** after creating:
 4. Generate meta for the file
 5. Format code (if `.cs`)
 
-See [create-unity-meta](skills/create-unity-meta.md) for full details.
+See [create-unity-meta](./skills/create-unity-meta.md) for full details.
+
+---
+
+## cspell Dictionary Quick Reference
+
+When `npm run lint:spelling` reports unknown words, add them to the appropriate dictionary in `cspell.json`:
+
+| Dictionary      | Purpose                                  | Examples                                     |
+| --------------- | ---------------------------------------- | -------------------------------------------- |
+| `unity-terms`   | Unity Engine APIs, components, lifecycle | MonoBehaviour, GetComponent, OnValidate      |
+| `csharp-terms`  | C# language features, .NET types         | readonly, nullable, LINQ, StringBuilder      |
+| `package-terms` | This package's public API and type names | WallstopStudios, IRandom, SpatialHash        |
+| `tech-terms`    | General programming/tooling terms        | async, config, JSON, middleware, refactoring |
+
+**Adding words**: Edit `cspell.json` → find the dictionary's `words` array → add alphabetically.
 
 ---
 

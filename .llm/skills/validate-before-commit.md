@@ -162,7 +162,7 @@ npx prettier --write <file>
 npm run lint:spelling
 
 # 3. If spelling errors found with valid technical terms, add to cspell.json:
-# Edit cspell.json and add terms to the "words" array
+# Edit cspell.json and add terms to the appropriate dictionary (see below)
 
 # 4. Check links and formatting — MANDATORY for ALL markdown files
 npm run lint:docs      # Catches backtick .md refs AND inline code + link anti-patterns
@@ -175,7 +175,151 @@ npm run lint:markdown  # Markdownlint rules (MD032, MD009, etc.)
 
 - When adding technical terms (class names, method names, package names), **proactively add them to `cspell.json`** BEFORE running the linter
 - Common terms to add: Unity API names, package identifiers, custom type names, acronyms
-- Keep the `words` array in `cspell.json` sorted alphabetically
+- Keep words in each dictionary array sorted alphabetically
+
+---
+
+## 🚨 Mandatory Linter Execution After Every Change
+
+> **⚠️ CRITICAL**: This is a non-negotiable requirement. Linters MUST be run IMMEDIATELY after EVERY change — not at the end of a task, not in batches. IMMEDIATELY.
+
+### Spelling Lint After Documentation/Code Comment Changes
+
+**Run `npm run lint:spelling` IMMEDIATELY after:**
+
+- ANY change to markdown files (`.md`)
+- ANY change to XML documentation comments in C# files
+- ANY change to code comments in C# files
+- Adding new class names, method names, or technical terms
+
+```bash
+# After editing any documentation or code comments
+npm run lint:spelling
+
+# If cspell reports unknown words that are VALID technical terms:
+# 1. Identify the correct dictionary in cspell.json
+# 2. Add the word to the appropriate dictionary's "words" array
+# 3. Keep the array sorted alphabetically
+# 4. Re-run lint:spelling to verify the fix
+```
+
+### Adding Words to cspell.json
+
+When cspell reports an unknown word that is a **valid technical term**, add it to the appropriate dictionary in `cspell.json`:
+
+| Dictionary       | Use For                                                               | Examples                                   |
+| ---------------- | --------------------------------------------------------------------- | ------------------------------------------ |
+| `unity-terms`    | Unity Engine API names, Unity-specific terms                          | `MonoBehaviour`, `SerializeField`, `OnGUI` |
+| `csharp-terms`   | C# language features, .NET types, C# patterns                         | `struct`, `Nullable`, `IEnumerable`        |
+| `package-terms`  | This package's custom types, class names, method names                | `WButtonEditor`, `UnityHelpers`            |
+| `tech-terms`     | General programming terms, tools, external libraries                  | `actionlint`, `async`, `middleware`        |
+| `words` (global) | General words that don't fit above categories, proper nouns, acronyms | `prepush`, `changelog`, `submodule`        |
+
+**How to add a word:**
+
+```jsonc
+// In cspell.json, find the appropriate dictionaryDefinitions entry:
+{
+  "dictionaryDefinitions": [
+    {
+      "name": "unity-terms",
+      "words": [
+        "AddComponent",
+        "Awake",
+        "MonoBehaviour", // ← Add new Unity terms here (alphabetically)
+        "OnDestroy"
+      ]
+    }
+    // ... other dictionaries
+  ],
+  // For general words, use the top-level "words" array:
+  "words": [
+    "changelog",
+    "prepush" // ← Add general words here (alphabetically)
+  ]
+}
+```
+
+**After adding words:**
+
+```bash
+# Verify the fix
+npm run lint:spelling
+
+# Format the cspell.json file
+npx prettier --write cspell.json
+```
+
+### Link Validation After Markdown Changes
+
+**Run `npm run lint:docs` IMMEDIATELY after:**
+
+- ANY change to markdown files
+- Adding or modifying links
+- Moving or renaming files that other markdown files link to
+
+```bash
+# After editing any markdown file
+npm run lint:docs
+
+# If errors are found, fix them before proceeding
+```
+
+### Markdown Link Path Requirements
+
+> **⚠️ CRITICAL**: Internal markdown links MUST use relative path prefixes (`./` or `../`). Bare paths will cause link validation failures.
+
+```markdown
+<!-- ❌ WRONG: Bare paths without relative prefix -->
+
+See [context](context.md) for guidelines.
+Refer to [create-test](skills/create-test.md) for details.
+Check [features](docs/features/overview.md) for documentation.
+
+<!-- ✅ CORRECT: Relative paths with ./ or ../ prefix -->
+
+See [context](./context.md) for guidelines.
+Refer to [create-test](./skills/create-test.md) for details.
+Check [features](../docs/features/overview.md) for documentation.
+```
+
+**Fixing "missing relative prefix" errors:**
+
+1. Identify the link causing the error in the lint output
+2. Add `./` prefix for files in the same directory
+3. Add `../` prefix (one or more) for files in parent directories
+4. Re-run `npm run lint:docs` to verify the fix
+
+**Examples by link location:**
+
+```text
+Current File Location          | Link Target                  | Correct Link Syntax
+-------------------------------|------------------------------|--------------------------------------------
+.llm/context.md                | .llm/skills/create-test.md   | [create-test](./skills/create-test.md)
+.llm/skills/create-test.md     | .llm/context.md              | [context](../context.md)
+docs/features/overview.md      | docs/guides/setup.md         | [setup](../guides/setup.md)
+README.md                      | docs/overview/index.md       | [overview](./docs/overview/index.md)
+```
+
+### YAML File Formatting
+
+**Run `npx prettier --write <file>` IMMEDIATELY after:**
+
+- ANY change to YAML files (`.yml`, `.yaml`)
+- Especially for `.github/workflows/*.yml` files
+
+```bash
+# After editing any YAML file
+npx prettier --write .github/workflows/my-workflow.yml
+
+# Verify formatting
+npx prettier --check .github/workflows/my-workflow.yml
+
+# For workflow files, also run actionlint
+actionlint .github/workflows/my-workflow.yml
+```
+
+> **Note**: YAML lint runs automatically in CI, but formatting issues will cause CI failures. Run Prettier locally to catch issues before pushing.
 
 ### Workflow Changes Workflow
 

@@ -596,8 +596,8 @@ However, for consistency, you may still use the helpers in CI scripts. The overh
 
 ## Related Skills
 
-- [validate-before-commit](validate-before-commit.md) — Pre-commit validation commands
-- [format-code](format-code.md) — Code formatting before commits
+- [validate-before-commit](./validate-before-commit.md) — Pre-commit validation commands
+- [format-code](./format-code.md) — Code formatting before commits
 
 ## Related Files
 

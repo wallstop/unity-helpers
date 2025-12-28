@@ -382,8 +382,8 @@ foreach.*List<|foreach.*Dictionary<|foreach.*HashSet<
 
 ## Related Skills
 
-- [high-performance-csharp](high-performance-csharp.md) — Zero-allocation patterns
-- [gc-architecture-unity](gc-architecture-unity.md) — Why allocations matter
-- [refactor-to-zero-alloc](refactor-to-zero-alloc.md) — Migration patterns
-- [unity-performance-patterns](unity-performance-patterns.md) — Unity-specific patterns
-- [performance-audit](performance-audit.md) — Audit checklist
+- [high-performance-csharp](./high-performance-csharp.md) — Zero-allocation patterns
+- [gc-architecture-unity](./gc-architecture-unity.md) — Why allocations matter
+- [refactor-to-zero-alloc](./refactor-to-zero-alloc.md) — Migration patterns
+- [unity-performance-patterns](./unity-performance-patterns.md) — Unity-specific patterns
+- [performance-audit](./performance-audit.md) — Audit checklist

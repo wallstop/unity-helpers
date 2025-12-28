@@ -240,8 +240,8 @@ Both use the same Boehm GC behavior, but:
 
 ## Related Skills
 
-- [high-performance-csharp](high-performance-csharp.md) — Core zero-allocation patterns
-- [unity-performance-patterns](unity-performance-patterns.md) — Unity-specific optimizations
-- [memory-allocation-traps](memory-allocation-traps.md) — Hidden allocation sources
-- [refactor-to-zero-alloc](refactor-to-zero-alloc.md) — Migration patterns
-- [use-pooling](use-pooling.md) — Collection pooling
+- [high-performance-csharp](./high-performance-csharp.md) — Core zero-allocation patterns
+- [unity-performance-patterns](./unity-performance-patterns.md) — Unity-specific optimizations
+- [memory-allocation-traps](./memory-allocation-traps.md) — Hidden allocation sources
+- [refactor-to-zero-alloc](./refactor-to-zero-alloc.md) — Migration patterns
+- [use-pooling](./use-pooling.md) — Collection pooling

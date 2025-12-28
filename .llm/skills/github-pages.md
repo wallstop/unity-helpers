@@ -64,14 +64,32 @@ relative_links:
 
 ### The Rule
 
-All internal links to markdown files MUST use explicit relative format with `./` or `../` prefix.
+⚠️ **MANDATORY**: ALL internal links to markdown files MUST use explicit relative format with `./` or `../` prefix.
 
-| ❌ WRONG (Pattern) | ✅ CORRECT (Pattern) | Why                        |
-| ------------------ | -------------------- | -------------------------- |
-| `]​(docs/file)`    | `]​(./docs/file)`    | Missing `./` prefix        |
-| `]​(CHANGELOG)`    | `]​(./CHANGELOG)`    | Missing `./` prefix        |
-| `]​(feature)`      | `]​(./feature)`      | Missing `./` prefix        |
-| `]​(../parent)`    | `]​(../parent)`      | ✅ `../` prefix is correct |
+**There are NO exceptions to this rule.** Links without prefixes WILL break on GitHub Pages and CI WILL fail.
+
+### Quick Validation
+
+```bash
+# Run this BEFORE committing any documentation changes:
+npm run lint:docs
+
+# This catches missing ./ prefixes and broken links
+# CI will fail if this command fails locally
+```
+
+**Wrong vs Correct Examples:**
+
+```text
+❌ WRONG: ](docs/file)       →  ✅ CORRECT: ](./docs/file)       (Missing ./ prefix)
+❌ WRONG: ](CHANGELOG)       →  ✅ CORRECT: ](./CHANGELOG)       (Missing ./ prefix)
+❌ WRONG: ](feature)         →  ✅ CORRECT: ](./feature)         (Missing ./ prefix)
+❌ WRONG: ](overview)        →  ✅ CORRECT: ](./overview)        (Missing ./ AND extension)
+❌ WRONG: ](/docs/file)      →  ✅ CORRECT: ](./docs/file)       (Absolute path, needs relative)
+✅ OK:    ](../parent)       →  ✅ CORRECT: ](../parent)         (../ prefix is correct)
+```
+
+> **Note**: All examples above should include the `.md` extension in actual usage.
 
 ### Why This Matters
 
@@ -97,7 +115,7 @@ See the [Getting Started Guide](./docs/guides/getting-started.md) for setup inst
 
 For API details, check the [Features Overview](./docs/features/overview.md).
 
-Return to the [main README](./README.md) or view the [Changelog](./CHANGELOG.md).
+Return to the [main README](./README.md) or view the [Changelog](../CHANGELOG.md).
 
 From a nested doc: [Parent Section](../overview/index.md)
 ```
@@ -276,6 +294,39 @@ The `.github/workflows/lint-doc-links.yml` workflow runs automatically on:
 - Pushes to main branch
 
 **PRs with broken documentation links will be blocked.**
+
+---
+
+## Common CI Failures
+
+When CI fails on documentation PRs, here are the most common causes and fixes:
+
+| Failure Type                     | Error Message (Pattern)                   | Fix                                                           |
+| -------------------------------- | ----------------------------------------- | ------------------------------------------------------------- |
+| Missing `./` prefix on links     | `Link missing relative prefix`            | Add `./` to all internal links → run `npm run lint:docs`      |
+| Broken internal link             | `Link target does not exist`              | Fix the path or create missing file → run `npm run lint:docs` |
+| Unknown words in spelling check  | `Unknown word: someWord`                  | Add word to `cspell.json` words array                         |
+| Trailing spaces in YAML          | `Delete trailing whitespace`              | Run `npx prettier --write <file>`                             |
+| Markdown formatting issues       | Various markdownlint errors               | Run `npm run lint:markdown`                                   |
+| Backtick-wrapped file references | `File reference should not use backticks` | Use markdown links instead of backticks for file references   |
+
+### Debugging Failed CI
+
+```bash
+# Step 1: Reproduce locally (run ALL of these)
+npm run lint:docs          # Check link formats and targets
+npm run lint:spelling      # Check for unknown words
+npm run lint:markdown      # Check markdown formatting
+npm run format:md:check    # Check Prettier formatting
+
+# Step 2: Auto-fix what can be fixed
+npx prettier --write "**/*.md"
+
+# Step 3: Manual fixes for remaining issues
+# - Add ./  to internal links
+# - Add unknown words to cspell.json
+# - Fix broken link targets
+```
 
 ---
 
