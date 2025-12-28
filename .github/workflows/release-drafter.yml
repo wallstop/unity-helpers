@@ -4,12 +4,13 @@ on:
   push:
     branches:
       - main
-  pull_request:
-    types:
-      - opened
-      - reopened
-      - synchronize
-      - labeled
+  # Uncomment after release-drafter.yml config is merged to main:
+  # pull_request_target:
+  #   types:
+  #     - opened
+  #     - reopened
+  #     - synchronize
+  #     - labeled
   workflow_dispatch:
 
 permissions:

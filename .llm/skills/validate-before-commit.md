@@ -606,20 +606,87 @@ actionlint -shellcheck=/usr/bin/shellcheck
 
 **Before creating or modifying a workflow, verify ALL required configuration files exist:**
 
-| Workflow                            | Required Configuration File         | Location                        |
-| ----------------------------------- | ----------------------------------- | ------------------------------- |
-| `release-drafter.yml`               | `release-drafter.yml`               | `.github/release-drafter.yml`   |
-| Dependabot workflows                | `dependabot.yml`                    | `.github/dependabot.yml`        |
-| Labeler workflows                   | `labeler.yml` or similar            | `.github/labeler.yml`           |
-| Workflows using `config-name` input | The file specified in `config-name` | Usually `.github/<config-name>` |
+| Workflow                            | Required Configuration File         | Location                        | Default Branch Required? |
+| ----------------------------------- | ----------------------------------- | ------------------------------- | ------------------------ |
+| `release-drafter.yml`               | `release-drafter.yml`               | `.github/release-drafter.yml`   | **YES** (at runtime)     |
+| Dependabot workflows                | `dependabot.yml`                    | `.github/dependabot.yml`        | YES                      |
+| Labeler workflows                   | `labeler.yml` or similar            | `.github/labeler.yml`           | YES (typically)          |
+| Workflows using `config-name` input | The file specified in `config-name` | Usually `.github/<config-name>` | Check action docs        |
 
 **Checklist when adding/modifying workflows:**
 
 - [ ] Identify all `config-name` or similar inputs in actions
 - [ ] Verify referenced configuration files exist in `.github/`
+- [ ] **Check if config must exist on default branch** (see bootstrapping section below)
 - [ ] Create missing configuration files BEFORE the workflow runs
-- [ ] Generate `.meta` files for new configuration files in `.github/`
+- [ ] Run `actionlint` IMMEDIATELY after any workflow changes
 - [ ] Test workflow in a branch if possible
+
+### Bootstrapping: Config Files Required on Default Branch
+
+> **⚠️ CRITICAL**: Some GitHub Actions read configuration from the **default branch (main)** at runtime, NOT from the PR branch. This creates a "chicken and egg" problem.
+
+**The Problem:**
+
+1. You add a workflow file (e.g., `release-drafter.yml`) that references an external config
+2. You add the config file (e.g., `.github/release-drafter.yml`) in the same PR
+3. The workflow triggers on `push` or `pull_request`
+4. The action runs and tries to read config from **main** (not your PR branch)
+5. Config doesn't exist on main yet → **Workflow fails**
+
+**Actions Known to Require Default Branch Config:**
+
+| Action                            | Config Location               | Reads From        |
+| --------------------------------- | ----------------------------- | ----------------- |
+| `release-drafter/release-drafter` | `.github/release-drafter.yml` | Default branch    |
+| `actions/labeler`                 | `.github/labeler.yml`         | Default branch    |
+| `peter-evans/create-pull-request` | Various config files          | Check action docs |
+| Dependabot                        | `.github/dependabot.yml`      | Default branch    |
+
+**Solutions (choose one):**
+
+1. **Disable triggers until config is merged** (RECOMMENDED):
+
+   ```yaml
+   # Comment out triggers until .github/release-drafter.yml is merged to main
+   # on:
+   #   push:
+   #     branches: [main]
+   #   pull_request:
+   #     types: [opened, reopened, synchronize]
+
+   # Temporary: Only allow manual triggering
+   on:
+     workflow_dispatch: # Manual trigger only
+   ```
+
+   After merging, uncomment the real triggers in a follow-up PR.
+
+2. **Two-PR approach**:
+   - PR #1: Add ONLY the config file (e.g., `.github/release-drafter.yml`)
+   - Merge PR #1 to main
+   - PR #2: Add the workflow file with full triggers
+
+3. **Use `workflow_dispatch` only for initial merge**:
+   - Add workflow with only `workflow_dispatch` trigger
+   - Add config file in same PR
+   - Merge to main
+   - Update workflow to add real triggers (push, pull_request, etc.)
+
+**Example: Safe Release Drafter Setup**
+
+```yaml
+# .github/workflows/release-drafter.yml
+# Step 1: Initial merge with workflow_dispatch only
+name: Release Drafter
+on:
+  workflow_dispatch: # Manual trigger for bootstrapping
+  # TODO: Uncomment after .github/release-drafter.yml is on main:
+  # push:
+  #   branches: [main]
+  # pull_request:
+  #   types: [opened, reopened, synchronize]
+```
 
 **Example: Release Drafter requires `.github/release-drafter.yml`**
 
