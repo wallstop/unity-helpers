@@ -636,12 +636,12 @@ actionlint -shellcheck=/usr/bin/shellcheck
 
 **Actions Known to Require Default Branch Config:**
 
-| Action                            | Config Location               | Reads From        |
-| --------------------------------- | ----------------------------- | ----------------- |
-| `release-drafter/release-drafter` | `.github/release-drafter.yml` | Default branch    |
-| `actions/labeler`                 | `.github/labeler.yml`         | Default branch    |
-| `peter-evans/create-pull-request` | Various config files          | Check action docs |
-| Dependabot                        | `.github/dependabot.yml`      | Default branch    |
+| Action                             | Config Location                 | Reads From        |
+| ---------------------------------- | ------------------------------- | ----------------- |
+| `release-drafter/release-drafter`  | `.github/release-drafter.yml`   | Default branch    |
+| `actions/labeler`                  | `.github/labeler.yml`           | Default branch    |
+| `peter-evans/create-pull-request`  | Various config files            | Check action docs |
+| Dependabot                         | `.github/dependabot.yml`        | Default branch    |
 
 **Solutions (choose one):**
 
@@ -694,7 +694,7 @@ on:
 # .github/workflows/release-drafter.yml
 - uses: release-drafter/release-drafter@v6
   with:
-    config-name: release-drafter.yml # ← References .github/release-drafter.yml
+    config-name: release-drafter.yml  # ← References .github/release-drafter.yml
 ```
 
 If `.github/release-drafter.yml` doesn't exist, the workflow will fail at runtime with "Unable to find configuration".
@@ -753,15 +753,15 @@ echo $?       # Prints: 0 (success)
 
 **Safe Alternatives:**
 
-| Pattern               | Description                                | Recommendation       |
-| --------------------- | ------------------------------------------ | -------------------- |
-| `((var++)) \|\| true` | Always succeeds, ignores return value      | Quick fix            |
-| `var=$((var + 1))`    | Assignment always succeeds                 | **RECOMMENDED**      |
-| `: $((var++))`        | Null command with arithmetic side-effect   | Alternative          |
-| `((++var))`           | Pre-increment returns new value (1, not 0) | Works but less clear |
+| Pattern                 | Description                             | Recommendation   |
+| ----------------------- | --------------------------------------- | ---------------- |
+| `var=$((var + 1))`      | Assignment always succeeds              | **RECOMMENDED**  |
+| `((var++)) \|\| true`   | Always succeeds, ignores return value   | Acceptable       |
+| `: $((var++))`          | Null command with arithmetic side-effect | Alternative     |
+| `((++var))`             | Pre-increment returns new value (1, not 0) | Works but less clear |
 
 ```yaml
-# ✅ CORRECT - Assignment always succeeds
+# ✅ CORRECT - Assignment always succeeds (RECOMMENDED)
 - name: Process items
   run: |
     set -euo pipefail
@@ -769,17 +769,6 @@ echo $?       # Prints: 0 (success)
     for item in "${items[@]}"; do
       process "$item"
       count=$((count + 1))  # ← Assignment always succeeds
-    done
-    echo "Processed $count items"
-
-# ✅ CORRECT - Alternative with || true
-- name: Process items
-  run: |
-    set -euo pipefail
-    count=0
-    for item in "${items[@]}"; do
-      process "$item"
-      ((count++)) || true  # ← Explicit success fallback
     done
     echo "Processed $count items"
 ```
