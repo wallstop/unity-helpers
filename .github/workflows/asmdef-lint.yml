@@ -5,16 +5,16 @@ on:
     branches:
       - main
     paths:
-      - '**.asmdef'
-      - '**.asmref'
-      - 'scripts/lint-asmdef.ps1'
-      - '.github/workflows/asmdef-lint.yml'
+      - "**.asmdef"
+      - "**.asmref"
+      - "scripts/lint-asmdef.ps1"
+      - ".github/workflows/asmdef-lint.yml"
   pull_request:
     paths:
-      - '**.asmdef'
-      - '**.asmref'
-      - 'scripts/lint-asmdef.ps1'
-      - '.github/workflows/asmdef-lint.yml'
+      - "**.asmdef"
+      - "**.asmref"
+      - "scripts/lint-asmdef.ps1"
+      - ".github/workflows/asmdef-lint.yml"
 
 permissions:
   contents: read

@@ -5,14 +5,14 @@ on:
     branches:
       - main
     paths:
-      - '**.cs'
-      - 'scripts/lint-license-headers.ps1'
-      - '.github/workflows/license-header-lint.yml'
+      - "**.cs"
+      - "scripts/lint-license-headers.ps1"
+      - ".github/workflows/license-header-lint.yml"
   pull_request:
     paths:
-      - '**.cs'
-      - 'scripts/lint-license-headers.ps1'
-      - '.github/workflows/license-header-lint.yml'
+      - "**.cs"
+      - "scripts/lint-license-headers.ps1"
+      - ".github/workflows/license-header-lint.yml"
 
 permissions:
   contents: read

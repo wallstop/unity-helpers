@@ -196,6 +196,27 @@ The pre-push hook runs `npx prettier --check .` automatically. If any files have
 
 ---
 
+## Line Ending Configuration
+
+Prettier uses line ending settings from `.prettierrc.json`. This repository has specific overrides:
+
+| File Type                    | Line Ending | Configured In                          |
+| ---------------------------- | ----------- | -------------------------------------- |
+| YAML files (`.yml`, `.yaml`) | LF (unix)   | `.prettierrc.json` override            |
+| GitHub workflow files        | LF (unix)   | Inherited from YAML override           |
+| Most other files             | CRLF        | `.prettierrc.json` default `endOfLine` |
+
+**Important**: Line ending configuration must be synchronized across multiple files:
+
+- `.gitattributes` — Controls git checkout
+- `.prettierrc.json` — Controls Prettier formatting
+- `.yamllint.yaml` — Controls YAML linting (`new-lines: type: unix`)
+- `.editorconfig` — Controls IDE behavior
+
+If you see line ending errors, verify all config files are synchronized. See [validate-before-commit](./validate-before-commit.md#line-ending-configuration-consistency-critical) for details.
+
+---
+
 ## Integration with Other Validations
 
 This skill is part of the full validation workflow. Before completing any task:

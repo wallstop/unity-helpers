@@ -88,9 +88,24 @@ MD_FILES=$(echo "$STAGED_FILES" | grep -E '\\.(md|markdown)$' || true)
 JSON_FILES=$(echo "$STAGED_FILES" | grep -E '\\.(json|asmdef|asmref)$' || true)
 YAML_FILES=$(echo "$STAGED_FILES" | grep -E '\\.(yml|yaml)$' || true)
 
+# ============================================================================
+# LINE ENDING CONFIGURATION
+# ============================================================================
+# Most files use CRLF (C#, JSON, Markdown) - see .gitattributes.
+# YAML files (.yml, .yaml) and shell scripts (.sh) use LF for compatibility.
+# The normalize-eol.ps1 script (step 1) converts LF -> CRLF for text files.
+# If you see EOL-related CI failures, run: npm run fix:eol
+# ============================================================================
+
 # Prettier format and re-add using retry logic to handle index.lock contention
 if [ -n "$MD_FILES" ]; then
   echo "$MD_FILES" | xargs npx --no-install prettier --write --log-level warn
+  # Verify formatting was successful before re-staging
+  # shellcheck disable=SC2086
+  if ! echo "$MD_FILES" | xargs npx --no-install prettier --check >/dev/null 2>&1; then
+    echo "Error: Prettier formatting verification failed for Markdown files." >&2
+    exit 1
+  fi
   # Use git_add_with_retry to handle concurrent git operations safely
   # shellcheck disable=SC2086
   git_add_with_retry $MD_FILES
@@ -98,6 +113,12 @@ fi
 
 if [ -n "$JSON_FILES" ]; then
   echo "$JSON_FILES" | xargs npx --no-install prettier --write --log-level warn
+  # Verify formatting was successful before re-staging
+  # shellcheck disable=SC2086
+  if ! echo "$JSON_FILES" | xargs npx --no-install prettier --check >/dev/null 2>&1; then
+    echo "Error: Prettier formatting verification failed for JSON files." >&2
+    exit 1
+  fi
   # Use git_add_with_retry to handle concurrent git operations safely
   # shellcheck disable=SC2086
   git_add_with_retry $JSON_FILES
@@ -105,6 +126,12 @@ fi
 
 if [ -n "$YAML_FILES" ]; then
   echo "$YAML_FILES" | xargs npx --no-install prettier --write --log-level warn
+  # Verify formatting was successful before re-staging
+  # shellcheck disable=SC2086
+  if ! echo "$YAML_FILES" | xargs npx --no-install prettier --check >/dev/null 2>&1; then
+    echo "Error: Prettier formatting verification failed for YAML files." >&2
+    exit 1
+  fi
   # Use git_add_with_retry to handle concurrent git operations safely
   # shellcheck disable=SC2086
   git_add_with_retry $YAML_FILES

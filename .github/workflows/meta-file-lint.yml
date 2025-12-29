@@ -5,32 +5,32 @@ on:
     branches:
       - main
     paths:
-      - 'Runtime/**'
-      - 'Editor/**'
-      - 'Tests/**'
-      - 'Samples~/**'
-      - 'Shaders/**'
-      - 'Styles/**'
-      - 'URP/**'
-      - 'docs/**'
-      - 'scripts/**'
-      - '*.meta'
-      - 'scripts/lint-meta-files.ps1'
-      - '.github/workflows/meta-file-lint.yml'
+      - "Runtime/**"
+      - "Editor/**"
+      - "Tests/**"
+      - "Samples~/**"
+      - "Shaders/**"
+      - "Styles/**"
+      - "URP/**"
+      - "docs/**"
+      - "scripts/**"
+      - "*.meta"
+      - "scripts/lint-meta-files.ps1"
+      - ".github/workflows/meta-file-lint.yml"
   pull_request:
     paths:
-      - 'Runtime/**'
-      - 'Editor/**'
-      - 'Tests/**'
-      - 'Samples~/**'
-      - 'Shaders/**'
-      - 'Styles/**'
-      - 'URP/**'
-      - 'docs/**'
-      - 'scripts/**'
-      - '*.meta'
-      - 'scripts/lint-meta-files.ps1'
-      - '.github/workflows/meta-file-lint.yml'
+      - "Runtime/**"
+      - "Editor/**"
+      - "Tests/**"
+      - "Samples~/**"
+      - "Shaders/**"
+      - "Styles/**"
+      - "URP/**"
+      - "docs/**"
+      - "scripts/**"
+      - "*.meta"
+      - "scripts/lint-meta-files.ps1"
+      - ".github/workflows/meta-file-lint.yml"
 
 permissions:
   contents: read

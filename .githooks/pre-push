@@ -1,9 +1,27 @@
 #!/usr/bin/env sh
 set -e
 
-# Mirror key CI checks before pushing
-# Auto-fix formatting issues where possible, then verify.
-# CI will catch any issues that slip through.
+# ============================================================================
+# PRE-PUSH HOOK: Mirror CI checks before pushing
+# ============================================================================
+# This hook runs the same checks as CI to catch issues before they reach
+# the remote. Auto-fixes formatting issues where possible, then verifies.
+#
+# Checks performed:
+#   1. Prettier formatting (Markdown, JSON, asmdef/asmref, YAML, JS)
+#   2. Markdownlint
+#   3. Spell checking (cspell)
+#   4. Doc link lint
+#   5. EOL normalization and verification
+#   6. yamllint (if installed)
+#   7. actionlint (if installed and workflow files changed)
+#   8. External link check with lychee (if installed)
+#   9. Test lifecycle lint
+#
+# LINE ENDING NOTE:
+#   This repo uses CRLF for most files, but YAML files use LF (see .gitattributes).
+#   If you encounter EOL-related CI failures, run: npm run fix:eol
+# ============================================================================
 
 # Ensure Node is available
 if ! command -v npx >/dev/null 2>&1; then
@@ -14,9 +32,13 @@ else
     echo "node_modules not found. Run 'npm install' to enable local pre-push checks, or skip - CI will validate." >&2
   else
     # 1) Prettier checks (Markdown, JSON, asmdef/asmref, YAML, JS)
+    # File patterns match CI workflows:
+    #   - markdown-json.yml: **/*.{md,markdown} and **/*.{json,asmdef,asmref}
+    #   - yaml-format-lint.yml: **/*.{yml,yaml}
     # Auto-fix first, then verify. If verification fails, the user needs to commit the fixes.
     if npx --no-install prettier --version >/dev/null 2>&1; then
-      echo "Checking formatting..."
+      echo "Checking formatting with patterns matching CI..."
+      echo "  Patterns: **/*.{md,markdown,json,asmdef,asmref,yml,yaml,js}"
       if ! npx --no-install prettier --check "**/*.{md,markdown,json,asmdef,asmref,yml,yaml,js}" 2>/dev/null; then
         echo ""
         echo "=== Prettier formatting issues detected ==="
@@ -30,6 +52,7 @@ else
         echo ""
         exit 1
       fi
+      echo "✓ Prettier formatting OK"
     else
       echo "prettier not installed; skipping format check. Run 'npm install' or CI will validate." >&2
     fi
@@ -55,6 +78,7 @@ else
         echo ""
         exit 1
       fi
+      echo "✓ Spell check OK"
     else
       echo "cspell not installed; skipping spell check. Run 'npm install' or CI will validate." >&2
     fi
@@ -63,10 +87,11 @@ else
     # This runs the same PowerShell linter as the CI to catch issues before push
     echo "Checking documentation links..."
     node ./scripts/run-doc-link-lint.js || exit 1
+    echo "✓ Doc links OK"
   fi
 fi
 
-# EOL policy (CRLF, no UTF-8 BOM) - auto-fix then verify
+# EOL policy (CRLF for most, LF for YAML/shell) - auto-fix then verify
 if command -v pwsh >/dev/null 2>&1; then
   pwsh -NoProfile -File scripts/normalize-eol.ps1
   pwsh -NoProfile -File scripts/check-eol.ps1 -VerboseOutput
@@ -79,7 +104,9 @@ fi
 
 # Optional YAML lint (if yamllint installed)
 if command -v yamllint >/dev/null 2>&1; then
+  echo "Running yamllint..."
   yamllint -c .yamllint.yaml .
+  echo "✓ yamllint OK"
 else
   echo "yamllint not found; skipping YAML lint. CI will catch issues." >&2
 fi
@@ -100,3 +127,37 @@ elif command -v powershell >/dev/null 2>&1; then
 else
   echo  'PowerShell not found; skipping test lints.' >&2 
 fi
+
+# actionlint check for GitHub Actions workflows (only if workflow files changed)
+# This mirrors the actionlint.yml CI workflow
+WORKFLOW_CHANGES=$(git diff --name-only HEAD@{push}..HEAD 2>/dev/null | grep -E '^\.github/workflows/' || true)
+if [ -z "$WORKFLOW_CHANGES" ]; then
+  # Also check staged/uncommitted workflow changes
+  WORKFLOW_CHANGES=$(git diff --name-only HEAD 2>/dev/null | grep -E '^\.github/workflows/' || true)
+fi
+
+if [ -n "$WORKFLOW_CHANGES" ]; then
+  echo "GitHub Actions workflow files changed:"
+  echo "$WORKFLOW_CHANGES" | sed 's/^/  /'
+  if command -v actionlint >/dev/null 2>&1; then
+    echo "Running actionlint..."
+    if ! actionlint; then
+      echo ""
+      echo "=== actionlint found issues ==="
+      echo "Fix the workflow issues before pushing."
+      echo ""
+      exit 1
+    fi
+    echo "✓ actionlint OK"
+  else
+    echo "actionlint not installed; skipping workflow lint." >&2
+    echo "Install: go install github.com/rhysd/actionlint/cmd/actionlint@latest" >&2
+    echo "CI will run actionlint and catch any issues." >&2
+  fi
+fi
+
+# ============================================================================
+# FINAL VERIFICATION SUMMARY
+# ============================================================================
+echo ""
+echo "Pre-push checks complete. Push proceeding..."

@@ -70,12 +70,12 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v6.1.0
         with:
-          node-version: '22'
+          node-version: "22"
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v5.0.1
         with:
-          dotnet-version: '8.0.x'
+          dotnet-version: "8.0.x"
 
       - name: Restore .NET tools
         run: dotnet tool restore
@@ -216,12 +216,12 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v6.1.0
         with:
-          node-version: '22'
+          node-version: "22"
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v5.0.1
         with:
-          dotnet-version: '8.0.x'
+          dotnet-version: "8.0.x"
 
       - name: Restore .NET tools
         run: dotnet tool restore

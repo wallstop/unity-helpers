@@ -12,8 +12,8 @@
 *.csproj    text eol=crlf
 *.sln       text eol=crlf
 *.json      text eol=crlf
-*.yaml      text eol=crlf
-*.yml       text eol=crlf
+*.yaml      text eol=lf
+*.yml       text eol=lf
 *.md        text eol=crlf
 *.xml       text eol=crlf
 *.uxml      text eol=crlf

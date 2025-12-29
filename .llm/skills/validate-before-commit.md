@@ -463,6 +463,65 @@ actionlint .github/workflows/ci.yml
 
 > **Note**: Prettier fixes formatting but does NOT catch trailing spaces in multiline strings or some edge cases. yamllint catches ALL trailing space issues.
 
+### Line Ending Configuration Consistency (CRITICAL)
+
+> **🚨🚨🚨 CRITICAL**: Line ending configuration must be synchronized across ALL config files. Mismatches cause CI failures because files are checked out with one line ending but linters expect another.
+
+**The Bug Pattern**: When `.gitattributes` specifies LF for certain files but `.prettierrc.json` uses CRLF globally (without overrides) and `.yamllint.yaml` expects a different ending, CI will fail even though files pass locally.
+
+#### Configuration Files That Control Line Endings
+
+| File               | Purpose                                   | Current YAML Setting         |
+| ------------------ | ----------------------------------------- | ---------------------------- |
+| `.gitattributes`   | Controls git checkout line endings        | `*.yml text eol=lf`          |
+| `.prettierrc.json` | Controls Prettier formatting line endings | `endOfLine: lf` for YAML     |
+| `.yamllint.yaml`   | Controls yamllint line ending validation  | `new-lines: type: unix` (LF) |
+| `.editorconfig`    | Controls IDE line endings for new files   | `end_of_line = lf` for YAML  |
+
+#### Current Line Ending Settings
+
+| File Type                    | Line Ending | Why                                          |
+| ---------------------------- | ----------- | -------------------------------------------- |
+| YAML files (`.yml`, `.yaml`) | LF (unix)   | GitHub Actions runners use LF checkout       |
+| GitHub workflow files        | LF (unix)   | `.github/**` uses LF in `.gitattributes`     |
+| `package.json`               | LF (unix)   | Explicit in `.gitattributes`                 |
+| Most other text files        | CRLF        | Default for cross-platform Unity development |
+
+#### When Modifying Line Ending Configuration
+
+**If you change line endings in ANY config file, you MUST update ALL of them:**
+
+```bash
+# After modifying any line ending configuration
+# Verify YAML files are correct:
+npm run lint:yaml
+npx prettier --check "**/*.yml" "**/*.yaml"
+
+# Verify other files (if applicable):
+npx prettier --check .
+```
+
+#### Common Mismatch Scenarios
+
+| ❌ WRONG Configuration                        | ✅ CORRECT Configuration                         |
+| --------------------------------------------- | ------------------------------------------------ |
+| `.gitattributes` has LF, Prettier uses CRLF   | Both must match (LF for YAML, CRLF for others)   |
+| yamllint expects CRLF, git checks out LF      | yamllint must use `type: unix` for YAML files    |
+| `.editorconfig` differs from `.gitattributes` | Both must specify the same endings per file type |
+
+#### Verification Commands
+
+```bash
+# Verify YAML linting passes (checks line endings)
+npm run lint:yaml
+
+# Verify Prettier formatting (includes line ending check)
+npx prettier --check "**/*.yml" "**/*.yaml"
+
+# Full pre-push validation (catches all issues)
+npm run validate:prepush
+```
+
 ### Workflow Changes Workflow
 
 After **ANY** change to `.github/workflows/*.yml`:

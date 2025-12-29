@@ -2,7 +2,7 @@ name: Update .NET Tools
 
 on:
   schedule:
-    - cron: '25 5 * * *'
+    - cron: "25 5 * * *"
   workflow_dispatch:
 
 permissions:
@@ -21,7 +21,7 @@ jobs:
       - name: Setup .NET SDK
         uses: actions/setup-dotnet@v5.0.1
         with:
-          dotnet-version: '8.0.x'
+          dotnet-version: "8.0.x"
 
       - name: Restore dotnet tools
         run: dotnet tool restore

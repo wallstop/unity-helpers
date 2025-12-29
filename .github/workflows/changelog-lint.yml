@@ -5,14 +5,14 @@ on:
     branches:
       - main
     paths:
-      - 'CHANGELOG.md'
-      - 'scripts/lint-changelog.ps1'
-      - '.github/workflows/changelog-lint.yml'
+      - "CHANGELOG.md"
+      - "scripts/lint-changelog.ps1"
+      - ".github/workflows/changelog-lint.yml"
   pull_request:
     paths:
-      - 'CHANGELOG.md'
-      - 'scripts/lint-changelog.ps1'
-      - '.github/workflows/changelog-lint.yml'
+      - "CHANGELOG.md"
+      - "scripts/lint-changelog.ps1"
+      - ".github/workflows/changelog-lint.yml"
 
 permissions:
   contents: read
