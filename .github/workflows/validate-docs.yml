@@ -152,7 +152,7 @@ jobs:
           }
 
           violations=""
-          
+
           while IFS= read -r -d '' mdfile; do
             in_code_block=false
             line_num=0

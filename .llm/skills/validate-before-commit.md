@@ -80,8 +80,8 @@ This single command runs ALL CI/CD checks locally, ensuring your changes will pa
 | Documentation (`.md`)     | `npm run lint:docs`                            | **CRITICAL** — Validates link targets AND link format (requires `./` or `../` prefix) |
 | Documentation (`.md`)     | `npm run lint:markdown`                        | Markdownlint rules (MD032, MD009, etc.)                                               |
 | JSON/asmdef/asmref        | `npx prettier --write <file>`                  | **MANDATORY** — Prettier formats JSON too                                             |
-| YAML (non-workflow)       | `npx prettier --write <file>`                  | **MANDATORY** — Prettier formats YAML too                                             |
-| GitHub Workflows (`.yml`) | `npx prettier --write <file>`                  | Format FIRST, then run actionlint                                                     |
+| YAML (all `.yml`/`.yaml`) | `npx prettier --write <file>`                  | **MANDATORY** — Prettier formats YAML too                                             |
+| YAML (all `.yml`/`.yaml`) | `npm run lint:yaml`                            | **MANDATORY** — yamllint checks trailing spaces, syntax, style                        |
 | GitHub Workflows (`.yml`) | `actionlint`                                   | **MANDATORY** for `.github/workflows/*.yml`                                           |
 | C# code (`.cs`)           | `dotnet tool run csharpier format .`           | **RUN IMMEDIATELY** after ANY edit (not later)                                        |
 | C# code (`.cs`)           | `npm run lint:csharp-naming`                   | Check for underscore violations                                                       |
@@ -341,36 +341,65 @@ docs/features/overview.md      | docs/guides/setup.md         | [setup](../guide
 README.md                      | docs/overview/index.md       | [overview](./docs/overview/index.md)
 ```
 
-### YAML File Formatting
+### YAML File Formatting and Linting (MANDATORY)
 
-**Run `npx prettier --write <file>` IMMEDIATELY after:**
+> **⚠️ CRITICAL**: YAML linting (yamllint) runs in CI and will **FAIL** on trailing spaces, improper indentation, and style violations. ALWAYS run both Prettier AND yamllint locally after editing ANY YAML file.
 
-- ANY change to YAML files (`.yml`, `.yaml`)
-- Especially for `.github/workflows/*.yml` files
+**Run IMMEDIATELY after ANY change to YAML files (`.yml`, `.yaml`):**
 
 ```bash
-# After editing any YAML file
-npx prettier --write .github/workflows/my-workflow.yml
+# Step 1: Format with Prettier FIRST
+npx prettier --write <file>
 
-# Verify formatting
-npx prettier --check .github/workflows/my-workflow.yml
+# Step 2: Run yamllint to catch style issues (trailing spaces, etc.)
+npm run lint:yaml
 
-# For workflow files, also run actionlint
-actionlint .github/workflows/my-workflow.yml
+# Step 3: For workflow files (.github/workflows/*.yml), also run actionlint
+actionlint .github/workflows/<file>
 ```
 
-> **Note**: YAML lint runs automatically in CI, but formatting issues will cause CI failures. Run Prettier locally to catch issues before pushing.
+**Concrete workflow example:**
+
+```bash
+# Editing .github/workflows/ci.yml
+
+# 1. Make your edits
+# 2. Format with Prettier
+npx prettier --write .github/workflows/ci.yml
+
+# 3. Run yamllint to catch trailing spaces and style issues
+npm run lint:yaml
+
+# 4. Run actionlint to validate workflow syntax
+actionlint .github/workflows/ci.yml
+
+# Only then proceed to next file
+```
+
+**Common yamllint failures (all caught by `npm run lint:yaml`):**
+
+| Issue                  | Error Message          | Fix                                |
+| ---------------------- | ---------------------- | ---------------------------------- |
+| Trailing spaces        | `trailing spaces`      | Remove spaces at end of lines      |
+| Inconsistent indent    | `wrong indentation`    | Use consistent 2-space indentation |
+| Line too long          | `line too long`        | Break long lines (max 200 chars)   |
+| Missing newline at EOF | `no new line at end`   | Add empty line at end of file      |
+| Too many blank lines   | `too many blank lines` | Maximum 1 consecutive blank line   |
+
+> **Note**: Prettier fixes formatting but does NOT catch trailing spaces in multiline strings or some edge cases. yamllint catches ALL trailing space issues.
 
 ### Workflow Changes Workflow
 
 After **ANY** change to `.github/workflows/*.yml`:
 
 ```bash
-# MANDATORY - run actionlint immediately
-actionlint
+# MANDATORY - run all three tools in order
+npx prettier --write .github/workflows/<file>.yml  # Format first
+npm run lint:yaml                                   # Catch trailing spaces
+actionlint                                          # Validate workflow syntax
 
 # Fix ALL errors before committing
-# Common issues: SC2129 (grouped redirects), missing config-name, etc.
+# Common issues: SC2129 (grouped redirects), missing config-name, trailing spaces
 ```
 
 ### C# Changes Workflow
