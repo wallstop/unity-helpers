@@ -135,7 +135,8 @@ fi
 
 # actionlint check for GitHub Actions workflows (only if workflow files changed)
 # This mirrors the actionlint.yml CI workflow
-WORKFLOW_CHANGES=$(git diff --name-only HEAD@{push}..HEAD 2>/dev/null | grep -E '^\.github/workflows/' || true)
+# Use @{upstream} to compare against the remote tracking branch
+WORKFLOW_CHANGES=$(git diff --name-only @{upstream}..HEAD 2>/dev/null | grep -E '^\.github/workflows/' || true)
 if [ -z "$WORKFLOW_CHANGES" ]; then
   # Also check staged/uncommitted workflow changes
   WORKFLOW_CHANGES=$(git diff --name-only HEAD 2>/dev/null | grep -E '^\.github/workflows/' || true)

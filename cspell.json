@@ -1103,7 +1103,11 @@
     "astar",
     "MMM",
     "mmm",
-    "fitme"
+    "fitme",
+    "toupper",
+    "OFS",
+    "img",
+    "elif"
   ],
   "flagWords": [],
   "minWordLength": 3,
