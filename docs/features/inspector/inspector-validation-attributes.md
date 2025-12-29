@@ -1,3 +1,6 @@
+---
+---
+
 # Inspector Validation Attributes
 
 **Protect your data with declarative validation and read-only presentation.**

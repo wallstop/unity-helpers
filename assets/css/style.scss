@@ -1,0 +1,141 @@
+---
+---
+
+@import "jekyll-theme-minimal";
+
+/* Import our custom theme styles */
+@import url("theme.css");
+
+/* ===== FIX: Remove ALL unwanted lines/borders from Jekyll Minimal theme ===== */
+
+/* Hide downloads section entirely - not used */
+ul.downloads,
+.downloads {
+  display: none !important;
+  visibility: hidden !important;
+  height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: none !important;
+  background: transparent !important;
+}
+
+/* Remove borders between download list items (backup if shown) */
+.downloads li {
+  border: none !important;
+  border-right: none !important;
+  border-left: none !important;
+  border-top: none !important;
+  border-bottom: none !important;
+}
+
+.downloads a {
+  border: none !important;
+}
+
+/* Section - remove ALL borders in all states */
+section {
+  border: none !important;
+  border-width: 0 !important;
+  border-style: none !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+/* Header - remove bottom line that appears as "random line" */
+header {
+  border: none !important;
+  border-bottom: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+header ul {
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+header li {
+  border: none !important;
+  border-right: none !important;
+}
+
+header p,
+header h1,
+header a {
+  border: none !important;
+}
+
+/* Footer - remove top line and any borders around "Hosted on GitHub Pages" */
+footer {
+  border: none !important;
+  border-top: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+footer small,
+footer p,
+footer a {
+  border: none !important;
+}
+
+/* Wrapper - ensure no borders leak through */
+.wrapper,
+div.wrapper {
+  border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+/* Responsive: Fix lines that appear at specific breakpoints */
+/* This is critical - the theme adds section borders at max-width: 960px */
+@media print, screen and (max-width: 960px) {
+  section {
+    border: none !important;
+    border-width: 0 !important;
+    border-style: none !important;
+    padding-top: 20px;
+    padding-bottom: 20px;
+    margin-bottom: 20px;
+  }
+
+  header,
+  footer {
+    border: none !important;
+    border-width: 0 !important;
+  }
+
+  header ul {
+    border: none !important;
+  }
+}
+
+@media print, screen and (max-width: 720px) {
+  section,
+  header,
+  footer {
+    border: none !important;
+    border-width: 0 !important;
+  }
+}
+
+@media print, screen and (max-width: 480px) {
+  section,
+  header,
+  footer,
+  .downloads {
+    border: none !important;
+    border-width: 0 !important;
+  }
+}
+
+/* Horizontal rules - use themed color, not default gray */
+hr {
+  border: none !important;
+  border-top: 1px solid var(--border-color) !important;
+  background: var(--border-color) !important;
+  height: 1px !important;
+}

@@ -1,3 +1,6 @@
+---
+---
+
 # 3D Spatial Trees — Concepts and Usage
 
 This approachable guide shows when to use OctTree3D, KdTree3D, and RTree3D, with quick code you can copy.

@@ -1,3 +1,6 @@
+---
+---
+
 # Effects System Tutorial - Build Your First Buff in 5 Minutes
 
 ## What You'll Build

@@ -5,14 +5,14 @@ on:
     branches:
       - main
     paths:
-      - '**.cs'
-      - 'scripts/lint-no-regions.ps1'
-      - '.github/workflows/csharp-no-regions-lint.yml'
+      - "**.cs"
+      - "scripts/lint-no-regions.ps1"
+      - ".github/workflows/csharp-no-regions-lint.yml"
   pull_request:
     paths:
-      - '**.cs'
-      - 'scripts/lint-no-regions.ps1'
-      - '.github/workflows/csharp-no-regions-lint.yml'
+      - "**.cs"
+      - "scripts/lint-no-regions.ps1"
+      - ".github/workflows/csharp-no-regions-lint.yml"
 
 permissions:
   contents: read

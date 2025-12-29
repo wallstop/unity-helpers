@@ -22,7 +22,7 @@ rules:
     spaces: 2
     indent-sequences: consistent
   new-lines:
-    type: dos
+    type: unix
   new-line-at-end-of-file: enable
   trailing-spaces: enable
   empty-lines:

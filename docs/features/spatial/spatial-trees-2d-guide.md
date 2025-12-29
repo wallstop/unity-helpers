@@ -1,3 +1,6 @@
+---
+---
+
 # 2D Spatial Trees — Concepts and Usage
 
 This practical guide complements performance and semantics pages with diagrams and actionable selection advice.

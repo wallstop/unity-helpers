@@ -73,20 +73,20 @@ This single command runs ALL CI/CD checks locally, ensuring your changes will pa
 
 ### Linter Commands by File Type
 
-| File Type Changed         | Command to Run IMMEDIATELY                     | Notes                                                                                 |
-| ------------------------- | ---------------------------------------------- | ------------------------------------------------------------------------------------- |
-| Documentation (`.md`)     | `npx prettier --write <file>`                  | **MANDATORY** — Run FIRST after any edit                                              |
-| Documentation (`.md`)     | `npm run lint:spelling`                        | **🚨 MANDATORY** — #1 CI failure cause; add valid terms to `cspell.json`              |
-| Documentation (`.md`)     | `npm run lint:docs`                            | **CRITICAL** — Validates link targets AND link format (requires `./` or `../` prefix) |
-| Documentation (`.md`)     | `npm run lint:markdown`                        | Markdownlint rules (MD032, MD009, etc.)                                               |
-| JSON/asmdef/asmref        | `npx prettier --write <file>`                  | **MANDATORY** — Prettier formats JSON too                                             |
-| YAML (all `.yml`/`.yaml`) | `npx prettier --write <file>`                  | **MANDATORY** — Prettier formats YAML too                                             |
-| YAML (all `.yml`/`.yaml`) | `npm run lint:yaml`                            | **MANDATORY** — yamllint checks trailing spaces, syntax, style                        |
-| GitHub Workflows (`.yml`) | `actionlint`                                   | **MANDATORY** for `.github/workflows/*.yml`                                           |
-| C# code (`.cs`)           | `dotnet tool run csharpier format .`           | **RUN IMMEDIATELY** after ANY edit (not later)                                        |
-| C# code (`.cs`)           | `npm run lint:spelling`                        | **🚨 MANDATORY** for XML docs and code comments                                       |
-| C# code (`.cs`)           | `npm run lint:csharp-naming`                   | Check for underscore violations                                                       |
-| Test files (`.cs`)        | `pwsh -NoProfile -File scripts/lint-tests.ps1` | **MANDATORY** Track() usage, no manual destroy                                        |
+| File Type Changed         | Command to Run IMMEDIATELY                     | Notes                                                                                    |
+| ------------------------- | ---------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| Documentation (`.md`)     | `npx prettier --write <file>`                  | **MANDATORY** — Run FIRST after any edit                                                 |
+| Documentation (`.md`)     | `npm run lint:spelling`                        | **🚨 MANDATORY** — #1 CI failure cause; add valid terms to `cspell.json`                 |
+| Documentation (`.md`)     | `npm run lint:docs`                            | **CRITICAL** — Validates link targets, format (`./` or `../` prefix), AND absolute paths |
+| Documentation (`.md`)     | `npm run lint:markdown`                        | Markdownlint rules (MD032, MD009, etc.)                                                  |
+| JSON/asmdef/asmref        | `npx prettier --write <file>`                  | **MANDATORY** — Prettier formats JSON too                                                |
+| YAML (all `.yml`/`.yaml`) | `npx prettier --write <file>`                  | **MANDATORY** — Prettier formats YAML too                                                |
+| YAML (all `.yml`/`.yaml`) | `npm run lint:yaml`                            | **MANDATORY** — yamllint checks trailing spaces, syntax, style                           |
+| GitHub Workflows (`.yml`) | `actionlint`                                   | **MANDATORY** for `.github/workflows/*.yml`                                              |
+| C# code (`.cs`)           | `dotnet tool run csharpier format .`           | **RUN IMMEDIATELY** after ANY edit (not later)                                           |
+| C# code (`.cs`)           | `npm run lint:spelling`                        | **🚨 MANDATORY** for XML docs and code comments                                          |
+| C# code (`.cs`)           | `npm run lint:csharp-naming`                   | Check for underscore violations                                                          |
+| Test files (`.cs`)        | `pwsh -NoProfile -File scripts/lint-tests.ps1` | **MANDATORY** Track() usage, no manual destroy                                           |
 
 ### Prettier/Markdown Formatting
 
@@ -173,7 +173,7 @@ npm run lint:markdown  # Markdownlint rules (MD032, MD009, etc.)
 ```
 
 > **🚨 CRITICAL**: Spelling errors are the **#1 cause of CI failures** for documentation changes. ALWAYS run `npm run lint:spelling` IMMEDIATELY after editing ANY markdown file or C# comments.
-
+>
 > **⚠️ IMPORTANT**: `npm run lint:docs` must be run after editing **ANY** markdown file in the entire repository — including `docs/`, the README, the CHANGELOG, the `.llm/` directory, and any other location. This catches broken links, backtick-wrapped markdown references, and the [inline code + link anti-pattern](#markdown-inline-code--link-anti-pattern).
 
 ---
@@ -305,6 +305,8 @@ When writing documentation or code comments with technical terms:
 
 ### Link Validation After Markdown Changes
 
+> **🚨 IMPORTANT**: The doc link linter runs automatically in **pre-commit hooks** and in the **`validate-docs.yml` CI workflow**. Catching issues locally saves time and prevents CI failures.
+
 **Run `npm run lint:docs` IMMEDIATELY after:**
 
 - ANY change to markdown files
@@ -316,18 +318,33 @@ When writing documentation or code comments with technical terms:
 npm run lint:docs
 
 # If errors are found, fix them before proceeding
+# The linter provides helpful fix suggestions in its output!
 ```
+
+**What `npm run lint:docs` catches:**
+
+| Issue Type                      | Description                           | How to Fix                        |
+| ------------------------------- | ------------------------------------- | --------------------------------- |
+| Missing relative prefix         | Link without `./` or `../`            | Add relative prefix to the path   |
+| **Absolute GitHub Pages paths** | Links starting with `/unity-helpers/` | Convert to relative path          |
+| Broken file references          | Path points to non-existent file      | Fix path or create the file       |
+| Inline code with file paths     | File paths in backticks               | Use proper markdown links instead |
+
+> **⚠️ If you see a warning about `/unity-helpers/`**: This is an absolute GitHub Pages path that won't work locally or in other deployment contexts. **Convert to a relative path immediately** using `./` or `../` prefix.
 
 ### Markdown Link Path Requirements
 
 > **🚨🚨🚨 CRITICAL: ALL internal markdown links MUST use `./` or `../` prefix 🚨🚨🚨**
 >
-> This is a **MANDATORY** requirement. The `npm run lint:docs` command validates BOTH:
+> This is a **MANDATORY** requirement. The `npm run lint:docs` command validates:
 >
 > 1. **Link targets exist** — the referenced file must be present
 > 2. **Link format is correct** — paths MUST start with `./` or `../`
+> 3. **No absolute GitHub Pages paths** — paths like `/unity-helpers/...` are detected and flagged
 >
-> **Why this matters**: The Jekyll site uses `jekyll-relative-links` which requires explicit relative paths to resolve links correctly. Bare paths without a relative prefix will NOT work.
+> **Why this matters**: The Jekyll site uses `jekyll-relative-links` which requires explicit relative paths to resolve links correctly. Bare paths without a relative prefix will NOT work. Absolute paths like `/unity-helpers/docs/...` break when the site is accessed locally, in forks, or in different deployment contexts.
+>
+> **CI Integration**: These rules are enforced by the `validate-docs.yml` workflow. Violations **WILL** cause CI failures.
 
 #### Common Mistakes (AVOID THESE)
 
@@ -343,6 +360,10 @@ Refer to [create-test](skills/create-test.md) for details.
 <!-- ❌ WRONG: Path starting with folder name, not ./ -->
 
 Check [features](docs/features/overview.md) for documentation.
+
+<!-- ❌ WRONG: Absolute GitHub Pages path (site-specific) -->
+
+See [overview](/unity-helpers/docs/overview/) for introduction.
 ```
 
 #### Correct Format (ALWAYS DO THIS)
@@ -376,6 +397,7 @@ Link Pattern                       Status     Fix / Explanation
 [text](file.md)                    ❌ WRONG   [text](./file.md)
 [text](folder/file.md)             ❌ WRONG   [text](./folder/file.md)
 [text](skills/file.md)             ❌ WRONG   [text](./skills/file.md)
+[text](/unity-helpers/docs/...)    ❌ WRONG   [text](./docs/...) — absolute paths break portability
 [text](./file.md)                  ✅ OK      Same directory
 [text](./folder/file.md)           ✅ OK      Subdirectory
 [text](../file.md)                 ✅ OK      Parent directory
@@ -440,6 +462,65 @@ actionlint .github/workflows/ci.yml
 | Too many blank lines   | `too many blank lines` | Maximum 1 consecutive blank line   |
 
 > **Note**: Prettier fixes formatting but does NOT catch trailing spaces in multiline strings or some edge cases. yamllint catches ALL trailing space issues.
+
+### Line Ending Configuration Consistency (CRITICAL)
+
+> **🚨🚨🚨 CRITICAL**: Line ending configuration must be synchronized across ALL config files. Mismatches cause CI failures because files are checked out with one line ending but linters expect another.
+
+**The Bug Pattern**: When `.gitattributes` specifies LF for certain files but `.prettierrc.json` uses CRLF globally (without overrides) and `.yamllint.yaml` expects a different ending, CI will fail even though files pass locally.
+
+#### Configuration Files That Control Line Endings
+
+| File               | Purpose                                   | Current YAML Setting         |
+| ------------------ | ----------------------------------------- | ---------------------------- |
+| `.gitattributes`   | Controls git checkout line endings        | `*.yml text eol=lf`          |
+| `.prettierrc.json` | Controls Prettier formatting line endings | `endOfLine: lf` for YAML     |
+| `.yamllint.yaml`   | Controls yamllint line ending validation  | `new-lines: type: unix` (LF) |
+| `.editorconfig`    | Controls IDE line endings for new files   | `end_of_line = lf` for YAML  |
+
+#### Current Line Ending Settings
+
+| File Type                    | Line Ending | Why                                          |
+| ---------------------------- | ----------- | -------------------------------------------- |
+| YAML files (`.yml`, `.yaml`) | LF (unix)   | GitHub Actions runners use LF checkout       |
+| GitHub workflow files        | LF (unix)   | `.github/**` uses LF in `.gitattributes`     |
+| `package.json`               | LF (unix)   | Explicit in `.gitattributes`                 |
+| Most other text files        | CRLF        | Default for cross-platform Unity development |
+
+#### When Modifying Line Ending Configuration
+
+**If you change line endings in ANY config file, you MUST update ALL of them:**
+
+```bash
+# After modifying any line ending configuration
+# Verify YAML files are correct:
+npm run lint:yaml
+npx prettier --check "**/*.yml" "**/*.yaml"
+
+# Verify other files (if applicable):
+npx prettier --check .
+```
+
+#### Common Mismatch Scenarios
+
+| ❌ WRONG Configuration                        | ✅ CORRECT Configuration                         |
+| --------------------------------------------- | ------------------------------------------------ |
+| `.gitattributes` has LF, Prettier uses CRLF   | Both must match (LF for YAML, CRLF for others)   |
+| yamllint expects CRLF, git checks out LF      | yamllint must use `type: unix` for YAML files    |
+| `.editorconfig` differs from `.gitattributes` | Both must specify the same endings per file type |
+
+#### Verification Commands
+
+```bash
+# Verify YAML linting passes (checks line endings)
+npm run lint:yaml
+
+# Verify Prettier formatting (includes line ending check)
+npx prettier --check "**/*.yml" "**/*.yaml"
+
+# Full pre-push validation (catches all issues)
+npm run validate:prepush
+```
 
 ### Workflow Changes Workflow
 
@@ -766,9 +847,11 @@ When CI reports a link error that local linting missed:
    - Links inside complex markdown structures
    - Mixed content on the same line (inline code + links)
 3. **Verify the fix locally:**
+
    ```bash
    npm run lint:docs
    ```
+
 4. **If the pattern is a known false positive**, consider whether the content structure can be refactored
 
 ### Quick Reference: CI Validation Rules
@@ -1533,3 +1616,99 @@ Before committing workflow changes:
 - [ ] Quote all variable expansions in shell scripts
 - [ ] Verify `runs-on` uses valid, available runner labels
 - [ ] Confirm trigger events are spelled correctly and valid for the workflow type
+
+---
+
+## Git Hook Regex Pattern Testing (CRITICAL)
+
+> **🚨🚨🚨 CRITICAL**: Git hook regex patterns require SINGLE backslashes, NOT double-escaped. Double escaping causes patterns to silently match NOTHING, making hooks useless while appearing to work.
+
+### The Problem
+
+In bash git hooks (`.githooks/pre-commit`, `.githooks/pre-push`), grep/sed regex patterns use the standard regex escaping — one backslash:
+
+```bash
+# ✅ CORRECT - Single backslash in grep pattern
+git diff --cached --name-only | grep -E '\.(md|markdown)$'
+
+# ❌ WRONG - Double-escaped backslash (matches NOTHING!)
+git diff --cached --name-only | grep -E '\\.(md|markdown)$'
+```
+
+The double-escaped pattern `\\.(md|markdown)$` looks for a literal backslash followed by a dot, NOT just a dot. Since filenames don't contain literal backslashes, **zero files match** and the hook silently skips all processing.
+
+### Why This Is Dangerous
+
+- **Silent failure**: The hook exits successfully (exit code 0) but does nothing
+- **No warnings**: grep returns empty output, loop iterates zero times
+- **Appears to work**: Commits succeed, pushes succeed — no visible error
+- **CI catches it later**: Files reach CI unformatted, causing failures
+
+### Testing Git Hooks After Modification
+
+**ALWAYS run these tests after modifying ANY git hook:**
+
+```bash
+# 1. Check the pattern matches expected files
+echo "test.md" | grep -E '\.(md|markdown)$'     # Should output: test.md
+echo "test.md" | grep -E '\\.(md|markdown)$'    # Should output: (nothing - WRONG!)
+
+# 2. Test the hook manually with a real file
+# Stage a markdown file
+git add docs/some-file.md
+
+# Run the pre-commit hook manually
+.githooks/pre-commit
+
+# Verify the file was actually processed (check output for the filename)
+
+# 3. Test the full commit cycle
+git commit -m "test: verify hook works" --dry-run --verbose
+```
+
+### Checklist: After Modifying Git Hooks
+
+- [ ] **Verify regex patterns use SINGLE backslashes** (not `\\` when you want `\`)
+- [ ] **Test pattern matching manually** with `echo "filename" | grep -E 'pattern'`
+- [ ] **Run the hook directly** (e.g., `.githooks/pre-commit`) and verify files are processed
+- [ ] **Check hook output** — if it reports "0 files" or skips everything, the pattern is wrong
+- [ ] **Test with actual files** — stage files of each type the hook should process
+- [ ] **Verify CI passes** — run `npm run validate:prepush` before pushing
+- [ ] **Cross-check `.prettierrc.json` overrides** — ensure Prettier overrides match `.gitattributes` for line endings
+
+### Common Escaping Mistakes in Git Hooks
+
+| Pattern Context      | ❌ Wrong (Double-Escaped) | ✅ Correct (Single Backslash) |
+| -------------------- | ------------------------- | ----------------------------- | --------------- | -------- |
+| Match file extension | `grep -E '\\.(md          | json)$'`                      | `grep -E '\.(md | json)$'` |
+| Match any digit      | `grep -E '\\d+'`          | `grep -E '[0-9]+'`            |
+| Match whitespace     | `grep -E '\\s+'`          | `grep -E '[[:space:]]+'`      |
+| Match word boundary  | `grep -E '\\bword\\b'`    | `grep -E '\bword\b'`          |
+
+### Prettier Configuration for `.github/**` Files
+
+When modifying git hooks that format files, ensure `.prettierrc.json` has matching overrides for all file types in `.gitattributes`:
+
+```jsonc
+// .prettierrc.json - MUST include .github/** override for LF
+{
+  "overrides": [
+    {
+      "files": [
+        "*.yml",
+        "*.yaml",
+        ".github/**/*.yml",
+        ".github/**/*.yaml",
+        ".github/**/*.md", // ← Critical! .github/** uses LF per .gitattributes
+        "package.json",
+        "*.sh"
+      ],
+      "options": {
+        "endOfLine": "lf"
+      }
+    }
+  ]
+}
+```
+
+If `.gitattributes` specifies LF for `.github/**` but `.prettierrc.json` doesn't have a matching override, formatted files will have CRLF endings, causing CI failures.

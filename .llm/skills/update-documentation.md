@@ -208,6 +208,32 @@ Check `context` for rules                        Check [context](../context.md) 
 - Some Markdown renderers fail to resolve links without explicit relative paths
 - Consistent link format prevents rendering issues on GitHub Pages
 
+### Absolute GitHub Pages Paths
+
+> ⚠️ **NEVER use absolute GitHub Pages paths like `/unity-helpers/...`**
+
+Even though absolute paths might appear to work on the deployed GitHub Pages site, these paths:
+
+- **FAIL CI validation** — The `lint-doc-links.ps1` script cannot resolve paths starting with `/`
+- **Break local preview** — Absolute paths don't work when previewing docs locally
+- **Are fragile** — If the repository name or base path changes, all links break
+
+```text
+❌ WRONG: Absolute GitHub Pages paths
+────────────────────────────────────────────────────────────────────────────────
+[guide](/unity-helpers/docs/guide.md)           ← Breaks in CI
+[features](/unity-helpers/docs/features/)       ← Cannot be validated
+[API ref](/unity-helpers/docs/api/core.md)      ← Fails lint-doc-links.ps1
+
+✅ CORRECT: Relative paths
+────────────────────────────────────────────────────────────────────────────────
+[guide](./docs/guide.md)                        ← Works everywhere
+[features](./docs/features/)                    ← Validated by linter
+[API ref](../api/core.md)                       ← Portable and correct
+```
+
+**Rule**: Always use relative paths (`./` or `../`) — the `lint-doc-links.ps1` script catches absolute path errors automatically.
+
 ### Required Commands After Markdown Changes
 
 > ⚠️ **RUN IMMEDIATELY**: Execute `npm run lint:docs` right after ANY markdown edit—don't wait until you're "done."
@@ -236,6 +262,7 @@ pwsh ./scripts/lint-doc-links.ps1 -VerboseOutput
 
 - [ ] ✅ All internal links use `./` or `../` prefix
 - [ ] ✅ No bare links like `` `[text](file)` `` — must be `` `[text](./file)` ``
+- [ ] ✅ No absolute GitHub Pages paths like `/unity-helpers/...`
 - [ ] ✅ No backtick-wrapped markdown file references
 - [ ] ✅ Ran `npm run lint:docs` and it passed with zero errors
 - [ ] ✅ All links resolve to existing files
@@ -295,12 +322,77 @@ The button supports...
 - Markdown linters enforce heading structure
 - Table of contents generation requires proper headings
 
+### Prettier vs Markdownlint
+
+> **⚠️ CRITICAL**: Prettier and markdownlint catch DIFFERENT issues. A file can pass Prettier but fail markdownlint. You MUST run BOTH.
+
+| Tool         | Catches                                                  | Misses                                        |
+| ------------ | -------------------------------------------------------- | --------------------------------------------- |
+| Prettier     | Formatting: spacing, indentation, line wrapping          | Structural rules like MD028, MD031            |
+| markdownlint | Structural: heading hierarchy, blank lines, code context | Formatting/spacing issues (Prettier's domain) |
+
+**Workflow for ALL markdown changes:**
+
+```bash
+# STEP 1: Format with Prettier
+npx prettier --write <file>
+
+# STEP 2: Check structural rules with markdownlint
+npm run lint:markdown
+
+# STEP 3: Fix any markdownlint errors, then re-run Prettier if you made changes
+```
+
+### Common Structural Mistakes (Prettier Won't Fix)
+
+#### MD028: Blank Line Inside Blockquote
+
+Consecutive blockquotes separated by blank lines trigger this error:
+
+```markdown
+<!-- ❌ WRONG (MD028) -->
+
+> First quote.
+
+> Second quote.
+
+<!-- ✅ CORRECT: Continuous blockquote -->
+
+> First quote.
+> Second quote.
+```
+
+#### MD031: Fenced Code Blocks Need Blank Lines
+
+Code fences must have blank lines before and after:
+
+```markdown
+<!-- ❌ WRONG (MD031) -->
+
+Some text:
+\`\`\`csharp
+code here
+\`\`\`
+More text.
+
+<!-- ✅ CORRECT -->
+
+Some text:
+
+\`\`\`csharp
+code here
+\`\`\`
+
+More text.
+```
+
 ### Common Markdownlint Rules
 
 | Rule  | Issue                        | Fix                                             |
 | ----- | ---------------------------- | ----------------------------------------------- |
-| MD032 | No blank line around lists   | Add blank line before and after lists           |
+| MD028 | Blank line inside blockquote | Remove blank line between consecutive quotes    |
 | MD031 | No blank line around fences  | Add blank line before and after code blocks     |
+| MD032 | No blank line around lists   | Add blank line before and after lists           |
 | MD022 | No blank line after headings | Add blank line after `#` headings               |
 | MD040 | Fenced code without language | Add language specifier (`csharp`, `bash`, etc.) |
 | MD025 | Multiple top-level headings  | Only one `#` heading per document               |
@@ -671,14 +763,16 @@ public int QueryRadius(Vector2 center, float radius, List<T> results)
 
 ### ❌ Avoid These
 
-| Mistake                         | Why It's Wrong                                |
-| ------------------------------- | --------------------------------------------- |
-| Copy-paste code without testing | Leads to broken examples users can't run      |
-| "See code for details"          | Users shouldn't need to read source           |
-| Outdated parameter names        | Causes confusion when code doesn't match docs |
-| Missing edge case documentation | Users hit unexpected behavior                 |
-| Version info missing            | Users don't know if feature exists            |
-| Overly verbose explanations     | Readers lose focus; key info gets buried      |
+| Mistake                             | Why It's Wrong                                |
+| ----------------------------------- | --------------------------------------------- |
+| Copy-paste code without testing     | Leads to broken examples users can't run      |
+| "See code for details"              | Users shouldn't need to read source           |
+| Outdated parameter names            | Causes confusion when code doesn't match docs |
+| Missing edge case documentation     | Users hit unexpected behavior                 |
+| Version info missing                | Users don't know if feature exists            |
+| Overly verbose explanations         | Readers lose focus; key info gets buried      |
+| Absolute paths (`/unity-helpers/…`) | Breaks CI validation and local preview        |
+| Links without `./` or `../` prefix  | Fails `lint-doc-links.ps1`, rejected by CI    |
 
 ### ✅ Do These Instead
 

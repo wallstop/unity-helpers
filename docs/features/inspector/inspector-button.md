@@ -1,3 +1,6 @@
+---
+---
+
 # Inspector Buttons (WButton)
 
 **Execute methods from the inspector with one click.**

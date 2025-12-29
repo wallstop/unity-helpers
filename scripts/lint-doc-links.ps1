@@ -86,6 +86,12 @@ function Resolve-LocalPath {
         $normalized = $normalized.Substring(0, $cutIndex)
     }
 
+    # Strip GitHub Pages baseurl prefix if present
+    # This handles absolute paths like /unity-helpers/docs/images/...
+    if ($normalized.StartsWith('/unity-helpers/')) {
+        $normalized = $normalized.Substring('/unity-helpers'.Length)
+    }
+
     while ($normalized.StartsWith('./')) {
         $normalized = $normalized.Substring(2)
     }
@@ -144,6 +150,11 @@ $definitionPattern = [regex]'^\s*\[(?<label>[^\]]+)\]:\s*(?<rest>.+)$'
 # ensures we catch all internal links that need the relative prefix, while correctly
 # skipping external links regardless of their scheme.
 $missingRelativePrefixPattern = [regex]'\]\((?<target>[a-zA-Z][^)]*)\)'
+
+# Pattern to detect absolute GitHub Pages paths that won't work in CI
+# Links like /unity-helpers/ or /unity-helpers/docs/... break when validated locally
+# because /unity-helpers is the GitHub Pages site baseurl, not a real directory
+$absoluteGitHubPagesPrefixPattern = [regex]'\]\((?<target>/unity-helpers(?:/[^)]*)?)\)'
 
 $violationCount = 0
 $codeDocsPattern = [regex]'(?i)docs[\\/][A-Za-z0-9._/\\-]+\.md(?:#[A-Za-z0-9_\-]+)?'
@@ -245,6 +256,19 @@ $mdFiles | ForEach-Object {
             }
         }
 
+        # Check for absolute GitHub Pages paths (e.g., /unity-helpers/ or /unity-helpers/docs/...)
+        # These break in CI because /unity-helpers is the GitHub Pages baseurl, not a real directory
+        # IMPORTANT: First strip inline code (backticks) to avoid false positives from example links
+        $lineWithoutInlineCode = $line -replace '``[^`]*``', '' -replace '`[^`]*`', ''
+        foreach ($match in $absoluteGitHubPagesPrefixPattern.Matches($lineWithoutInlineCode)) {
+            $target = $match.Groups['target'].Value
+            $violationCount++
+            # Provide helpful fix suggestion
+            $suggestedFix = $target -replace '^/unity-helpers/?', './'
+            if ($suggestedFix -eq './') { $suggestedFix = './README.md' }
+            Write-Violation -File $file -LineNumber $lineNo -Message "Absolute GitHub Pages path '$target' will break in CI; use relative path instead (e.g., '$suggestedFix')" -Line $line
+        }
+
         # Check for internal links missing ./ or ../ relative prefix
         # This is CRITICAL for GitHub Pages - jekyll-relative-links requires explicit relative paths
         # Skip: external links (http/https/mailto), anchors (#), images (!), and links already with ./
@@ -254,7 +278,6 @@ $mdFiles | ForEach-Object {
         # - Triple+ backticks on same line may have unexpected interactions
         # - Nested backticks are not standard markdown
         # The -replace pattern removes double-backtick spans first (``text``), then single spans
-        $lineWithoutInlineCode = $line -replace '``[^`]*``', '' -replace '`[^`]*`', ''
         foreach ($match in $missingRelativePrefixPattern.Matches($lineWithoutInlineCode)) {
             $target = $match.Groups['target'].Value
             # Skip external links (http:// https:// mailto: etc.)

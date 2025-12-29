@@ -1,21 +1,9 @@
----
 name: Deploy Documentation to GitHub Pages
 
 "on":
   push:
     branches:
       - main
-    paths:
-      - "docs/**"
-      - "README.md"
-      - "CHANGELOG.md"
-      - "index.md"
-      - ".github/workflows/deploy-pages.yml"
-      - "_config.yml"
-      - "_includes/**"
-      - "Gemfile"
-      - "Gemfile.lock"
-      - "assets/**"
   workflow_dispatch:
     inputs:
       debug_enabled:

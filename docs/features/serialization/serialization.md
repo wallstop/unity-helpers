@@ -1,3 +1,6 @@
+---
+---
+
 # Serialization Guide
 
 ## TL;DR — What Problem This Solves

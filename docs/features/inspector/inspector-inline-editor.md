@@ -1,3 +1,6 @@
+---
+---
+
 # Inspector Inline Editor (WInLineEditor)
 
 **Edit nested objects without losing context.**

@@ -399,6 +399,27 @@ Verbose output includes:
 
 When writing pre-commit hooks:
 
+### Git Hook Regex Patterns (CRITICAL)
+
+> **🚨 CRITICAL**: Regex patterns in bash git hooks require SINGLE backslashes. Double escaping causes patterns to match NOTHING silently!
+
+```bash
+# ✅ CORRECT - Single backslash
+git diff --cached --name-only | grep -E '\.(md|markdown)$'
+
+# ❌ WRONG - Double-escaped (matches nothing!)
+git diff --cached --name-only | grep -E '\\.(md|markdown)$'
+```
+
+**ALWAYS test patterns manually after modification:**
+
+```bash
+# Test that pattern matches expected files
+echo "test.md" | grep -E '\.(md|markdown)$'  # Should output: test.md
+```
+
+See [validate-before-commit](./validate-before-commit.md#git-hook-regex-pattern-testing-critical) for full testing checklist.
+
 ### Capture State Early
 
 ```bash

@@ -1,3 +1,6 @@
+---
+---
+
 # Glossary
 
 Quick reference for terms used throughout Unity Helpers documentation.

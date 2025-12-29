@@ -81,38 +81,104 @@ if ! command -v npx >/dev/null 2>&1; then
   exit 1
 fi
 
-STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACM)
+# ============================================================================
+# SECURITY: Safe file list handling
+# ============================================================================
+# File lists are read using null-delimited (-z) output from git and stored in
+# bash arrays. This prevents shell injection attacks via crafted filenames
+# containing spaces, newlines, semicolons, or other special characters.
+#
+# Pattern: git diff -z | while IFS= read -r -d '' file; do array+=("$file"); done
+# This ensures each filename is treated as a single atomic argument, regardless
+# of what characters it contains.
+# ============================================================================
 
-# Collect file lists
-MD_FILES=$(echo "$STAGED_FILES" | grep -E '\\.(md|markdown)$' || true)
-JSON_FILES=$(echo "$STAGED_FILES" | grep -E '\\.(json|asmdef|asmref)$' || true)
-YAML_FILES=$(echo "$STAGED_FILES" | grep -E '\\.(yml|yaml)$' || true)
+# Read staged files into an array safely using null-delimited output
+STAGED_FILES_ARRAY=()
+while IFS= read -r -d '' file; do
+    STAGED_FILES_ARRAY+=("$file")
+done < <(git diff --cached --name-only --diff-filter=ACM -z)
+
+# Filter files into type-specific arrays
+MD_FILES_ARRAY=()
+JSON_FILES_ARRAY=()
+YAML_FILES_ARRAY=()
+CS_FILES_ARRAY=()
+SPELL_FILES_ARRAY=()
+
+for file in "${STAGED_FILES_ARRAY[@]}"; do
+    case "$file" in
+        *.md|*.markdown)
+            MD_FILES_ARRAY+=("$file")
+            SPELL_FILES_ARRAY+=("$file")
+            ;;
+        *.json|*.asmdef|*.asmref)
+            JSON_FILES_ARRAY+=("$file")
+            SPELL_FILES_ARRAY+=("$file")
+            ;;
+        *.yml|*.yaml)
+            YAML_FILES_ARRAY+=("$file")
+            SPELL_FILES_ARRAY+=("$file")
+            ;;
+        *.cs)
+            CS_FILES_ARRAY+=("$file")
+            SPELL_FILES_ARRAY+=("$file")
+            ;;
+    esac
+done
+
+# ============================================================================
+# LINE ENDING CONFIGURATION
+# ============================================================================
+# Most files use CRLF (C#, JSON, Markdown) - see .gitattributes.
+# 
+# EXCEPTIONS that MUST use LF:
+#   - YAML files (.yml, .yaml) - cross-platform compatibility
+#   - Shell scripts (.sh) - Unix requirement
+#   - .github/** ALL files - GitHub Actions run on Linux, Dependabot commits LF
+#     This includes .github/*.md files (copilot-instructions.md, etc.)
+#
+# The normalize-eol.ps1 script (step 1) handles this automatically.
+# Prettier uses .prettierrc.json overrides for LF files.
+# If you see EOL-related CI failures, run: npm run fix:eol
+# ============================================================================
 
 # Prettier format and re-add using retry logic to handle index.lock contention
-if [ -n "$MD_FILES" ]; then
-  echo "$MD_FILES" | xargs npx --no-install prettier --write --log-level warn
+if [ ${#MD_FILES_ARRAY[@]} -gt 0 ]; then
+  npx --no-install prettier --write --log-level warn "${MD_FILES_ARRAY[@]}"
+  # Verify formatting was successful before re-staging
+  if ! npx --no-install prettier --check "${MD_FILES_ARRAY[@]}" >/dev/null 2>&1; then
+    echo "Error: Prettier formatting verification failed for Markdown files." >&2
+    exit 1
+  fi
   # Use git_add_with_retry to handle concurrent git operations safely
-  # shellcheck disable=SC2086
-  git_add_with_retry $MD_FILES
+  git_add_with_retry "${MD_FILES_ARRAY[@]}"
 fi
 
-if [ -n "$JSON_FILES" ]; then
-  echo "$JSON_FILES" | xargs npx --no-install prettier --write --log-level warn
+if [ ${#JSON_FILES_ARRAY[@]} -gt 0 ]; then
+  npx --no-install prettier --write --log-level warn "${JSON_FILES_ARRAY[@]}"
+  # Verify formatting was successful before re-staging
+  if ! npx --no-install prettier --check "${JSON_FILES_ARRAY[@]}" >/dev/null 2>&1; then
+    echo "Error: Prettier formatting verification failed for JSON files." >&2
+    exit 1
+  fi
   # Use git_add_with_retry to handle concurrent git operations safely
-  # shellcheck disable=SC2086
-  git_add_with_retry $JSON_FILES
+  git_add_with_retry "${JSON_FILES_ARRAY[@]}"
 fi
 
-if [ -n "$YAML_FILES" ]; then
-  echo "$YAML_FILES" | xargs npx --no-install prettier --write --log-level warn
+if [ ${#YAML_FILES_ARRAY[@]} -gt 0 ]; then
+  npx --no-install prettier --write --log-level warn "${YAML_FILES_ARRAY[@]}"
+  # Verify formatting was successful before re-staging
+  if ! npx --no-install prettier --check "${YAML_FILES_ARRAY[@]}" >/dev/null 2>&1; then
+    echo "Error: Prettier formatting verification failed for YAML files." >&2
+    exit 1
+  fi
   # Use git_add_with_retry to handle concurrent git operations safely
-  # shellcheck disable=SC2086
-  git_add_with_retry $YAML_FILES
+  git_add_with_retry "${YAML_FILES_ARRAY[@]}"
 fi
 
 # 5) Format staged C# files with CSharpier (if available) and re-stage
-CS_FILES=$(echo "$STAGED_FILES" | grep -E '\\\.cs$' || true)
-if [ -n "$CS_FILES" ]; then
+if [ ${#CS_FILES_ARRAY[@]} -gt 0 ]; then
   if command -v pwsh >/dev/null 2>&1; then
     pwsh -NoProfile -File scripts/format-staged-csharp.ps1
   elif command -v powershell >/dev/null 2>&1; then
@@ -123,14 +189,19 @@ if [ -n "$CS_FILES" ]; then
 fi
 
 # 6) Markdown lint for staged Markdown files
-if [ -n "$MD_FILES" ]; then
-  npx --no-install markdownlint $MD_FILES --config .markdownlint.json --ignore-path .markdownlintignore
+if [ ${#MD_FILES_ARRAY[@]} -gt 0 ]; then
+  # First, auto-fix what can be fixed
+  npx --no-install markdownlint --fix "${MD_FILES_ARRAY[@]}" --config .markdownlint.json --ignore-path .markdownlintignore || true
+  # Re-stage the fixed files
+  git_add_with_retry "${MD_FILES_ARRAY[@]}"
+  # Then run markdownlint again to catch any remaining unfixable issues
+  npx --no-install markdownlint "${MD_FILES_ARRAY[@]}" --config .markdownlint.json --ignore-path .markdownlintignore
 fi
 
 # 7) YAML lint on staged YAML files
-if [ -n "$YAML_FILES" ]; then
+if [ ${#YAML_FILES_ARRAY[@]} -gt 0 ]; then
   if command -v yamllint >/dev/null 2>&1; then
-    echo "$YAML_FILES" | xargs yamllint -c .yamllint.yaml
+    yamllint -c .yamllint.yaml "${YAML_FILES_ARRAY[@]}"
   else
     echo "yamllint not found; skipping YAML lint (run 'npm run verify:tools' to check setup)." >&2
   fi
@@ -138,13 +209,11 @@ fi
 
 # 8) Spell check staged files with cspell
 # Runs on markdown, code, and config files
-SPELL_FILES=$(echo "$STAGED_FILES" | grep -E '\.(md|cs|json|yaml|yml)$' || true)
-if [ -n "$SPELL_FILES" ]; then
+if [ ${#SPELL_FILES_ARRAY[@]} -gt 0 ]; then
   if npx --no-install cspell --version >/dev/null 2>&1; then
     echo "Running spell check on staged files..."
     # Use --no-must-find-files to avoid errors when files are filtered by cspell config
-    # shellcheck disable=SC2086
-    npx --no-install cspell lint --no-must-find-files --no-progress $SPELL_FILES || {
+    npx --no-install cspell lint --no-must-find-files --no-progress "${SPELL_FILES_ARRAY[@]}" || {
       echo "Spell check failed. Fix spelling errors or add words to cspell.json." >&2
       exit 1
     }

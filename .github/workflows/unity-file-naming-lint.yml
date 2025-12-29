@@ -5,14 +5,14 @@ on:
     branches:
       - main
     paths:
-      - '**.cs'
-      - 'scripts/lint-unity-file-naming.ps1'
-      - '.github/workflows/unity-file-naming-lint.yml'
+      - "**.cs"
+      - "scripts/lint-unity-file-naming.ps1"
+      - ".github/workflows/unity-file-naming-lint.yml"
   pull_request:
     paths:
-      - '**.cs'
-      - 'scripts/lint-unity-file-naming.ps1'
-      - '.github/workflows/unity-file-naming-lint.yml'
+      - "**.cs"
+      - "scripts/lint-unity-file-naming.ps1"
+      - ".github/workflows/unity-file-naming-lint.yml"
 
 permissions:
   contents: read

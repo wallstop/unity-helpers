@@ -15,6 +15,21 @@
       "options": {
         "parser": "json"
       }
+    },
+    {
+      "files": [
+        "*.yml",
+        "*.yaml",
+        ".github/**/*.yml",
+        ".github/**/*.yaml",
+        ".github/**/*.md",
+        "package.json",
+        "package-lock.json",
+        "*.sh"
+      ],
+      "options": {
+        "endOfLine": "lf"
+      }
     }
   ]
 }
