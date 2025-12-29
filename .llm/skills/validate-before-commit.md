@@ -1473,6 +1473,190 @@ actionlint with shellcheck integration may not catch this pattern. Manually revi
 
 ---
 
+### Subshell Variable Propagation (CRITICAL)
+
+> **⚠️ CRITICAL**: Variables modified inside a pipeline or `while read` loop do NOT propagate to the parent shell. This causes silent bugs where counters/state changes are lost.
+
+**The Problem:**
+
+When you pipe data into a `while read` loop, bash creates a **subshell** to execute the loop. Any variables set or modified inside the loop exist only in that subshell and are lost when the loop ends.
+
+```yaml
+# ❌ BUG - Variable modified in subshell, parent sees original value
+- name: Count errors
+  run: |
+    set -euo pipefail
+    errors=0
+
+    # WARNING: while loop runs in a subshell due to pipe!
+    find . -name "*.md" -print0 | while IFS= read -r -d '' file; do
+      if ! validate "$file"; then
+        errors=$((errors + 1))  # ← This modifies subshell's copy!
+      fi
+    done
+
+    echo "Found $errors errors"  # ← ALWAYS PRINTS 0!
+    if [ "$errors" -gt 0 ]; then exit 1; fi  # ← NEVER FAILS!
+```
+
+**Why This Happens:**
+
+The pipe (`|`) creates a subshell for the right side. Variables modified in that subshell don't affect the parent:
+
+```bash
+count=0
+echo "a b c" | while read -r word; do
+  count=$((count + 1))  # Subshell's count is now 1, 2, 3...
+done
+echo $count  # Prints: 0 (parent's count unchanged!)
+```
+
+**Safe Alternatives:**
+
+| Pattern                      | Description                              | Recommendation     |
+| ---------------------------- | ---------------------------------------- | ------------------ |
+| Process substitution         | `while read ... done < <(cmd)`           | **RECOMMENDED**    |
+| Temp file for counter        | Write count to file, read back in parent | Reliable           |
+| Process substitution + shopt | `shopt -s lastpipe` (bash 4.2+ only)     | Not portable       |
+| Output accumulation          | Echo results, count lines in parent      | Works for counting |
+
+#### Pattern 1: Process Substitution (RECOMMENDED)
+
+```yaml
+# ✅ CORRECT - Process substitution avoids subshell for the loop
+- name: Count errors
+  run: |
+    set -euo pipefail
+    errors=0
+
+    # Process substitution keeps loop in parent shell
+    while IFS= read -r -d '' file; do
+      if ! validate "$file"; then
+        errors=$((errors + 1))
+      fi
+    done < <(find . -name "*.md" -print0)
+
+    echo "Found $errors errors"  # ← Now works correctly!
+    if [ "$errors" -gt 0 ]; then exit 1; fi
+```
+
+#### Pattern 2: Temp File Counter (Most Reliable)
+
+```yaml
+# ✅ CORRECT - Temp file persists across subshell boundaries
+- name: Count errors
+  run: |
+    set -euo pipefail
+
+    # Use temp file to persist counter across subshells
+    error_file=$(mktemp)
+    echo "0" > "$error_file"
+
+    find . -name "*.md" -print0 | while IFS= read -r -d '' file; do
+      if ! validate "$file"; then
+        # Read, increment, write back to temp file
+        count=$(cat "$error_file")
+        echo $((count + 1)) > "$error_file"
+      fi
+    done
+
+    errors=$(cat "$error_file")
+    rm -f "$error_file"
+
+    echo "Found $errors errors"  # ← Works reliably!
+    if [ "$errors" -gt 0 ]; then exit 1; fi
+```
+
+#### Pattern 3: Output Accumulation
+
+```yaml
+# ✅ CORRECT - Accumulate output, count in parent
+- name: Find broken links
+  run: |
+    set -euo pipefail
+
+    # Collect broken links (each on own line)
+    broken_links=$(find . -name "*.md" -print0 | while IFS= read -r -d '' file; do
+      if ! validate "$file"; then
+        echo "$file"  # Output broken files
+      fi
+    done || true)
+
+    # Count in parent shell
+    if [ -n "$broken_links" ]; then
+      error_count=$(echo "$broken_links" | wc -l)
+      echo "Found $error_count broken links:"
+      echo "$broken_links"
+      exit 1
+    fi
+
+    echo "All links valid"
+```
+
+**When to Watch Out:**
+
+- Any `cmd | while read` pattern
+- Counter/accumulator variables in pipelines
+- State tracking inside loops fed by pipes
+- Any variable you need AFTER a piped loop
+
+**Common Bug Pattern — Unused Variable Due to Subshell:**
+
+```yaml
+# ❌ BUG - sidebar_errors is set but NEVER used (Copilot will flag this)
+sidebar_errors=0
+grep ... | while read -r page; do
+  sidebar_errors=$((sidebar_errors + 1))  # Modifies subshell copy
+done
+# sidebar_errors is still 0 here, so any check using it is broken!
+```
+
+**Detection:**
+
+- Copilot code review flags variables that appear unused
+- shellcheck may warn about variables set but not used
+- Manually review any variable incremented inside `while read` loops with pipes
+
+---
+
+### Hardcoded Executable Paths (Portability)
+
+> **⚠️ CRITICAL**: Never use absolute paths like `/bin/sed` or `/usr/bin/awk` in scripts. Use bare command names and let PATH resolution find the correct binary.
+
+**The Problem:**
+
+Different operating systems and container images have executables in different locations:
+
+- Ubuntu: `/bin/sed`, `/usr/bin/awk`
+- Alpine: `/bin/sed` (BusyBox), `/usr/bin/awk` (may not exist)
+- macOS: `/usr/bin/sed`, `/usr/bin/awk`
+
+```yaml
+# ❌ BUG - Hardcoded path may not exist on all runners
+- name: Process files
+  run: |
+    echo "$content" | /bin/sed 's/old/new/'        # ← Fails on some images
+    echo "$data" | /usr/bin/awk '{print $1}'       # ← Fails on some images
+```
+
+#### Fix: Use Bare Command Names
+
+```yaml
+# ✅ CORRECT - Let PATH find the right binary
+- name: Process files
+  run: |
+    echo "$content" | sed 's/old/new/'
+    echo "$data" | awk '{print $1}'
+```
+
+**Detection:**
+
+- Copilot code review flags hardcoded paths
+- grep for `/bin/`, `/usr/bin/` in workflow files
+- actionlint may warn about non-portable commands
+
+---
+
 ### Portable Shell Scripting in Workflows (CRITICAL)
 
 > **⚠️ CRITICAL**: CI/CD workflows run on various platforms. Scripts MUST use POSIX-compliant commands to ensure portability across Linux, macOS runners, and different shell implementations.

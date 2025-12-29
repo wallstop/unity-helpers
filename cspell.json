@@ -1107,7 +1107,10 @@
     "toupper",
     "OFS",
     "img",
-    "elif"
+    "elif",
+    "mdfile",
+    "num",
+    "shopt"
   ],
   "flagWords": [],
   "minWordLength": 3,

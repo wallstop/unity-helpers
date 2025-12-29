@@ -217,14 +217,17 @@ jobs:
             local display="$wiki_name"
 
             # Remove top-level category prefix (Features, Overview, Performance, Guides, Project)
-            display=$(echo "$display" | /bin/sed -E 's/^(Features|Overview|Performance|Guides|Project)-//')
+            # Using sed for extended regex alternation which can't be done with bash substitution
+            # shellcheck disable=SC2001
+            display=$(echo "$display" | sed -E 's/^(Features|Overview|Performance|Guides|Project)-//')
 
             # Remove subcategory prefix only if it matches known subcategories
             # This preserves context for files like "Utilities-Data-Structures" -> "Data Structures"
-            display=$(echo "$display" | /bin/sed -E 's/^(Inspector|Effects|Relational-Components|Serialization|Spatial|Logging|Utilities|Editor-Tools)-//')
+            # shellcheck disable=SC2001
+            display=$(echo "$display" | sed -E 's/^(Inspector|Effects|Relational-Components|Serialization|Spatial|Logging|Utilities|Editor-Tools)-//')
 
             # Convert remaining dashes to spaces
-            display=$(echo "$display" | /bin/sed 's/-/ /g')
+            display="${display//-/ }"
             echo "$display"
           }
 
@@ -395,23 +398,18 @@ jobs:
           # Validate sidebar links - ensure all [[PageName]] references have corresponding files
           echo ""
           echo "Validating sidebar links..."
-          sidebar_errors=0
           if [ -f "_Sidebar.md" ]; then
-            # Extract all [[PageName|...]] patterns from sidebar
-            grep -oE '\[\[[A-Za-z0-9-]+' _Sidebar.md | /bin/sed 's/\[\[//' | sort -u | while read -r page; do
-              if [ ! -f "$page.md" ]; then
-                echo "::error::Sidebar references non-existent page: $page"
-                sidebar_errors=$((sidebar_errors + 1))
-              fi
-            done
-            # Note: sidebar_errors doesn't propagate due to subshell, so we re-check
-            missing_pages=$(grep -oE '\[\[[A-Za-z0-9-]+' _Sidebar.md | /bin/sed 's/\[\[//' | sort -u | while read -r page; do
+            # Extract all [[PageName|...]] patterns and check each exists
+            # Using process substitution with a temp file to avoid subshell variable issues
+            missing_pages=$(grep -oE '\[\[[A-Za-z0-9-]+' _Sidebar.md | sed 's/\[\[//' | sort -u | while read -r page; do
               [ ! -f "$page.md" ] && echo "$page"
-            done)
+            done || true)
             if [ -n "$missing_pages" ]; then
               echo "Missing pages referenced in sidebar:"
               echo "$missing_pages"
-              errors=$((errors + $(echo "$missing_pages" | wc -l)))
+              # Count missing pages and add to errors
+              missing_count=$(echo "$missing_pages" | grep -c . || echo "0")
+              errors=$((errors + missing_count))
             fi
           fi
 
@@ -429,7 +427,7 @@ jobs:
           # List all generated wiki pages for debugging
           echo ""
           echo "📄 Generated wiki pages:"
-          find . -name "*.md" -type f | sort | /bin/sed 's|^\./||'
+          find . -name "*.md" -type f | sort | sed 's|^\./||'
 
           if [ "$errors" -gt 0 ]; then
             echo "::error::Validation failed with $errors errors"

@@ -78,8 +78,8 @@ jobs:
             # 1. Replace / with -
             # 2. Remove .md extension
             # 3. Capitalize first letter of each segment
-            wiki_name=$(echo "$file" | /bin/sed 's|/|-|g' | /bin/sed 's|\.md$||')
-            wiki_name=$(echo "$wiki_name" | /usr/bin/awk -F'-' '{for(i=1;i<=NF;i++){$i=toupper(substr($i,1,1))substr($i,2)}}1' OFS='-')
+            wiki_name=$(echo "$file" | sed 's|/|-|g' | sed 's|\.md$||')
+            wiki_name=$(echo "$wiki_name" | awk -F'-' '{for(i=1;i<=NF;i++){$i=toupper(substr($i,1,1))substr($i,2)}}1' OFS='-')
 
             echo "  $file -> $wiki_name.md"
           done
@@ -134,7 +134,17 @@ jobs:
           set -euo pipefail
 
           echo "🔗 Validating internal documentation links..."
-          errors=0
+
+          # URL-decode function (handles %XX encoding like %20 for spaces)
+          urldecode() {
+            local url_encoded="${1//+/ }"
+            printf '%b' "${url_encoded//%/\\x}"
+          }
+
+          # Track errors using a temp file to avoid subshell variable issues
+          # Variables set inside while loops don't propagate to parent shell
+          error_file=$(mktemp)
+          echo "0" > "$error_file"
 
           # Check that links between docs files are valid
           while IFS= read -r -d '' file; do
@@ -146,19 +156,34 @@ jobs:
               dir=$(dirname "$file")
 
               for link in $links; do
-                # Extract path from link
-                path=$(echo "$link" | /bin/sed 's/^](//' | /bin/sed 's/)$//')
+                # Extract path from link (use sed without hardcoded path for portability)
+                path=$(echo "$link" | sed 's/^](//' | sed 's/)$//')
+
+                # URL-decode the path (handles %20 for spaces, etc.)
+                decoded_path=$(urldecode "$path")
+
+                # Skip Samples~ folder links - these are Unity Package Manager samples
+                # that exist but are intentionally excluded from git in some configs
+                # and may not resolve correctly due to the ~ in the path
+                if [[ "$decoded_path" == *"Samples~"* ]]; then
+                  continue
+                fi
 
                 # Resolve relative path
-                full_path=$(cd "$dir" && realpath -m "$path" 2>/dev/null || echo "INVALID")
+                full_path=$(cd "$dir" && realpath -m "$decoded_path" 2>/dev/null || echo "INVALID")
 
                 if [ "$full_path" = "INVALID" ] || [ ! -f "$full_path" ]; then
                   echo "::error file=$file::Broken link: $path"
-                  errors=$((errors + 1))
+                  # Increment error count using temp file (avoids subshell issues)
+                  count=$(cat "$error_file")
+                  echo $((count + 1)) > "$error_file"
                 fi
               done
             fi
           done < <(find docs -name "*.md" -type f ! -name "*.meta" -print0)
+
+          errors=$(cat "$error_file")
+          rm -f "$error_file"
 
           if [ "$errors" -gt 0 ]; then
             echo "::error::Found $errors broken internal links"
