@@ -1969,12 +1969,12 @@ git commit -m "test: verify hook works" --dry-run --verbose
 
 ### Common Escaping Mistakes in Git Hooks
 
-| Pattern Context      | ❌ Wrong (Double-Escaped) | ✅ Correct (Single Backslash) |
-| -------------------- | ------------------------- | ----------------------------- | --------------- | -------- |
-| Match file extension | `grep -E '\\.(md          | json)$'`                      | `grep -E '\.(md | json)$'` |
-| Match any digit      | `grep -E '\\d+'`          | `grep -E '[0-9]+'`            |
-| Match whitespace     | `grep -E '\\s+'`          | `grep -E '[[:space:]]+'`      |
-| Match word boundary  | `grep -E '\\bword\\b'`    | `grep -E '\bword\b'`          |
+| Pattern Context      | ❌ Wrong (Double-Escaped)  | ✅ Correct (Single Backslash) |
+| -------------------- | -------------------------- | ----------------------------- |
+| Match file extension | `grep -E '\\.(md\|json)$'` | `grep -E '\.(md\|json)$'`     |
+| Match any digit      | `grep -E '\\d+'`           | `grep -E '[0-9]+'`            |
+| Match whitespace     | `grep -E '\\s+'`           | `grep -E '[[:space:]]+'`      |
+| Match word boundary  | `grep -E '\\bword\\b'`     | `grep -E '\bword\b'`          |
 
 ### Prettier Configuration for `.github/**` Files
 
