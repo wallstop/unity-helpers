@@ -138,7 +138,7 @@ body {
 
 header {
   background-color: var(--bg-primary) !important;
-  border-bottom: 1px solid var(--border-color) !important;
+  border: none !important;
 }
 
 header h1 {
@@ -151,7 +151,7 @@ section {
 
 footer {
   background-color: var(--bg-primary) !important;
-  border-top: 1px solid var(--border-color) !important;
+  border: none !important;
 }
 
 /* Minimal theme logo/banner specific overrides */
@@ -340,7 +340,7 @@ hr {
 /* Header section styling */
 header {
   background-color: var(--bg-primary) !important;
-  border-bottom: 1px solid var(--border-color);
+  border: none !important;
   padding-bottom: 20px;
   margin-bottom: 20px;
 }
@@ -357,7 +357,7 @@ section {
 /* Footer */
 footer {
   background-color: var(--bg-primary) !important;
-  border-top: 1px solid var(--border-color);
+  border: none !important;
   color: var(--text-muted) !important;
 }
 

@@ -1,3 +1,6 @@
+---
+---
+
 # Visual Components Guide
 
 ## TL;DR — Why Use These
@@ -329,7 +332,7 @@ image.shapeMask = myMaskTexture; // Black areas are transparent
 ## Related Documentation
 
 - [Editor Tools Guide](../editor-tools/editor-tools-guide.md) - EnhancedImage editor integration
-- [Samples](../../../Samples~/) - Example projects for each component
+- [Samples](https://github.com/wallstop/unity-helpers/tree/main/Samples~) - Example projects for each component
 - [Math & Extensions](../utilities/math-and-extensions.md) - Color utilities used internally
 
 ---

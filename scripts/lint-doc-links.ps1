@@ -86,6 +86,12 @@ function Resolve-LocalPath {
         $normalized = $normalized.Substring(0, $cutIndex)
     }
 
+    # Strip GitHub Pages baseurl prefix if present
+    # This handles absolute paths like /unity-helpers/docs/images/...
+    if ($normalized.StartsWith('/unity-helpers/')) {
+        $normalized = $normalized.Substring('/unity-helpers'.Length)
+    }
+
     while ($normalized.StartsWith('./')) {
         $normalized = $normalized.Substring(2)
     }

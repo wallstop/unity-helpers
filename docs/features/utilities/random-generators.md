@@ -1,3 +1,6 @@
+---
+---
+
 # Random Number Generators
 
 **TL;DR:** Use `PRNG.Instance` for 10-15x faster random generation than `UnityEngine.Random`, with a rich API for vectors, colors, weighted selection, and more.
@@ -252,4 +255,4 @@ void Update()
 
 - [Random Performance Benchmarks](../../performance/random-performance.md)
 - [Math & Extensions](./math-and-extensions.md)
-- [README - Random Generators](../../../README.md#random-number-generators)
+- [README - Random Generators](/unity-helpers/#random-number-generators)

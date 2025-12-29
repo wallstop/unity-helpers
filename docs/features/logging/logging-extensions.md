@@ -1,3 +1,6 @@
+---
+---
+
 # Unity Logging Extensions & Tag Formatter
 
 Bring structured, color-coded logs to any Unity project without sprinkling `Debug.Log` everywhere. `WallstopStudiosLogger` adds extension methods (`this.Log`, `this.LogWarn`, `this.LogError`, `this.LogDebug`) that automatically capture component metadata, thread info, timestamps, and user-defined tags rendered by `UnityLogTagFormatter`.

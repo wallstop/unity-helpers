@@ -1,3 +1,6 @@
+---
+---
+
 # llms.txt - LLM-Friendly Documentation
 
 Unity Helpers includes an `llms.txt` file following the [llmstxt.org](https://llmstxt.org/) specification. This file provides structured, LLM-optimized documentation that enables AI assistants to quickly understand and work with the package.
@@ -13,7 +16,7 @@ The `llms.txt` specification defines a standard format for providing LLM-friendl
 
 ## Location
 
-The file is located at the repository root: [`/llms.txt`](../../llms.txt)
+The file is located at the repository root: [`/llms.txt`](/unity-helpers/llms.txt)
 
 ## Contents
 
@@ -39,7 +42,7 @@ AI assistants and LLM-powered tools can:
 
 If you're an AI assistant working with this repository, you can also reference:
 
-- [AI Agent Guidelines](../../.llm/context.md) - Comprehensive guidelines for AI agents
+- [AI Agent Guidelines](https://github.com/wallstop/unity-helpers/blob/main/.llm/context.md) - Comprehensive guidelines for AI agents
 
 This file provides additional context about coding style, testing patterns, and repository-specific conventions.
 

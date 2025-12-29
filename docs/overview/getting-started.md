@@ -1,3 +1,6 @@
+---
+---
+
 # Getting Started with Unity Helpers
 
 **Welcome! You're about to save yourself weeks of repetitive work.**
@@ -73,7 +76,7 @@ Jump directly to the solution you need:
 
 - Slow random number generation → [Random Generators](#1-random-in-60-seconds--beginner)
 - Too many objects to search → [Spatial Queries](#3-spatial-queries-in-60-seconds--intermediate)
-- Frame drops from allocations → [Buffering Pattern](../../README.md#buffering-pattern)
+- Frame drops from allocations → [Buffering Pattern](/unity-helpers/#buffering-pattern)
 
 **Workflow Issues?**
 
@@ -92,7 +95,7 @@ Jump directly to the solution you need:
 
 Comprehensive deep-dive (best for team leads and senior developers):
 
-1. Read [Main Documentation](../../README.md) - Full feature overview
+1. Read [Main Documentation](/unity-helpers/) - Full feature overview
 2. Review [Features Documentation](./index.md) - Detailed API documentation
 3. Explore category-specific guides as needed
 
@@ -101,7 +104,7 @@ Comprehensive deep-dive (best for team leads and senior developers):
 See it working first, understand the theory later:
 
 1. Follow the [3 Quick Wins](#three-quick-wins-5-minutes) below
-2. Explore the [Samples~ folder](../../Samples~/) for DI integration examples
+2. Explore the [Samples~ folder](https://github.com/wallstop/unity-helpers/tree/main/Samples~) for DI integration examples
 3. Modify examples for your specific needs
 4. Read the detailed guides when you need to go deeper
 
@@ -109,7 +112,7 @@ See it working first, understand the theory later:
 
 ## Installation
 
-See the [Installation section](../../README.md#installation) in the main README for detailed installation instructions using:
+See the [Installation section](/unity-helpers/#installation) in the main README for detailed installation instructions using:
 
 - **OpenUPM** (Recommended) — Easy version management via Package Manager or CLI
 - **Git URL** — Direct from GitHub, great for CI/CD pipelines
@@ -210,7 +213,7 @@ public class Player : MonoBehaviour
   - VContainer: in `LifetimeScope.Configure`, call `builder.RegisterRelationalComponents()`.
   - Zenject/Extenject: add `RelationalComponentsInstaller` to your `SceneContext` and (optionally) enable the scene scan on initialize.
   - Reflex: attach `RelationalComponentsInstaller` alongside your `SceneScope`. The installer binds the assigner, hydrates the active scene, and can listen for additive scenes. Use `ContainerRelationalExtensions` helpers (`InjectWithRelations`, `InstantiateGameObjectWithRelations`, etc.) when spawning objects through the container.
-- Samples: [DI – VContainer](../../Samples~/DI%20-%20VContainer/README.md), [DI – Zenject](../../Samples~/DI%20-%20Zenject/README.md), [DI – Reflex](../../Samples~/DI%20-%20Reflex/README.md)
+- Samples: [DI – VContainer](https://github.com/wallstop/unity-helpers/blob/main/Samples~/DI%20-%20VContainer/README.md), [DI – Zenject](https://github.com/wallstop/unity-helpers/blob/main/Samples~/DI%20-%20Zenject/README.md), [DI – Reflex](https://github.com/wallstop/unity-helpers/blob/main/Samples~/DI%20-%20Reflex/README.md)
 - Full guide with scenarios and testing tips: [Dependency Injection Integrations](../features/relational-components/relational-components.md#dependency-injection-integrations)
 
 ### 3. Spatial Queries in 60 Seconds 🟡 Intermediate
@@ -301,7 +304,7 @@ Based on your needs:
    - Why: Robust modulo, geometry, color averaging, and more
 
 3. **Adopt the Buffering Pattern** - Zero-allocation queries
-   - Start: [Buffering Pattern](../../README.md#buffering-pattern)
+   - Start: [Buffering Pattern](/unity-helpers/#buffering-pattern)
    - Why: Stable GC even under load
 
 ---
@@ -358,7 +361,7 @@ Pick one feature that solves your immediate problem:
 
 ---
 
-**Ready to dive deeper?** Return to the [main README](../../README.md) for the complete feature list.
+**Ready to dive deeper?** Return to the [main README](/unity-helpers/) for the complete feature list.
 
 **Building something cool?** We'd love to hear about it! Share your experience by opening an
 [issue](https://github.com/wallstop/unity-helpers/issues).
@@ -369,7 +372,7 @@ Pick one feature that solves your immediate problem:
 
 **Core Guides:**
 
-- [Main README](../../README.md) - Complete feature overview
+- [Main README](/unity-helpers/) - Complete feature overview
 - [Feature Index](./index.md) - Alphabetical reference
 - [Glossary](./glossary.md) - Term definitions
 - [Odin Migration Guide](../guides/odin-migration-guide.md) - Migrate from Odin Inspector
@@ -384,7 +387,7 @@ Pick one feature that solves your immediate problem:
 
 **DI Integration:**
 
-- [VContainer Sample](../../Samples~/DI%20-%20VContainer/README.md) - VContainer integration guide
-- [Zenject Sample](../../Samples~/DI%20-%20Zenject/README.md) - Zenject integration guide
+- [VContainer Sample](https://github.com/wallstop/unity-helpers/blob/main/Samples~/DI%20-%20VContainer/README.md) - VContainer integration guide
+- [Zenject Sample](https://github.com/wallstop/unity-helpers/blob/main/Samples~/DI%20-%20Zenject/README.md) - Zenject integration guide
 
 **Need help?** [Open an issue](https://github.com/wallstop/unity-helpers/issues) or check [Troubleshooting](../features/relational-components/relational-components.md#troubleshooting)

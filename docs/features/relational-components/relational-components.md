@@ -1,3 +1,6 @@
+---
+---
+
 # Relational Component Attributes
 
 Visual
@@ -21,7 +24,7 @@ All attributes support optional assignment, filters (tag/name), depth limits, ma
 
 Having issues? Jump to Troubleshooting: see [Troubleshooting](#troubleshooting).
 
-Related systems: For data‑driven gameplay effects (attributes, tags, cosmetics), see [Effects System](../effects/effects-system.md) and the [README section Effects, Attributes, and Tags](../../../README.md#effects-attributes-and-tags).
+Related systems: For data‑driven gameplay effects (attributes, tags, cosmetics), see [Effects System](../effects/effects-system.md) and the [README section Effects, Attributes, and Tags](/unity-helpers/#effects-attributes-and-tags).
 
 Curious how these attributes stack up against manual `GetComponent*` loops? Check the [Relational Component Performance Benchmarks](../../performance/relational-components-performance.md) for operations-per-second and allocation snapshots.
 
@@ -447,7 +450,7 @@ If you import Zenject/VContainer/Reflex as source code, .unitypackage, or raw DL
   - `_resolver.AssignRelationalHierarchy(existingRoot, includeInactiveChildren: true)`
   - `RelationalObjectPools.CreatePoolWithRelations(...)` + `pool.GetWithRelations(resolver)`
 
-- **Full walkthrough**: [DI – VContainer sample](../../../Samples~/DI%20-%20VContainer/README.md)
+- **Full walkthrough**: [DI – VContainer sample](https://github.com/wallstop/unity-helpers/blob/main/Samples~/DI%20-%20VContainer/README.md)
 
 ### Zenject at a Glance
 
@@ -461,7 +464,7 @@ If you import Zenject/VContainer/Reflex as source code, .unitypackage, or raw DL
   - `_container.AssignRelationalHierarchy(existingRoot, includeInactiveChildren: true)`
   - Subclass `RelationalMemoryPool<T>` to hydrate pooled items on spawn.
 
-- **Full walkthrough**: [DI – Zenject sample](../../../Samples~/DI%20-%20Zenject/README.md)
+- **Full walkthrough**: [DI – Zenject sample](https://github.com/wallstop/unity-helpers/blob/main/Samples~/DI%20-%20Zenject/README.md)
 
 ### Reflex at a Glance
 
@@ -475,7 +478,7 @@ If you import Zenject/VContainer/Reflex as source code, .unitypackage, or raw DL
   - `_container.InstantiateGameObjectWithRelations(rootPrefab, parent, includeInactiveChildren: true)` for full hierarchies.
   - `_container.AssignRelationalHierarchy(existingRoot, includeInactiveChildren: true)` to hydrate arbitrary hierarchies after manual instantiation.
 
-- **Full walkthrough**: [DI – Reflex sample](../../../Samples~/DI%20-%20Reflex/README.md)
+- **Full walkthrough**: [DI – Reflex sample](https://github.com/wallstop/unity-helpers/blob/main/Samples~/DI%20-%20Reflex/README.md)
 
 - Reflex shares the same fallback behaviour: if the assigner is not bound, the helpers call `AssignRelationalComponents()` directly so you can adopt incrementally.
 
@@ -603,7 +606,7 @@ Common pitfalls and how to avoid them
 **Core Guides:**
 
 - [Getting Started](../../overview/getting-started.md) - Your first 5 minutes with Unity Helpers
-- [Main README](../../../README.md) - Complete feature overview
+- [Main README](/unity-helpers/) - Complete feature overview
 - [Feature Index](../../overview/index.md) - Alphabetical reference
 
 **Related Features:**
@@ -614,8 +617,8 @@ Common pitfalls and how to avoid them
 
 **DI Integration Samples:**
 
-- [VContainer Integration](../../../Samples~/DI%20-%20VContainer/README.md) - Complete VContainer setup guide
-- [Zenject Integration](../../../Samples~/DI%20-%20Zenject/README.md) - Complete Zenject setup guide
-- [Reflex Integration](../../../Samples~/DI%20-%20Reflex/README.md) - Complete Reflex setup guide
+- [VContainer Integration](https://github.com/wallstop/unity-helpers/blob/main/Samples~/DI%20-%20VContainer/README.md) - Complete VContainer setup guide
+- [Zenject Integration](https://github.com/wallstop/unity-helpers/blob/main/Samples~/DI%20-%20Zenject/README.md) - Complete Zenject setup guide
+- [Reflex Integration](https://github.com/wallstop/unity-helpers/blob/main/Samples~/DI%20-%20Reflex/README.md) - Complete Reflex setup guide
 
 **Need help?** [Open an issue](https://github.com/wallstop/unity-helpers/issues) | [Troubleshooting](#troubleshooting)
