@@ -1619,6 +1619,99 @@ done
 
 ---
 
+### Word Splitting and Special Characters (CRITICAL)
+
+> **⚠️ CRITICAL**: Using `for item in $variable` causes word splitting on spaces, tabs, and newlines. This silently breaks iteration when items contain spaces or special characters.
+
+**The Problem:**
+
+When you expand a variable without quotes in `for ... in $var`, bash performs **word splitting** based on IFS (Internal Field Separator, defaults to space/tab/newline). This breaks items that contain spaces:
+
+```yaml
+# ❌ BUG - Word splitting breaks links with spaces
+- name: Check links
+  run: |
+    set -euo pipefail
+
+    # Extract markdown links (some may have spaces like %20)
+    links=$(grep -oE '\]\([^)]+\)' "$file")
+
+    # WARNING: This breaks on ANY space in any link!
+    for link in $links; do  # ← $links is UNQUOTED, triggers word splitting
+      # If links contains "](./my%20file.md)", this iterates:
+      #   1. "](./my%20file.md)"  ← OK if no spaces
+      # But if decoded or has actual spaces:
+      #   1. "](./my"
+      #   2. "file.md)"  ← BROKEN!
+      check_link "$link"
+    done
+```
+
+**Why This Happens:**
+
+1. `$links` (unquoted) triggers word splitting
+2. Each word (separated by space/tab/newline) becomes a separate iteration
+3. A single markdown link with spaces becomes 3 broken fragments
+
+**Safe Alternative: Use `while read` Loop**
+
+```yaml
+# ✅ CORRECT - while read preserves entire lines including spaces
+- name: Check links
+  run: |
+    set -euo pipefail
+
+    # Use while read loop with process substitution
+    while IFS= read -r link; do
+      # Skip empty lines
+      [ -z "$link" ] && continue
+
+      check_link "$link"
+    done < <(grep -oE '\]\([^)]+\)' "$file" 2>/dev/null || true)
+```
+
+**Key Elements of the Safe Pattern:**
+
+| Element                 | Purpose                                     |
+| ----------------------- | ------------------------------------------- |
+| `IFS=`                  | Disable field splitting (preserve spaces)   |
+| `read -r`               | Don't interpret backslashes                 |
+| `< <(cmd)`              | Process substitution avoids subshell issues |
+| `[ -z "$link" ]`        | Handle empty output from grep               |
+| `2>/dev/null \|\| true` | Gracefully handle no matches                |
+
+#### Alternative: Array with Proper Quoting (Bash 4+)
+
+```yaml
+# ✅ CORRECT - Store in array, quote expansion
+- name: Check links
+  run: |
+    set -euo pipefail
+
+    # Read into array (one element per line)
+    mapfile -t links < <(grep -oE '\]\([^)]+\)' "$file" 2>/dev/null || true)
+
+    # Iterate with quoted expansion
+    for link in "${links[@]}"; do
+      check_link "$link"
+    done
+```
+
+**When to Watch Out:**
+
+- Any `for item in $variable` pattern (unquoted variable)
+- Variables containing grep/find output (may have special chars)
+- File paths or URLs (commonly contain spaces, encoded chars)
+- User-supplied data of any kind
+
+**Detection:**
+
+- shellcheck warns about unquoted variables (`SC2086`)
+- Code review should flag any `for ... in $var` pattern
+- Test with deliberately pathological input (spaces, tabs, quotes, etc.)
+
+---
+
 ### Hardcoded Executable Paths (Portability)
 
 > **⚠️ CRITICAL**: Never use absolute paths like `/bin/sed` or `/usr/bin/awk` in scripts. Use bare command names and let PATH resolution find the correct binary.

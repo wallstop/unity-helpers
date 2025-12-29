@@ -737,6 +737,26 @@ rm -f "$error_file"
 
 See [validate-before-commit](./skills/validate-before-commit.md#subshell-variable-propagation-critical) for full documentation.
 
+### Word Splitting Pitfalls (CI/CD Scripts)
+
+**CRITICAL**: Using `for item in $variable` (unquoted) causes word splitting on spaces. This silently breaks iteration when items contain spaces or special characters.
+
+```bash
+# ❌ BUG - Word splitting breaks items with spaces
+links=$(grep -oE '\]\([^)]+\)' "$file")
+for link in $links; do  # Unquoted $links splits on spaces!
+  check_link "$link"     # Links with spaces become fragments
+done
+
+# ✅ CORRECT - while read preserves entire lines
+while IFS= read -r link; do
+  [ -z "$link" ] && continue
+  check_link "$link"
+done < <(grep -oE '\]\([^)]+\)' "$file" 2>/dev/null || true)
+```
+
+See [validate-before-commit](./skills/validate-before-commit.md#word-splitting-and-special-characters-critical) for full documentation.
+
 ### Git Operations
 
 **NEVER use `git add` or `git commit` commands.** User handles all staging/committing.
