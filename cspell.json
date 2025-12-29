@@ -486,6 +486,7 @@
       "name": "tech-terms",
       "words": [
         "GC",
+        "GFM",
         "IL2CPP",
         "AOT",
         "JIT",

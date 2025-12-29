@@ -322,6 +322,34 @@ The button supports...
 - Markdown linters enforce heading structure
 - Table of contents generation requires proper headings
 
+### Pipe Characters in Markdown Tables
+
+> **⚠️ CRITICAL**: Pipe characters (`|`) inside markdown tables MUST be escaped with `\|`, even when inside backticks (code spans). This is per the GFM specification.
+
+**The Problem**: In GitHub Flavored Markdown tables, the pipe character `|` is the column separator. Backticks (`` ` ``) do NOT prevent pipes from being interpreted as separators—the table parser processes pipes BEFORE inline code spans are parsed.
+
+**Example of the Issue**:
+
+```text
+| Command Pattern                | Alternative           |
+| ------------------------------ | --------------------- |
+| `cmd | while read`             | Process substitution  |  ← BROKEN: splits into wrong columns
+| `cmd \| while read`            | Process substitution  |  ← CORRECT: renders as `cmd | while read`
+```
+
+**GFM Spec Reference**: See [Example 200](https://github.github.com/gfm/#example-200) which explicitly shows `\|` inside backticks in table cells.
+
+**Common Patterns Requiring Escape**:
+
+| Pattern in Code         | How to Write in Table Cell |
+| ----------------------- | -------------------------- |
+| `cmd \| while read`     | Pipe in shell pipeline     |
+| `expr \|\| fallback`    | Logical OR operator        |
+| `grep -E 'a\|b'`        | Regex alternation          |
+| `2>/dev/null \|\| true` | Error suppression          |
+
+**Verification**: The `\|` is consumed during parsing—the rendered output shows the correct `|` character. Automated code review tools (like Copilot) may incorrectly flag these escapes as unnecessary; the escapes ARE required per the GFM spec.
+
 ### Prettier vs Markdownlint
 
 > **⚠️ CRITICAL**: Prettier and markdownlint catch DIFFERENT issues. A file can pass Prettier but fail markdownlint. You MUST run BOTH.
