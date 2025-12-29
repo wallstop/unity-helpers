@@ -90,7 +90,7 @@ jobs:
           fi
 
       - name: Upload extraction report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: code-sample-report
           path: artifacts/code-samples/extraction-report.json
