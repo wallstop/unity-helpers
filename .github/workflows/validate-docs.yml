@@ -79,7 +79,12 @@ jobs:
               stripped_line=$(strip_inline_code "$line")
 
               # Extract markdown links from this line: [text](link)
+              # Uses grep -oE (POSIX extended regex) + sed instead of grep -oP (GNU Perl regex)
+              # grep -oP is unavailable on macOS and non-GNU systems
               while read -r link; do
+                # Skip empty lines from grep/sed output
+                [[ -z "$link" ]] && continue
+
                 # Skip external links, anchors, and mailto
                 if [[ "$link" =~ ^https?:// ]] || [[ "$link" =~ ^# ]] || [[ "$link" =~ ^mailto: ]]; then
                   continue
@@ -113,7 +118,7 @@ jobs:
                   echo "❌ Broken link in $mdfile: $link -> $target_path (file not found)"
                   errors=$((errors + 1))
                 fi
-              done < <(echo "$stripped_line" | grep -oP '\]\(\K[^)]+(?=\))' 2>/dev/null || true)
+              done < <(echo "$stripped_line" | grep -oE '\]\([^)]+\)' 2>/dev/null | sed 's/^](//;s/)$//' || true)
             done < "$mdfile"
           done < <(find . -name "*.md" -type f -not -path "./node_modules/*" -print0)
 

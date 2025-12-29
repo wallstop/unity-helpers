@@ -1292,6 +1292,87 @@ actionlint with shellcheck integration may not catch this pattern. Manually revi
 
 ---
 
+### Portable Shell Scripting in Workflows (CRITICAL)
+
+> **⚠️ CRITICAL**: CI/CD workflows run on various platforms. Scripts MUST use POSIX-compliant commands to ensure portability across Linux, macOS runners, and different shell implementations.
+
+**The Problem:**
+
+GitHub Actions runners use Ubuntu Linux by default, but:
+
+- Self-hosted runners may use macOS, which has BSD tools (not GNU)
+- Container jobs may use Alpine Linux with BusyBox
+- Different tool versions have different feature sets
+
+**GNU-Specific `grep -oP` (Perl Regex) — NEVER USE:**
+
+```yaml
+# ❌ BUG - grep -oP is GNU-only, fails on macOS and Alpine
+- name: Extract links
+  run: |
+    echo "$content" | grep -oP '\]\(\K[^)]+(?=\))' # ← -P is GNU-only!
+```
+
+The `-P` flag enables Perl-compatible regular expressions (PCRE) which:
+
+- Is NOT available on macOS BSD `grep`
+- Is NOT available on Alpine Linux BusyBox `grep`
+- Will cause "grep: invalid option -- P" errors
+
+**Portable Alternatives:**
+
+| GNU-Specific               | Portable Alternative                | Notes                                  |
+| -------------------------- | ----------------------------------- | -------------------------------------- |
+| `grep -oP` (Perl regex)    | `grep -oE` (extended regex) + `sed` | `-E` is POSIX-compliant                |
+| `grep -oP '\K'` lookbehind | `grep -oE` + `sed 's/prefix//'`     | Post-process to remove unwanted prefix |
+| `grep -oP '(?=...)'`       | `grep -oE` then post-process        | Lookaheads aren't portable             |
+| `sed -i '' file` (macOS)   | `sed ... > tmp && mv tmp file`      | In-place edit syntax differs           |
+| `sed -i file` (GNU)        | `sed ... > tmp && mv tmp file`      | Use temp file for portability          |
+| `readarray` / `mapfile`    | `while read` loop                   | Bash 4+ only                           |
+
+**Example: Extract Markdown Links Portably:**
+
+```yaml
+# ❌ WRONG - GNU-only Perl regex
+- name: Extract links (broken on macOS)
+  run: |
+    echo "$line" | grep -oP '\]\(\K[^)]+(?=\))'
+
+# ✅ CORRECT - POSIX-compliant extended regex + sed
+- name: Extract links (portable)
+  run: |
+    echo "$line" | grep -oE '\]\([^)]+\)' | sed 's/^](//;s/)$//'
+```
+
+**When to Use What:**
+
+| Context                         | Approach               | Why                                         |
+| ------------------------------- | ---------------------- | ------------------------------------------- |
+| GitHub Actions (Ubuntu runners) | POSIX tools            | Future-proofs for self-hosted/macOS runners |
+| Local development               | Modern tools (`rg`)    | Fast, best UX                               |
+| Dev container                   | Modern tools available | Controlled environment                      |
+| Git hooks (`.githooks/`)        | POSIX tools            | Developers may use macOS                    |
+| Bash scripts (`scripts/*.sh`)   | POSIX tools            | Maximum portability                         |
+| PowerShell scripts              | N/A                    | PowerShell is consistent across platforms   |
+
+**Quick Reference — Portable vs Non-Portable:**
+
+```bash
+# ❌ Non-portable (GNU-specific)
+grep -oP 'pattern'        # Perl regex not portable
+sed -i 's/a/b/' file      # In-place syntax varies
+readarray -t arr < file   # Bash 4+ only
+
+# ✅ Portable (POSIX-compliant)
+grep -oE 'pattern'        # Extended regex is standard
+sed 's/a/b/' file > tmp && mv tmp file  # Works everywhere
+while IFS= read -r line; do arr+=("$line"); done < file  # Standard loop
+```
+
+See [search-codebase](./search-codebase.md#portable-shell-scripting-cicd--bash-scripts) for more examples.
+
+---
+
 ### Common actionlint/shellcheck Errors
 
 | Error Code | Description                      | Fix                                                |

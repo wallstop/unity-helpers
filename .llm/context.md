@@ -678,6 +678,25 @@ fd "\.cs$"
 bat --paging=never file.cs
 ```
 
+### Portable Shell Scripting (CI/CD & Scripts)
+
+**MANDATORY** for CI/CD workflows (`.github/workflows/*.yml`) and bash scripts (`scripts/*.sh`): Use POSIX-compliant tools instead of GNU-specific options. See [search-codebase](./skills/search-codebase.md#portable-shell-scripting-cicd--bash-scripts) and [validate-before-commit](./skills/validate-before-commit.md#portable-shell-scripting-in-workflows-critical) for full documentation.
+
+| ❌ GNU-Specific (Don't Use)  | ✅ POSIX Alternative                | Why                           |
+| ---------------------------- | ----------------------------------- | ----------------------------- |
+| `grep -oP` (Perl regex)      | `grep -oE` (extended regex) + `sed` | `-P` unavailable on macOS/BSD |
+| `sed -i` (in-place edit)     | `sed ... > tmp && mv tmp file`      | Syntax differs GNU vs BSD     |
+| `readarray` / `mapfile`      | `while read` loop                   | Bash 4+ only                  |
+| `grep -oP '\K'` (lookbehind) | `grep -oE` + `sed 's/prefix//'`     | Perl-specific feature         |
+
+```bash
+# ❌ NEVER in CI/CD or scripts (GNU-only, fails on macOS)
+echo "$line" | grep -oP '\]\(\K[^)]+(?=\))'
+
+# ✅ ALWAYS (POSIX-compliant, works everywhere)
+echo "$line" | grep -oE '\]\([^)]+\)' | sed 's/^](//;s/)$//'
+```
+
 ### Git Operations
 
 **NEVER use `git add` or `git commit` commands.** User handles all staging/committing.
