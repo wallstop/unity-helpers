@@ -16,7 +16,7 @@ The `llms.txt` specification defines a standard format for providing LLM-friendl
 
 ## Location
 
-The file is located at the repository root: [`/llms.txt`](/unity-helpers/llms.txt)
+The file is located at the repository root: [`/llms.txt`](../../llms.txt)
 
 ## Contents
 

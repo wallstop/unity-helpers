@@ -110,7 +110,7 @@ void Update()
 > 📖 For the complete buffering guide including pooled buffers and GC impact analysis, see:
 >
 > - [Zero-Allocation Queries (2D Guide)](./spatial-trees-2d-guide.md#-zero-allocation-queries-the-performance-killer-feature) — detailed examples
-> - [Buffering Pattern](/unity-helpers/#buffering-pattern) — project-wide pooling utilities
+> - [Buffering Pattern](../../../README.md#buffering-pattern) — project-wide pooling utilities
 
 ## Structures
 

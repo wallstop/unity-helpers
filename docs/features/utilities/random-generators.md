@@ -255,4 +255,4 @@ void Update()
 
 - [Random Performance Benchmarks](../../performance/random-performance.md)
 - [Math & Extensions](./math-and-extensions.md)
-- [README - Random Generators](/unity-helpers/#random-number-generators)
+- [README - Random Generators](../../../README.md#random-number-generators)

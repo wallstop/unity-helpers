@@ -76,7 +76,7 @@ Jump directly to the solution you need:
 
 - Slow random number generation → [Random Generators](#1-random-in-60-seconds--beginner)
 - Too many objects to search → [Spatial Queries](#3-spatial-queries-in-60-seconds--intermediate)
-- Frame drops from allocations → [Buffering Pattern](/unity-helpers/#buffering-pattern)
+- Frame drops from allocations → [Buffering Pattern](../../README.md#buffering-pattern)
 
 **Workflow Issues?**
 
@@ -95,7 +95,7 @@ Jump directly to the solution you need:
 
 Comprehensive deep-dive (best for team leads and senior developers):
 
-1. Read [Main Documentation](/unity-helpers/) - Full feature overview
+1. Read [Main Documentation](../../README.md) - Full feature overview
 2. Review [Features Documentation](./index.md) - Detailed API documentation
 3. Explore category-specific guides as needed
 
@@ -112,7 +112,7 @@ See it working first, understand the theory later:
 
 ## Installation
 
-See the [Installation section](/unity-helpers/#installation) in the main README for detailed installation instructions using:
+See the [Installation section](../../README.md#installation) in the main README for detailed installation instructions using:
 
 - **OpenUPM** (Recommended) — Easy version management via Package Manager or CLI
 - **Git URL** — Direct from GitHub, great for CI/CD pipelines
@@ -304,7 +304,7 @@ Based on your needs:
    - Why: Robust modulo, geometry, color averaging, and more
 
 3. **Adopt the Buffering Pattern** - Zero-allocation queries
-   - Start: [Buffering Pattern](/unity-helpers/#buffering-pattern)
+   - Start: [Buffering Pattern](../../README.md#buffering-pattern)
    - Why: Stable GC even under load
 
 ---
@@ -361,7 +361,7 @@ Pick one feature that solves your immediate problem:
 
 ---
 
-**Ready to dive deeper?** Return to the [main README](/unity-helpers/) for the complete feature list.
+**Ready to dive deeper?** Return to the [main README](../../README.md) for the complete feature list.
 
 **Building something cool?** We'd love to hear about it! Share your experience by opening an
 [issue](https://github.com/wallstop/unity-helpers/issues).
@@ -372,7 +372,7 @@ Pick one feature that solves your immediate problem:
 
 **Core Guides:**
 
-- [Main README](/unity-helpers/) - Complete feature overview
+- [Main README](../../README.md) - Complete feature overview
 - [Feature Index](./index.md) - Alphabetical reference
 - [Glossary](./glossary.md) - Term definitions
 - [Odin Migration Guide](../guides/odin-migration-guide.md) - Migrate from Odin Inspector

@@ -208,6 +208,32 @@ Check `context` for rules                        Check [context](../context.md) 
 - Some Markdown renderers fail to resolve links without explicit relative paths
 - Consistent link format prevents rendering issues on GitHub Pages
 
+### Absolute GitHub Pages Paths
+
+> ⚠️ **NEVER use absolute GitHub Pages paths like `/unity-helpers/...`**
+
+Even though absolute paths might appear to work on the deployed GitHub Pages site, these paths:
+
+- **FAIL CI validation** — The `lint-doc-links.ps1` script cannot resolve paths starting with `/`
+- **Break local preview** — Absolute paths don't work when previewing docs locally
+- **Are fragile** — If the repository name or base path changes, all links break
+
+```text
+❌ WRONG: Absolute GitHub Pages paths
+────────────────────────────────────────────────────────────────────────────────
+[guide](/unity-helpers/docs/guide.md)           ← Breaks in CI
+[features](/unity-helpers/docs/features/)       ← Cannot be validated
+[API ref](/unity-helpers/docs/api/core.md)      ← Fails lint-doc-links.ps1
+
+✅ CORRECT: Relative paths
+────────────────────────────────────────────────────────────────────────────────
+[guide](./docs/guide.md)                        ← Works everywhere
+[features](./docs/features/)                    ← Validated by linter
+[API ref](../api/core.md)                       ← Portable and correct
+```
+
+**Rule**: Always use relative paths (`./` or `../`) — the `lint-doc-links.ps1` script catches absolute path errors automatically.
+
 ### Required Commands After Markdown Changes
 
 > ⚠️ **RUN IMMEDIATELY**: Execute `npm run lint:docs` right after ANY markdown edit—don't wait until you're "done."
@@ -236,6 +262,7 @@ pwsh ./scripts/lint-doc-links.ps1 -VerboseOutput
 
 - [ ] ✅ All internal links use `./` or `../` prefix
 - [ ] ✅ No bare links like `` `[text](file)` `` — must be `` `[text](./file)` ``
+- [ ] ✅ No absolute GitHub Pages paths like `/unity-helpers/...`
 - [ ] ✅ No backtick-wrapped markdown file references
 - [ ] ✅ Ran `npm run lint:docs` and it passed with zero errors
 - [ ] ✅ All links resolve to existing files
@@ -671,14 +698,16 @@ public int QueryRadius(Vector2 center, float radius, List<T> results)
 
 ### ❌ Avoid These
 
-| Mistake                         | Why It's Wrong                                |
-| ------------------------------- | --------------------------------------------- |
-| Copy-paste code without testing | Leads to broken examples users can't run      |
-| "See code for details"          | Users shouldn't need to read source           |
-| Outdated parameter names        | Causes confusion when code doesn't match docs |
-| Missing edge case documentation | Users hit unexpected behavior                 |
-| Version info missing            | Users don't know if feature exists            |
-| Overly verbose explanations     | Readers lose focus; key info gets buried      |
+| Mistake                             | Why It's Wrong                                |
+| ----------------------------------- | --------------------------------------------- |
+| Copy-paste code without testing     | Leads to broken examples users can't run      |
+| "See code for details"              | Users shouldn't need to read source           |
+| Outdated parameter names            | Causes confusion when code doesn't match docs |
+| Missing edge case documentation     | Users hit unexpected behavior                 |
+| Version info missing                | Users don't know if feature exists            |
+| Overly verbose explanations         | Readers lose focus; key info gets buried      |
+| Absolute paths (`/unity-helpers/…`) | Breaks CI validation and local preview        |
+| Links without `./` or `../` prefix  | Fails `lint-doc-links.ps1`, rejected by CI    |
 
 ### ✅ Do These Instead
 

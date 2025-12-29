@@ -24,7 +24,7 @@ All attributes support optional assignment, filters (tag/name), depth limits, ma
 
 Having issues? Jump to Troubleshooting: see [Troubleshooting](#troubleshooting).
 
-Related systems: For data‑driven gameplay effects (attributes, tags, cosmetics), see [Effects System](../effects/effects-system.md) and the [README section Effects, Attributes, and Tags](/unity-helpers/#effects-attributes-and-tags).
+Related systems: For data‑driven gameplay effects (attributes, tags, cosmetics), see [Effects System](../effects/effects-system.md) and the [README section Effects, Attributes, and Tags](../../../README.md#effects-attributes-and-tags).
 
 Curious how these attributes stack up against manual `GetComponent*` loops? Check the [Relational Component Performance Benchmarks](../../performance/relational-components-performance.md) for operations-per-second and allocation snapshots.
 
@@ -606,7 +606,7 @@ Common pitfalls and how to avoid them
 **Core Guides:**
 
 - [Getting Started](../../overview/getting-started.md) - Your first 5 minutes with Unity Helpers
-- [Main README](/unity-helpers/) - Complete feature overview
+- [Main README](../../../README.md) - Complete feature overview
 - [Feature Index](../../overview/index.md) - Alphabetical reference
 
 **Related Features:**
