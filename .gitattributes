@@ -31,6 +31,17 @@
 *.sh        text eol=lf
 .githooks/* text eol=lf
 
+# GitHub-specific files MUST have LF line endings
+# - GitHub Actions run on Linux (LF is native)
+# - Dependabot commits with LF line endings
+# - This prevents line-ending diffs from dependabot PRs
+.github/**  text eol=lf
+
+# npm package files MUST have LF line endings
+# - Dependabot updates npm dependencies and commits with LF
+package.json      text eol=lf
+package-lock.json text eol=lf
+
 ###############################################################################
 # Set default behavior for command prompt diff.
 #
