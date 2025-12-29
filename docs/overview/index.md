@@ -27,7 +27,7 @@ Alphabetical index of all Unity Helpers features with quick links to documentati
 → [Math & Extensions](../features/utilities/math-and-extensions.md#asynccoroutine-interop)
 
 **Attribute** - Dynamic numeric value with modifications
-→ [Effects System](../features/effects/effects-system.md) | [Glossary](glossary.md#attribute)
+→ [Effects System](../features/effects/effects-system.md) | [Glossary](./glossary.md#attribute)
 
 **Attribute Metadata Cache** - Pre-computed attribute reflection data
 → [Editor Tools Guide](../features/editor-tools/editor-tools-guide.md#attribute-metadata-cache-generator)
@@ -49,7 +49,7 @@ Alphabetical index of all Unity Helpers features with quick links to documentati
 → [Data Structures](../features/utilities/data-structures.md#bitset) | [README](../../README.md#data-structures)
 
 **Buffering Pattern** - Reusable collections for zero-allocation queries
-→ [README - Buffering Pattern](../../README.md#buffering-pattern) | [Glossary](glossary.md#buffering-pattern)
+→ [README - Buffering Pattern](../../README.md#buffering-pattern) | [Glossary](./glossary.md#buffering-pattern)
 
 **Buffers<T>** - Pooled collections (List/Stack/Queue/HashSet)
 → [README - Buffering Pattern](../../README.md#buffering-pattern)
@@ -105,7 +105,7 @@ Alphabetical index of all Unity Helpers features with quick links to documentati
 → [Data Structures](../features/utilities/data-structures.md#disjoint-set-union-find) | [README](../../README.md#data-structures)
 
 **Douglas-Peucker** - Polyline simplification algorithm
-→ [Math & Extensions](../features/utilities/math-and-extensions.md#geometry) | [Glossary](glossary.md#douglas-peucker-algorithm)
+→ [Math & Extensions](../features/utilities/math-and-extensions.md#geometry) | [Glossary](./glossary.md#douglas-peucker-algorithm)
 
 **WReadOnly** - Read-only inspector display attribute
 → [Editor Tools Guide](../features/editor-tools/editor-tools-guide.md#wreadonly-property-drawer) | [README](../../README.md#relational-components)
@@ -118,7 +118,7 @@ Alphabetical index of all Unity Helpers features with quick links to documentati
 → [Editor Tools Guide](../features/editor-tools/editor-tools-guide.md) | [README](../../README.md#editor-tools)
 
 **EffectHandle** - Identifier for effect application instances
-→ [Effects System](../features/effects/effects-system.md) | [Glossary](glossary.md#handle-effect-handle)
+→ [Effects System](../features/effects/effects-system.md) | [Glossary](./glossary.md#handle-effect-handle)
 
 **EffectHandler** - Component managing effect lifecycle
 → [Effects System](../features/effects/effects-system.md)
@@ -153,7 +153,7 @@ Alphabetical index of all Unity Helpers features with quick links to documentati
 → [Math & Extensions](../features/utilities/math-and-extensions.md#geometry)
 
 **Glossary** - Term definitions
-→ [Glossary](glossary.md)
+→ [Glossary](./glossary.md)
 
 ---
 
@@ -179,7 +179,7 @@ Alphabetical index of all Unity Helpers features with quick links to documentati
 → [Editor Tools Guide](../features/editor-tools/editor-tools-guide.md#image-blur-tool)
 
 **Immutable Trees** - Spatial trees requiring rebuild on changes
-→ [Spatial Trees 2D](../features/spatial/spatial-trees-2d-guide.md) | [Glossary](glossary.md#immutable-tree)
+→ [Spatial Trees 2D](../features/spatial/spatial-trees-2d-guide.md) | [Glossary](./glossary.md#immutable-tree)
 
 **Inspector Settings** - Project-wide configuration for inspector features (pagination, colors, animations)
 → [Inspector Settings](../features/inspector/inspector-settings.md)
@@ -265,7 +265,7 @@ Alphabetical index of all Unity Helpers features with quick links to documentati
 → [Migration Guide](../guides/odin-migration-guide.md)
 
 **Odin Compatibility** - Automatic Odin Inspector integration
-→ [Singletons - Odin](../features/utilities/singletons.md#odin-compatibility) | [Glossary](glossary.md#odin-compatibility)
+→ [Singletons - Odin](../features/utilities/singletons.md#odin-compatibility) | [Glossary](./glossary.md#odin-compatibility)
 
 ---
 
@@ -293,10 +293,10 @@ Alphabetical index of all Unity Helpers features with quick links to documentati
 → [Helper Utilities](../features/utilities/helper-utilities.md#predictive-aiming)
 
 **Pooled Buffers** - Reusable memory allocations
-→ [README - Buffering Pattern](../../README.md#buffering-pattern) | [Glossary](glossary.md#pooled-buffers)
+→ [README - Buffering Pattern](../../README.md#buffering-pattern) | [Glossary](./glossary.md#pooled-buffers)
 
 **Positive Modulo** - Non-negative modulo operation
-→ [Math & Extensions](../features/utilities/math-and-extensions.md#numeric-helpers) | [Glossary](glossary.md#positive-modulo)
+→ [Math & Extensions](../features/utilities/math-and-extensions.md#numeric-helpers) | [Glossary](./glossary.md#positive-modulo)
 
 **Prefab Checker** - Comprehensive prefab validation
 → [Editor Tools Guide](../features/editor-tools/editor-tools-guide.md#prefab-checker)
@@ -311,7 +311,7 @@ Alphabetical index of all Unity Helpers features with quick links to documentati
 → [Editor Tools Guide](../features/editor-tools/editor-tools-guide.md#property-drawers--attributes)
 
 **Protobuf Serialization** - Compact binary serialization
-→ [Serialization Guide](../features/serialization/serialization.md) | [Glossary](glossary.md#protobuf-protocol-buffers)
+→ [Serialization Guide](../features/serialization/serialization.md) | [Glossary](./glossary.md#protobuf-protocol-buffers)
 
 ---
 
@@ -441,7 +441,7 @@ Alphabetical index of all Unity Helpers features with quick links to documentati
 ## T
 
 **Tag Handler** - Reference-counted string tags
-→ [Effects System](../features/effects/effects-system.md) | [Glossary](glossary.md#tag-handler)
+→ [Effects System](../features/effects/effects-system.md) | [Glossary](./glossary.md#tag-handler)
 
 **Texture Resizer** - Batch resize with bilinear/point filtering
 → [Editor Tools Guide](../features/editor-tools/editor-tools-guide.md#texture-resizer)
@@ -523,6 +523,6 @@ Alphabetical index of all Unity Helpers features with quick links to documentati
 
 **See Also:**
 
-- [Glossary](glossary.md) - Term definitions
-- [Getting Started Guide](getting-started.md) - Quick start guide
+- [Glossary](./glossary.md) - Term definitions
+- [Getting Started Guide](./getting-started.md) - Quick start guide
 - [Main Documentation](../../README.md) - Main documentation

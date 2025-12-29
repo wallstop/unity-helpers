@@ -631,7 +631,7 @@ public sealed class MyToolWindow : EditorWindow { }
 
 ## Defensive Programming (MANDATORY)
 
-Editor code is especially vulnerable to unexpected states. ALL editor code MUST follow [defensive-programming](defensive-programming.md).
+Editor code is especially vulnerable to unexpected states. ALL editor code MUST follow [defensive-programming](./defensive-programming.md).
 
 ### Editor-Specific Defensive Patterns
 
@@ -716,7 +716,7 @@ private SerializedProperty GetProperty(SerializedObject so)
    ./scripts/generate-meta.sh <path-to-file.cs>
    ```
 
-   > ⚠️ See [create-unity-meta](create-unity-meta.md) for full details.
+   > ⚠️ See [create-unity-meta](./create-unity-meta.md) for full details.
 
 2. **Format code**:
 
@@ -746,7 +746,7 @@ private SerializedProperty GetProperty(SerializedObject so)
 
 **All editor tools, property drawers, and custom inspectors MUST have exhaustive tests.** Create tests in `Tests/Editor/` mirroring the source structure.
 
-See [create-test](create-test.md) for full testing guidelines.
+See [create-test](./create-test.md) for full testing guidelines.
 
 ### Required Test Coverage
 

@@ -1032,7 +1032,7 @@ foreach (string varName in Helpers.CiEnvironmentVariables.All)
 
 ## Related Documentation
 
-- [Math & Extensions](math-and-extensions.md) - Extension methods on built-in types
+- [Math & Extensions](./math-and-extensions.md) - Extension methods on built-in types
 - [Utility Components](../inspector/utility-components.md) - MonoBehaviour-based utilities
-- [Reflection Helpers](reflection-helpers.md) - High-performance reflection utilities
-- [Singletons](singletons.md) - RuntimeSingleton and ScriptableObjectSingleton
+- [Reflection Helpers](./reflection-helpers.md) - High-performance reflection utilities
+- [Singletons](./singletons.md) - RuntimeSingleton and ScriptableObjectSingleton

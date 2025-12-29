@@ -40,6 +40,29 @@ else
     else
       echo "markdownlint not installed; skipping markdown lint. Run 'npm install' or CI will validate." >&2
     fi
+
+    # 3) Spell checking (cspell - validates all files for spelling errors)
+    if npx --no-install cspell --version >/dev/null 2>&1; then
+      echo "Checking spelling..."
+      if ! npm run lint:spelling 2>/dev/null; then
+        echo ""
+        echo "=== Spelling errors detected ==="
+        echo "To fix spelling issues:"
+        echo "  1. Fix the typos in the reported files"
+        echo "  2. Or add valid words to cspell.json in the 'words' array"
+        echo "  3. Stage and commit your changes"
+        echo "  4. Push again: git push"
+        echo ""
+        exit 1
+      fi
+    else
+      echo "cspell not installed; skipping spell check. Run 'npm install' or CI will validate." >&2
+    fi
+
+    # 4) Doc link lint (validates internal links, relative prefixes, and broken references)
+    # This runs the same PowerShell linter as the CI to catch issues before push
+    echo "Checking documentation links..."
+    node ./scripts/run-doc-link-lint.js || exit 1
   fi
 fi
 

@@ -144,7 +144,7 @@ public class WGroupEndExample : MonoBehaviour
 - Speed controlled by `UnityHelpersSettings.WGroupFoldoutSpeed` (default: 2.0, range: 2.0-12.0)
 - Enable/disable via `UnityHelpersSettings.WGroupFoldoutTweenEnabled` (default: enabled)
 
-Configure in **Project Settings → Unity Helpers** or see [Inspector Settings](inspector-settings.md#wgroup-settings) for details.
+Configure in **Project Settings → Unity Helpers** or see [Inspector Settings](./inspector-settings.md#wgroup-settings) for details.
 
 ---
 
@@ -642,9 +642,9 @@ WGroup operates at the inspector level, so existing property drawers and custom 
 
 ## See Also
 
-- **[Inspector Overview](inspector-overview.md)** - Complete inspector features overview
-- **[Inspector Buttons](inspector-button.md)** - WButton for method invocation
-- **[Inspector Settings](inspector-settings.md)** - Configuration reference
+- **[Inspector Overview](./inspector-overview.md)** - Complete inspector features overview
+- **[Inspector Buttons](./inspector-button.md)** - WButton for method invocation
+- **[Inspector Settings](./inspector-settings.md)** - Configuration reference
 - **[Editor Tools Guide](../editor-tools/editor-tools-guide.md)** - Other editor utilities
 
 ---

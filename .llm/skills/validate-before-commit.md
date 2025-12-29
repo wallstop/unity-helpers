@@ -73,19 +73,20 @@ This single command runs ALL CI/CD checks locally, ensuring your changes will pa
 
 ### Linter Commands by File Type
 
-| File Type Changed         | Command to Run IMMEDIATELY                     | Notes                                          |
-| ------------------------- | ---------------------------------------------- | ---------------------------------------------- |
-| Documentation (`.md`)     | `npx prettier --write <file>`                  | **MANDATORY** — Run FIRST after any edit       |
-| Documentation (`.md`)     | `npm run lint:spelling`                        | Add valid terms to `cspell.json` if needed     |
-| Documentation (`.md`)     | `npm run lint:docs`                            | Check for broken links, backtick `.md` refs    |
-| Documentation (`.md`)     | `npm run lint:markdown`                        | Markdownlint rules (MD032, MD009, etc.)        |
-| JSON/asmdef/asmref        | `npx prettier --write <file>`                  | **MANDATORY** — Prettier formats JSON too      |
-| YAML (non-workflow)       | `npx prettier --write <file>`                  | **MANDATORY** — Prettier formats YAML too      |
-| GitHub Workflows (`.yml`) | `npx prettier --write <file>`                  | Format FIRST, then run actionlint              |
-| GitHub Workflows (`.yml`) | `actionlint`                                   | **MANDATORY** for `.github/workflows/*.yml`    |
-| C# code (`.cs`)           | `dotnet tool run csharpier format .`           | **RUN IMMEDIATELY** after ANY edit (not later) |
-| C# code (`.cs`)           | `npm run lint:csharp-naming`                   | Check for underscore violations                |
-| Test files (`.cs`)        | `pwsh -NoProfile -File scripts/lint-tests.ps1` | **MANDATORY** Track() usage, no manual destroy |
+| File Type Changed         | Command to Run IMMEDIATELY                     | Notes                                                                                 |
+| ------------------------- | ---------------------------------------------- | ------------------------------------------------------------------------------------- |
+| Documentation (`.md`)     | `npx prettier --write <file>`                  | **MANDATORY** — Run FIRST after any edit                                              |
+| Documentation (`.md`)     | `npm run lint:spelling`                        | **🚨 MANDATORY** — #1 CI failure cause; add valid terms to `cspell.json`              |
+| Documentation (`.md`)     | `npm run lint:docs`                            | **CRITICAL** — Validates link targets AND link format (requires `./` or `../` prefix) |
+| Documentation (`.md`)     | `npm run lint:markdown`                        | Markdownlint rules (MD032, MD009, etc.)                                               |
+| JSON/asmdef/asmref        | `npx prettier --write <file>`                  | **MANDATORY** — Prettier formats JSON too                                             |
+| YAML (all `.yml`/`.yaml`) | `npx prettier --write <file>`                  | **MANDATORY** — Prettier formats YAML too                                             |
+| YAML (all `.yml`/`.yaml`) | `npm run lint:yaml`                            | **MANDATORY** — yamllint checks trailing spaces, syntax, style                        |
+| GitHub Workflows (`.yml`) | `actionlint`                                   | **MANDATORY** for `.github/workflows/*.yml`                                           |
+| C# code (`.cs`)           | `dotnet tool run csharpier format .`           | **RUN IMMEDIATELY** after ANY edit (not later)                                        |
+| C# code (`.cs`)           | `npm run lint:spelling`                        | **🚨 MANDATORY** for XML docs and code comments                                       |
+| C# code (`.cs`)           | `npm run lint:csharp-naming`                   | Check for underscore violations                                                       |
+| Test files (`.cs`)        | `pwsh -NoProfile -File scripts/lint-tests.ps1` | **MANDATORY** Track() usage, no manual destroy                                        |
 
 ### Prettier/Markdown Formatting
 
@@ -158,35 +159,300 @@ After **ANY** change to markdown files (anywhere in the repository, not just `.l
 # 1. Format with Prettier FIRST (pre-push hook requirement)
 npx prettier --write <file>
 
-# 2. Check spelling (most common failure)
+# 2. 🚨 Check spelling IMMEDIATELY (most common CI failure!)
 npm run lint:spelling
 
-# 3. If spelling errors found with valid technical terms, add to cspell.json:
-# Edit cspell.json and add terms to the "words" array
+# 3. If spelling errors found with valid technical terms:
+#    - Edit cspell.json and add terms to the appropriate dictionary
+#    - Run: npx prettier --write cspell.json
+#    - Re-run: npm run lint:spelling (must pass with 0 errors)
 
 # 4. Check links and formatting — MANDATORY for ALL markdown files
 npm run lint:docs      # Catches backtick .md refs AND inline code + link anti-patterns
 npm run lint:markdown  # Markdownlint rules (MD032, MD009, etc.)
 ```
 
-> **⚠️ IMPORTANT**: `npm run lint:docs` must be run after editing **ANY** markdown file in the entire repository — including `docs/`, the README, the CHANGELOG, the `.llm/` directory, and any other location. This catches broken links, backtick-wrapped markdown references, and the [inline code + link anti-pattern](#️-markdown-inline-code--link-anti-pattern).
+> **🚨 CRITICAL**: Spelling errors are the **#1 cause of CI failures** for documentation changes. ALWAYS run `npm run lint:spelling` IMMEDIATELY after editing ANY markdown file or C# comments.
 
-**Proactive Spelling Management**:
+> **⚠️ IMPORTANT**: `npm run lint:docs` must be run after editing **ANY** markdown file in the entire repository — including `docs/`, the README, the CHANGELOG, the `.llm/` directory, and any other location. This catches broken links, backtick-wrapped markdown references, and the [inline code + link anti-pattern](#markdown-inline-code--link-anti-pattern).
 
-- When adding technical terms (class names, method names, package names), **proactively add them to `cspell.json`** BEFORE running the linter
-- Common terms to add: Unity API names, package identifiers, custom type names, acronyms
-- Keep the `words` array in `cspell.json` sorted alphabetically
+---
+
+## 🚨 Mandatory Linter Execution After Every Change
+
+> **⚠️ CRITICAL**: This is a non-negotiable requirement. Linters MUST be run IMMEDIATELY after EVERY change — not at the end of a task, not in batches. IMMEDIATELY.
+
+---
+
+## 🚨🚨🚨 CRITICAL: SPELLING CHECKS — #1 CI FAILURE CAUSE 🚨🚨🚨
+
+> **Spelling errors are the MOST COMMON cause of CI/CD failures for documentation changes.** Run `npm run lint:spelling` **IMMEDIATELY** after ANY change to documentation or code comments — NOT at task completion, NOT batched with other files.
+
+### When to Run Spelling Check
+
+**Run `npm run lint:spelling` IMMEDIATELY after:**
+
+- ANY change to markdown files (`.md`) — including `.llm/`, `docs/`, README, CHANGELOG
+- ANY change to XML documentation comments (`///`) in C# files
+- ANY change to regular code comments (`//`) in C# files
+- Adding new class names, method names, or technical terms
+- Creating new files with documentation
+
+### ✅ CORRECT Spelling Workflow
+
+```text
+1. Edit a file (markdown, C# with comments, etc.)
+2. IMMEDIATELY run: npm run lint:spelling
+3. If errors found:
+   - Fix actual typos (misspellings)
+   - Add valid technical terms to cspell.json (see dictionary guide below)
+4. Format cspell.json if modified: npx prettier --write cspell.json
+5. Re-run: npm run lint:spelling (must pass with 0 errors)
+6. Only then proceed to next file
+```
+
+### ❌ WRONG Workflow (DO NOT DO THIS)
+
+```text
+1. Edit file1.md
+2. Edit file2.md
+3. Edit file3.cs (with XML docs)
+4. Run lint:spelling at the end ← TOO LATE! Errors compound, harder to fix.
+```
+
+### How to Fix Spelling Errors
+
+When `npm run lint:spelling` reports unknown words:
+
+#### Step 1: Determine if It's a Typo or Valid Term
+
+| If the word is...           | Action                            |
+| --------------------------- | --------------------------------- |
+| A typo/misspelling          | Fix the typo in your file         |
+| A valid Unity API           | Add to `unity-terms` dictionary   |
+| A valid C# language feature | Add to `csharp-terms` dictionary  |
+| A package-specific type     | Add to `package-terms` dictionary |
+| A general tech term/tool    | Add to `tech-terms` dictionary    |
+| A general word/proper noun  | Add to top-level `words` array    |
+
+#### Step 2: Add to the Correct Dictionary in cspell.json
+
+| Dictionary       | Use For                                                               | Examples                                       |
+| ---------------- | --------------------------------------------------------------------- | ---------------------------------------------- |
+| `unity-terms`    | Unity Engine API names, Unity-specific terms                          | `MonoBehaviour`, `SerializeField`, `OnGUI`     |
+| `csharp-terms`   | C# language features, .NET types, C# patterns                         | `struct`, `Nullable`, `IEnumerable`            |
+| `package-terms`  | This package's custom types, class names, method names                | `WButtonEditor`, `UnityHelpers`, `QuadTree2D`  |
+| `tech-terms`     | General programming terms, tools, external libraries                  | `actionlint`, `async`, `middleware`, `prepush` |
+| `words` (global) | General words that don't fit above categories, proper nouns, acronyms | `changelog`, `submodule`, `boilerplate`        |
+
+#### Step 3: Edit cspell.json
+
+```jsonc
+// In cspell.json, find the appropriate dictionaryDefinitions entry:
+{
+  "dictionaryDefinitions": [
+    {
+      "name": "unity-terms",
+      "words": [
+        "AddComponent",
+        "Awake",
+        "MonoBehaviour", // ← Add new Unity terms here (alphabetically)
+        "OnDestroy"
+      ]
+    }
+    // ... other dictionaries
+  ],
+  // For general words, use the top-level "words" array:
+  "words": [
+    "changelog",
+    "prepush" // ← Add general words here (alphabetically)
+  ]
+}
+```
+
+> **⚠️ IMPORTANT**: Always keep dictionary entries sorted alphabetically within each `words` array.
+
+#### Step 4: Verify and Format
+
+```bash
+# Verify the spelling fix
+npm run lint:spelling
+
+# Format the cspell.json file
+npx prettier --write cspell.json
+```
+
+### Common Spelling Mistakes to Avoid
+
+| ❌ WRONG                              | ✅ RIGHT                                                  |
+| ------------------------------------- | --------------------------------------------------------- |
+| Ignoring spelling errors              | Fix typos OR add valid terms to dictionary                |
+| Adding typos to dictionary            | Only add legitimate technical terms                       |
+| Adding words to wrong dictionary      | Match term type to dictionary (Unity→unity-terms, etc.)   |
+| Running spelling check at end of task | Run IMMEDIATELY after EACH file change                    |
+| Forgetting to format cspell.json      | Always run `npx prettier --write cspell.json` after edits |
+| Adding words in random order          | Keep words sorted alphabetically in each dictionary       |
+
+### Proactive Spelling Management
+
+When writing documentation or code comments with technical terms:
+
+1. **Proactively add known terms** to `cspell.json` BEFORE running the linter
+2. **Common terms to add**: Unity API names, package types, custom class names, acronyms
+3. **Run `npm run lint:spelling`** immediately after each file to catch any missed terms
+
+---
+
+### Link Validation After Markdown Changes
+
+**Run `npm run lint:docs` IMMEDIATELY after:**
+
+- ANY change to markdown files
+- Adding or modifying links
+- Moving or renaming files that other markdown files link to
+
+```bash
+# After editing any markdown file
+npm run lint:docs
+
+# If errors are found, fix them before proceeding
+```
+
+### Markdown Link Path Requirements
+
+> **🚨🚨🚨 CRITICAL: ALL internal markdown links MUST use `./` or `../` prefix 🚨🚨🚨**
+>
+> This is a **MANDATORY** requirement. The `npm run lint:docs` command validates BOTH:
+>
+> 1. **Link targets exist** — the referenced file must be present
+> 2. **Link format is correct** — paths MUST start with `./` or `../`
+>
+> **Why this matters**: The Jekyll site uses `jekyll-relative-links` which requires explicit relative paths to resolve links correctly. Bare paths without a relative prefix will NOT work.
+
+#### Common Mistakes (AVOID THESE)
+
+```markdown
+<!-- ❌ WRONG: Bare filename without ./ prefix -->
+
+See [context](context.md) for guidelines.
+
+<!-- ❌ WRONG: Path to subdirectory without ./ prefix -->
+
+Refer to [create-test](skills/create-test.md) for details.
+
+<!-- ❌ WRONG: Path starting with folder name, not ./ -->
+
+Check [features](docs/features/overview.md) for documentation.
+```
+
+#### Correct Format (ALWAYS DO THIS)
+
+```markdown
+<!-- ✅ CORRECT: Same directory — use ./ prefix -->
+
+See [context](./context.md) for guidelines.
+
+<!-- ✅ CORRECT: Subdirectory — use ./ prefix -->
+
+Refer to [create-test](./skills/create-test.md) for details.
+
+<!-- ✅ CORRECT: Parent directory — use ../ prefix -->
+
+Check [features](../docs/features/overview.md) for documentation.
+```
+
+**Fixing "missing relative prefix" errors:**
+
+1. Identify the link causing the error in the lint output
+2. Add `./` prefix for files in the same directory or subdirectories
+3. Add `../` prefix (one or more) for files in parent directories
+4. Re-run `npm run lint:docs` to verify the fix
+
+**Quick Reference Table:**
+
+```text
+Link Pattern                       Status     Fix / Explanation
+---------------------------------  ---------  -----------------------------------------
+[text](file.md)                    ❌ WRONG   [text](./file.md)
+[text](folder/file.md)             ❌ WRONG   [text](./folder/file.md)
+[text](skills/file.md)             ❌ WRONG   [text](./skills/file.md)
+[text](./file.md)                  ✅ OK      Same directory
+[text](./folder/file.md)           ✅ OK      Subdirectory
+[text](../file.md)                 ✅ OK      Parent directory
+[text](../../folder/file.md)       ✅ OK      Multiple parent levels
+[text](https://example.com)        ✅ OK      External links don't need relative prefix
+```
+
+**Examples by link location:**
+
+```text
+Current File Location          | Link Target                  | Correct Link Syntax
+-------------------------------|------------------------------|--------------------------------------------
+.llm/context.md                | .llm/skills/create-test.md   | [create-test](./skills/create-test.md)
+.llm/skills/create-test.md     | .llm/context.md              | [context](../context.md)
+docs/features/overview.md      | docs/guides/setup.md         | [setup](../guides/setup.md)
+README.md                      | docs/overview/index.md       | [overview](./docs/overview/index.md)
+```
+
+### YAML File Formatting and Linting (MANDATORY)
+
+> **⚠️ CRITICAL**: YAML linting (yamllint) runs in CI and will **FAIL** on trailing spaces, improper indentation, and style violations. ALWAYS run both Prettier AND yamllint locally after editing ANY YAML file.
+
+**Run IMMEDIATELY after ANY change to YAML files (`.yml`, `.yaml`):**
+
+```bash
+# Step 1: Format with Prettier FIRST
+npx prettier --write <file>
+
+# Step 2: Run yamllint to catch style issues (trailing spaces, etc.)
+npm run lint:yaml
+
+# Step 3: For workflow files (.github/workflows/*.yml), also run actionlint
+actionlint .github/workflows/<file>
+```
+
+**Concrete workflow example:**
+
+```bash
+# Editing .github/workflows/ci.yml
+
+# 1. Make your edits
+# 2. Format with Prettier
+npx prettier --write .github/workflows/ci.yml
+
+# 3. Run yamllint to catch trailing spaces and style issues
+npm run lint:yaml
+
+# 4. Run actionlint to validate workflow syntax
+actionlint .github/workflows/ci.yml
+
+# Only then proceed to next file
+```
+
+**Common yamllint failures (all caught by `npm run lint:yaml`):**
+
+| Issue                  | Error Message          | Fix                                |
+| ---------------------- | ---------------------- | ---------------------------------- |
+| Trailing spaces        | `trailing spaces`      | Remove spaces at end of lines      |
+| Inconsistent indent    | `wrong indentation`    | Use consistent 2-space indentation |
+| Line too long          | `line too long`        | Break long lines (max 200 chars)   |
+| Missing newline at EOF | `no new line at end`   | Add empty line at end of file      |
+| Too many blank lines   | `too many blank lines` | Maximum 1 consecutive blank line   |
+
+> **Note**: Prettier fixes formatting but does NOT catch trailing spaces in multiline strings or some edge cases. yamllint catches ALL trailing space issues.
 
 ### Workflow Changes Workflow
 
 After **ANY** change to `.github/workflows/*.yml`:
 
 ```bash
-# MANDATORY - run actionlint immediately
-actionlint
+# MANDATORY - run all three tools in order
+npx prettier --write .github/workflows/<file>.yml  # Format first
+npm run lint:yaml                                   # Catch trailing spaces
+actionlint                                          # Validate workflow syntax
 
 # Fix ALL errors before committing
-# Common issues: SC2129 (grouped redirects), missing config-name, etc.
+# Common issues: SC2129 (grouped redirects), missing config-name, trailing spaces
 ```
 
 ### C# Changes Workflow
@@ -269,7 +535,7 @@ _trackedObjects.Remove(target);
 - Normal test cleanup (use `Track()` instead)
 - Avoiding linter errors for convenience (fix the underlying issue)
 
-See [create-test](create-test.md#unity-object-lifecycle-management-critical) for detailed patterns.
+See [create-test](./create-test.md#unity-object-lifecycle-management-critical) for detailed patterns.
 
 ### The "Fix Before Moving On" Rule
 
@@ -297,17 +563,22 @@ See [create-test](create-test.md#unity-object-lifecycle-management-critical) for
 See `context.md` for guidelines.
 Refer to `skills/create-test.md` for details.
 
-<!-- ✅ CORRECT: Proper markdown links -->
+<!-- ✅ CORRECT: Proper markdown links WITH relative prefix -->
 
-See [context](context.md) for guidelines.
-Refer to [create-test](skills/create-test.md) for details.
+See [context](./context.md) for guidelines.
+Refer to [create-test](./skills/create-test.md) for details.
 ```
 
-**The `npm run lint:docs` check will FAIL if backtick-wrapped `.md` references are found.**
+**The `npm run lint:docs` check validates TWO things:**
+
+1. **No backtick-wrapped `.md` references** — Use proper links instead
+2. **All internal links use `./` or `../` prefix** — Required for jekyll-relative-links
+
+> **Remember**: Even when converting backtick references to links, you MUST include the `./` or `../` prefix!
 
 ---
 
-## ⚠️ Markdown Inline Code + Link Anti-pattern
+## Markdown Inline Code + Link Anti-pattern
 
 > **CRITICAL**: The doc link linter uses a regex that can produce false positives when backticks and `.md` links appear on the same line.
 
@@ -347,6 +618,218 @@ See [context](../context.md) for guidelines about the `.llm/` and `.llm/skills/`
 ### Detection
 
 This issue is caught by `npm run lint:docs`. Always run this command after **ANY** markdown file change (not just in `.llm/` but anywhere in the repository).
+
+---
+
+## Escaping Example Links in Documentation
+
+> **CRITICAL**: When writing documentation that SHOWS link syntax (teaching users proper format), example links MUST be escaped so the linter doesn't parse them as real links.
+
+### The Problem
+
+Documentation often needs to show examples of correct vs incorrect link format. If these examples are written as real markdown links, the linter will:
+
+1. Try to resolve them as actual links
+2. Report "file not found" errors for made-up example paths
+3. Flag them for missing `./` prefix (intentionally shown as "wrong")
+
+### How to Escape Example Links
+
+#### Method 1: Fenced Code Blocks (Recommended)
+
+Use fenced code blocks with `text` language specifier and escaped brackets:
+
+```text
+<!-- Examples with escaped brackets are NOT parsed by linter -->
+Correct format: ]\(./path/to/file)
+Wrong format: ]\(path/to/file) -- missing ./
+```
+
+#### Method 2: Inline Backticks for Short Examples
+
+For brief inline examples, escape brackets:
+
+```text
+Use `]\(./file)` format for links.
+Wrong: `]\(file)` — missing prefix.
+```
+
+#### Method 3: HTML Comments for Hidden Examples
+
+For reference patterns that shouldn't render:
+
+```markdown
+<!-- Example pattern: [text](./relative/path.md) -->
+```
+
+### Common Escaping Mistakes
+
+| Mistake                                     | Why It Fails                         | Fix                              |
+| ------------------------------------------- | ------------------------------------ | -------------------------------- |
+| Showing example link outside code block     | Linter parses it as real link        | Wrap in code fence               |
+| Using `text` specifier for markdown syntax  | Syntax highlighting missing (minor)  | Use `markdown` specifier         |
+| Forgetting to escape "wrong" examples       | Linter reports false errors          | Wrap ALL examples, good and bad  |
+| Mixing real and example links in same block | Linter may catch unintended patterns | Separate real links from samples |
+
+### Verification
+
+After adding or editing example links in documentation:
+
+```bash
+# This must pass without false positives from examples
+npm run lint:docs
+
+# If examples trigger errors, they need better escaping
+```
+
+---
+
+## CI Markdown Link Validation
+
+> **⚠️ IMPORTANT**: The CI pipeline runs TWO separate link validation jobs with different purposes. Understanding both is critical to avoiding CI failures.
+
+### CI Link Validation Jobs
+
+The `validate-docs.yml` workflow runs two complementary link checks:
+
+| Job                    | Purpose                                                               | Script                              |
+| ---------------------- | --------------------------------------------------------------------- | ----------------------------------- |
+| `validate-links`       | Verifies all internal markdown links point to existing files          | `.github/scripts/validate-links.sh` |
+| `validate-link-format` | Ensures all internal links use proper `./` or `../` relative prefixes | `.github/scripts/validate-links.sh` |
+
+**Both jobs must pass for CI to succeed.**
+
+### What CI Validates
+
+#### `validate-links` Job: Link Targets Exist
+
+This job checks that every internal markdown link points to a file that actually exists:
+
+- Handles URL-encoded paths (e.g., `%20` for spaces, `%28` for `(`)
+- Resolves paths relative to the linking file's location
+- Reports specific line numbers for broken links
+
+#### `validate-link-format` Job: Proper Relative Prefixes
+
+This job ensures all internal links use explicit relative path prefixes:
+
+- ✅ Links starting with `./` (same directory or subdirectory)
+- ✅ Links starting with `../` (parent directory)
+- ❌ Bare paths without `./` or `../` prefix (e.g., just the filename)
+
+### Content CI Automatically Skips
+
+Both CI validation scripts intelligently skip content that shouldn't be validated:
+
+| Skipped Content                | Example                                    | Why Skipped                         |
+| ------------------------------ | ------------------------------------------ | ----------------------------------- |
+| Fenced code blocks             | ` ```markdown ... ``` ` or `~~~ ...`       | Example/documentation code          |
+| Inline code backticks          | Code wrapped in single backticks           | Code references, not links          |
+| External links (http/https)    | Links to `https://` or `http://` URLs      | External URLs, not local files      |
+| Anchor-only links              | Links like `#section-name`                 | Same-page navigation                |
+| mailto: links                  | Links starting with `mailto:`              | Email links, not file references    |
+| Image references               | Image syntax (exclamation mark + brackets) | Images handled differently          |
+| Reference-style link footnotes | Footnote definitions like `[1]: path`      | Processed separately where relevant |
+
+### Why Local Linting Might Miss Issues
+
+> **⚠️ WARNING**: The local `npm run lint:docs` command and the CI bash scripts use different implementations. Always run BOTH to catch all issues.
+
+**Potential differences between local and CI validation:**
+
+| Aspect                | Local (`lint:docs`)      | CI (bash scripts)             |
+| --------------------- | ------------------------ | ----------------------------- |
+| Implementation        | PowerShell script        | Bash scripts                  |
+| Code block detection  | Regex-based              | State machine in bash         |
+| URL decoding          | PowerShell methods       | `sed` transformations         |
+| Path resolution       | PowerShell path handling | Bash path resolution          |
+| Edge case handling    | May differ slightly      | May catch different edge case |
+| Inline code detection | May use different regex  | Uses awk/sed patterns         |
+
+**Best Practice:**
+
+```bash
+# ALWAYS run local linting before pushing
+npm run lint:docs
+
+# This catches most issues locally, but CI may still find edge cases
+# If CI fails with link errors that local linting missed, investigate the specific pattern
+```
+
+### Debugging CI Link Validation Failures
+
+When CI reports a link error that local linting missed:
+
+1. **Check the exact error message** — CI reports file path and line number
+2. **Look for edge cases:**
+   - URL-encoded characters in paths (`%20`, `%28`, `%29`)
+   - Links inside complex markdown structures
+   - Mixed content on the same line (inline code + links)
+3. **Verify the fix locally:**
+   ```bash
+   npm run lint:docs
+   ```
+4. **If the pattern is a known false positive**, consider whether the content structure can be refactored
+
+### Quick Reference: CI Validation Rules
+
+```text
+Link Pattern                         CI Result    Notes
+------------------------------------  -----------  -------------------------------------
+[text](./file.md)                     ✅ PASS      Proper relative prefix, file exists
+[text](../folder/file.md)             ✅ PASS      Parent directory navigation
+[text](file.md)                       ❌ FAIL      Missing ./ prefix
+[text](folder/file.md)                ❌ FAIL      Missing ./ prefix
+[text](./nonexistent.md)              ❌ FAIL      File does not exist
+[text](https://example.com)           ⏭️ SKIP      External link
+[text](#anchor)                       ⏭️ SKIP      Anchor-only link
+`some-file.md`                        ⏭️ SKIP      Inline code, not a link
+```
+
+---
+
+## Known Limitations of Link Validation
+
+The link validation scripts (both local PowerShell and CI bash) have some known limitations. These are documented here for completeness and to explain why certain edge cases may not be caught.
+
+### Parentheses in URLs
+
+The regex pattern `\]\([^)]+\)` cannot match URLs containing parentheses, such as:
+
+- `[text](./path/file(1).md)` — File with parentheses in name
+- `[wiki](https://en.wikipedia.org/wiki/Example_(disambiguation))` — Wikipedia-style URLs
+
+**Workaround:** Avoid parentheses in filenames. For external URLs with parentheses, validation may produce false negatives (link won't be checked).
+
+### Inline Code Edge Cases
+
+The inline code stripping regex handles common cases but has limitations:
+
+| Pattern                     | Handled? | Notes                                  |
+| --------------------------- | -------- | -------------------------------------- |
+| `` `normal code` ``         | ✅ Yes   | Standard inline code                   |
+| ` `` `double backtick` `` ` | ✅ Yes   | Double-backtick code spans             |
+| `` `escaped \` backtick` `` | ❌ No    | Escaped backticks not recognized       |
+| `` `text with ` inside` ``  | ❌ No    | Nested backticks not standard markdown |
+| ` `triple+ on same line`    | ⚠️ Maybe | May interact unexpectedly              |
+
+**Workaround:** Place complex code examples in fenced code blocks (triple backticks on their own lines), which are properly skipped.
+
+### URL Decoding
+
+The CI bash `urldecode` function uses `printf '%b'` with hex escape sequences:
+
+- **Safe for:** Repository-owned markdown files (trusted source)
+- **Edge case:** `%` followed by non-hex characters produces undefined output
+- **Not safe for:** Untrusted user input (potential injection vector)
+
+The local PowerShell script uses `[System.Uri]::UnescapeDataString()` which handles edge cases more gracefully.
+
+### External Scheme Detection
+
+The regex `^[a-zA-Z][a-zA-Z0-9+\.-]*:` correctly identifies URI schemes, but the initial broad pattern `\]\((?<target>[a-zA-Z][^)]*)\)` matches all links starting with a letter. This is intentional — the filtering happens afterward to ensure no internal links slip through.
+
+**Schemes correctly skipped:** `http:`, `https:`, `mailto:`, `ftp:`, `file:`, `data:`, etc.
 
 ---
 
@@ -653,7 +1136,7 @@ Before completing ANY task that adds features or fixes bugs, verify:
 - [ ] XML docs updated with new parameter names/types
 - [ ] Code samples updated throughout docs
 
-See [update-documentation](update-documentation.md) for complete guidelines.
+See [update-documentation](./update-documentation.md) for complete guidelines.
 
 ---
 
@@ -794,7 +1277,7 @@ actionlint -shellcheck=/usr/bin/shellcheck
    - Merge to main
    - Update workflow to add real triggers (push, pull_request, etc.)
 
-**Example: Safe Release Drafter Setup**
+#### Example: Safe Release Drafter Setup
 
 ```yaml
 # .github/workflows/release-drafter.yml
@@ -904,6 +1387,87 @@ echo $?       # Prints: 0 (success)
 **Detection:**
 
 actionlint with shellcheck integration may not catch this pattern. Manually review any `((var++))` expressions in workflow scripts, especially when `set -e` is enabled.
+
+---
+
+### Portable Shell Scripting in Workflows (CRITICAL)
+
+> **⚠️ CRITICAL**: CI/CD workflows run on various platforms. Scripts MUST use POSIX-compliant commands to ensure portability across Linux, macOS runners, and different shell implementations.
+
+**The Problem:**
+
+GitHub Actions runners use Ubuntu Linux by default, but:
+
+- Self-hosted runners may use macOS, which has BSD tools (not GNU)
+- Container jobs may use Alpine Linux with BusyBox
+- Different tool versions have different feature sets
+
+**GNU-Specific `grep -oP` (Perl Regex) — NEVER USE:**
+
+```yaml
+# ❌ BUG - grep -oP is GNU-only, fails on macOS and Alpine
+- name: Extract links
+  run: |
+    echo "$content" | grep -oP '\]\(\K[^)]+(?=\))' # ← -P is GNU-only!
+```
+
+The `-P` flag enables Perl-compatible regular expressions (PCRE) which:
+
+- Is NOT available on macOS BSD `grep`
+- Is NOT available on Alpine Linux BusyBox `grep`
+- Will cause "grep: invalid option -- P" errors
+
+**Portable Alternatives:**
+
+| GNU-Specific               | Portable Alternative                | Notes                                  |
+| -------------------------- | ----------------------------------- | -------------------------------------- |
+| `grep -oP` (Perl regex)    | `grep -oE` (extended regex) + `sed` | `-E` is POSIX-compliant                |
+| `grep -oP '\K'` lookbehind | `grep -oE` + `sed 's/prefix//'`     | Post-process to remove unwanted prefix |
+| `grep -oP '(?=...)'`       | `grep -oE` then post-process        | Lookaheads aren't portable             |
+| `sed -i '' file` (macOS)   | `sed ... > tmp && mv tmp file`      | In-place edit syntax differs           |
+| `sed -i file` (GNU)        | `sed ... > tmp && mv tmp file`      | Use temp file for portability          |
+| `readarray` / `mapfile`    | `while read` loop                   | Bash 4+ only                           |
+
+**Example: Extract Markdown Links Portably:**
+
+```yaml
+# ❌ WRONG - GNU-only Perl regex
+- name: Extract links (broken on macOS)
+  run: |
+    echo "$line" | grep -oP '\]\(\K[^)]+(?=\))'
+
+# ✅ CORRECT - POSIX-compliant extended regex + sed
+- name: Extract links (portable)
+  run: |
+    echo "$line" | grep -oE '\]\([^)]+\)' | sed 's/^](//;s/)$//'
+```
+
+**When to Use What:**
+
+| Context                         | Approach               | Why                                         |
+| ------------------------------- | ---------------------- | ------------------------------------------- |
+| GitHub Actions (Ubuntu runners) | POSIX tools            | Future-proofs for self-hosted/macOS runners |
+| Local development               | Modern tools (`rg`)    | Fast, best UX                               |
+| Dev container                   | Modern tools available | Controlled environment                      |
+| Git hooks (`.githooks/`)        | POSIX tools            | Developers may use macOS                    |
+| Bash scripts (`scripts/*.sh`)   | POSIX tools            | Maximum portability                         |
+| PowerShell scripts              | N/A                    | PowerShell is consistent across platforms   |
+
+**Quick Reference — Portable vs Non-Portable:**
+
+```bash
+# ❌ Non-portable (GNU-specific)
+grep -oP 'pattern'        # Perl regex not portable
+sed -i 's/a/b/' file      # In-place syntax varies
+readarray -t arr < file   # Bash 4+ only
+
+# ✅ Portable (POSIX-compliant)
+grep -oE 'pattern'        # Extended regex is standard
+sed 's/a/b/' file > tmp && mv tmp file  # Works everywhere
+while IFS= read -r line; do arr+=("$line"); done < file  # Standard loop
+```
+
+See [search-codebase](./search-codebase.md#portable-shell-scripting-cicd--bash-scripts) for more examples.
 
 ---
 

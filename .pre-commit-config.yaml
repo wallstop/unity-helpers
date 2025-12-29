@@ -71,10 +71,18 @@ repos:
         files: '(?i)\.(md|markdown)$'
         require_serial: true
       - id: yamllint
-        name: yamllint (if available)
-        entry: bash -c 'if command -v yamllint >/dev/null 2>&1; then yamllint -c .yamllint.yaml "$@"; else echo "yamllint not installed; skipping"; fi' --
+        name: yamllint
+        entry: pwsh -NoProfile -File scripts/lint-yaml.ps1 -StagedOnly
         language: system
         files: '(?i)\.(ya?ml)$'
+        pass_filenames: false
+        require_serial: true
+        description: >
+          Lint YAML files for syntax and style issues.
+          Requires yamllint (pip install yamllint).
+          If yamllint is not installed, this hook will SKIP with a warning
+          (exit 0) to allow commits from machines without yamllint.
+          CI enforces yamllint, so issues will be caught before merge.
       - id: lychee
         name: Check markdown links (lychee)
         entry: pwsh -NoProfile -File scripts/lint-staged-links.ps1

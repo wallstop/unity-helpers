@@ -308,6 +308,6 @@ Universal Render Pipeline
 
 ### See Also
 
-- [Feature Index](index.md) - Alphabetical feature index
-- [Getting Started Guide](getting-started.md) - Quick start guide
+- [Feature Index](./index.md) - Alphabetical feature index
+- [Getting Started Guide](./getting-started.md) - Quick start guide
 - [Main Documentation](../../README.md) - Main documentation

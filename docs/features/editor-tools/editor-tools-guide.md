@@ -50,7 +50,7 @@ Comprehensive documentation for all editor wizards, windows, and automation tool
 ### Automate Setup & Maintenance
 
 - Auto-create singleton assets → [ScriptableObject Singleton Creator](#scriptableobject-singleton-creator)
-- Respond to asset changes → [Asset Change Detection](asset-change-detection.md)
+- Respond to asset changes → [Asset Change Detection](./asset-change-detection.md)
 - Cache attribute metadata → [Attribute Metadata Cache Generator](#attribute-metadata-cache-generator)
 - Track sprite labels → [Sprite Label Processor](#sprite-label-processor)
 - Manually trigger script recompilation → [Request Script Recompilation](#request-script-recompilation)
@@ -81,7 +81,7 @@ See the **[Inspector Attributes documentation](../inspector/inspector-overview.m
 6. [Property Drawers & Attributes](#property-drawers--attributes)
 7. [Automation & Utilities](#automation--utilities)
    - [ScriptableObject Singleton Creator](#scriptableobject-singleton-creator)
-   - [Asset Change Detection](asset-change-detection.md)
+   - [Asset Change Detection](./asset-change-detection.md)
 8. [Quick Reference](#quick-reference)
 
 ---
@@ -1135,7 +1135,7 @@ maxTextureSize: 2048
 
 **Purpose:** Detect inheritance issues and Unity lifecycle method errors across your entire C# codebase before they cause runtime bugs.
 
-**📖 Full Documentation:** [Unity Method Analyzer Guide](unity-method-analyzer.md)
+**📖 Full Documentation:** [Unity Method Analyzer Guide](./unity-method-analyzer.md)
 
 **Key Features:**
 

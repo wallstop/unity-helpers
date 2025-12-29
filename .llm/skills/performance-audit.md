@@ -127,7 +127,7 @@ using var setLease = Buffers<T>.HashSet.Get(out HashSet<T> buffer);
 
 ### Array Pooling
 
-See the [Array Pooling Guide](use-array-pool.md) for detailed guidance.
+See the [Array Pooling Guide](./use-array-pool.md) for detailed guidance.
 
 Quick reference:
 
@@ -382,9 +382,9 @@ GetActiveEnemiesInRange(10f, activeEnemies);
 
 ## Related Skills
 
-- [high-performance-csharp](high-performance-csharp.md) — Core performance patterns
-- [unity-performance-patterns](unity-performance-patterns.md) — Unity-specific patterns
-- [profile-debug-performance](profile-debug-performance.md) — Profiling guide
-- [refactor-to-zero-alloc](refactor-to-zero-alloc.md) — Migration patterns
-- [gc-architecture-unity](gc-architecture-unity.md) — Unity GC architecture
-- [memory-allocation-traps](memory-allocation-traps.md) — Hidden allocation sources
+- [high-performance-csharp](./high-performance-csharp.md) — Core performance patterns
+- [unity-performance-patterns](./unity-performance-patterns.md) — Unity-specific patterns
+- [profile-debug-performance](./profile-debug-performance.md) — Profiling guide
+- [refactor-to-zero-alloc](./refactor-to-zero-alloc.md) — Migration patterns
+- [gc-architecture-unity](./gc-architecture-unity.md) — Unity GC architecture
+- [memory-allocation-traps](./memory-allocation-traps.md) — Hidden allocation sources

@@ -336,7 +336,7 @@ public sealed class MyAsset :
    ./scripts/generate-meta.sh <path-to-file.cs>
    ```
 
-   > ⚠️ See [create-unity-meta](create-unity-meta.md) for full details. This step is **mandatory** — every `.cs` file MUST have a corresponding `.meta` file.
+   > ⚠️ See [create-unity-meta](./create-unity-meta.md) for full details. This step is **mandatory** — every `.cs` file MUST have a corresponding `.meta` file.
 
 2. **Format code**:
 

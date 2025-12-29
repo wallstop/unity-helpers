@@ -134,5 +134,5 @@ Additional behavior:
 
 ## Related Topics
 
-- [Unity Main Thread Dispatcher](unity-main-thread-dispatcher.md) — Ensures background logs can find the main thread safely.
+- [Unity Main Thread Dispatcher](./unity-main-thread-dispatcher.md) — Ensures background logs can find the main thread safely.
 - [Helper Utilities Overview](../utilities/helper-utilities.md) — Highlights other runtime helpers.

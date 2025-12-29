@@ -1,6 +1,6 @@
 # Skill: Unity Performance Patterns
 
-**Trigger**: When writing Unity-specific code, accessing Unity APIs, or working with MonoBehaviours, GameObjects, Physics, or other Unity systems. This skill complements [high-performance-csharp](high-performance-csharp.md) with Unity-specific patterns.
+**Trigger**: When writing Unity-specific code, accessing Unity APIs, or working with MonoBehaviours, GameObjects, Physics, or other Unity systems. This skill complements [high-performance-csharp](./high-performance-csharp.md) with Unity-specific patterns.
 
 ---
 
@@ -710,10 +710,10 @@ public class RaycastService : MonoBehaviour
 
 ## Related Skills
 
-- [high-performance-csharp](high-performance-csharp.md) — Core performance patterns (MANDATORY)
-- [use-pooling](use-pooling.md) — Collection pooling patterns
-- [refactor-to-zero-alloc](refactor-to-zero-alloc.md) — Migration guide
-- [performance-audit](performance-audit.md) — Performance review checklist
-- [gc-architecture-unity](gc-architecture-unity.md) — Unity GC architecture details
-- [memory-allocation-traps](memory-allocation-traps.md) — Hidden allocation sources
-- [mobile-xr-optimization](mobile-xr-optimization.md) — Mobile and XR patterns
+- [high-performance-csharp](./high-performance-csharp.md) — Core performance patterns (MANDATORY)
+- [use-pooling](./use-pooling.md) — Collection pooling patterns
+- [refactor-to-zero-alloc](./refactor-to-zero-alloc.md) — Migration guide
+- [performance-audit](./performance-audit.md) — Performance review checklist
+- [gc-architecture-unity](./gc-architecture-unity.md) — Unity GC architecture details
+- [memory-allocation-traps](./memory-allocation-traps.md) — Hidden allocation sources
+- [mobile-xr-optimization](./mobile-xr-optimization.md) — Mobile and XR patterns

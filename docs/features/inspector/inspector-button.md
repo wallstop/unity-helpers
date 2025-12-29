@@ -1360,9 +1360,9 @@ private async Task LongTaskAsync(CancellationToken ct)
 
 ## See Also
 
-- **[Inspector Overview](inspector-overview.md)** - Complete inspector features overview
-- **[Inspector Grouping Attributes](inspector-grouping-attributes.md)** - WGroup layouts
-- **[Inspector Settings](inspector-settings.md)** - Configuration reference
+- **[Inspector Overview](./inspector-overview.md)** - Complete inspector features overview
+- **[Inspector Grouping Attributes](./inspector-grouping-attributes.md)** - WGroup layouts
+- **[Inspector Settings](./inspector-settings.md)** - Configuration reference
 - **[Editor Tools Guide](../editor-tools/editor-tools-guide.md)** - Other editor utilities
 
 ---

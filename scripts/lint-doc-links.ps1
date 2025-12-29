@@ -123,6 +123,8 @@ function Resolve-LocalPath {
 }
 
 $mdPattern = [regex]'[A-Za-z0-9._/\-]+\.md(?:#[A-Za-z0-9_\-]+)?'
+# LIMITATION: [^)] patterns cannot handle URLs with parentheses like file(1).md
+# This is valid markdown but rare. Files with parens in names should be renamed.
 $linkPattern = [regex]'\[[^\]]+\]\([^)]+\)'
 $standardLinkPattern = [regex]'(?<!\!)\[(?<text>[^\]]+)\]\((?<target>[^)]+)\)'
 $anglePattern = [regex]'<[^>]+>'
@@ -135,6 +137,13 @@ $fileExtensionPattern = [regex]'^`(\*)?\.[\w]+`$'
 $imagePattern = [regex]'!\[[^\]]*\]\((?<target>[^)]+)\)'
 $imageReferencePattern = [regex]'!\[[^\]]*\]\[(?<label>[^\]]+)\]'
 $definitionPattern = [regex]'^\s*\[(?<label>[^\]]+)\]:\s*(?<rest>.+)$'
+# Pattern to detect internal links missing ./ or ../ prefix (starts with letter, not a scheme)
+# This is CRITICAL for GitHub Pages - jekyll-relative-links requires explicit relative paths
+# BEHAVIOR: This intentionally matches broadly (any link starting with a letter) and then
+# filters out external schemes (http://, ftp://, etc.) in the loop below. This approach
+# ensures we catch all internal links that need the relative prefix, while correctly
+# skipping external links regardless of their scheme.
+$missingRelativePrefixPattern = [regex]'\]\((?<target>[a-zA-Z][^)]*)\)'
 
 $violationCount = 0
 $codeDocsPattern = [regex]'(?i)docs[\\/][A-Za-z0-9._/\\-]+\.md(?:#[A-Za-z0-9_\-]+)?'
@@ -234,6 +243,29 @@ $mdFiles | ForEach-Object {
                 $violationCount++
                 Write-Violation -File $file -LineNumber $lineNo -Message "Link text is a filename; use human-readable text for $target" -Line $line
             }
+        }
+
+        # Check for internal links missing ./ or ../ relative prefix
+        # This is CRITICAL for GitHub Pages - jekyll-relative-links requires explicit relative paths
+        # Skip: external links (http/https/mailto), anchors (#), images (!), and links already with ./
+        # IMPORTANT: First strip inline code (backticks) to avoid false positives from example links
+        # LIMITATIONS of inline code stripping:
+        # - Does not handle escaped backticks (\`) - these are rare in practice
+        # - Triple+ backticks on same line may have unexpected interactions
+        # - Nested backticks are not standard markdown
+        # The -replace pattern removes double-backtick spans first (``text``), then single spans
+        $lineWithoutInlineCode = $line -replace '``[^`]*``', '' -replace '`[^`]*`', ''
+        foreach ($match in $missingRelativePrefixPattern.Matches($lineWithoutInlineCode)) {
+            $target = $match.Groups['target'].Value
+            # Skip external links (http:// https:// mailto: etc.)
+            if ($target -match '^[a-zA-Z][a-zA-Z0-9+\.-]*:') { continue }
+            # Skip if target is empty or starts with ./ or ../
+            if ($target -match '^\.\.?/') { continue }
+            # Skip anchor-only links
+            if ($target.StartsWith('#')) { continue }
+            # This is a bare path without relative prefix - flag it
+            $violationCount++
+            Write-Violation -File $file -LineNumber $lineNo -Message "Internal link '$target' missing relative prefix (./ or ../); jekyll-relative-links requires explicit relative paths" -Line $line
         }
 
         foreach ($match in $standardLinkPattern.Matches($line)) {

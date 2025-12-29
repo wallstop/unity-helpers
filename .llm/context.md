@@ -1,6 +1,6 @@
 # LLM Agent Instructions
 
-This document provides guidelines for AI assistants working with this repository. Procedural skills are in the [skills/](skills/) directory.
+This document provides guidelines for AI assistants working with this repository. Procedural skills are in the [skills/](./skills/) directory.
 
 ---
 
@@ -80,58 +80,59 @@ Invoke these skills for specific tasks:
 
 ### Core Skills (Always Consider)
 
-| Skill                                                            | When to Use                                             |
-| ---------------------------------------------------------------- | ------------------------------------------------------- |
-| [high-performance-csharp](skills/high-performance-csharp.md)     | **ALL code** (features, bugs, editor)                   |
-| [defensive-programming](skills/defensive-programming.md)         | **ALL code** (features, bugs, editor)                   |
-| [create-csharp-file](skills/create-csharp-file.md)               | Creating any new `.cs` file                             |
-| [create-unity-meta](skills/create-unity-meta.md)                 | **MANDATORY** after creating ANY new file or folder     |
-| [create-test](skills/create-test.md)                             | Writing or modifying test files                         |
-| [investigate-test-failures](skills/investigate-test-failures.md) | **ANY test failure** — investigate before fixing        |
-| [update-documentation](skills/update-documentation.md)           | **MANDATORY** after ANY feature/bug fix/API change      |
-| [validate-before-commit](skills/validate-before-commit.md)       | **MANDATORY** before completing any task (run linters!) |
-| [create-enum](skills/create-enum.md)                             | Creating a new `enum` type                              |
-| [create-scriptable-object](skills/create-scriptable-object.md)   | Creating ScriptableObject data assets                   |
-| [create-editor-tool](skills/create-editor-tool.md)               | Creating Editor windows, drawers, inspectors            |
-| [format-code](skills/format-code.md)                             | **IMMEDIATELY** after ANY C# file change (not batched!) |
-| [format-non-csharp](skills/format-non-csharp.md)                 | **IMMEDIATELY** after ANY non-C# file change (Prettier) |
-| [search-codebase](skills/search-codebase.md)                     | Finding code, files, or patterns                        |
-| [git-safe-operations](skills/git-safe-operations.md)             | Scripts or hooks that interact with git index           |
-| [avoid-reflection](skills/avoid-reflection.md)                   | **ALL code** — never reflect on our own types           |
-| [avoid-magic-strings](skills/avoid-magic-strings.md)             | **ALL code** — use nameof() not strings                 |
+| Skill                                                              | When to Use                                             |
+| ------------------------------------------------------------------ | ------------------------------------------------------- |
+| [high-performance-csharp](./skills/high-performance-csharp.md)     | **ALL code** (features, bugs, editor)                   |
+| [defensive-programming](./skills/defensive-programming.md)         | **ALL code** (features, bugs, editor)                   |
+| [create-csharp-file](./skills/create-csharp-file.md)               | Creating any new `.cs` file                             |
+| [create-unity-meta](./skills/create-unity-meta.md)                 | **MANDATORY** after creating ANY new file or folder     |
+| [create-test](./skills/create-test.md)                             | Writing or modifying test files                         |
+| [investigate-test-failures](./skills/investigate-test-failures.md) | **ANY test failure** — investigate before fixing        |
+| [update-documentation](./skills/update-documentation.md)           | **MANDATORY** after ANY feature/bug fix/API change      |
+| [validate-before-commit](./skills/validate-before-commit.md)       | **MANDATORY** before completing any task (run linters!) |
+| [create-enum](./skills/create-enum.md)                             | Creating a new `enum` type                              |
+| [create-scriptable-object](./skills/create-scriptable-object.md)   | Creating ScriptableObject data assets                   |
+| [create-editor-tool](./skills/create-editor-tool.md)               | Creating Editor windows, drawers, inspectors            |
+| [format-code](./skills/format-code.md)                             | **IMMEDIATELY** after ANY C# file change (not batched!) |
+| [format-non-csharp](./skills/format-non-csharp.md)                 | **IMMEDIATELY** after ANY non-C# file change (Prettier) |
+| [search-codebase](./skills/search-codebase.md)                     | Finding code, files, or patterns                        |
+| [git-safe-operations](./skills/git-safe-operations.md)             | Scripts or hooks that interact with git index           |
+| [avoid-reflection](./skills/avoid-reflection.md)                   | **ALL code** — never reflect on our own types           |
+| [avoid-magic-strings](./skills/avoid-magic-strings.md)             | **ALL code** — use nameof() not strings                 |
 
 ### Performance Skills
 
-| Skill                                                              | When to Use                                       |
-| ------------------------------------------------------------------ | ------------------------------------------------- |
-| [unity-performance-patterns](skills/unity-performance-patterns.md) | Unity-specific optimizations (APIs, pooling)      |
-| [gc-architecture-unity](skills/gc-architecture-unity.md)           | Understanding Unity GC, incremental GC, manual GC |
-| [memory-allocation-traps](skills/memory-allocation-traps.md)       | Finding hidden allocation sources                 |
-| [profile-debug-performance](skills/profile-debug-performance.md)   | Profiling, debugging, measuring performance       |
-| [performance-audit](skills/performance-audit.md)                   | Reviewing performance-sensitive code              |
-| [refactor-to-zero-alloc](skills/refactor-to-zero-alloc.md)         | Converting allocating code to zero-allocation     |
-| [mobile-xr-optimization](skills/mobile-xr-optimization.md)         | Mobile, VR/AR, 90+ FPS targets                    |
-| [use-array-pool](skills/use-array-pool.md)                         | Working with temporary arrays                     |
-| [use-pooling](skills/use-pooling.md)                               | Working with temporary collections                |
+| Skill                                                                | When to Use                                       |
+| -------------------------------------------------------------------- | ------------------------------------------------- |
+| [unity-performance-patterns](./skills/unity-performance-patterns.md) | Unity-specific optimizations (APIs, pooling)      |
+| [gc-architecture-unity](./skills/gc-architecture-unity.md)           | Understanding Unity GC, incremental GC, manual GC |
+| [memory-allocation-traps](./skills/memory-allocation-traps.md)       | Finding hidden allocation sources                 |
+| [profile-debug-performance](./skills/profile-debug-performance.md)   | Profiling, debugging, measuring performance       |
+| [performance-audit](./skills/performance-audit.md)                   | Reviewing performance-sensitive code              |
+| [refactor-to-zero-alloc](./skills/refactor-to-zero-alloc.md)         | Converting allocating code to zero-allocation     |
+| [mobile-xr-optimization](./skills/mobile-xr-optimization.md)         | Mobile, VR/AR, 90+ FPS targets                    |
+| [use-array-pool](./skills/use-array-pool.md)                         | Working with temporary arrays                     |
+| [use-pooling](./skills/use-pooling.md)                               | Working with temporary collections                |
 
 ### Feature Skills
 
-| Skill                                                                    | When to Use                                      |
-| ------------------------------------------------------------------------ | ------------------------------------------------ |
-| [use-prng](skills/use-prng.md)                                           | Implementing randomization                       |
-| [use-spatial-structure](skills/use-spatial-structure.md)                 | Spatial queries or proximity logic               |
-| [use-data-structures](skills/use-data-structures.md)                     | Heaps, queues, tries, buffers, bit sets          |
-| [use-serialization](skills/use-serialization.md)                         | Save files, network, persistence                 |
-| [use-serializable-types](skills/use-serializable-types.md)               | Dictionaries, HashSets, Nullable, Type, Guid     |
-| [use-effects-system](skills/use-effects-system.md)                       | Buffs, debuffs, stat modifications               |
-| [use-singleton](skills/use-singleton.md)                                 | Global managers, service locators, configuration |
-| [use-relational-attributes](skills/use-relational-attributes.md)         | Auto-wiring components via hierarchy             |
-| [use-extension-methods](skills/use-extension-methods.md)                 | Collection, string, color utilities              |
-| [use-discriminated-union](skills/use-discriminated-union.md)             | OneOf/Result types, type-safe unions             |
-| [use-threading](skills/use-threading.md)                                 | Main thread dispatch, thread safety              |
-| [add-inspector-attribute](skills/add-inspector-attribute.md)             | Improving editor UX with attributes              |
-| [debug-il2cpp](skills/debug-il2cpp.md)                                   | IL2CPP build issues or AOT errors                |
-| [integrate-optional-dependency](skills/integrate-optional-dependency.md) | Odin, VContainer, Zenject integration patterns   |
+| Skill                                                                      | When to Use                                      |
+| -------------------------------------------------------------------------- | ------------------------------------------------ |
+| [use-prng](./skills/use-prng.md)                                           | Implementing randomization                       |
+| [use-spatial-structure](./skills/use-spatial-structure.md)                 | Spatial queries or proximity logic               |
+| [use-data-structures](./skills/use-data-structures.md)                     | Heaps, queues, tries, buffers, bit sets          |
+| [use-serialization](./skills/use-serialization.md)                         | Save files, network, persistence                 |
+| [use-serializable-types](./skills/use-serializable-types.md)               | Dictionaries, HashSets, Nullable, Type, Guid     |
+| [use-effects-system](./skills/use-effects-system.md)                       | Buffs, debuffs, stat modifications               |
+| [use-singleton](./skills/use-singleton.md)                                 | Global managers, service locators, configuration |
+| [use-relational-attributes](./skills/use-relational-attributes.md)         | Auto-wiring components via hierarchy             |
+| [use-extension-methods](./skills/use-extension-methods.md)                 | Collection, string, color utilities              |
+| [use-discriminated-union](./skills/use-discriminated-union.md)             | OneOf/Result types, type-safe unions             |
+| [use-threading](./skills/use-threading.md)                                 | Main thread dispatch, thread safety              |
+| [add-inspector-attribute](./skills/add-inspector-attribute.md)             | Improving editor UX with attributes              |
+| [debug-il2cpp](./skills/debug-il2cpp.md)                                   | IL2CPP build issues or AOT errors                |
+| [integrate-optional-dependency](./skills/integrate-optional-dependency.md) | Odin, VContainer, Zenject integration patterns   |
+| [github-pages](./skills/github-pages.md)                                   | GitHub Pages, Jekyll, markdown link format       |
 
 ---
 
@@ -153,7 +154,10 @@ dotnet tool run csharpier format .   # Format C#
 ### Linting
 
 ```bash
+npm run lint:spelling                          # 🚨 Spell check (run IMMEDIATELY after ANY doc/comment change)
 npm run lint:docs                              # Lint documentation links
+npm run lint:markdown                          # Markdownlint rules
+npm run lint:yaml                              # YAML style (trailing spaces, indentation)
 pwsh -NoProfile -File scripts/lint-tests.ps1   # Lint test lifecycle (Track, DestroyImmediate)
 ```
 
@@ -185,7 +189,7 @@ Tests require Unity 2021.3+. Ask user to run tests and provide output.
 
 ## Critical Rules Summary
 
-See [create-csharp-file](skills/create-csharp-file.md) for detailed rules. Key points:
+See [create-csharp-file](./skills/create-csharp-file.md) for detailed rules. Key points:
 
 1. `using` directives INSIDE namespace
 2. NO underscores in method names (including tests)
@@ -197,22 +201,26 @@ See [create-csharp-file](skills/create-csharp-file.md) for detailed rules. Key p
 8. Minimal comments — only explain **why**, never **what**; rely on descriptive names
 9. `#if` conditional blocks MUST be placed INSIDE the namespace; `#define` directives MUST be at the file top (C# language requirement)
 10. **ALWAYS generate `.meta` files** after creating ANY file or folder (see below)
-11. **ALWAYS update documentation** — Docs, XML docs, code samples, and CHANGELOG for every change (see [update-documentation](skills/update-documentation.md))
-12. **ALWAYS write exhaustive tests** — Normal, negative, edge cases, extreme scenarios, and "the impossible" (see [create-test](skills/create-test.md))
-13. **Enums MUST have explicit integer values** — EVERY enum member requires `= N`; first member MUST be `None`/`Unknown` with `= 0` and `[Obsolete]` (non-error) (see [create-enum](skills/create-enum.md))
-14. **NEVER use backtick-wrapped markdown file references** — Always use proper markdown links like `[readable-name](path/to/doc)` instead of wrapping filenames in backticks; **NEVER place inline code backticks on both sides of a markdown link on the same line**—the linter's regex can match across multiple backtick pairs and capture `.md` from link paths, triggering false positive errors; restructure sentences to avoid this pattern; run `npm run lint:docs` after ANY markdown change (see [update-documentation](skills/update-documentation.md#inline-code-and-markdown-links-anti-pattern))
-15. **NEVER use reflection on our own code** — Use `internal` + `[InternalsVisibleTo]` for test access; reflection is fragile and untraceable (see [avoid-reflection](skills/avoid-reflection.md))
-16. **NEVER use magic strings for code identifiers** — Use `nameof()` for members and `typeof()` for types; strings break silently on rename (see [avoid-magic-strings](skills/avoid-magic-strings.md))
-17. **Markdown code blocks REQUIRE language specifiers** — ALL fenced code blocks must have a language (`csharp`, `bash`, `text`, etc.); never use bare code fence blocks (see [update-documentation](skills/update-documentation.md#markdown-linting-and-quality))
+11. **ALWAYS update documentation** — Docs, XML docs, code samples, and CHANGELOG for every change (see [update-documentation](./skills/update-documentation.md))
+12. **ALWAYS write exhaustive tests** — Normal, negative, edge cases, extreme scenarios, and "the impossible" (see [create-test](./skills/create-test.md))
+13. **Enums MUST have explicit integer values** — EVERY enum member requires `= N`; first member MUST be `None`/`Unknown` with `= 0` and `[Obsolete]` (non-error) (see [create-enum](./skills/create-enum.md))
+14. **NEVER use backtick-wrapped markdown file references** — Always use proper markdown links like `[readable-name](path/to/doc)` instead of wrapping filenames in backticks; **NEVER place inline code backticks on both sides of a markdown link on the same line**—the linter's regex can match across multiple backtick pairs and capture `.md` from link paths, triggering false positive errors; restructure sentences to avoid this pattern; run `npm run lint:docs` after ANY markdown change (see [validate-before-commit](./skills/validate-before-commit.md#markdown-inline-code--link-anti-pattern))
+15. **NEVER use reflection on our own code** — Use `internal` + `[InternalsVisibleTo]` for test access; reflection is fragile and untraceable (see [avoid-reflection](./skills/avoid-reflection.md))
+16. **NEVER use magic strings for code identifiers** — Use `nameof()` for members and `typeof()` for types; strings break silently on rename (see [avoid-magic-strings](./skills/avoid-magic-strings.md))
+17. **Markdown code blocks REQUIRE language specifiers** — ALL fenced code blocks must have a language (`csharp`, `bash`, `text`, etc.); never use bare code fence blocks (see [update-documentation](./skills/update-documentation.md#markdown-linting-and-quality))
 18. **NEVER use emphasis as headings** — Use proper `#` heading syntax, not **bold** or _italic_ text as section headers
-19. **Run markdown linters after doc changes** — `npm run lint:docs`, `npm run lint:markdown`, and `npm run format:md:check` must pass (see [validate-before-commit](skills/validate-before-commit.md))
-20. **Run actionlint after workflow changes** — `actionlint` MUST pass for ANY changes to `.github/workflows/*.yml` files; prevents runtime CI/CD failures from missing parameters (e.g., `config-name`), invalid triggers, and security issues (see [validate-before-commit](skills/validate-before-commit.md#github-actions-workflow-linting-mandatory))
-21. **Run linters IMMEDIATELY after EVERY change** — Do NOT wait until task completion; run appropriate linters after each file modification: `npm run lint:spelling` for docs (add valid terms to `cspell.json`), `npm run lint:docs` + `npm run lint:markdown` for markdown, `actionlint` for workflows, `dotnet tool run csharpier format .` for C#; fix issues before moving to next file (see [validate-before-commit](skills/validate-before-commit.md#mandatory-run-linters-immediately-after-every-change))
-22. **Track ALL Unity objects in tests** — Use `Track()` wrapper for `Editor.CreateEditor()`, `new GameObject()`, `ScriptableObject.CreateInstance()`, etc.; NEVER use manual `DestroyImmediate` in finally blocks; run `pwsh -NoProfile -File scripts/lint-tests.ps1` **IMMEDIATELY** after ANY test changes (pre-push hook enforces this); use `// UNH-SUPPRESS` comment only when intentionally testing destroy behavior (see [create-test](skills/create-test.md#unity-object-lifecycle-management-critical))
-23. **🚨🚨🚨 Run Prettier IMMEDIATELY after EVERY non-C# file change — NO BATCHING** — `npx prettier --write <file>` MUST be executed **IMMEDIATELY after EACH individual file modification**, NOT batched at task completion; applies to ALL: `.md`, `.json`, `.yaml`, `.yml`, `.js`, and config files—**including files in `.llm/` directory**; **WORKFLOW: edit file → IMMEDIATELY run `npx prettier --write <file>` → verify → proceed to next file**; pre-push hooks **WILL REJECT** commits with Prettier issues; **NO EXCEPTIONS, NO DELAYS, NO BATCHING**—always verify with `npx prettier --check .` before committing (see [validate-before-commit](skills/validate-before-commit.md#prettiermarkdown-formatting))
-24. **Run CSharpier IMMEDIATELY after ANY C# file change** — `dotnet tool run csharpier format .` MUST be run after EVERY `.cs` file modification, even single-line edits; do NOT batch formatting until task completion; extra blank lines and spacing issues are common CI/CD failures that are easily preventable (see [format-code](skills/format-code.md) and [validate-before-commit](skills/validate-before-commit.md#c-changes-workflow))
-25. **Verify GitHub Actions configuration files exist AND are on the default branch** — Before creating/modifying workflows, confirm all required config files exist (e.g., `release-drafter.yml` workflow requires `.github/release-drafter.yml` config); missing configs cause runtime failures NOT caught by `actionlint`; **CRITICAL**: Some actions (like `release-drafter`) require config files to exist on the **default branch (main)** at runtime—if adding both workflow AND config in the same PR, either: (1) disable/comment out triggers until config is merged to main, or (2) merge config file first in a separate PR (see [validate-before-commit](skills/validate-before-commit.md#github-actions-configuration-file-requirements-mandatory))
-26. **NEVER use `((var++))` in bash scripts with `set -e`** — The expression `((var++))` returns the pre-increment value; when `var` is 0, it returns 0 (falsy), causing `set -e` to exit the script; use `var=$((var + 1))` instead (assignment always succeeds); see [validate-before-commit](skills/validate-before-commit.md#bash-arithmetic-safety-in-cicd-critical)
+19. **🚨 Run `npm run lint:docs` IMMEDIATELY after ANY markdown change** — Do NOT wait until task completion; run link linter IMMEDIATELY after each markdown file edit; catches missing `./` prefixes, broken links, and formatting issues; also run `npm run lint:markdown` and `npm run format:md:check`; fix all errors before proceeding to next file (see [validate-before-commit](./skills/validate-before-commit.md))
+20. **Run actionlint after workflow changes** — `actionlint` MUST pass for ANY changes to `.github/workflows/*.yml` files; prevents runtime CI/CD failures from missing parameters (e.g., `config-name`), invalid triggers, and security issues (see [validate-before-commit](./skills/validate-before-commit.md#github-actions-workflow-linting-mandatory))
+21. **🚨 Run yamllint after ANY YAML change** — `npm run lint:yaml` MUST pass for ALL `.yml`/`.yaml` files; catches trailing spaces, incorrect indentation, and style violations that Prettier does NOT fix; **WORKFLOW: after ANY YAML edit → `npx prettier --write <file>` → `npm run lint:yaml` → (for workflows) `actionlint`**; CI **WILL FAIL** on yamllint errors (see [validate-before-commit](./skills/validate-before-commit.md#yaml-file-formatting-and-linting-mandatory))
+22. **Run linters IMMEDIATELY after EVERY change** — Do NOT wait until task completion; run appropriate linters after each file modification: `npm run lint:spelling` for docs (add valid terms to `cspell.json`), `npm run lint:docs` + `npm run lint:markdown` for markdown, `npm run lint:yaml` for YAML, `actionlint` for workflows, `dotnet tool run csharpier format .` for C#; fix issues before moving to next file (see [validate-before-commit](./skills/validate-before-commit.md#mandatory-run-linters-immediately-after-every-change))
+23. **Track ALL Unity objects in tests** — Use `Track()` wrapper for `Editor.CreateEditor()`, `new GameObject()`, `ScriptableObject.CreateInstance()`, etc.; NEVER use manual `DestroyImmediate` in finally blocks; run `pwsh -NoProfile -File scripts/lint-tests.ps1` **IMMEDIATELY** after ANY test changes (pre-push hook enforces this); use `// UNH-SUPPRESS` comment only when intentionally testing destroy behavior (see [create-test](./skills/create-test.md#unity-object-lifecycle-management-critical))
+24. **🚨🚨🚨 Run Prettier IMMEDIATELY after EVERY non-C# file change — NO BATCHING** — `npx prettier --write <file>` MUST be executed **IMMEDIATELY after EACH individual file modification**, NOT batched at task completion; applies to ALL: `.md`, `.json`, `.yaml`, `.yml`, `.js`, and config files—**including files in `.llm/` directory**; **WORKFLOW: edit file → IMMEDIATELY run `npx prettier --write <file>` → verify → proceed to next file**; pre-push hooks **WILL REJECT** commits with Prettier issues; **NO EXCEPTIONS, NO DELAYS, NO BATCHING**—always verify with `npx prettier --check .` before committing (see [validate-before-commit](./skills/validate-before-commit.md#prettiermarkdown-formatting))
+25. **Run CSharpier IMMEDIATELY after ANY C# file change** — `dotnet tool run csharpier format .` MUST be run after EVERY `.cs` file modification, even single-line edits; do NOT batch formatting until task completion; extra blank lines and spacing issues are common CI/CD failures that are easily preventable (see [format-code](./skills/format-code.md) and [validate-before-commit](./skills/validate-before-commit.md#c-changes-workflow))
+26. **Verify GitHub Actions configuration files exist AND are on the default branch** — Before creating/modifying workflows, confirm all required config files exist (e.g., `release-drafter.yml` workflow requires `.github/release-drafter.yml` config); missing configs cause runtime failures NOT caught by `actionlint`; **CRITICAL**: Some actions (like `release-drafter`) require config files to exist on the **default branch (main)** at runtime—if adding both workflow AND config in the same PR, either: (1) disable/comment out triggers until config is merged to main, or (2) merge config file first in a separate PR (see [validate-before-commit](./skills/validate-before-commit.md#github-actions-configuration-file-requirements-mandatory))
+27. **NEVER use `((var++))` in bash scripts with `set -e`** — The expression `((var++))` returns the pre-increment value; when `var` is 0, it returns 0 (falsy), causing `set -e` to exit the script; use `var=$((var + 1))` instead (assignment always succeeds); see [validate-before-commit](./skills/validate-before-commit.md#bash-arithmetic-safety-in-cicd-critical)
+28. **🚨🚨🚨 Internal markdown links MUST use `./` or `../` prefix — NO EXCEPTIONS** — ALL internal links in markdown MUST use explicit relative paths with `./` or `../` prefix (e.g., `[Guide](./docs/guide)` or `[Other](../other-doc)`); **NEVER use bare paths** without the prefix (e.g., `[Bad](docs/guide)` or `[Bad](CHANGELOG)`); this applies to ALL markdown files including docs, skills, CHANGELOG, and README; without the prefix, `jekyll-relative-links` fails to convert links causing **broken pages or raw file downloads on GitHub Pages**; **WORKFLOW: after ANY markdown change → IMMEDIATELY run `npm run lint:docs` to catch missing prefixes → fix before proceeding**; CI WILL FAIL if links are incorrect (see [github-pages](./skills/github-pages.md))
+29. **🚨🚨🚨 Run `npm run lint:spelling` IMMEDIATELY after ANY docs/comments change — NO EXCEPTIONS** — Spell check MUST be run **IMMEDIATELY** after modifying ANY markdown file, C# XML comments, or code comments—**NOT at task completion, NOT batched with other files**; spelling errors are the **#1 CI failure cause for documentation changes**; when cspell reports unknown words: (1) Fix actual typos, (2) Add valid technical terms to the appropriate dictionary in `cspell.json` (see cspell quick reference below); **WORKFLOW: edit file → IMMEDIATELY run `npm run lint:spelling` → fix issues or add to dictionary → run `npx prettier --write cspell.json` if modified → proceed to next file**; pre-push hooks **WILL REJECT** commits with spelling errors
+30. **🚨 Example links in documentation MUST be escaped** — When showing example markdown link syntax (teaching correct/incorrect formats), ALWAYS wrap examples in: (1) fenced code blocks with `text` or `markdown` language specifier for multi-line examples, OR (2) inline backticks for brief single-line examples; **this is MANDATORY to prevent false positive CI failures**; the CI link-checking scripts URL-decode paths (handles `%20` for spaces), skip content inside fenced code blocks (` ``` ` or `~~~`), and skip inline code (backtick-wrapped content)—but only if properly escaped; unescaped example links WILL cause the linter to parse them as real links and report them as broken; see [update-documentation](./skills/update-documentation.md#escaping-example-links-in-documentation)
 
 ---
 
@@ -251,7 +259,22 @@ Generate a `.meta` file **immediately** after creating:
 4. Generate meta for the file
 5. Format code (if `.cs`)
 
-See [create-unity-meta](skills/create-unity-meta.md) for full details.
+See [create-unity-meta](./skills/create-unity-meta.md) for full details.
+
+---
+
+## cspell Dictionary Quick Reference
+
+When `npm run lint:spelling` reports unknown words, add them to the appropriate dictionary in `cspell.json`:
+
+| Dictionary      | Purpose                                  | Examples                                     |
+| --------------- | ---------------------------------------- | -------------------------------------------- |
+| `unity-terms`   | Unity Engine APIs, components, lifecycle | MonoBehaviour, GetComponent, OnValidate      |
+| `csharp-terms`  | C# language features, .NET types         | readonly, nullable, LINQ, StringBuilder      |
+| `package-terms` | This package's public API and type names | WallstopStudios, IRandom, SpatialHash        |
+| `tech-terms`    | General programming/tooling terms        | async, config, JSON, middleware, refactoring |
+
+**Adding words**: Edit `cspell.json` → find the dictionary's `words` array → add alphabetically.
 
 ---
 
@@ -286,7 +309,7 @@ See [create-unity-meta](skills/create-unity-meta.md) for full details.
 
 ## High-Performance C# Requirements
 
-**MANDATORY**: All code must follow [high-performance-csharp](skills/high-performance-csharp.md) and [unity-performance-patterns](skills/unity-performance-patterns.md). This applies to:
+**MANDATORY**: All code must follow [high-performance-csharp](./skills/high-performance-csharp.md) and [unity-performance-patterns](./skills/unity-performance-patterns.md). This applies to:
 
 - **New features** — Design for zero allocation from the start
 - **Bug fixes** — Must not regress performance; improve if possible
@@ -303,7 +326,7 @@ Unity uses the **Boehm-Demers-Weiser (BDW) garbage collector**:
 
 At 60 FPS with 1KB/frame allocation = **3.6 MB/minute** of garbage = frequent GC stutters.
 
-See [gc-architecture-unity](skills/gc-architecture-unity.md) for detailed GC architecture information.
+See [gc-architecture-unity](./skills/gc-architecture-unity.md) for detailed GC architecture information.
 
 ### Quick Rules
 
@@ -331,7 +354,7 @@ See [gc-architecture-unity](skills/gc-architecture-unity.md) for detailed GC arc
 | `renderer.material` for changes    | `MaterialPropertyBlock`                         |
 | `SendMessage`/`BroadcastMessage`   | Direct interface calls (1000x faster)           |
 
-See [memory-allocation-traps](skills/memory-allocation-traps.md) for comprehensive hidden allocation sources.
+See [memory-allocation-traps](./skills/memory-allocation-traps.md) for comprehensive hidden allocation sources.
 
 ### Required Patterns
 
@@ -416,13 +439,13 @@ _instance.MethodNeedingTestAccess();
 Assert.AreEqual(expected, _instance._fieldNeedingTestAccess);
 ```
 
-See [avoid-reflection](skills/avoid-reflection.md) and [avoid-magic-strings](skills/avoid-magic-strings.md) for complete guidelines.
+See [avoid-reflection](./skills/avoid-reflection.md) and [avoid-magic-strings](./skills/avoid-magic-strings.md) for complete guidelines.
 
 ---
 
 ## Defensive Programming Requirements
 
-**MANDATORY**: All production code (Runtime AND Editor) must follow [defensive-programming](skills/defensive-programming.md). This applies to:
+**MANDATORY**: All production code (Runtime AND Editor) must follow [defensive-programming](./skills/defensive-programming.md). This applies to:
 
 - **New features** — Design for resilience from the start
 - **Bug fixes** — Must not introduce new failure modes
@@ -521,7 +544,7 @@ public void OnAfterDeserialize()
 4. **Implement proper fix** — Address root cause, not symptoms
 5. **Verify comprehensively** — Run full test suite, confirm no new flakiness
 
-See [investigate-test-failures](skills/investigate-test-failures.md) for detailed investigation procedures.
+See [investigate-test-failures](./skills/investigate-test-failures.md) for detailed investigation procedures.
 
 ---
 
@@ -567,7 +590,7 @@ yield return new TestCaseData("\0\n\r\t", false).SetName("Input.ControlChars.Ret
 - Ensures consistent test structure across cases
 - Enables rapid expansion of coverage
 
-See [create-test](skills/create-test.md) for full testing guidelines.
+See [create-test](./skills/create-test.md) for full testing guidelines.
 
 ### Scope & Behavior
 
@@ -633,11 +656,11 @@ Follow [Keep a Changelog](https://keepachangelog.com/) format:
 - Improved QuadTree query performance by 40% for large datasets
 ```
 
-See [update-documentation](skills/update-documentation.md) for complete guidelines.
+See [update-documentation](./skills/update-documentation.md) for complete guidelines.
 
 ### Shell Tool Requirements
 
-**MANDATORY**: Use high-performance tools instead of traditional Unix tools. See [search-codebase](skills/search-codebase.md) for full documentation.
+**MANDATORY**: Use high-performance tools instead of traditional Unix tools. See [search-codebase](./skills/search-codebase.md) for full documentation.
 
 | Forbidden | Use Instead          | Reason                       |
 | --------- | -------------------- | ---------------------------- |
@@ -658,6 +681,25 @@ fd "\.cs$"
 bat --paging=never file.cs
 ```
 
+### Portable Shell Scripting (CI/CD & Scripts)
+
+**MANDATORY** for CI/CD workflows (`.github/workflows/*.yml`) and bash scripts (`scripts/*.sh`): Use POSIX-compliant tools instead of GNU-specific options. See [search-codebase](./skills/search-codebase.md#portable-shell-scripting-cicd--bash-scripts) and [validate-before-commit](./skills/validate-before-commit.md#portable-shell-scripting-in-workflows-critical) for full documentation.
+
+| ❌ GNU-Specific (Don't Use)  | ✅ POSIX Alternative                | Why                           |
+| ---------------------------- | ----------------------------------- | ----------------------------- |
+| `grep -oP` (Perl regex)      | `grep -oE` (extended regex) + `sed` | `-P` unavailable on macOS/BSD |
+| `sed -i` (in-place edit)     | `sed ... > tmp && mv tmp file`      | Syntax differs GNU vs BSD     |
+| `readarray` / `mapfile`      | `while read` loop                   | Bash 4+ only                  |
+| `grep -oP '\K'` (lookbehind) | `grep -oE` + `sed 's/prefix//'`     | Perl-specific feature         |
+
+```bash
+# ❌ NEVER in CI/CD or scripts (GNU-only, fails on macOS)
+echo "$line" | grep -oP '\]\(\K[^)]+(?=\))'
+
+# ✅ ALWAYS (POSIX-compliant, works everywhere)
+echo "$line" | grep -oE '\]\([^)]+\)' | sed 's/^](//;s/)$//'
+```
+
 ### Git Operations
 
 **NEVER use `git add` or `git commit` commands.** User handles all staging/committing.
@@ -676,7 +718,7 @@ When writing or modifying scripts that interact with git (pre-commit hooks, form
 
 **NEVER use raw `git add` in scripts** — always use the retry helpers.
 
-See [git-safe-operations](skills/git-safe-operations.md) for full documentation.
+See [git-safe-operations](./skills/git-safe-operations.md) for full documentation.
 
 ### Test Execution
 
@@ -774,7 +816,7 @@ All inspector attributes work seamlessly with Odin Inspector when installed (`OD
 - Odin Inspectors: `Editor/CustomEditors/` (3 files)
 - Odin Tests: `Tests/Editor/CustomDrawers/Odin/` (9 files)
 
-See [integrate-optional-dependency](skills/integrate-optional-dependency.md) for implementation patterns.
+See [integrate-optional-dependency](./skills/integrate-optional-dependency.md) for implementation patterns.
 
 ### Editor Tools (Tools > Wallstop Studios > Unity Helpers)
 

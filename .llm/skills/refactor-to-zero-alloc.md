@@ -732,9 +732,9 @@ When refactoring a method to zero-allocation:
 
 ## Related Skills
 
-- [high-performance-csharp](high-performance-csharp.md) - Core performance philosophy
-- [unity-performance-patterns](unity-performance-patterns.md) - Unity-specific patterns
-- [profile-debug-performance](profile-debug-performance.md) - Profiling guide
-- [use-pooling](use-pooling.md) - Detailed collection pooling patterns
-- [use-array-pool](use-array-pool.md) - Array pool selection guide
-- [performance-audit](performance-audit.md) - Performance review checklist
+- [high-performance-csharp](./high-performance-csharp.md) - Core performance philosophy
+- [unity-performance-patterns](./unity-performance-patterns.md) - Unity-specific patterns
+- [profile-debug-performance](./profile-debug-performance.md) - Profiling guide
+- [use-pooling](./use-pooling.md) - Detailed collection pooling patterns
+- [use-array-pool](./use-array-pool.md) - Array pool selection guide
+- [performance-audit](./performance-audit.md) - Performance review checklist

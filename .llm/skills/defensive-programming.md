@@ -648,6 +648,6 @@ Before submitting production code, verify:
 
 ## Related Skills
 
-- [high-performance-csharp](high-performance-csharp.md) — Performance patterns (applies alongside defensive patterns)
-- [create-editor-tool](create-editor-tool.md) — Editor-specific patterns
-- [create-test](create-test.md) — Test edge cases and error conditions
+- [high-performance-csharp](./high-performance-csharp.md) — Performance patterns (applies alongside defensive patterns)
+- [create-editor-tool](./create-editor-tool.md) — Editor-specific patterns
+- [create-test](./create-test.md) — Test edge cases and error conditions

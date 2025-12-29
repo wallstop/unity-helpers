@@ -82,7 +82,7 @@ Notes
 
 - These trees are immutable: rebuild when positions/bounds change significantly.
 - For lots of moving points, consider `SpatialHash2D` for broad‑phase.
-- See [Spatial Tree Semantics](spatial-tree-semantics.md) for boundary behavior and edge cases.
+- See [Spatial Tree Semantics](./spatial-tree-semantics.md) for boundary behavior and edge cases.
 
 ---
 
@@ -258,4 +258,4 @@ START: Do your objects move frequently?
 For deeper details, performance data, and diagrams, see:
 
 - [2D Performance Benchmarks](../../performance/spatial-tree-2d-performance.md)
-- [Spatial Tree Semantics](spatial-tree-semantics.md)
+- [Spatial Tree Semantics](./spatial-tree-semantics.md)

@@ -26,7 +26,7 @@ When any test fails, you MUST:
 3. **Implement a comprehensive fix** that addresses the actual problem
 4. **Verify the fix is correct** by running the full test suite
 
-See [investigate-test-failures](investigate-test-failures.md) for detailed investigation procedures.
+See [investigate-test-failures](./investigate-test-failures.md) for detailed investigation procedures.
 
 ---
 
