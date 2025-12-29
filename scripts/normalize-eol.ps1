@@ -5,6 +5,18 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
+# =============================================================================
+# LINE ENDING POLICY (must match .gitattributes, .prettierrc.json, .yamllint.yaml)
+# =============================================================================
+# DEFAULT: CRLF (Windows) for most text files
+# EXCEPTIONS (LF required):
+#   - YAML files (.yml, .yaml) - yamllint requires unix line endings
+#   - Shell scripts (.sh) - Unix requirement
+#   - .github/** ALL files - GitHub Actions run on Linux, Dependabot commits LF
+#   - .githooks/* - Unix requirement (matched via path pattern)
+#   - package.json, package-lock.json - Dependabot commits LF
+# =============================================================================
+
 # Extensions to normalize (tracked by git)
 $extensions = @(
     'cs','csproj','sln',
@@ -13,8 +25,37 @@ $extensions = @(
     'asmdef','asmref','meta','ps1','sh'
 )
 
-# Extensions that require LF (Unix) line endings (bash scripts)
-$lfExtensions = @('sh')
+# Extensions that ALWAYS require LF (Unix) line endings
+$lfExtensions = @('sh', 'yaml', 'yml')
+
+# Path patterns that require LF line endings (regardless of extension)
+# These match .gitattributes rules
+$lfPathPatterns = @(
+    '^\.github/',           # All files in .github/** directory
+    '^\.githooks/',         # All files in .githooks/** directory
+    '^package\.json$',      # package.json at repo root
+    '^package-lock\.json$'  # package-lock.json at repo root
+)
+
+function Test-ShouldUseLf([string]$path) {
+    # Normalize path separators to forward slashes for consistent matching
+    $normalizedPath = $path -replace '\\', '/'
+    
+    # Check extension-based rules first
+    $ext = [System.IO.Path]::GetExtension($path).TrimStart('.').ToLowerInvariant()
+    if ($lfExtensions -contains $ext) {
+        return $true
+    }
+    
+    # Check path-based rules
+    foreach ($pattern in $lfPathPatterns) {
+        if ($normalizedPath -match $pattern) {
+            return $true
+        }
+    }
+    
+    return $false
+}
 
 function Get-TrackedFiles {
     $files = (git ls-files -z) -split "`0" | Where-Object { $_ -ne '' }
@@ -54,8 +95,7 @@ foreach ($path in $tracked) {
     }
 
     # Determine if this file should use LF (Unix) or CRLF (Windows) line endings
-    $ext = [System.IO.Path]::GetExtension($path).TrimStart('.').ToLowerInvariant()
-    $useLf = $lfExtensions -contains $ext
+    $useLf = Test-ShouldUseLf $path
     $normalized = if ($useLf) { To-Lf $text } else { To-CrLf $text }
 
     $fileChanged = $false

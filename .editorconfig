@@ -15,6 +15,21 @@ end_of_line = lf
 [.githooks/*]
 end_of_line = lf
 
+# YAML files require Unix line endings (yamllint requirement)
+[*.{yaml,yml}]
+indent_style = space
+indent_size = 2
+end_of_line = lf
+
+# GitHub directory files require Unix line endings
+# (GitHub Actions run on Linux, Dependabot commits with LF)
+[.github/**]
+end_of_line = lf
+
+# npm package files require Unix line endings (Dependabot compatibility)
+[{package.json,package-lock.json}]
+end_of_line = lf
+
 # Microsoft .NET properties
 csharp_new_line_before_members_in_object_initializers = false
 csharp_preferred_modifier_order = public, private, protected, internal, file, new, static, abstract, virtual, sealed, readonly, override, extern, unsafe, volatile, async, required:suggestion
