@@ -173,7 +173,7 @@ npm run lint:markdown  # Markdownlint rules (MD032, MD009, etc.)
 ```
 
 > **🚨 CRITICAL**: Spelling errors are the **#1 cause of CI failures** for documentation changes. ALWAYS run `npm run lint:spelling` IMMEDIATELY after editing ANY markdown file or C# comments.
-
+>
 > **⚠️ IMPORTANT**: `npm run lint:docs` must be run after editing **ANY** markdown file in the entire repository — including `docs/`, the README, the CHANGELOG, the `.llm/` directory, and any other location. This catches broken links, backtick-wrapped markdown references, and the [inline code + link anti-pattern](#markdown-inline-code--link-anti-pattern).
 
 ---
@@ -847,9 +847,11 @@ When CI reports a link error that local linting missed:
    - Links inside complex markdown structures
    - Mixed content on the same line (inline code + links)
 3. **Verify the fix locally:**
+
    ```bash
    npm run lint:docs
    ```
+
 4. **If the pattern is a known false positive**, consider whether the content structure can be refactored
 
 ### Quick Reference: CI Validation Rules
@@ -1614,3 +1616,99 @@ Before committing workflow changes:
 - [ ] Quote all variable expansions in shell scripts
 - [ ] Verify `runs-on` uses valid, available runner labels
 - [ ] Confirm trigger events are spelled correctly and valid for the workflow type
+
+---
+
+## Git Hook Regex Pattern Testing (CRITICAL)
+
+> **🚨🚨🚨 CRITICAL**: Git hook regex patterns require SINGLE backslashes, NOT double-escaped. Double escaping causes patterns to silently match NOTHING, making hooks useless while appearing to work.
+
+### The Problem
+
+In bash git hooks (`.githooks/pre-commit`, `.githooks/pre-push`), grep/sed regex patterns use the standard regex escaping — one backslash:
+
+```bash
+# ✅ CORRECT - Single backslash in grep pattern
+git diff --cached --name-only | grep -E '\.(md|markdown)$'
+
+# ❌ WRONG - Double-escaped backslash (matches NOTHING!)
+git diff --cached --name-only | grep -E '\\.(md|markdown)$'
+```
+
+The double-escaped pattern `\\.(md|markdown)$` looks for a literal backslash followed by a dot, NOT just a dot. Since filenames don't contain literal backslashes, **zero files match** and the hook silently skips all processing.
+
+### Why This Is Dangerous
+
+- **Silent failure**: The hook exits successfully (exit code 0) but does nothing
+- **No warnings**: grep returns empty output, loop iterates zero times
+- **Appears to work**: Commits succeed, pushes succeed — no visible error
+- **CI catches it later**: Files reach CI unformatted, causing failures
+
+### Testing Git Hooks After Modification
+
+**ALWAYS run these tests after modifying ANY git hook:**
+
+```bash
+# 1. Check the pattern matches expected files
+echo "test.md" | grep -E '\.(md|markdown)$'     # Should output: test.md
+echo "test.md" | grep -E '\\.(md|markdown)$'    # Should output: (nothing - WRONG!)
+
+# 2. Test the hook manually with a real file
+# Stage a markdown file
+git add docs/some-file.md
+
+# Run the pre-commit hook manually
+.githooks/pre-commit
+
+# Verify the file was actually processed (check output for the filename)
+
+# 3. Test the full commit cycle
+git commit -m "test: verify hook works" --dry-run --verbose
+```
+
+### Checklist: After Modifying Git Hooks
+
+- [ ] **Verify regex patterns use SINGLE backslashes** (not `\\` when you want `\`)
+- [ ] **Test pattern matching manually** with `echo "filename" | grep -E 'pattern'`
+- [ ] **Run the hook directly** (e.g., `.githooks/pre-commit`) and verify files are processed
+- [ ] **Check hook output** — if it reports "0 files" or skips everything, the pattern is wrong
+- [ ] **Test with actual files** — stage files of each type the hook should process
+- [ ] **Verify CI passes** — run `npm run validate:prepush` before pushing
+- [ ] **Cross-check `.prettierrc.json` overrides** — ensure Prettier overrides match `.gitattributes` for line endings
+
+### Common Escaping Mistakes in Git Hooks
+
+| Pattern Context      | ❌ Wrong (Double-Escaped) | ✅ Correct (Single Backslash) |
+| -------------------- | ------------------------- | ----------------------------- | --------------- | -------- |
+| Match file extension | `grep -E '\\.(md          | json)$'`                      | `grep -E '\.(md | json)$'` |
+| Match any digit      | `grep -E '\\d+'`          | `grep -E '[0-9]+'`            |
+| Match whitespace     | `grep -E '\\s+'`          | `grep -E '[[:space:]]+'`      |
+| Match word boundary  | `grep -E '\\bword\\b'`    | `grep -E '\bword\b'`          |
+
+### Prettier Configuration for `.github/**` Files
+
+When modifying git hooks that format files, ensure `.prettierrc.json` has matching overrides for all file types in `.gitattributes`:
+
+```jsonc
+// .prettierrc.json - MUST include .github/** override for LF
+{
+  "overrides": [
+    {
+      "files": [
+        "*.yml",
+        "*.yaml",
+        ".github/**/*.yml",
+        ".github/**/*.yaml",
+        ".github/**/*.md", // ← Critical! .github/** uses LF per .gitattributes
+        "package.json",
+        "*.sh"
+      ],
+      "options": {
+        "endOfLine": "lf"
+      }
+    }
+  ]
+}
+```
+
+If `.gitattributes` specifies LF for `.github/**` but `.prettierrc.json` doesn't have a matching override, formatted files will have CRLF endings, causing CI failures.

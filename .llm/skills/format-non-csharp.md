@@ -200,11 +200,14 @@ The pre-push hook runs `npx prettier --check .` automatically. If any files have
 
 Prettier uses line ending settings from `.prettierrc.json`. This repository has specific overrides:
 
-| File Type                    | Line Ending | Configured In                          |
-| ---------------------------- | ----------- | -------------------------------------- |
-| YAML files (`.yml`, `.yaml`) | LF (unix)   | `.prettierrc.json` override            |
-| GitHub workflow files        | LF (unix)   | Inherited from YAML override           |
-| Most other files             | CRLF        | `.prettierrc.json` default `endOfLine` |
+| File Type                           | Line Ending | Configured In                          |
+| ----------------------------------- | ----------- | -------------------------------------- |
+| YAML files (`.yml`, `.yaml`)        | LF (unix)   | `.prettierrc.json` override            |
+| GitHub workflow files               | LF (unix)   | Inherited from YAML override           |
+| `.github/**/*.md` files             | LF (unix)   | `.prettierrc.json` override            |
+| Shell scripts (`.sh`)               | LF (unix)   | `.prettierrc.json` override            |
+| `package.json`, `package-lock.json` | LF (unix)   | `.prettierrc.json` override            |
+| Most other files                    | CRLF        | `.prettierrc.json` default `endOfLine` |
 
 **Important**: Line ending configuration must be synchronized across multiple files:
 
@@ -214,6 +217,178 @@ Prettier uses line ending settings from `.prettierrc.json`. This repository has 
 - `.editorconfig` — Controls IDE behavior
 
 If you see line ending errors, verify all config files are synchronized. See [validate-before-commit](./validate-before-commit.md#line-ending-configuration-consistency-critical) for details.
+
+---
+
+## Markdownlint Structural Rules
+
+> **⚠️ CRITICAL**: Prettier handles formatting (spacing, indentation) but does NOT fix structural markdown issues. You MUST run BOTH Prettier AND markdownlint.
+
+### Why Prettier Is Not Enough
+
+Prettier and markdownlint catch **different issues**:
+
+| Tool         | What It Handles                                          | What It Misses                           |
+| ------------ | -------------------------------------------------------- | ---------------------------------------- |
+| Prettier     | Spacing, indentation, line length, consistent formatting | Structural rules, semantic issues        |
+| markdownlint | Structural rules, heading hierarchy, code block context  | Formatting/spacing (handled by Prettier) |
+
+**Both must pass.** A file can pass Prettier but fail markdownlint.
+
+### Common Markdownlint Rules Prettier Doesn't Fix
+
+| Rule  | Issue                               | Example Problem                         | Fix                                     |
+| ----- | ----------------------------------- | --------------------------------------- | --------------------------------------- |
+| MD028 | Blank line inside blockquote        | Two blockquotes with blank line between | Remove blank line or merge blockquotes  |
+| MD031 | Fenced code blocks need blank lines | Code fence immediately after text       | Add blank line before and after fences  |
+| MD032 | Lists need surrounding blank lines  | List immediately after paragraph        | Add blank line before and after lists   |
+| MD022 | Headings need blank line after      | Text immediately after heading          | Add blank line after every heading      |
+| MD040 | Fenced code without language        | Opening fence without specifier         | Add language (`csharp`, `bash`, `text`) |
+
+### MD028: Blank Line Inside Blockquote
+
+```markdown
+<!-- ❌ WRONG: Blank line between consecutive blockquotes (MD028) -->
+
+> First blockquote paragraph.
+
+> Second blockquote paragraph.
+
+<!-- ✅ CORRECT: No blank line (continuous blockquote) -->
+
+> First blockquote paragraph.
+> Second blockquote paragraph.
+
+<!-- ✅ ALSO CORRECT: Separate blockquotes with non-blank content -->
+
+> First blockquote.
+
+Some regular text between them.
+
+> Second blockquote.
+```
+
+### MD031: Fenced Code Blocks Need Blank Lines
+
+```markdown
+<!-- ❌ WRONG: No blank line before code fence (MD031) -->
+
+Here is some code:
+\`\`\`csharp
+public void Example() { }
+\`\`\`
+
+<!-- ✅ CORRECT: Blank lines around code fence -->
+
+Here is some code:
+
+\`\`\`csharp
+public void Example() { }
+\`\`\`
+
+More text after the code.
+```
+
+### Required Workflow for Markdown Files
+
+```bash
+# STEP 1: Format with Prettier IMMEDIATELY after editing
+npx prettier --write <file>
+
+# STEP 2: Run markdownlint to catch structural issues
+npm run lint:markdown
+
+# STEP 3: Fix any markdownlint errors and repeat
+# (Prettier may need to run again after manual fixes)
+
+# STEP 4: Verify both pass before proceeding
+npx prettier --check <file>
+npm run lint:markdown
+```
+
+### Full Markdown Validation
+
+```bash
+# Run all markdown checks
+npm run lint:markdown     # Structural rules (MD028, MD031, etc.)
+npm run lint:docs         # Link validation
+npm run lint:spelling     # Spell check
+npx prettier --check .    # Formatting
+```
+
+---
+
+## Verifying Prettier Config Matches `.gitattributes`
+
+> **🚨 CRITICAL**: When `.gitattributes` and `.prettierrc.json` disagree on line endings, CI will fail because git checks out files with one ending but Prettier expects another.
+
+### The Configuration Mismatch Problem
+
+If `.gitattributes` specifies LF for certain paths but `.prettierrc.json` doesn't have matching overrides, you get this failure pattern:
+
+1. Git checks out file with LF endings (per `.gitattributes`)
+2. Prettier formats the file but uses CRLF (default `endOfLine`)
+3. The file now has CRLF endings
+4. CI's line ending check fails
+
+### Checking for Mismatches
+
+When modifying either `.gitattributes` or `.prettierrc.json`:
+
+```bash
+# 1. List all patterns with explicit LF in .gitattributes
+grep -E 'eol=lf|text=lf' .gitattributes
+
+# 2. Verify each pattern has a matching Prettier override
+# Open .prettierrc.json and check the "overrides" array
+cat .prettierrc.json | jq '.overrides'
+
+# 3. Test specific file types
+npx prettier --check ".github/**/*.md"
+npx prettier --check ".github/**/*.yml"
+```
+
+### Current `.gitattributes` LF Patterns vs `.prettierrc.json` Overrides
+
+| `.gitattributes` Pattern   | Requires `.prettierrc.json` Override          |
+| -------------------------- | --------------------------------------------- |
+| `*.yml text eol=lf`        | `"*.yml"` in overrides with `endOfLine: lf`   |
+| `*.yaml text eol=lf`       | `"*.yaml"` in overrides with `endOfLine: lf`  |
+| `.github/** text eol=lf`   | `".github/**/*.md"`, `".github/**/*.yml"` etc |
+| `package.json text eol=lf` | `"package.json"` in overrides                 |
+| `*.sh text eol=lf`         | `"*.sh"` in overrides                         |
+
+### Adding Missing Overrides
+
+If you find a mismatch, update `.prettierrc.json`:
+
+```jsonc
+{
+  "overrides": [
+    {
+      "files": [
+        "*.yml",
+        "*.yaml",
+        ".github/**/*.yml",
+        ".github/**/*.yaml",
+        ".github/**/*.md", // ← Add any missing patterns
+        "package.json",
+        "package-lock.json",
+        "*.sh"
+      ],
+      "options": {
+        "endOfLine": "lf"
+      }
+    }
+  ]
+}
+```
+
+After updating, format the config file:
+
+```bash
+npx prettier --write .prettierrc.json
+```
 
 ---
 

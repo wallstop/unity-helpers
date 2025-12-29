@@ -22,6 +22,7 @@
         "*.yaml",
         ".github/**/*.yml",
         ".github/**/*.yaml",
+        ".github/**/*.md",
         "package.json",
         "package-lock.json",
         "*.sh"

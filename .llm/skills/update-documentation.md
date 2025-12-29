@@ -322,12 +322,77 @@ The button supports...
 - Markdown linters enforce heading structure
 - Table of contents generation requires proper headings
 
+### Prettier vs Markdownlint
+
+> **⚠️ CRITICAL**: Prettier and markdownlint catch DIFFERENT issues. A file can pass Prettier but fail markdownlint. You MUST run BOTH.
+
+| Tool         | Catches                                                  | Misses                                        |
+| ------------ | -------------------------------------------------------- | --------------------------------------------- |
+| Prettier     | Formatting: spacing, indentation, line wrapping          | Structural rules like MD028, MD031            |
+| markdownlint | Structural: heading hierarchy, blank lines, code context | Formatting/spacing issues (Prettier's domain) |
+
+**Workflow for ALL markdown changes:**
+
+```bash
+# STEP 1: Format with Prettier
+npx prettier --write <file>
+
+# STEP 2: Check structural rules with markdownlint
+npm run lint:markdown
+
+# STEP 3: Fix any markdownlint errors, then re-run Prettier if you made changes
+```
+
+### Common Structural Mistakes (Prettier Won't Fix)
+
+#### MD028: Blank Line Inside Blockquote
+
+Consecutive blockquotes separated by blank lines trigger this error:
+
+```markdown
+<!-- ❌ WRONG (MD028) -->
+
+> First quote.
+
+> Second quote.
+
+<!-- ✅ CORRECT: Continuous blockquote -->
+
+> First quote.
+> Second quote.
+```
+
+#### MD031: Fenced Code Blocks Need Blank Lines
+
+Code fences must have blank lines before and after:
+
+```markdown
+<!-- ❌ WRONG (MD031) -->
+
+Some text:
+\`\`\`csharp
+code here
+\`\`\`
+More text.
+
+<!-- ✅ CORRECT -->
+
+Some text:
+
+\`\`\`csharp
+code here
+\`\`\`
+
+More text.
+```
+
 ### Common Markdownlint Rules
 
 | Rule  | Issue                        | Fix                                             |
 | ----- | ---------------------------- | ----------------------------------------------- |
-| MD032 | No blank line around lists   | Add blank line before and after lists           |
+| MD028 | Blank line inside blockquote | Remove blank line between consecutive quotes    |
 | MD031 | No blank line around fences  | Add blank line before and after code blocks     |
+| MD032 | No blank line around lists   | Add blank line before and after lists           |
 | MD022 | No blank line after headings | Add blank line after `#` headings               |
 | MD040 | Fenced code without language | Add language specifier (`csharp`, `bash`, etc.) |
 | MD025 | Multiple top-level headings  | Only one `#` heading per document               |

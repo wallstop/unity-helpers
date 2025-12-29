@@ -19,7 +19,12 @@ set -e
 #   9. Test lifecycle lint
 #
 # LINE ENDING NOTE:
-#   This repo uses CRLF for most files, but YAML files use LF (see .gitattributes).
+#   This repo uses CRLF for most files (.gitattributes).
+#   EXCEPTIONS that MUST use LF:
+#     - YAML files (.yml, .yaml) - cross-platform compatibility
+#     - Shell scripts (.sh) - Unix requirement
+#     - .github/** ALL files - GitHub Actions run on Linux, Dependabot commits LF
+#       This includes .github/*.md files (copilot-instructions.md, etc.)
 #   If you encounter EOL-related CI failures, run: npm run fix:eol
 # ============================================================================
 
