@@ -1473,6 +1473,297 @@ actionlint with shellcheck integration may not catch this pattern. Manually revi
 
 ---
 
+### Subshell Variable Propagation (CRITICAL)
+
+> **⚠️ CRITICAL**: Variables modified inside a pipeline or `while read` loop do NOT propagate to the parent shell. This causes silent bugs where counters/state changes are lost.
+
+**The Problem:**
+
+When you pipe data into a `while read` loop, bash creates a **subshell** to execute the loop. Any variables set or modified inside the loop exist only in that subshell and are lost when the loop ends.
+
+```yaml
+# ❌ BUG - Variable modified in subshell, parent sees original value
+- name: Count errors
+  run: |
+    set -euo pipefail
+    errors=0
+
+    # WARNING: while loop runs in a subshell due to pipe!
+    find . -name "*.md" -print0 | while IFS= read -r -d '' file; do
+      if ! validate "$file"; then
+        errors=$((errors + 1))  # ← This modifies subshell's copy!
+      fi
+    done
+
+    echo "Found $errors errors"  # ← ALWAYS PRINTS 0!
+    if [ "$errors" -gt 0 ]; then exit 1; fi  # ← NEVER FAILS!
+```
+
+**Why This Happens:**
+
+The pipe (`|`) creates a subshell for the right side. Variables modified in that subshell don't affect the parent:
+
+```bash
+count=0
+echo "a b c" | while read -r word; do
+  count=$((count + 1))  # Subshell's count is now 1, 2, 3...
+done
+echo $count  # Prints: 0 (parent's count unchanged!)
+```
+
+**Safe Alternatives:**
+
+| Pattern                      | Description                                      | Recommendation     |
+| ---------------------------- | ------------------------------------------------ | ------------------ |
+| Process substitution         | `while read ... done < <(cmd)`                   | **RECOMMENDED**    |
+| Temp file for counter        | Write count to file, read back in parent         | Reliable           |
+| Process substitution + shopt | `shopt -s lastpipe` (bash 4.2+ only)             | Not portable       |
+| Output accumulation          | `var=$(cmd \| while read...)` — collect stdout   | Works for counting |
+| Command substitution         | `$(cmd)` — captures stdout, runs cmd in subshell | Different purpose  |
+
+> **⚠️ TERMINOLOGY**: **Process substitution** `< <(cmd)` and **command substitution** `$(cmd)` are different:
+>
+> - **Process substitution** keeps the loop in the parent shell (variables propagate)
+> - **Command substitution** captures output from a subshell (variables do NOT propagate)
+
+#### Pattern 1: Process Substitution (RECOMMENDED)
+
+```yaml
+# ✅ CORRECT - Process substitution avoids subshell for the loop
+- name: Count errors
+  run: |
+    set -euo pipefail
+    errors=0
+
+    # Process substitution keeps loop in parent shell
+    while IFS= read -r -d '' file; do
+      if ! validate "$file"; then
+        errors=$((errors + 1))
+      fi
+    done < <(find . -name "*.md" -print0)
+
+    echo "Found $errors errors"  # ← Now works correctly!
+    if [ "$errors" -gt 0 ]; then exit 1; fi
+```
+
+#### Pattern 2: Temp File Counter (Most Reliable)
+
+```yaml
+# ✅ CORRECT - Temp file persists across subshell boundaries
+- name: Count errors
+  run: |
+    set -euo pipefail
+
+    # Use temp file to persist counter across subshells
+    error_file=$(mktemp)
+    echo "0" > "$error_file"
+
+    find . -name "*.md" -print0 | while IFS= read -r -d '' file; do
+      if ! validate "$file"; then
+        # Read, increment, write back to temp file
+        count=$(cat "$error_file")
+        echo $((count + 1)) > "$error_file"
+      fi
+    done
+
+    errors=$(cat "$error_file")
+    rm -f "$error_file"
+
+    echo "Found $errors errors"  # ← Works reliably!
+    if [ "$errors" -gt 0 ]; then exit 1; fi
+```
+
+#### Pattern 3: Output Accumulation (Command Substitution)
+
+```yaml
+# ✅ CORRECT - Accumulate output, count in parent
+- name: Find broken links
+  run: |
+    set -euo pipefail
+
+    # Command substitution: captures stdout from a subshell
+    # The $(...) captures all output from the subshell, including piped loops
+    broken_links=$(find . -name "*.md" -print0 | while IFS= read -r -d '' file; do
+      if ! validate "$file"; then
+        echo "$file"  # Output broken files
+      fi
+    done || true)
+
+    # Count in parent shell
+    if [ -n "$broken_links" ]; then
+      error_count=$(echo "$broken_links" | wc -l)
+      echo "Found $error_count broken links:"
+      echo "$broken_links"
+      exit 1
+    fi
+
+    echo "All links valid"
+```
+
+> **⚠️ TERMINOLOGY CLARIFICATION**: Don't confuse these two different bash features:
+>
+> - **Process substitution** `< <(cmd)` — Treats command output as a file, keeping the loop in the parent shell
+> - **Command substitution** `$(cmd)` — Captures stdout into a variable, runs command in a subshell
+>
+> Pattern 3 uses **command substitution** to collect output from a subshell. The loop itself still runs in a subshell (variables DON'T propagate), but stdout IS captured. Use this pattern when you need to collect output (not modify variables).
+
+**When to Watch Out:**
+
+- Any `cmd | while read` pattern
+- Counter/accumulator variables in pipelines
+- State tracking inside loops fed by pipes
+- Any variable you need AFTER a piped loop
+
+**Common Bug Pattern — Unused Variable Due to Subshell:**
+
+```yaml
+# ❌ BUG - sidebar_errors is set but NEVER used (Copilot will flag this)
+sidebar_errors=0
+grep ... | while read -r page; do
+  sidebar_errors=$((sidebar_errors + 1))  # Modifies subshell copy
+done
+# sidebar_errors is still 0 here, so any check using it is broken!
+```
+
+**Detection:**
+
+- Copilot code review flags variables that appear unused
+- shellcheck may warn about variables set but not used
+- Manually review any variable incremented inside `while read` loops with pipes
+
+---
+
+### Word Splitting and Special Characters (CRITICAL)
+
+> **⚠️ CRITICAL**: Using `for item in $variable` causes word splitting on spaces, tabs, and newlines. This silently breaks iteration when items contain spaces or special characters.
+
+**The Problem:**
+
+When you expand a variable without quotes in `for ... in $var`, bash performs **word splitting** based on IFS (Internal Field Separator, defaults to space/tab/newline). This breaks items that contain spaces:
+
+```yaml
+# ❌ BUG - Word splitting breaks links with spaces
+- name: Check links
+  run: |
+    set -euo pipefail
+
+    # Extract markdown links (some may have spaces like %20)
+    links=$(grep -oE '\]\([^)]+\)' "$file")
+
+    # WARNING: This breaks on ANY space in any link!
+    for link in $links; do  # ← $links is UNQUOTED, triggers word splitting
+      # If links contains "](./my%20file.md)", this iterates:
+      #   1. "](./my%20file.md)"  ← OK if no spaces
+      # But if decoded or has actual spaces:
+      #   1. "](./my"
+      #   2. "file.md)"  ← BROKEN!
+      check_link "$link"
+    done
+```
+
+**Why This Happens:**
+
+1. `$links` (unquoted) triggers word splitting
+2. Each word (separated by space/tab/newline) becomes a separate iteration
+3. A single markdown link with spaces becomes 3 broken fragments
+
+**Safe Alternative: Use `while read` Loop**
+
+```yaml
+# ✅ CORRECT - while read preserves entire lines including spaces
+- name: Check links
+  run: |
+    set -euo pipefail
+
+    # Use while read loop with process substitution
+    while IFS= read -r link; do
+      # Skip empty lines
+      [ -z "$link" ] && continue
+
+      check_link "$link"
+    done < <(grep -oE '\]\([^)]+\)' "$file" 2>/dev/null || true)
+```
+
+**Key Elements of the Safe Pattern:**
+
+| Element                 | Purpose                                     |
+| ----------------------- | ------------------------------------------- |
+| `IFS=`                  | Disable field splitting (preserve spaces)   |
+| `read -r`               | Don't interpret backslashes                 |
+| `< <(cmd)`              | Process substitution avoids subshell issues |
+| `[ -z "$link" ]`        | Handle empty output from grep               |
+| `2>/dev/null \|\| true` | Gracefully handle no matches                |
+
+#### Alternative: Array with Proper Quoting (Bash 4+)
+
+```yaml
+# ✅ CORRECT - Store in array, quote expansion
+- name: Check links
+  run: |
+    set -euo pipefail
+
+    # Read into array (one element per line)
+    mapfile -t links < <(grep -oE '\]\([^)]+\)' "$file" 2>/dev/null || true)
+
+    # Iterate with quoted expansion
+    for link in "${links[@]}"; do
+      check_link "$link"
+    done
+```
+
+**When to Watch Out:**
+
+- Any `for item in $variable` pattern (unquoted variable)
+- Variables containing grep/find output (may have special chars)
+- File paths or URLs (commonly contain spaces, encoded chars)
+- User-supplied data of any kind
+
+**Detection:**
+
+- shellcheck warns about unquoted variables (`SC2086`)
+- Code review should flag any `for ... in $var` pattern
+- Test with deliberately pathological input (spaces, tabs, quotes, etc.)
+
+---
+
+### Hardcoded Executable Paths (Portability)
+
+> **⚠️ CRITICAL**: Never use absolute paths like `/bin/sed` or `/usr/bin/awk` in scripts. Use bare command names and let PATH resolution find the correct binary.
+
+**The Problem:**
+
+Different operating systems and container images have executables in different locations:
+
+- Ubuntu: `/bin/sed`, `/usr/bin/awk`
+- Alpine: `/bin/sed` (BusyBox), `/usr/bin/awk` (may not exist)
+- macOS: `/usr/bin/sed`, `/usr/bin/awk`
+
+```yaml
+# ❌ BUG - Hardcoded path may not exist on all runners
+- name: Process files
+  run: |
+    echo "$content" | /bin/sed 's/old/new/'        # ← Fails on some images
+    echo "$data" | /usr/bin/awk '{print $1}'       # ← Fails on some images
+```
+
+#### Fix: Use Bare Command Names
+
+```yaml
+# ✅ CORRECT - Let PATH find the right binary
+- name: Process files
+  run: |
+    echo "$content" | sed 's/old/new/'
+    echo "$data" | awk '{print $1}'
+```
+
+**Detection:**
+
+- Copilot code review flags hardcoded paths
+- grep for `/bin/`, `/usr/bin/` in workflow files
+- actionlint may warn about non-portable commands
+
+---
+
 ### Portable Shell Scripting in Workflows (CRITICAL)
 
 > **⚠️ CRITICAL**: CI/CD workflows run on various platforms. Scripts MUST use POSIX-compliant commands to ensure portability across Linux, macOS runners, and different shell implementations.
@@ -1678,12 +1969,12 @@ git commit -m "test: verify hook works" --dry-run --verbose
 
 ### Common Escaping Mistakes in Git Hooks
 
-| Pattern Context      | ❌ Wrong (Double-Escaped) | ✅ Correct (Single Backslash) |
-| -------------------- | ------------------------- | ----------------------------- | --------------- | -------- |
-| Match file extension | `grep -E '\\.(md          | json)$'`                      | `grep -E '\.(md | json)$'` |
-| Match any digit      | `grep -E '\\d+'`          | `grep -E '[0-9]+'`            |
-| Match whitespace     | `grep -E '\\s+'`          | `grep -E '[[:space:]]+'`      |
-| Match word boundary  | `grep -E '\\bword\\b'`    | `grep -E '\bword\b'`          |
+| Pattern Context      | ❌ Wrong (Double-Escaped)  | ✅ Correct (Single Backslash) |
+| -------------------- | -------------------------- | ----------------------------- |
+| Match file extension | `grep -E '\\.(md\|json)$'` | `grep -E '\.(md\|json)$'`     |
+| Match any digit      | `grep -E '\\d+'`           | `grep -E '[0-9]+'`            |
+| Match whitespace     | `grep -E '\\s+'`           | `grep -E '[[:space:]]+'`      |
+| Match word boundary  | `grep -E '\\bword\\b'`     | `grep -E '\bword\b'`          |
 
 ### Prettier Configuration for `.github/**` Files
 

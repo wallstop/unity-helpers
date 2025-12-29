@@ -117,6 +117,13 @@ jobs:
                 # URL-decode the path (handles %20 for spaces, etc.)
                 decoded_path=$(urldecode "$link_without_anchor")
 
+                # Skip Samples~ folder links - Unity Package Manager convention
+                # The ~ suffix tells Unity to exclude this folder from the Asset Database
+                # These folders exist but may cause path resolution issues with special chars
+                if [[ "$decoded_path" == *"Samples~"* ]]; then
+                  continue
+                fi
+
                 # Resolve the link path relative to the markdown file's directory
                 if [[ "$decoded_path" == /* ]]; then
                   # Absolute path from repo root

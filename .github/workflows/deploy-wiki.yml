@@ -4,12 +4,6 @@ name: Deploy Documentation to GitHub Wiki
   push:
     branches:
       - main
-    paths:
-      - "docs/**"
-      - "README.md"
-      - "CHANGELOG.md"
-      - "index.md"
-      - ".github/workflows/deploy-wiki.yml"
   workflow_dispatch:
     inputs:
       force_sync:
@@ -131,8 +125,9 @@ jobs:
           echo "Processing documentation files..."
           cd main/docs
 
-          # Create wiki pages from docs structure
-          find . -name "*.md" -type f ! -name "*.meta" | sort | while read -r file; do
+          # Create wiki pages from docs structure - use process substitution to avoid subshell
+          # Note: Not using -print0/-d '' because wiki forbids filenames with spaces
+          while IFS= read -r file; do
             # Remove leading ./
             file="${file#./}"
 
@@ -149,17 +144,17 @@ jobs:
             cp "$file" "../../wiki/$wiki_name"
             echo "  📄 Created: $wiki_name (from $file)"
             pages_created=$((pages_created + 1))
-          done
+          done < <(find . -name "*.md" -type f ! -name "*.meta" | sort)
 
           # Copy images - handle nested image directories
           echo "Copying images..."
           if [ -d "images" ]; then
-            find images -type f ! -name "*.meta" 2>/dev/null | while read -r img; do
+            while IFS= read -r img; do
               mkdir -p "../../wiki/$(dirname "$img")"
               cp "$img" "../../wiki/$img"
               echo "  🖼️  Copied: $img"
               images_copied=$((images_copied + 1))
-            done
+            done < <(find images -type f ! -name "*.meta" 2>/dev/null || true)
           fi
 
           cd ../..
@@ -212,68 +207,151 @@ jobs:
           set -euo pipefail
           cd wiki
 
-          echo "Generating _Sidebar.md..."
+          echo "Generating _Sidebar.md dynamically from actual files..."
 
-          cat > _Sidebar.md << 'SIDEBAR_EOF'
-          ## 📚 Documentation
+          # Function to convert wiki filename to display name
+          # e.g., "Features-Inspector-Inspector-Overview" -> "Inspector Overview"
+          # e.g., "Features-Inspector-Utility-Components" -> "Utility Components"
+          # e.g., "Overview-Getting-Started" -> "Getting Started"
+          get_display_name() {
+            local wiki_name="$1"
+            local display="$wiki_name"
 
-          ### Getting Started
-          - [[Home]]
-          - [[Overview-Getting-Started|Getting Started]]
-          - [[Overview-Index|Feature Index]]
-          - [[Overview-Glossary|Glossary]]
-          - [[Overview-Roadmap|Roadmap]]
+            # Remove top-level category prefix (Features, Overview, Performance, Guides, Project)
+            # Using sed for extended regex alternation which can't be done with bash substitution
+            # shellcheck disable=SC2001
+            display=$(echo "$display" | sed -E 's/^(Features|Overview|Performance|Guides|Project)-//')
 
-          ### Inspector Features
-          - [[Features-Inspector-Inspector-Overview|Inspector Overview]]
-          - [[Features-Inspector-Inspector-Grouping-Attributes|Grouping Attributes]]
-          - [[Features-Inspector-Inspector-Button|Button Attribute]]
-          - [[Features-Inspector-Inspector-Conditional-Display|Conditional Display]]
-          - [[Features-Inspector-Inspector-Selection-Attributes|Selection Attributes]]
-          - [[Features-Inspector-Inspector-Validation-Attributes|Validation Attributes]]
-          - [[Features-Inspector-Inspector-Inline-Editor|Inline Editor]]
-          - [[Features-Inspector-Inspector-Settings|Settings]]
-          - [[Features-Inspector-Visual-Components|Visual Components]]
-          - [[Features-Inspector-Utility-Components|Utility Components]]
+            # Remove subcategory prefix only if it matches known subcategories
+            # This preserves context for files like "Utilities-Data-Structures" -> "Data Structures"
+            # shellcheck disable=SC2001
+            display=$(echo "$display" | sed -E 's/^(Inspector|Effects|Relational-Components|Serialization|Spatial|Logging|Utilities|Editor-Tools)-//')
 
-          ### Core Features
-          - [[Features-Relational-Components-Relational-Components|Relational Components]]
-          - [[Features-Effects-Effects-System|Effects System]]
-          - [[Features-Serialization-Serialization|Serialization]]
-          - [[Features-Spatial-Spatial-Trees|Spatial Trees]]
-          - [[Features-Logging-Logging|Logging]]
+            # Convert remaining dashes to spaces
+            display="${display//-/ }"
+            echo "$display"
+          }
 
-          ### Utilities
-          - [[Features-Utilities-Data-Structures|Data Structures]]
-          - [[Features-Utilities-Math-And-Extensions|Math & Extensions]]
-          - [[Features-Utilities-Random-Generators|Random Generators]]
-          - [[Features-Utilities-Helper-Utilities|Helper Utilities]]
-          - [[Features-Utilities-Reflection-Helpers|Reflection Helpers]]
-          - [[Features-Utilities-Singletons|Singletons]]
+          # Start building the sidebar
+          {
+            echo "## 📚 Documentation"
+            echo ""
+            echo "### Getting Started"
+            echo "- [[Home]]"
 
-          ### Editor Tools
-          - [[Features-Editor-Tools-Editor-Tools-Guide|Editor Tools Guide]]
+            # Overview section
+            for file in Overview-*.md; do
+              [ -f "$file" ] || continue
+              wiki_name="${file%.md}"
+              display=$(get_display_name "$wiki_name")
+              echo "- [[$wiki_name|$display]]"
+            done
 
-          ### Guides
-          - [[Guides-Odin-Migration-Guide|Odin Migration Guide]]
+            echo ""
+            echo "### Inspector Features"
+            for file in Features-Inspector-*.md; do
+              [ -f "$file" ] || continue
+              wiki_name="${file%.md}"
+              display=$(get_display_name "$wiki_name")
+              echo "- [[$wiki_name|$display]]"
+            done
 
-          ### Performance
-          - [[Performance-Random-Performance|Random]]
-          - [[Performance-Spatial-Tree-2D-Performance|Spatial 2D]]
-          - [[Performance-Spatial-Tree-3D-Performance|Spatial 3D]]
-          - [[Performance-Relational-Components-Performance|Relational Components]]
-          - [[Performance-Reflection-Performance|Reflection]]
-          - [[Performance-Ilist-Sorting-Performance|IList Sorting]]
+            echo ""
+            echo "### Effects System"
+            for file in Features-Effects-*.md; do
+              [ -f "$file" ] || continue
+              wiki_name="${file%.md}"
+              display=$(get_display_name "$wiki_name")
+              echo "- [[$wiki_name|$display]]"
+            done
 
-          ### Project
-          - [[CHANGELOG|Changelog]]
-          - [[Project-Contributing|Contributing]]
-          - [[Project-License|License]]
-          - [[Project-Third-Party-Notices|Third Party Notices]]
-          - [[Project-Llms-Txt|LLMs.txt]]
-          SIDEBAR_EOF
+            echo ""
+            echo "### Relational Components"
+            for file in Features-Relational-Components-*.md; do
+              [ -f "$file" ] || continue
+              wiki_name="${file%.md}"
+              display=$(get_display_name "$wiki_name")
+              echo "- [[$wiki_name|$display]]"
+            done
 
-          echo "✅ Sidebar generated"
+            echo ""
+            echo "### Serialization"
+            for file in Features-Serialization-*.md; do
+              [ -f "$file" ] || continue
+              wiki_name="${file%.md}"
+              display=$(get_display_name "$wiki_name")
+              echo "- [[$wiki_name|$display]]"
+            done
+
+            echo ""
+            echo "### Spatial Trees"
+            for file in Features-Spatial-*.md; do
+              [ -f "$file" ] || continue
+              wiki_name="${file%.md}"
+              display=$(get_display_name "$wiki_name")
+              echo "- [[$wiki_name|$display]]"
+            done
+
+            echo ""
+            echo "### Logging"
+            for file in Features-Logging-*.md; do
+              [ -f "$file" ] || continue
+              wiki_name="${file%.md}"
+              display=$(get_display_name "$wiki_name")
+              echo "- [[$wiki_name|$display]]"
+            done
+
+            echo ""
+            echo "### Utilities"
+            for file in Features-Utilities-*.md; do
+              [ -f "$file" ] || continue
+              wiki_name="${file%.md}"
+              display=$(get_display_name "$wiki_name")
+              echo "- [[$wiki_name|$display]]"
+            done
+
+            echo ""
+            echo "### Editor Tools"
+            for file in Features-Editor-Tools-*.md; do
+              [ -f "$file" ] || continue
+              wiki_name="${file%.md}"
+              display=$(get_display_name "$wiki_name")
+              echo "- [[$wiki_name|$display]]"
+            done
+
+            echo ""
+            echo "### Guides"
+            for file in Guides-*.md; do
+              [ -f "$file" ] || continue
+              wiki_name="${file%.md}"
+              display=$(get_display_name "$wiki_name")
+              echo "- [[$wiki_name|$display]]"
+            done
+
+            echo ""
+            echo "### Performance"
+            for file in Performance-*.md; do
+              [ -f "$file" ] || continue
+              wiki_name="${file%.md}"
+              display=$(get_display_name "$wiki_name")
+              echo "- [[$wiki_name|$display]]"
+            done
+
+            echo ""
+            echo "### Project"
+            echo "- [[CHANGELOG|Changelog]]"
+            for file in Project-*.md; do
+              [ -f "$file" ] || continue
+              wiki_name="${file%.md}"
+              display=$(get_display_name "$wiki_name")
+              echo "- [[$wiki_name|$display]]"
+            done
+          } > _Sidebar.md
+
+          echo "Generated sidebar content:"
+          cat _Sidebar.md
+          echo ""
+          echo "✅ Sidebar generated dynamically"
 
       - name: Generate footer
         run: |
@@ -318,6 +396,24 @@ jobs:
             fi
           done < <(find . -name "*.md" -print0)
 
+          # Validate sidebar links - ensure all [[PageName]] references have corresponding files
+          echo ""
+          echo "Validating sidebar links..."
+          if [ -f "_Sidebar.md" ]; then
+            # Extract all [[PageName|...]] patterns and check each exists
+            # Using command substitution to capture missing page names from a subshell loop
+            missing_pages=$(grep -oE '\[\[[A-Za-z0-9-]+' _Sidebar.md | sed 's/\[\[//' | sort -u | while read -r page; do
+              [ ! -f "$page.md" ] && echo "$page"
+            done || true)
+            if [ -n "$missing_pages" ]; then
+              echo "Missing pages referenced in sidebar:"
+              echo "$missing_pages"
+              # Count missing pages and add to errors
+              missing_count=$(echo "$missing_pages" | grep -c . || echo "0")
+              errors=$((errors + missing_count))
+            fi
+          fi
+
           # Count total pages
           total_pages=$(find . -name "*.md" -type f | wc -l)
           total_images=$(find . -type f ! -name "*.md" ! -path "./.git/*" | wc -l)
@@ -328,6 +424,11 @@ jobs:
           echo "   Total images: $total_images"
           echo "   Errors: $errors"
           echo "   Warnings: $warnings"
+
+          # List all generated wiki pages for debugging
+          echo ""
+          echo "📄 Generated wiki pages:"
+          find . -name "*.md" -type f | sort | sed 's|^\./||'
 
           if [ "$errors" -gt 0 ]; then
             echo "::error::Validation failed with $errors errors"

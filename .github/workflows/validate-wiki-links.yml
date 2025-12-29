@@ -1,0 +1,194 @@
+name: Validate Wiki Links
+
+"on":
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "docs/**"
+      - "README.md"
+      - "CHANGELOG.md"
+      - "index.md"
+      - ".github/workflows/deploy-wiki.yml"
+      - ".github/workflows/validate-wiki-links.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/validate-wiki-links.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Validate wiki structure
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Generate wiki page names and validate structure
+        run: |
+          set -euo pipefail
+
+          echo "📋 Validating wiki structure..."
+
+          # Track errors
+          errors=0
+
+          # Verify all expected doc files exist
+          required_docs=(
+            "docs/overview/getting-started.md"
+            "docs/overview/glossary.md"
+            "docs/overview/index.md"
+            "docs/overview/roadmap.md"
+            "docs/features/inspector/inspector-overview.md"
+            "docs/features/effects/effects-system.md"
+            "docs/features/relational-components/relational-components.md"
+            "docs/features/serialization/serialization.md"
+            "docs/guides/odin-migration-guide.md"
+          )
+
+          echo ""
+          echo "Checking required documentation files..."
+          for doc in "${required_docs[@]}"; do
+            if [ ! -f "$doc" ]; then
+              echo "::error::Required documentation file missing: $doc"
+              errors=$((errors + 1))
+            else
+              echo "  ✅ $doc"
+            fi
+          done
+
+          # Generate wiki page names from actual files
+          echo ""
+          echo "📄 Wiki pages that would be generated:"
+
+          # Process docs folder - use process substitution to avoid subshell anti-pattern
+          # Note: Not using -print0/-d '' because wiki forbids filenames with spaces (validated below)
+          cd docs
+          while IFS= read -r file; do
+            # Remove leading ./
+            file="${file#./}"
+
+            # Create wiki-friendly filename:
+            # 1. Replace / with -
+            # 2. Remove .md extension
+            # 3. Capitalize first letter of each segment
+            wiki_name=$(echo "$file" | sed 's|/|-|g' | sed 's|\.md$||')
+            wiki_name=$(echo "$wiki_name" | awk -F'-' '{for(i=1;i<=NF;i++){$i=toupper(substr($i,1,1))substr($i,2)}}1' OFS='-')
+
+            echo "  $file -> $wiki_name.md"
+          done < <(find . -name "*.md" -type f ! -name "*.meta" | sort)
+          cd ..
+
+          # Check for common issues
+          echo ""
+          echo "🔍 Checking for common issues..."
+
+          # Check for files with spaces (problematic for wiki links)
+          files_with_spaces=$(find docs -name "* *" -type f 2>/dev/null || true)
+          if [ -n "$files_with_spaces" ]; then
+            echo "::error::Files with spaces in names (problematic for wiki):"
+            echo "$files_with_spaces"
+            errors=$((errors + 1))
+          fi
+
+          # Check for uppercase in doc filenames (should be lowercase)
+          uppercase_files=$(find docs -name "*[A-Z]*" -type f ! -name "*.meta" 2>/dev/null || true)
+          if [ -n "$uppercase_files" ]; then
+            echo "::warning::Files with uppercase letters (convention is lowercase):"
+            echo "$uppercase_files"
+          fi
+
+          # Check for empty markdown files
+          echo ""
+          echo "Checking for empty files..."
+          while IFS= read -r -d '' file; do
+            if [ ! -s "$file" ]; then
+              echo "::warning::Empty markdown file: $file"
+            fi
+          done < <(find docs -name "*.md" ! -name "*.meta" -print0)
+
+          # Summary
+          echo ""
+          echo "📊 Summary:"
+          total_docs=$(find docs -name "*.md" -type f ! -name "*.meta" | wc -l)
+          echo "   Total documentation files: $total_docs"
+          echo "   Errors: $errors"
+
+          if [ "$errors" -gt 0 ]; then
+            echo ""
+            echo "::error::Validation failed with $errors errors"
+            exit 1
+          fi
+
+          echo ""
+          echo "✅ Wiki structure validation passed"
+
+      - name: Validate internal documentation links
+        run: |
+          set -euo pipefail
+
+          echo "🔗 Validating internal documentation links..."
+
+          # URL-decode function (handles %XX encoding like %20 for spaces)
+          urldecode() {
+            local url_encoded="${1//+/ }"
+            printf '%b' "${url_encoded//%/\\x}"
+          }
+
+          # Track errors using a temp file to avoid subshell variable issues
+          # Variables set inside while loops don't propagate to parent shell
+          error_file=$(mktemp)
+          echo "0" > "$error_file"
+
+          # Check that links between docs files are valid
+          while IFS= read -r -d '' file; do
+            # Extract relative links from markdown files
+            # Pattern: [text](./path/to/file.md) or [text](../path/to/file.md)
+            # Use while loop instead of for-in to handle links with spaces/special chars
+            dir=$(dirname "$file")
+
+            while IFS= read -r link; do
+              # Skip empty lines (from grep returning no matches)
+              [ -z "$link" ] && continue
+
+              # Extract path from link (use sed without hardcoded path for portability)
+              path=$(echo "$link" | sed 's/^](//' | sed 's/)$//')
+
+              # URL-decode the path (handles %20 for spaces, etc.)
+              decoded_path=$(urldecode "$path")
+
+              # Skip Samples~ folder links - these are Unity Package Manager samples
+              # that exist but are intentionally excluded from git in some configs
+              # and may not resolve correctly due to the ~ in the path
+              if [[ "$decoded_path" == *"Samples~"* ]]; then
+                continue
+              fi
+
+              # Resolve relative path
+              full_path=$(cd "$dir" && realpath -m "$decoded_path" 2>/dev/null || echo "INVALID")
+
+              if [ "$full_path" = "INVALID" ] || [ ! -f "$full_path" ]; then
+                echo "::error file=$file::Broken link: $path"
+                # Increment error count using temp file (avoids subshell issues)
+                count=$(cat "$error_file")
+                echo $((count + 1)) > "$error_file"
+              fi
+            done < <(grep -oE '\]\(\.\./[^)]+\.md\)|\]\(\./[^)]+\.md\)' "$file" 2>/dev/null || true)
+          done < <(find docs -name "*.md" -type f ! -name "*.meta" -print0)
+
+          errors=$(cat "$error_file")
+          rm -f "$error_file"
+
+          if [ "$errors" -gt 0 ]; then
+            echo "::error::Found $errors broken internal links"
+            exit 1
+          fi
+
+          echo "✅ All internal documentation links are valid"
