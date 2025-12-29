@@ -76,7 +76,7 @@ This single command runs ALL CI/CD checks locally, ensuring your changes will pa
 | File Type Changed         | Command to Run IMMEDIATELY                     | Notes                                                                                 |
 | ------------------------- | ---------------------------------------------- | ------------------------------------------------------------------------------------- |
 | Documentation (`.md`)     | `npx prettier --write <file>`                  | **MANDATORY** — Run FIRST after any edit                                              |
-| Documentation (`.md`)     | `npm run lint:spelling`                        | Add valid terms to `cspell.json` if needed                                            |
+| Documentation (`.md`)     | `npm run lint:spelling`                        | **🚨 MANDATORY** — #1 CI failure cause; add valid terms to `cspell.json`              |
 | Documentation (`.md`)     | `npm run lint:docs`                            | **CRITICAL** — Validates link targets AND link format (requires `./` or `../` prefix) |
 | Documentation (`.md`)     | `npm run lint:markdown`                        | Markdownlint rules (MD032, MD009, etc.)                                               |
 | JSON/asmdef/asmref        | `npx prettier --write <file>`                  | **MANDATORY** — Prettier formats JSON too                                             |
@@ -84,6 +84,7 @@ This single command runs ALL CI/CD checks locally, ensuring your changes will pa
 | YAML (all `.yml`/`.yaml`) | `npm run lint:yaml`                            | **MANDATORY** — yamllint checks trailing spaces, syntax, style                        |
 | GitHub Workflows (`.yml`) | `actionlint`                                   | **MANDATORY** for `.github/workflows/*.yml`                                           |
 | C# code (`.cs`)           | `dotnet tool run csharpier format .`           | **RUN IMMEDIATELY** after ANY edit (not later)                                        |
+| C# code (`.cs`)           | `npm run lint:spelling`                        | **🚨 MANDATORY** for XML docs and code comments                                       |
 | C# code (`.cs`)           | `npm run lint:csharp-naming`                   | Check for underscore violations                                                       |
 | Test files (`.cs`)        | `pwsh -NoProfile -File scripts/lint-tests.ps1` | **MANDATORY** Track() usage, no manual destroy                                        |
 
@@ -158,24 +159,22 @@ After **ANY** change to markdown files (anywhere in the repository, not just `.l
 # 1. Format with Prettier FIRST (pre-push hook requirement)
 npx prettier --write <file>
 
-# 2. Check spelling (most common failure)
+# 2. 🚨 Check spelling IMMEDIATELY (most common CI failure!)
 npm run lint:spelling
 
-# 3. If spelling errors found with valid technical terms, add to cspell.json:
-# Edit cspell.json and add terms to the appropriate dictionary (see below)
+# 3. If spelling errors found with valid technical terms:
+#    - Edit cspell.json and add terms to the appropriate dictionary
+#    - Run: npx prettier --write cspell.json
+#    - Re-run: npm run lint:spelling (must pass with 0 errors)
 
 # 4. Check links and formatting — MANDATORY for ALL markdown files
 npm run lint:docs      # Catches backtick .md refs AND inline code + link anti-patterns
 npm run lint:markdown  # Markdownlint rules (MD032, MD009, etc.)
 ```
 
+> **🚨 CRITICAL**: Spelling errors are the **#1 cause of CI failures** for documentation changes. ALWAYS run `npm run lint:spelling` IMMEDIATELY after editing ANY markdown file or C# comments.
+
 > **⚠️ IMPORTANT**: `npm run lint:docs` must be run after editing **ANY** markdown file in the entire repository — including `docs/`, the README, the CHANGELOG, the `.llm/` directory, and any other location. This catches broken links, backtick-wrapped markdown references, and the [inline code + link anti-pattern](#markdown-inline-code--link-anti-pattern).
-
-**Proactive Spelling Management**:
-
-- When adding technical terms (class names, method names, package names), **proactively add them to `cspell.json`** BEFORE running the linter
-- Common terms to add: Unity API names, package identifiers, custom type names, acronyms
-- Keep words in each dictionary array sorted alphabetically
 
 ---
 
@@ -183,39 +182,70 @@ npm run lint:markdown  # Markdownlint rules (MD032, MD009, etc.)
 
 > **⚠️ CRITICAL**: This is a non-negotiable requirement. Linters MUST be run IMMEDIATELY after EVERY change — not at the end of a task, not in batches. IMMEDIATELY.
 
-### Spelling Lint After Documentation/Code Comment Changes
+---
+
+## 🚨🚨🚨 CRITICAL: SPELLING CHECKS — #1 CI FAILURE CAUSE 🚨🚨🚨
+
+> **Spelling errors are the MOST COMMON cause of CI/CD failures for documentation changes.** Run `npm run lint:spelling` **IMMEDIATELY** after ANY change to documentation or code comments — NOT at task completion, NOT batched with other files.
+
+### When to Run Spelling Check
 
 **Run `npm run lint:spelling` IMMEDIATELY after:**
 
-- ANY change to markdown files (`.md`)
-- ANY change to XML documentation comments in C# files
-- ANY change to code comments in C# files
+- ANY change to markdown files (`.md`) — including `.llm/`, `docs/`, README, CHANGELOG
+- ANY change to XML documentation comments (`///`) in C# files
+- ANY change to regular code comments (`//`) in C# files
 - Adding new class names, method names, or technical terms
+- Creating new files with documentation
 
-```bash
-# After editing any documentation or code comments
-npm run lint:spelling
+### ✅ CORRECT Spelling Workflow
 
-# If cspell reports unknown words that are VALID technical terms:
-# 1. Identify the correct dictionary in cspell.json
-# 2. Add the word to the appropriate dictionary's "words" array
-# 3. Keep the array sorted alphabetically
-# 4. Re-run lint:spelling to verify the fix
+```text
+1. Edit a file (markdown, C# with comments, etc.)
+2. IMMEDIATELY run: npm run lint:spelling
+3. If errors found:
+   - Fix actual typos (misspellings)
+   - Add valid technical terms to cspell.json (see dictionary guide below)
+4. Format cspell.json if modified: npx prettier --write cspell.json
+5. Re-run: npm run lint:spelling (must pass with 0 errors)
+6. Only then proceed to next file
 ```
 
-### Adding Words to cspell.json
+### ❌ WRONG Workflow (DO NOT DO THIS)
 
-When cspell reports an unknown word that is a **valid technical term**, add it to the appropriate dictionary in `cspell.json`:
+```text
+1. Edit file1.md
+2. Edit file2.md
+3. Edit file3.cs (with XML docs)
+4. Run lint:spelling at the end ← TOO LATE! Errors compound, harder to fix.
+```
 
-| Dictionary       | Use For                                                               | Examples                                   |
-| ---------------- | --------------------------------------------------------------------- | ------------------------------------------ |
-| `unity-terms`    | Unity Engine API names, Unity-specific terms                          | `MonoBehaviour`, `SerializeField`, `OnGUI` |
-| `csharp-terms`   | C# language features, .NET types, C# patterns                         | `struct`, `Nullable`, `IEnumerable`        |
-| `package-terms`  | This package's custom types, class names, method names                | `WButtonEditor`, `UnityHelpers`            |
-| `tech-terms`     | General programming terms, tools, external libraries                  | `actionlint`, `async`, `middleware`        |
-| `words` (global) | General words that don't fit above categories, proper nouns, acronyms | `prepush`, `changelog`, `submodule`        |
+### How to Fix Spelling Errors
 
-**How to add a word:**
+When `npm run lint:spelling` reports unknown words:
+
+#### Step 1: Determine if It's a Typo or Valid Term
+
+| If the word is...           | Action                            |
+| --------------------------- | --------------------------------- |
+| A typo/misspelling          | Fix the typo in your file         |
+| A valid Unity API           | Add to `unity-terms` dictionary   |
+| A valid C# language feature | Add to `csharp-terms` dictionary  |
+| A package-specific type     | Add to `package-terms` dictionary |
+| A general tech term/tool    | Add to `tech-terms` dictionary    |
+| A general word/proper noun  | Add to top-level `words` array    |
+
+#### Step 2: Add to the Correct Dictionary in cspell.json
+
+| Dictionary       | Use For                                                               | Examples                                       |
+| ---------------- | --------------------------------------------------------------------- | ---------------------------------------------- |
+| `unity-terms`    | Unity Engine API names, Unity-specific terms                          | `MonoBehaviour`, `SerializeField`, `OnGUI`     |
+| `csharp-terms`   | C# language features, .NET types, C# patterns                         | `struct`, `Nullable`, `IEnumerable`            |
+| `package-terms`  | This package's custom types, class names, method names                | `WButtonEditor`, `UnityHelpers`, `QuadTree2D`  |
+| `tech-terms`     | General programming terms, tools, external libraries                  | `actionlint`, `async`, `middleware`, `prepush` |
+| `words` (global) | General words that don't fit above categories, proper nouns, acronyms | `changelog`, `submodule`, `boilerplate`        |
+
+#### Step 3: Edit cspell.json
 
 ```jsonc
 // In cspell.json, find the appropriate dictionaryDefinitions entry:
@@ -240,15 +270,38 @@ When cspell reports an unknown word that is a **valid technical term**, add it t
 }
 ```
 
-**After adding words:**
+> **⚠️ IMPORTANT**: Always keep dictionary entries sorted alphabetically within each `words` array.
+
+#### Step 4: Verify and Format
 
 ```bash
-# Verify the fix
+# Verify the spelling fix
 npm run lint:spelling
 
 # Format the cspell.json file
 npx prettier --write cspell.json
 ```
+
+### Common Spelling Mistakes to Avoid
+
+| ❌ WRONG                              | ✅ RIGHT                                                  |
+| ------------------------------------- | --------------------------------------------------------- |
+| Ignoring spelling errors              | Fix typos OR add valid terms to dictionary                |
+| Adding typos to dictionary            | Only add legitimate technical terms                       |
+| Adding words to wrong dictionary      | Match term type to dictionary (Unity→unity-terms, etc.)   |
+| Running spelling check at end of task | Run IMMEDIATELY after EACH file change                    |
+| Forgetting to format cspell.json      | Always run `npx prettier --write cspell.json` after edits |
+| Adding words in random order          | Keep words sorted alphabetically in each dictionary       |
+
+### Proactive Spelling Management
+
+When writing documentation or code comments with technical terms:
+
+1. **Proactively add known terms** to `cspell.json` BEFORE running the linter
+2. **Common terms to add**: Unity API names, package types, custom class names, acronyms
+3. **Run `npm run lint:spelling`** immediately after each file to catch any missed terms
+
+---
 
 ### Link Validation After Markdown Changes
 
@@ -732,6 +785,51 @@ Link Pattern                         CI Result    Notes
 [text](#anchor)                       ⏭️ SKIP      Anchor-only link
 `some-file.md`                        ⏭️ SKIP      Inline code, not a link
 ```
+
+---
+
+## Known Limitations of Link Validation
+
+The link validation scripts (both local PowerShell and CI bash) have some known limitations. These are documented here for completeness and to explain why certain edge cases may not be caught.
+
+### Parentheses in URLs
+
+The regex pattern `\]\([^)]+\)` cannot match URLs containing parentheses, such as:
+
+- `[text](./path/file(1).md)` — File with parentheses in name
+- `[wiki](https://en.wikipedia.org/wiki/Example_(disambiguation))` — Wikipedia-style URLs
+
+**Workaround:** Avoid parentheses in filenames. For external URLs with parentheses, validation may produce false negatives (link won't be checked).
+
+### Inline Code Edge Cases
+
+The inline code stripping regex handles common cases but has limitations:
+
+| Pattern                     | Handled? | Notes                                  |
+| --------------------------- | -------- | -------------------------------------- |
+| `` `normal code` ``         | ✅ Yes   | Standard inline code                   |
+| ` `` `double backtick` `` ` | ✅ Yes   | Double-backtick code spans             |
+| `` `escaped \` backtick` `` | ❌ No    | Escaped backticks not recognized       |
+| `` `text with ` inside` ``  | ❌ No    | Nested backticks not standard markdown |
+| ` `triple+ on same line`    | ⚠️ Maybe | May interact unexpectedly              |
+
+**Workaround:** Place complex code examples in fenced code blocks (triple backticks on their own lines), which are properly skipped.
+
+### URL Decoding
+
+The CI bash `urldecode` function uses `printf '%b'` with hex escape sequences:
+
+- **Safe for:** Repository-owned markdown files (trusted source)
+- **Edge case:** `%` followed by non-hex characters produces undefined output
+- **Not safe for:** Untrusted user input (potential injection vector)
+
+The local PowerShell script uses `[System.Uri]::UnescapeDataString()` which handles edge cases more gracefully.
+
+### External Scheme Detection
+
+The regex `^[a-zA-Z][a-zA-Z0-9+\.-]*:` correctly identifies URI schemes, but the initial broad pattern `\]\((?<target>[a-zA-Z][^)]*)\)` matches all links starting with a letter. This is intentional — the filtering happens afterward to ensure no internal links slip through.
+
+**Schemes correctly skipped:** `http:`, `https:`, `mailto:`, `ftp:`, `file:`, `data:`, etc.
 
 ---
 

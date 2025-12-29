@@ -507,6 +507,8 @@
         "ASTC",
         "Regex",
         "regex",
+        "Lookaheads",
+        "lookaheads",
         "Glob",
         "glob",
         "Pathfinding",

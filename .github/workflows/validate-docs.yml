@@ -35,6 +35,11 @@ jobs:
           errors=0
 
           # URL-decode function (handles %XX encoding like %20 for spaces)
+          # SECURITY NOTE: This uses printf '%b' with hex escape sequences. The input
+          # comes from markdown files in our repo (trusted source). If adapting this
+          # for untrusted input, validate that %XX sequences only contain valid hex.
+          # Edge case: % followed by non-hex chars will produce undefined output,
+          # but this is acceptable for our use case (repo-owned markdown files).
           urldecode() {
             local url_encoded="${1//+/ }"
             printf '%b' "${url_encoded//%/\\x}"
@@ -42,6 +47,13 @@ jobs:
 
           # Remove inline code spans (content between backticks) from a line
           # This prevents example links in inline code from being parsed
+          # LIMITATIONS:
+          # - Does not handle escaped backticks (\`) - these are rare in practice
+          # - Triple+ backticks on same line may have unexpected interactions
+          # - Nested backticks (e.g., `text with ` inside`) are not standard markdown
+          # The sed regex removes double-backtick spans first (``text``), then single
+          # backtick spans (`text`). This handles common cases; exotic patterns should
+          # be placed in fenced code blocks instead of inline code.
           strip_inline_code() {
             local line
             line="$1"
@@ -81,6 +93,10 @@ jobs:
               # Extract markdown links from this line: [text](link)
               # Uses grep -oE (POSIX extended regex) + sed instead of grep -oP (GNU Perl regex)
               # grep -oP is unavailable on macOS and non-GNU systems
+              # LIMITATION: The pattern \]\([^)]+\) cannot handle URLs containing parentheses
+              # like [text](./path/file(1).md). This is valid markdown syntax but rare in this
+              # codebase. For files with parentheses in names, consider renaming them.
+              # A full markdown parser would handle balanced parens but adds complexity.
               while read -r link; do
                 # Skip empty lines from grep/sed output
                 [[ -z "$link" ]] && continue
@@ -149,6 +165,8 @@ jobs:
           # IMPORTANT: Skip content inside code blocks (```) and inline code (backticks)
 
           # Remove inline code spans (content between backticks) from a line
+          # LIMITATIONS: Same as above (escaped backticks, nested backticks not handled).
+          # For complex examples, use fenced code blocks which are skipped entirely.
           strip_inline_code() {
             local line
             line="$1"

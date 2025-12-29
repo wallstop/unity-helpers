@@ -106,15 +106,30 @@ if ($VerboseOutput) {
 }
 
 # Run yamllint
+# Note: Capture exit code immediately after command execution for reliability.
+# Using $LASTEXITCODE directly after & operator with array splatting can be
+# unreliable in some PowerShell versions. This pattern ensures we get the
+# correct exit code by checking $LASTEXITCODE immediately after the call.
 $yamllintArgs = @('-c', $configFile)
 $yamllintArgs += $filesToLint
 
-& $yamllint.Source @yamllintArgs
-$exitCode = $LASTEXITCODE
+$yamllintResult = $null
+try {
+    & $yamllint.Source @yamllintArgs
+    $yamllintResult = $LASTEXITCODE
+} catch {
+    $yamllintResult = 1
+    Write-Error "yamllint execution failed: $_"
+}
 
-if ($exitCode -ne 0) {
-    Write-Error "yamllint found issues. Exit code: $exitCode"
-    exit $exitCode
+# Ensure we have a valid exit code
+if ($null -eq $yamllintResult) {
+    $yamllintResult = 0
+}
+
+if ($yamllintResult -ne 0) {
+    Write-Error "yamllint found issues. Exit code: $yamllintResult"
+    exit $yamllintResult
 }
 
 if ($VerboseOutput) {

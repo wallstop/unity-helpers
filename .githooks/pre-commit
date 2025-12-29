@@ -136,3 +136,20 @@ if [ -n "$YAML_FILES" ]; then
   fi
 fi
 
+# 8) Spell check staged files with cspell
+# Runs on markdown, code, and config files
+SPELL_FILES=$(echo "$STAGED_FILES" | grep -E '\.(md|cs|json|yaml|yml)$' || true)
+if [ -n "$SPELL_FILES" ]; then
+  if npx --no-install cspell --version >/dev/null 2>&1; then
+    echo "Running spell check on staged files..."
+    # Use --no-must-find-files to avoid errors when files are filtered by cspell config
+    # shellcheck disable=SC2086
+    npx --no-install cspell lint --no-must-find-files --no-progress $SPELL_FILES || {
+      echo "Spell check failed. Fix spelling errors or add words to cspell.json." >&2
+      exit 1
+    }
+  else
+    echo "cspell not found; skipping spell check (run 'npm install' to install)." >&2
+  fi
+fi
+

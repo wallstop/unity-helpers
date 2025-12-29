@@ -1,5 +1,20 @@
 /* Unity Helpers - Theme Styles */
 /* Default: Dark mode (Unity Editor-inspired) */
+/*
+ * ARCHITECTURE NOTE: !important declarations
+ * -----------------------------------------
+ * This stylesheet overrides GitHub Pages' "minimal" Jekyll theme which is loaded
+ * as a remote theme. Since we cannot modify the source theme CSS and it loads
+ * before our custom styles, !important is required to ensure our theme variables
+ * take precedence. This is a standard pattern for remote theme customization.
+ *
+ * If you need to override these styles in the future, you have two options:
+ * 1. Use !important with higher specificity selectors (e.g., body.custom-class)
+ * 2. Inline styles on specific elements (not recommended for maintainability)
+ *
+ * The CSS custom properties (--bg-primary, etc.) allow theme switching without
+ * !important conflicts since the values change, not the declarations.
+ */
 
 :root {
   /* Light theme colors */

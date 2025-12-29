@@ -285,3 +285,43 @@ fd -e cs -x rg "using" {}
 # ❌ WRONG (aliases don't work)
 fd -e cs | xargs grep "pattern"
 ```
+
+---
+
+## PowerShell Exit Code Handling
+
+When calling external commands in PowerShell scripts, `$LASTEXITCODE` can be unreliable in certain contexts, especially with array splatting.
+
+### The Problem
+
+```powershell
+# ❌ Potentially unreliable
+$args = @('-c', $config)
+& $tool @args
+$exitCode = $LASTEXITCODE  # May not capture correctly in all PS versions
+```
+
+### Recommended Pattern
+
+```powershell
+# ✅ Capture immediately with error handling
+$result = $null
+try {
+    & $tool @args
+    $result = $LASTEXITCODE
+} catch {
+    $result = 1
+}
+
+# Ensure we have a valid exit code
+if ($null -eq $result) {
+    $result = 0
+}
+```
+
+### Why This Matters
+
+- `$LASTEXITCODE` is only set after native commands, not PowerShell cmdlets
+- Array splatting with `&` operator can have edge cases in older PS versions
+- Try-catch ensures we handle both terminating errors and exit codes
+- Null check provides a safe fallback
