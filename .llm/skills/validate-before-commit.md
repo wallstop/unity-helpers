@@ -1513,12 +1513,18 @@ echo $count  # Prints: 0 (parent's count unchanged!)
 
 **Safe Alternatives:**
 
-| Pattern                      | Description                              | Recommendation     |
-| ---------------------------- | ---------------------------------------- | ------------------ |
-| Process substitution         | `while read ... done < <(cmd)`           | **RECOMMENDED**    |
-| Temp file for counter        | Write count to file, read back in parent | Reliable           |
-| Process substitution + shopt | `shopt -s lastpipe` (bash 4.2+ only)     | Not portable       |
-| Output accumulation          | Echo results, count lines in parent      | Works for counting |
+| Pattern                      | Description                                      | Recommendation     |
+| ---------------------------- | ------------------------------------------------ | ------------------ |
+| Process substitution         | `while read ... done < <(cmd)`                   | **RECOMMENDED**    |
+| Temp file for counter        | Write count to file, read back in parent         | Reliable           |
+| Process substitution + shopt | `shopt -s lastpipe` (bash 4.2+ only)             | Not portable       |
+| Output accumulation          | `var=$(cmd \| while read...)` — collect stdout   | Works for counting |
+| Command substitution         | `$(cmd)` — captures stdout, runs cmd in subshell | Different purpose  |
+
+> **⚠️ TERMINOLOGY**: **Process substitution** `< <(cmd)` and **command substitution** `$(cmd)` are different:
+>
+> - **Process substitution** keeps the loop in the parent shell (variables propagate)
+> - **Command substitution** captures output from a subshell (variables do NOT propagate)
 
 #### Pattern 1: Process Substitution (RECOMMENDED)
 
@@ -1567,7 +1573,7 @@ echo $count  # Prints: 0 (parent's count unchanged!)
     if [ "$errors" -gt 0 ]; then exit 1; fi
 ```
 
-#### Pattern 3: Output Accumulation
+#### Pattern 3: Output Accumulation (Command Substitution)
 
 ```yaml
 # ✅ CORRECT - Accumulate output, count in parent
@@ -1575,7 +1581,8 @@ echo $count  # Prints: 0 (parent's count unchanged!)
   run: |
     set -euo pipefail
 
-    # Collect broken links (each on own line)
+    # Command substitution: captures stdout from a subshell
+    # The $(...) captures all output from the subshell, including piped loops
     broken_links=$(find . -name "*.md" -print0 | while IFS= read -r -d '' file; do
       if ! validate "$file"; then
         echo "$file"  # Output broken files
@@ -1592,6 +1599,13 @@ echo $count  # Prints: 0 (parent's count unchanged!)
 
     echo "All links valid"
 ```
+
+> **⚠️ TERMINOLOGY CLARIFICATION**: Don't confuse these two different bash features:
+>
+> - **Process substitution** `< <(cmd)` — Treats command output as a file, keeping the loop in the parent shell
+> - **Command substitution** `$(cmd)` — Captures stdout into a variable, runs command in a subshell
+>
+> Pattern 3 uses **command substitution** to collect output from a subshell. The loop itself still runs in a subshell (variables DON'T propagate), but stdout IS captured. Use this pattern when you need to collect output (not modify variables).
 
 **When to Watch Out:**
 

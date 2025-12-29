@@ -68,9 +68,10 @@ jobs:
           echo ""
           echo "📄 Wiki pages that would be generated:"
 
-          # Process docs folder
+          # Process docs folder - use process substitution to avoid subshell anti-pattern
+          # Note: Not using -print0/-d '' because wiki forbids filenames with spaces (validated below)
           cd docs
-          find . -name "*.md" -type f ! -name "*.meta" | sort | while read -r file; do
+          while IFS= read -r file; do
             # Remove leading ./
             file="${file#./}"
 
@@ -82,7 +83,7 @@ jobs:
             wiki_name=$(echo "$wiki_name" | awk -F'-' '{for(i=1;i<=NF;i++){$i=toupper(substr($i,1,1))substr($i,2)}}1' OFS='-')
 
             echo "  $file -> $wiki_name.md"
-          done
+          done < <(find . -name "*.md" -type f ! -name "*.meta" | sort)
           cd ..
 
           # Check for common issues
