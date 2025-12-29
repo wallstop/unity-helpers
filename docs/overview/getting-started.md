@@ -104,7 +104,7 @@ Comprehensive deep-dive (best for team leads and senior developers):
 See it working first, understand the theory later:
 
 1. Follow the [3 Quick Wins](#three-quick-wins-5-minutes) below
-2. Explore the [Samples~ folder](https://github.com/wallstop/unity-helpers/tree/main/Samples~) for DI integration examples
+2. Explore the [Samples~ folder](../../Samples~/) for DI integration examples
 3. Modify examples for your specific needs
 4. Read the detailed guides when you need to go deeper
 
@@ -213,7 +213,7 @@ public class Player : MonoBehaviour
   - VContainer: in `LifetimeScope.Configure`, call `builder.RegisterRelationalComponents()`.
   - Zenject/Extenject: add `RelationalComponentsInstaller` to your `SceneContext` and (optionally) enable the scene scan on initialize.
   - Reflex: attach `RelationalComponentsInstaller` alongside your `SceneScope`. The installer binds the assigner, hydrates the active scene, and can listen for additive scenes. Use `ContainerRelationalExtensions` helpers (`InjectWithRelations`, `InstantiateGameObjectWithRelations`, etc.) when spawning objects through the container.
-- Samples: [DI – VContainer](https://github.com/wallstop/unity-helpers/blob/main/Samples~/DI%20-%20VContainer/README.md), [DI – Zenject](https://github.com/wallstop/unity-helpers/blob/main/Samples~/DI%20-%20Zenject/README.md), [DI – Reflex](https://github.com/wallstop/unity-helpers/blob/main/Samples~/DI%20-%20Reflex/README.md)
+- Samples: [DI – VContainer](../../Samples~/DI%20-%20VContainer/README.md), [DI – Zenject](../../Samples~/DI%20-%20Zenject/README.md), [DI – Reflex](../../Samples~/DI%20-%20Reflex/README.md)
 - Full guide with scenarios and testing tips: [Dependency Injection Integrations](../features/relational-components/relational-components.md#dependency-injection-integrations)
 
 ### 3. Spatial Queries in 60 Seconds 🟡 Intermediate
@@ -387,7 +387,7 @@ Pick one feature that solves your immediate problem:
 
 **DI Integration:**
 
-- [VContainer Sample](https://github.com/wallstop/unity-helpers/blob/main/Samples~/DI%20-%20VContainer/README.md) - VContainer integration guide
-- [Zenject Sample](https://github.com/wallstop/unity-helpers/blob/main/Samples~/DI%20-%20Zenject/README.md) - Zenject integration guide
+- [VContainer Sample](../../Samples~/DI%20-%20VContainer/README.md) - VContainer integration guide
+- [Zenject Sample](../../Samples~/DI%20-%20Zenject/README.md) - Zenject integration guide
 
 **Need help?** [Open an issue](https://github.com/wallstop/unity-helpers/issues) or check [Troubleshooting](../features/relational-components/relational-components.md#troubleshooting)
