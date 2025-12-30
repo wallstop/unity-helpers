@@ -74,10 +74,7 @@ def transform_path_to_wiki_page(path: str) -> str:
     for part in parts:
         # Split on hyphens to capitalize each word
         words = part.split("-")
-        capitalized_words = []
-        for word in words:
-            if word:
-                capitalized_words.append(word[0].upper() + word[1:])
+        capitalized_words = [word.capitalize() for word in words if word]
         wiki_parts.append("-".join(capitalized_words))
 
     return "-".join(wiki_parts) + anchor
@@ -149,12 +146,6 @@ def _transform_with_protected_inline_code(text: str, transform_fn) -> str:
     # Placeholder for protected inline code
     placeholders = []
     placeholder_prefix = "\x00INLINE_CODE_"
-
-    def protect_inline_code(match: re.Match) -> str:
-        """Replace standalone inline code with a placeholder."""
-        idx = len(placeholders)
-        placeholders.append(match.group(0))
-        return f"{placeholder_prefix}{idx}\x00"
 
     # Pattern to find inline code that is NOT inside link brackets
     # We need to identify inline code that appears outside of [...](...) patterns

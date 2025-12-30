@@ -173,13 +173,16 @@ fi
 
 # =============================================================================
 # Test: Wiki link transformation (from deploy-wiki.yml)
-# Tests the Perl-based link transformation that converts relative doc links
-# to wiki page references (e.g., ./docs/overview/roadmap.md -> Overview-Roadmap)
+# Tests link transformation that converts relative doc links to wiki page
+# references (e.g., ./docs/overview/roadmap.md -> Overview-Roadmap).
+# Note: Production uses Python (scripts/wiki/transform_wiki_links.py).
+# This Perl function is a reference implementation for bash-level testing.
 # =============================================================================
 echo ""
 echo "=== Testing wiki link transformation ==="
 
-# This function mirrors the Perl transformation in deploy-wiki.yml
+# This Perl function is a reference implementation for bash testing.
+# Production uses Python: scripts/wiki/transform_wiki_links.py
 transform_wiki_link() {
     local input="$1"
     echo "$input" | perl -pe '

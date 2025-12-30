@@ -135,17 +135,17 @@
   }
 }
 
-/* Respect user's motion preferences */
+/* Respect user's motion preferences (WCAG 2.1 SC 2.3.3) */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
   *::after {
-    -webkit-animation-duration: 0.01ms !important;
-    animation-duration: 0.01ms !important;
+    -webkit-animation-duration: 0s !important;
+    animation-duration: 0s !important;
     -webkit-animation-iteration-count: 1 !important;
     animation-iteration-count: 1 !important;
-    -webkit-transition-duration: 0.01ms !important;
-    transition-duration: 0.01ms !important;
+    -webkit-transition-duration: 0s !important;
+    transition-duration: 0s !important;
     scroll-behavior: auto !important;
   }
 }

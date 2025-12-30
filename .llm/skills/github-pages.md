@@ -367,6 +367,36 @@ footer {
 }
 ```
 
+### CSS Accessibility Requirements
+
+**Always respect `prefers-reduced-motion` for animations**. This is required by WCAG 2.1 SC 2.3.3 (Animation from Interactions) for users with vestibular disorders.
+
+```css
+/* ✅ CORRECT: Completely disable animation */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0s !important;
+    transition-duration: 0s !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ❌ WRONG: Near-zero values still trigger animation */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important; /* Still plays briefly! */
+  }
+}
+```
+
+**Why `0s` not `0.01ms`**:
+
+- `0s` truly disables the animation—no visual flicker, no animation callbacks
+- `0.01ms` was a legacy workaround for old browser bugs that is now obsolete
+- Semantically clearer: `0s` means "no animation" while `0.01ms` implies "very fast animation"
+
 ---
 
 ## Testing Links Locally

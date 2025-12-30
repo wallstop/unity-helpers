@@ -317,6 +317,24 @@ When refactoring wiki generation scripts (e.g., moving from inline bash to Pytho
 - Fix: Updated bash tests to check Python scripts for correct
   Markdown link patterns
 
+### Comment and Documentation Synchronization (CRITICAL)
+
+When modifying wiki generation scripts, **update comments that reference
+implementation details**:
+
+1. **Remove dead code** — Delete unused functions entirely; don't leave
+   them "for future use"
+2. **Update implementation references** — If code moves from bash/Perl
+   to Python, update comments
+3. **Keep docstrings current** — Ensure module and function docstrings
+   reflect actual behavior
+
+**Common mistakes**:
+
+- Leaving comments like "Perl-based transformation" when Python is now used
+- Keeping helper functions that were part of a refactor but never integrated
+- Docstrings describing an old algorithm after a rewrite
+
 ---
 
 ## Related Skills
