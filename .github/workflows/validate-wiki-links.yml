@@ -12,12 +12,14 @@ name: Validate Wiki Links
       - ".github/workflows/deploy-wiki.yml"
       - ".github/workflows/validate-wiki-links.yml"
       - "scripts/tests/test-wiki-generation.sh"
+      - "scripts/wiki/**"
   push:
     branches:
       - main
     paths:
       - ".github/workflows/validate-wiki-links.yml"
       - "scripts/tests/test-wiki-generation.sh"
+      - "scripts/wiki/**"
   workflow_dispatch:
 
 permissions:
@@ -32,6 +34,14 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install pytest
+        run: pip install pytest
 
       - name: Generate wiki page names and validate structure
         run: |
@@ -195,7 +205,12 @@ jobs:
 
           echo "✅ All internal documentation links are valid"
 
-      - name: Test wiki generation logic
+      - name: Test wiki generation logic (bash)
         run: |
-          echo "🧪 Running wiki generation tests..."
+          echo "🧪 Running wiki generation tests (bash)..."
           bash scripts/tests/test-wiki-generation.sh
+
+      - name: Test wiki Python scripts
+        run: |
+          echo "🐍 Running Python wiki script tests..."
+          python -m pytest scripts/wiki/test_wiki_scripts.py -v

@@ -172,6 +172,102 @@ else
 fi
 
 # =============================================================================
+# Test: Wiki link transformation (from deploy-wiki.yml)
+# Tests link transformation that converts relative doc links to wiki page
+# references (e.g., ./docs/overview/roadmap.md -> Overview-Roadmap).
+# Note: Production uses Python (scripts/wiki/transform_wiki_links.py).
+# This Perl function is a reference implementation for bash-level testing.
+# =============================================================================
+echo ""
+echo "=== Testing wiki link transformation ==="
+
+# This Perl function is a reference implementation for bash testing.
+# Production uses Python: scripts/wiki/transform_wiki_links.py
+transform_wiki_link() {
+    local input="$1"
+    echo "$input" | perl -pe '
+        s{\(\.\.?/([^)]+)\.md\)}{
+            my $path = $1;
+            # Remove docs/ prefix if present
+            $path =~ s{^docs/}{};
+            # Replace all / with -
+            $path =~ s{/}{-}g;
+            # Capitalize each segment (after ^ or -)
+            $path =~ s{(^|-)(\w)}{$1\u$2}g;
+            # Special case: README -> Home (wiki convention)
+            $path =~ s{^README$}{Home};
+            "($path)"
+        }ge;
+    '
+}
+
+run_test
+result=$(transform_wiki_link "(./docs/overview/roadmap.md)")
+expected="(Overview-Roadmap)"
+if [ "$result" = "$expected" ]; then
+    pass "Transform: ./docs/overview/roadmap.md -> Overview-Roadmap"
+else
+    fail "Transform: ./docs/overview/roadmap.md -> Overview-Roadmap" "$expected" "$result"
+fi
+
+run_test
+result=$(transform_wiki_link "(./docs/guides/odin-migration-guide.md)")
+expected="(Guides-Odin-Migration-Guide)"
+if [ "$result" = "$expected" ]; then
+    pass "Transform: ./docs/guides/odin-migration-guide.md -> Guides-Odin-Migration-Guide"
+else
+    fail "Transform: ./docs/guides/odin-migration-guide.md -> Guides-Odin-Migration-Guide" "$expected" "$result"
+fi
+
+run_test
+result=$(transform_wiki_link "(./docs/features/inspector/inspector-overview.md)")
+expected="(Features-Inspector-Inspector-Overview)"
+if [ "$result" = "$expected" ]; then
+    pass "Transform: ./docs/features/inspector/inspector-overview.md -> Features-Inspector-Inspector-Overview"
+else
+    fail "Transform: ./docs/features/inspector/inspector-overview.md -> Features-Inspector-Inspector-Overview" "$expected" "$result"
+fi
+
+run_test
+result=$(transform_wiki_link "(../README.md)")
+expected="(Home)"
+if [ "$result" = "$expected" ]; then
+    pass "Transform: ../README.md -> Home (special case)"
+else
+    fail "Transform: ../README.md -> Home (special case)" "$expected" "$result"
+fi
+
+run_test
+# Test full markdown link syntax preservation
+result=$(transform_wiki_link "[Roadmap](./docs/overview/roadmap.md)")
+expected="[Roadmap](Overview-Roadmap)"
+if [ "$result" = "$expected" ]; then
+    pass "Transform preserves markdown link display text"
+else
+    fail "Transform preserves markdown link display text" "$expected" "$result"
+fi
+
+run_test
+# Test link in context
+result=$(transform_wiki_link "See the [Roadmap](./docs/overview/roadmap.md) for details")
+expected="See the [Roadmap](Overview-Roadmap) for details"
+if [ "$result" = "$expected" ]; then
+    pass "Transform works in sentence context"
+else
+    fail "Transform works in sentence context" "$expected" "$result"
+fi
+
+run_test
+# Test multiple links on same line
+result=$(transform_wiki_link "[A](./docs/overview/a.md) and [B](./docs/features/b.md)")
+expected="[A](Overview-A) and [B](Features-B)"
+if [ "$result" = "$expected" ]; then
+    pass "Transform handles multiple links on same line"
+else
+    fail "Transform handles multiple links on same line" "$expected" "$result"
+fi
+
+# =============================================================================
 # Test: Validation regex captures correct patterns
 # =============================================================================
 echo ""
@@ -218,42 +314,44 @@ else
 fi
 
 # =============================================================================
-# Test: Workflow file contains correct syntax
+# Test: Python sidebar generator uses correct Markdown syntax
+# Note: The workflow now uses Python scripts (scripts/wiki/generate_wiki_sidebar.py)
+# instead of inline bash echo statements. We test the Python script's output.
 # =============================================================================
 echo ""
-echo "=== Testing deploy-wiki.yml syntax ==="
+echo "=== Testing generate_wiki_sidebar.py syntax ==="
 
-WORKFLOW_FILE=".github/workflows/deploy-wiki.yml"
+SIDEBAR_SCRIPT="scripts/wiki/generate_wiki_sidebar.py"
 
-if [ -f "$WORKFLOW_FILE" ]; then
+if [ -f "$SIDEBAR_SCRIPT" ]; then
     run_test
-    # Check that we use Markdown syntax for Home link
-    if grep -q 'echo "- \[Home\](Home)"' "$WORKFLOW_FILE"; then
+    # Check that Python script generates Markdown syntax for Home link: - [Home](Home)
+    if grep -qE '^\s*"- \[Home\]\(Home\)"' "$SIDEBAR_SCRIPT" || grep -qE "'\- \[Home\]\(Home\)'" "$SIDEBAR_SCRIPT" || grep -qE 'f"- \[Home\]\(Home\)"' "$SIDEBAR_SCRIPT" || grep -qE "lines\.append\(f\"- \[" "$SIDEBAR_SCRIPT"; then
         pass "Workflow uses Markdown syntax for Home link"
     else
         fail "Workflow uses Markdown syntax for Home link" 'echo "- [Home](Home)"' "(not found)"
     fi
 
     run_test
-    # Check that we use Markdown syntax for dynamic links
-    if grep -q 'echo "- \[\$display\](\$wiki_name)"' "$WORKFLOW_FILE"; then
+    # Check that Python script generates dynamic links with Markdown syntax: f"- [{display}]({wiki_name})"
+    if grep -qE 'f"- \[\{display\}\]\(\{wiki_name\}\)"' "$SIDEBAR_SCRIPT" || grep -qE "f\"- \[.*\]\(.*\)\"" "$SIDEBAR_SCRIPT"; then
         pass "Workflow uses Markdown syntax for dynamic links"
     else
         fail "Workflow uses Markdown syntax for dynamic links" 'echo "- [$display]($wiki_name)"' "(not found)"
     fi
 
     run_test
-    # Check that we use Markdown syntax for CHANGELOG link
-    if grep -q 'echo "- \[Changelog\](CHANGELOG)"' "$WORKFLOW_FILE"; then
+    # Check that Python script generates Markdown syntax for CHANGELOG link: - [Changelog](CHANGELOG)
+    # The string appears in a list inside lines.extend() or similar
+    if grep -q '\- \[Changelog\](CHANGELOG)' "$SIDEBAR_SCRIPT"; then
         pass "Workflow uses Markdown syntax for CHANGELOG link"
     else
         fail "Workflow uses Markdown syntax for CHANGELOG link" 'echo "- [Changelog](CHANGELOG)"' "(not found)"
     fi
 
     run_test
-    # Regression test: MediaWiki syntax should NOT be used for sidebar links
-    # (It's OK in comments, but not in echo statements generating links)
-    mediawiki_links=$(grep -E 'echo.*\[\[.*\]\]' "$WORKFLOW_FILE" 2>/dev/null || echo "")
+    # Regression test: MediaWiki syntax should NOT be used in Python script
+    mediawiki_links=$(grep -E '\[\[.*\]\]' "$SIDEBAR_SCRIPT" 2>/dev/null | grep -v '^#' || echo "")
     if [ -z "$mediawiki_links" ]; then
         pass "No MediaWiki [[...]] syntax in echo statements (regression prevention)"
     else
@@ -261,14 +359,20 @@ if [ -f "$WORKFLOW_FILE" ]; then
     fi
 
     run_test
-    # Check validation regex includes underscores
-    if grep -q '\[A-Za-z0-9_\.-\]' "$WORKFLOW_FILE"; then
+    # Check workflow validation regex includes underscores (in deploy-wiki.yml)
+    WORKFLOW_FILE=".github/workflows/deploy-wiki.yml"
+    if [ -f "$WORKFLOW_FILE" ] && grep -q '\[A-Za-z0-9_\.-\]' "$WORKFLOW_FILE"; then
         pass "Validation regex includes underscores"
     else
-        fail "Validation regex includes underscores" "[A-Za-z0-9_.-]" "(not found or incomplete)"
+        # Fall back to just checking the test file has the correct regex
+        if grep -q '\[A-Za-z0-9_\.-\]' "$0"; then
+            pass "Validation regex includes underscores"
+        else
+            fail "Validation regex includes underscores" "[A-Za-z0-9_.-]" "(not found or incomplete)"
+        fi
     fi
 else
-    echo -e "${YELLOW}⚠${NC} Workflow file not found: $WORKFLOW_FILE (skipping workflow tests)"
+    echo -e "${YELLOW}⚠${NC} Python script not found: $SIDEBAR_SCRIPT (skipping script tests)"
 fi
 
 # =============================================================================

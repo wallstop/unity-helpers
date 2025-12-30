@@ -69,6 +69,11 @@ jobs:
           path: main
           fetch-depth: 1
 
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
       - name: Clone wiki repository
         id: clone-wiki
         run: |
@@ -96,68 +101,20 @@ jobs:
         run: |
           set -euo pipefail
 
-          # Track statistics
-          pages_created=0
-          images_copied=0
-
-          # Clear existing wiki content (except .git and special wiki files we'll regenerate)
+          # Clear existing wiki content (except .git)
           echo "Clearing existing wiki content..."
           find wiki -mindepth 1 -maxdepth 1 ! -name '.git' -exec rm -rf {} +
 
-          # Copy README as Home page
-          echo "Creating Home.md from README.md..."
-          cp main/README.md wiki/Home.md
-          pages_created=$((pages_created + 1))
+          # Run Python script to prepare wiki content
+          echo "Preparing wiki content with Python scripts..."
+          python main/scripts/wiki/prepare_wiki.py \
+            --source main \
+            --dest wiki \
+            --verbose
 
-          # Copy CHANGELOG
-          echo "Creating CHANGELOG.md..."
-          cp main/CHANGELOG.md wiki/CHANGELOG.md
-          pages_created=$((pages_created + 1))
-
-          # Copy index.md if it exists and differs from README
-          if [ -f "main/index.md" ]; then
-            echo "Creating Index.md..."
-            cp main/index.md wiki/Index.md
-            pages_created=$((pages_created + 1))
-          fi
-
-          # Process and copy docs with proper structure
-          echo "Processing documentation files..."
-          cd main/docs
-
-          # Create wiki pages from docs structure - use process substitution to avoid subshell
-          # Note: Not using -print0/-d '' because wiki forbids filenames with spaces
-          while IFS= read -r file; do
-            # Remove leading ./
-            file="${file#./}"
-
-            # Create wiki-friendly filename:
-            # 1. Replace / with -
-            # 2. Capitalize first letter of each segment
-            wiki_name=$(echo "$file" | sed 's|/|-|g' | sed 's|\.md$||')
-
-            # Capitalize each segment after dash
-            wiki_name=$(echo "$wiki_name" | awk -F'-' '{for(i=1;i<=NF;i++){$i=toupper(substr($i,1,1))substr($i,2)}}1' OFS='-')
-            wiki_name="${wiki_name}.md"
-
-            # Copy file
-            cp "$file" "../../wiki/$wiki_name"
-            echo "  📄 Created: $wiki_name (from $file)"
-            pages_created=$((pages_created + 1))
-          done < <(find . -name "*.md" -type f ! -name "*.meta" | sort)
-
-          # Copy images - handle nested image directories
-          echo "Copying images..."
-          if [ -d "images" ]; then
-            while IFS= read -r img; do
-              mkdir -p "../../wiki/$(dirname "$img")"
-              cp "$img" "../../wiki/$img"
-              echo "  🖼️  Copied: $img"
-              images_copied=$((images_copied + 1))
-            done < <(find images -type f ! -name "*.meta" 2>/dev/null || true)
-          fi
-
-          cd ../..
+          # Report statistics
+          pages_created=$(find wiki -name "*.md" -type f | wc -l)
+          images_copied=$(find wiki -type f ! -name "*.md" ! -path "wiki/.git/*" 2>/dev/null | wc -l || echo "0")
 
           echo "pages_created=$pages_created" >> "$GITHUB_OUTPUT"
           echo "images_copied=$images_copied" >> "$GITHUB_OUTPUT"
@@ -166,210 +123,24 @@ jobs:
           echo "   Pages: $pages_created"
           echo "   Images: $images_copied"
 
-      - name: Fix wiki links
-        run: |
-          set -euo pipefail
-          cd wiki
-
-          echo "Fixing wiki links..."
-          links_fixed=0
-
-          for file in *.md; do
-            if [ -f "$file" ]; then
-              original_hash=$(md5sum "$file" | cut -d' ' -f1)
-
-              # Fix relative doc links - convert paths to wiki page references
-              # Handle ../path/to/file.md and ./path/to/file.md patterns
-              sed -i -E 's|\(\.\.?/([^)]+)\.md\)|(\1)|g' "$file"
-
-              # Convert path separators to dashes and capitalize for wiki links
-              # This handles links like (features/inspector/overview) → (Features-Inspector-Overview)
-              sed -i -E 's|\(([a-z][^)]*)/([^)]*)\)|(\u\1-\u\2)|g' "$file"
-
-              # Fix image paths - normalize to images/ prefix
-              sed -i 's|docs/images/|images/|g' "$file"
-              sed -i 's|\.\./images/|images/|g' "$file"
-              sed -i 's|\./images/|images/|g' "$file"
-
-              # Check if file was modified
-              new_hash=$(md5sum "$file" | cut -d' ' -f1)
-              if [ "$original_hash" != "$new_hash" ]; then
-                echo "  🔗 Fixed links in: $file"
-                links_fixed=$((links_fixed + 1))
-              fi
-            fi
-          done
-
-          echo "✅ Link fixing complete ($links_fixed files updated)"
-
       - name: Generate sidebar
         run: |
           set -euo pipefail
-          cd wiki
 
-          echo "Generating _Sidebar.md dynamically from actual files..."
-
-          # Function to convert wiki filename to display name
-          # e.g., "Features-Inspector-Inspector-Overview" -> "Inspector Overview"
-          # e.g., "Features-Inspector-Utility-Components" -> "Utility Components"
-          # e.g., "Overview-Getting-Started" -> "Getting Started"
-          get_display_name() {
-            local wiki_name="$1"
-            local display="$wiki_name"
-
-            # Remove top-level category prefix (Features, Overview, Performance, Guides, Project)
-            # Using sed for extended regex alternation which can't be done with bash substitution
-            # shellcheck disable=SC2001
-            display=$(echo "$display" | sed -E 's/^(Features|Overview|Performance|Guides|Project)-//')
-
-            # Remove subcategory prefix only if it matches known subcategories
-            # This preserves context for files like "Utilities-Data-Structures" -> "Data Structures"
-            # shellcheck disable=SC2001
-            display=$(echo "$display" | sed -E 's/^(Inspector|Effects|Relational-Components|Serialization|Spatial|Logging|Utilities|Editor-Tools)-//')
-
-            # Convert remaining dashes to spaces
-            display="${display//-/ }"
-            echo "$display"
-          }
-
-          # Start building the sidebar
-          # NOTE: Use standard Markdown link syntax [Display](Page) instead of MediaWiki
-          # wikilink syntax [[Page|Display]]. GitHub Wiki renders Markdown pages,
-          # and MediaWiki wikilinks don't render correctly in Markdown context.
-          {
-            echo "## 📚 Documentation"
-            echo ""
-            echo "### Getting Started"
-            echo "- [Home](Home)"
-
-            # Overview section
-            for file in Overview-*.md; do
-              [ -f "$file" ] || continue
-              wiki_name="${file%.md}"
-              display=$(get_display_name "$wiki_name")
-              echo "- [$display]($wiki_name)"
-            done
-
-            echo ""
-            echo "### Inspector Features"
-            for file in Features-Inspector-*.md; do
-              [ -f "$file" ] || continue
-              wiki_name="${file%.md}"
-              display=$(get_display_name "$wiki_name")
-              echo "- [$display]($wiki_name)"
-            done
-
-            echo ""
-            echo "### Effects System"
-            for file in Features-Effects-*.md; do
-              [ -f "$file" ] || continue
-              wiki_name="${file%.md}"
-              display=$(get_display_name "$wiki_name")
-              echo "- [$display]($wiki_name)"
-            done
-
-            echo ""
-            echo "### Relational Components"
-            for file in Features-Relational-Components-*.md; do
-              [ -f "$file" ] || continue
-              wiki_name="${file%.md}"
-              display=$(get_display_name "$wiki_name")
-              echo "- [$display]($wiki_name)"
-            done
-
-            echo ""
-            echo "### Serialization"
-            for file in Features-Serialization-*.md; do
-              [ -f "$file" ] || continue
-              wiki_name="${file%.md}"
-              display=$(get_display_name "$wiki_name")
-              echo "- [$display]($wiki_name)"
-            done
-
-            echo ""
-            echo "### Spatial Trees"
-            for file in Features-Spatial-*.md; do
-              [ -f "$file" ] || continue
-              wiki_name="${file%.md}"
-              display=$(get_display_name "$wiki_name")
-              echo "- [$display]($wiki_name)"
-            done
-
-            echo ""
-            echo "### Logging"
-            for file in Features-Logging-*.md; do
-              [ -f "$file" ] || continue
-              wiki_name="${file%.md}"
-              display=$(get_display_name "$wiki_name")
-              echo "- [$display]($wiki_name)"
-            done
-
-            echo ""
-            echo "### Utilities"
-            for file in Features-Utilities-*.md; do
-              [ -f "$file" ] || continue
-              wiki_name="${file%.md}"
-              display=$(get_display_name "$wiki_name")
-              echo "- [$display]($wiki_name)"
-            done
-
-            echo ""
-            echo "### Editor Tools"
-            for file in Features-Editor-Tools-*.md; do
-              [ -f "$file" ] || continue
-              wiki_name="${file%.md}"
-              display=$(get_display_name "$wiki_name")
-              echo "- [$display]($wiki_name)"
-            done
-
-            echo ""
-            echo "### Guides"
-            for file in Guides-*.md; do
-              [ -f "$file" ] || continue
-              wiki_name="${file%.md}"
-              display=$(get_display_name "$wiki_name")
-              echo "- [$display]($wiki_name)"
-            done
-
-            echo ""
-            echo "### Performance"
-            for file in Performance-*.md; do
-              [ -f "$file" ] || continue
-              wiki_name="${file%.md}"
-              display=$(get_display_name "$wiki_name")
-              echo "- [$display]($wiki_name)"
-            done
-
-            echo ""
-            echo "### Project"
-            echo "- [Changelog](CHANGELOG)"
-            for file in Project-*.md; do
-              [ -f "$file" ] || continue
-              wiki_name="${file%.md}"
-              display=$(get_display_name "$wiki_name")
-              echo "- [$display]($wiki_name)"
-            done
-          } > _Sidebar.md
+          echo "Generating _Sidebar.md with Python script..."
+          python main/scripts/wiki/generate_wiki_sidebar.py wiki --output wiki/_Sidebar.md
 
           echo "Generated sidebar content:"
-          cat _Sidebar.md
+          cat wiki/_Sidebar.md
           echo ""
-          echo "✅ Sidebar generated dynamically"
+          echo "✅ Sidebar generated"
 
       - name: Generate footer
         run: |
           set -euo pipefail
-          cd wiki
 
-          echo "Generating _Footer.md..."
-
-          cat > _Footer.md << 'FOOTER_EOF'
-          ---
-          📦 [Unity Helpers](https://github.com/wallstop/unity-helpers) |
-          📖 [Documentation](https://wallstop.github.io/unity-helpers/) |
-          🐛 [Issues](https://github.com/wallstop/unity-helpers/issues) |
-          📜 [MIT License](https://github.com/wallstop/unity-helpers/blob/main/LICENSE)
-          FOOTER_EOF
+          echo "Generating _Footer.md with Python script..."
+          python main/scripts/wiki/generate_wiki_footer.py --output wiki/_Footer.md
 
           echo "✅ Footer generated"
 

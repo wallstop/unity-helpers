@@ -73,20 +73,22 @@ This single command runs ALL CI/CD checks locally, ensuring your changes will pa
 
 ### Linter Commands by File Type
 
-| File Type Changed         | Command to Run IMMEDIATELY                     | Notes                                                                                    |
-| ------------------------- | ---------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| Documentation (`.md`)     | `npx prettier --write <file>`                  | **MANDATORY** — Run FIRST after any edit                                                 |
-| Documentation (`.md`)     | `npm run lint:spelling`                        | **🚨 MANDATORY** — #1 CI failure cause; add valid terms to `cspell.json`                 |
-| Documentation (`.md`)     | `npm run lint:docs`                            | **CRITICAL** — Validates link targets, format (`./` or `../` prefix), AND absolute paths |
-| Documentation (`.md`)     | `npm run lint:markdown`                        | Markdownlint rules (MD032, MD009, etc.)                                                  |
-| JSON/asmdef/asmref        | `npx prettier --write <file>`                  | **MANDATORY** — Prettier formats JSON too                                                |
-| YAML (all `.yml`/`.yaml`) | `npx prettier --write <file>`                  | **MANDATORY** — Prettier formats YAML too                                                |
-| YAML (all `.yml`/`.yaml`) | `npm run lint:yaml`                            | **MANDATORY** — yamllint checks trailing spaces, syntax, style                           |
-| GitHub Workflows (`.yml`) | `actionlint`                                   | **MANDATORY** for `.github/workflows/*.yml`                                              |
-| C# code (`.cs`)           | `dotnet tool run csharpier format .`           | **RUN IMMEDIATELY** after ANY edit (not later)                                           |
-| C# code (`.cs`)           | `npm run lint:spelling`                        | **🚨 MANDATORY** for XML docs and code comments                                          |
-| C# code (`.cs`)           | `npm run lint:csharp-naming`                   | Check for underscore violations                                                          |
-| Test files (`.cs`)        | `pwsh -NoProfile -File scripts/lint-tests.ps1` | **MANDATORY** Track() usage, no manual destroy                                           |
+| File Type Changed              | Command to Run IMMEDIATELY                              | Notes                                                                                    |
+| ------------------------------ | ------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| Documentation (`.md`)          | `npx prettier --write <file>`                           | **MANDATORY** — Run FIRST after any edit                                                 |
+| Documentation (`.md`)          | `npm run lint:spelling`                                 | **🚨 MANDATORY** — #1 CI failure cause; add valid terms to `cspell.json`                 |
+| Documentation (`.md`)          | `npm run lint:docs`                                     | **CRITICAL** — Validates link targets, format (`./` or `../` prefix), AND absolute paths |
+| Documentation (`.md`)          | `npm run lint:markdown`                                 | Markdownlint rules (MD032, MD009, etc.)                                                  |
+| JSON/asmdef/asmref             | `npx prettier --write <file>`                           | **MANDATORY** — Prettier formats JSON too                                                |
+| YAML (all `.yml`/`.yaml`)      | `npx prettier --write <file>`                           | **MANDATORY** — Prettier formats YAML too                                                |
+| YAML (all `.yml`/`.yaml`)      | `npm run lint:yaml`                                     | **MANDATORY** — yamllint checks trailing spaces, syntax, style                           |
+| GitHub Workflows (`.yml`)      | `actionlint`                                            | **MANDATORY** for `.github/workflows/*.yml`                                              |
+| Wiki scripts (`scripts/wiki/`) | `bash scripts/tests/test-wiki-generation.sh`            | **MANDATORY** — Validates Markdown link syntax                                           |
+| Wiki scripts (`scripts/wiki/`) | `python -m pytest scripts/wiki/test_wiki_scripts.py -v` | **MANDATORY** — Full wiki logic tests                                                    |
+| C# code (`.cs`)                | `dotnet tool run csharpier format .`                    | **RUN IMMEDIATELY** after ANY edit (not later)                                           |
+| C# code (`.cs`)                | `npm run lint:spelling`                                 | **🚨 MANDATORY** for XML docs and code comments                                          |
+| C# code (`.cs`)                | `npm run lint:csharp-naming`                            | Check for underscore violations                                                          |
+| Test files (`.cs`)             | `pwsh -NoProfile -File scripts/lint-tests.ps1`          | **MANDATORY** Track() usage, no manual destroy                                           |
 
 ### Prettier/Markdown Formatting
 

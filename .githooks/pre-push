@@ -133,6 +133,43 @@ else
   echo  'PowerShell not found; skipping test lints.' >&2 
 fi
 
+# Wiki generation tests (validates sidebar format, link transformations)
+# This mirrors the validate-wiki-links.yml CI workflow
+WIKI_CHANGES=$(git diff --name-only @{upstream}..HEAD 2>/dev/null | grep -E '^(scripts/wiki/|scripts/tests/test-wiki-generation\.sh|\.github/workflows/deploy-wiki\.yml)' || true)
+if [ -z "$WIKI_CHANGES" ]; then
+  # Also check staged/uncommitted wiki-related changes
+  WIKI_CHANGES=$(git diff --name-only HEAD 2>/dev/null | grep -E '^(scripts/wiki/|scripts/tests/test-wiki-generation\.sh|\.github/workflows/deploy-wiki\.yml)' || true)
+fi
+
+if [ -n "$WIKI_CHANGES" ]; then
+  echo "Wiki-related files changed:"
+  echo "$WIKI_CHANGES" | sed 's/^/  /'
+  echo "Running wiki generation tests..."
+  if ! bash scripts/tests/test-wiki-generation.sh; then
+    echo ""
+    echo "=== Wiki generation tests failed ==="
+    echo "Fix the issues in scripts/wiki/*.py or scripts/tests/test-wiki-generation.sh"
+    echo ""
+    exit 1
+  fi
+  echo "✓ Wiki generation tests OK"
+  
+  # Also run Python wiki tests if pytest is available
+  if command -v python3 >/dev/null 2>&1 && python3 -c "import pytest" 2>/dev/null; then
+    echo "Running Python wiki script tests..."
+    if ! python3 -m pytest scripts/wiki/test_wiki_scripts.py -v; then
+      echo ""
+      echo "=== Python wiki tests failed ==="
+      echo "Fix the issues in scripts/wiki/*.py"
+      echo ""
+      exit 1
+    fi
+    echo "✓ Python wiki tests OK"
+  else
+    echo "pytest not installed; skipping Python wiki tests. CI will run them." >&2
+  fi
+fi
+
 # actionlint check for GitHub Actions workflows (only if workflow files changed)
 # This mirrors the actionlint.yml CI workflow
 # Use @{upstream} to compare against the remote tracking branch
