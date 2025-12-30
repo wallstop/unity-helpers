@@ -14,17 +14,18 @@ $ErrorActionPreference = 'Stop'
 #   - .github/** ALL files - GitHub Actions run on Linux, Dependabot commits LF
 #   - .githooks/* - Unix requirement (matched via path pattern)
 #   - package.json, package-lock.json - Dependabot commits LF
-# =============================================================================
+#   - _includes/*.html - Jekyll includes (GitHub Pages runs on Linux)
+# =======================================================================================
 
 $extensions = @(
     'cs','csproj','sln',
     'json','yaml','yml','md','xml','uxml','uss',
     'shader','hlsl','compute','cginc',
-    'asmdef','asmref','meta','ps1','sh'
+    'asmdef','asmref','meta','ps1','sh','html'
 )
 
 # Extensions that ALWAYS require LF (Unix) line endings
-$lfExtensions = @('sh', 'yaml', 'yml')
+$lfExtensions = @('sh', 'yaml', 'yml', 'md')
 
 # Path patterns that require LF line endings (regardless of extension)
 # These match .gitattributes rules
@@ -32,7 +33,8 @@ $lfPathPatterns = @(
     '^\.github/',           # All files in .github/** directory
     '^\.githooks/',         # All files in .githooks/** directory
     '^package\.json$',      # package.json at repo root
-    '^package-lock\.json$'  # package-lock.json at repo root
+    '^package-lock\.json$', # package-lock.json at repo root
+    '^_includes/.*\.html$'  # Jekyll includes (_includes/*.html)
 )
 
 function Test-ShouldUseLf([string]$path) {

@@ -30,6 +30,14 @@ end_of_line = lf
 [{package.json,package-lock.json}]
 end_of_line = lf
 
+# Markdown files require Unix line endings (GitHub Pages/Jekyll compatibility)
+[*.md]
+end_of_line = lf
+
+# HTML includes for Jekyll require Unix line endings (GitHub Pages compatibility)
+[_includes/*.html]
+end_of_line = lf
+
 # Microsoft .NET properties
 csharp_new_line_before_members_in_object_initializers = false
 csharp_preferred_modifier_order = public, private, protected, internal, file, new, static, abstract, virtual, sealed, readonly, override, extern, unsafe, volatile, async, required:suggestion

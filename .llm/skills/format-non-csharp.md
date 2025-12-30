@@ -200,14 +200,17 @@ The pre-push hook runs `npx prettier --check .` automatically. If any files have
 
 Prettier uses line ending settings from `.prettierrc.json`. This repository has specific overrides:
 
-| File Type                           | Line Ending | Configured In                          |
-| ----------------------------------- | ----------- | -------------------------------------- |
-| YAML files (`.yml`, `.yaml`)        | LF (unix)   | `.prettierrc.json` override            |
-| GitHub workflow files               | LF (unix)   | Inherited from YAML override           |
-| `.github/**/*.md` files             | LF (unix)   | `.prettierrc.json` override            |
-| Shell scripts (`.sh`)               | LF (unix)   | `.prettierrc.json` override            |
-| `package.json`, `package-lock.json` | LF (unix)   | `.prettierrc.json` override            |
-| Most other files                    | CRLF        | `.prettierrc.json` default `endOfLine` |
+| File Type                           | Line Ending | Configured In                                             |
+| ----------------------------------- | ----------- | --------------------------------------------------------- |
+| Markdown files (`.md`)              | LF (unix)   | `*.md` global pattern in `.prettierrc.json` override      |
+| YAML files (`.yml`, `.yaml`)        | LF (unix)   | `*.yml`, `*.yaml` global patterns in `.prettierrc.json`   |
+| GitHub workflow files               | LF (unix)   | Covered by `*.yml` global pattern (no separate override!) |
+| `.github/**/*.md` files             | LF (unix)   | Covered by `*.md` global pattern (no separate override!)  |
+| Shell scripts (`.sh`)               | LF (unix)   | `*.sh` global pattern in `.prettierrc.json` override      |
+| `package.json`, `package-lock.json` | LF (unix)   | Explicit file patterns in `.prettierrc.json` override     |
+| Most other files                    | CRLF        | `.prettierrc.json` default `endOfLine`                    |
+
+> **Note**: Global patterns like `*.yml` match ALL files with that extension regardless of directory. Patterns like `.github/**/*.yml` are redundant because `*.yml` already covers them.
 
 **Important**: Line ending configuration must be synchronized across multiple files:
 
@@ -343,20 +346,23 @@ grep -E 'eol=lf|text=lf' .gitattributes
 # Open .prettierrc.json and check the "overrides" array
 cat .prettierrc.json | jq '.overrides'
 
-# 3. Test specific file types
-npx prettier --check ".github/**/*.md"
-npx prettier --check ".github/**/*.yml"
+# 3. Test specific file types (global patterns match all directories)
+npx prettier --check "*.md"   # Matches all .md files including .github/
+npx prettier --check "*.yml"  # Matches all .yml files including .github/workflows/
 ```
 
 ### Current `.gitattributes` LF Patterns vs `.prettierrc.json` Overrides
 
-| `.gitattributes` Pattern   | Requires `.prettierrc.json` Override          |
-| -------------------------- | --------------------------------------------- |
-| `*.yml text eol=lf`        | `"*.yml"` in overrides with `endOfLine: lf`   |
-| `*.yaml text eol=lf`       | `"*.yaml"` in overrides with `endOfLine: lf`  |
-| `.github/** text eol=lf`   | `".github/**/*.md"`, `".github/**/*.yml"` etc |
-| `package.json text eol=lf` | `"package.json"` in overrides                 |
-| `*.sh text eol=lf`         | `"*.sh"` in overrides                         |
+| `.gitattributes` Pattern   | `.prettierrc.json` Override                                     |
+| -------------------------- | --------------------------------------------------------------- |
+| `*.yml text eol=lf`        | `"*.yml"` in overrides with `endOfLine: lf`                     |
+| `*.yaml text eol=lf`       | `"*.yaml"` in overrides with `endOfLine: lf`                    |
+| `*.md text eol=lf`         | `"*.md"` in overrides with `endOfLine: lf`                      |
+| `.github/** text eol=lf`   | **None needed** — covered by `*.yml`, `*.yaml`, `*.md` patterns |
+| `package.json text eol=lf` | `"package.json"` in overrides                                   |
+| `*.sh text eol=lf`         | `"*.sh"` in overrides                                           |
+
+> **Important**: Prettier glob patterns match files **globally** across all directories. The pattern `*.yml` matches `file.yml`, `dir/file.yml`, and `.github/workflows/ci.yml` equally. You do NOT need separate `.github/**/*.yml` patterns.
 
 ### Adding Missing Overrides
 
@@ -367,14 +373,16 @@ If you find a mismatch, update `.prettierrc.json`:
   "overrides": [
     {
       "files": [
+        // Global extension patterns - these match ALL files with these extensions
+        // including .github/**, .llm/**, and all subdirectories
         "*.yml",
         "*.yaml",
-        ".github/**/*.yml",
-        ".github/**/*.yaml",
-        ".github/**/*.md", // ← Add any missing patterns
+        "*.md",
+        "*.sh",
+        // Specific file overrides for files at specific paths
         "package.json",
         "package-lock.json",
-        "*.sh"
+        "_includes/*.html"
       ],
       "options": {
         "endOfLine": "lf"
@@ -383,6 +391,8 @@ If you find a mismatch, update `.prettierrc.json`:
   ]
 }
 ```
+
+> **❌ Do NOT add redundant patterns like `.github/**/_.yml`** — the global `_.yml` pattern already matches these files.
 
 After updating, format the config file:
 

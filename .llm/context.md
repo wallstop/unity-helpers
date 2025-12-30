@@ -183,7 +183,7 @@ Tests require Unity 2021.3+. Ask user to run tests and provide output.
 
 - C# files: 4 spaces indentation
 - Config files (`.json`, `.yaml`, `.asmdef`): 2 spaces
-- Line endings: CRLF for most files; **YAML files (`.yml`, `.yaml`) use LF**; **`.github/**` files use LF\*\* (GitHub Actions requirement)
+- Line endings: CRLF for most files; **YAML files** (`.yml`, `.yaml`) use LF; **GitHub files** (`.github/**`) use LF (GitHub Actions requirement); **Markdown files** (`.md`) use LF (GitHub Pages/Jekyll compatibility); **Jekyll includes** (`_includes/*.html`) use LF
 - Encoding: UTF-8 (no BOM)
 
 ---
