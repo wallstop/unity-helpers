@@ -240,7 +240,7 @@ When writing bash scripts for CI/CD pipelines or git hooks, use POSIX-compliant 
 | -------------------------- | ------------------------------------------ | ----------------------------------------------- |
 | `grep -oP` (Perl regex)    | `grep -oE` + `sed`                         | `-P` is GNU-only, unavailable on macOS BSD grep |
 | `grep -oP '\K'` lookbehind | `grep -oE` + `sed 's/prefix//'`            | `\K` is Perl-specific                           |
-| `grep -oP '(?=...)' `      | `grep -oE` then post-process               | Lookahead is Perl-specific                      |
+| `grep -oP '(?=...)'`       | `grep -oE` then post-process               | Lookahead is Perl-specific                      |
 | `sed -i ''` vs `sed -i`    | Use temp file: `sed ... > tmp && mv tmp f` | In-place edit syntax differs between GNU/BSD    |
 | `readarray` / `mapfile`    | `while read` loop                          | Bash 4+ only, not available everywhere          |
 
