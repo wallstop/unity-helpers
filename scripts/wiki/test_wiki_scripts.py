@@ -2,7 +2,7 @@
 """
 Tests for the wiki generation scripts.
 
-Run with: python -m pytest tests/test_wiki_scripts.py -v
+Run with: python -m pytest scripts/wiki/test_wiki_scripts.py -v
 """
 
 import sys

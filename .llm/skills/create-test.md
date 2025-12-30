@@ -232,7 +232,21 @@ public void CalculateReturnsDoubleOfInput()
 
 Don't use Description attributes on tests.
 
-### 9. Data-Driven Test Naming (CRITICAL)
+### 9. Docstring Best Practices
+
+**NEVER include file paths or file locations in test docstrings.** Test documentation should describe behavior, not file locations.
+
+| ❌ BAD                                                             | ✅ GOOD                                                         |
+| ------------------------------------------------------------------ | --------------------------------------------------------------- |
+| `/// Tests serialization (Tests/Runtime/Utils/SerializerTests.cs)` | `/// Verifies that SerializableDictionary serializes correctly` |
+| `/// Located at Tests/Editor/Tools/SpriteCropperTests.cs`          | `/// Tests sprite cropper handles null inputs gracefully`       |
+| `/// Run with: python -m pytest tests/test_script.py -v`           | `/// Run with: python -m pytest scripts/wiki/test_script.py -v` |
+
+**Why:** File paths in docstrings become outdated when files are moved/renamed, and the file's location is already obvious from its namespace and the IDE's navigation.
+
+**Exception:** Test assertions that verify path resolution or file operations should use actual paths as test data.
+
+### 10. Data-Driven Test Naming (CRITICAL)
 
 All data-driven test names must use `.` (dot) separator or PascalCase—**NEVER underscores**:
 
