@@ -20,12 +20,14 @@
       "files": [
         "*.yml",
         "*.yaml",
+        "*.md",
         ".github/**/*.yml",
         ".github/**/*.yaml",
         ".github/**/*.md",
         "package.json",
         "package-lock.json",
-        "*.sh"
+        "*.sh",
+        "_includes/*.html"
       ],
       "options": {
         "endOfLine": "lf"

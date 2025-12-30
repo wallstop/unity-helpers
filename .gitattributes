@@ -14,7 +14,7 @@
 *.json      text eol=crlf
 *.yaml      text eol=lf
 *.yml       text eol=lf
-*.md        text eol=crlf
+*.md        text eol=lf
 *.xml       text eol=crlf
 *.uxml      text eol=crlf
 *.uss       text eol=crlf
@@ -41,6 +41,9 @@
 # - Dependabot updates npm dependencies and commits with LF
 package.json      text eol=lf
 package-lock.json text eol=lf
+
+# Jekyll includes MUST have LF line endings (GitHub Pages runs on Linux)
+_includes/*.html  text eol=lf
 
 ###############################################################################
 # Set default behavior for command prompt diff.

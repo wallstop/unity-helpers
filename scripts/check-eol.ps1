@@ -24,7 +24,7 @@ $extensions = @(
 )
 
 # Extensions that ALWAYS require LF (Unix) line endings
-$lfExtensions = @('sh', 'yaml', 'yml')
+$lfExtensions = @('sh', 'yaml', 'yml', 'md')
 
 # Path patterns that require LF line endings (regardless of extension)
 # These match .gitattributes rules

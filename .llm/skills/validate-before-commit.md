@@ -480,12 +480,14 @@ actionlint .github/workflows/ci.yml
 
 #### Current Line Ending Settings
 
-| File Type                    | Line Ending | Why                                          |
-| ---------------------------- | ----------- | -------------------------------------------- |
-| YAML files (`.yml`, `.yaml`) | LF (unix)   | GitHub Actions runners use LF checkout       |
-| GitHub workflow files        | LF (unix)   | `.github/**` uses LF in `.gitattributes`     |
-| `package.json`               | LF (unix)   | Explicit in `.gitattributes`                 |
-| Most other text files        | CRLF        | Default for cross-platform Unity development |
+| File Type                            | Line Ending | Why                                          |
+| ------------------------------------ | ----------- | -------------------------------------------- |
+| YAML files (`.yml`, `.yaml`)         | LF (unix)   | GitHub Actions runners use LF checkout       |
+| GitHub workflow files                | LF (unix)   | `.github/**` uses LF in `.gitattributes`     |
+| `package.json`                       | LF (unix)   | Explicit in `.gitattributes`                 |
+| Markdown files (`.md`)               | LF (unix)   | GitHub Pages/Jekyll compatibility            |
+| Jekyll includes (`_includes/*.html`) | LF (unix)   | GitHub Pages runs on Linux                   |
+| Most other text files                | CRLF        | Default for cross-platform Unity development |
 
 #### When Modifying Line Ending Configuration
 
