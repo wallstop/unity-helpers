@@ -5,7 +5,6 @@ Tests for the wiki generation scripts.
 Run with: python -m pytest tests/test_wiki_scripts.py -v
 """
 
-import os
 import sys
 import tempfile
 from pathlib import Path
@@ -13,8 +12,8 @@ from typing import Generator
 
 import pytest
 
-# Add scripts directory to path
-script_dir = Path(__file__).parent.parent / "scripts" / "wiki"
+# Add scripts directory to path (test file is in scripts/wiki/)
+script_dir = Path(__file__).parent
 sys.path.insert(0, str(script_dir))
 
 from transform_wiki_links import (
@@ -753,7 +752,7 @@ class TestEdgeCases:
         # Unicode in link display text should be preserved
         content = "[日本語ドキュメント](./docs/overview/intro.md)"
         result = transform_wiki_links(content)
-        assert "[日本語ドキュメント](Overview-Intro)" == result
+        assert result == "[日本語ドキュメント](Overview-Intro)"
 
     def test_special_characters_in_anchor(self):
         # Anchors can have various characters

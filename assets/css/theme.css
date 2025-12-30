@@ -152,7 +152,6 @@
 
 /* Apply theme to body */
 body {
-  background-color: var(--bg-primary) !important;
   /* Fallback for browsers without CSS custom properties */
   background-color: #1e1e1e !important;
   background-color: var(--bg-primary) !important;

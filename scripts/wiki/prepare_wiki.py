@@ -8,11 +8,10 @@ This script handles the complete wiki preparation process:
 3. Generate sidebar and footer
 
 Usage:
-    python prepare-wiki.py --source /path/to/repo --dest /path/to/wiki
+    python prepare_wiki.py --source /path/to/repo --dest /path/to/wiki
 """
 
 import argparse
-import os
 import shutil
 import sys
 from pathlib import Path
