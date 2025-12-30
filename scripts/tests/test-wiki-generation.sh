@@ -172,6 +172,99 @@ else
 fi
 
 # =============================================================================
+# Test: Wiki link transformation (from deploy-wiki.yml)
+# Tests the Perl-based link transformation that converts relative doc links
+# to wiki page references (e.g., ./docs/overview/roadmap.md -> Overview-Roadmap)
+# =============================================================================
+echo ""
+echo "=== Testing wiki link transformation ==="
+
+# This function mirrors the Perl transformation in deploy-wiki.yml
+transform_wiki_link() {
+    local input="$1"
+    echo "$input" | perl -pe '
+        s{\(\.\.?/([^)]+)\.md\)}{
+            my $path = $1;
+            # Remove docs/ prefix if present
+            $path =~ s{^docs/}{};
+            # Replace all / with -
+            $path =~ s{/}{-}g;
+            # Capitalize each segment (after ^ or -)
+            $path =~ s{(^|-)(\w)}{$1\u$2}g;
+            # Special case: README -> Home (wiki convention)
+            $path =~ s{^README$}{Home};
+            "($path)"
+        }ge;
+    '
+}
+
+run_test
+result=$(transform_wiki_link "(./docs/overview/roadmap.md)")
+expected="(Overview-Roadmap)"
+if [ "$result" = "$expected" ]; then
+    pass "Transform: ./docs/overview/roadmap.md -> Overview-Roadmap"
+else
+    fail "Transform: ./docs/overview/roadmap.md -> Overview-Roadmap" "$expected" "$result"
+fi
+
+run_test
+result=$(transform_wiki_link "(./docs/guides/odin-migration-guide.md)")
+expected="(Guides-Odin-Migration-Guide)"
+if [ "$result" = "$expected" ]; then
+    pass "Transform: ./docs/guides/odin-migration-guide.md -> Guides-Odin-Migration-Guide"
+else
+    fail "Transform: ./docs/guides/odin-migration-guide.md -> Guides-Odin-Migration-Guide" "$expected" "$result"
+fi
+
+run_test
+result=$(transform_wiki_link "(./docs/features/inspector/inspector-overview.md)")
+expected="(Features-Inspector-Inspector-Overview)"
+if [ "$result" = "$expected" ]; then
+    pass "Transform: ./docs/features/inspector/inspector-overview.md -> Features-Inspector-Inspector-Overview"
+else
+    fail "Transform: ./docs/features/inspector/inspector-overview.md -> Features-Inspector-Inspector-Overview" "$expected" "$result"
+fi
+
+run_test
+result=$(transform_wiki_link "(../README.md)")
+expected="(Home)"
+if [ "$result" = "$expected" ]; then
+    pass "Transform: ../README.md -> Home (special case)"
+else
+    fail "Transform: ../README.md -> Home (special case)" "$expected" "$result"
+fi
+
+run_test
+# Test full markdown link syntax preservation
+result=$(transform_wiki_link "[Roadmap](./docs/overview/roadmap.md)")
+expected="[Roadmap](Overview-Roadmap)"
+if [ "$result" = "$expected" ]; then
+    pass "Transform preserves markdown link display text"
+else
+    fail "Transform preserves markdown link display text" "$expected" "$result"
+fi
+
+run_test
+# Test link in context
+result=$(transform_wiki_link "See the [Roadmap](./docs/overview/roadmap.md) for details")
+expected="See the [Roadmap](Overview-Roadmap) for details"
+if [ "$result" = "$expected" ]; then
+    pass "Transform works in sentence context"
+else
+    fail "Transform works in sentence context" "$expected" "$result"
+fi
+
+run_test
+# Test multiple links on same line
+result=$(transform_wiki_link "[A](./docs/overview/a.md) and [B](./docs/features/b.md)")
+expected="[A](Overview-A) and [B](Features-B)"
+if [ "$result" = "$expected" ]; then
+    pass "Transform handles multiple links on same line"
+else
+    fail "Transform handles multiple links on same line" "$expected" "$result"
+fi
+
+# =============================================================================
 # Test: Validation regex captures correct patterns
 # =============================================================================
 echo ""

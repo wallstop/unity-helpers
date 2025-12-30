@@ -134,6 +134,7 @@ Invoke these skills for specific tasks:
 | [integrate-optional-dependency](./skills/integrate-optional-dependency.md) | Odin, VContainer, Zenject integration patterns   |
 | [github-pages](./skills/github-pages.md)                                   | GitHub Pages, Jekyll, markdown link format       |
 | [wiki-generation](./skills/wiki-generation.md)                             | GitHub Wiki deployment, sidebar links            |
+| [github-actions-script-pattern](./skills/github-actions-script-pattern.md) | Extract GHA logic to testable scripts            |
 
 ---
 
@@ -183,7 +184,7 @@ Tests require Unity 2021.3+. Ask user to run tests and provide output.
 
 - C# files: 4 spaces indentation
 - Config files (`.json`, `.yaml`, `.asmdef`): 2 spaces
-- Line endings: CRLF for most files; **YAML files** (`.yml`, `.yaml`) use LF; **GitHub files** (`.github/**`) use LF (GitHub Actions requirement); **Markdown files** (`.md`) use LF (GitHub Pages/Jekyll compatibility); **Jekyll includes** (`_includes/*.html`) use LF
+- Line endings: CRLF for most files; **YAML files (`.yml`, `.yaml`) use LF**; **`.github/**` files use LF** (GitHub Actions requirement); **Markdown files (`.md`) use LF** (GitHub Pages/Jekyll compatibility); **Jekyll includes (`\_includes/\*.html`) use LF\*\*
 - Encoding: UTF-8 (no BOM)
 
 ---

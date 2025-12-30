@@ -1111,7 +1111,10 @@
     "elif",
     "mdfile",
     "num",
-    "shopt"
+    "shopt",
+    "pytest",
+    "GHA",
+    "venv"
   ],
   "flagWords": [],
   "minWordLength": 3,

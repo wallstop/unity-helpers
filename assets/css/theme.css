@@ -16,6 +16,15 @@
  * !important conflicts since the values change, not the declarations.
  */
 
+/* Global box-sizing for consistent sizing */
+*,
+*::before,
+*::after {
+  -webkit-box-sizing: border-box;
+  -moz-box-sizing: border-box;
+  box-sizing: border-box;
+}
+
 :root {
   /* Light theme colors */
   --light-bg-primary: #f5f5f5;
@@ -103,10 +112,61 @@
   --selection-bg: var(--light-selection);
 }
 
+/*
+ * Automatic theme detection based on OS preference.
+ * This applies when no data-theme attribute is set (before JS loads).
+ * Once JS sets data-theme, those selectors take precedence.
+ */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) {
+    --bg-primary: var(--light-bg-primary);
+    --bg-secondary: var(--light-bg-secondary);
+    --bg-code: var(--light-bg-code);
+    --text-primary: var(--light-text-primary);
+    --text-secondary: var(--light-text-secondary);
+    --text-muted: var(--light-text-muted);
+    --border-color: var(--light-border);
+    --link-color: var(--light-link);
+    --link-hover: var(--light-link-hover);
+    --accent-color: var(--light-accent);
+    --code-bg: var(--light-code-bg);
+    --inline-code-bg: var(--light-inline-code-bg);
+    --selection-bg: var(--light-selection);
+  }
+}
+
+/* Respect user's motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    -webkit-animation-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    -webkit-animation-iteration-count: 1 !important;
+    animation-iteration-count: 1 !important;
+    -webkit-transition-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 /* Apply theme to body */
 body {
   background-color: var(--bg-primary) !important;
+  /* Fallback for browsers without CSS custom properties */
+  background-color: #1e1e1e !important;
+  background-color: var(--bg-primary) !important;
+  color: #d4d4d4 !important;
   color: var(--text-primary) !important;
+  -webkit-transition:
+    background-color 0.3s ease,
+    color 0.3s ease;
+  -moz-transition:
+    background-color 0.3s ease,
+    color 0.3s ease;
+  -o-transition:
+    background-color 0.3s ease,
+    color 0.3s ease;
   transition:
     background-color 0.3s ease,
     color 0.3s ease;
@@ -163,19 +223,7 @@ header li {
   background-color: transparent !important;
 }
 
-/* Downloads buttons in sidebar */
-.downloads {
-  background-color: transparent !important;
-}
-
-.downloads a {
-  background-color: var(--bg-secondary) !important;
-  border: 1px solid var(--border-color) !important;
-}
-
-.downloads a:hover {
-  background-color: var(--border-color) !important;
-}
+/* Downloads buttons - hidden via style.scss, no styling needed */
 
 /* Headers */
 h1,
@@ -252,22 +300,52 @@ tr:nth-child(even) {
 /* Blockquotes */
 blockquote {
   border-left: 4px solid var(--accent-color) !important;
+  /* RTL support with logical properties (with fallback) */
+  border-inline-start: 4px solid var(--accent-color) !important;
   background-color: var(--bg-secondary) !important;
   color: var(--text-secondary) !important;
   padding: 10px 20px;
+  /* RTL support for padding */
+  padding-inline-start: 20px;
+  padding-inline-end: 20px;
   margin: 1em 0;
 }
 
-/* Horizontal rules */
-hr {
-  border: none;
-  border-top: 1px solid var(--border-color) !important;
-}
+/* Horizontal rules - styled in style.scss with full reset */
 
 /* Selection */
 ::selection {
   background-color: var(--selection-bg);
   color: var(--text-primary);
+}
+
+/* Focus styles for accessibility - visible keyboard focus indicators */
+a:focus,
+button:focus,
+.theme-toggle:focus,
+summary:focus,
+[tabindex]:focus {
+  outline: 2px solid var(--accent-color) !important;
+  outline-offset: 2px !important;
+}
+
+/* Remove focus outline for mouse users, keep for keyboard */
+a:focus:not(:focus-visible),
+button:focus:not(:focus-visible),
+.theme-toggle:focus:not(:focus-visible),
+summary:focus:not(:focus-visible),
+[tabindex]:focus:not(:focus-visible) {
+  outline: none !important;
+}
+
+/* Enhanced focus-visible for keyboard navigation */
+a:focus-visible,
+button:focus-visible,
+.theme-toggle:focus-visible,
+summary:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--accent-color) !important;
+  outline-offset: 2px !important;
 }
 
 /* Scrollbar (webkit browsers) */
@@ -294,21 +372,45 @@ hr {
   position: fixed;
   top: 16px;
   right: 16px;
+  /* RTL support with logical properties (with fallback) */
+  inset-inline-end: 16px;
   z-index: 1000;
+  background-color: var(--bg-secondary);
+  /* Fallback for browsers without CSS custom properties */
+  background-color: #252526;
   background-color: var(--bg-secondary);
   border: 1px solid var(--border-color);
   border-radius: 8px;
   padding: 8px 12px;
   cursor: pointer;
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: -ms-flexbox;
   display: flex;
+  -webkit-box-align: center;
+  -webkit-align-items: center;
+  -ms-flex-align: center;
   align-items: center;
   gap: 8px;
   font-size: 14px;
   color: var(--text-primary) !important;
+  -webkit-transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease;
+  -moz-transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease;
+  -o-transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease;
   transition:
     background-color 0.2s ease,
     border-color 0.2s ease;
+  -webkit-box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  /* Ensure clickable on touch devices */
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
 .theme-toggle:hover {
@@ -450,6 +552,7 @@ img {
   .theme-toggle {
     top: 8px;
     right: 8px;
+    inset-inline-end: 8px;
     padding: 6px 10px;
     font-size: 12px;
   }
@@ -469,4 +572,494 @@ img {
   .theme-toggle {
     display: none !important;
   }
+
+  /* Ensure all text is black for printing */
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6,
+  p,
+  li,
+  td,
+  th,
+  span,
+  a {
+    color: #000000 !important;
+  }
+
+  /* Links should show URL in print */
+  a[href]::after {
+    content: " (" attr(href) ")";
+    font-size: 0.8em;
+    color: #666666 !important;
+  }
+
+  /* Don't show URL for internal links */
+  a[href^="#"]::after,
+  a[href^="javascript:"]::after {
+    content: "";
+  }
+
+  /* Code blocks should have visible borders */
+  pre {
+    background-color: #f5f5f5 !important;
+    border: 1px solid #cccccc !important;
+    page-break-inside: avoid !important;
+    overflow-x: visible !important;
+    white-space: pre-wrap !important;
+    word-wrap: break-word !important;
+  }
+
+  pre code {
+    color: #000000 !important;
+    white-space: pre-wrap !important;
+  }
+
+  /* Inline code styling for print */
+  code {
+    background-color: #eeeeee !important;
+    color: #000000 !important;
+  }
+
+  /* Tables should have visible borders */
+  table {
+    border-collapse: collapse !important;
+  }
+
+  th,
+  td {
+    border: 1px solid #000000 !important;
+    background-color: transparent !important;
+  }
+
+  th {
+    background-color: #eeeeee !important;
+  }
+
+  /* Avoid page breaks inside elements */
+  img,
+  table,
+  figure {
+    page-break-inside: avoid !important;
+  }
+
+  /* Ensure headings stay with following content */
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    page-break-after: avoid !important;
+  }
+}
+
+/* =============================================================================
+   LAYOUT OVERRIDES - Transform minimal theme from sidebar to top banner layout
+   ============================================================================= */
+
+/*
+ * The Jekyll minimal theme uses a fixed two-column layout:
+ * - Wrapper: 860px max-width, centered
+ * - Header: 270px sidebar on the left
+ * - Section: 500px content on the right
+ *
+ * These overrides transform it into a responsive single-column layout with
+ * a compact top banner header and full-width content area.
+ */
+
+/* Expand the wrapper to use available screen width */
+.wrapper {
+  max-width: 1400px !important;
+  width: 95% !important;
+  margin: 0 auto !important;
+  padding: 20px !important;
+}
+
+/* Transform header from sidebar to compact top banner */
+header {
+  float: none !important;
+  width: 100% !important;
+  position: relative !important;
+  text-align: center !important;
+  padding: 15px 20px !important;
+  margin-bottom: 30px !important;
+  border-bottom: 1px solid var(--border-color) !important;
+}
+
+/* Compact header title with overflow handling */
+header h1 {
+  font-size: 1.75rem !important;
+  margin: 0 0 8px 0 !important;
+  display: inline-block !important;
+  max-width: 100% !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+/* Compact header description */
+header p {
+  font-size: 0.95rem !important;
+  margin: 0 !important;
+  color: var(--text-muted) !important;
+}
+
+/* Header links/buttons in horizontal layout */
+header ul {
+  display: -webkit-box !important;
+  display: -webkit-flex !important;
+  display: -ms-flexbox !important;
+  display: flex !important;
+  -webkit-flex-wrap: wrap !important;
+  -ms-flex-wrap: wrap !important;
+  flex-wrap: wrap !important;
+  -webkit-box-pack: center !important;
+  -webkit-justify-content: center !important;
+  -ms-flex-pack: center !important;
+  justify-content: center !important;
+  gap: 10px !important;
+  /* Fallback for browsers without gap support */
+  margin: 15px -5px 0 -5px !important;
+  padding: 0 !important;
+  list-style: none !important;
+}
+
+/* Gap fallback for older browsers */
+header ul > li {
+  margin: 5px !important;
+}
+
+header li {
+  display: inline-block !important;
+  width: auto !important;
+  height: auto !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* Style header download/action buttons */
+header ul a,
+header .downloads a {
+  display: inline-block !important;
+  padding: 8px 16px !important;
+  font-size: 0.85rem !important;
+  border-radius: 6px !important;
+  text-decoration: none !important;
+  background-color: var(--bg-secondary) !important;
+  border: 1px solid var(--border-color) !important;
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease !important;
+}
+
+header ul a:hover,
+header .downloads a:hover {
+  background-color: var(--border-color) !important;
+}
+
+/* Expand section (main content) to use available width */
+section {
+  float: none !important;
+  width: 100% !important;
+  max-width: 1200px !important;
+  margin: 0 auto !important;
+  padding: 0 20px !important;
+}
+
+/* Footer - compact and centered */
+footer {
+  float: none !important;
+  width: 100% !important;
+  text-align: center !important;
+  padding: 20px !important;
+  margin-top: 40px !important;
+  border-top: 1px solid var(--border-color) !important;
+  position: relative !important;
+  bottom: auto !important;
+  left: auto !important;
+}
+
+/* Clear floats properly */
+.wrapper::after {
+  content: "" !important;
+  display: table !important;
+  clear: both !important;
+}
+
+/* =============================================================================
+   CODE BLOCK IMPROVEMENTS - Ensure adequate width and readability
+   ============================================================================= */
+
+/* Code blocks should use full available width */
+pre {
+  max-width: 100% !important;
+  width: 100% !important;
+  overflow-x: auto !important;
+  -webkit-overflow-scrolling: touch !important; /* Smooth scrolling on iOS */
+  font-size: 0.875rem !important;
+  line-height: 1.5 !important;
+  /* Prevent text selection issues during scroll */
+  -webkit-user-select: text !important;
+  -moz-user-select: text !important;
+  -ms-user-select: text !important;
+  user-select: text !important;
+}
+
+/* Ensure code inside pre doesn't wrap unnecessarily */
+pre code {
+  display: block !important;
+  white-space: pre !important;
+  word-wrap: normal !important;
+  overflow-wrap: normal !important;
+  overflow-x: auto !important;
+  /* Handle very long strings without breaking layout */
+  word-break: normal !important;
+}
+
+/* Syntax highlighted code blocks */
+.highlight {
+  max-width: 100% !important;
+  overflow-x: auto !important;
+  margin: 1em 0 !important;
+}
+
+.highlight pre {
+  margin: 0 !important;
+}
+
+/* =============================================================================
+   RESPONSIVE DESIGN - Adapt to all screen sizes
+   ============================================================================= */
+
+/* Large screens (1400px+) - maximize content width */
+@media (min-width: 1400px) {
+  .wrapper {
+    max-width: 1600px !important;
+    width: 90% !important;
+  }
+
+  section {
+    max-width: 1400px !important;
+  }
+}
+
+/* Extra large screens (2000px+) - ultrawide support */
+@media (min-width: 2000px) {
+  .wrapper {
+    max-width: 1800px !important;
+  }
+
+  section {
+    max-width: 1600px !important;
+  }
+}
+
+/* Medium screens (769px - 1024px) */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .wrapper {
+    width: 95% !important;
+    padding: 15px !important;
+  }
+
+  section {
+    max-width: 100% !important;
+    padding: 0 15px !important;
+  }
+}
+
+/* Tablet screens (481px - 768px) */
+@media (max-width: 768px) {
+  .wrapper {
+    width: 100% !important;
+    padding: 10px !important;
+  }
+
+  header {
+    padding: 12px 15px !important;
+    margin-bottom: 20px !important;
+  }
+
+  header h1 {
+    font-size: 1.5rem !important;
+  }
+
+  header p {
+    font-size: 0.9rem !important;
+  }
+
+  header ul {
+    gap: 8px !important;
+  }
+
+  header ul a,
+  header .downloads a {
+    padding: 6px 12px !important;
+    font-size: 0.8rem !important;
+  }
+
+  section {
+    padding: 0 10px !important;
+  }
+
+  pre {
+    padding: 12px !important;
+    font-size: 0.8rem !important;
+  }
+
+  footer {
+    padding: 15px 10px !important;
+    margin-top: 30px !important;
+  }
+}
+
+/* Mobile screens (320px - 480px) */
+@media (max-width: 480px) {
+  .wrapper {
+    width: 100% !important;
+    padding: 8px !important;
+  }
+
+  header {
+    padding: 10px !important;
+    margin-bottom: 15px !important;
+  }
+
+  header h1 {
+    font-size: 1.25rem !important;
+  }
+
+  header p {
+    font-size: 0.85rem !important;
+  }
+
+  header ul {
+    -webkit-box-orient: vertical !important;
+    -webkit-box-direction: normal !important;
+    -webkit-flex-direction: column !important;
+    -ms-flex-direction: column !important;
+    flex-direction: column !important;
+    -webkit-box-align: center !important;
+    -webkit-align-items: center !important;
+    -ms-flex-align: center !important;
+    align-items: center !important;
+    gap: 6px !important;
+  }
+
+  header ul a,
+  header .downloads a {
+    width: 100% !important;
+    max-width: 200px !important;
+    text-align: center !important;
+    padding: 8px 12px !important;
+  }
+
+  section {
+    padding: 0 8px !important;
+  }
+
+  pre {
+    padding: 10px !important;
+    font-size: 0.75rem !important;
+    border-radius: 4px !important;
+  }
+
+  /* Tables scroll horizontally on mobile */
+  table {
+    display: block !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    /* Remove white-space: nowrap to allow text wrapping within cells */
+  }
+
+  table td,
+  table th {
+    /* Allow text to wrap in cells, but set minimum width */
+    min-width: 100px !important;
+    white-space: normal !important;
+  }
+
+  footer {
+    padding: 12px 8px !important;
+    margin-top: 25px !important;
+  }
+
+  footer small {
+    font-size: 0.75rem !important;
+  }
+
+  /* Adjust theme toggle for mobile */
+  .theme-toggle {
+    top: 6px !important;
+    right: 6px !important;
+    inset-inline-end: 6px !important;
+    padding: 5px 8px !important;
+  }
+}
+
+/* Very small screens (below 320px) */
+@media (max-width: 320px) {
+  header h1 {
+    font-size: 1.1rem !important;
+  }
+
+  header p {
+    font-size: 0.8rem !important;
+  }
+
+  pre {
+    font-size: 0.7rem !important;
+    padding: 8px !important;
+  }
+}
+
+/* =============================================================================
+   CONTENT READABILITY IMPROVEMENTS
+   ============================================================================= */
+
+/* Ensure readable line lengths for prose content */
+section p,
+section li {
+  max-width: 75ch !important;
+}
+
+/* But allow tables, code, and other elements to use full width */
+section table,
+section pre,
+section .highlight,
+section img {
+  max-width: 100% !important;
+}
+
+/* Improve heading spacing */
+section h1,
+section h2,
+section h3,
+section h4,
+section h5,
+section h6 {
+  margin-top: 1.5em !important;
+  margin-bottom: 0.5em !important;
+}
+
+section h1:first-child,
+section h2:first-child {
+  margin-top: 0 !important;
+}
+
+/* Better spacing for lists */
+section ul,
+section ol {
+  padding-left: 2em !important;
+  margin: 1em 0 !important;
+}
+
+/* Nested list spacing */
+section ul ul,
+section ol ol,
+section ul ol,
+section ol ul {
+  margin: 0.5em 0 !important;
 }

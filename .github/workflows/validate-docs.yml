@@ -274,3 +274,15 @@ jobs:
             echo "❌ Jekyll build did not produce _site directory"
             exit 1
           fi
+
+  validate-css-layout:
+    name: Validate CSS Layout
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Validate GitHub Pages CSS
+        run: |
+          chmod +x ./scripts/validate-github-pages-css.sh
+          ./scripts/validate-github-pages-css.sh

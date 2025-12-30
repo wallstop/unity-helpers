@@ -335,9 +335,19 @@ $mdFiles | ForEach-Object {
 }
 
 # Process code files for docs references
-$codeFiles = $gitFiles | Where-Object { 
+# Exclude test files and wiki scripts which contain example paths that aren't meant to resolve
+$codeFiles = $gitFiles | Where-Object {
     $ext = [System.IO.Path]::GetExtension($_)
-    $codeFileExtensions -contains $ext
+    if (-not ($codeFileExtensions -contains $ext)) { return $false }
+    # Exclude files in test(s) directories
+    if ($_ -match '(?i)(^|[\\/])tests?[\\/]') { return $false }
+    # Exclude test_*.py files (Python test files)
+    if ($_ -match '(?i)[\\/]test_[^\\/]+\.py$') { return $false }
+    # Exclude *_test.py files (alternative Python test naming)
+    if ($_ -match '(?i)[\\/][^\\/]+_test\.py$') { return $false }
+    # Exclude wiki generation scripts (contain example paths in docstrings)
+    if ($_ -match '(?i)scripts[\\/]wiki[\\/]') { return $false }
+    return $true
 }
 
 $codeFiles | ForEach-Object {
