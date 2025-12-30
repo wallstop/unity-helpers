@@ -233,18 +233,21 @@ jobs:
           }
 
           # Start building the sidebar
+          # NOTE: Use standard Markdown link syntax [Display](Page) instead of MediaWiki
+          # wikilink syntax [[Page|Display]]. GitHub Wiki renders Markdown pages,
+          # and MediaWiki wikilinks don't render correctly in Markdown context.
           {
             echo "## 📚 Documentation"
             echo ""
             echo "### Getting Started"
-            echo "- [[Home]]"
+            echo "- [Home](Home)"
 
             # Overview section
             for file in Overview-*.md; do
               [ -f "$file" ] || continue
               wiki_name="${file%.md}"
               display=$(get_display_name "$wiki_name")
-              echo "- [[$wiki_name|$display]]"
+              echo "- [$display]($wiki_name)"
             done
 
             echo ""
@@ -253,7 +256,7 @@ jobs:
               [ -f "$file" ] || continue
               wiki_name="${file%.md}"
               display=$(get_display_name "$wiki_name")
-              echo "- [[$wiki_name|$display]]"
+              echo "- [$display]($wiki_name)"
             done
 
             echo ""
@@ -262,7 +265,7 @@ jobs:
               [ -f "$file" ] || continue
               wiki_name="${file%.md}"
               display=$(get_display_name "$wiki_name")
-              echo "- [[$wiki_name|$display]]"
+              echo "- [$display]($wiki_name)"
             done
 
             echo ""
@@ -271,7 +274,7 @@ jobs:
               [ -f "$file" ] || continue
               wiki_name="${file%.md}"
               display=$(get_display_name "$wiki_name")
-              echo "- [[$wiki_name|$display]]"
+              echo "- [$display]($wiki_name)"
             done
 
             echo ""
@@ -280,7 +283,7 @@ jobs:
               [ -f "$file" ] || continue
               wiki_name="${file%.md}"
               display=$(get_display_name "$wiki_name")
-              echo "- [[$wiki_name|$display]]"
+              echo "- [$display]($wiki_name)"
             done
 
             echo ""
@@ -289,7 +292,7 @@ jobs:
               [ -f "$file" ] || continue
               wiki_name="${file%.md}"
               display=$(get_display_name "$wiki_name")
-              echo "- [[$wiki_name|$display]]"
+              echo "- [$display]($wiki_name)"
             done
 
             echo ""
@@ -298,7 +301,7 @@ jobs:
               [ -f "$file" ] || continue
               wiki_name="${file%.md}"
               display=$(get_display_name "$wiki_name")
-              echo "- [[$wiki_name|$display]]"
+              echo "- [$display]($wiki_name)"
             done
 
             echo ""
@@ -307,7 +310,7 @@ jobs:
               [ -f "$file" ] || continue
               wiki_name="${file%.md}"
               display=$(get_display_name "$wiki_name")
-              echo "- [[$wiki_name|$display]]"
+              echo "- [$display]($wiki_name)"
             done
 
             echo ""
@@ -316,7 +319,7 @@ jobs:
               [ -f "$file" ] || continue
               wiki_name="${file%.md}"
               display=$(get_display_name "$wiki_name")
-              echo "- [[$wiki_name|$display]]"
+              echo "- [$display]($wiki_name)"
             done
 
             echo ""
@@ -325,7 +328,7 @@ jobs:
               [ -f "$file" ] || continue
               wiki_name="${file%.md}"
               display=$(get_display_name "$wiki_name")
-              echo "- [[$wiki_name|$display]]"
+              echo "- [$display]($wiki_name)"
             done
 
             echo ""
@@ -334,17 +337,17 @@ jobs:
               [ -f "$file" ] || continue
               wiki_name="${file%.md}"
               display=$(get_display_name "$wiki_name")
-              echo "- [[$wiki_name|$display]]"
+              echo "- [$display]($wiki_name)"
             done
 
             echo ""
             echo "### Project"
-            echo "- [[CHANGELOG|Changelog]]"
+            echo "- [Changelog](CHANGELOG)"
             for file in Project-*.md; do
               [ -f "$file" ] || continue
               wiki_name="${file%.md}"
               display=$(get_display_name "$wiki_name")
-              echo "- [[$wiki_name|$display]]"
+              echo "- [$display]($wiki_name)"
             done
           } > _Sidebar.md
 
@@ -396,13 +399,14 @@ jobs:
             fi
           done < <(find . -name "*.md" -print0)
 
-          # Validate sidebar links - ensure all [[PageName]] references have corresponding files
+          # Validate sidebar links - ensure all [Display](Page) references have corresponding files
           echo ""
           echo "Validating sidebar links..."
           if [ -f "_Sidebar.md" ]; then
-            # Extract all [[PageName|...]] patterns and check each exists
-            # Using command substitution to capture missing page names from a subshell loop
-            missing_pages=$(grep -oE '\[\[[A-Za-z0-9-]+' _Sidebar.md | sed 's/\[\[//' | sort -u | while read -r page; do
+            # Extract all [Display](Page) patterns and check each page exists
+            # Captures the part inside parentheses (the page name) from Markdown links
+            # Character class includes: letters, numbers, hyphens, underscores, periods
+            missing_pages=$(grep -oE '\]\([A-Za-z0-9_.-]+\)' _Sidebar.md | sed 's/\](//;s/)//' | sort -u | while read -r page; do
               [ ! -f "$page.md" ] && echo "$page"
             done || true)
             if [ -n "$missing_pages" ]; then
