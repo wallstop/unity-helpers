@@ -133,6 +133,7 @@ Invoke these skills for specific tasks:
 | [debug-il2cpp](./skills/debug-il2cpp.md)                                   | IL2CPP build issues or AOT errors                |
 | [integrate-optional-dependency](./skills/integrate-optional-dependency.md) | Odin, VContainer, Zenject integration patterns   |
 | [github-pages](./skills/github-pages.md)                                   | GitHub Pages, Jekyll, markdown link format       |
+| [wiki-generation](./skills/wiki-generation.md)                             | GitHub Wiki deployment, sidebar links            |
 
 ---
 

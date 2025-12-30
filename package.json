@@ -119,6 +119,7 @@
     "lint:csharp-naming": "pwsh -NoProfile -File scripts/lint-csharp-naming.ps1 -VerboseOutput",
     "lint:unity-file-naming": "pwsh -NoProfile -File scripts/lint-unity-file-naming.ps1 -VerboseOutput",
     "test:lint-unity-file-naming": "pwsh -NoProfile -File scripts/tests/test-lint-unity-file-naming.ps1 -VerboseOutput",
+    "test:wiki-generation": "bash scripts/tests/test-wiki-generation.sh",
     "verify:tools": "bash scripts/verify-devcontainer-tools.sh"
   },
   "devDependencies": {

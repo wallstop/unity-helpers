@@ -11,11 +11,13 @@ name: Validate Wiki Links
       - "index.md"
       - ".github/workflows/deploy-wiki.yml"
       - ".github/workflows/validate-wiki-links.yml"
+      - "scripts/tests/test-wiki-generation.sh"
   push:
     branches:
       - main
     paths:
       - ".github/workflows/validate-wiki-links.yml"
+      - "scripts/tests/test-wiki-generation.sh"
   workflow_dispatch:
 
 permissions:
@@ -192,3 +194,8 @@ jobs:
           fi
 
           echo "✅ All internal documentation links are valid"
+
+      - name: Test wiki generation logic
+        run: |
+          echo "🧪 Running wiki generation tests..."
+          bash scripts/tests/test-wiki-generation.sh
