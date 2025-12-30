@@ -41,8 +41,8 @@ def path_to_wiki_name(relative_path: str) -> str:
     # Remove .md extension
     name = relative_path.rsplit(".", 1)[0] if relative_path.endswith(".md") else relative_path
 
-    # Replace / with -
-    name = name.replace("/", "-")
+    # Replace path separators (both / and \) with -
+    name = name.replace("\\", "-").replace("/", "-")
 
     # Capitalize each segment
     parts = name.split("-")
