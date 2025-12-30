@@ -23,16 +23,31 @@ Located in `scripts/wiki/`:
 ### Running Wiki Tests
 
 ```bash
-# Activate virtual environment
+# Run bash wiki generation tests (fast, validates syntax patterns)
+bash scripts/tests/test-wiki-generation.sh
+
+# Activate virtual environment for Python tests
 source .venv/bin/activate
 
-# Run all wiki tests
+# Run all wiki Python tests (comprehensive, 50+ test cases)
 python -m pytest scripts/wiki/test_wiki_scripts.py -v
 
 # Test on actual repository
 python scripts/wiki/prepare_wiki.py \
   --source . --dest /tmp/test-wiki --verbose
 ```
+
+**Both test suites MUST pass.** The bash tests validate that the Python scripts use correct Markdown link syntax. The Python tests validate the actual logic of link transformations, sidebar generation, etc.
+
+### Pre-Push Hook Integration
+
+The pre-push hook automatically runs wiki tests when wiki-related files change:
+
+- `scripts/wiki/*.py` — Python wiki scripts
+- `scripts/tests/test-wiki-generation.sh` — Bash validation tests
+- `.github/workflows/deploy-wiki.yml` — Wiki deployment workflow
+
+If you modify any of these files, the pre-push hook will run both bash and Python wiki tests automatically.
 
 ---
 
@@ -199,7 +214,25 @@ echo "- [Getting Started](Overview-Getting-Started)"
 
 ## Testing
 
-Run wiki generation tests locally:
+**TWO test suites validate wiki generation:**
+
+### Bash Tests (`scripts/tests/test-wiki-generation.sh`)
+
+Fast syntax validation tests that verify:
+
+- Python scripts use Markdown link syntax (not MediaWiki)
+- `get_display_name()` function produces correct display names
+- Sidebar links are generated in `[Display](Page)` format
+- No MediaWiki `[[Page|Display]]` syntax is present
+
+```bash
+# Run bash tests (fast, ~2 seconds)
+bash scripts/tests/test-wiki-generation.sh
+```
+
+### Python Tests (`scripts/wiki/test_wiki_scripts.py`)
+
+Comprehensive unit and integration tests (50+ test cases):
 
 ```bash
 # Create and activate virtual environment (one time)
@@ -207,7 +240,7 @@ python3 -m venv .venv
 source .venv/bin/activate
 pip install pytest
 
-# Run all wiki tests
+# Run all wiki Python tests
 python -m pytest scripts/wiki/test_wiki_scripts.py -v
 
 # Test specific module
@@ -229,6 +262,14 @@ Tests cover:
 - Full pipeline integration (`prepare_wiki`)
 - Edge cases (empty content, malformed links, external URLs)
 
+### When Tests Run
+
+| Trigger            | Bash Tests | Python Tests             |
+| ------------------ | ---------- | ------------------------ |
+| Pre-push hook      | ✅         | ✅ (if pytest installed) |
+| CI (PR/push)       | ✅         | ✅                       |
+| Manual (`npm run`) | ✅         | ✅                       |
+
 ---
 
 ## Related Files
@@ -243,10 +284,38 @@ Tests cover:
 | `scripts/wiki/transform_wiki_links.py`      | Link transformation logic       |
 | `scripts/wiki/generate_wiki_sidebar.py`     | Sidebar generation              |
 | `scripts/wiki/generate_wiki_footer.py`      | Footer generation               |
-| `scripts/wiki/test_wiki_scripts.py`         | Comprehensive test suite        |
+| `scripts/wiki/test_wiki_scripts.py`         | Python test suite (50+ tests)   |
+| `scripts/tests/test-wiki-generation.sh`     | Bash syntax validation tests    |
+| `.githooks/pre-push`                        | Pre-push hook (runs wiki tests) |
 | `docs/`                                     | Source documentation files      |
 
 <!-- markdownlint-enable MD013 -->
+
+---
+
+## Critical Rules
+
+### Test Synchronization (CRITICAL)
+
+When refactoring wiki generation scripts (e.g., moving from inline bash to Python):
+
+1. **Update BOTH test suites** — Bash tests (`test-wiki-generation.sh`)
+   AND Python tests (`test_wiki_scripts.py`)
+2. **Bash tests validate Python scripts** — The bash tests grep Python
+   files for correct patterns
+3. **Run both locally before pushing** — Pre-push hook runs both, but
+   manual verification is faster
+
+**Example failure scenario (what caused this issue):**
+
+- Wiki generation was refactored from inline bash in `deploy-wiki.yml`
+  to Python scripts
+- Python tests were updated, but bash tests still checked for old
+  inline bash patterns
+- CI failed because bash tests looked for `echo "- [Home](Home)"`
+  which no longer existed
+- Fix: Updated bash tests to check Python scripts for correct
+  Markdown link patterns
 
 ---
 

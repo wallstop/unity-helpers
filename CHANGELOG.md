@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **GitHub Pages Support**: All documentation is now available via a pretty [GitHub Pages](https://wallstop.github.io/unity-helpers/)
+- **GitHub Wiki Support**: All documentation is now available via a less pretty [GitHub Wiki](https://github.com/wallstop/unity-helpers/wiki)
 - **Comprehensive Odin Inspector Attribute Support**: All Unity Helpers inspector attributes now work seamlessly with Odin Inspector's `SerializedMonoBehaviour` and `SerializedScriptableObject` types
   - **`[WButton]`**: Full support including grouping, placement, history, async methods, and parameters
   - **`[WShowIf]`**: Conditional property display based on field values, methods, or comparisons
