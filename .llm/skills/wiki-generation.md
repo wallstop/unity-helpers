@@ -66,8 +66,8 @@ docs/guides/odin-migration-guide.md      Guides-Odin-Migration-Guide.md
 
 ## Sidebar Generation
 
-The sidebar (the special underscore-Sidebar file) is generated automatically
-by the `deploy-wiki.yml` workflow.
+The wiki sidebar file is generated automatically by the `deploy-wiki.yml`
+workflow.
 
 ### Correct Format
 
@@ -186,6 +186,10 @@ Tests cover:
 - Regression prevention (no MediaWiki syntax)
 - Validation regex patterns
 - Workflow file syntax verification
+
+**CRITICAL**: The `get_display_name` function in the test file MUST be an exact
+copy of the implementation in `deploy-wiki.yml`. If you modify the function in
+either location, update both to stay in sync.
 
 Tests run automatically in CI via `validate-wiki-links.yml`.
 

@@ -36,20 +36,25 @@ run_test() {
 }
 
 # =============================================================================
-# get_display_name function (copied from deploy-wiki.yml for testing)
+# get_display_name function (EXACT copy from deploy-wiki.yml for testing)
+# IMPORTANT: This MUST match the implementation in deploy-wiki.yml exactly.
+# If you modify this, also update deploy-wiki.yml and vice versa.
+#
+# NOTE: The sed alternation only removes the FIRST matching prefix.
+# This matches actual file naming conventions - files never have nested
+# category prefixes like "Overview-Features-*" or "Features-Guides-*".
 # =============================================================================
 get_display_name() {
     local wiki_name="$1"
     local display="$wiki_name"
 
-    # Remove category prefixes
-    display="${display#Overview-}"
-    display="${display#Features-}"
-    display="${display#Guides-}"
-    display="${display#Performance-}"
-    display="${display#Project-}"
+    # Remove top-level category prefix (Features, Overview, Performance, Guides, Project)
+    # Using sed for extended regex alternation which can't be done with bash substitution
+    # shellcheck disable=SC2001
+    display=$(echo "$display" | sed -E 's/^(Features|Overview|Performance|Guides|Project)-//')
 
-    # Remove subcategory prefixes
+    # Remove subcategory prefix only if it matches known subcategories
+    # This preserves context for files like "Utilities-Data-Structures" -> "Data Structures"
     # shellcheck disable=SC2001
     display=$(echo "$display" | sed -E 's/^(Inspector|Effects|Relational-Components|Serialization|Spatial|Logging|Utilities|Editor-Tools)-//')
 
