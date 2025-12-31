@@ -77,6 +77,12 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers.Utils
         public const float HeaderPingSpacing = 4f;
 
         /// <summary>
+        /// Ratio of the total content width allocated to label widths in inline editor UI.
+        /// Labels display property names on the left side of the inspector.
+        /// </summary>
+        public const float DefaultLabelWidthRatio = 0.4f;
+
+        /// <summary>
         /// Maximum number of foldout states to cache.
         /// Prevents unbounded memory growth in projects with many inline editors.
         /// </summary>
@@ -569,7 +575,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers.Utils
 
             float previousLabelWidth = EditorGUIUtility.labelWidth;
 
-            EditorGUIUtility.labelWidth = rect.width * 0.4f;
+            EditorGUIUtility.labelWidth = rect.width * DefaultLabelWidthRatio;
 
             try
             {

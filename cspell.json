@@ -770,7 +770,8 @@
         "misconfiguration",
         "failsafe",
         "fallback",
-        "fallbacks"
+        "fallbacks",
+        "lacunarity"
       ]
     }
   ],

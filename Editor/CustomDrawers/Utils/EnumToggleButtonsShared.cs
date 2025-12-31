@@ -97,6 +97,23 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers.Utils
         public const float SummarySpacing = 2f;
 
         /// <summary>
+        /// Ratio used to split available width evenly between two aligned buttons (e.g., Select All / None).
+        /// </summary>
+        public const float EqualSplitRatio = 0.5f;
+
+        /// <summary>
+        /// Maximum ratio of the pagination area width allocated to each navigation button.
+        /// Ensures buttons don't become excessively wide in large layouts.
+        /// </summary>
+        public const float MaxPaginationButtonWidthRatio = 0.2f;
+
+        /// <summary>
+        /// Ratio used to center elements when distributing overflow correction.
+        /// Applies half the overflow adjustment to shift elements toward center.
+        /// </summary>
+        public const float OverflowCenteringRatio = 0.5f;
+
+        /// <summary>
         /// Content for navigating to previous page.
         /// </summary>
         public static readonly GUIContent PrevPageContent = new("◀", "Previous Page");
