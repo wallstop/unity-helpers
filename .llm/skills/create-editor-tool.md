@@ -305,6 +305,35 @@ Available shared caches in `EditorCacheHelper`:
 - `GetCachedIntString(int)` — Cached integer-to-string conversion
 - `GetPaginationLabel(int page, int total)` — Cached "Page X / Y" strings
 - `GetSolidTexture(Color)` — Cached 1x1 solid color textures
+- `AddToBoundedCache<K,V>(cache, key, value, maxSize)` — Add to bounded LRU cache with automatic eviction
+- `TryGetFromBoundedLRUCache<K,V>(cache, key, out value)` — Get from LRU cache (updates access order)
+
+### Bounded LRU Caching Pattern
+
+For custom bounded caches, use `EditorCacheHelper` LRU methods to prevent unbounded memory growth:
+
+```csharp
+private static readonly Dictionary<string, MyValue> MyCache = new();
+private const int MaxCacheSize = 500;
+
+public static MyValue GetOrCreate(string key)
+{
+    // LRU read - updates access order so frequently-used items stay cached
+    if (EditorCacheHelper.TryGetFromBoundedLRUCache(MyCache, key, out MyValue cached))
+    {
+        return cached;
+    }
+
+    MyValue value = CreateValue(key);
+
+    // LRU add - evicts least-recently-used when at capacity
+    EditorCacheHelper.AddToBoundedCache(MyCache, key, value, MaxCacheSize);
+
+    return value;
+}
+```
+
+**LRU vs FIFO**: LRU (Least Recently Used) is preferred over FIFO because it keeps frequently-accessed items in cache longer. Both reads and writes update an item's "recency", preventing hot items from being evicted.
 
 ---
 

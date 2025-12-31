@@ -179,6 +179,60 @@ public void MaybeProcessItems(bool shouldProcess)
 
 ---
 
+## Pattern: Populating from IEnumerable
+
+When materializing an `IEnumerable<T>` into a pooled list, **always use `AddRange`** instead of `foreach` + `Add`:
+
+```csharp
+// ❌ BAD: foreach allocates an enumerator, no capacity pre-allocation
+using var lease = Buffers<T>.List.Get(out List<T> result);
+foreach (T item in source)
+{
+    result.Add(item);  // May trigger multiple resizes
+}
+
+// ✅ GOOD: AddRange is optimized for performance
+using var lease = Buffers<T>.List.Get(out List<T> result);
+result.AddRange(source);
+```
+
+**Why AddRange is better:**
+
+1. **Capacity pre-allocation**: If source is `ICollection<T>`, AddRange queries `Count` first
+2. **Bulk copy**: For arrays and `List<T>`, uses `Array.Copy` which is much faster
+3. **Potential zero-allocation**: May avoid enumerator allocation entirely
+4. **Fewer resizes**: Pre-allocated capacity means fewer or no list resizes
+
+### When to Use for Loop Instead
+
+Use indexed `for` loops only when you must **transform** or **filter** each element:
+
+```csharp
+// ✅ TRANSFORMATION: Must use for loop
+for (int i = 0; i < guids.Length; i++)
+{
+    paths.Add(ConvertGuidToPath(guids[i]));  // Transforming - can't use AddRange
+}
+
+// ✅ FILTERING: Must use for loop
+for (int i = 0; i < items.Length; i++)
+{
+    if (items[i].IsValid)
+    {
+        filtered.Add(items[i]);  // Filtering - can't use AddRange
+    }
+}
+```
+
+| Scenario                | Use                                             |
+| ----------------------- | ----------------------------------------------- |
+| Copy all elements as-is | `AddRange(source)`                              |
+| Transform each element  | `for` loop + `Add(Transform(item))`             |
+| Filter elements         | `for` loop + conditional `Add`                  |
+| Transform AND filter    | `for` loop + conditional `Add(Transform(item))` |
+
+---
+
 ## Common Mistakes
 
 ### ❌ Forgetting `using`

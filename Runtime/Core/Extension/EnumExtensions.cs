@@ -455,6 +455,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         /// Performance: O(n) where n is the number of enum values. Uses cached lookups.
         /// Allocations: Allocates LINQ iterator. Minimal allocations for cached display names.
         /// Edge cases: Empty collection returns empty enumerable.
+        /// Laziness: Uses deferred execution - values are transformed only when enumerated.
         /// </remarks>
         public static IEnumerable<string> ToDisplayNames<T>(this IEnumerable<T> enumerable)
             where T : unmanaged, Enum
@@ -493,6 +494,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         /// Performance: O(n) where n is the number of enum values. Uses cached lookups.
         /// Allocations: Allocates LINQ iterator. Minimal allocations for cached names.
         /// Edge cases: Empty collection returns empty enumerable.
+        /// Laziness: Uses deferred execution - values are transformed only when enumerated.
         /// </remarks>
         public static IEnumerable<string> ToCachedNames<T>(this IEnumerable<T> enumerable)
             where T : unmanaged, Enum

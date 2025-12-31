@@ -27,6 +27,15 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         private static readonly Dictionary<int, string[]> DisplayOptionsCache = new();
 
         /// <summary>
+        /// Clears all cached state. Called during domain reload via
+        /// <see cref="Internal.EditorCacheManager.ClearAllCaches"/>.
+        /// </summary>
+        internal static void ClearCache()
+        {
+            DisplayOptionsCache.Clear();
+        }
+
+        /// <summary>
         /// Draws the property as a dropdown selector with the integer options provided by the attribute.
         /// </summary>
         /// <param name="label">The label to display for the property.</param>

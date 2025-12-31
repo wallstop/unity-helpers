@@ -8,6 +8,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers.TestTypes
     using System.Collections.Generic;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Attributes;
+    using WallstopStudios.UnityHelpers.Core.Helper;
 
     /// <summary>
     /// Custom equatable struct for testing WValueDropDown with arbitrary types.
@@ -42,11 +43,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers.TestTypes
 
         public override int GetHashCode()
         {
-            unchecked
-            {
-                return (_id * 397)
-                    ^ (_name != null ? StringComparer.Ordinal.GetHashCode(_name) : 0);
-            }
+            return Objects.HashCode(_id, _name);
         }
 
         public override string ToString()

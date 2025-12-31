@@ -10,6 +10,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers.Utils
     using UnityEditor;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Attributes;
+    using WallstopStudios.UnityHelpers.Editor.Core.Helper;
     using WallstopStudios.UnityHelpers.Editor.Settings;
     using WallstopStudios.UnityHelpers.Editor.Utils;
     using Object = UnityEngine.Object;
@@ -75,18 +76,59 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers.Utils
         /// </summary>
         public const float HeaderPingSpacing = 4f;
 
+        /// <summary>
+        /// Maximum number of foldout states to cache.
+        /// Prevents unbounded memory growth in projects with many inline editors.
+        /// </summary>
+        private const int MaxFoldoutStatesCacheSize = 5000;
+
+        /// <summary>
+        /// Maximum number of scroll positions to cache.
+        /// Prevents unbounded memory growth in projects with many scrollable inline editors.
+        /// </summary>
+        private const int MaxScrollPositionsCacheSize = 5000;
+
+        /// <summary>
+        /// Maximum number of editor instances to cache.
+        /// Editor instances consume significant memory, so this limit is more conservative.
+        /// </summary>
+        private const int MaxEditorCacheSize = 500;
+
+        /// <summary>
+        /// Maximum number of integer-to-string conversions to cache.
+        /// Prevents unbounded growth from many unique instance IDs.
+        /// </summary>
+        private const int MaxIntToStringCacheSize = 10000;
+
+        /// <summary>
+        /// Cache for foldout expansion states, keyed by a unique foldout identifier.
+        /// Limited to <see cref="MaxFoldoutStatesCacheSize"/> entries to prevent unbounded memory growth.
+        /// </summary>
         private static readonly Dictionary<string, bool> FoldoutStates = new Dictionary<
             string,
             bool
         >(StringComparer.Ordinal);
 
+        /// <summary>
+        /// Cache for scroll positions, keyed by a unique scroll identifier.
+        /// Limited to <see cref="MaxScrollPositionsCacheSize"/> entries to prevent unbounded memory growth.
+        /// </summary>
         private static readonly Dictionary<string, Vector2> ScrollPositions = new Dictionary<
             string,
             Vector2
         >(StringComparer.Ordinal);
 
+        /// <summary>
+        /// Cache for Unity Editor instances, keyed by object instance ID.
+        /// Limited to <see cref="MaxEditorCacheSize"/> entries to prevent unbounded memory growth.
+        /// Editor instances are properly destroyed when evicted from the cache.
+        /// </summary>
         private static readonly Dictionary<int, Editor> EditorCache = new Dictionary<int, Editor>();
 
+        /// <summary>
+        /// Cache for integer-to-string conversions, used for building foldout/scroll keys.
+        /// Limited to <see cref="MaxIntToStringCacheSize"/> entries to prevent unbounded memory growth.
+        /// </summary>
         private static readonly Dictionary<int, string> IntToStringCache =
             new Dictionary<int, string>();
 
@@ -152,7 +194,13 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers.Utils
                 return true;
             }
 
-            if (FoldoutStates.TryGetValue(foldoutKey, out bool value))
+            if (
+                EditorCacheHelper.TryGetFromBoundedLRUCache(
+                    FoldoutStates,
+                    foldoutKey,
+                    out bool value
+                )
+            )
             {
                 return value;
             }
@@ -168,7 +216,12 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers.Utils
                 _ => true,
             };
 
-            FoldoutStates[foldoutKey] = initialState;
+            EditorCacheHelper.AddToBoundedCache(
+                FoldoutStates,
+                foldoutKey,
+                initialState,
+                MaxFoldoutStatesCacheSize
+            );
 
             return initialState;
         }
@@ -185,7 +238,12 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers.Utils
                 return;
             }
 
-            FoldoutStates[foldoutKey] = expanded;
+            EditorCacheHelper.AddToBoundedCache(
+                FoldoutStates,
+                foldoutKey,
+                expanded,
+                MaxFoldoutStatesCacheSize
+            );
         }
 
         /// <summary>
@@ -200,7 +258,13 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers.Utils
                 return Vector2.zero;
             }
 
-            if (ScrollPositions.TryGetValue(scrollKey, out Vector2 position))
+            if (
+                EditorCacheHelper.TryGetFromBoundedLRUCache(
+                    ScrollPositions,
+                    scrollKey,
+                    out Vector2 position
+                )
+            )
             {
                 return position;
             }
@@ -220,11 +284,17 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers.Utils
                 return;
             }
 
-            ScrollPositions[scrollKey] = position;
+            EditorCacheHelper.AddToBoundedCache(
+                ScrollPositions,
+                scrollKey,
+                position,
+                MaxScrollPositionsCacheSize
+            );
         }
 
         /// <summary>
         /// Gets or creates a cached editor for the given object.
+        /// Uses LRU ordering to track access and evict least-recently-used editors.
         /// </summary>
         /// <param name="value">The object to get or create an editor for.</param>
         /// <returns>The cached editor, or null if the value is null.</returns>
@@ -237,14 +307,56 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers.Utils
 
             int key = value.GetInstanceID();
 
-            if (!EditorCache.TryGetValue(key, out Editor cachedEditor) || cachedEditor == null)
+            if (EditorCache.TryGetValue(key, out Editor cachedEditor) && cachedEditor != null)
             {
-                Editor.CreateCachedEditor(value, null, ref cachedEditor);
-
+                EditorCache.Remove(key);
                 EditorCache[key] = cachedEditor;
+                return cachedEditor;
             }
 
+            Editor.CreateCachedEditor(value, null, ref cachedEditor);
+
+            AddEditorToCache(key, cachedEditor);
+
             return cachedEditor;
+        }
+
+        /// <summary>
+        /// Adds an editor to the bounded LRU cache, evicting and destroying the least-recently-used editor if at capacity.
+        /// </summary>
+        /// <param name="key">The instance ID key for the editor.</param>
+        /// <param name="editor">The editor to cache.</param>
+        private static void AddEditorToCache(int key, Editor editor)
+        {
+            if (EditorCache.ContainsKey(key))
+            {
+                EditorCache.Remove(key);
+                EditorCache[key] = editor;
+                return;
+            }
+
+            if (EditorCache.Count >= MaxEditorCacheSize)
+            {
+                int oldestKey = default;
+                bool foundKey = false;
+                foreach (int existingKey in EditorCache.Keys)
+                {
+                    oldestKey = existingKey;
+                    foundKey = true;
+                    break;
+                }
+
+                if (foundKey && EditorCache.TryGetValue(oldestKey, out Editor oldEditor))
+                {
+                    EditorCache.Remove(oldestKey);
+                    if (oldEditor != null)
+                    {
+                        Object.DestroyImmediate(oldEditor);
+                    }
+                }
+            }
+
+            EditorCache[key] = editor;
         }
 
         /// <summary>
@@ -258,7 +370,10 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers.Utils
             {
                 cached = value.ToString();
 
-                IntToStringCache[value] = cached;
+                if (IntToStringCache.Count < MaxIntToStringCacheSize)
+                {
+                    IntToStringCache[value] = cached;
+                }
             }
 
             return cached;
@@ -510,9 +625,9 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers.Utils
         }
 
         /// <summary>
-        /// Clears all cached state. Primarily for testing purposes.
+        /// Clears all cached state. Called during domain reload to prevent stale references.
         /// </summary>
-        internal static void ClearCachedStateForTesting()
+        internal static void ClearCache()
         {
             FoldoutStates.Clear();
 
@@ -527,6 +642,16 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers.Utils
             }
 
             EditorCache.Clear();
+
+            IntToStringCache.Clear();
+        }
+
+        /// <summary>
+        /// Clears all cached state. Primarily for testing purposes.
+        /// </summary>
+        internal static void ClearCachedStateForTesting()
+        {
+            ClearCache();
         }
 
         /// <summary>

@@ -573,12 +573,13 @@ Based on the completed Odin consolidation (Sessions 22-26), the actual structure
 ```text
 Editor/CustomDrawers/
 ├── Utils/                               # Shared utilities (ALWAYS #if UNITY_EDITOR)
-│   ├── EditorDrawerCacheHelper.cs       # Centralized style/string caching (230 lines)
 │   ├── EnumToggleButtonsShared.cs       # Enum button logic (952 lines)
 │   ├── ShowIfConditionEvaluator.cs      # Condition evaluation (586 lines)
 │   ├── InLineEditorShared.cs            # Inline editor state (587 lines)
 │   ├── DropDownShared.cs                # Dropdown rendering (643 lines)
 │   └── ValidationShared.cs              # WNotNull/ValidateAssignment helpers (542 lines)
+Editor/Core/Helper/
+│   └── EditorCacheHelper.cs             # Centralized style/string/texture caching
 ├── Odin/                                # Odin-specific drawers (#if ODIN_INSPECTOR)
 │   ├── WEnumToggleButtonsOdinDrawer.cs
 │   ├── WShowIfOdinDrawer.cs
@@ -604,7 +605,7 @@ Editor/CustomDrawers/
 
 ```csharp
 using EnumShared = WallstopStudios.UnityHelpers.Editor.CustomDrawers.Utils.EnumToggleButtonsShared;
-using CacheHelper = WallstopStudios.UnityHelpers.Editor.CustomDrawers.Utils.EditorDrawerCacheHelper;
+using CacheHelper = WallstopStudios.UnityHelpers.Editor.Core.Helper.EditorCacheHelper;
 ```
 
 ### Example: EnumToggleButtonsShared Usage

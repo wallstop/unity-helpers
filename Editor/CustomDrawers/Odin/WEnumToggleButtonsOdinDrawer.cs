@@ -13,8 +13,9 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Editor.Settings;
+    using WallstopStudios.UnityHelpers.Utils;
     using EnumShared = WallstopStudios.UnityHelpers.Editor.CustomDrawers.Utils.EnumToggleButtonsShared;
-    using CacheHelper = WallstopStudios.UnityHelpers.Editor.CustomDrawers.Utils.EditorDrawerCacheHelper;
+    using CacheHelper = WallstopStudios.UnityHelpers.Editor.Core.Helper.EditorCacheHelper;
 
     /// <summary>
     /// Odin Inspector attribute drawer for <see cref="WEnumToggleButtonsAttribute"/>.
@@ -38,6 +39,19 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             new();
         private static readonly Dictionary<string, EnumShared.PaginationState> PaginationStates =
             new(StringComparer.Ordinal);
+
+        /// <summary>
+        /// Clears all cached state. Called during domain reload to prevent stale references.
+        /// </summary>
+        /// <remarks>
+        /// This method is called by <see cref="Internal.EditorCacheManager.ClearAllCaches"/>
+        /// when the Unity domain reloads (after script compilation, entering/exiting play mode, etc.).
+        /// </remarks>
+        internal static void ClearCache()
+        {
+            EnumOptionsCache.Clear();
+            PaginationStates.Clear();
+        }
 
         protected override void DrawPropertyLayout(GUIContent label)
         {
@@ -571,7 +585,10 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
 
             int endIndex = startIndex + visibleCount;
-            List<string> outOfView = null;
+            using PooledResource<List<string>> lease = Buffers<string>.GetList(
+                4,
+                out List<string> outOfView
+            );
 
             for (int index = 0; index < options.Length; index += 1)
             {
@@ -586,15 +603,10 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     continue;
                 }
 
-                if (outOfView == null)
-                {
-                    outOfView = new List<string>(4);
-                }
-
                 outOfView.Add(option.Label);
             }
 
-            if (outOfView == null || outOfView.Count == 0)
+            if (outOfView.Count == 0)
             {
                 return EnumShared.SelectionSummary.None;
             }
@@ -643,7 +655,11 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         internal static EnumShared.ToggleOption[] BuildEnumOptions(Type enumType, bool isFlags)
         {
             Array values = Enum.GetValues(enumType);
-            List<EnumShared.ToggleOption> options = new(values.Length);
+            using PooledResource<List<EnumShared.ToggleOption>> optionsLease =
+                Buffers<EnumShared.ToggleOption>.GetList(
+                    values.Length,
+                    out List<EnumShared.ToggleOption> options
+                );
 
             for (int index = 0; index < values.Length; index += 1)
             {

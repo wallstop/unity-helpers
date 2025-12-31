@@ -437,6 +437,75 @@ while (enumerator.MoveNext())
 }
 ```
 
+### 7a. Prefer AddRange Over foreach + Add
+
+When populating a list from an `IEnumerable<T>`, **always prefer `AddRange`** over `foreach` + `Add`:
+
+```csharp
+// ❌ BAD: foreach allocates an enumerator, no capacity pre-allocation
+using var lease = Buffers<T>.List.Get(out List<T> result);
+foreach (T item in source)
+{
+    result.Add(item);  // May trigger multiple resizes
+}
+
+// ✅ GOOD: AddRange is optimized for performance
+using var lease = Buffers<T>.List.Get(out List<T> result);
+result.AddRange(source);
+```
+
+**Why AddRange is better:**
+
+1. **Capacity pre-allocation**: If source is `ICollection<T>`, AddRange queries `Count` first and ensures capacity
+2. **Bulk copy**: For arrays and `List<T>`, uses `Array.Copy` which is much faster than individual adds
+3. **Potential zero-allocation**: If source already has the items in contiguous memory, no enumerator needed
+4. **Fewer resizes**: Pre-allocated capacity means fewer or no list resizes during population
+
+This applies to all list population scenarios, not just pooled lists.
+
+### When to Use for Loop Instead of AddRange
+
+Use indexed `for` loops only when you must **transform** or **filter** each element:
+
+```csharp
+// ✅ TRANSFORMATION: Must use for loop - each element needs conversion
+using var lease = Buffers<string>.GetList(guids.Length, out List<string> paths);
+for (int i = 0; i < guids.Length; i++)
+{
+    paths.Add(ConvertGuidToPath(guids[i]));  // Can't use AddRange - transforming each element
+}
+
+// ✅ FILTERING: Must use for loop - conditionally adding elements
+using var lease = Buffers<T>.GetList(items.Length, out List<T> filtered);
+for (int i = 0; i < items.Length; i++)
+{
+    if (items[i].IsValid)
+    {
+        filtered.Add(items[i]);  // Can't use AddRange - filtering
+    }
+}
+
+// ❌ BAD: Using for loop when AddRange would work
+using var lease = Buffers<T>.GetList(source.Count, out List<T> result);
+for (int i = 0; i < source.Count; i++)
+{
+    result.Add(source[i]);  // Should use AddRange!
+}
+
+// ✅ GOOD: Use AddRange for straight copies
+using var lease = Buffers<T>.GetList(source.Count, out List<T> result);
+result.AddRange(source);
+```
+
+**Decision guide:**
+
+| Scenario                | Use                                             |
+| ----------------------- | ----------------------------------------------- |
+| Copy all elements as-is | `AddRange(source)`                              |
+| Transform each element  | `for` loop + `Add(Transform(item))`             |
+| Filter elements         | `for` loop + conditional `Add`                  |
+| Transform AND filter    | `for` loop + conditional `Add(Transform(item))` |
+
 ### 8. Implement IEquatable<T> to Avoid Boxing
 
 Without `IEquatable<T>`, struct comparisons in collections cause boxing:
@@ -489,6 +558,109 @@ var dict = new Dictionary<MyEnum, string>(new MyEnumComparer());
 // ✅ ALTERNATIVE: Cast to int
 Dictionary<int, string> dict = new Dictionary<int, string>();
 dict[(int)MyEnum.SomeValue] = "value";
+```
+
+---
+
+## 10. String Building Best Practices
+
+String operations are a common source of allocations. Choose the right approach based on context:
+
+### Decision Guide
+
+| Context                   | Recommended Approach        | Example                       |
+| ------------------------- | --------------------------- | ----------------------------- |
+| Hot paths (Update, loops) | `StringBuilder` via pooling | `Buffers.StringBuilder.Get()` |
+| Two strings               | Direct `+` is fine          | `firstName + lastName`        |
+| 3+ parts, non-hot path    | String interpolation        | `$"{name}: {value}"`          |
+| Building in loops         | **Always** `StringBuilder`  | See below                     |
+| Format with many args     | `StringBuilder`             | Avoids `params` allocation    |
+
+### Why Each Approach
+
+**`+` concatenation**: Creates intermediate strings. For `a + b`, this is optimized to `string.Concat(a, b)` with one allocation. For `a + b + c + d`, the compiler chains concats, creating multiple intermediate strings.
+
+**String interpolation (`$"..."`)**: More readable than `+`, and the compiler can optimize simple cases. Still allocates the result string. Prefer over `+` for 3+ parts outside hot paths.
+
+**StringBuilder**: Amortizes allocation by building in a buffer. Combined with pooling (`Buffers.StringBuilder`), achieves zero allocation in steady state. **Always use for loops or hot paths.**
+
+### Patterns
+
+```csharp
+// ✅ OK: Two strings - single allocation
+string fullName = firstName + " " + lastName;
+
+// ✅ OK: Interpolation outside hot paths - readable, one allocation
+string message = $"Player {name} scored {score} points";
+
+// ❌ BAD: Concatenation in loop - O(n²) allocations!
+string result = "";
+for (int i = 0; i < items.Count; i++)
+{
+    result += items[i].Name;  // New string each iteration!
+}
+
+// ❌ BAD: Interpolation in loop - still allocates each iteration
+string result = "";
+for (int i = 0; i < items.Count; i++)
+{
+    result = $"{result}{items[i].Name}";  // Still O(n²)!
+}
+
+// ✅ GOOD: StringBuilder with pooling - zero allocation
+using var lease = Buffers.StringBuilder.Get(out StringBuilder sb);
+for (int i = 0; i < items.Count; i++)
+{
+    sb.Append(items[i].Name);
+}
+string result = sb.ToString();
+
+// ✅ GOOD: StringBuilder for complex formatting
+using var lease = Buffers.StringBuilder.Get(out StringBuilder sb);
+sb.Append("Results: ");
+for (int i = 0; i < items.Count; i++)
+{
+    if (i > 0)
+    {
+        sb.Append(", ");
+    }
+    sb.Append(items[i].Name);
+    sb.Append(" (");
+    sb.Append(items[i].Score);
+    sb.Append(")");
+}
+string result = sb.ToString();
+```
+
+### Hot Path Rule
+
+In `Update`, `FixedUpdate`, `LateUpdate`, `OnGUI`, or any frequently-called code:
+
+- **Never** use `+` concatenation (even for two strings, if called every frame)
+- **Never** use string interpolation
+- **Always** use `StringBuilder` with pooling, or cache the result
+
+```csharp
+// ❌ BAD: In Update - allocates every frame
+void Update()
+{
+    _label.text = $"Health: {_health}";  // Allocates!
+}
+
+// ✅ GOOD: Cache and only update when changed
+private int _lastHealth = -1;
+
+void Update()
+{
+    if (_health != _lastHealth)
+    {
+        _lastHealth = _health;
+        using var lease = Buffers.StringBuilder.Get(out StringBuilder sb);
+        sb.Append("Health: ");
+        sb.Append(_health);
+        _label.text = sb.ToString();
+    }
+}
 ```
 
 ---
@@ -562,24 +734,73 @@ public Item GetFirst()
 
 ## Forbidden Patterns
 
+### LINQ vs Native Collection Methods (CRITICAL DISTINCTION)
+
+**NOT all methods ending in common names are LINQ.** This is a critical distinction:
+
+| Method                            | Is LINQ? | Class                    | Allocates?                | Action                                 |
+| --------------------------------- | -------- | ------------------------ | ------------------------- | -------------------------------------- |
+| `list.ToArray()`                  | ❌ NO    | `List<T>`                | Yes (result only)         | **KEEP** - uses optimized `Array.Copy` |
+| `list.ToList()`                   | ❌ NO    | `List<T>` (copy)         | Yes (result only)         | **KEEP** - optimized copy constructor  |
+| `enumerable.ToArray()`            | ✅ YES   | `System.Linq.Enumerable` | Yes + iterator            | **ELIMINATE** - allocates iterator     |
+| `enumerable.ToList()`             | ✅ YES   | `System.Linq.Enumerable` | Yes + iterator            | **ELIMINATE** - allocates iterator     |
+| `.Where()`, `.Select()`, `.Any()` | ✅ YES   | `System.Linq.Enumerable` | Yes (iterator + delegate) | **ELIMINATE**                          |
+| `.First()`, `.FirstOrDefault()`   | ✅ YES   | `System.Linq.Enumerable` | Yes (iterator)            | **ELIMINATE**                          |
+| `.ToDictionary()`, `.ToHashSet()` | ✅ YES   | `System.Linq.Enumerable` | Yes + iterator            | **ELIMINATE**                          |
+| `.OrderBy()`, `.GroupBy()`        | ✅ YES   | `System.Linq.Enumerable` | Yes (multiple)            | **ELIMINATE**                          |
+
+**How to tell the difference:**
+
+```csharp
+// ✅ NATIVE - List<T>.ToArray() uses Array.Copy internally
+List<string> list = new List<string> { "a", "b", "c" };
+string[] array = list.ToArray();  // Efficient, single allocation for result
+
+// ❌ LINQ - Enumerable.ToArray() creates iterator overhead
+IEnumerable<string> enumerable = GetStrings();
+string[] array = enumerable.ToArray();  // Iterator allocation + result allocation
+
+// ❌ LINQ chain - multiple allocations
+string[] array = list.Where(x => x.Length > 1).ToArray();  // Iterator + delegate + result
+```
+
+**Rule of thumb:** If the source type is `List<T>`, `T[]`, `Dictionary<K,V>`, or other concrete collection, check if the method is native to that type. If the source is `IEnumerable<T>` or the result of a LINQ operation, it's a LINQ extension method.
+
+**Never replace `List<T>.ToArray()` with a manual loop** - the native implementation uses `Array.Copy` which is significantly faster than element-by-element copying:
+
+```csharp
+// ❌ WRONG - slower than native ToArray()
+string[] result = new string[list.Count];
+for (int i = 0; i < list.Count; i++)
+{
+    result[i] = list[i];  // Individual indexed access
+}
+
+// ✅ CORRECT - use native ToArray()
+string[] result = list.ToArray();  // Uses Array.Copy internally
+```
+
 ### Never Use in Hot Paths
 
-| Pattern                                | Problem                        | Alternative                              |
-| -------------------------------------- | ------------------------------ | ---------------------------------------- |
-| LINQ (`.Where`, `.Select`, `.Any`)     | Iterator + delegate allocation | `for` loop                               |
-| `string.Format()` / interpolation      | String allocation              | `StringBuilder` or cache                 |
-| `new List<T>()`                        | Heap allocation                | `Buffers<T>.List.Get()`                  |
-| Lambda capturing locals                | Closure allocation             | Static lambda or explicit loop           |
-| Boxing (`object x = struct`)           | Heap allocation                | Generic methods                          |
-| `foreach` on `List<T>` (Mono)          | Enumerator boxing (24 bytes)   | `for` with indexer                       |
-| `foreach` on non-generic `IEnumerable` | Enumerator allocation          | `for` with indexer                       |
-| `params` methods                       | Array allocation per call      | Chain 2-arg overloads                    |
-| Delegate assignment in loops           | Boxing each iteration          | Assign once outside loop                 |
-| Enum dictionary keys                   | Boxing per lookup              | Custom `IEqualityComparer` or cast       |
-| Struct without `IEquatable<T>`         | Boxing in collections          | Implement `IEquatable<T>`                |
-| Reflection                             | Slow, fragile, uncached        | Direct access, interfaces, generics      |
-| Raw `GetField`/`GetMethod`             | Uncached, repeated lookups     | `ReflectionHelpers` (external APIs only) |
-| Duplicated code patterns               | Maintenance burden             | Extract to value-type abstraction        |
+| Pattern                                | Problem                         | Alternative                              |
+| -------------------------------------- | ------------------------------- | ---------------------------------------- |
+| LINQ (`.Where`, `.Select`, `.Any`)     | Iterator + delegate allocation  | `for` loop                               |
+| `string.Format()` / interpolation      | String allocation               | `StringBuilder` or cache                 |
+| `new List<T>()`                        | Heap allocation                 | `Buffers<T>.List.Get()`                  |
+| Lambda capturing locals                | Closure allocation              | Static lambda or explicit loop           |
+| Boxing (`object x = struct`)           | Heap allocation                 | Generic methods                          |
+| `foreach` on `List<T>` (Mono)          | Enumerator boxing (24 bytes)    | `for` with indexer                       |
+| `foreach` on non-generic `IEnumerable` | Enumerator allocation           | `for` with indexer                       |
+| `params` methods                       | Array allocation per call       | Chain 2-arg overloads                    |
+| Delegate assignment in loops           | Boxing each iteration           | Assign once outside loop                 |
+| Enum dictionary keys                   | Boxing per lookup               | Custom `IEqualityComparer` or cast       |
+| Struct without `IEquatable<T>`         | Boxing in collections           | Implement `IEquatable<T>`                |
+| `foreach` + `Add` for IEnumerable      | Enumerator allocation           | `AddRange()` (may avoid allocation)      |
+| Reflection                             | Slow, fragile, uncached         | Direct access, interfaces, generics      |
+| Raw `GetField`/`GetMethod`             | Uncached, repeated lookups      | `ReflectionHelpers` (external APIs only) |
+| Duplicated code patterns               | Maintenance burden              | Extract to value-type abstraction        |
+| Hand-rolled hash codes (`* 31`, XOR)   | Inconsistent, non-deterministic | `Objects.HashCode()`                     |
+| `System.HashCode.Combine`              | Non-deterministic per AppDomain | `Objects.HashCode()`                     |
 
 ### Avoid These Allocations
 
@@ -703,11 +924,101 @@ public readonly struct GoodStruct : IEquatable<GoodStruct>
     public GoodStruct(int value)
     {
         Value = value;
-        _hash = value.GetHashCode();
+        _hash = Objects.HashCode(value);  // Use Objects.HashCode, not raw value.GetHashCode()
     }
 
     public bool Equals(GoodStruct other) => Value == other.Value;
     public override bool Equals(object obj) => obj is GoodStruct other && Equals(other);
+    public override int GetHashCode() => _hash;
+}
+```
+
+### Always Use Objects.HashCode for Hash Code Composition
+
+**ALWAYS use `Objects.HashCode` instead of hand-rolled hash implementations.** Hand-rolled implementations are error-prone, inconsistent, and harder to maintain.
+
+```csharp
+// ❌ BAD: Hand-rolled hash code with magic primes
+public override int GetHashCode()
+{
+    int hash = 17;
+    hash = hash * 31 + X.GetHashCode();
+    hash = hash * 31 + Y.GetHashCode();
+    hash = hash * 31 + Name?.GetHashCode() ?? 0;
+    return hash;
+}
+
+// ❌ BAD: XOR-based hash (poor distribution)
+public override int GetHashCode()
+{
+    return X.GetHashCode() ^ Y.GetHashCode() ^ (Name?.GetHashCode() ?? 0);
+}
+
+// ❌ BAD: Using System.HashCode.Combine (non-deterministic, varies per AppDomain)
+public override int GetHashCode()
+{
+    return HashCode.Combine(X, Y, Name);
+}
+
+// ✅ GOOD: Use Objects.HashCode (deterministic, Unity-aware, consistent)
+public override int GetHashCode()
+{
+    return Objects.HashCode(X, Y, Name);
+}
+```
+
+**Why Objects.HashCode is required:**
+
+| Feature                    | Hand-Rolled | System.HashCode    | Objects.HashCode |
+| -------------------------- | ----------- | ------------------ | ---------------- |
+| Deterministic              | Sometimes   | ❌ No (randomized) | ✅ Yes           |
+| Unity null-aware           | ❌ No       | ❌ No              | ✅ Yes           |
+| Handles destroyed objects  | ❌ No       | ❌ No              | ✅ Yes           |
+| Consistent across sessions | Maybe       | ❌ No              | ✅ Yes           |
+| Up to 20 parameters        | Manual      | 8 max              | ✅ Yes           |
+| Span/collection support    | Manual      | Limited            | ✅ Yes           |
+
+**Key benefits of Objects.HashCode:**
+
+1. **Deterministic** — Same inputs always produce same hash (critical for serialization, networking, replay systems)
+2. **Unity-aware** — Correctly handles destroyed `UnityEngine.Object` instances (returns consistent sentinel value)
+3. **Null-safe** — Handles null values without exceptions
+4. **Consistent API** — Overloads for 1-20 parameters, plus `SpanHashCode` and `EnumerableHashCode`
+5. **FNV-1a algorithm** — Good distribution, battle-tested
+
+**Usage patterns:**
+
+```csharp
+using WallstopStudios.UnityHelpers.Core.Helper;
+
+// Single value
+int hash = Objects.HashCode(value);
+
+// Multiple values (up to 20)
+int hash = Objects.HashCode(x, y, z, name, type);
+
+// Span of values
+ReadOnlySpan<int> values = stackalloc int[] { 1, 2, 3, 4, 5 };
+int hash = Objects.SpanHashCode(values);
+
+// Collection/enumerable
+int hash = Objects.EnumerableHashCode(myList);
+
+// Cache in readonly struct for hot-path usage
+public readonly struct CachedKey : IEquatable<CachedKey>
+{
+    public readonly int X;
+    public readonly int Y;
+    private readonly int _hash;
+
+    public CachedKey(int x, int y)
+    {
+        X = x;
+        Y = y;
+        _hash = Objects.HashCode(x, y);  // Compute once at construction
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public override int GetHashCode() => _hash;
 }
 ```

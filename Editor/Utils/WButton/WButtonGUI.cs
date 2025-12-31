@@ -1600,17 +1600,15 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
             {
                 return 0;
             }
-            unchecked
+
+            Span<int> instanceIds = stackalloc int[targets.Length];
+            for (int i = 0; i < targets.Length; i++)
             {
-                int hash = 17;
-                for (int i = 0; i < targets.Length; i++)
-                {
-                    UnityEngine.Object target = targets[i];
-                    int instanceId = target != null ? target.GetInstanceID() : 0;
-                    hash = hash * 31 + instanceId;
-                }
-                return hash;
+                UnityEngine.Object target = targets[i];
+                instanceIds[i] = target != null ? target.GetInstanceID() : 0;
             }
+
+            return Objects.SpanHashCode<int>(instanceIds);
         }
 
         public bool Equals(ContextCacheKey other)

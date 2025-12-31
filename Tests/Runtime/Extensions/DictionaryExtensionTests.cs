@@ -744,11 +744,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         }
 
         [Test]
-        public void ToDictionaryThrowsOnDuplicateTupleKeys()
+        public void ToDictionaryLastWinsOnDuplicateTupleKeys()
         {
             IEnumerable<(string, int)> tuples = new List<(string, int)> { ("dup", 1), ("dup", 2) };
 
-            Assert.Throws<ArgumentException>(() => tuples.ToDictionary());
+            Dictionary<string, int> result = tuples.ToDictionary();
+            Assert.AreEqual(1, result.Count);
+            Assert.AreEqual(2, result["dup"]);
         }
     }
 }

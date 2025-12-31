@@ -5,7 +5,6 @@ namespace WallstopStudios.UnityHelpers.Core.Random
 {
     using System;
     using System.Collections.Generic;
-    using System.Linq;
     using System.Runtime.CompilerServices;
     using System.Runtime.Serialization;
     using DataStructure.Adapters;
@@ -744,7 +743,15 @@ namespace WallstopStudios.UnityHelpers.Core.Random
                 }
                 default:
                 {
-                    return collection.ElementAt(index);
+                    int i = 0;
+                    foreach (T element in collection)
+                    {
+                        if (index == i++)
+                        {
+                            return element;
+                        }
+                    }
+                    throw new ArgumentException(nameof(collection));
                 }
             }
         }

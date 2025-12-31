@@ -8,6 +8,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers.Utils
     using System.Collections.Generic;
     using UnityEditor;
     using UnityEngine;
+    using WallstopStudios.UnityHelpers.Core.Helper;
 
     /// <summary>
     /// Provides shared constants, caching, and helper methods for dropdown drawer implementations.
@@ -406,15 +407,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers.Utils
         /// <returns>A hash code for the options array.</returns>
         public static int ComputeOptionsHash(int[] options)
         {
-            unchecked
-            {
-                int hash = 17;
-                for (int i = 0; i < options.Length; i++)
-                {
-                    hash = hash * 31 + options[i];
-                }
-                return hash;
-            }
+            return Objects.SpanHashCode<int>(options);
         }
 
         /// <summary>

@@ -336,29 +336,33 @@ See [gc-architecture-unity](./skills/gc-architecture-unity.md) for detailed GC a
 
 ### Quick Rules
 
-| Forbidden                          | Use Instead                                     |
-| ---------------------------------- | ----------------------------------------------- |
-| LINQ (`.Where`, `.Select`, `.Any`) | `for` loops                                     |
-| `new List<T>()` in methods         | `Buffers<T>.List.Get()`                         |
-| Closures capturing variables       | Static lambdas or explicit loops                |
-| `foreach` on `List<T>` (Mono)      | `for` loop with indexer (24 bytes/loop!)        |
-| `params` method calls              | Chain 2-argument overloads                      |
-| Delegate assignment in loops       | Assign once outside loop                        |
-| Enum dictionary keys               | Custom `IEqualityComparer` or cast to int       |
-| Struct without `IEquatable<T>`     | Implement `IEquatable<T>` to avoid boxing       |
-| Reflection on our code             | `internal` + `[InternalsVisibleTo]`, interfaces |
-| Reflection on external APIs        | `ReflectionHelpers` (last resort)               |
-| `string +` in loops                | `Buffers.StringBuilder`                         |
-| Duplicated code blocks             | Extract to shared abstraction                   |
-| Batch formatting at end of task    | Format IMMEDIATELY after EACH file change       |
-| Heavy class where struct suffices  | `readonly struct` with cached hash              |
-| `GetComponent<T>()` in Update      | Cache in Awake/Start                            |
-| `Camera.main` in Update            | Cache in Awake/Start                            |
-| `Physics.RaycastAll`               | `Physics.RaycastNonAlloc` + buffer              |
-| `gameObject.tag == "X"`            | `gameObject.CompareTag("X")`                    |
-| `new WaitForSeconds()` in loop     | Cache as field                                  |
-| `renderer.material` for changes    | `MaterialPropertyBlock`                         |
-| `SendMessage`/`BroadcastMessage`   | Direct interface calls (1000x faster)           |
+| Forbidden                          | Use Instead                                       |
+| ---------------------------------- | ------------------------------------------------- |
+| LINQ (`.Where`, `.Select`, `.Any`) | `for` loops                                       |
+| `new List<T>()` in methods         | `Buffers<T>.List.Get()`                           |
+| Closures capturing variables       | Static lambdas or explicit loops                  |
+| `foreach` on `List<T>` (Mono)      | `for` loop with indexer (24 bytes/loop!)          |
+| `params` method calls              | Chain 2-argument overloads                        |
+| Delegate assignment in loops       | Assign once outside loop                          |
+| Enum dictionary keys               | Custom `IEqualityComparer` or cast to int         |
+| Struct without `IEquatable<T>`     | Implement `IEquatable<T>` to avoid boxing         |
+| `foreach` + `Add` on IEnumerable   | `AddRange()` (pre-allocates, uses Array.Copy)     |
+| Reflection on our code             | `internal` + `[InternalsVisibleTo]`, interfaces   |
+| Reflection on external APIs        | `ReflectionHelpers` (last resort)                 |
+| `string +` in loops/hot paths      | `Buffers.StringBuilder` (see string building)     |
+| `$""` interpolation in hot paths   | `Buffers.StringBuilder` or cache result           |
+| Duplicated code blocks             | Extract to shared abstraction                     |
+| Batch formatting at end of task    | Format IMMEDIATELY after EACH file change         |
+| Heavy class where struct suffices  | `readonly struct` with cached hash                |
+| `GetComponent<T>()` in Update      | Cache in Awake/Start                              |
+| `Camera.main` in Update            | Cache in Awake/Start                              |
+| `Physics.RaycastAll`               | `Physics.RaycastNonAlloc` + buffer                |
+| `gameObject.tag == "X"`            | `gameObject.CompareTag("X")`                      |
+| `new WaitForSeconds()` in loop     | Cache as field                                    |
+| `renderer.material` for changes    | `MaterialPropertyBlock`                           |
+| `SendMessage`/`BroadcastMessage`   | Direct interface calls (1000x faster)             |
+| Hand-rolled hash (`* 31`, XOR)     | `Objects.HashCode()` (deterministic, Unity-aware) |
+| `System.HashCode.Combine`          | `Objects.HashCode()` (non-deterministic!)         |
 
 See [memory-allocation-traps](./skills/memory-allocation-traps.md) for comprehensive hidden allocation sources.
 
@@ -554,31 +558,40 @@ See [investigate-test-failures](./skills/investigate-test-failures.md) for detai
 
 ---
 
-### Mandatory Testing for New Features (NON-NEGOTIABLE)
+### 🚨🚨🚨 Mandatory Exhaustive Testing for ALL Production Changes (NON-NEGOTIABLE)
 
-**All new production code MUST have EXHAUSTIVE test coverage.** Tests are NON-NEGOTIABLE for new code. No feature or bug fix is complete without comprehensive tests.
+**EVERY production code change MUST have EXHAUSTIVE test coverage.** This is NON-NEGOTIABLE for ALL changes—new features, bug fixes, refactors, and optimizations. **A task is NOT complete until comprehensive tests are written and passing.**
 
-| Code Type               | Test Requirement                         |
-| ----------------------- | ---------------------------------------- |
-| Runtime classes/methods | Full test coverage in `Tests/Runtime/`   |
-| Editor tools/windows    | Full test coverage in `Tests/Editor/`    |
-| Property drawers        | Drawer behavior tests in `Tests/Editor/` |
-| Inspector attributes    | Attribute behavior tests                 |
-| Bug fixes               | Regression tests proving the fix works   |
+> **CRITICAL**: Tests are not optional. Tests are not "nice to have". Tests are a MANDATORY deliverable for EVERY production change. If you modify production code without writing exhaustive tests, the work is INCOMPLETE.
 
-#### Test Coverage Requirements (EXHAUSTIVE)
+| Change Type             | Test Requirement                                                           |
+| ----------------------- | -------------------------------------------------------------------------- |
+| New runtime code        | Exhaustive tests in `Tests/Runtime/`                                       |
+| New editor code         | Exhaustive tests in `Tests/Editor/`                                        |
+| Property drawers        | Drawer tests: null targets, various property types, multi-edit, edge cases |
+| Custom inspectors       | Inspector tests: creation, GUI calls, destroyed targets, caching           |
+| Editor windows/tools    | Tool tests: input validation, state persistence, error handling            |
+| Bug fixes               | Regression tests proving the fix + edge cases                              |
+| Refactors/optimizations | Tests verifying behavior preservation                                      |
+| API changes             | Tests for old behavior removed, new behavior added                         |
+| Cache/performance code  | Tests for eviction, limits, cleanup, edge cases                            |
 
-Every feature and bug fix MUST include tests for:
+#### Test Coverage Requirements (ALL Categories MANDATORY)
 
-1. **Normal cases** — Typical usage scenarios, common inputs
+Every production change MUST include tests for ALL of these categories:
+
+1. **Normal cases** — Typical usage scenarios, common inputs (5-20 test cases)
 2. **Negative cases** — Invalid inputs, error conditions, expected exceptions
-3. **Edge cases** — Empty collections, single-element, boundary values, null, special characters
-4. **Extreme scenarios** — Maximum sizes, minimum values, overflow conditions, resource limits
-5. **"The Impossible"** — States that "should never happen" but could in production
+3. **Edge cases** — Empty collections, single-element, boundary values (0, -1, max), null
+4. **Extreme scenarios** — Maximum sizes, minimum values, overflow conditions, 10K+ elements
+5. **"The Impossible"** — States that "should never happen" but could in production (corrupted state, invalid enums, destroyed objects)
+6. **Concurrency** — Thread safety if applicable (parallel access, race conditions)
 
-#### Data-Driven Testing (PREFERRED)
+**If any category is missing, the implementation is INCOMPLETE.**
 
-**Prefer `[TestCase]` and `[TestCaseSource]` for comprehensive coverage.** Data-driven tests make it easy to add new scenarios and ensure exhaustive coverage.
+#### Data-Driven Testing (STRONGLY PREFERRED)
+
+**Prefer `[TestCase]` and `[TestCaseSource]` for comprehensive coverage.** Data-driven tests ensure exhaustive coverage with minimal code duplication:
 
 ```csharp
 // Use dot-separated naming: Category.Scenario.Expected
@@ -589,14 +602,14 @@ yield return new TestCaseData(new string('x', 10000), true).SetName("Input.VeryL
 yield return new TestCaseData("\0\n\r\t", false).SetName("Input.ControlChars.ReturnsFalse");
 ```
 
-**Benefits of data-driven tests:**
+**Why data-driven tests are required:**
 
-- Easy to add new test cases without code duplication
-- Clear visibility of all tested scenarios
-- Ensures consistent test structure across cases
-- Enables rapid expansion of coverage
+- **Comprehensive**: Easy to add cases for all categories (normal, edge, extreme, impossible)
+- **Discoverable**: Clear visibility of all tested scenarios in one place
+- **Maintainable**: Single test method to update, not 20+ individual tests
+- **Scalable**: Enables rapid expansion of coverage as new edge cases are discovered
 
-See [create-test](./skills/create-test.md) for full testing guidelines.
+See [create-test](./skills/create-test.md) for full testing guidelines and templates.
 
 ### Scope & Behavior
 
@@ -622,6 +635,10 @@ See [create-test](./skills/create-test.md) for full testing guidelines.
 | Performance improvement  | CHANGELOG `### Improved`, performance docs if metrics changed |
 | CI/CD, build scripts     | **NO CHANGELOG** — internal tooling, not user-facing          |
 | Dev tooling, workflows   | **NO CHANGELOG** — internal infrastructure                    |
+| Internal implementation  | **NO CHANGELOG** — "uses X internally" is not user-facing     |
+| Code reuse/refactoring   | **NO CHANGELOG** — architecture choices don't affect users    |
+
+**NEVER modify released notes.** Once a version is released (e.g., `## [3.0.5]`), its entries are immutable. Only add new entries to `## [Unreleased]`.
 
 #### Documentation Scope (ALL Must Be Updated)
 

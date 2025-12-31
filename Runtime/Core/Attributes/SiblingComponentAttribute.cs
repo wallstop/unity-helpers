@@ -6,7 +6,6 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
     using System;
     using System.Collections;
     using System.Collections.Generic;
-    using System.Linq;
     using System.Linq.Expressions;
     using System.Reflection;
     using UnityEngine;
@@ -406,13 +405,30 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
     {
         private static readonly Dictionary<Type, Func<Component, Array>> ArrayGetters = new();
 
-        private static readonly MethodInfo GetComponentsGenericDefinition = typeof(Component)
-            .GetMethods(BindingFlags.Instance | BindingFlags.Public)
-            .First(method =>
-                method.Name == nameof(Component.GetComponents)
-                && method.IsGenericMethodDefinition
-                && method.GetParameters().Length == 0
+        private static readonly MethodInfo GetComponentsGenericDefinition =
+            FindGetComponentsMethod();
+
+        private static MethodInfo FindGetComponentsMethod()
+        {
+            MethodInfo[] methods = typeof(Component).GetMethods(
+                BindingFlags.Instance | BindingFlags.Public
             );
+            for (int i = 0; i < methods.Length; i++)
+            {
+                MethodInfo method = methods[i];
+                if (
+                    method.Name == nameof(Component.GetComponents)
+                    && method.IsGenericMethodDefinition
+                    && method.GetParameters().Length == 0
+                )
+                {
+                    return method;
+                }
+            }
+            throw new InvalidOperationException(
+                "Could not find GetComponents<T>() method on Component type."
+            );
+        }
 
         internal static Array GetArray(Component component, Type elementType)
         {

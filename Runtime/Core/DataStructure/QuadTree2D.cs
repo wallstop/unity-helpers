@@ -16,9 +16,19 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
     /// </summary>
     /// <example>
     /// <code><![CDATA[
-    /// QuadTree2D<Vector2>.Entry[] entries = points.Select(p => new QuadTree2D<Vector2>.Entry(p, p)).ToArray();
-    /// QuadTree2D<Vector2> tree = QuadTree2D<Vector2>.Build(entries);
-    /// List<Vector2> results = new List<Vector2>();
+    /// // Build tree from points using position transformer (recommended)
+    /// QuadTree2D<Vector2> tree = new QuadTree2D<Vector2>(points, p => p);
+    ///
+    /// // Or build from pre-constructed entries for zero-allocation in hot paths
+    /// QuadTree2D<Vector2>.Entry[] entries = new QuadTree2D<Vector2>.Entry[points.Length];
+    /// for (int i = 0; i < points.Length; i++)
+    /// {
+    ///     entries[i] = new QuadTree2D<Vector2>.Entry(points[i], points[i]);
+    /// }
+    /// QuadTree2D<Vector2> tree = new QuadTree2D<Vector2>(entries);
+    ///
+    /// // Query with pooled list for zero allocation
+    /// using var lease = Buffers<Vector2>.List.Get(out List<Vector2> results);
     /// tree.GetElementsInRange(playerPosition, 6f, results);
     /// ]]></code>
     /// </example>
@@ -430,6 +440,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
         /// <example>
         /// <code><![CDATA[
         /// QuadTree2D<Enemy> tree = new QuadTree2D<Enemy>(enemies, e => e.transform.position);
+        /// using var lease = Buffers<Enemy>.List.Get(out List<Enemy> results);
         /// tree.GetElementsInRange(playerPos, 10f, results);
         /// ]]></code>
         /// </example>

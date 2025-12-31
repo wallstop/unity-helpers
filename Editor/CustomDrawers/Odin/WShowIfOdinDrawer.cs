@@ -25,6 +25,15 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
     {
         private static readonly Dictionary<(Type, string), MemberInfo> MemberCache = new();
 
+        /// <summary>
+        /// Clears all cached state. Called during domain reload via
+        /// <see cref="Internal.EditorCacheManager.ClearAllCaches"/>.
+        /// </summary>
+        internal static void ClearCache()
+        {
+            MemberCache.Clear();
+        }
+
         protected override void DrawPropertyLayout(GUIContent label)
         {
             WShowIfAttribute showIf = Attribute;

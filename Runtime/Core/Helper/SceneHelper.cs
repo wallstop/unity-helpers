@@ -4,8 +4,8 @@
 namespace WallstopStudios.UnityHelpers.Core.Helper
 {
     using System;
+    using System.Collections.Generic;
     using System.IO;
-    using System.Linq;
     using System.Threading.Tasks;
     using Extension;
     using UnityEngine;
@@ -49,10 +49,21 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         {
 #if UNITY_EDITOR
             searchFolders ??= Array.Empty<string>();
-            return AssetDatabase
-                .FindAssets("t:Scene", searchFolders)
-                .Select(AssetDatabase.GUIDToAssetPath)
-                .ToArray();
+            string[] guids = AssetDatabase.FindAssets("t:Scene", searchFolders);
+            if (guids.Length == 0)
+            {
+                return Array.Empty<string>();
+            }
+
+            using PooledResource<List<string>> lease = Buffers<string>.GetList(
+                guids.Length,
+                out List<string> paths
+            );
+            for (int i = 0; i < guids.Length; i++)
+            {
+                paths.Add(AssetDatabase.GUIDToAssetPath(guids[i]));
+            }
+            return paths.ToArray();
 #else
             return Array.Empty<string>();
 #endif
@@ -64,10 +75,25 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         public static string[] GetScenesInBuild()
         {
 #if UNITY_EDITOR
-            return EditorBuildSettings
-                .scenes.Where(scene => scene.enabled)
-                .Select(scene => scene.path)
-                .ToArray();
+            EditorBuildSettingsScene[] scenes = EditorBuildSettings.scenes;
+            if (scenes.Length == 0)
+            {
+                return Array.Empty<string>();
+            }
+
+            using PooledResource<List<string>> lease = Buffers<string>.GetList(
+                scenes.Length,
+                out List<string> paths
+            );
+            for (int i = 0; i < scenes.Length; i++)
+            {
+                EditorBuildSettingsScene scene = scenes[i];
+                if (scene.enabled)
+                {
+                    paths.Add(scene.path);
+                }
+            }
+            return paths.ToArray();
 #else
             return Array.Empty<string>();
 #endif
@@ -143,19 +169,30 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                     return;
                 }
 
-                T[] foundObjects = Object
-                    .FindObjectsByType<T>(FindObjectsInactive.Include, FindObjectsSortMode.None)
-                    .Where(obj =>
-                    {
-                        GameObject go = obj.GetGameObject();
-                        if (go == null)
-                        {
-                            return false;
-                        }
+                T[] allObjects = Object.FindObjectsByType<T>(
+                    FindObjectsInactive.Include,
+                    FindObjectsSortMode.None
+                );
+                if (allObjects.Length == 0)
+                {
+                    taskCompletionSource.SetResult(Array.Empty<T>());
+                    return;
+                }
 
-                        return go.scene == scene;
-                    })
-                    .ToArray();
+                using PooledResource<List<T>> lease = Buffers<T>.GetList(
+                    allObjects.Length,
+                    out List<T> filtered
+                );
+                for (int i = 0; i < allObjects.Length; i++)
+                {
+                    T obj = allObjects[i];
+                    GameObject go = obj.GetGameObject();
+                    if (go != null && go.scene == scene)
+                    {
+                        filtered.Add(obj);
+                    }
+                }
+                T[] foundObjects = filtered.ToArray();
                 taskCompletionSource.SetResult(foundObjects);
             }
         }

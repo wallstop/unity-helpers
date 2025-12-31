@@ -6,7 +6,6 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
     using System;
     using System.Collections.Concurrent;
     using System.Collections.Generic;
-    using System.Linq;
 
     /// <summary>
     /// Extension methods for dictionary types providing additional functionality for retrieving, adding, and manipulating dictionary entries.
@@ -475,12 +474,16 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         /// Allocations: Creates a new dictionary.
         /// </remarks>
         /// <exception cref="ArgumentNullException">Thrown if prettyMuchADictionary is null or contains null keys.</exception>
-        /// <exception cref="ArgumentException">Thrown if duplicate keys are encountered.</exception>
         public static Dictionary<K, V> ToDictionary<K, V>(
             this IEnumerable<KeyValuePair<K, V>> prettyMuchADictionary
         )
         {
-            return prettyMuchADictionary.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+            Dictionary<K, V> result = new();
+            foreach (KeyValuePair<K, V> kvp in prettyMuchADictionary)
+            {
+                result[kvp.Key] = kvp.Value;
+            }
+            return result;
         }
 
         /// <summary>
@@ -498,13 +501,17 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         /// Allocations: Creates a new dictionary.
         /// </remarks>
         /// <exception cref="ArgumentNullException">Thrown if prettyMuchADictionary is null or contains null keys.</exception>
-        /// <exception cref="ArgumentException">Thrown if duplicate keys are encountered.</exception>
         public static Dictionary<K, V> ToDictionary<K, V>(
             this IEnumerable<KeyValuePair<K, V>> prettyMuchADictionary,
             IEqualityComparer<K> comparer
         )
         {
-            return prettyMuchADictionary.ToDictionary(kvp => kvp.Key, kvp => kvp.Value, comparer);
+            Dictionary<K, V> result = new(comparer);
+            foreach (KeyValuePair<K, V> kvp in prettyMuchADictionary)
+            {
+                result[kvp.Key] = kvp.Value;
+            }
+            return result;
         }
 
         /// <summary>
@@ -521,12 +528,16 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         /// Allocations: Creates a new dictionary.
         /// </remarks>
         /// <exception cref="ArgumentNullException">Thrown if prettyMuchADictionary is null or contains null keys.</exception>
-        /// <exception cref="ArgumentException">Thrown if duplicate keys are encountered.</exception>
         public static Dictionary<K, V> ToDictionary<K, V>(
             this IEnumerable<(K, V)> prettyMuchADictionary
         )
         {
-            return prettyMuchADictionary.ToDictionary(kvp => kvp.Item1, kvp => kvp.Item2);
+            Dictionary<K, V> result = new();
+            foreach ((K key, V value) in prettyMuchADictionary)
+            {
+                result[key] = value;
+            }
+            return result;
         }
 
         /// <summary>
@@ -544,13 +555,17 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         /// Allocations: Creates a new dictionary.
         /// </remarks>
         /// <exception cref="ArgumentNullException">Thrown if prettyMuchADictionary is null or contains null keys.</exception>
-        /// <exception cref="ArgumentException">Thrown if duplicate keys are encountered.</exception>
         public static Dictionary<K, V> ToDictionary<K, V>(
             this IEnumerable<(K, V)> prettyMuchADictionary,
             IEqualityComparer<K> comparer
         )
         {
-            return prettyMuchADictionary.ToDictionary(kvp => kvp.Item1, kvp => kvp.Item2, comparer);
+            Dictionary<K, V> result = new(comparer);
+            foreach ((K key, V value) in prettyMuchADictionary)
+            {
+                result[key] = value;
+            }
+            return result;
         }
 
         /// <summary>

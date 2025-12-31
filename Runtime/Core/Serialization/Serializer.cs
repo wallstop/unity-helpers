@@ -6,9 +6,9 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
     using System;
     using System.Buffers;
     using System.Collections.Concurrent;
+    using System.Collections.Generic;
     using System.ComponentModel;
     using System.IO;
-    using System.Linq;
     using System.Reflection;
     using System.Runtime.Serialization.Formatters.Binary;
     using System.Text;
@@ -19,6 +19,7 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
     using ProtoBuf;
     using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
     using WallstopStudios.UnityHelpers.Core.Helper;
+    using WallstopStudios.UnityHelpers.Utils;
     using TypeConverter = JsonConverters.TypeConverter;
 
     internal static class SerializerEncoding
@@ -1469,16 +1470,24 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
                 try
                 {
                     Type[] types = ReflectionHelpers.GetTypesFromAssembly(declared.Assembly);
-                    Type[] candidates = types
-                        .Where(t =>
+                    using PooledResource<List<Type>> candidatesLease = Buffers<Type>.List.Get(
+                        out List<Type> candidates
+                    );
+                    for (int i = 0; i < types.Length; i++)
+                    {
+                        Type t = types[i];
+                        if (
                             t.IsClass
                             && t.IsAbstract
                             && declared.IsAssignableFrom(t)
                             && ReflectionHelpers.HasAttributeSafe<ProtoContractAttribute>(t)
                         )
-                        .ToArray();
+                        {
+                            candidates.Add(t);
+                        }
+                    }
 
-                    switch (candidates.Length)
+                    switch (candidates.Count)
                     {
                         case 1:
                         {
@@ -1489,13 +1498,18 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
                         case > 1:
                         {
                             // Prefer a candidate that explicitly declares [ProtoInclude]s if this disambiguates
-                            Type[] includeCandidates = candidates
-                                .Where(t =>
-                                    ReflectionHelpers.HasAttributeSafe<ProtoIncludeAttribute>(t)
-                                )
-                                .ToArray();
+                            using PooledResource<List<Type>> includeCandidatesLease =
+                                Buffers<Type>.List.Get(out List<Type> includeCandidates);
+                            for (int i = 0; i < candidates.Count; i++)
+                            {
+                                Type t = candidates[i];
+                                if (ReflectionHelpers.HasAttributeSafe<ProtoIncludeAttribute>(t))
+                                {
+                                    includeCandidates.Add(t);
+                                }
+                            }
 
-                            if (includeCandidates.Length == 1)
+                            if (includeCandidates.Count == 1)
                             {
                                 Type root = includeCandidates[0];
                                 ProtobufRootCache[declared] = root;

@@ -5,12 +5,12 @@ namespace WallstopStudios.UnityHelpers.Tags
 {
     using System;
     using System.Collections.Generic;
-    using System.Linq;
     using Core.Helper;
     using UnityEngine;
+    using Utils;
 
     /// <summary>
-    /// Prefab-like container for visual/audio behaviors that represent an effect’s cosmetic feedback.
+    /// Prefab-like container for visual/audio behaviors that represent an effect's cosmetic feedback.
     /// Groups one or more <see cref="CosmeticEffectComponent"/>s and declares if instancing is required.
     /// </summary>
     /// <remarks>
@@ -30,7 +30,7 @@ namespace WallstopStudios.UnityHelpers.Tags
     /// <para>
     /// Authoring pattern:
     /// - Create a prefab with a CosmeticEffectData + one or more CosmeticEffectComponent scripts.
-    /// - Mark a component’s <see cref="CosmeticEffectComponent.RequiresInstance"/> true if a unique instance per effect is needed.
+    /// - Mark a component's <see cref="CosmeticEffectComponent.RequiresInstance"/> true if a unique instance per effect is needed.
     /// - Reference the prefab in your <see cref="AttributeEffect.cosmeticEffects"/> list.
     /// </para>
     /// <para>
@@ -51,6 +51,13 @@ namespace WallstopStudios.UnityHelpers.Tags
     /// - If a component animates its own teardown, set <see cref="CosmeticEffectComponent.CleansUpSelf"/> to true.
     /// - Keep CosmeticEffectData lightweight; heavy content belongs in the child components.
     /// </para>
+    /// <para>
+    /// <strong>Warning:</strong> All methods on this class reflect the current component state.
+    /// If components are added or removed after an instance is placed in a hash-based collection
+    /// (e.g., <see cref="Dictionary{TKey,TValue}"/> or <see cref="HashSet{T}"/>), the collection
+    /// may behave unexpectedly because <see cref="GetHashCode"/> and <see cref="Equals(CosmeticEffectData)"/>
+    /// will return different values than when the instance was added.
+    /// </para>
     /// </remarks>
     [DisallowMultipleComponent]
     public sealed class CosmeticEffectData : MonoBehaviour, IEquatable<CosmeticEffectData>
@@ -59,32 +66,65 @@ namespace WallstopStudios.UnityHelpers.Tags
         /// Indicates whether this cosmetic effect requires a new instance for each application.
         /// Returns true if any child CosmeticEffectComponent requires instancing.
         /// </summary>
-        public bool RequiresInstancing =>
-            _cosmetics.Value.Any(cosmeticEffect => cosmeticEffect.RequiresInstance);
-
-        [NonSerialized]
-        private readonly Lazy<CosmeticEffectComponent[]> _cosmetics;
-
-        [NonSerialized]
-        private readonly Lazy<HashSet<Type>> _cosmeticTypes;
+        /// <remarks>
+        /// <para>
+        /// This property always reflects the current state of attached components.
+        /// It uses Unity's non-allocating <c>GetComponents(List)</c> overload with pooled lists
+        /// to achieve zero allocations while ensuring correctness when components are added or removed.
+        /// </para>
+        /// <para>
+        /// Destroyed Unity objects are safely skipped during iteration.
+        /// </para>
+        /// </remarks>
+        public bool RequiresInstancing
+        {
+            get
+            {
+                using PooledResource<List<CosmeticEffectComponent>> lease =
+                    Buffers<CosmeticEffectComponent>.List.Get(
+                        out List<CosmeticEffectComponent> cosmetics
+                    );
+                GetComponents(cosmetics);
+                for (int i = 0; i < cosmetics.Count; i++)
+                {
+                    CosmeticEffectComponent cosmetic = cosmetics[i];
+                    if (cosmetic == null)
+                    {
+                        continue;
+                    }
+                    if (cosmetic.RequiresInstance)
+                    {
+                        return true;
+                    }
+                }
+                return false;
+            }
+        }
 
         /// <summary>
-        /// Initializes a new <see cref="CosmeticEffectData"/> and defers lookup of attached
-        /// <see cref="CosmeticEffectComponent"/> types until first access.
+        /// Populates the provided set with the types of all currently attached <see cref="CosmeticEffectComponent"/>s.
         /// </summary>
+        /// <param name="types">The set to populate. Will be cleared before adding types.</param>
         /// <remarks>
-        /// The lazily-evaluated caches keep the component lightweight at edit time and avoid
-        /// unnecessary allocations until <see cref="RequiresInstancing"/> or equality checks are
-        /// performed.
+        /// Uses pooled lists for zero-allocation queries. Destroyed Unity objects are safely skipped.
         /// </remarks>
-        public CosmeticEffectData()
+        private void GetCurrentCosmeticTypes(HashSet<Type> types)
         {
-            _cosmetics = new Lazy<CosmeticEffectComponent[]>(
-                GetComponents<CosmeticEffectComponent>
-            );
-            _cosmeticTypes = new Lazy<HashSet<Type>>(() =>
-                _cosmetics.Value.Select(cosmetic => cosmetic.GetType()).ToHashSet()
-            );
+            types.Clear();
+            using PooledResource<List<CosmeticEffectComponent>> lease =
+                Buffers<CosmeticEffectComponent>.List.Get(
+                    out List<CosmeticEffectComponent> cosmetics
+                );
+            GetComponents(cosmetics);
+            for (int i = 0; i < cosmetics.Count; i++)
+            {
+                CosmeticEffectComponent cosmetic = cosmetics[i];
+                if (cosmetic == null)
+                {
+                    continue;
+                }
+                types.Add(cosmetic.GetType());
+            }
         }
 
         /// <summary>
@@ -99,10 +139,14 @@ namespace WallstopStudios.UnityHelpers.Tags
 
         /// <summary>
         /// Determines whether this instance is equal to another <see cref="CosmeticEffectData"/>.
-        /// Equality compares the set of contained <see cref="CosmeticEffectComponent"/> types and the GameObject name.
+        /// Equality compares the current set of contained <see cref="CosmeticEffectComponent"/> types and the GameObject name.
         /// </summary>
         /// <param name="other">The other cosmetic effect data to compare.</param>
         /// <returns><c>true</c> if both assets expose the same component types and share the same name; otherwise, <c>false</c>.</returns>
+        /// <remarks>
+        /// This method reflects the current component state at the time of the call.
+        /// Uses pooled HashSets for zero-allocation comparison.
+        /// </remarks>
         public bool Equals(CosmeticEffectData other)
         {
             if (ReferenceEquals(this, other))
@@ -110,13 +154,22 @@ namespace WallstopStudios.UnityHelpers.Tags
                 return true;
             }
 
-            if (other == null || GetHashCode() != other.GetHashCode())
+            if (other == null)
             {
                 return false;
             }
 
-            bool componentTypeEquals = _cosmeticTypes.Value.SetEquals(other._cosmeticTypes.Value);
-            if (!componentTypeEquals)
+            using PooledResource<HashSet<Type>> thisLease = Buffers<Type>.HashSet.Get(
+                out HashSet<Type> thisTypes
+            );
+            using PooledResource<HashSet<Type>> otherLease = Buffers<Type>.HashSet.Get(
+                out HashSet<Type> otherTypes
+            );
+
+            GetCurrentCosmeticTypes(thisTypes);
+            other.GetCurrentCosmeticTypes(otherTypes);
+
+            if (!thisTypes.SetEquals(otherTypes))
             {
                 return false;
             }
@@ -125,12 +178,29 @@ namespace WallstopStudios.UnityHelpers.Tags
         }
 
         /// <summary>
-        /// Returns a hash code based on the component types contained within this cosmetic effect.
+        /// Returns a hash code based on the current number of valid cosmetic components.
         /// </summary>
         /// <returns>A hash code suitable for use in hash-based collections.</returns>
+        /// <remarks>
+        /// This method reflects the current component state at the time of the call.
+        /// If components are added or removed, the hash code will change.
+        /// </remarks>
         public override int GetHashCode()
         {
-            return Objects.HashCode(_cosmeticTypes.Value.Count);
+            using PooledResource<List<CosmeticEffectComponent>> lease =
+                Buffers<CosmeticEffectComponent>.List.Get(
+                    out List<CosmeticEffectComponent> cosmetics
+                );
+            GetComponents(cosmetics);
+            int count = 0;
+            for (int i = 0; i < cosmetics.Count; i++)
+            {
+                if (cosmetics[i] != null)
+                {
+                    count++;
+                }
+            }
+            return Objects.HashCode(count);
         }
     }
 }

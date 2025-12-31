@@ -4,7 +4,6 @@
 namespace WallstopStudios.UnityHelpers.Utils
 {
     using System.Collections.Generic;
-    using System.Linq;
     using Core.Attributes;
     using UnityEngine;
 
@@ -30,10 +29,27 @@ namespace WallstopStudios.UnityHelpers.Utils
 
         public Material CurrentMaterial => _materialStack[^1].material;
 
-        public IEnumerable<Material> Materials =>
-            _materialStack.Select(entry => entry.material).Reverse();
+        public IEnumerable<Material> Materials
+        {
+            get
+            {
+                for (int i = _materialStack.Count - 1; i >= 0; --i)
+                {
+                    yield return _materialStack[i].material;
+                }
+            }
+        }
 
-        public IEnumerable<Color> Colors => _colorStack.Select(entry => entry.color).Reverse();
+        public IEnumerable<Color> Colors
+        {
+            get
+            {
+                for (int i = _colorStack.Count - 1; i >= 0; --i)
+                {
+                    yield return _colorStack[i].color;
+                }
+            }
+        }
 
         [SiblingComponent]
         [SerializeField]

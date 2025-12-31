@@ -59,5 +59,138 @@ namespace WallstopStudios.UnityHelpers.Tests.Tags
             CosmeticEffectData secondData = second.GetComponent<CosmeticEffectData>();
             Assert.IsFalse(firstData.Equals(secondData));
         }
+
+        [UnityTest]
+        public IEnumerator RequiresInstancingReturnsFalseWithNoComponents()
+        {
+            GameObject cosmetic = CreateTrackedGameObject("Cosmetic", typeof(CosmeticEffectData));
+            yield return null;
+
+            CosmeticEffectData data = cosmetic.GetComponent<CosmeticEffectData>();
+            Assert.IsFalse(data.RequiresInstancing);
+        }
+
+        [UnityTest]
+        public IEnumerator RequiresInstancingReturnsFalseWhenAllComponentsDoNotRequireInstance()
+        {
+            GameObject cosmetic = CreateTrackedGameObject("Cosmetic", typeof(CosmeticEffectData));
+            yield return null;
+
+            ProbeCosmeticComponent component1 = cosmetic.AddComponent<ProbeCosmeticComponent>();
+            component1.requiresInstance = false;
+            ProbeCosmeticComponent component2 = cosmetic.AddComponent<ProbeCosmeticComponent>();
+            component2.requiresInstance = false;
+            _ = cosmetic.AddComponent<SecondaryProbeCosmeticComponent>();
+
+            CosmeticEffectData data = cosmetic.GetComponent<CosmeticEffectData>();
+            Assert.IsFalse(data.RequiresInstancing);
+        }
+
+        [UnityTest]
+        public IEnumerator RequiresInstancingDetectsNewComponentsAddedAtRuntime()
+        {
+            GameObject cosmetic = CreateTrackedGameObject("Cosmetic", typeof(CosmeticEffectData));
+            yield return null;
+
+            CosmeticEffectData data = cosmetic.GetComponent<CosmeticEffectData>();
+            Assert.IsFalse(data.RequiresInstancing);
+
+            ProbeCosmeticComponent component = cosmetic.AddComponent<ProbeCosmeticComponent>();
+            component.requiresInstance = true;
+
+            Assert.IsTrue(data.RequiresInstancing);
+        }
+
+        [UnityTest]
+        public IEnumerator RequiresInstancingHandlesDestroyedComponents()
+        {
+            GameObject cosmetic = CreateTrackedGameObject("Cosmetic", typeof(CosmeticEffectData));
+            yield return null;
+
+            ProbeCosmeticComponent component = cosmetic.AddComponent<ProbeCosmeticComponent>();
+            component.requiresInstance = true;
+
+            CosmeticEffectData data = cosmetic.GetComponent<CosmeticEffectData>();
+            Assert.IsTrue(data.RequiresInstancing);
+
+            Object.Destroy(component); // UNH-SUPPRESS UNH001: Intentionally testing destroyed component behavior
+            yield return null;
+
+            Assert.IsFalse(data.RequiresInstancing);
+        }
+
+        [UnityTest]
+        public IEnumerator EqualsReflectsCurrentStateWhenComponentsChange()
+        {
+            GameObject first = CreateTrackedGameObject("Cosmetic", typeof(CosmeticEffectData));
+            yield return null;
+            _ = first.AddComponent<ProbeCosmeticComponent>();
+
+            GameObject second = CreateTrackedGameObject("Cosmetic", typeof(CosmeticEffectData));
+            yield return null;
+            _ = second.AddComponent<ProbeCosmeticComponent>();
+
+            CosmeticEffectData firstData = first.GetComponent<CosmeticEffectData>();
+            CosmeticEffectData secondData = second.GetComponent<CosmeticEffectData>();
+            Assert.IsTrue(firstData.Equals(secondData));
+
+            _ = first.AddComponent<SecondaryProbeCosmeticComponent>();
+
+            Assert.IsFalse(firstData.Equals(secondData));
+        }
+
+        [UnityTest]
+        public IEnumerator GetHashCodeReflectsCurrentComponentCount()
+        {
+            GameObject cosmetic = CreateTrackedGameObject("Cosmetic", typeof(CosmeticEffectData));
+            yield return null;
+
+            CosmeticEffectData data = cosmetic.GetComponent<CosmeticEffectData>();
+            int initialHashCode = data.GetHashCode();
+
+            _ = cosmetic.AddComponent<ProbeCosmeticComponent>();
+
+            int newHashCode = data.GetHashCode();
+            Assert.AreNotEqual(initialHashCode, newHashCode);
+        }
+
+        [UnityTest]
+        public IEnumerator EqualsWithDestroyedComponent()
+        {
+            GameObject first = CreateTrackedGameObject("Cosmetic", typeof(CosmeticEffectData));
+            yield return null;
+            ProbeCosmeticComponent firstComponent = first.AddComponent<ProbeCosmeticComponent>();
+
+            GameObject second = CreateTrackedGameObject("Cosmetic", typeof(CosmeticEffectData));
+            yield return null;
+            _ = second.AddComponent<ProbeCosmeticComponent>();
+
+            CosmeticEffectData firstData = first.GetComponent<CosmeticEffectData>();
+            CosmeticEffectData secondData = second.GetComponent<CosmeticEffectData>();
+            Assert.IsTrue(firstData.Equals(secondData));
+
+            Object.Destroy(firstComponent); // UNH-SUPPRESS UNH001: Intentionally testing destroyed component behavior
+            yield return null;
+
+            Assert.IsFalse(firstData.Equals(secondData));
+        }
+
+        [UnityTest]
+        public IEnumerator RequiresInstancingHandlesComponentRemovalAtRuntime()
+        {
+            GameObject cosmetic = CreateTrackedGameObject("Cosmetic", typeof(CosmeticEffectData));
+            yield return null;
+
+            ProbeCosmeticComponent component = cosmetic.AddComponent<ProbeCosmeticComponent>();
+            component.requiresInstance = true;
+
+            CosmeticEffectData data = cosmetic.GetComponent<CosmeticEffectData>();
+            Assert.IsTrue(data.RequiresInstancing);
+
+            Object.Destroy(component); // UNH-SUPPRESS UNH001: Intentionally testing destroyed component behavior
+            yield return null;
+
+            Assert.IsFalse(data.RequiresInstancing);
+        }
     }
 }

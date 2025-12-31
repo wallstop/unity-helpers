@@ -5,7 +5,6 @@ namespace WallstopStudios.UnityHelpers.Tags
 {
     using System;
     using System.Collections.Generic;
-    using System.Linq;
     using System.Reflection;
     using Core.Extension;
     using Core.Helper;
@@ -894,14 +893,27 @@ namespace WallstopStudios.UnityHelpers.Tags
                         }
                         return result;
                     }
-
-                    // Fallback to runtime reflection
-                    return inputType
-                        .GetFields(
+                    else
+                    {
+                        // Fallback to runtime reflection
+                        FieldInfo[] fields = inputType.GetFields(
                             BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic
-                        )
-                        .Where(field => field.FieldType == typeof(Attribute))
-                        .ToDictionary(field => field.Name, StringComparer.Ordinal);
+                        );
+                        Dictionary<string, FieldInfo> result = new(
+                            fields.Length,
+                            StringComparer.Ordinal
+                        );
+                        for (int i = 0; i < fields.Length; i++)
+                        {
+                            FieldInfo field = fields[i];
+                            if (field.FieldType == typeof(Attribute))
+                            {
+                                result[field.Name] = field;
+                            }
+                        }
+
+                        return result;
+                    }
                 }
             );
         }
@@ -950,20 +962,33 @@ namespace WallstopStudios.UnityHelpers.Tags
                                 >(field);
                             }
                         }
+
                         return result;
                     }
-
-                    // Fallback to runtime reflection
-                    return inputType
-                        .GetFields(
+                    else
+                    {
+                        // Fallback to runtime reflection
+                        FieldInfo[] fields = inputType.GetFields(
                             BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic
-                        )
-                        .Where(field => field.FieldType == typeof(Attribute))
-                        .ToDictionary(
-                            field => field.Name,
-                            field => ReflectionHelpers.GetFieldGetter<object, Attribute>(field),
+                        );
+                        Dictionary<string, Func<object, Attribute>> result = new(
+                            fields.Length,
                             StringComparer.Ordinal
                         );
+                        for (int i = 0; i < fields.Length; i++)
+                        {
+                            FieldInfo field = fields[i];
+                            if (field.FieldType == typeof(Attribute))
+                            {
+                                result[field.Name] = ReflectionHelpers.GetFieldGetter<
+                                    object,
+                                    Attribute
+                                >(field);
+                            }
+                        }
+
+                        return result;
+                    }
                 }
             );
         }

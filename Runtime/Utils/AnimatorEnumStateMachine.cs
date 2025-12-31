@@ -6,7 +6,6 @@ namespace WallstopStudios.UnityHelpers.Utils
     using System;
     using System.Collections.Generic;
     using System.Globalization;
-    using System.Linq;
     using System.Runtime.Serialization;
     using System.Text.Json.Serialization;
     using Core.Extension;
@@ -21,7 +20,18 @@ namespace WallstopStudios.UnityHelpers.Utils
     public sealed class AnimatorEnumStateMachine<T>
         where T : struct, IConvertible, IComparable, IFormattable
     {
-        private static readonly T[] Values = Enum.GetValues(typeof(T)).OfType<T>().ToArray();
+        private static readonly T[] Values = InitializeValues();
+
+        private static T[] InitializeValues()
+        {
+            Array enumValues = Enum.GetValues(typeof(T));
+            T[] result = new T[enumValues.Length];
+            for (int i = 0; i < enumValues.Length; i++)
+            {
+                result[i] = (T)enumValues.GetValue(i);
+            }
+            return result;
+        }
 
         [JsonIgnore]
         [IgnoreDataMember]

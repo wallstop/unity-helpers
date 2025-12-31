@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+See [the roadmap](./docs/overview/roadmap.md) for details
+
+### Changed
+
+- **IEnumerableExtensions return types**: `OrderBy`, `Ordered`, and `Shuffled` methods now return `List<T>` instead of `IEnumerable<T>` for improved usability (indexable, known count)
+  - **Note**: These methods now use eager evaluation (execute immediately) instead of deferred evaluation
+  - Source code remains compatible—`List<T>` is assignable to `IEnumerable<T>`
+
+### Improved
+
+- **LRU cache eviction**: Bounded editor caches now use LRU (Least Recently Used) eviction instead of FIFO
+  - Frequently-accessed cache entries are retained longer, improving cache hit rates
+  - Both reads and writes update an item's "recency", preventing hot items from being evicted
+  - Affects `EditorCacheHelper.AddToBoundedCache` and new `TryGetFromBoundedLRUCache` method
+  - Applied to `InLineEditorShared`, `WShowIfPropertyDrawer`, and other bounded editor caches
+- **Shuffled performance**: `IEnumerableExtensions.Shuffled` now uses O(n) Fisher-Yates shuffle instead of O(n log n) sort-based approach
+
 ## [3.0.5]
 
 ### Added
@@ -37,8 +54,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Manual Recompile Silent Failure After Build**: Fixed an issue where the "Request Script Recompilation" menu item and shortcut would stop responding after building a project (particularly on Linux)
   - Added defensive null check in compilation pending evaluator to prevent silent `NullReferenceException`
   - The null evaluator scenario could occur when static field initialization failed or was corrupted during build operations without a domain reload
-
-See [the roadmap](./docs/overview/roadmap.md) for details
 
 ## [3.0.4]
 

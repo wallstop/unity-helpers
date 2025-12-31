@@ -6,7 +6,6 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
     using System;
     using System.Collections;
     using System.Collections.Generic;
-    using System.Linq;
     using System.Reflection;
     using System.Runtime.CompilerServices;
     using Extension;
@@ -466,68 +465,73 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                 BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic
             );
 
-            return fields
-                .Select(field =>
+            using PooledResource<List<FieldMetadata<TAttribute>>> lease = Buffers<
+                FieldMetadata<TAttribute>
+            >.List.Get(out List<FieldMetadata<TAttribute>> results);
+
+            for (int i = 0; i < fields.Length; ++i)
+            {
+                FieldInfo field = fields[i];
+
+                if (!field.IsAttributeDefined(out TAttribute attribute, inherit: false))
                 {
-                    if (!field.IsAttributeDefined(out TAttribute attribute, inherit: false))
-                    {
-                        return null;
-                    }
+                    continue;
+                }
 
-                    Type fieldType = field.FieldType;
-                    FieldKind kind = GetFieldKind(fieldType, out Type elementType);
+                Type fieldType = field.FieldType;
+                FieldKind kind = GetFieldKind(fieldType, out Type elementType);
 
-                    Func<int, Array> arrayCreator = null;
-                    Func<int, IList> listCreator = null;
-                    Func<int, object> hashSetCreator = null;
-                    Action<object, object> hashSetAdder = null;
-                    Action<object> hashSetClearer = null;
+                Func<int, Array> arrayCreator = null;
+                Func<int, IList> listCreator = null;
+                Func<int, object> hashSetCreator = null;
+                Action<object, object> hashSetAdder = null;
+                Action<object> hashSetClearer = null;
 
-                    switch (kind)
-                    {
-                        case FieldKind.Array:
-                            arrayCreator = ReflectionHelpers.GetArrayCreator(elementType);
-                            break;
-                        case FieldKind.List:
-                            listCreator = ReflectionHelpers.GetListWithCapacityCreator(elementType);
-                            break;
-                        case FieldKind.HashSet:
-                            hashSetCreator = ReflectionHelpers.GetHashSetWithCapacityCreator(
-                                elementType
-                            );
-                            hashSetAdder = ReflectionHelpers.GetHashSetAdder(elementType);
-                            hashSetClearer = ReflectionHelpers.GetHashSetClearer(elementType);
-                            break;
-                    }
-
-                    bool isInterface =
-                        elementType != null
-                        && (
-                            elementType.IsInterface
-                            || (!elementType.IsSealed && elementType != typeof(Component))
+                switch (kind)
+                {
+                    case FieldKind.Array:
+                        arrayCreator = ReflectionHelpers.GetArrayCreator(elementType);
+                        break;
+                    case FieldKind.List:
+                        listCreator = ReflectionHelpers.GetListWithCapacityCreator(elementType);
+                        break;
+                    case FieldKind.HashSet:
+                        hashSetCreator = ReflectionHelpers.GetHashSetWithCapacityCreator(
+                            elementType
                         );
+                        hashSetAdder = ReflectionHelpers.GetHashSetAdder(elementType);
+                        hashSetClearer = ReflectionHelpers.GetHashSetClearer(elementType);
+                        break;
+                }
 
-                    FilterParameters filters = new(attribute);
+                bool isInterface =
+                    elementType != null
+                    && (
+                        elementType.IsInterface
+                        || (!elementType.IsSealed && elementType != typeof(Component))
+                    );
 
-                    return (FieldMetadata<TAttribute>?)
-                        new FieldMetadata<TAttribute>(
-                            field,
-                            attribute,
-                            filters,
-                            CreateFieldAccessor(componentType, field),
-                            kind,
-                            elementType,
-                            arrayCreator,
-                            listCreator,
-                            hashSetCreator,
-                            hashSetAdder,
-                            hashSetClearer,
-                            isInterface
-                        );
-                })
-                .Where(nullable => nullable.HasValue)
-                .Select(nullable => nullable.Value)
-                .ToArray();
+                FilterParameters filters = new(attribute);
+
+                results.Add(
+                    new FieldMetadata<TAttribute>(
+                        field,
+                        attribute,
+                        filters,
+                        CreateFieldAccessor(componentType, field),
+                        kind,
+                        elementType,
+                        arrayCreator,
+                        listCreator,
+                        hashSetCreator,
+                        hashSetAdder,
+                        hashSetClearer,
+                        isInterface
+                    )
+                );
+            }
+
+            return results.ToArray();
         }
 
         private static AttributeMetadataCache.RelationalAttributeKind GetRelationalKind<TAttribute>()

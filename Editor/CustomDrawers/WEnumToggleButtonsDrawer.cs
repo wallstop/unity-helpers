@@ -17,7 +17,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
     using WallstopStudios.UnityHelpers.Editor.Utils;
     using WallstopStudios.UnityHelpers.Editor.Utils.WButton;
     using WallstopStudios.UnityHelpers.Utils;
-    using CacheHelper = WallstopStudios.UnityHelpers.Editor.CustomDrawers.Utils.EditorDrawerCacheHelper;
+    using CacheHelper = WallstopStudios.UnityHelpers.Editor.Core.Helper.EditorCacheHelper;
     using EnumShared = WallstopStudios.UnityHelpers.Editor.CustomDrawers.Utils.EnumToggleButtonsShared;
 
     [CustomPropertyDrawer(typeof(WEnumToggleButtonsAttribute))]

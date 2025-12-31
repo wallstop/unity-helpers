@@ -591,13 +591,16 @@ The CHANGELOG follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) f
 
 **CRITICAL**: The CHANGELOG documents changes that affect USERS of the package. Exclude:
 
-| ❌ Exclude from CHANGELOG           | Why                                           |
-| ----------------------------------- | --------------------------------------------- |
-| CI/CD workflows (GitHub Actions)    | Internal build/test infrastructure            |
-| Build scripts, dev tooling          | Users don't interact with these               |
-| Documentation deployment automation | Users access docs, don't care how they deploy |
-| Code linting/formatting changes     | Internal code quality, not user-facing        |
-| Test infrastructure                 | Users don't run the package's test suite      |
+| ❌ Exclude from CHANGELOG           | Why                                             |
+| ----------------------------------- | ----------------------------------------------- |
+| CI/CD workflows (GitHub Actions)    | Internal build/test infrastructure              |
+| Build scripts, dev tooling          | Users don't interact with these                 |
+| Documentation deployment automation | Users access docs, don't care how they deploy   |
+| Code linting/formatting changes     | Internal code quality, not user-facing          |
+| Test infrastructure                 | Users don't run the package's test suite        |
+| Internal implementation details     | Users don't care HOW something works internally |
+| Code reuse/refactoring notes        | "Uses X internally" is not user-facing          |
+| Architecture/design decisions       | Implementation choices don't affect users       |
 
 | ✅ Include in CHANGELOG              | Why                                   |
 | ------------------------------------ | ------------------------------------- |
@@ -607,6 +610,17 @@ The CHANGELOG follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) f
 | Performance improvements             | Users benefit from faster execution   |
 | New inspector attributes/drawers     | Users see these in Unity Editor       |
 | New editor tools/windows             | Users can access these tools          |
+
+### NEVER Modify Released Notes
+
+**CRITICAL**: Once a version is released, its CHANGELOG entries are **immutable**. Never edit, remove, or "fix" entries in released versions.
+
+- ✅ **DO**: Add new entries to `## [Unreleased]` section only
+- ❌ **NEVER**: Edit entries under versioned headings like `## [3.0.5]`, `## [2.0.0]`, etc.
+- ❌ **NEVER**: "Clean up" or "improve" wording in released notes
+- ❌ **NEVER**: Remove "internal" entries from past releases retroactively
+
+If a past release contains entries that shouldn't have been included, leave them. The historical record is more important than perfect consistency.
 
 ### Required Format
 

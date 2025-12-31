@@ -5,10 +5,10 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
 {
     using System;
     using System.Collections.Generic;
-    using System.Linq;
     using Helper;
     using Random;
     using UnityEngine;
+    using UnityEngine.Pool;
     using WallstopStudios.UnityHelpers.Utils;
 
     /// <summary>
@@ -138,10 +138,28 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 throw new ArgumentNullException(nameof(values));
             }
 
-            IReadOnlyList<T> source = values as IReadOnlyList<T> ?? values.ToArray();
+            if (values is IReadOnlyList<T> source)
+            {
+                return NextOfExceptCore(random, source, exceptions);
+            }
+
+            // Materialize enumerable to pooled list - AddRange is preferred for performance:
+            // it checks for ICollection<T> and pre-allocates, and uses Array.Copy for arrays/lists
+            using PooledResource<List<T>> lease = Buffers<T>.List.Get(out List<T> materializedList);
+            materializedList.AddRange(values);
+
+            return NextOfExceptCore(random, materializedList, exceptions);
+        }
+
+        private static T NextOfExceptCore<T>(
+            IRandom random,
+            IReadOnlyList<T> source,
+            T[] exceptions
+        )
+        {
             if (source.Count == 0)
             {
-                throw new ArgumentException("Collection cannot be empty", nameof(values));
+                throw new ArgumentException("Collection cannot be empty", "values");
             }
 
             if (exceptions == null || exceptions.Length == 0)
@@ -149,7 +167,14 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 return random.NextOf(source);
             }
 
-            HashSet<T> exclude = new(exceptions);
+            using PooledResource<HashSet<T>> excludeLease = Buffers<T>.HashSet.Get(
+                out HashSet<T> exclude
+            );
+            for (int i = 0; i < exceptions.Length; ++i)
+            {
+                exclude.Add(exceptions[i]);
+            }
+
             using PooledArray<T> pooled = SystemArrayPool<T>.Get(source.Count, out T[] buffer);
             int n = 0;
             for (int i = 0; i < source.Count; ++i)
@@ -163,7 +188,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
 
             if (n == 0)
             {
-                throw new ArgumentException("All values are excluded", nameof(exceptions));
+                throw new ArgumentException("All values are excluded", "exceptions");
             }
 
             return n == 1 ? buffer[0] : buffer[random.Next(n)];
@@ -806,22 +831,35 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             IEnumerable<(T item, float weight)> weighted
         )
         {
-            IReadOnlyList<(T, float)> items =
-                weighted as IReadOnlyList<(T, float)> ?? weighted.ToArray();
+            if (weighted is IReadOnlyList<(T, float)> items)
+            {
+                return NextWeightedCore(random, items);
+            }
+
+            // Materialize enumerable to pooled list - AddRange is preferred for performance:
+            // it checks for ICollection<T> and pre-allocates, and uses Array.Copy for arrays/lists
+            using PooledResource<List<(T, float)>> lease = Buffers<(T, float)>.List.Get(
+                out List<(T, float)> materializedList
+            );
+            materializedList.AddRange(weighted);
+
+            return NextWeightedCore(random, materializedList);
+        }
+
+        private static T NextWeightedCore<T>(IRandom random, IReadOnlyList<(T, float)> items)
+        {
             if (items.Count == 0)
             {
-                throw new ArgumentException(
-                    "Weighted collection cannot be empty",
-                    nameof(weighted)
-                );
+                throw new ArgumentException("Weighted collection cannot be empty", "weighted");
             }
 
             float totalWeight = 0f;
-            foreach ((T _, float weight) in items)
+            for (int i = 0; i < items.Count; ++i)
             {
+                float weight = items[i].Item2;
                 if (weight < 0f)
                 {
-                    throw new ArgumentException("Weights cannot be negative", nameof(weighted));
+                    throw new ArgumentException("Weights cannot be negative", "weighted");
                 }
 
                 totalWeight += weight;
@@ -829,17 +867,15 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
 
             if (totalWeight <= 0f)
             {
-                throw new ArgumentException(
-                    "Total weight must be greater than zero",
-                    nameof(weighted)
-                );
+                throw new ArgumentException("Total weight must be greater than zero", "weighted");
             }
 
             float randomValue = random.NextFloat(0f, totalWeight);
             float cumulative = 0f;
 
-            foreach ((T item, float weight) in items)
+            for (int i = 0; i < items.Count; ++i)
             {
+                (T item, float weight) = items[i];
                 cumulative += weight;
                 if (randomValue < cumulative)
                 {
@@ -848,7 +884,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             }
 
             // Fallback due to floating point precision
-            return items[^1].Item1;
+            return items[items.Count - 1].Item1;
         }
 
         /// <summary>
@@ -1039,8 +1075,30 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 throw new ArgumentOutOfRangeException(nameof(count), "Count cannot be negative");
             }
 
-            IReadOnlyList<T> itemsList = items as IReadOnlyList<T> ?? items.ToArray();
-            if (count > itemsList.Count)
+            if (items is IReadOnlyList<T> itemsList)
+            {
+                if (count > itemsList.Count)
+                {
+                    throw new ArgumentException(
+                        "Count cannot exceed the number of items",
+                        nameof(count)
+                    );
+                }
+
+                if (count == 0)
+                {
+                    return Array.Empty<T>();
+                }
+
+                return NextSubsetIterator(random, itemsList, count);
+            }
+
+            // Materialize enumerable to pooled list - AddRange is preferred for performance:
+            // it checks for ICollection<T> and pre-allocates, and uses Array.Copy for arrays/lists
+            using PooledResource<List<T>> lease = Buffers<T>.List.Get(out List<T> materializedList);
+            materializedList.AddRange(items);
+
+            if (count > materializedList.Count)
             {
                 throw new ArgumentException(
                     "Count cannot exceed the number of items",
@@ -1053,7 +1111,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 return Array.Empty<T>();
             }
 
-            return NextSubsetIterator(random, itemsList, count);
+            return NextSubsetIterator(random, materializedList, count);
         }
 
         private static IEnumerable<T> NextSubsetIterator<T>(
