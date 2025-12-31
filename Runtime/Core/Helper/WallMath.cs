@@ -281,7 +281,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         /// <returns>The incremented value, wrapped to [0, max)</returns>
         public static int WrappedIncrement(this int value, int max)
         {
-            return WrappedAdd(value, 1, max);
+            return value.WrappedAdd(1, max);
         }
 
         /// <summary>
@@ -325,7 +325,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         /// <returns>The clamped point within the rectangle</returns>
         public static Vector2 Clamp(this Rect bounds, Vector2 point)
         {
-            return Clamp(bounds, ref point);
+            return bounds.Clamp(ref point);
         }
 
         /// <summary>

@@ -26,7 +26,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             ConcaveHullOptions options = ConcaveHullOptions
                 .Default.WithStrategy(ConcaveHullStrategy.Knn)
                 .WithNearestNeighbors(Math.Max(3, nearestNeighbors));
-            return BuildConcaveHull(points, options);
+            return points.BuildConcaveHull(options);
         }
 
         // KNN-style concave hull for Vector2 (port of BuildConcaveHull2)

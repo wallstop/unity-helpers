@@ -31,7 +31,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 .Default.WithStrategy(ConcaveHullStrategy.EdgeSplit)
                 .WithBucketSize(clampedBucketSize)
                 .WithAngleThreshold(effectiveAngleThreshold);
-            return BuildConcaveHull(points, options);
+            return points.BuildConcaveHull(options);
         }
 
         private readonly struct HullEdge

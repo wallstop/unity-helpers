@@ -39,8 +39,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             {
                 case ConcaveHullStrategy.Knn:
 #pragma warning disable CS0618 // Type or member is obsolete
-                    hull = BuildConcaveHull2(
-                        gridPositions,
+                    hull = gridPositions.BuildConcaveHull2(
                         grid,
                         Math.Max(3, appliedOptions.NearestNeighbors)
                     );
@@ -48,8 +47,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                     break;
                 case ConcaveHullStrategy.EdgeSplit:
 #pragma warning disable CS0618 // Type or member is obsolete
-                    hull = BuildConcaveHull3(
-                        gridPositions,
+                    hull = gridPositions.BuildConcaveHull3(
                         grid,
                         Math.Max(1, appliedOptions.BucketSize),
                         appliedOptions.AngleThreshold
@@ -95,7 +93,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             ConcaveHullOptions options = ConcaveHullOptions
                 .Default.WithStrategy(ConcaveHullStrategy.Knn)
                 .WithNearestNeighbors(Math.Max(3, nearestNeighbors));
-            return BuildConcaveHull(gridPositions, grid, options);
+            return gridPositions.BuildConcaveHull(grid, options);
 #pragma warning restore CS0618 // Type or member is obsolete
         }
 
@@ -113,7 +111,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 .Default.WithStrategy(ConcaveHullStrategy.EdgeSplit)
                 .WithBucketSize(clampedBucketSize)
                 .WithAngleThreshold(effectiveAngleThreshold);
-            return BuildConcaveHull(gridPositions, grid, options);
+            return gridPositions.BuildConcaveHull(grid, options);
 #pragma warning restore CS0618 // Type or member is obsolete
         }
     }

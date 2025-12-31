@@ -4,8 +4,9 @@
 namespace WallstopStudios.UnityHelpers.Core.Attributes
 {
     using System;
-    using System.Linq;
+    using System.Collections.Generic;
     using UnityEngine;
+    using WallstopStudios.UnityHelpers.Utils;
 
     /// <summary>
     /// Comparison strategy applied when resolving <see cref="WShowIfAttribute"/> visibility.
@@ -186,7 +187,18 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
             this.conditionField = conditionField;
             this.inverse = inverse;
             this.comparison = comparison;
-            this.expectedValues = expectedValues?.ToArray() ?? Array.Empty<object>();
+            if (expectedValues == null || expectedValues.Length == 0)
+            {
+                this.expectedValues = Array.Empty<object>();
+            }
+            else
+            {
+                using (Buffers<object>.List.Get(out List<object> buffer))
+                {
+                    buffer.AddRange(expectedValues);
+                    this.expectedValues = buffer.ToArray();
+                }
+            }
         }
     }
 }

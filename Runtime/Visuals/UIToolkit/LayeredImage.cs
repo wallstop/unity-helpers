@@ -6,7 +6,6 @@ namespace WallstopStudios.UnityHelpers.Visuals.UIToolkit
     using System;
     using System.Collections.Generic;
     using System.Diagnostics;
-    using System.Linq;
     using System.Runtime.CompilerServices;
     using System.Threading.Tasks;
     using UnityEngine;
@@ -95,7 +94,14 @@ namespace WallstopStudios.UnityHelpers.Visuals.UIToolkit
         )
         {
             _pixelCutoff = pixelCutoff;
-            _layers = inputSpriteLayers.ToArray();
+            using (
+                PooledResource<List<AnimatedSpriteLayer>> lease =
+                    Buffers<AnimatedSpriteLayer>.List.Get(out List<AnimatedSpriteLayer> buffer)
+            )
+            {
+                buffer.AddRange(inputSpriteLayers);
+                _layers = buffer.ToArray();
+            }
             _backgroundColor = backgroundColor ?? Color.white;
             _computed = ComputeTextures();
             _largestArea = null;

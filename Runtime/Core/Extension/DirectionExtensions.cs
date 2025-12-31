@@ -141,7 +141,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         /// </remarks>
         public static Direction AsDirection(this Vector3 vector3)
         {
-            return AsDirection((Vector2)vector3);
+            return ((Vector2)vector3).AsDirection();
         }
 
         /// <summary>

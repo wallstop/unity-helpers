@@ -6,12 +6,12 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
     using System;
     using System.Collections;
     using System.Collections.Generic;
-    using System.Linq;
     using System.Reflection;
     using System.Runtime.CompilerServices;
     using Extension;
     using Helper;
     using UnityEngine;
+    using WallstopStudios.UnityHelpers.Utils;
     using Object = UnityEngine.Object;
 
     /// <summary>
@@ -120,16 +120,39 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
             return FieldsByType.GetOrAdd(
                 objectType,
                 type =>
-                    type.GetFields(
-                            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic
-                        )
-                        .Where(prop =>
-                            prop.IsAttributeDefined<ValidateAssignmentAttribute>(
+                {
+                    FieldInfo[] allFields = type.GetFields(
+                        BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic
+                    );
+
+                    if (allFields.Length == 0)
+                    {
+                        return Array.Empty<FieldInfo>();
+                    }
+
+                    using PooledResource<List<FieldInfo>> bufferResource =
+                        Buffers<FieldInfo>.List.Get(out List<FieldInfo> result);
+                    for (int i = 0; i < allFields.Length; i++)
+                    {
+                        FieldInfo field = allFields[i];
+                        if (
+                            field.IsAttributeDefined<ValidateAssignmentAttribute>(
                                 out _,
                                 inherit: false
                             )
                         )
-                        .ToArray()
+                        {
+                            result.Add(field);
+                        }
+                    }
+
+                    if (result.Count == 0)
+                    {
+                        return Array.Empty<FieldInfo>();
+                    }
+
+                    return result.ToArray();
+                }
             );
         }
 

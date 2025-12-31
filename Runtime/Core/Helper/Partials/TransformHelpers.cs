@@ -55,7 +55,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             using PooledResource<List<Transform>> transformResource = Buffers<Transform>.List.Get(
                 out List<Transform> transforms
             );
-            foreach (Transform parent in IterateOverAllParents(component, transforms, includeSelf))
+            foreach (Transform parent in component.IterateOverAllParents(transforms, includeSelf))
             {
                 parent.GetComponents(buffer);
                 foreach (T c in buffer)
@@ -251,11 +251,9 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             for (int i = 0; i < transform.childCount; ++i)
             {
                 foreach (
-                    Transform child in IterateOverAllChildrenRecursively(
-                        transform.GetChild(i),
-                        transforms,
-                        includeSelf: true
-                    )
+                    Transform child in transform
+                        .GetChild(i)
+                        .IterateOverAllChildrenRecursively(transforms, includeSelf: true)
                 )
                 {
                     yield return child;
@@ -281,7 +279,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 buffer.Add(transform);
             }
 
-            return InternalIterateOverAllChildrenRecursively(transform, buffer);
+            return transform.InternalIterateOverAllChildrenRecursively(buffer);
         }
 
         private static List<Transform> InternalIterateOverAllChildrenRecursively(
@@ -293,7 +291,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             {
                 Transform child = transform.GetChild(i);
                 buffer.Add(child);
-                InternalIterateOverAllChildrenRecursively(child, buffer);
+                child.InternalIterateOverAllChildrenRecursively(buffer);
             }
 
             return buffer;
@@ -336,8 +334,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             bool includeSelf = false
         )
         {
-            return IterateOverAllChildrenRecursivelyBreadthFirst(
-                component,
+            return component.IterateOverAllChildrenRecursivelyBreadthFirst(
                 buffer,
                 includeSelf,
                 maxDepth: 0

@@ -72,7 +72,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
 
             PopulateVectorBuffers(pointsSet, vectorPoints, mapping, out int fallbackZ);
 
-            List<Vector2> vectorHull = BuildConvexHull(vectorPoints, includeColinearPoints);
+            List<Vector2> vectorHull = vectorPoints.BuildConvexHull(includeColinearPoints);
             return ConvertVector2HullToFastVector3(vectorHull, mapping, fallbackZ);
         }
 

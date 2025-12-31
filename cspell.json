@@ -4,6 +4,7 @@
   "language": "en",
   "ignorePaths": [
     "node_modules/**",
+    ".devcontainer/**",
     "Library/**",
     "Temp/**",
     "obj/**",

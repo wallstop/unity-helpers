@@ -94,7 +94,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             float alphaCutoff = 0.01f
         )
         {
-            return GetAverageColor(Enumerables.Of(sprite), method, alphaCutoff);
+            return Enumerables.Of(sprite).GetAverageColor(method, alphaCutoff);
         }
 
         /// <summary>

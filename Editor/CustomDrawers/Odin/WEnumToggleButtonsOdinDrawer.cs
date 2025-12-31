@@ -62,7 +62,13 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return;
             }
 
-            Type valueType = Property.ValueEntry?.TypeOfValue;
+            if (Property == null || Property.ValueEntry == null)
+            {
+                CallNextDrawer(label);
+                return;
+            }
+
+            Type valueType = Property.ValueEntry.TypeOfValue;
             if (valueType == null || !valueType.IsEnum)
             {
                 CallNextDrawer(label);
@@ -103,7 +109,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return;
             }
 
-            object currentValue = Property.ValueEntry?.WeakSmartValue;
+            object currentValue = Property.ValueEntry.WeakSmartValue;
             ulong currentMask = EnumShared.ConvertToUInt64(currentValue);
 
             EnumShared.SelectionSummary summary = BuildSelectionSummary(

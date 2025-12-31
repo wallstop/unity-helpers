@@ -584,7 +584,7 @@ namespace WallstopStudios.UnityHelpers.Tags
         )
         {
             List<EffectHandle> handles = new(attributeEffects.Count);
-            ApplyEffectsNoAlloc(target, attributeEffects, handles);
+            target.ApplyEffectsNoAlloc(attributeEffects, handles);
             return handles;
         }
 
@@ -785,7 +785,7 @@ namespace WallstopStudios.UnityHelpers.Tags
             AttributeEffect attributeEffect
         )
         {
-            return EnsureHandle(target, attributeEffect, refreshDuration: true);
+            return target.EnsureHandle(attributeEffect, refreshDuration: true);
         }
 
         /// <summary>

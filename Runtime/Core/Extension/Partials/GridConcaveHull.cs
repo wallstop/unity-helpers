@@ -52,10 +52,9 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             switch (options.Strategy)
             {
                 case ConcaveHullStrategy.Knn:
-                    return BuildConcaveHull2(points, Math.Max(3, options.NearestNeighbors));
+                    return points.BuildConcaveHull2(Math.Max(3, options.NearestNeighbors));
                 case ConcaveHullStrategy.EdgeSplit:
-                    return BuildConcaveHull3(
-                        points,
+                    return points.BuildConcaveHull3(
                         Math.Max(1, options.BucketSize),
                         options.AngleThreshold
                     );

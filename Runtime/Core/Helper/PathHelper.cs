@@ -20,7 +20,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         /// <returns>The input path with all backslashes replaced by forward slashes; null if input is null.</returns>
         public static string Sanitize(string path)
         {
-            return SanitizePath(path);
+            return path.SanitizePath();
         }
 
         /// <summary>

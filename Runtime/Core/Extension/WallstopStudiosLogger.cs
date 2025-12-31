@@ -9,7 +9,6 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
 {
     using System;
     using System.Collections.Generic;
-    using System.Linq;
     using System.Reflection;
     using System.Threading;
     using Helper;
@@ -113,18 +112,34 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
 
             (string, Func<object, object>)[] metadataAccess = MetadataCache.GetOrAdd(
                 component.GetType(),
-                inType =>
-                    inType
-                        .GetFields(BindingFlags.Public | BindingFlags.Instance)
-                        .Select(field => (field.Name, ReflectionHelpers.GetFieldGetter(field)))
-                        .Concat(
-                            inType
-                                .GetProperties(BindingFlags.Public | BindingFlags.Instance)
-                                .Select(property =>
-                                    (property.Name, ReflectionHelpers.GetPropertyGetter(property))
-                                )
-                        )
-                        .ToArray()
+                static inType =>
+                {
+                    FieldInfo[] fields = inType.GetFields(
+                        BindingFlags.Public | BindingFlags.Instance
+                    );
+                    PropertyInfo[] properties = inType.GetProperties(
+                        BindingFlags.Public | BindingFlags.Instance
+                    );
+
+                    using PooledResource<List<(string, Func<object, object>)>> bufferResource =
+                        Buffers<(string, Func<object, object>)>.List.Get(
+                            out List<(string, Func<object, object>)> buffer
+                        );
+
+                    for (int i = 0; i < fields.Length; i++)
+                    {
+                        FieldInfo field = fields[i];
+                        buffer.Add((field.Name, ReflectionHelpers.GetFieldGetter(field)));
+                    }
+
+                    for (int i = 0; i < properties.Length; i++)
+                    {
+                        PropertyInfo property = properties[i];
+                        buffer.Add((property.Name, ReflectionHelpers.GetPropertyGetter(property)));
+                    }
+
+                    return buffer.ToArray();
+                }
             );
 
             GenericObject.Clear();
@@ -166,7 +181,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         )
         {
 #if ENABLE_UBERLOGGING || DEBUG_LOGGING
-            LogDebug(component, message, e, pretty);
+            component.LogDebug(message, e, pretty);
 #endif
         }
 

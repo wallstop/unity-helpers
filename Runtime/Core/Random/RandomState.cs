@@ -5,12 +5,12 @@ namespace WallstopStudios.UnityHelpers.Core.Random
 {
     using System;
     using System.Collections.Generic;
-    using System.Linq;
     using System.Runtime.Serialization;
     using System.Text.Json.Serialization;
     using Extension;
     using Helper;
     using ProtoBuf;
+    using Utils;
 
     [Serializable]
     [DataContract]
@@ -114,7 +114,22 @@ namespace WallstopStudios.UnityHelpers.Core.Random
             _state2 = state2;
             _hasGaussian = gaussian.HasValue;
             _gaussian = gaussian ?? 0;
-            _payload = (payload as byte[]) ?? payload?.ToArray();
+            if (payload is byte[] byteArray)
+            {
+                _payload = byteArray;
+            }
+            else if (payload != null)
+            {
+                using (Buffers<byte>.List.Get(out List<byte> buffer))
+                {
+                    buffer.AddRange(payload);
+                    _payload = buffer.ToArray();
+                }
+            }
+            else
+            {
+                _payload = null;
+            }
             _bitBuffer = bitBuffer;
             _bitCount = bitCount;
             _byteBuffer = byteBuffer;

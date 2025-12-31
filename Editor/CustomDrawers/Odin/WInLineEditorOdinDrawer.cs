@@ -33,14 +33,20 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return;
             }
 
-            Type valueType = Property.ValueEntry?.TypeOfValue;
+            if (Property == null || Property.ValueEntry == null)
+            {
+                CallNextDrawer(label);
+                return;
+            }
+
+            Type valueType = Property.ValueEntry.TypeOfValue;
             if (valueType == null || !typeof(Object).IsAssignableFrom(valueType))
             {
                 CallNextDrawer(label);
                 return;
             }
 
-            object weakValue = Property.ValueEntry?.WeakSmartValue;
+            object weakValue = Property.ValueEntry.WeakSmartValue;
             Object objectValue = weakValue as Object;
 
             if (inlineAttribute.DrawObjectField)
@@ -213,30 +219,58 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             Vector2 scrollPosition = InLineEditorShared.GetScrollPosition(scrollKey);
 
             bool enableScrolling = inlineAttribute.EnableScrolling;
+            bool scrollViewStarted = false;
+            bool verticalGroupStarted = false;
 
-            EditorGUILayout.BeginVertical(EditorStyles.helpBox);
-
-            if (enableScrolling)
+            try
             {
-                scrollPosition = EditorGUILayout.BeginScrollView(
-                    scrollPosition,
-                    GUILayout.Height(inspectorHeight)
+                EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+                verticalGroupStarted = true;
+
+                if (enableScrolling)
+                {
+                    scrollPosition = EditorGUILayout.BeginScrollView(
+                        scrollPosition,
+                        GUILayout.Height(inspectorHeight)
+                    );
+                    scrollViewStarted = true;
+                }
+
+                using (InlineInspectorContext.Enter())
+                {
+                    editor.serializedObject.UpdateIfRequiredOrScript();
+                    InLineEditorShared.DrawSerializedObject(editor.serializedObject);
+                }
+
+                if (scrollViewStarted)
+                {
+                    EditorGUILayout.EndScrollView();
+                    InLineEditorShared.SetScrollPosition(scrollKey, scrollPosition);
+                    scrollViewStarted = false;
+                }
+
+                EditorGUILayout.EndVertical();
+                verticalGroupStarted = false;
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError(
+                    $"[{nameof(WInLineEditorOdinDrawer)}] Exception drawing inline inspector: {ex}"
                 );
             }
-
-            using (InlineInspectorContext.Enter())
+            finally
             {
-                editor.serializedObject.UpdateIfRequiredOrScript();
-                InLineEditorShared.DrawSerializedObject(editor.serializedObject);
-            }
+                if (scrollViewStarted)
+                {
+                    EditorGUILayout.EndScrollView();
+                    InLineEditorShared.SetScrollPosition(scrollKey, scrollPosition);
+                }
 
-            if (enableScrolling)
-            {
-                EditorGUILayout.EndScrollView();
-                InLineEditorShared.SetScrollPosition(scrollKey, scrollPosition);
+                if (verticalGroupStarted)
+                {
+                    EditorGUILayout.EndVertical();
+                }
             }
-
-            EditorGUILayout.EndVertical();
         }
 
         private static void DrawPreview(Object value, float previewHeight)
