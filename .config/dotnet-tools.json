@@ -3,8 +3,10 @@
   "isRoot": true,
   "tools": {
     "CSharpier": {
-      "version": "1.2.4",
-      "commands": ["csharpier"],
+      "version": "1.2.5",
+      "commands": [
+        "csharpier"
+      ],
       "rollForward": false
     }
   }
