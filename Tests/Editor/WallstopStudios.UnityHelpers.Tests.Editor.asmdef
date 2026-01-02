@@ -4,6 +4,7 @@
   "references": [
     "UnityEditor.TestRunner",
     "UnityEngine.TestRunner",
+    "Unity.2D.Sprite.Editor",
     "WallstopStudios.UnityHelpers",
     "WallstopStudios.UnityHelpers.Editor",
     "WallstopStudios.UnityHelpers.Tests.Core",

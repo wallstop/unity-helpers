@@ -60,7 +60,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             AssetDatabase.ImportAsset(path);
 
             TextureImporter ti = AssetImporter.GetAtPath(path) as TextureImporter;
-            Assert.IsTrue(ti != null);
+            Assert.IsTrue(ti != null, "TextureImporter not found for path: " + path);
             if (asSprite)
             {
                 ti.textureType = TextureImporterType.Sprite;
@@ -78,6 +78,14 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             }
             string path = CreateTempTexture(asSprite: true);
             _assetPath = path;
+
+            // Set initial filter mode to Point (different from what the higher-priority profile wants)
+            // Unity's default is Bilinear, so we need to explicitly set a different value
+            // to ensure WillTextureSettingsChange detects a change
+            TextureImporter initialImporter = AssetImporter.GetAtPath(path) as TextureImporter;
+            Assert.IsTrue(initialImporter != null, "Initial importer not found");
+            initialImporter.filterMode = FilterMode.Point;
+            initialImporter.SaveAndReimport();
 
             // lower priority sets FilterMode.Point; higher sets Bilinear
             List<SpriteSettings> profiles = new()
@@ -135,6 +143,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             string path = CreateTempTexture(asSprite: false);
             _assetPath = path;
 
+            // Explicitly set the texture type to Default to ensure a change is detected
+            // when the profile sets it to Sprite
+            TextureImporter initialImporter = AssetImporter.GetAtPath(path) as TextureImporter;
+            Assert.IsTrue(initialImporter != null, "Initial importer not found");
+            initialImporter.textureType = TextureImporterType.Default;
+            initialImporter.SaveAndReimport();
+
             List<SpriteSettings> profiles = new()
             {
                 new SpriteSettings
@@ -159,7 +174,15 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             );
             Assert.IsTrue(importer != null, $"Importer was null for path: {path}");
             importer.SaveAndReimport();
-            Assert.AreEqual(TextureImporterType.Sprite, importer.textureType);
+            Assert.AreEqual(
+                TextureImporterType.Sprite,
+                importer.textureType,
+                "Texture type should be Sprite after applying profile. "
+                    + "Actual type: "
+                    + importer.textureType
+                    + ", Path: "
+                    + path
+            );
         }
     }
 }

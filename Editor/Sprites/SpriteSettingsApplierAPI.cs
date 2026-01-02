@@ -178,19 +178,6 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             }
 
             bool changed = false;
-            bool anyApplied =
-                spriteData.applyTextureType
-                || spriteData.applySpriteMode
-                || spriteData.applyPixelsPerUnit
-                || spriteData.applyPivot
-                || spriteData.applyGenerateMipMaps
-                || spriteData.applyAlphaIsTransparency
-                || spriteData.applyReadWriteEnabled
-                || spriteData.applyExtrudeEdges
-                || spriteData.applyWrapMode
-                || spriteData.applyFilterMode
-                || spriteData.applyCrunchCompression
-                || spriteData.applyCompression;
             if (spriteData.applyPixelsPerUnit)
             {
                 changed |= textureImporter.spritePixelsPerUnit != spriteData.pixelsPerUnit;
@@ -232,6 +219,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             }
             if (spriteData.applySpriteMode)
             {
+                changed |= textureImporter.spriteImportMode != spriteData.spriteMode;
                 changed |= buffer.spriteMode != (int)spriteData.spriteMode;
             }
             if (spriteData.applyExtrudeEdges)
@@ -246,7 +234,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             {
                 changed |= buffer.filterMode != spriteData.filterMode;
             }
-            return changed || anyApplied;
+            return changed;
         }
 
         public static bool TryUpdateTextureSettings(
@@ -273,19 +261,6 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
 
             bool changed = false;
             bool settingsChanged = false;
-            bool anyApplied =
-                spriteData.applyTextureType
-                || spriteData.applySpriteMode
-                || spriteData.applyPixelsPerUnit
-                || spriteData.applyPivot
-                || spriteData.applyGenerateMipMaps
-                || spriteData.applyAlphaIsTransparency
-                || spriteData.applyReadWriteEnabled
-                || spriteData.applyExtrudeEdges
-                || spriteData.applyWrapMode
-                || spriteData.applyFilterMode
-                || spriteData.applyCrunchCompression
-                || spriteData.applyCompression;
 
             buffer ??= new TextureImporterSettings();
             textureImporter.ReadTextureSettings(buffer);
@@ -438,7 +413,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 textureImporter.SetTextureSettings(buffer);
             }
 
-            return changed || settingsChanged || anyApplied;
+            return changed || settingsChanged;
         }
     }
 #endif

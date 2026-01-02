@@ -611,7 +611,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
             Editor editor = Editor.CreateEditor(target);
             Track(editor);
 
-            Assert.That(editor, Is.Not.Null, "Editor should be created");
+            Assert.IsTrue(editor != null, "Editor should be created");
         }
 
         [Test]
@@ -622,7 +622,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
             Editor editor = Editor.CreateEditor(target);
             Track(editor);
 
-            Assert.That(editor, Is.Not.Null, "Editor should be created for MB");
+            Assert.IsTrue(editor != null, "Editor should be created for MB");
         }
 
         [Test]
@@ -787,7 +787,7 @@ public sealed class MyDrawerTests : CommonTestBase
         MyTarget target = CreateScriptableObject<MyTarget>();
         Editor editor = Track(Editor.CreateEditor(target));
 
-        Assert.That(editor, Is.Not.Null);
+        Assert.IsTrue(editor != null);
     }
 }
 ```
@@ -911,8 +911,8 @@ public IEnumerator OnInspectorGuiDoesNotThrowForTarget()
         }
     });
 
-    Assert.That(caught, Is.Null);
-    Assert.That(completed, Is.True);
+    Assert.IsTrue(caught == null);
+    Assert.IsTrue(completed);
 }
 ```
 

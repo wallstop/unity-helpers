@@ -6,53 +6,116 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
 #if UNITY_EDITOR
     using System;
     using System.Collections.Generic;
+    using System.Diagnostics;
     using System.IO;
     using System.Text.RegularExpressions;
     using UnityEditor;
     using UnityEngine;
     using CustomEditors;
+    using WallstopStudios.UnityHelpers.Core.Animation;
     using WallstopStudios.UnityHelpers.Core.Extension;
     using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Utils;
     using Object = UnityEngine.Object;
 
+    /// <summary>
+    /// Data class representing a single animation definition with frames, timing, and preview settings.
+    /// </summary>
     [Serializable]
     public sealed class AnimationData
     {
+        /// <summary>
+        /// Default frames per second for new animations.
+        /// </summary>
         public const float DefaultFramesPerSecond = 12;
 
+        /// <summary>
+        /// The sprite frames that make up this animation.
+        /// </summary>
         public List<Sprite> frames = new();
+
+        /// <summary>
+        /// Constant frames per second (used when <see cref="framerateMode"/> is <see cref="FramerateMode.Constant"/>).
+        /// </summary>
         public float framesPerSecond = DefaultFramesPerSecond;
+
+        /// <summary>
+        /// Name of the animation clip to be generated.
+        /// </summary>
         public string animationName = string.Empty;
+
+        /// <summary>
+        /// Whether this animation data was created from auto-parsing.
+        /// </summary>
         public bool isCreatedFromAutoParse;
+
+        /// <summary>
+        /// Whether the animation should loop.
+        /// </summary>
         public bool loop;
+
+        /// <summary>
+        /// Determines how the framerate is calculated for each frame.
+        /// </summary>
+        public FramerateMode framerateMode = FramerateMode.Constant;
+
+        /// <summary>
+        /// AnimationCurve defining FPS over normalized animation progress (0-1).
+        /// X-axis: normalized frame position (0 = first frame, 1 = last frame).
+        /// Y-axis: frames per second at that position.
+        /// Used when <see cref="framerateMode"/> is <see cref="FramerateMode.Curve"/>.
+        /// </summary>
+        public AnimationCurve framesPerSecondCurve = AnimationCurve.Constant(
+            0f,
+            1f,
+            DefaultFramesPerSecond
+        );
+
+        /// <summary>
+        /// Starting point in the animation loop (0-1). Applied to the generated clip settings.
+        /// </summary>
+        public float cycleOffset;
+
+        /// <summary>
+        /// Whether to show the live preview panel for this animation.
+        /// This field is transient and not serialized to assets.
+        /// </summary>
+        [NonSerialized]
+        public bool showPreview;
     }
 
     /// <summary>
     /// Builds AnimationClips from sprites using flexible grouping and naming rules. Supports
-    /// auto-parsing by folders, regex-based grouping, duplicate-resolution, dry-run previews, and
-    /// optional case-insensitive grouping.
+    /// auto-parsing by folders, regex-based grouping, duplicate-resolution, dry-run previews,
+    /// optional case-insensitive grouping, variable framerate via AnimationCurve, and live animation preview.
     /// </summary>
+    /// <remarks>
     /// <para>
     /// Problems this solves: turning folder(s) of sprites into one or many consistent
-    /// <see cref="AnimationClip"/> assets with predictable names and frame rates.
+    /// <see cref="AnimationClip"/> assets with predictable names and frame rates. The variable
+    /// framerate feature allows creating animations with timing variations like attack windups,
+    /// ease-in/ease-out effects, and dramatic pauses.
     /// </para>
     /// <para>
     /// How it works: choose directories and a sprite name regex; optionally supply custom group
     /// regex with named groups <c>base</c>/<c>index</c> or rely on common patterns
-    /// (e.g., name_01, name (2), name3). Configure per-animation FPS, loop flag, and naming
+    /// (e.g., name_01, name (2), name3). Configure per-animation FPS or FPS curve, loop flag, and naming
     /// prefixes/suffixes. Use Calculate/Dry-Run sections to preview results before generating.
+    /// Enable the preview panel to see live animation playback before saving.
     /// </para>
     /// <para>
-    /// Pros: reproducible clip creation, battle-tested grouping heuristics, detailed previews.
+    /// Pros: reproducible clip creation, battle-tested grouping heuristics, detailed previews,
+    /// variable framerate support, live animation preview.
     /// Caveats: ensure regex correctness; strict numeric ordering can be toggled when mixed digits
     /// produce undesired lexicographic ordering.
     /// </para>
+    /// </remarks>
     /// <example>
     /// <![CDATA[
     /// // Open via menu: Tools/Wallstop Studios/Unity Helpers/Animation Creator
     /// // Example filter: ^Enemy_(?<base>Walk)_(?<index>\d+)$
     /// // Add folders, enable "Resolve Duplicate Animation Names" to avoid conflicts,
+    /// // configure Framerate Mode to "Curve" for variable timing,
     /// // then Generate to create .anim files under a chosen folder.
     /// ]]>
     /// </example>
@@ -112,6 +175,13 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
         private bool _animationDataIsExpanded = true;
         private bool _autoParsePreviewExpanded = false;
         private bool _autoParseDryRunExpanded = false;
+
+        private readonly Stopwatch _previewTimer = new();
+        private int _previewAnimationIndex = -1;
+        private int _previewFrameIndex;
+        private TimeSpan _lastPreviewTick;
+        private bool _isPreviewPlaying;
+        private readonly Dictionary<Sprite, Texture2D> _previewTextureCache = new();
 
         private sealed class AutoParsePreviewRecord
         {
@@ -190,6 +260,76 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             UpdateGroupRegex();
             FindAndFilterSprites();
             _lastSourcesHash = ComputeSourcesHash();
+
+            _previewTimer.Start();
+            EditorApplication.update += OnPreviewUpdate;
+
+            Repaint();
+        }
+
+        private void OnDisable()
+        {
+            EditorApplication.update -= OnPreviewUpdate;
+            _previewTimer.Stop();
+            _previewAnimationIndex = -1;
+            _previewTextureCache.Clear();
+        }
+
+        private void OnPreviewUpdate()
+        {
+            if (!_isPreviewPlaying || _previewAnimationIndex < 0)
+            {
+                return;
+            }
+
+            if (_previewAnimationIndex >= animationData.Count)
+            {
+                StopPreview();
+                return;
+            }
+
+            AnimationData data = animationData[_previewAnimationIndex];
+            if (data.frames.Count == 0)
+            {
+                return;
+            }
+
+            float targetFps = GetCurrentFps(data, _previewFrameIndex);
+            if (targetFps <= 0)
+            {
+                targetFps = AnimationData.DefaultFramesPerSecond;
+            }
+
+            TimeSpan frameDuration = TimeSpan.FromMilliseconds(1000.0 / targetFps);
+            TimeSpan elapsed = _previewTimer.Elapsed;
+
+            if (elapsed - _lastPreviewTick > frameDuration + frameDuration)
+            {
+                _lastPreviewTick = elapsed - frameDuration;
+            }
+
+            if (_lastPreviewTick + frameDuration > elapsed)
+            {
+                return;
+            }
+
+            _lastPreviewTick += frameDuration;
+
+            int nextFrame = _previewFrameIndex + 1;
+            if (nextFrame >= data.frames.Count)
+            {
+                if (data.loop)
+                {
+                    nextFrame = 0;
+                }
+                else
+                {
+                    StopPreview();
+                    return;
+                }
+            }
+
+            _previewFrameIndex = nextFrame;
             Repaint();
         }
 
@@ -411,7 +551,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                             info += " | Renamed to avoid duplicate";
                         }
                         EditorGUILayout.LabelField(rec.folderPath, info);
-                        EditorGUILayout.LabelField("→ Asset Path:", rec.finalAssetPath);
+                        EditorGUILayout.LabelField("-> Asset Path:", rec.finalAssetPath);
                         shown++;
                         if (shown >= 200)
                         {
@@ -426,7 +566,6 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
 
             _ = _serializedObject.ApplyModifiedProperties();
 
-            // Auto refresh behavior at end of GUI to pick up any changed fields
             if (autoRefresh)
             {
                 bool regexChanged = _compiledRegex == null || _lastUsedRegex != spriteNameRegex;
@@ -524,25 +663,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                     {
                         foreach (int index in matchingIndices)
                         {
-                            SerializedProperty elementProp =
-                                _animationDataProp.GetArrayElementAtIndex(index);
-
-                            SerializedProperty nameProp = elementProp.FindPropertyRelative(
-                                nameof(AnimationData.animationName)
-                            );
-                            string currentName =
-                                nameProp != null
-                                    ? nameProp.stringValue ?? string.Empty
-                                    : string.Empty;
-                            string labelText = string.IsNullOrWhiteSpace(currentName)
-                                ? $"Element {index} (No Name)"
-                                : currentName;
-
-                            EditorGUILayout.PropertyField(
-                                elementProp,
-                                new GUIContent(labelText),
-                                true
-                            );
+                            DrawAnimationDataElement(index);
                         }
                     }
                     else if (listSize > 0)
@@ -554,6 +675,399 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                     }
                 }
             }
+        }
+
+        private void DrawAnimationDataElement(int index)
+        {
+            if (index < 0 || index >= animationData.Count)
+            {
+                return;
+            }
+
+            AnimationData data = animationData[index];
+            SerializedProperty elementProp = _animationDataProp.GetArrayElementAtIndex(index);
+
+            string labelText = string.IsNullOrWhiteSpace(data.animationName)
+                ? $"Element {index} (No Name)"
+                : data.animationName;
+
+            EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+
+            EditorGUILayout.PropertyField(
+                elementProp.FindPropertyRelative(nameof(AnimationData.animationName)),
+                new GUIContent("Animation Name")
+            );
+
+            EditorGUILayout.PropertyField(
+                elementProp.FindPropertyRelative(nameof(AnimationData.frames)),
+                new GUIContent("Frames"),
+                true
+            );
+
+            EditorGUILayout.PropertyField(
+                elementProp.FindPropertyRelative(nameof(AnimationData.loop)),
+                new GUIContent("Loop")
+            );
+
+            SerializedProperty framerateModeProperty = elementProp.FindPropertyRelative(
+                nameof(AnimationData.framerateMode)
+            );
+            EditorGUILayout.PropertyField(
+                framerateModeProperty,
+                new GUIContent(
+                    "Framerate Mode",
+                    "Constant: Single FPS value\nCurve: Variable FPS over animation progress"
+                )
+            );
+
+            FramerateMode currentMode = (FramerateMode)framerateModeProperty.enumValueIndex;
+
+            switch (currentMode)
+            {
+                case FramerateMode.Constant:
+                    EditorGUILayout.PropertyField(
+                        elementProp.FindPropertyRelative(nameof(AnimationData.framesPerSecond)),
+                        new GUIContent("FPS")
+                    );
+                    break;
+                case FramerateMode.Curve:
+                    DrawCurveFieldWithPresets(data, elementProp, index);
+                    break;
+                default:
+                    EditorGUILayout.PropertyField(
+                        elementProp.FindPropertyRelative(nameof(AnimationData.framesPerSecond)),
+                        new GUIContent("FPS")
+                    );
+                    break;
+            }
+
+            EditorGUILayout.PropertyField(
+                elementProp.FindPropertyRelative(nameof(AnimationData.cycleOffset)),
+                new GUIContent("Cycle Offset", "Starting point in the animation loop (0-1)")
+            );
+
+            DrawPreviewPanel(data, index);
+
+            EditorGUILayout.EndVertical();
+            EditorGUILayout.Space(2);
+        }
+
+        private void DrawCurveFieldWithPresets(
+            AnimationData data,
+            SerializedProperty elementProp,
+            int index
+        )
+        {
+            EditorGUILayout.BeginHorizontal();
+
+            SerializedProperty curveProp = elementProp.FindPropertyRelative(
+                nameof(AnimationData.framesPerSecondCurve)
+            );
+            EditorGUILayout.PropertyField(
+                curveProp,
+                new GUIContent("FPS Curve", "X: Frame progress (0-1), Y: FPS at that point"),
+                GUILayout.MinWidth(200)
+            );
+
+            EditorGUILayout.BeginVertical(GUILayout.Width(80));
+
+            if (GUILayout.Button(new GUIContent("Flat", "Constant FPS throughout")))
+            {
+                float fps =
+                    data.framesPerSecond > 0
+                        ? data.framesPerSecond
+                        : AnimationData.DefaultFramesPerSecond;
+                data.framesPerSecondCurve = AnimationCurve.Constant(0, 1, fps);
+                curveProp.animationCurveValue = data.framesPerSecondCurve;
+            }
+
+            if (GUILayout.Button(new GUIContent("Ease In", "Start slow, speed up")))
+            {
+                data.framesPerSecondCurve = AnimationCurve.EaseInOut(0, 6, 1, 18);
+                curveProp.animationCurveValue = data.framesPerSecondCurve;
+            }
+
+            if (GUILayout.Button(new GUIContent("Ease Out", "Start fast, slow down")))
+            {
+                data.framesPerSecondCurve = AnimationCurve.EaseInOut(0, 18, 1, 6);
+                curveProp.animationCurveValue = data.framesPerSecondCurve;
+            }
+
+            if (GUILayout.Button(new GUIContent("Sync", "Set curve to current constant FPS")))
+            {
+                data.framesPerSecondCurve = AnimationCurve.Constant(0, 1, data.framesPerSecond);
+                curveProp.animationCurveValue = data.framesPerSecondCurve;
+            }
+
+            EditorGUILayout.EndVertical();
+            EditorGUILayout.EndHorizontal();
+
+            DrawFrameTimingGraph(data);
+        }
+
+        private void DrawFrameTimingGraph(AnimationData data)
+        {
+            if (data.frames.Count < 2)
+            {
+                return;
+            }
+
+            EditorGUILayout.Space(4);
+            EditorGUILayout.LabelField("Frame Timing Preview:", EditorStyles.boldLabel);
+
+            using PooledResource<List<string>> _ = Buffers<string>.List.Get(
+                out List<string> timings
+            );
+            float totalDuration = 0f;
+
+            for (int i = 0; i < data.frames.Count; i++)
+            {
+                float normalizedPosition =
+                    data.frames.Count > 1 ? (float)i / (data.frames.Count - 1) : 0f;
+
+                float fps = data.framesPerSecondCurve.Evaluate(normalizedPosition);
+                if (fps <= 0)
+                {
+                    fps =
+                        data.framesPerSecond > 0
+                            ? data.framesPerSecond
+                            : AnimationData.DefaultFramesPerSecond;
+                }
+
+                float frameDuration = 1000f / fps;
+                totalDuration += frameDuration;
+                timings.Add($"F{i + 1}: {frameDuration:F0}ms ({fps:F1} fps)");
+            }
+
+            string timingText = string.Join(" | ", timings);
+            EditorGUILayout.HelpBox(
+                $"Total: {totalDuration:F0}ms ({totalDuration / 1000f:F2}s)\n{timingText}",
+                MessageType.Info
+            );
+        }
+
+        private void DrawPreviewPanel(AnimationData data, int animationIndex)
+        {
+            bool isThisAnimationPreviewing = _previewAnimationIndex == animationIndex;
+
+            EditorGUILayout.BeginHorizontal();
+            bool wantsPreview = GUILayout.Toggle(
+                data.showPreview,
+                new GUIContent("Preview", "Show live animation preview"),
+                "Button",
+                GUILayout.Width(80)
+            );
+
+            if (wantsPreview != data.showPreview)
+            {
+                data.showPreview = wantsPreview;
+                if (!wantsPreview && isThisAnimationPreviewing)
+                {
+                    StopPreview();
+                }
+            }
+            EditorGUILayout.EndHorizontal();
+
+            if (!data.showPreview || data.frames.Count == 0)
+            {
+                return;
+            }
+
+            EditorGUILayout.Space(4);
+            EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+
+            int displayFrameIndex = isThisAnimationPreviewing ? _previewFrameIndex : 0;
+            displayFrameIndex = Mathf.Clamp(displayFrameIndex, 0, data.frames.Count - 1);
+            Sprite currentSprite = data.frames[displayFrameIndex];
+
+            if (currentSprite != null)
+            {
+                Texture2D preview = GetPreviewTexture(currentSprite);
+                if (preview != null)
+                {
+                    float aspectRatio = (float)preview.width / preview.height;
+                    float previewHeight = 128f;
+                    float previewWidth = previewHeight * aspectRatio;
+
+                    Rect previewRect = GUILayoutUtility.GetRect(
+                        previewWidth,
+                        previewHeight,
+                        GUILayout.MaxWidth(256),
+                        GUILayout.MaxHeight(128)
+                    );
+                    GUI.DrawTexture(previewRect, preview, ScaleMode.ScaleToFit);
+                }
+            }
+
+            float currentFps = GetCurrentFps(data, displayFrameIndex);
+            EditorGUILayout.LabelField(
+                $"Frame: {displayFrameIndex + 1}/{data.frames.Count} | FPS: {currentFps:F1}",
+                EditorStyles.centeredGreyMiniLabel
+            );
+
+            DrawTransportControls(data, animationIndex, isThisAnimationPreviewing);
+
+            EditorGUI.BeginChangeCheck();
+            float scrubberValue =
+                data.frames.Count > 1 ? (float)displayFrameIndex / (data.frames.Count - 1) : 0f;
+
+            float newScrubberValue = EditorGUILayout.Slider(scrubberValue, 0f, 1f);
+            if (EditorGUI.EndChangeCheck())
+            {
+                int newFrame = Mathf.RoundToInt(newScrubberValue * (data.frames.Count - 1));
+                SetPreviewFrame(animationIndex, newFrame);
+            }
+
+            EditorGUILayout.EndVertical();
+        }
+
+        private void DrawTransportControls(AnimationData data, int animationIndex, bool isActive)
+        {
+            EditorGUILayout.BeginHorizontal();
+            GUILayout.FlexibleSpace();
+
+            if (GUILayout.Button("|<", GUILayout.Width(30)))
+            {
+                SetPreviewFrame(animationIndex, 0);
+            }
+
+            if (GUILayout.Button("<", GUILayout.Width(30)))
+            {
+                int prev = isActive ? _previewFrameIndex - 1 : -1;
+                if (prev < 0)
+                {
+                    prev = data.loop ? data.frames.Count - 1 : 0;
+                }
+                SetPreviewFrame(animationIndex, prev);
+            }
+
+            bool isPlaying = isActive && _isPreviewPlaying;
+            if (GUILayout.Button(isPlaying ? "||" : ">", GUILayout.Width(40)))
+            {
+                if (isPlaying)
+                {
+                    PausePreview();
+                }
+                else
+                {
+                    StartPreview(animationIndex);
+                }
+            }
+
+            if (GUILayout.Button(">", GUILayout.Width(30)))
+            {
+                int next = isActive ? _previewFrameIndex + 1 : 1;
+                if (next >= data.frames.Count)
+                {
+                    next = data.loop ? 0 : data.frames.Count - 1;
+                }
+                SetPreviewFrame(animationIndex, next);
+            }
+
+            if (GUILayout.Button(">|", GUILayout.Width(30)))
+            {
+                SetPreviewFrame(animationIndex, data.frames.Count - 1);
+            }
+
+            GUILayout.FlexibleSpace();
+            EditorGUILayout.EndHorizontal();
+        }
+
+        private void StartPreview(int animationIndex)
+        {
+            if (_previewAnimationIndex >= 0 && _previewAnimationIndex < animationData.Count)
+            {
+                animationData[_previewAnimationIndex].showPreview = false;
+            }
+
+            _previewAnimationIndex = animationIndex;
+            _previewFrameIndex = 0;
+            _isPreviewPlaying = true;
+            _lastPreviewTick = _previewTimer.Elapsed;
+
+            if (animationIndex >= 0 && animationIndex < animationData.Count)
+            {
+                animationData[animationIndex].showPreview = true;
+            }
+
+            Repaint();
+        }
+
+        private void StopPreview()
+        {
+            _isPreviewPlaying = false;
+            _previewAnimationIndex = -1;
+            _previewFrameIndex = 0;
+            Repaint();
+        }
+
+        private void PausePreview()
+        {
+            _isPreviewPlaying = false;
+            Repaint();
+        }
+
+        private void SetPreviewFrame(int animationIndex, int frameIndex)
+        {
+            if (animationIndex < 0 || animationIndex >= animationData.Count)
+            {
+                return;
+            }
+
+            AnimationData data = animationData[animationIndex];
+            if (data.frames.Count == 0)
+            {
+                return;
+            }
+
+            _previewAnimationIndex = animationIndex;
+            _previewFrameIndex = Mathf.Clamp(frameIndex, 0, data.frames.Count - 1);
+            _isPreviewPlaying = false;
+            _lastPreviewTick = _previewTimer.Elapsed;
+
+            if (!data.showPreview)
+            {
+                data.showPreview = true;
+            }
+
+            Repaint();
+        }
+
+        private Texture2D GetPreviewTexture(Sprite sprite)
+        {
+            if (sprite == null)
+            {
+                return null;
+            }
+
+            if (_previewTextureCache.TryGetValue(sprite, out Texture2D cached))
+            {
+                return cached;
+            }
+
+            Texture2D preview = AssetPreview.GetAssetPreview(sprite);
+            if (preview != null)
+            {
+                _previewTextureCache[sprite] = preview;
+            }
+
+            return preview;
+        }
+
+        private float GetCurrentFps(AnimationData data, int frameIndex)
+        {
+            if (data.framerateMode == FramerateMode.Constant)
+            {
+                return data.framesPerSecond > 0
+                    ? data.framesPerSecond
+                    : AnimationData.DefaultFramesPerSecond;
+            }
+
+            float normalizedPosition =
+                data.frames.Count > 1 ? (float)frameIndex / (data.frames.Count - 1) : 0f;
+
+            float fps = data.framesPerSecondCurve.Evaluate(normalizedPosition);
+            return fps > 0 ? fps : AnimationData.DefaultFramesPerSecond;
         }
 
         private void DrawActionButtons()
@@ -839,15 +1353,6 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                         (float)currentAnimationIndex / totalAnimations
                     );
 
-                    float framesPerSecond = data.framesPerSecond;
-                    if (framesPerSecond <= 0)
-                    {
-                        this.LogWarn(
-                            $"Ignoring animation '{animationName}' with invalid FPS ({framesPerSecond})."
-                        );
-                        continue;
-                    }
-
                     List<Sprite> frames = data.frames;
                     if (frames is not { Count: > 0 })
                     {
@@ -876,44 +1381,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
 
                     validFrames.Sort((s1, s2) => EditorUtility.NaturalCompare(s1.name, s2.name));
 
-                    float timeStep = 1f / framesPerSecond;
-                    using PooledArray<ObjectReferenceKeyframe> keyframesResource =
-                        SystemArrayPool<ObjectReferenceKeyframe>.Get(
-                            validFrames.Count,
-                            out ObjectReferenceKeyframe[] keyframes
-                        );
-                    float currentTime = 0f;
-                    for (int k = 0; k < validFrames.Count; k++)
-                    {
-                        keyframes[k].time = currentTime;
-                        keyframes[k].value = validFrames[k];
-                        currentTime += timeStep;
-                    }
-
-                    if (keyframes.Length <= 0)
-                    {
-                        this.LogWarn(
-                            $"No valid keyframes could be generated for animation '{animationName}'."
-                        );
-                        continue;
-                    }
-
-                    AnimationClip animationClip = new() { frameRate = framesPerSecond };
-
-                    if (data.loop)
-                    {
-                        AnimationClipSettings settings = AnimationUtility.GetAnimationClipSettings(
-                            animationClip
-                        );
-                        settings.loopTime = true;
-                        AnimationUtility.SetAnimationClipSettings(animationClip, settings);
-                    }
-
-                    AnimationUtility.SetObjectReferenceCurve(
-                        animationClip,
-                        EditorCurveBinding.PPtrCurve("", typeof(SpriteRenderer), "m_Sprite"),
-                        keyframes
-                    );
+                    AnimationClip animationClip = CreateAnimationClip(data, validFrames);
 
                     string firstFramePath = AssetDatabase.GetAssetPath(validFrames[0]);
                     string assetPath =
@@ -951,6 +1419,65 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 AssetDatabase.SaveAssets();
                 AssetDatabase.Refresh();
             }
+        }
+
+        private AnimationClip CreateAnimationClip(AnimationData data, List<Sprite> validFrames)
+        {
+            float baseFrameRate =
+                data.framesPerSecond > 0
+                    ? data.framesPerSecond
+                    : AnimationData.DefaultFramesPerSecond;
+
+            AnimationClip clip = new() { frameRate = baseFrameRate };
+
+            using PooledArray<ObjectReferenceKeyframe> keyframesResource =
+                SystemArrayPool<ObjectReferenceKeyframe>.Get(
+                    validFrames.Count,
+                    out ObjectReferenceKeyframe[] keyframes
+                );
+
+            float currentTime = 0f;
+
+            for (int i = 0; i < validFrames.Count; i++)
+            {
+                keyframes[i].time = currentTime;
+                keyframes[i].value = validFrames[i];
+
+                if (i < validFrames.Count - 1)
+                {
+                    float fps;
+                    if (data.framerateMode == FramerateMode.Curve)
+                    {
+                        float normalizedPosition =
+                            validFrames.Count > 1 ? (float)i / (validFrames.Count - 1) : 0f;
+
+                        fps = data.framesPerSecondCurve.Evaluate(normalizedPosition);
+                        if (fps <= 0)
+                        {
+                            fps = baseFrameRate;
+                        }
+                    }
+                    else
+                    {
+                        fps = baseFrameRate;
+                    }
+
+                    currentTime += 1f / fps;
+                }
+            }
+
+            AnimationUtility.SetObjectReferenceCurve(
+                clip,
+                EditorCurveBinding.PPtrCurve("", typeof(SpriteRenderer), "m_Sprite"),
+                keyframes
+            );
+
+            AnimationClipSettings settings = AnimationUtility.GetAnimationClipSettings(clip);
+            settings.loopTime = data.loop;
+            settings.cycleOffset = Mathf.Clamp01(data.cycleOffset);
+            AnimationUtility.SetAnimationClipSettings(clip, settings);
+
+            return clip;
         }
 
         private void UpdateRegex()
@@ -1162,7 +1689,6 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
 
         private static string StripDensitySuffix(string name)
         {
-            // Removes common density suffixes like @2x, @0.5x, @3x at the end
             return Regex.Replace(name, @"@\d+(?:\.\d+)?x$", string.Empty);
         }
 
@@ -1171,8 +1697,6 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             baseName = null;
             index = -1;
 
-            // Try patterns in order of specificity
-            // 1) name(001), name (1)
             Match m = s_ParenIndexRegex.Match(name);
             if (m.Success)
             {
@@ -1182,7 +1706,6 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 return true;
             }
 
-            // 2) name_001, name-001, name 001, name.001 (last numeric segment)
             m = s_SeparatorIndexRegex.Match(name);
             if (m.Success)
             {
@@ -1192,7 +1715,6 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 return true;
             }
 
-            // 3) name001 (trailing digits without separators)
             m = s_TrailingIndexRegex.Match(name);
             if (m.Success && m.Groups["base"].Length > 0)
             {
@@ -1202,7 +1724,6 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 return true;
             }
 
-            // Not found
             return false;
         }
 
@@ -1356,7 +1877,6 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                         {
                             entries.Sort((a, b) => a.index.CompareTo(b.index));
                         }
-                        // else leave discovery order
                     }
                     else
                     {
@@ -1394,6 +1914,13 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                             animationName = finalAnimName,
                             isCreatedFromAutoParse = true,
                             loop = false,
+                            framerateMode = FramerateMode.Constant,
+                            framesPerSecondCurve = AnimationCurve.Constant(
+                                0f,
+                                1f,
+                                AnimationData.DefaultFramesPerSecond
+                            ),
+                            cycleOffset = 0f,
                         }
                     );
                     addedCount++;
@@ -1585,6 +2112,99 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             _autoParsePreview.Sort(
                 (a, b) => string.Compare(a.folder, b.folder, StringComparison.Ordinal)
             );
+        }
+
+        internal static float GetCurrentFpsForTests(AnimationData data, int frameIndex)
+        {
+            if (data.framerateMode == FramerateMode.Constant)
+            {
+                return data.framesPerSecond > 0
+                    ? data.framesPerSecond
+                    : AnimationData.DefaultFramesPerSecond;
+            }
+
+            float normalizedPosition =
+                data.frames.Count > 1 ? (float)frameIndex / (data.frames.Count - 1) : 0f;
+
+            float fps = data.framesPerSecondCurve.Evaluate(normalizedPosition);
+            return fps > 0 ? fps : AnimationData.DefaultFramesPerSecond;
+        }
+
+        internal static AnimationClip CreateAnimationClipForTests(
+            AnimationData data,
+            List<Sprite> validFrames
+        )
+        {
+            float baseFrameRate =
+                data.framesPerSecond > 0
+                    ? data.framesPerSecond
+                    : AnimationData.DefaultFramesPerSecond;
+
+            AnimationClip clip = new() { frameRate = baseFrameRate };
+
+            ObjectReferenceKeyframe[] keyframes = new ObjectReferenceKeyframe[validFrames.Count];
+
+            float currentTime = 0f;
+
+            for (int i = 0; i < validFrames.Count; i++)
+            {
+                keyframes[i].time = currentTime;
+                keyframes[i].value = validFrames[i];
+
+                if (i < validFrames.Count - 1)
+                {
+                    float fps;
+                    if (data.framerateMode == FramerateMode.Curve)
+                    {
+                        float normalizedPosition =
+                            validFrames.Count > 1 ? (float)i / (validFrames.Count - 1) : 0f;
+
+                        fps = data.framesPerSecondCurve.Evaluate(normalizedPosition);
+                        if (fps <= 0)
+                        {
+                            fps = baseFrameRate;
+                        }
+                    }
+                    else
+                    {
+                        fps = baseFrameRate;
+                    }
+
+                    currentTime += 1f / fps;
+                }
+            }
+
+            AnimationUtility.SetObjectReferenceCurve(
+                clip,
+                EditorCurveBinding.PPtrCurve("", typeof(SpriteRenderer), "m_Sprite"),
+                keyframes
+            );
+
+            AnimationClipSettings settings = AnimationUtility.GetAnimationClipSettings(clip);
+            settings.loopTime = data.loop;
+            settings.cycleOffset = Mathf.Clamp01(data.cycleOffset);
+            AnimationUtility.SetAnimationClipSettings(clip, settings);
+
+            return clip;
+        }
+
+        internal static int CalculateScrubberFrame(float scrubberValue, int frameCount)
+        {
+            if (frameCount <= 0)
+            {
+                return 0;
+            }
+            float clampedValue = Mathf.Clamp01(scrubberValue);
+            // Use FloorToInt with +0.5f to ensure "round half up" behavior
+            // Mathf.RoundToInt uses banker's rounding (rounds 0.5 to nearest even),
+            // which is counterintuitive for UI scrubbers where users expect 0.5 -> 1
+            int frame = Mathf.FloorToInt(clampedValue * (frameCount - 1) + 0.5f);
+            return Mathf.Clamp(frame, 0, frameCount - 1);
+        }
+
+        internal static float CalculateCycleOffsetClamped(float inputOffset)
+        {
+            return Mathf.Clamp01(inputOffset);
         }
     }
 

@@ -13,6 +13,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Performance
     using WallstopStudios.UnityHelpers.Core.Random;
     using WallstopStudios.UnityHelpers.Core.Serialization;
     using WallstopStudios.UnityHelpers.Utils;
+    using Serializer = WallstopStudios.UnityHelpers.Core.Serialization.Serializer;
 
     /// <summary>
     /// Performance baseline tests that verify critical operations complete within acceptable time bounds.
@@ -246,7 +247,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Performance
                 SpatialTreeConstructionBaselineMs,
                 $"QuadTree2D construction performance regression: {stopwatch.ElapsedMilliseconds}ms for {SpatialTreeElementCount} elements (baseline: {SpatialTreeConstructionBaselineMs}ms)"
             );
-            Assert.AreEqual(SpatialTreeElementCount, tree.Count);
+            Assert.AreEqual(SpatialTreeElementCount, tree.elements.Length);
         }
 
         /// <summary>
@@ -273,7 +274,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Performance
                 SpatialTreeConstructionBaselineMs,
                 $"KdTree2D construction performance regression: {stopwatch.ElapsedMilliseconds}ms for {SpatialTreeElementCount} elements (baseline: {SpatialTreeConstructionBaselineMs}ms)"
             );
-            Assert.AreEqual(SpatialTreeElementCount, tree.Count);
+            Assert.AreEqual(SpatialTreeElementCount, tree.elements.Length);
         }
 
         /// <summary>
@@ -300,7 +301,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Performance
                 SpatialTreeConstructionBaselineMs,
                 $"RTree2D construction performance regression: {stopwatch.ElapsedMilliseconds}ms for {SpatialTreeElementCount} elements (baseline: {SpatialTreeConstructionBaselineMs}ms)"
             );
-            Assert.AreEqual(SpatialTreeElementCount, tree.Count);
+            Assert.AreEqual(SpatialTreeElementCount, tree.elements.Length);
         }
 
         // 3D Spatial Tree Baselines

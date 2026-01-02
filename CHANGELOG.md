@@ -9,6 +9,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 See [the roadmap](./docs/overview/roadmap.md) for details
 
+### Added
+
+- **SpriteSheetExtractor Per-Sheet Configuration**: Each sprite sheet can now have its own extraction settings
+  - "Per-Sheet Settings" foldout in each sprite sheet entry with extraction mode, grid, padding, and alpha overrides
+  - "Use Global Settings" toggle (default: enabled) to quickly switch between global and per-sheet settings
+  - "Apply Global to All" button to copy current global settings to all discovered sheets
+  - "Copy from..." button to copy settings from one sheet to another
+  - Enables efficient batch processing of sprite sheets with different layouts
+- **AnimationCreator Variable Framerate**: AnimationCreatorWindow now supports variable framerate animations using AnimationCurve
+  - New `FramerateMode` enum (`Constant` or `Curve`) for choosing timing mode
+  - Per-animation `framesPerSecondCurve` allows custom timing across animation progress
+  - Curve presets: Flat, Ease In, Ease Out, and Sync with constant FPS
+  - Frame timing preview shows per-frame durations before generation
+- **AnimationCreator Live Preview**: Real-time animation preview panel
+  - Play/pause/stop transport controls for preview playback
+  - Frame scrubber for manual frame navigation
+  - Respects variable framerate curves during preview
+  - Shows current frame index and FPS in preview panel
+- **AnimationData Cycle Offset**: New `cycleOffset` property (0-1) sets animation loop start point
+
 ### Changed
 
 - **IEnumerableExtensions return types**: `OrderBy`, `Ordered`, and `Shuffled` methods now return `List<T>` instead of `IEnumerable<T>` for improved usability (indexable, known count)

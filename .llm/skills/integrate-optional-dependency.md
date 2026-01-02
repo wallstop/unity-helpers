@@ -415,7 +415,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
             Editor editor = Editor.CreateEditor(target);
             Track(editor);
 
-            Assert.That(editor, Is.Not.Null);
+            Assert.IsTrue(editor != null);
         }
 
         [Test]
@@ -426,7 +426,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
             Editor editor = Editor.CreateEditor(target);
             Track(editor);
 
-            Assert.That(editor, Is.Not.Null);
+            Assert.IsTrue(editor != null);
         }
 
         [Test]

@@ -95,6 +95,8 @@
     }
   ],
   "scripts": {
+    "docs:serve": "bundle exec jekyll serve --baseurl \"\" --livereload",
+    "docs:build": "bundle exec jekyll build --baseurl \"\"",
     "lint:docs": "node ./scripts/run-doc-link-lint.js",
     "lint:doc-links": "node ./scripts/run-doc-link-lint.js --verbose",
     "lint:code-samples": "node ./scripts/extract-code-samples.js --extract-only",

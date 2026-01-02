@@ -428,14 +428,27 @@ foreach (var item in myArray) { }  // Zero allocation
 **For non-indexable collections (HashSet, Dictionary):**
 
 ```csharp
-// ✅ Use struct enumerator directly
-var enumerator = hashSet.GetEnumerator();
-while (enumerator.MoveNext())
+// ✅ Use struct enumerator with using statement
+using (HashSet<T>.Enumerator enumerator = hashSet.GetEnumerator())
 {
-    var element = enumerator.Current;
-    // process
+    while (enumerator.MoveNext())
+    {
+        T element = enumerator.Current;
+        // process
+    }
 }
+
+// ❌ NEVER use explicit Dispose - always use 'using' statement
+Dictionary<K, V>.Enumerator enumerator = dict.GetEnumerator();
+while (enumerator.MoveNext()) { }
+enumerator.Dispose();  // BAD - use 'using' instead!
 ```
+
+**IMPORTANT**: Always use `using` statements for struct enumerators, never explicit `Dispose()` calls. The `using` statement:
+
+- Ensures proper disposal even if exceptions occur
+- Is more readable and less error-prone
+- Follows standard C# patterns for disposable resources
 
 ### 7a. Prefer AddRange Over foreach + Add
 
