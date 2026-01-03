@@ -236,7 +236,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
                     )
                     {
                         TryRemoveStaleAssetArtifacts(targetAssetPath);
-                        AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
+                        // Note: Removed intermediate Refresh here - we defer all refreshes to the end
+                        // to avoid domain reload loops during processing
 
                         assetAtTarget = AssetDatabase.LoadAssetAtPath(targetAssetPath, derivedType);
                         fileExistsOnDisk = DoesAssetFileExistOnDisk(targetAssetPath);
@@ -360,17 +361,17 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
                 }
                 _isEnsuring = false;
 
-                if (anyChanges)
-                {
-                    AssetDatabase.SaveAssets();
-                    AssetDatabase.Refresh();
-                }
-
-                // Clean up empty folders AFTER StopAssetEditing and Refresh
-                // This ensures AssetDatabase operations from duplicate deletion are fully committed
+                // Clean up empty folders AFTER StopAssetEditing
+                // Track if cleanup actually deleted anything
+                bool foldersDeleted = false;
                 if (emptyFolderCandidates is { Count: > 0 })
                 {
-                    CleanupEmptyFolders(emptyFolderCandidates);
+                    foldersDeleted = CleanupEmptyFolders(emptyFolderCandidates);
+                }
+
+                // Only do ONE SaveAssets/Refresh at the very end to avoid re-serialization loops
+                if (anyChanges || foldersDeleted)
+                {
                     AssetDatabase.SaveAssets();
                     AssetDatabase.Refresh();
                 }
@@ -593,39 +594,45 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
             return removed;
         }
 
-        private static void CleanupEmptyFolders(List<string> folderPaths)
+        private static bool CleanupEmptyFolders(List<string> folderPaths)
         {
             if (folderPaths == null || folderPaths.Count == 0)
             {
-                return;
+                return false;
             }
 
             // Sort by depth (deepest first) to clean up bottom-up
             folderPaths.Sort((a, b) => b.Split('/').Length.CompareTo(a.Split('/').Length));
 
             HashSet<string> processed = new(StringComparer.OrdinalIgnoreCase);
+            bool anyDeleted = false;
 
             foreach (string folderPath in folderPaths)
             {
-                CleanupEmptyFolderRecursive(folderPath, processed);
+                if (CleanupEmptyFolderRecursive(folderPath, processed))
+                {
+                    anyDeleted = true;
+                }
             }
+
+            return anyDeleted;
         }
 
-        private static void CleanupEmptyFolderRecursive(
+        private static bool CleanupEmptyFolderRecursive(
             string folderPath,
             HashSet<string> processed
         )
         {
             if (string.IsNullOrWhiteSpace(folderPath))
             {
-                return;
+                return false;
             }
 
             // Normalize and check if already processed
             string normalized = NormalizePath(folderPath);
             if (!processed.Add(normalized))
             {
-                return;
+                return false;
             }
 
             // Don't delete the Resources root or above
@@ -634,21 +641,23 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
                 || !normalized.StartsWith(ResourcesRoot + "/", StringComparison.OrdinalIgnoreCase)
             )
             {
-                return;
+                return false;
             }
 
             // CRITICAL: Never delete the Wallstop Studios root folder - this is production data
             const string WallstopStudiosRoot = "Assets/Resources/Wallstop Studios";
             if (string.Equals(normalized, WallstopStudiosRoot, StringComparison.OrdinalIgnoreCase))
             {
-                return;
+                return false;
             }
 
             // Check if folder exists and is valid
             if (!AssetDatabase.IsValidFolder(normalized))
             {
-                return;
+                return false;
             }
+
+            bool anyDeleted = false;
 
             // First, recursively clean up any empty subfolders
             string[] subfolders = AssetDatabase.GetSubFolders(normalized);
@@ -656,7 +665,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
             {
                 foreach (string subfolder in subfolders)
                 {
-                    CleanupEmptyFolderRecursive(subfolder, processed);
+                    if (CleanupEmptyFolderRecursive(subfolder, processed))
+                    {
+                        anyDeleted = true;
+                    }
                 }
 
                 // Re-check subfolders after recursive cleanup - some may have been deleted
@@ -666,7 +678,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
             // Re-check folder validity after subfolder cleanup
             if (!AssetDatabase.IsValidFolder(normalized))
             {
-                return;
+                return anyDeleted;
             }
 
             // Check if folder has any direct asset contents (not subfolders)
@@ -679,13 +691,13 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
             catch
             {
                 // Folder may have been deleted between check and FindAssets
-                return;
+                return anyDeleted;
             }
 
             // Re-check folder validity in case it was deleted during FindAssets
             if (!AssetDatabase.IsValidFolder(normalized))
             {
-                return;
+                return anyDeleted;
             }
 
             if (contents is { Length: > 0 })
@@ -716,7 +728,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
 
                 if (hasDirectContents)
                 {
-                    return;
+                    return anyDeleted;
                 }
             }
 
@@ -724,7 +736,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
             subfolders = AssetDatabase.GetSubFolders(normalized);
             if (subfolders is { Length: > 0 })
             {
-                return;
+                return anyDeleted;
             }
 
             // Folder is empty - try to delete it
@@ -733,14 +745,20 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
                 LogVerbose(
                     $"ScriptableObjectSingletonCreator: Deleted empty folder '{normalized}'."
                 );
+                anyDeleted = true;
 
                 // Try to clean up parent folder
                 string parentFolder = Path.GetDirectoryName(normalized)?.SanitizePath();
                 if (!string.IsNullOrWhiteSpace(parentFolder))
                 {
-                    CleanupEmptyFolderRecursive(parentFolder, processed);
+                    if (CleanupEmptyFolderRecursive(parentFolder, processed))
+                    {
+                        anyDeleted = true;
+                    }
                 }
             }
+
+            return anyDeleted;
         }
 
         private static string GetResourcesSubFolder(Type type)
@@ -884,7 +902,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
                     return asset;
                 }
 
-                // Retry after ensuring parent and performing save/refresh if parent folder may not yet be registered
+                // Retry after ensuring parent folder exists (without intermediate Refresh to avoid domain reload loops)
                 string parentDir = Path.GetDirectoryName(normalizedTarget)?.SanitizePath();
                 bool retried = false;
                 if (!string.IsNullOrWhiteSpace(parentDir))
@@ -897,17 +915,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
                         parentDir = resolvedParent;
                     }
 
-                    // Temporarily stop asset editing to save and refresh
-                    AssetDatabase.StopAssetEditing();
-                    try
-                    {
-                        AssetDatabase.SaveAssets();
-                        AssetDatabase.Refresh();
-                    }
-                    finally
-                    {
-                        AssetDatabase.StartAssetEditing();
-                    }
+                    // Note: Removed intermediate SaveAssets/Refresh here - we defer all refreshes to the end
+                    // to avoid domain reload loops during processing. The folder should be registered via ImportAsset.
 
                     // Verify parent folder is now valid in AssetDatabase
                     if (AssetDatabase.IsValidFolder(parentDir))
@@ -1255,7 +1264,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
 
             if (removed)
             {
-                AssetDatabase.Refresh();
+                // Note: Removed intermediate Refresh here - we defer all refreshes to the end
+                // to avoid domain reload loops during processing
                 LogVerbose(
                     $"ScriptableObjectSingletonCreator: Cleared stale artifacts blocking singleton creation at '{assetsRelativePath}'."
                 );
@@ -1319,7 +1329,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
                     return true;
                 }
 
-                AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
+                // Note: Removed intermediate Refresh here - we defer all refreshes to the end
+                // to avoid domain reload loops during processing. ImportAsset should be sufficient.
             }
             catch (Exception ex)
             {
@@ -1818,6 +1829,13 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
 
         private static void ForceAssetDatabaseSync()
         {
+            // Skip if we're in the ensure scope to avoid domain reload loops
+            // The final Refresh in EnsureSingletonAssets will sync everything
+            if (_isEnsuring)
+            {
+                return;
+            }
+
             if (_assetEditingScopeDepth > 0)
             {
                 AssetDatabase.StopAssetEditing();
