@@ -1,5 +1,7 @@
 # Skill: Unity Garbage Collection Architecture
 
+<!-- trigger: gc, garbage, boehm, incremental, collect | Understanding Unity GC, incremental GC, manual GC | Performance -->
+
 **Trigger**: When you need to understand how Unity's garbage collector differs from .NET, when to use incremental GC, or when to manually trigger garbage collection.
 
 ---

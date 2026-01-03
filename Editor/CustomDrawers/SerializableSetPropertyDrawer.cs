@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
@@ -20,6 +20,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
     using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
     using WallstopStudios.UnityHelpers.Core.Extension;
     using WallstopStudios.UnityHelpers.Core.Helper;
+    using WallstopStudios.UnityHelpers.Editor.Core.Helper;
     using WallstopStudios.UnityHelpers.Editor.Settings;
     using WallstopStudios.UnityHelpers.Editor.Utils;
     using WallstopStudios.UnityHelpers.Utils;
@@ -57,7 +58,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         private static readonly GUIContent PaginationPageLabelContent = new();
         private static readonly GUIContent RangeLabelGUIContent = new();
         private static readonly object NullComparable = new();
-        private static readonly Dictionary<(int, int), string> PaginationLabelCache = new();
         private static readonly Dictionary<(int, int, int), string> RangeLabelCache = new();
 
         private static readonly GUIStyle AddButtonStyle = CreateSolidButtonStyle(
@@ -7167,31 +7167,13 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             return FoldoutLabelContent;
         }
 
+        /// <summary>
+        /// Gets a cached pagination label in the format "Page X / Y".
+        /// Delegates to <see cref="EditorCacheHelper.GetPaginationLabel"/> for shared LRU caching.
+        /// </summary>
         private static string GetPaginationLabel(int currentPage, int pageCount)
         {
-            (int, int) key = (currentPage, pageCount);
-            if (PaginationLabelCache.TryGetValue(key, out string cached))
-            {
-                return cached;
-            }
-
-            using PooledResource<StringBuilder> lease = Buffers.GetStringBuilder(
-                24,
-                out StringBuilder builder
-            );
-            builder.Clear();
-            builder.Append("Page ");
-            builder.Append(currentPage);
-            builder.Append('/');
-            builder.Append(pageCount);
-            string result = builder.ToString();
-
-            if (PaginationLabelCache.Count < 10000)
-            {
-                PaginationLabelCache[key] = result;
-            }
-
-            return result;
+            return EditorCacheHelper.GetPaginationLabel(currentPage, pageCount);
         }
 
         private static string GetRangeLabel(int start, int end, int total)

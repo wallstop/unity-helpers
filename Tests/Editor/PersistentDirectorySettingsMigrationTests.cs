@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Tests
@@ -16,6 +16,7 @@ namespace WallstopStudios.UnityHelpers.Tests
     using WallstopStudios.UnityHelpers.Editor;
     using WallstopStudios.UnityHelpers.Editor.Utils;
     using WallstopStudios.UnityHelpers.Tests.Core;
+    using WallstopStudios.UnityHelpers.Tests.Core.TestUtils;
     using Object = UnityEngine.Object;
 
     public sealed class PersistentDirectorySettingsMigrationTests : CommonTestBase
@@ -85,7 +86,7 @@ namespace WallstopStudios.UnityHelpers.Tests
             legacy.RecordPath("TestTool", "Context", "Assets/TestPath");
             AssetDatabase.CreateAsset(legacy, PersistentDirectorySettings.LegacyAssetPath);
             AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
             yield return null;
 
             Assert.IsNotNull(
@@ -145,7 +146,7 @@ namespace WallstopStudios.UnityHelpers.Tests
             yield return null;
 
             AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
             yield return null;
 
             PersistentDirectorySettings result = PersistentDirectorySettings.RunMigration();
@@ -207,7 +208,7 @@ namespace WallstopStudios.UnityHelpers.Tests
             yield return null;
 
             AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
             yield return null;
 
             PersistentDirectorySettings result = PersistentDirectorySettings.RunMigration();
@@ -294,7 +295,7 @@ namespace WallstopStudios.UnityHelpers.Tests
             );
             AssetDatabase.CreateAsset(legacy, PersistentDirectorySettings.LegacyAssetPath);
             AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
             yield return null;
 
             Assert.IsTrue(
@@ -332,7 +333,7 @@ namespace WallstopStudios.UnityHelpers.Tests
             legacy.RecordPath("ImportTool", "Audio", "Assets/Audio/Import");
             AssetDatabase.CreateAsset(legacy, PersistentDirectorySettings.LegacyAssetPath);
             AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
             yield return null;
 
             PersistentDirectorySettings result = PersistentDirectorySettings.RunMigration();
@@ -482,7 +483,7 @@ namespace WallstopStudios.UnityHelpers.Tests
             yield return null;
 
             AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
             yield return null;
 
             PersistentDirectorySettings result = PersistentDirectorySettings.RunMigration();
@@ -515,7 +516,7 @@ namespace WallstopStudios.UnityHelpers.Tests
             yield return null;
 
             AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
             yield return null;
 
             Assert.IsTrue(
@@ -543,7 +544,7 @@ namespace WallstopStudios.UnityHelpers.Tests
             yield return null;
 
             AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
             yield return null;
 
             Assert.IsTrue(
@@ -585,7 +586,7 @@ namespace WallstopStudios.UnityHelpers.Tests
             yield return null;
 
             AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
             yield return null;
 
             PersistentDirectorySettings.CleanupLegacyEmptyFolders();
@@ -622,7 +623,7 @@ namespace WallstopStudios.UnityHelpers.Tests
             yield return null;
 
             AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
             yield return null;
 
             PersistentDirectorySettings.CleanupLegacyEmptyFolders();
@@ -649,7 +650,7 @@ namespace WallstopStudios.UnityHelpers.Tests
             yield return null;
 
             AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
             yield return null;
 
             PersistentDirectorySettings.CleanupLegacyEmptyFolders();
@@ -678,7 +679,7 @@ namespace WallstopStudios.UnityHelpers.Tests
             yield return null;
 
             AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
             yield return null;
 
             Assert.IsTrue(
@@ -717,7 +718,7 @@ namespace WallstopStudios.UnityHelpers.Tests
             yield return null;
 
             AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
             yield return null;
 
             Assert.IsTrue(
@@ -789,7 +790,7 @@ namespace WallstopStudios.UnityHelpers.Tests
             yield return null;
 
             AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
             yield return null;
 
             Assert.DoesNotThrow(
@@ -830,7 +831,7 @@ namespace WallstopStudios.UnityHelpers.Tests
             yield return null;
 
             AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
             yield return null;
 
             Assert.IsTrue(
@@ -889,7 +890,7 @@ namespace WallstopStudios.UnityHelpers.Tests
             yield return null;
 
             AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
             yield return null;
 
             PersistentDirectorySettings.CleanupLegacyEmptyFolders();
@@ -932,7 +933,7 @@ namespace WallstopStudios.UnityHelpers.Tests
             legacy.RecordPath("Tool", "Ctx", "Assets/Path");
             AssetDatabase.CreateAsset(legacy, PersistentDirectorySettings.LegacyAssetPath);
             AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
             yield return null;
 
             PersistentDirectorySettings result = PersistentDirectorySettings.RunMigration();
@@ -981,7 +982,7 @@ namespace WallstopStudios.UnityHelpers.Tests
             );
             AssetDatabase.CreateAsset(legacy, PersistentDirectorySettings.LegacyAssetPath);
             AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
             yield return null;
 
             Assert.IsTrue(
@@ -1027,7 +1028,7 @@ namespace WallstopStudios.UnityHelpers.Tests
             yield return null;
 
             AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
             yield return null;
 
             Assert.IsTrue(
@@ -1083,7 +1084,7 @@ namespace WallstopStudios.UnityHelpers.Tests
             legacy.RecordPath("ImportTool", "Default", "Assets/Import");
             AssetDatabase.CreateAsset(legacy, PersistentDirectorySettings.LegacyAssetPath);
             AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
             yield return null;
 
             PersistentDirectorySettings result = PersistentDirectorySettings.RunMigration();
@@ -1166,7 +1167,7 @@ namespace WallstopStudios.UnityHelpers.Tests
             yield return null;
 
             AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
             yield return null;
         }
 
@@ -1470,7 +1471,7 @@ namespace WallstopStudios.UnityHelpers.Tests
             yield return null;
 
             AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
             yield return null;
 
             string[] subFoldersBeforeCleanup = AssetDatabase.IsValidFolder(

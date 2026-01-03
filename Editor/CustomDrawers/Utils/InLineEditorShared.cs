@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers.Utils
@@ -10,6 +10,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers.Utils
     using UnityEditor;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Attributes;
+    using WallstopStudios.UnityHelpers.Core.DataStructure;
     using WallstopStudios.UnityHelpers.Editor.Core.Helper;
     using WallstopStudios.UnityHelpers.Editor.Settings;
     using WallstopStudios.UnityHelpers.Editor.Utils;
@@ -101,12 +102,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers.Utils
         private const int MaxEditorCacheSize = 500;
 
         /// <summary>
-        /// Maximum number of integer-to-string conversions to cache.
-        /// Prevents unbounded growth from many unique instance IDs.
-        /// </summary>
-        private const int MaxIntToStringCacheSize = 10000;
-
-        /// <summary>
         /// Cache for foldout expansion states, keyed by a unique foldout identifier.
         /// Limited to <see cref="MaxFoldoutStatesCacheSize"/> entries to prevent unbounded memory growth.
         /// </summary>
@@ -126,17 +121,29 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers.Utils
 
         /// <summary>
         /// Cache for Unity Editor instances, keyed by object instance ID.
-        /// Limited to <see cref="MaxEditorCacheSize"/> entries to prevent unbounded memory growth.
-        /// Editor instances are properly destroyed when evicted from the cache.
+        /// Uses <see cref="Cache{TKey,TValue}"/> with LRU eviction and eviction callback
+        /// to properly destroy Editor instances when they are evicted from the cache.
         /// </summary>
-        private static readonly Dictionary<int, Editor> EditorCache = new Dictionary<int, Editor>();
+        private static readonly Cache<int, Editor> EditorCache = CacheBuilder<int, Editor>
+            .NewBuilder()
+            .MaximumSize(MaxEditorCacheSize)
+            .OnEviction(OnEditorEvicted)
+            .Build();
 
         /// <summary>
-        /// Cache for integer-to-string conversions, used for building foldout/scroll keys.
-        /// Limited to <see cref="MaxIntToStringCacheSize"/> entries to prevent unbounded memory growth.
+        /// Callback invoked when an Editor is evicted from the cache.
+        /// Properly destroys the Editor instance to prevent memory leaks.
         /// </summary>
-        private static readonly Dictionary<int, string> IntToStringCache =
-            new Dictionary<int, string>();
+        /// <param name="key">The instance ID of the evicted editor.</param>
+        /// <param name="editor">The Editor instance being evicted.</param>
+        /// <param name="reason">The reason for eviction.</param>
+        private static void OnEditorEvicted(int key, Editor editor, EvictionReason reason)
+        {
+            if (editor != null)
+            {
+                Object.DestroyImmediate(editor);
+            }
+        }
 
         /// <summary>
         /// Reusable GUIContent for ping button to avoid allocations.
@@ -300,7 +307,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers.Utils
 
         /// <summary>
         /// Gets or creates a cached editor for the given object.
-        /// Uses LRU ordering to track access and evict least-recently-used editors.
+        /// Uses <see cref="Cache{TKey,TValue}"/> with LRU eviction to manage editor instances.
+        /// When editors are evicted from the cache, they are properly destroyed via <see cref="OnEditorEvicted"/>.
         /// </summary>
         /// <param name="value">The object to get or create an editor for.</param>
         /// <returns>The cached editor, or null if the value is null.</returns>
@@ -313,76 +321,31 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers.Utils
 
             int key = value.GetInstanceID();
 
-            if (EditorCache.TryGetValue(key, out Editor cachedEditor) && cachedEditor != null)
+            // Check if we have a valid cached editor (TryGet marks it as accessed for LRU)
+            if (EditorCache.TryGet(key, out Editor cachedEditor) && cachedEditor != null)
             {
-                EditorCache.Remove(key);
-                EditorCache[key] = cachedEditor;
                 return cachedEditor;
             }
 
-            Editor.CreateCachedEditor(value, null, ref cachedEditor);
+            // Create a new editor
+            Editor newEditor = null;
+            Editor.CreateCachedEditor(value, null, ref newEditor);
 
-            AddEditorToCache(key, cachedEditor);
+            // Add to cache (will evict LRU entry if at capacity, triggering OnEditorEvicted)
+            EditorCache.Set(key, newEditor);
 
-            return cachedEditor;
-        }
-
-        /// <summary>
-        /// Adds an editor to the bounded LRU cache, evicting and destroying the least-recently-used editor if at capacity.
-        /// </summary>
-        /// <param name="key">The instance ID key for the editor.</param>
-        /// <param name="editor">The editor to cache.</param>
-        private static void AddEditorToCache(int key, Editor editor)
-        {
-            if (EditorCache.ContainsKey(key))
-            {
-                EditorCache.Remove(key);
-                EditorCache[key] = editor;
-                return;
-            }
-
-            if (EditorCache.Count >= MaxEditorCacheSize)
-            {
-                int oldestKey = default;
-                bool foundKey = false;
-                foreach (int existingKey in EditorCache.Keys)
-                {
-                    oldestKey = existingKey;
-                    foundKey = true;
-                    break;
-                }
-
-                if (foundKey && EditorCache.TryGetValue(oldestKey, out Editor oldEditor))
-                {
-                    EditorCache.Remove(oldestKey);
-                    if (oldEditor != null)
-                    {
-                        Object.DestroyImmediate(oldEditor);
-                    }
-                }
-            }
-
-            EditorCache[key] = editor;
+            return newEditor;
         }
 
         /// <summary>
         /// Gets a cached string representation of an integer.
+        /// Delegates to the centralized <see cref="EditorCacheHelper.GetCachedIntString"/> for shared LRU caching.
         /// </summary>
         /// <param name="value">The integer value to convert.</param>
         /// <returns>The cached string representation.</returns>
         public static string GetCachedIntString(int value)
         {
-            if (!IntToStringCache.TryGetValue(value, out string cached))
-            {
-                cached = value.ToString();
-
-                if (IntToStringCache.Count < MaxIntToStringCacheSize)
-                {
-                    IntToStringCache[value] = cached;
-                }
-            }
-
-            return cached;
+            return EditorCacheHelper.GetCachedIntString(value);
         }
 
         /// <summary>
@@ -632,6 +595,9 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers.Utils
 
         /// <summary>
         /// Clears all cached state. Called during domain reload to prevent stale references.
+        /// Note: IntToString cache is managed centrally by EditorCacheHelper.
+        /// The EditorCache.Clear() method will trigger <see cref="OnEditorEvicted"/> for each cached editor,
+        /// which properly destroys the Editor instances.
         /// </summary>
         internal static void ClearCache()
         {
@@ -639,17 +605,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers.Utils
 
             ScrollPositions.Clear();
 
-            foreach (Editor cachedEditor in EditorCache.Values)
-            {
-                if (cachedEditor != null)
-                {
-                    Object.DestroyImmediate(cachedEditor);
-                }
-            }
-
+            // Clear() triggers OnEviction callback for each entry, which calls DestroyImmediate
             EditorCache.Clear();
-
-            IntToStringCache.Clear();
         }
 
         /// <summary>

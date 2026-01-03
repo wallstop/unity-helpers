@@ -1,5 +1,7 @@
 # Skill: Use Spatial Structure
 
+<!-- trigger: spatial, quadtree, octree, kdtree, proximity | Spatial queries or proximity logic | Feature -->
+
 **Trigger**: When implementing spatial queries, collision detection, or proximity-based logic.
 
 ---

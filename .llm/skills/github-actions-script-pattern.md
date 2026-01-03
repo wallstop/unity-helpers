@@ -1,5 +1,7 @@
 # GitHub Actions Script Pattern
 
+<!-- trigger: actions, workflow, yaml, ci, script | Extract GHA logic to testable scripts | Feature -->
+
 ## Summary
 
 When creating GitHub Actions workflows with complex logic, **extract that logic into standalone scripts** instead of embedding it directly in YAML. This makes the code testable, maintainable, and easier to debug.

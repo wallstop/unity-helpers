@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 // ReSharper disable ArrangeRedundantParentheses
@@ -21,6 +21,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
     using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
     using WallstopStudios.UnityHelpers.Core.Extension;
     using WallstopStudios.UnityHelpers.Core.Helper;
+    using WallstopStudios.UnityHelpers.Editor.Core.Helper;
     using WallstopStudios.UnityHelpers.Editor.Settings;
     using WallstopStudios.UnityHelpers.Editor.Utils;
     using WallstopStudios.UnityHelpers.Utils;
@@ -746,10 +747,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         private static readonly GUIContent PaginationRangeContent = new();
         private static readonly GUIContent UnsupportedTypeContent = new();
         private static readonly Dictionary<Type, string> UnsupportedTypeMessageCache = new();
-        private static readonly Dictionary<int, string> IntToStringCache = new();
-        private static readonly Dictionary<(int, int), string> PaginationLabelCache = new();
         private static readonly Dictionary<(int, int, int), string> RangeLabelCache = new();
-        private const int IntToStringCacheMax = 1000;
         private static readonly GUIContent PaginationPrevContent = EditorGUIUtility.TrTextContent(
             "<",
             "Previous page"
@@ -10181,48 +10179,22 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             return current;
         }
 
+        /// <summary>
+        /// Gets a cached string representation of an integer.
+        /// Delegates to <see cref="EditorCacheHelper.GetCachedIntString"/> for shared LRU caching.
+        /// </summary>
         private static string GetCachedIntString(int value)
         {
-            if (value >= 0 && value < IntToStringCacheMax)
-            {
-                if (IntToStringCache.TryGetValue(value, out string cached))
-                {
-                    return cached;
-                }
-
-                string result = value.ToString();
-                IntToStringCache[value] = result;
-                return result;
-            }
-
-            return value.ToString();
+            return EditorCacheHelper.GetCachedIntString(value);
         }
 
+        /// <summary>
+        /// Gets a cached pagination label in the format "Page X / Y".
+        /// Delegates to <see cref="EditorCacheHelper.GetPaginationLabel"/> for shared LRU caching.
+        /// </summary>
         private static string GetPaginationLabel(int currentPage, int totalPages)
         {
-            (int, int) key = (currentPage, totalPages);
-            if (PaginationLabelCache.TryGetValue(key, out string cached))
-            {
-                return cached;
-            }
-
-            using PooledResource<StringBuilder> lease = Buffers.GetStringBuilder(
-                24,
-                out StringBuilder builder
-            );
-            builder.Clear();
-            builder.Append("Page ");
-            builder.Append(currentPage);
-            builder.Append('/');
-            builder.Append(totalPages);
-            string result = builder.ToString();
-
-            if (PaginationLabelCache.Count < 10000)
-            {
-                PaginationLabelCache[key] = result;
-            }
-
-            return result;
+            return EditorCacheHelper.GetPaginationLabel(currentPage, totalPages);
         }
 
         private static string GetRangeLabel(int start, int end, int total)

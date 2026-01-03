@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Editor.Core.Helper
@@ -9,6 +9,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Core.Helper
     using System.Collections.Generic;
     using System.Runtime.CompilerServices;
     using UnityEngine;
+    using WallstopStudios.UnityHelpers.Core.DataStructure;
     using WallstopStudios.UnityHelpers.Core.Helper;
 
     /// <summary>
@@ -87,6 +88,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Core.Helper
     /// <remarks>
     /// This helper consolidates common caching patterns used across property drawers, inspectors,
     /// and editor windows. Using a single cache improves memory efficiency and reduces duplication.
+    /// All caches use the unified <see cref="Cache{TKey,TValue}"/> implementation with LRU eviction.
     /// </remarks>
     public static class EditorCacheHelper
     {
@@ -109,8 +111,26 @@ namespace WallstopStudios.UnityHelpers.Editor.Core.Helper
         private const int MaxPaginationCacheSize = 1000;
         private const int MaxGUIStyleCacheSize = 500;
 
-        private static readonly Dictionary<int, string> IntToStringCache = new();
-        private static readonly Dictionary<(int, int), string> PaginationLabelCache = new();
+        /// <summary>
+        /// LRU cache for integer-to-string conversions.
+        /// Used by GetCachedIntString() and pagination labels across all editor UI.
+        /// </summary>
+        private static readonly Cache<int, string> IntToStringCache = CacheBuilder<int, string>
+            .NewBuilder()
+            .MaximumSize(MaxIntCacheSize)
+            .Build();
+
+        /// <summary>
+        /// LRU cache for pagination labels in format "Page X / Y".
+        /// </summary>
+        private static readonly Cache<(int, int), string> PaginationLabelCache = CacheBuilder<
+            (int, int),
+            string
+        >
+            .NewBuilder()
+            .MaximumSize(MaxPaginationCacheSize)
+            .Build();
+
         private static readonly Dictionary<Color, Texture2D> SolidTextureCache = new(
             new ColorComparer()
         );
@@ -125,29 +145,19 @@ namespace WallstopStudios.UnityHelpers.Editor.Core.Helper
 
         /// <summary>
         /// Gets the cached string representation of an integer value.
+        /// Uses a unified LRU cache with automatic eviction when capacity is reached.
         /// </summary>
         /// <param name="value">The integer value to convert to string.</param>
-        /// <returns>The cached string representation, or an empty string if cache is full and value is new.</returns>
+        /// <returns>The cached string representation.</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static string GetCachedIntString(int value)
         {
-            if (IntToStringCache.TryGetValue(value, out string cached))
-            {
-                return cached;
-            }
-
-            if (IntToStringCache.Count >= MaxIntCacheSize)
-            {
-                return value.ToString();
-            }
-
-            string result = value.ToString();
-            IntToStringCache[value] = result;
-            return result;
+            return IntToStringCache.GetOrAdd(value, static v => v.ToString());
         }
 
         /// <summary>
         /// Gets a cached pagination label in the format "Page X / Y".
+        /// Uses a unified LRU cache with automatic eviction when capacity is reached.
         /// </summary>
         /// <param name="page">The current page number (1-based).</param>
         /// <param name="totalPages">The total number of pages.</param>
@@ -156,20 +166,11 @@ namespace WallstopStudios.UnityHelpers.Editor.Core.Helper
         {
             (int, int) key = (page, totalPages);
 
-            if (PaginationLabelCache.TryGetValue(key, out string cached))
-            {
-                return cached;
-            }
-
-            if (PaginationLabelCache.Count >= MaxPaginationCacheSize)
-            {
-                return "Page " + GetCachedIntString(page) + " / " + GetCachedIntString(totalPages);
-            }
-
-            string result =
-                "Page " + GetCachedIntString(page) + " / " + GetCachedIntString(totalPages);
-            PaginationLabelCache[key] = result;
-            return result;
+            return PaginationLabelCache.GetOrAdd(
+                key,
+                static k =>
+                    "Page " + GetCachedIntString(k.Item1) + " / " + GetCachedIntString(k.Item2)
+            );
         }
 
         /// <summary>
@@ -511,6 +512,24 @@ namespace WallstopStudios.UnityHelpers.Editor.Core.Helper
                 }
             }
             SolidTextureCache.Clear();
+        }
+
+        /// <summary>
+        /// Gets the current count of entries in the IntToString cache.
+        /// </summary>
+        /// <returns>The number of cached integer-to-string conversions.</returns>
+        internal static int GetIntToStringCacheCount()
+        {
+            return IntToStringCache.Count;
+        }
+
+        /// <summary>
+        /// Gets the current count of entries in the PaginationLabel cache.
+        /// </summary>
+        /// <returns>The number of cached pagination labels.</returns>
+        internal static int GetPaginationLabelCacheCount()
+        {
+            return PaginationLabelCache.Count;
         }
 
         /// <summary>

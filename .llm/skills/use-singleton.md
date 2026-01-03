@@ -1,5 +1,7 @@
 # Skill: Use Singleton
 
+<!-- trigger: singleton, global, manager, service, config | Global managers, service locators, configuration | Feature -->
+
 **Trigger**: When implementing global manager classes, service locators, or shared configuration objects in Unity.
 
 ---

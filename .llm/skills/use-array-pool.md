@@ -1,5 +1,7 @@
 # Skill: Use Array Pool
 
+<!-- trigger: array, buffer, pool, temporary | Working with temporary arrays | Performance -->
+
 **Trigger**: When working with temporary arrays or buffers that should be pooled for performance.
 
 ---
@@ -173,3 +175,12 @@ for (int i = 0; i < outer.Length; i++)
 }
 // Both are properly returned to pools
 ```
+
+---
+
+## Related Skills
+
+- [use-pooling](./use-pooling.md) - Collection pooling (List, HashSet, StringBuilder)
+- [avoid-allocations](./avoid-allocations.md) - Avoiding heap allocations and boxing
+- [high-performance-csharp](./high-performance-csharp.md) - Core zero-allocation patterns
+- [refactor-to-zero-alloc](./refactor-to-zero-alloc.md) - Migration from allocating to pooled code

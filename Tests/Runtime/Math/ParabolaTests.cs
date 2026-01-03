@@ -1,9 +1,10 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Tests.Math
 {
     using System;
+    using System.Collections.Generic;
     using NUnit.Framework;
     using WallstopStudios.UnityHelpers.Core.Math;
 
@@ -11,6 +12,152 @@ namespace WallstopStudios.UnityHelpers.Tests.Math
     public sealed class ParabolaTests
     {
         private const float Tolerance = 0.0001f;
+
+        private static IEnumerable<TestCaseData> TryGetValueAtTestCases()
+        {
+            yield return new TestCaseData(10f, 20f, 0f, true, 0f).SetName(
+                "TryGetValueAt.Origin.ReturnsZero"
+            );
+            yield return new TestCaseData(10f, 20f, 20f, true, 0f).SetName(
+                "TryGetValueAt.AtLength.ReturnsZero"
+            );
+            yield return new TestCaseData(10f, 20f, 10f, true, 10f).SetName(
+                "TryGetValueAt.AtVertex.ReturnsMaxHeight"
+            );
+            yield return new TestCaseData(10f, 20f, 5f, true, 7.5f).SetName(
+                "TryGetValueAt.QuarterPoint.ReturnsCalculatedValue"
+            );
+            yield return new TestCaseData(10f, 20f, 15f, true, 7.5f).SetName(
+                "TryGetValueAt.ThreeQuarterPoint.ReturnsSymmetricValue"
+            );
+            yield return new TestCaseData(10f, 20f, -1f, false, float.NaN).SetName(
+                "TryGetValueAt.NegativeX.ReturnsFalse"
+            );
+            yield return new TestCaseData(10f, 20f, 21f, false, float.NaN).SetName(
+                "TryGetValueAt.BeyondLength.ReturnsFalse"
+            );
+            yield return new TestCaseData(15f, 30f, 15f, true, 15f).SetName(
+                "TryGetValueAt.DifferentParabola.ReturnsCorrectVertex"
+            );
+        }
+
+        [TestCaseSource(nameof(TryGetValueAtTestCases))]
+        public void TryGetValueAtReturnsExpected(
+            float maxHeight,
+            float length,
+            float x,
+            bool expectedResult,
+            float expectedY
+        )
+        {
+            Parabola parabola = new(maxHeight: maxHeight, length: length);
+
+            bool result = parabola.TryGetValueAt(x, out float y);
+
+            Assert.AreEqual(expectedResult, result);
+            if (expectedResult)
+            {
+                Assert.AreEqual(expectedY, y, Tolerance);
+            }
+            else
+            {
+                Assert.IsTrue(float.IsNaN(y));
+            }
+        }
+
+        private static IEnumerable<TestCaseData> TryGetValueAtNormalizedTestCases()
+        {
+            yield return new TestCaseData(10f, 20f, 0f, true, 0f).SetName(
+                "TryGetValueAtNormalized.AtZero.ReturnsZero"
+            );
+            yield return new TestCaseData(10f, 20f, 1f, true, 0f).SetName(
+                "TryGetValueAtNormalized.AtOne.ReturnsZero"
+            );
+            yield return new TestCaseData(10f, 20f, 0.5f, true, 10f).SetName(
+                "TryGetValueAtNormalized.AtHalf.ReturnsMaxHeight"
+            );
+            yield return new TestCaseData(10f, 20f, 0.25f, true, 7.5f).SetName(
+                "TryGetValueAtNormalized.AtQuarter.ReturnsCalculatedValue"
+            );
+            yield return new TestCaseData(10f, 20f, -0.1f, false, float.NaN).SetName(
+                "TryGetValueAtNormalized.NegativeT.ReturnsFalse"
+            );
+            yield return new TestCaseData(10f, 20f, 1.1f, false, float.NaN).SetName(
+                "TryGetValueAtNormalized.TGreaterThanOne.ReturnsFalse"
+            );
+        }
+
+        [TestCaseSource(nameof(TryGetValueAtNormalizedTestCases))]
+        public void TryGetValueAtNormalizedReturnsExpected(
+            float maxHeight,
+            float length,
+            float t,
+            bool expectedResult,
+            float expectedY
+        )
+        {
+            Parabola parabola = new(maxHeight: maxHeight, length: length);
+
+            bool result = parabola.TryGetValueAtNormalized(t, out float y);
+
+            Assert.AreEqual(expectedResult, result);
+            if (expectedResult)
+            {
+                Assert.AreEqual(expectedY, y, Tolerance);
+            }
+            else
+            {
+                Assert.IsTrue(float.IsNaN(y));
+            }
+        }
+
+        private static IEnumerable<TestCaseData> ConstructorInvalidParametersTestCases()
+        {
+            yield return new TestCaseData(10f, 0f).SetName(
+                "Constructor.ZeroLength.ThrowsArgumentException"
+            );
+            yield return new TestCaseData(10f, -5f).SetName(
+                "Constructor.NegativeLength.ThrowsArgumentException"
+            );
+            yield return new TestCaseData(0f, 10f).SetName(
+                "Constructor.ZeroMaxHeight.ThrowsArgumentException"
+            );
+            yield return new TestCaseData(-5f, 10f).SetName(
+                "Constructor.NegativeMaxHeight.ThrowsArgumentException"
+            );
+        }
+
+        [TestCaseSource(nameof(ConstructorInvalidParametersTestCases))]
+        public void ConstructorThrowsForInvalidParameters(float maxHeight, float length)
+        {
+            Assert.Throws<ArgumentException>(() =>
+                new Parabola(maxHeight: maxHeight, length: length)
+            );
+        }
+
+        private static IEnumerable<TestCaseData> FromCoefficientsInvalidTestCases()
+        {
+            yield return new TestCaseData(0.1f, 2f, 20f).SetName(
+                "FromCoefficients.PositiveA.ThrowsArgumentException"
+            );
+            yield return new TestCaseData(0f, 2f, 20f).SetName(
+                "FromCoefficients.ZeroA.ThrowsArgumentException"
+            );
+            yield return new TestCaseData(-0.1f, 1f, 20f).SetName(
+                "FromCoefficients.InvalidIntercept.ThrowsArgumentException"
+            );
+            yield return new TestCaseData(-0.1f, 2f, -20f).SetName(
+                "FromCoefficients.NegativeLength.ThrowsArgumentException"
+            );
+        }
+
+        [TestCaseSource(nameof(FromCoefficientsInvalidTestCases))]
+        public void FromCoefficientsThrowsForInvalidParameters(float a, float b, float length)
+        {
+            Assert.Throws<ArgumentException>(() =>
+                Parabola.FromCoefficients(a: a, b: b, length: length)
+            );
+        }
 
         [Test]
         public void ConstructorWithValidParametersCreatesParabola()
@@ -22,35 +169,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Math
         }
 
         [Test]
-        public void ConstructorWithZeroLengthThrowsException()
-        {
-            Assert.Throws<ArgumentException>(() => new Parabola(maxHeight: 10f, length: 0f));
-        }
-
-        [Test]
-        public void ConstructorWithNegativeLengthThrowsException()
-        {
-            Assert.Throws<ArgumentException>(() => new Parabola(maxHeight: 10f, length: -5f));
-        }
-
-        [Test]
-        public void ConstructorWithZeroMaxHeightThrowsException()
-        {
-            Assert.Throws<ArgumentException>(() => new Parabola(maxHeight: 0f, length: 10f));
-        }
-
-        [Test]
-        public void ConstructorWithNegativeMaxHeightThrowsException()
-        {
-            Assert.Throws<ArgumentException>(() => new Parabola(maxHeight: -5f, length: 10f));
-        }
-
-        [Test]
         public void ConstructorCalculatesCorrectCoefficients()
         {
-            // For maxHeight=10, length=20:
-            // A = -4*10/400 = -0.1
-            // B = 0.1*20 = 2
             Parabola parabola = new(maxHeight: 10f, length: 20f);
 
             Assert.AreEqual(-0.1f, parabola.A, Tolerance);
@@ -60,8 +180,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Math
         [Test]
         public void FromCoefficientsWithValidParametersCreatesParabola()
         {
-            // For a parabola with intercepts at 0 and 20, max height 10:
-            // A = -0.1, B = 2
             Parabola parabola = Parabola.FromCoefficients(a: -0.1f, b: 2f, length: 20f);
 
             Assert.AreEqual(20f, parabola.Length, Tolerance);
@@ -71,42 +189,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Math
         }
 
         [Test]
-        public void FromCoefficientsWithPositiveAThrowsException()
-        {
-            Assert.Throws<ArgumentException>(() =>
-                Parabola.FromCoefficients(a: 0.1f, b: 2f, length: 20f)
-            );
-        }
-
-        [Test]
-        public void FromCoefficientsWithZeroAThrowsException()
-        {
-            Assert.Throws<ArgumentException>(() =>
-                Parabola.FromCoefficients(a: 0f, b: 2f, length: 20f)
-            );
-        }
-
-        [Test]
-        public void FromCoefficientsWithInvalidInterceptThrowsException()
-        {
-            // These coefficients don't produce an intercept at x=20
-            Assert.Throws<ArgumentException>(() =>
-                Parabola.FromCoefficients(a: -0.1f, b: 1f, length: 20f)
-            );
-        }
-
-        [Test]
-        public void FromCoefficientsWithNegativeLengthThrowsException()
-        {
-            Assert.Throws<ArgumentException>(() =>
-                Parabola.FromCoefficients(a: -0.1f, b: 2f, length: -20f)
-            );
-        }
-
-        [Test]
         public void VertexXReturnsHalfLength()
         {
             Parabola parabola = new(maxHeight: 10f, length: 20f);
+
             Assert.AreEqual(10f, parabola.VertexX, Tolerance);
         }
 
@@ -131,68 +217,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Math
         }
 
         [Test]
-        public void TryGetValueAtReturnsZeroAtOrigin()
-        {
-            Parabola parabola = new(maxHeight: 10f, length: 20f);
-            bool result = parabola.TryGetValueAt(0f, out float y);
-
-            Assert.IsTrue(result);
-            Assert.AreEqual(0f, y, Tolerance);
-        }
-
-        [Test]
-        public void TryGetValueAtReturnsZeroAtLength()
-        {
-            Parabola parabola = new(maxHeight: 10f, length: 20f);
-            bool result = parabola.TryGetValueAt(20f, out float y);
-
-            Assert.IsTrue(result);
-            Assert.AreEqual(0f, y, Tolerance);
-        }
-
-        [Test]
-        public void TryGetValueAtReturnsMaxHeightAtVertex()
-        {
-            Parabola parabola = new(maxHeight: 10f, length: 20f);
-            bool result = parabola.TryGetValueAt(10f, out float y);
-
-            Assert.IsTrue(result);
-            Assert.AreEqual(10f, y, Tolerance);
-        }
-
-        [Test]
-        public void TryGetValueAtReturnsFalseForNegativeX()
-        {
-            Parabola parabola = new(maxHeight: 10f, length: 20f);
-            bool result = parabola.TryGetValueAt(-1f, out float y);
-
-            Assert.IsFalse(result);
-            Assert.IsTrue(float.IsNaN(y));
-        }
-
-        [Test]
-        public void TryGetValueAtReturnsFalseForXBeyondLength()
-        {
-            Parabola parabola = new(maxHeight: 10f, length: 20f);
-            bool result = parabola.TryGetValueAt(21f, out float y);
-
-            Assert.IsFalse(result);
-            Assert.IsTrue(float.IsNaN(y));
-        }
-
-        [Test]
-        public void TryGetValueAtCalculatesCorrectIntermediateValues()
-        {
-            // For maxHeight=10, length=20: y = -0.1*x^2 + 2*x
-            // At x=5: y = -0.1*25 + 10 = 7.5
-            Parabola parabola = new(maxHeight: 10f, length: 20f);
-            bool result = parabola.TryGetValueAt(5f, out float y);
-
-            Assert.IsTrue(result);
-            Assert.AreEqual(7.5f, y, Tolerance);
-        }
-
-        [Test]
         public void TryGetValueAtIsSymmetricAroundVertex()
         {
             Parabola parabola = new(maxHeight: 10f, length: 20f);
@@ -204,70 +228,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Math
         }
 
         [Test]
-        public void TryGetValueAtNormalizedAtZeroReturnsZero()
-        {
-            Parabola parabola = new(maxHeight: 10f, length: 20f);
-            bool result = parabola.TryGetValueAtNormalized(0f, out float y);
-
-            Assert.IsTrue(result);
-            Assert.AreEqual(0f, y, Tolerance);
-        }
-
-        [Test]
-        public void TryGetValueAtNormalizedAtOneReturnsZero()
-        {
-            Parabola parabola = new(maxHeight: 10f, length: 20f);
-            bool result = parabola.TryGetValueAtNormalized(1f, out float y);
-
-            Assert.IsTrue(result);
-            Assert.AreEqual(0f, y, Tolerance);
-        }
-
-        [Test]
-        public void TryGetValueAtNormalizedAtHalfReturnsMaxHeight()
-        {
-            Parabola parabola = new(maxHeight: 10f, length: 20f);
-            bool result = parabola.TryGetValueAtNormalized(0.5f, out float y);
-
-            Assert.IsTrue(result);
-            Assert.AreEqual(10f, y, Tolerance);
-        }
-
-        [Test]
-        public void TryGetValueAtNormalizedReturnsFalseForNegativeT()
-        {
-            Parabola parabola = new(maxHeight: 10f, length: 20f);
-            bool result = parabola.TryGetValueAtNormalized(-0.1f, out float y);
-
-            Assert.IsFalse(result);
-            Assert.IsTrue(float.IsNaN(y));
-        }
-
-        [Test]
-        public void TryGetValueAtNormalizedReturnsFalseForTGreaterThanOne()
-        {
-            Parabola parabola = new(maxHeight: 10f, length: 20f);
-            bool result = parabola.TryGetValueAtNormalized(1.1f, out float y);
-
-            Assert.IsFalse(result);
-            Assert.IsTrue(float.IsNaN(y));
-        }
-
-        [Test]
-        public void TryGetValueAtNormalizedCalculatesCorrectValues()
-        {
-            // At t=0.25, x=5 (for length=20): y = 7.5
-            Parabola parabola = new(maxHeight: 10f, length: 20f);
-            bool result = parabola.TryGetValueAtNormalized(0.25f, out float y);
-
-            Assert.IsTrue(result);
-            Assert.AreEqual(7.5f, y, Tolerance);
-        }
-
-        [Test]
         public void GetValueAtUncheckedCalculatesCorrectValue()
         {
             Parabola parabola = new(maxHeight: 10f, length: 20f);
+
             float y = parabola.GetValueAtUnchecked(5f);
 
             Assert.AreEqual(7.5f, y, Tolerance);
@@ -278,7 +242,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Math
         {
             Parabola parabola = new(maxHeight: 10f, length: 20f);
 
-            // Should not throw or return NaN for out-of-bounds values
             float yNegative = parabola.GetValueAtUnchecked(-5f);
             float yBeyond = parabola.GetValueAtUnchecked(25f);
 
@@ -350,7 +313,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Math
             Parabola p1 = new(maxHeight: 10f, length: 20f);
             Parabola p2 = new(maxHeight: 15f, length: 20f);
 
-            // Hash codes should typically be different (not guaranteed, but highly likely)
             Assert.AreNotEqual(p1.GetHashCode(), p2.GetHashCode());
         }
 
@@ -358,6 +320,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Math
         public void ToStringReturnsFormattedString()
         {
             Parabola parabola = new(maxHeight: 10f, length: 20f);
+
             string result = parabola.ToString();
 
             StringAssert.Contains("maxHeight=10.00", result);
@@ -369,6 +332,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Math
         public void SmallParabolaMaintainsPrecision()
         {
             Parabola parabola = new(maxHeight: 0.001f, length: 0.002f);
+
             bool result = parabola.TryGetValueAt(0.001f, out float y);
 
             Assert.IsTrue(result);
@@ -379,10 +343,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Math
         public void LargeParabolaMaintainsPrecision()
         {
             Parabola parabola = new(maxHeight: 10000f, length: 20000f);
+
             bool result = parabola.TryGetValueAt(10000f, out float y);
 
             Assert.IsTrue(result);
-            Assert.AreEqual(10000f, y, 1f); // Slightly higher tolerance for large values
+            Assert.AreEqual(10000f, y, 1f);
         }
 
         [Test]
@@ -443,8 +408,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Math
         [Test]
         public void ParabolaDerivativeAtVertexIsZero()
         {
-            // Derivative: dy/dx = 2Ax + B
-            // At vertex x = Length/2, derivative should be 0
             Parabola parabola = new(maxHeight: 10f, length: 20f);
 
             float vertexX = parabola.VertexX;
@@ -456,8 +419,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Math
         [Test]
         public void ParabolaHasNegativeSecondDerivative()
         {
-            // Second derivative: d²y/dx² = 2A
-            // For downward parabola, this should be negative
             Parabola parabola = new(maxHeight: 10f, length: 20f);
 
             float secondDerivative = 2f * parabola.A;

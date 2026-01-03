@@ -1,5 +1,7 @@
 # Skill: Profile and Debug Performance
 
+<!-- trigger: profile, profiler, debug, measure, hotpath | Profiling, debugging, measuring performance | Performance -->
+
 **Trigger**: When investigating performance issues, optimizing hot paths, or verifying zero-allocation code.
 
 ---

@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers.Base
@@ -9,6 +9,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers.Base
     using UnityEditor;
     using UnityEngine;
     using UnityEngine.UIElements;
+    using WallstopStudios.UnityHelpers.Editor.Core.Helper;
     using WallstopStudios.UnityHelpers.Editor.Settings;
     using WallstopStudios.UnityHelpers.Editor.Styles;
     using WallstopStudios.UnityHelpers.Utils;
@@ -54,9 +55,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers.Base
         private int _suggestionOptionIndex;
         private int _currentFilteredCount;
         private bool _buffersInitialized;
-
-        private static readonly Dictionary<int, string> IntToStringCache = new();
-        private static readonly Dictionary<(int, int), string> PaginationLabelCache = new();
 
         /// <summary>
         /// Gets the total number of options available.
@@ -905,25 +903,12 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers.Base
             return (filteredCount + pageSize - 1) / pageSize;
         }
 
-        private static string GetCachedIntString(int value)
-        {
-            if (!IntToStringCache.TryGetValue(value, out string cached))
-            {
-                cached = value.ToString();
-                IntToStringCache[value] = cached;
-            }
-            return cached;
-        }
-
+        /// <summary>
+        /// Gets a cached pagination label. Delegates to <see cref="EditorCacheHelper.GetPaginationLabel"/>.
+        /// </summary>
         private static string GetPaginationLabel(int page, int totalPages)
         {
-            (int, int) key = (page, totalPages);
-            if (!PaginationLabelCache.TryGetValue(key, out string cached))
-            {
-                cached = "Page " + GetCachedIntString(page) + "/" + GetCachedIntString(totalPages);
-                PaginationLabelCache[key] = cached;
-            }
-            return cached;
+            return EditorCacheHelper.GetPaginationLabel(page, totalPages);
         }
     }
 #endif

@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Tests.Runtime.Performance
@@ -624,8 +624,17 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Performance
             if (readmeLines != null)
             {
                 readmeLines.Add($"##### {header}");
-                readmeLines.Add(headerLine);
-                readmeLines.Add(dividerLine);
+                readmeLines.Add("<table data-sortable>");
+                readmeLines.Add("  <thead>");
+                readmeLines.Add("    <tr>");
+                readmeLines.Add($"      <th align=\"left\">{header}</th>");
+                foreach (string treeName in treeNames)
+                {
+                    readmeLines.Add($"      <th align=\"right\">{treeName}</th>");
+                }
+                readmeLines.Add("    </tr>");
+                readmeLines.Add("  </thead>");
+                readmeLines.Add("  <tbody>");
             }
 
             UnityEngine.Debug.Log(headerLine);
@@ -649,12 +658,28 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Performance
                 UnityEngine.Debug.Log(rowLine);
                 if (readmeLines != null)
                 {
-                    readmeLines.Add(rowLine);
+                    System.Text.StringBuilder htmlRow = new();
+                    htmlRow.Append("    <tr><td align=\"left\">");
+                    htmlRow.Append(label);
+                    htmlRow.Append("</td>");
+                    foreach (string name in treeNames)
+                    {
+                        string cellValue = values.TryGetValue(name, out string v)
+                            ? v
+                            : string.Empty;
+                        htmlRow.Append("<td align=\"right\">");
+                        htmlRow.Append(cellValue);
+                        htmlRow.Append("</td>");
+                    }
+                    htmlRow.Append("</tr>");
+                    readmeLines.Add(htmlRow.ToString());
                 }
             }
 
             if (readmeLines != null)
             {
+                readmeLines.Add("  </tbody>");
+                readmeLines.Add("</table>");
                 readmeLines.Add(string.Empty);
             }
         }

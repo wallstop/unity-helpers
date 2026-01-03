@@ -1,5 +1,7 @@
 # Skill: Create C# File
 
+<!-- trigger: create, new, file, class, csharp, cs | Creating any new .cs file | Core -->
+
 **Trigger**: When creating any new `.cs` file in this repository.
 
 ---
@@ -25,6 +27,9 @@
 ## File Template
 
 ```csharp
+// MIT License - Copyright (c) {CURRENT_YEAR} wallstop
+// Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
+
 namespace WallstopStudios.UnityHelpers.{Subsystem}
 {
 #if CONDITIONAL_FEATURE
@@ -39,6 +44,22 @@ namespace WallstopStudios.UnityHelpers.{Subsystem}
     }
 }
 ```
+
+### License Header (REQUIRED)
+
+Every new C# file MUST include the MIT license header as the **first two lines**:
+
+```csharp
+// MIT License - Copyright (c) {CURRENT_YEAR} wallstop
+// Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
+```
+
+**Critical**: Replace `{CURRENT_YEAR}` with the **actual current year** when creating the file:
+
+- ✅ `// MIT License - Copyright (c) 2026 wallstop` (if current year is 2026)
+- ❌ `// MIT License - Copyright (c) 2023 wallstop` (hardcoded past year)
+
+The year reflects when the file was created, NOT when the project started. Use the current calendar year at the time of file creation.
 
 ---
 

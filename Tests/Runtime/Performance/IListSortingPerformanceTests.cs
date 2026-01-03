@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Tests.Runtime.Performance
@@ -94,8 +94,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Performance
                 UnityEngine.Debug.Log(dividerLine);
 
                 readmeLines.Add($"### {datasetState.Label}");
-                readmeLines.Add(headerLine);
-                readmeLines.Add(dividerLine);
+                readmeLines.AddRange(BuildTableHeader());
 
                 foreach (DatasetSizeSpec sizeSpec in DatasetSizeSpecs)
                 {
@@ -105,11 +104,39 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Performance
                     readmeLines.Add(rowLine);
                 }
 
+                readmeLines.AddRange(BuildTableFooter());
                 readmeLines.Add(string.Empty);
                 UnityEngine.Debug.Log(string.Empty);
             }
 
             BenchmarkReadmeUpdater.UpdateSection(sectionName, readmeLines, DocumentPath);
+        }
+
+        private static List<string> BuildTableHeader()
+        {
+            List<string> lines = new()
+            {
+                "<table data-sortable>",
+                "  <thead>",
+                "    <tr>",
+                "      <th align=\"left\">List Size</th>",
+            };
+
+            foreach (SortImplementation implementation in SortImplementations)
+            {
+                lines.Add($"      <th align=\"right\">{implementation.Label}</th>");
+            }
+
+            lines.Add("    </tr>");
+            lines.Add("  </thead>");
+            lines.Add("  <tbody>");
+
+            return lines;
+        }
+
+        private static List<string> BuildTableFooter()
+        {
+            return new List<string> { "  </tbody>", "</table>" };
         }
 
         private static string BuildHeaderLine()
@@ -145,18 +172,19 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Performance
         )
         {
             StringBuilder rowBuilder = new();
-            rowBuilder.Append("| ");
+            rowBuilder.Append("    <tr><td align=\"left\">");
             rowBuilder.Append(sizeLabel);
-            rowBuilder.Append(" |");
+            rowBuilder.Append("</td>");
 
             foreach (SortImplementation implementation in SortImplementations)
             {
                 string result = BenchmarkImplementation(implementation, baseData, comparer);
-                rowBuilder.Append(' ');
+                rowBuilder.Append("<td align=\"right\">");
                 rowBuilder.Append(result);
-                rowBuilder.Append(" |");
+                rowBuilder.Append("</td>");
             }
 
+            rowBuilder.Append("</tr>");
             return rowBuilder.ToString();
         }
 

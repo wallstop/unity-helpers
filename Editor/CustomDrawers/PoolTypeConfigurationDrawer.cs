@@ -1,0 +1,424 @@
+// MIT License - Copyright (c) 2026 wallstop
+// Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
+
+#if UNITY_EDITOR
+namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
+{
+    using System;
+    using System.Collections.Generic;
+    using UnityEditor;
+    using UnityEngine;
+    using WallstopStudios.UnityHelpers.Core.Extension;
+    using WallstopStudios.UnityHelpers.Utils;
+
+    /// <summary>
+    /// Custom property drawer for <see cref="PoolTypeConfiguration"/> that validates type names
+    /// and displays the resolved type information.
+    /// </summary>
+    [CustomPropertyDrawer(typeof(PoolTypeConfiguration))]
+    public sealed class PoolTypeConfigurationDrawer : PropertyDrawer
+    {
+        internal sealed class DrawerState
+        {
+            public string lastTypeName = string.Empty;
+            public Type resolvedType;
+            public bool isValid;
+            public string statusMessage = string.Empty;
+            public MessageType messageType = MessageType.None;
+            public readonly GUIContent statusContent = new();
+        }
+
+        private const string TypeNameFieldName = "_typeName";
+        private const string EnabledFieldName = "_enabled";
+        private const string IdleTimeoutFieldName = "_idleTimeoutSeconds";
+        private const string MinRetainCountFieldName = "_minRetainCount";
+        private const string MaxPoolSizeFieldName = "_maxPoolSize";
+        private const string BufferMultiplierFieldName = "_bufferMultiplier";
+        private const string RollingWindowFieldName = "_rollingWindowSeconds";
+        private const string HysteresisFieldName = "_hysteresisSeconds";
+        private const string SpikeThresholdFieldName = "_spikeThresholdMultiplier";
+
+        private const float StatusBoxMargin = 4f;
+        private const float MinStatusBoxWidth = 200f;
+
+        private static readonly Dictionary<string, DrawerState> States = new();
+
+        static PoolTypeConfigurationDrawer()
+        {
+            // Clear cached states on domain reload to prevent stale references
+            AssemblyReloadEvents.beforeAssemblyReload += ClearCachedStates;
+        }
+
+        private static readonly GUIContent TypeNameLabel = new(
+            "Type Name",
+            "Type name in any supported format:\n"
+                + "- List<int> (simplified closed generic)\n"
+                + "- List<> (simplified open generic)\n"
+                + "- Dictionary<string, int> (multiple args)\n"
+                + "- Dictionary<,> (open with multiple args)\n"
+                + "- List<List<int>> (nested generics)\n"
+                + "- System.Collections.Generic.List`1 (CLR syntax)"
+        );
+
+        private static readonly GUIContent EnabledLabel = new(
+            "Enabled",
+            "Whether intelligent pool purging is enabled for this type."
+        );
+
+        private static readonly GUIContent IdleTimeoutLabel = new(
+            "Idle Timeout (s)",
+            "Idle timeout in seconds before items become eligible for purging."
+        );
+
+        private static readonly GUIContent MinRetainCountLabel = new(
+            "Min Retain",
+            "Minimum number of items to always retain during purge operations."
+        );
+
+        private static readonly GUIContent MaxPoolSizeLabel = new(
+            "Max Size",
+            "Maximum pool size (0 = unbounded)."
+        );
+
+        private static readonly GUIContent BufferMultiplierLabel = new(
+            "Buffer",
+            "Buffer multiplier for comfortable pool size calculation."
+        );
+
+        private static readonly GUIContent RollingWindowLabel = new(
+            "Window (s)",
+            "Rolling window duration in seconds for high water mark tracking."
+        );
+
+        private static readonly GUIContent HysteresisLabel = new(
+            "Hysteresis (s)",
+            "Hysteresis duration in seconds. Purging is suppressed after a usage spike."
+        );
+
+        private static readonly GUIContent SpikeThresholdLabel = new(
+            "Spike",
+            "Spike threshold multiplier."
+        );
+
+        public override float GetPropertyHeight(SerializedProperty property, GUIContent label)
+        {
+            if (!property.isExpanded)
+            {
+                return EditorGUIUtility.singleLineHeight;
+            }
+
+            float lineHeight = EditorGUIUtility.singleLineHeight;
+            float spacing = EditorGUIUtility.standardVerticalSpacing;
+
+            // Header + Type Name + Status box + Enabled + 7 numeric fields
+            int lineCount = 10;
+            float totalHeight = lineHeight + (lineCount * (lineHeight + spacing));
+
+            DrawerState state = GetState(property);
+            if (!state.isValid && !string.IsNullOrEmpty(state.statusMessage))
+            {
+                state.statusContent.text = state.statusMessage;
+                float statusWidth = GetStatusBoxWidth();
+                float statusHeight = EditorStyles.helpBox.CalcHeight(
+                    state.statusContent,
+                    statusWidth
+                );
+                totalHeight += statusHeight + spacing;
+            }
+            else if (state.isValid && !string.IsNullOrEmpty(state.statusMessage))
+            {
+                // Info message for valid types
+                state.statusContent.text = state.statusMessage;
+                float statusWidth = GetStatusBoxWidth();
+                float statusHeight = EditorStyles.helpBox.CalcHeight(
+                    state.statusContent,
+                    statusWidth
+                );
+                totalHeight += statusHeight + spacing;
+            }
+
+            return totalHeight;
+        }
+
+        public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
+        {
+            DrawerState state = GetState(property);
+
+            SerializedProperty typeNameProp = property.FindPropertyRelative(TypeNameFieldName);
+            SerializedProperty enabledProp = property.FindPropertyRelative(EnabledFieldName);
+            SerializedProperty idleTimeoutProp = property.FindPropertyRelative(
+                IdleTimeoutFieldName
+            );
+            SerializedProperty minRetainProp = property.FindPropertyRelative(
+                MinRetainCountFieldName
+            );
+            SerializedProperty maxPoolSizeProp = property.FindPropertyRelative(
+                MaxPoolSizeFieldName
+            );
+            SerializedProperty bufferProp = property.FindPropertyRelative(
+                BufferMultiplierFieldName
+            );
+            SerializedProperty rollingWindowProp = property.FindPropertyRelative(
+                RollingWindowFieldName
+            );
+            SerializedProperty hysteresisProp = property.FindPropertyRelative(HysteresisFieldName);
+            SerializedProperty spikeThresholdProp = property.FindPropertyRelative(
+                SpikeThresholdFieldName
+            );
+
+            if (typeNameProp == null)
+            {
+                EditorGUI.PropertyField(position, property, label, true);
+                return;
+            }
+
+            // Update validation state
+            string currentTypeName = typeNameProp.stringValue ?? string.Empty;
+            if (!string.Equals(state.lastTypeName, currentTypeName, StringComparison.Ordinal))
+            {
+                state.lastTypeName = currentTypeName;
+                ValidateTypeName(state, currentTypeName);
+            }
+
+            EditorGUI.BeginProperty(position, label, property);
+
+            float lineHeight = EditorGUIUtility.singleLineHeight;
+            float spacing = EditorGUIUtility.standardVerticalSpacing;
+            float currentY = position.y;
+
+            // Foldout header with validation indicator
+            Rect foldoutRect = new(position.x, currentY, position.width, lineHeight);
+
+            GUIContent headerLabel;
+            if (string.IsNullOrWhiteSpace(currentTypeName))
+            {
+                headerLabel = new GUIContent(label.text + " (empty)", label.tooltip);
+            }
+            else if (state.isValid)
+            {
+                string displayName = PoolTypeResolver.GetDisplayName(state.resolvedType);
+                string prefix = state.resolvedType.IsGenericTypeDefinition ? "[Open] " : "";
+                headerLabel = new GUIContent($"{label.text}: {prefix}{displayName}", label.tooltip);
+            }
+            else
+            {
+                headerLabel = new GUIContent(
+                    $"{label.text}: {currentTypeName} (invalid)",
+                    label.tooltip
+                );
+            }
+
+            property.isExpanded = EditorGUI.Foldout(
+                foldoutRect,
+                property.isExpanded,
+                headerLabel,
+                true
+            );
+            currentY += lineHeight + spacing;
+
+            if (!property.isExpanded)
+            {
+                EditorGUI.EndProperty();
+                return;
+            }
+
+            EditorGUI.indentLevel++;
+
+            // Type Name field
+            Rect typeNameRect = new(position.x, currentY, position.width, lineHeight);
+            EditorGUI.PropertyField(typeNameRect, typeNameProp, TypeNameLabel);
+            currentY += lineHeight + spacing;
+
+            // Status/validation message
+            if (!string.IsNullOrEmpty(state.statusMessage))
+            {
+                state.statusContent.text = state.statusMessage;
+                float statusHeight = EditorStyles.helpBox.CalcHeight(
+                    state.statusContent,
+                    position.width - StatusBoxMargin * 2
+                );
+                Rect statusRect = new(
+                    position.x + StatusBoxMargin,
+                    currentY,
+                    position.width - StatusBoxMargin * 2,
+                    statusHeight
+                );
+                EditorGUI.HelpBox(statusRect, state.statusMessage, state.messageType);
+                currentY += statusHeight + spacing;
+            }
+
+            // Enabled toggle
+            Rect enabledRect = new(position.x, currentY, position.width, lineHeight);
+            if (enabledProp != null)
+            {
+                EditorGUI.PropertyField(enabledRect, enabledProp, EnabledLabel);
+            }
+            currentY += lineHeight + spacing;
+
+            // Numeric fields in two columns
+            float halfWidth = (position.width - spacing) / 2f;
+            float indent = EditorGUI.indentLevel * 15f;
+
+            // Row 1: Idle Timeout / Min Retain
+            DrawTwoColumnRow(
+                position,
+                ref currentY,
+                lineHeight,
+                spacing,
+                halfWidth,
+                indent,
+                idleTimeoutProp,
+                IdleTimeoutLabel,
+                minRetainProp,
+                MinRetainCountLabel
+            );
+
+            // Row 2: Max Size / Buffer
+            DrawTwoColumnRow(
+                position,
+                ref currentY,
+                lineHeight,
+                spacing,
+                halfWidth,
+                indent,
+                maxPoolSizeProp,
+                MaxPoolSizeLabel,
+                bufferProp,
+                BufferMultiplierLabel
+            );
+
+            // Row 3: Rolling Window / Hysteresis
+            DrawTwoColumnRow(
+                position,
+                ref currentY,
+                lineHeight,
+                spacing,
+                halfWidth,
+                indent,
+                rollingWindowProp,
+                RollingWindowLabel,
+                hysteresisProp,
+                HysteresisLabel
+            );
+
+            // Row 4: Spike Threshold (single column)
+            Rect spikeRect = new(position.x, currentY, position.width, lineHeight);
+            if (spikeThresholdProp != null)
+            {
+                EditorGUI.PropertyField(spikeRect, spikeThresholdProp, SpikeThresholdLabel);
+            }
+
+            EditorGUI.indentLevel--;
+            EditorGUI.EndProperty();
+        }
+
+        private static void DrawTwoColumnRow(
+            Rect position,
+            ref float currentY,
+            float lineHeight,
+            float spacing,
+            float halfWidth,
+            float indent,
+            SerializedProperty leftProp,
+            GUIContent leftLabel,
+            SerializedProperty rightProp,
+            GUIContent rightLabel
+        )
+        {
+            Rect leftRect = new(position.x, currentY, halfWidth, lineHeight);
+            Rect rightRect = new(position.x + halfWidth + spacing, currentY, halfWidth, lineHeight);
+
+            if (leftProp != null)
+            {
+                EditorGUI.PropertyField(leftRect, leftProp, leftLabel);
+            }
+
+            // Temporarily reset indent for right column
+            int prevIndent = EditorGUI.indentLevel;
+            EditorGUI.indentLevel = 0;
+            Rect adjustedRightRect = new(
+                rightRect.x + indent,
+                rightRect.y,
+                rightRect.width - indent,
+                rightRect.height
+            );
+            if (rightProp != null)
+            {
+                EditorGUI.PropertyField(adjustedRightRect, rightProp, rightLabel);
+            }
+            EditorGUI.indentLevel = prevIndent;
+
+            currentY += lineHeight + spacing;
+        }
+
+        private static void ValidateTypeName(DrawerState state, string typeName)
+        {
+            if (string.IsNullOrWhiteSpace(typeName))
+            {
+                state.resolvedType = null;
+                state.isValid = false;
+                state.statusMessage = string.Empty;
+                state.messageType = MessageType.None;
+                return;
+            }
+
+            Type resolved = PoolTypeResolver.ResolveType(typeName);
+            if (resolved == null)
+            {
+                state.resolvedType = null;
+                state.isValid = false;
+                state.statusMessage = $"Unable to resolve type: {typeName}";
+                state.messageType = MessageType.Warning;
+                return;
+            }
+
+            state.resolvedType = resolved;
+            state.isValid = true;
+
+            if (resolved.IsGenericTypeDefinition)
+            {
+                string displayName = PoolTypeResolver.GetDisplayName(resolved);
+                state.statusMessage = $"Open generic pattern: matches all {displayName} types";
+                state.messageType = MessageType.Info;
+            }
+            else if (resolved.IsGenericType)
+            {
+                string displayName = PoolTypeResolver.GetDisplayName(resolved);
+                state.statusMessage = $"Resolved: {displayName}";
+                state.messageType = MessageType.Info;
+            }
+            else
+            {
+                state.statusMessage = $"Resolved: {resolved.FullName}";
+                state.messageType = MessageType.Info;
+            }
+        }
+
+        internal static DrawerState GetState(SerializedProperty property)
+        {
+            string key = property.propertyPath;
+            return States.GetOrAdd(key);
+        }
+
+        internal static void ClearCachedStates()
+        {
+            States.Clear();
+        }
+
+        private static float GetStatusBoxWidth()
+        {
+            try
+            {
+                return Mathf.Max(
+                    MinStatusBoxWidth,
+                    EditorGUIUtility.currentViewWidth - StatusBoxMargin * 2
+                );
+            }
+            catch (ArgumentException)
+            {
+                return MinStatusBoxWidth;
+            }
+        }
+    }
+}
+#endif

@@ -31,9 +31,197 @@
   }
 </style>
 
+<!-- Sortable tables (Issue #126) -->
+<!--
+  Note: Tables with rowspan or colspan attributes may not sort correctly
+  because the sorting logic assumes a simple grid structure where each
+  row has the same number of cells aligned to column headers.
+-->
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    // Initialize sortable tables
+    const sortableTables = document.querySelectorAll("table[data-sortable]");
+    sortableTables.forEach((table) => {
+      const headers = table.querySelectorAll("th");
+      headers.forEach((header, columnIndex) => {
+        header.setAttribute("role", "columnheader");
+        header.setAttribute("tabindex", "0");
+        header.setAttribute("aria-sort", "none");
+
+        // Click handler
+        header.addEventListener("click", () => {
+          sortTableByColumn(table, columnIndex, header);
+        });
+
+        // Keyboard handler for accessibility
+        header.addEventListener("keydown", (event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            sortTableByColumn(table, columnIndex, header);
+          }
+        });
+      });
+    });
+
+    function sortTableByColumn(table, columnIndex, header) {
+      let tbody = table.querySelector("tbody");
+      if (!tbody) {
+        // If no tbody, create one from tr elements
+        const rows = Array.from(table.querySelectorAll("tr"));
+        if (rows.length <= 1) return;
+        tbody = document.createElement("tbody");
+        const headerRow = rows.shift();
+        const thead = document.createElement("thead");
+        thead.appendChild(headerRow);
+        rows.forEach((row) => {
+          tbody.appendChild(row);
+        });
+        table.innerHTML = "";
+        table.appendChild(thead);
+        table.appendChild(tbody);
+      }
+
+      const rows = Array.from(tbody.querySelectorAll("tr"));
+      if (rows.length === 0) return;
+
+      // Determine current sort direction
+      const currentDir = table.dataset.sortDir || "none";
+      const currentCol = table.dataset.sortCol;
+      let newDir;
+
+      if (currentCol === String(columnIndex)) {
+        // Toggle direction on same column
+        newDir = currentDir === "asc" ? "desc" : "asc";
+      } else {
+        // New column, default to ascending
+        newDir = "asc";
+      }
+
+      // Update sort state
+      table.dataset.sortDir = newDir;
+      table.dataset.sortCol = columnIndex;
+
+      // Reset all header aria-sort attributes
+      const allHeaders = table.querySelectorAll("th");
+      allHeaders.forEach((h) => {
+        h.setAttribute("aria-sort", "none");
+        // Remove existing sort indicators
+        const indicator = h.querySelector(".sort-indicator");
+        if (indicator) {
+          indicator.textContent = "";
+        }
+      });
+
+      // Update current header
+      header.setAttribute("aria-sort", newDir === "asc" ? "ascending" : "descending");
+
+      // Add or update sort indicator
+      let indicator = header.querySelector(".sort-indicator");
+      if (!indicator) {
+        indicator = document.createElement("span");
+        indicator.className = "sort-indicator";
+        indicator.setAttribute("aria-hidden", "true");
+        header.appendChild(indicator);
+      }
+      indicator.textContent = newDir === "asc" ? " \u25B2" : " \u25BC";
+
+      // Sort the rows
+      rows.sort((rowA, rowB) => {
+        const cellA = rowA.cells[columnIndex];
+        const cellB = rowB.cells[columnIndex];
+
+        if (!cellA || !cellB) return 0;
+
+        const valueA = cellA.textContent.trim();
+        const valueB = cellB.textContent.trim();
+
+        // Try to parse as numbers (handle commas, percentages, units)
+        const numA = parseNumericValue(valueA);
+        const numB = parseNumericValue(valueB);
+
+        let comparison;
+        if (numA !== null && numB !== null) {
+          // Numeric comparison
+          comparison = numA - numB;
+        } else {
+          // String comparison (case-insensitive)
+          comparison = valueA.toLowerCase().localeCompare(valueB.toLowerCase());
+        }
+
+        return newDir === "asc" ? comparison : -comparison;
+      });
+
+      // Re-append sorted rows
+      rows.forEach((row) => {
+        tbody.appendChild(row);
+      });
+    }
+
+    function parseNumericValue(value) {
+      if (
+        value === "" ||
+        value === "n/a" ||
+        value === "N/A" ||
+        value === "-" ||
+        value === "pending" ||
+        value === "Pending"
+      ) {
+        return null;
+      }
+
+      // Remove common formatting characters, preserving negative sign
+      // Handle negative numbers with commas like "-1,234"
+      const cleaned = value
+        .replace(/,/g, "") // Remove thousands separators
+        .replace(/\s+/g, " ") // Normalize whitespace
+        .trim();
+
+      // Handle percentages/multipliers (e.g., "0.95x", "121.48x", "-0.5x")
+      const multiplierMatch = cleaned.match(/^(-?[\d.]+)x$/i);
+      if (multiplierMatch) {
+        return parseFloat(multiplierMatch[1]);
+      }
+
+      // Handle time values (e.g., "0.030 ms", "2.13 s", "1.12 s")
+      const timeMatch = cleaned.match(/^(-?[\d.]+)\s*(ms|s)$/i);
+      if (timeMatch) {
+        const timeValue = parseFloat(timeMatch[1]);
+        const unit = timeMatch[2].toLowerCase();
+        // Convert to milliseconds for consistent comparison
+        return unit === "s" ? timeValue * 1000 : timeValue;
+      }
+
+      // Handle ops/sec values (e.g., "1,309,300,000", "63.5M", "868.3K", "-5K")
+      const suffixMatch = cleaned.match(/^(-?[\d.]+)\s*([KMB])?$/i);
+      if (suffixMatch) {
+        let numValue = parseFloat(suffixMatch[1]);
+        const suffix = (suffixMatch[2] || "").toUpperCase();
+        if (suffix === "K") numValue *= 1000;
+        else if (suffix === "M") numValue *= 1000000;
+        else if (suffix === "B") numValue *= 1000000000;
+        if (!isNaN(numValue)) return numValue;
+      }
+
+      // Handle parenthetical time values (e.g., "3 (0.254s)")
+      const parenMatch = cleaned.match(/^(-?\d+)\s*\([\d.]+s\)$/);
+      if (parenMatch) {
+        return parseInt(parenMatch[1], 10);
+      }
+
+      // Try direct numeric parse
+      const directNum = parseFloat(cleaned);
+      if (!isNaN(directNum)) {
+        return directNum;
+      }
+
+      return null;
+    }
+  });
+</script>
+
 <!-- Theme toggle button (injected into body via JS) -->
 <script>
-  document.addEventListener("DOMContentLoaded", function () {
+  document.addEventListener("DOMContentLoaded", () => {
     // Create theme toggle button
     const toggle = document.createElement("button");
     toggle.className = "theme-toggle";
@@ -50,7 +238,7 @@
     `;
 
     // Add click handler
-    toggle.addEventListener("click", function () {
+    toggle.addEventListener("click", () => {
       const currentTheme = document.documentElement.getAttribute("data-theme");
       const newTheme = currentTheme === "dark" ? "light" : "dark";
       document.documentElement.setAttribute("data-theme", newTheme);

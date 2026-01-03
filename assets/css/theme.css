@@ -253,17 +253,28 @@ a:hover {
 }
 
 /* Code blocks */
+/* Note: Inline code wrapping for :not(pre) > code is handled in style.scss (Issue #130) */
 pre {
   background-color: var(--code-bg) !important;
   border: 1px solid var(--border-color) !important;
   border-radius: 6px;
   padding: 16px !important;
-  overflow-x: auto;
+  overflow-x: auto !important;
+  /* Prevent premature word-wrapping - code should scroll horizontally */
+  white-space: pre !important;
+  word-wrap: normal !important;
+  overflow-wrap: normal !important;
+  word-break: normal !important;
 }
 
 pre code {
   background-color: transparent !important;
   color: var(--text-primary) !important;
+  /* Ensure code inside pre doesn't wrap */
+  white-space: pre !important;
+  word-wrap: normal !important;
+  overflow-wrap: normal !important;
+  word-break: normal !important;
 }
 
 /* Inline code */
@@ -439,11 +450,15 @@ summary:focus-visible,
 }
 
 /* Header section styling */
+/* Issue #127: Sticky header support - ensure solid background and visual separation */
 header {
   background-color: var(--bg-primary) !important;
   border: none !important;
   padding-bottom: 20px;
   margin-bottom: 20px;
+  /* Subtle shadow for visual separation when sticky (works with both themes) */
+  -webkit-box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
 }
 
 header h1 {
@@ -678,14 +693,20 @@ img {
 }
 
 /* Transform header from sidebar to compact top banner */
+/* Issue #127: Using sticky positioning for persistent header during scroll */
 header {
   float: none !important;
   width: 100% !important;
-  position: relative !important;
+  position: -webkit-sticky !important;
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 100 !important;
   text-align: center !important;
   padding: 15px 20px !important;
   margin-bottom: 30px !important;
   border-bottom: 1px solid var(--border-color) !important;
+  /* Ensure solid background so content scrolls underneath cleanly */
+  background-color: var(--bg-primary) !important;
 }
 
 /* Compact header title with overflow handling */
@@ -827,6 +848,20 @@ pre code {
 
 .highlight pre {
   margin: 0 !important;
+  /* Ensure syntax highlighted code doesn't wrap */
+  white-space: pre !important;
+  word-wrap: normal !important;
+  overflow-wrap: normal !important;
+  word-break: normal !important;
+}
+
+.highlight code,
+.highlight pre code {
+  /* Ensure code inside highlight blocks doesn't wrap */
+  white-space: pre !important;
+  word-wrap: normal !important;
+  overflow-wrap: normal !important;
+  word-break: normal !important;
 }
 
 /* =============================================================================
@@ -912,6 +947,12 @@ pre code {
     padding: 15px 10px !important;
     margin-top: 30px !important;
   }
+
+  /* Issue #127: Adjust scroll margin for smaller header on tablet */
+  h1, h2, h3, h4, h5, h6,
+  section h1, section h2, section h3, section h4, section h5, section h6 {
+    scroll-margin-top: 90px;
+  }
 }
 
 /* Mobile screens (320px - 480px) */
@@ -996,6 +1037,12 @@ pre code {
     inset-inline-end: 6px !important;
     padding: 5px 8px !important;
   }
+
+  /* Issue #127: Adjust scroll margin for smaller header on mobile */
+  h1, h2, h3, h4, h5, h6,
+  section h1, section h2, section h3, section h4, section h5, section h6 {
+    scroll-margin-top: 80px;
+  }
 }
 
 /* Very small screens (below 320px) */
@@ -1033,6 +1080,7 @@ section img {
 }
 
 /* Improve heading spacing */
+/* Issue #127: scroll-margin-top ensures anchor links don't hide content under sticky header */
 section h1,
 section h2,
 section h3,
@@ -1041,6 +1089,7 @@ section h5,
 section h6 {
   margin-top: 1.5em !important;
   margin-bottom: 0.5em !important;
+  scroll-margin-top: 100px;
 }
 
 section h1:first-child,

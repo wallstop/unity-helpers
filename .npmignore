@@ -100,6 +100,7 @@ Editor/Analyzers/*.pdb
 *.tmp
 *.tmp_proj
 *.log
+*.log.meta
 method-analysis-*
 TestProjects.meta
 TestProjects/

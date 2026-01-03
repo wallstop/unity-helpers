@@ -1,5 +1,7 @@
 # Skill: Investigate Test Failures
 
+<!-- trigger: test, fail, failure, timeout, flaky | ANY test failure - investigate before fixing | Core -->
+
 **Trigger**: When ANY test fails, times out, or behaves inconsistently.
 
 ---
@@ -35,6 +37,51 @@ Before making ANY code changes:
 2. **Understand the test's intent** — What behavior is being verified?
 3. **Identify the failure pattern** — Consistent failure? Intermittent? Environment-specific?
 4. **Check recent changes** — Did a recent commit introduce this failure?
+
+### Adding Diagnostic Logging
+
+When investigating failures, add diagnostic output to understand state WITHOUT modifying assertions. This is critical for preserving test intent while gathering information.
+
+```csharp
+// WRONG: Modifying assertion while investigating
+Assert.AreEqual(5, result); // Changed from 10 to 5 to make test pass
+
+// CORRECT: Add logging without changing assertion
+TestContext.WriteLine($"Input values: {string.Join(", ", inputs)}");
+TestContext.WriteLine($"Intermediate state: {processor.State}");
+TestContext.WriteLine($"Actual result: {result}");
+Assert.AreEqual(10, result); // Keep original assertion unchanged
+```
+
+**Diagnostic Logging Rules:**
+
+1. **NEVER modify assertions while investigating** — The original assertion defines expected behavior
+2. **Add `TestContext.WriteLine` to capture state** — Log values at the failure point
+3. **Include all relevant context** — Collection contents, input values, timing info, intermediate state
+4. **Remove diagnostic logging after fix** — Once root cause is identified and fixed, clean up verbose output
+
+Example of comprehensive diagnostic logging:
+
+```csharp
+[Test]
+public void CacheEvictionFollowsLruPolicy()
+{
+    var cache = new Cache<int, string>(maxSize: 3);
+    cache.Set(1, "a");
+    cache.Set(2, "b");
+    cache.Set(3, "c");
+    _ = cache.Get(1); // Access key 1 to make it recently used
+    cache.Set(4, "d"); // Should evict key 2 (least recently used)
+
+    // Diagnostic logging for investigation
+    TestContext.WriteLine($"Cache count: {cache.Count}");
+    TestContext.WriteLine($"Keys present: {string.Join(", ", cache.Keys)}");
+    TestContext.WriteLine($"Key 1 present: {cache.ContainsKey(1)}");
+    TestContext.WriteLine($"Key 2 present: {cache.ContainsKey(2)}");
+
+    Assert.IsFalse(cache.ContainsKey(2), "Key 2 should have been evicted as LRU");
+}
+```
 
 ### Step 2: Classify the Bug
 

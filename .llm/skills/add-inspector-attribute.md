@@ -1,5 +1,7 @@
 # Skill: Add Inspector Attribute
 
+<!-- trigger: attribute, inspector, wgroup, wbutton, wshowif | Improving editor UX with attributes | Feature -->
+
 **Trigger**: When adding or configuring Unity Helpers inspector attributes to improve editor UX.
 
 ---
@@ -355,6 +357,20 @@ public class MyOdinComponent : SerializedMonoBehaviour
     private async Task ProcessAllAsync(CancellationToken token) { }
 }
 ```
+
+---
+
+## Completion Requirements (MANDATORY)
+
+After adding or modifying inspector attributes, you MUST complete these steps:
+
+1. **Update CHANGELOG** — Add entry to `### Added` or `### Changed` section
+2. **Update feature documentation** — Document the attribute in `docs/features/inspector/`
+3. **Add XML documentation** — All public attribute members need `<summary>` tags
+4. **Include code samples** — Working examples in docs and XML comments
+5. **Run validation** — `npm run lint:docs` and `dotnet tool run csharpier format .`
+
+See [update-documentation](./update-documentation.md) for detailed standards.
 
 ---
 

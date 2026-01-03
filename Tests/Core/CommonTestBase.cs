@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 // UNH-SUPPRESS: This IS the CommonTestBase class
@@ -18,6 +18,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Core
 #if UNITY_EDITOR
     using UnityEditor.SceneManagement;
     using WallstopStudios.UnityHelpers.Editor.Utils;
+    using WallstopStudios.UnityHelpers.Tests.Core.TestUtils;
 #endif
 
     /// <summary>
@@ -238,6 +239,16 @@ namespace WallstopStudios.UnityHelpers.Tests.Core
             EditorUi.Suppress = _previousEditorUiSuppress;
 #endif
             DisposeDispatcherScope();
+        }
+
+        /// <summary>
+        /// Called once before any tests in the fixture run.
+        /// Subclasses can override to create shared test assets using BeginBatch().
+        /// </summary>
+        [OneTimeSetUp]
+        public virtual void CommonOneTimeSetUp()
+        {
+            // Subclasses can override to create shared test assets using BeginBatch()
         }
 
         [OneTimeTearDown]
@@ -751,39 +762,47 @@ namespace WallstopStudios.UnityHelpers.Tests.Core
         protected void CleanupTrackedFoldersAndAssets()
         {
 #if UNITY_EDITOR
-            // First, delete tracked assets
-            foreach (string assetPath in _trackedAssetPaths)
+            UnityEditor.AssetDatabase.StartAssetEditing();
+            try
             {
-                if (
-                    !string.IsNullOrEmpty(assetPath)
-                    && UnityEditor.AssetDatabase.LoadAssetAtPath<Object>(assetPath) != null
-                )
+                // First, delete tracked assets
+                foreach (string assetPath in _trackedAssetPaths)
                 {
-                    UnityEditor.AssetDatabase.DeleteAsset(assetPath);
+                    if (
+                        !string.IsNullOrEmpty(assetPath)
+                        && UnityEditor.AssetDatabase.LoadAssetAtPath<Object>(assetPath) != null
+                    )
+                    {
+                        UnityEditor.AssetDatabase.DeleteAsset(assetPath);
+                    }
                 }
+                _trackedAssetPaths.Clear();
+
+                // Sort folders by depth (deepest first) to delete children before parents
+                List<string> sortedFolders = new(_trackedFolders);
+                sortedFolders.Sort((a, b) => b.Split('/').Length.CompareTo(a.Split('/').Length));
+
+                foreach (string folderPath in sortedFolders)
+                {
+                    if (
+                        !string.IsNullOrEmpty(folderPath)
+                        && UnityEditor.AssetDatabase.IsValidFolder(folderPath)
+                    )
+                    {
+                        // Only delete if the folder is empty or contains only items we created
+                        // For safety, we'll delete the folder - if it has unexpected contents,
+                        // Unity will fail the delete which is fine
+                        UnityEditor.AssetDatabase.DeleteAsset(folderPath);
+                    }
+                }
+                _trackedFolders.Clear();
             }
-            _trackedAssetPaths.Clear();
-
-            // Sort folders by depth (deepest first) to delete children before parents
-            List<string> sortedFolders = new(_trackedFolders);
-            sortedFolders.Sort((a, b) => b.Split('/').Length.CompareTo(a.Split('/').Length));
-
-            foreach (string folderPath in sortedFolders)
+            finally
             {
-                if (
-                    !string.IsNullOrEmpty(folderPath)
-                    && UnityEditor.AssetDatabase.IsValidFolder(folderPath)
-                )
-                {
-                    // Only delete if the folder is empty or contains only items we created
-                    // For safety, we'll delete the folder - if it has unexpected contents,
-                    // Unity will fail the delete which is fine
-                    UnityEditor.AssetDatabase.DeleteAsset(folderPath);
-                }
+                UnityEditor.AssetDatabase.StopAssetEditing();
             }
-            _trackedFolders.Clear();
 
-            UnityEditor.AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 #endif
         }
 

@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Tests.Windows
@@ -13,6 +13,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Windows
     using WallstopStudios.UnityHelpers.Editor;
     using WallstopStudios.UnityHelpers.Editor.AssetProcessors;
     using WallstopStudios.UnityHelpers.Tests.Core;
+    using WallstopStudios.UnityHelpers.Tests.Core.TestUtils;
 
     public sealed class FitTextureSizeWindowTests : CommonTestBase
     {
@@ -41,7 +42,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Windows
         {
             string path = Path.Combine(Root, "grow.png").SanitizePath();
             CreatePng(path, 300, 100, Color.magenta);
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             TextureImporter imp = AssetImporter.GetAtPath(path) as TextureImporter;
             Assert.IsTrue(imp != null, "Importer should exist");
@@ -74,7 +75,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Windows
         {
             string path = Path.Combine(Root, "shrink.png").SanitizePath();
             CreatePng(path, 300, 100, Color.cyan);
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             TextureImporter imp = AssetImporter.GetAtPath(path) as TextureImporter;
             Assert.IsTrue(imp != null, "Importer should exist");
@@ -108,7 +109,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Windows
         {
             string path = Path.Combine(Root, "shrinkExact.png").SanitizePath();
             CreatePng(path, 256, 128, Color.yellow);
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             TextureImporter imp = AssetImporter.GetAtPath(path) as TextureImporter;
             Assert.IsTrue(imp != null, "Importer should exist");
@@ -136,7 +137,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Windows
         {
             string path = Path.Combine(Root, "shrinkOver.png").SanitizePath();
             CreatePng(path, 257, 64, Color.gray);
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             TextureImporter imp = AssetImporter.GetAtPath(path) as TextureImporter;
             Assert.IsTrue(imp != null, "Importer should exist");
@@ -169,7 +170,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Windows
         {
             string path = Path.Combine(Root, "growNoChange.png").SanitizePath();
             CreatePng(path, 300, 100, Color.white);
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             TextureImporter imp = AssetImporter.GetAtPath(path) as TextureImporter;
             Assert.IsTrue(imp != null);
@@ -198,7 +199,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Windows
         {
             string path = Path.Combine(Root, "clampMin.png").SanitizePath();
             CreatePng(path, 64, 64, Color.red);
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             TextureImporter imp = AssetImporter.GetAtPath(path) as TextureImporter;
             Assert.IsTrue(imp != null);
@@ -230,7 +231,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Windows
             string path = Path.Combine(Root, "clampMax.png").SanitizePath();
             // Force next POT far above Unity cap to ensure clamp path is tested.
             CreatePng(path, 9001, 10, Color.black);
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             TextureImporter imp = AssetImporter.GetAtPath(path) as TextureImporter;
             Assert.IsTrue(imp != null);
@@ -261,7 +262,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Windows
         {
             string path = Path.Combine(Root, "android.png").SanitizePath();
             CreatePng(path, 300, 100, Color.magenta);
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             TextureImporter imp = AssetImporter.GetAtPath(path) as TextureImporter;
             Assert.IsTrue(imp != null);
@@ -294,7 +295,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Windows
             string texPath = Path.Combine(Root, "tex.png").SanitizePath();
             CreatePng(spritePath, 300, 100, Color.yellow);
             CreatePng(texPath, 300, 100, Color.cyan);
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             TextureImporter spriteImp = AssetImporter.GetAtPath(spritePath) as TextureImporter;
             TextureImporter texImp = AssetImporter.GetAtPath(texPath) as TextureImporter;
@@ -333,7 +334,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Windows
             string villPath = Path.Combine(Root, "villain_idle.png").SanitizePath();
             CreatePng(heroPath, 300, 100, Color.white);
             CreatePng(villPath, 300, 100, Color.white);
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             TextureImporter heroImp = AssetImporter.GetAtPath(heroPath) as TextureImporter;
             TextureImporter villImp = AssetImporter.GetAtPath(villPath) as TextureImporter;
@@ -368,7 +369,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Windows
             string bPath = Path.Combine(Root, "itemABC.png").SanitizePath();
             CreatePng(aPath, 300, 100, Color.white);
             CreatePng(bPath, 300, 100, Color.white);
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             TextureImporter aImp = AssetImporter.GetAtPath(aPath) as TextureImporter;
             TextureImporter bImp = AssetImporter.GetAtPath(bPath) as TextureImporter;
@@ -403,7 +404,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Windows
             string unlabeledPath = Path.Combine(Root, "unlabeled.png").SanitizePath();
             CreatePng(labeledPath, 300, 100, Color.gray);
             CreatePng(unlabeledPath, 300, 100, Color.gray);
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             Object labeledObj = AssetDatabase.LoadAssetAtPath<Object>(labeledPath);
             AssetDatabase.SetLabels(labeledObj, new[] { "FitMe", "TagA" });
@@ -441,7 +442,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Windows
             string bPath = Path.Combine(Root, "sel_b.png").SanitizePath();
             CreatePng(aPath, 300, 100, Color.white);
             CreatePng(bPath, 300, 100, Color.white);
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             TextureImporter aImp = AssetImporter.GetAtPath(aPath) as TextureImporter;
             TextureImporter bImp = AssetImporter.GetAtPath(bPath) as TextureImporter;
@@ -473,7 +474,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Windows
         {
             string path = Path.Combine(Root, "Hero.png").SanitizePath();
             CreatePng(path, 300, 100, Color.white);
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             TextureImporter imp = AssetImporter.GetAtPath(path) as TextureImporter;
             imp.maxTextureSize = 128;
@@ -507,7 +508,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Windows
         {
             string path = Path.Combine(Root, "labelCase.png").SanitizePath();
             CreatePng(path, 300, 100, Color.gray);
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             Object obj = AssetDatabase.LoadAssetAtPath<Object>(path);
             AssetDatabase.SetLabels(obj, new[] { "FitMe" });
@@ -545,7 +546,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Windows
         {
             string path = Path.Combine(Root, "standalone.png").SanitizePath();
             CreatePng(path, 300, 100, Color.magenta);
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             TextureImporter imp = AssetImporter.GetAtPath(path) as TextureImporter;
             imp.maxTextureSize = 128;
@@ -574,7 +575,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Windows
         {
             string path = Path.Combine(Root, "ios.png").SanitizePath();
             CreatePng(path, 300, 100, Color.magenta);
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             TextureImporter imp = AssetImporter.GetAtPath(path) as TextureImporter;
             imp.maxTextureSize = 128;
@@ -609,7 +610,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Windows
 
             CreatePng(labeledUnderFolder, 300, 100, Color.gray);
             CreatePng(directFile, 300, 100, Color.gray);
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             Object labeledObj = AssetDatabase.LoadAssetAtPath<Object>(labeledUnderFolder);
             AssetDatabase.SetLabels(labeledObj, new[] { "OnlyMe" });
@@ -654,7 +655,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Windows
             // b: 128x128 with max=128 -> unchanged
             CreatePng(aPath, 300, 100, Color.white);
             CreatePng(bPath, 128, 128, Color.white);
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             TextureImporter aImp = AssetImporter.GetAtPath(aPath) as TextureImporter;
             TextureImporter bImp = AssetImporter.GetAtPath(bPath) as TextureImporter;
@@ -688,7 +689,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Windows
             string path = Path.Combine(Root, "roundLower.png").SanitizePath();
             // Largest dimension 300 -> nearest POT is 256 (diff 44 vs 212)
             CreatePng(path, 300, 100, Color.green);
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             TextureImporter imp = AssetImporter.GetAtPath(path) as TextureImporter;
             Assert.IsTrue(imp != null);
@@ -718,7 +719,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Windows
             string path = Path.Combine(Root, "roundUpTie.png").SanitizePath();
             // Largest dimension 384 is exactly halfway between 256 and 512; ties round up to 512
             CreatePng(path, 384, 10, Color.blue);
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             TextureImporter imp = AssetImporter.GetAtPath(path) as TextureImporter;
             Assert.IsTrue(imp != null);
@@ -753,7 +754,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Windows
         {
             string path = Path.Combine(Root, $"growShrink_{width}x{height}.png").SanitizePath();
             CreatePng(path, width, height, Color.white);
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             TextureImporter imp = AssetImporter.GetAtPath(path) as TextureImporter;
             Assert.IsTrue(imp != null, "Importer should exist");
@@ -854,7 +855,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Windows
             string path = Path.Combine(Root, $"growOnly_{width}x{height}_{currentMaxSize}.png")
                 .SanitizePath();
             CreatePng(path, width, height, Color.green);
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             TextureImporter imp = AssetImporter.GetAtPath(path) as TextureImporter;
             Assert.IsTrue(imp != null, "Importer should exist");
@@ -948,7 +949,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Windows
             string path = Path.Combine(Root, $"shrinkOnly_{width}x{height}_{currentMaxSize}.png")
                 .SanitizePath();
             CreatePng(path, width, height, Color.blue);
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             TextureImporter imp = AssetImporter.GetAtPath(path) as TextureImporter;
             Assert.IsTrue(imp != null, "Importer should exist");
@@ -1043,7 +1044,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Windows
         {
             string path = Path.Combine(Root, $"roundNearest_{width}x{height}.png").SanitizePath();
             CreatePng(path, width, height, Color.red);
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             TextureImporter imp = AssetImporter.GetAtPath(path) as TextureImporter;
             Assert.IsTrue(imp != null, "Importer should exist");
@@ -1150,7 +1151,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Windows
         {
             string path = Path.Combine(Root, $"edge_{width}x{height}_{mode}.png").SanitizePath();
             CreatePng(path, width, height, Color.yellow);
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             TextureImporter imp = AssetImporter.GetAtPath(path) as TextureImporter;
             Assert.IsTrue(imp != null, "Importer should exist");
@@ -1266,7 +1267,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Windows
         {
             string path = Path.Combine(Root, "defaultClamp_1x1.png").SanitizePath();
             CreatePng(path, 1, 1, Color.white);
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             TextureImporter imp = AssetImporter.GetAtPath(path) as TextureImporter;
             Assert.IsTrue(imp != null, "Importer should exist");
@@ -1306,7 +1307,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Windows
             string path = Path.Combine(Root, $"minClamp_{width}x{height}_{minAllowedSize}.png")
                 .SanitizePath();
             CreatePng(path, width, height, Color.cyan);
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             TextureImporter imp = AssetImporter.GetAtPath(path) as TextureImporter;
             Assert.IsTrue(imp != null, "Importer should exist");
@@ -1390,7 +1391,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Windows
             string path = Path.Combine(Root, $"maxClamp_{width}x{height}_{maxAllowedSize}.png")
                 .SanitizePath();
             CreatePng(path, width, height, Color.magenta);
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             TextureImporter imp = AssetImporter.GetAtPath(path) as TextureImporter;
             Assert.IsTrue(imp != null, "Importer should exist");
@@ -1508,7 +1509,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Windows
                 )
                 .SanitizePath();
             CreatePng(path, width, height, Color.yellow);
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             TextureImporter imp = AssetImporter.GetAtPath(path) as TextureImporter;
             Assert.IsTrue(imp != null, "Importer should exist");
@@ -1645,7 +1646,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Windows
                 )
                 .SanitizePath();
             CreatePng(path, width, height, Color.cyan);
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             TextureImporter imp = AssetImporter.GetAtPath(path) as TextureImporter;
             Assert.IsTrue(imp != null, "Importer should exist");
@@ -1736,7 +1737,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Windows
                 )
                 .SanitizePath();
             CreatePng(path, width, height, Color.gray);
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             TextureImporter imp = AssetImporter.GetAtPath(path) as TextureImporter;
             Assert.IsTrue(imp != null, "Importer should exist");
@@ -1811,7 +1812,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Windows
         {
             string path = Path.Combine(Root, $"aspect_{width}x{height}_{mode}.png").SanitizePath();
             CreatePng(path, width, height, Color.magenta);
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             TextureImporter imp = AssetImporter.GetAtPath(path) as TextureImporter;
             Assert.IsTrue(imp != null, "Importer should exist");

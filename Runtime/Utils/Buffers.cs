@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2023 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 // ReSharper disable ConvertClosureToMethodGroup
@@ -1074,23 +1074,114 @@ namespace WallstopStudios.UnityHelpers.Utils
 
 #if SINGLE_THREADED
     /// <summary>
-    /// A generic object pool that manages reusable instances of type T.
-    /// This single-threaded implementation uses a Stack for storage.
+    /// A generic object pool that manages reusable instances of type T with configurable auto-purging.
+    /// This single-threaded implementation uses a List for storage to support purging operations.
     /// </summary>
     /// <typeparam name="T">The type of objects to pool.</typeparam>
+    /// <remarks>
+    /// <para>
+    /// The pool supports automatic purging of idle items and capacity-based eviction.
+    /// Configure purge behavior using <see cref="PoolOptions{T}"/> or by setting properties directly.
+    /// </para>
+    /// <para>
+    /// When <see cref="UseIntelligentPurging"/> is enabled, the pool tracks usage patterns and
+    /// only purges items that are unlikely to be needed, avoiding GC churn from purge-allocate cycles.
+    /// </para>
+    /// <example>
+    /// <code><![CDATA[
+    /// // Create a pool with auto-purging
+    /// PoolOptions<MyObject> options = new()
+    /// {
+    ///     MaxPoolSize = 100,
+    ///     IdleTimeoutSeconds = 60f,
+    ///     Triggers = PurgeTrigger.OnRent | PurgeTrigger.OnReturn
+    /// };
+    /// WallstopGenericPool<MyObject> pool = new(() => new MyObject(), options: options);
+    ///
+    /// // Create a pool with intelligent purging
+    /// PoolOptions<MyObject> smartOptions = new()
+    /// {
+    ///     UseIntelligentPurging = true,
+    ///     IdleTimeoutSeconds = 300f,
+    ///     Triggers = PurgeTrigger.OnRent
+    /// };
+    /// WallstopGenericPool<MyObject> smartPool = new(() => new MyObject(), options: smartOptions);
+    /// ]]></code>
+    /// </example>
+    /// </remarks>
     public sealed class WallstopGenericPool<T> : IDisposable
     {
+        private struct PooledEntry
+        {
+            public T Value;
+            public float ReturnTime;
+        }
+
         /// <summary>
         /// Gets the current number of instances in the pool.
         /// </summary>
         internal int Count => _pool.Count;
 
+        /// <summary>
+        /// Gets or sets the maximum number of items to retain in the pool.
+        /// A value of 0 or less means unbounded (no size limit).
+        /// </summary>
+        public int MaxPoolSize { get; set; }
+
+        /// <summary>
+        /// Gets or sets the minimum number of items to always retain during purge operations.
+        /// </summary>
+        public int MinRetainCount { get; set; }
+
+        /// <summary>
+        /// Gets or sets the idle timeout in seconds. Items idle longer than this are eligible for purging.
+        /// A value of 0 or less disables idle timeout purging.
+        /// </summary>
+        public float IdleTimeoutSeconds { get; set; }
+
+        /// <summary>
+        /// Gets or sets the interval in seconds between periodic purge checks.
+        /// Only used when <see cref="Triggers"/> includes <see cref="PurgeTrigger.Periodic"/>.
+        /// </summary>
+        public float PurgeIntervalSeconds { get; set; }
+
+        /// <summary>
+        /// Gets or sets when automatic purge operations should be triggered.
+        /// </summary>
+        public PurgeTrigger Triggers { get; set; }
+
+        /// <summary>
+        /// Gets or sets the callback invoked when an item is purged from the pool.
+        /// </summary>
+        public Action<T, PurgeReason> OnPurge { get; set; }
+
+        /// <summary>
+        /// Gets or sets whether intelligent purging is enabled.
+        /// When enabled, the pool tracks usage patterns and avoids purging items likely to be needed.
+        /// </summary>
+        public bool UseIntelligentPurging { get; set; }
+
         private readonly Func<T> _producer;
         private readonly Action<T> _onGet;
         private readonly Action<T> _onRelease;
         private readonly Action<T> _onDispose;
+        private readonly Func<float> _timeProvider;
+        private readonly Action<T> _returnAction;
+        private readonly PoolUsageTracker _usageTracker;
 
-        private readonly Stack<T> _pool = new();
+        private readonly List<PooledEntry> _pool = new();
+
+        private long _rentCount;
+        private long _returnCount;
+        private long _purgeCount;
+        private long _idleTimeoutPurges;
+        private long _capacityPurges;
+        private int _peakSize;
+        private float _lastPeriodicPurge;
+
+        // Single-threaded platforms do not require Volatile reads/writes for _disposed
+        // since there is no concurrent access from multiple threads.
+        private bool _disposed;
 
         /// <summary>
         /// Creates a new generic pool with the specified producer function and optional callbacks.
@@ -1100,26 +1191,69 @@ namespace WallstopStudios.UnityHelpers.Utils
         /// <param name="onGet">Optional callback invoked when an instance is retrieved from the pool.</param>
         /// <param name="onRelease">Optional callback invoked when an instance is returned to the pool.</param>
         /// <param name="onDisposal">Optional callback invoked when the pool is disposed for each pooled instance.</param>
+        /// <param name="options">Optional pool configuration for auto-purging behavior.</param>
         /// <exception cref="ArgumentNullException">Thrown when producer is null.</exception>
         public WallstopGenericPool(
             Func<T> producer,
             int preWarmCount = 0,
             Action<T> onGet = null,
             Action<T> onRelease = null,
-            Action<T> onDisposal = null
+            Action<T> onDisposal = null,
+            PoolOptions<T> options = null
         )
         {
             _producer = producer ?? throw new ArgumentNullException(nameof(producer));
             _onGet = onGet;
-            _onRelease = onRelease ?? (_ => { });
-            _onRelease += _pool.Push;
+            _onRelease = onRelease;
             _onDispose = onDisposal;
+            _timeProvider = options?.TimeProvider ?? DefaultTimeProvider;
+            _returnAction = ReturnToPool;
+
+            MaxPoolSize = options?.MaxPoolSize ?? PoolOptions<T>.DefaultMaxPoolSize;
+            MinRetainCount = options?.MinRetainCount ?? PoolOptions<T>.DefaultMinRetainCount;
+            IdleTimeoutSeconds =
+                options?.IdleTimeoutSeconds ?? PoolOptions<T>.DefaultIdleTimeoutSeconds;
+            PurgeIntervalSeconds =
+                options?.PurgeIntervalSeconds ?? PoolOptions<T>.DefaultPurgeIntervalSeconds;
+            Triggers = options?.Triggers ?? PurgeTrigger.OnRent;
+            OnPurge = options?.OnPurge;
+
+            PoolPurgeEffectiveOptions effectiveOptions = PoolPurgeSettings.GetEffectiveOptions<T>();
+            bool useIntelligent = options?.UseIntelligentPurging ?? effectiveOptions.Enabled;
+            UseIntelligentPurging = useIntelligent;
+
+            float rollingWindow =
+                options?.RollingWindowSeconds ?? effectiveOptions.RollingWindowSeconds;
+            float hysteresis = options?.HysteresisSeconds ?? effectiveOptions.HysteresisSeconds;
+            float spikeThreshold =
+                options?.SpikeThresholdMultiplier ?? effectiveOptions.SpikeThresholdMultiplier;
+            float bufferMult = options?.BufferMultiplier ?? effectiveOptions.BufferMultiplier;
+
+            _usageTracker = new PoolUsageTracker(
+                rollingWindow,
+                hysteresis,
+                spikeThreshold,
+                bufferMult
+            );
+
+            if (useIntelligent && IdleTimeoutSeconds <= 0f)
+            {
+                IdleTimeoutSeconds = effectiveOptions.IdleTimeoutSeconds;
+            }
+
+            _lastPeriodicPurge = _timeProvider();
+
             for (int i = 0; i < preWarmCount; ++i)
             {
                 T value = _producer();
                 _onGet?.Invoke(value);
-                _onRelease(value);
+                ReturnToPool(value);
             }
+        }
+
+        private static float DefaultTimeProvider()
+        {
+            return UnityEngine.Time.realtimeSinceStartup;
         }
 
         /// <summary>
@@ -1140,13 +1274,237 @@ namespace WallstopStudios.UnityHelpers.Utils
         /// <returns>A PooledResource wrapping the retrieved instance.</returns>
         public PooledResource<T> Get(out T value)
         {
-            if (!_pool.TryPop(out value))
+            if (_disposed)
+            {
+                value = _producer();
+                _onGet?.Invoke(value);
+                return new PooledResource<T>(value, _returnAction);
+            }
+
+            float currentTime = _timeProvider();
+
+            if ((Triggers & PurgeTrigger.OnRent) != 0)
+            {
+                PurgeInternal(false, currentTime);
+            }
+
+            if ((Triggers & PurgeTrigger.Periodic) != 0)
+            {
+                TryPeriodicPurge(currentTime);
+            }
+
+            _rentCount++;
+            _usageTracker.RecordRent(currentTime);
+
+            if (_pool.Count > 0)
+            {
+                int lastIndex = _pool.Count - 1;
+                value = _pool[lastIndex].Value;
+                _pool.RemoveAt(lastIndex);
+            }
+            else
             {
                 value = _producer();
             }
 
             _onGet?.Invoke(value);
-            return new PooledResource<T>(value, _onRelease);
+            return new PooledResource<T>(value, _returnAction);
+        }
+
+        private void ReturnToPool(T value)
+        {
+            if (_disposed)
+            {
+                InvokeOnDispose(value);
+                return;
+            }
+
+            _onRelease?.Invoke(value);
+
+            float currentTime = _timeProvider();
+            _pool.Add(new PooledEntry { Value = value, ReturnTime = currentTime });
+            _returnCount++;
+            _usageTracker.RecordReturn(currentTime);
+
+            int currentCount = _pool.Count;
+            if (currentCount > _peakSize)
+            {
+                _peakSize = currentCount;
+            }
+
+            if ((Triggers & PurgeTrigger.OnReturn) != 0)
+            {
+                PurgeInternal(false, currentTime);
+            }
+
+            if ((Triggers & PurgeTrigger.Periodic) != 0)
+            {
+                TryPeriodicPurge(currentTime);
+            }
+        }
+
+        private void TryPeriodicPurge(float currentTime)
+        {
+            if (PurgeIntervalSeconds <= 0f)
+            {
+                return;
+            }
+
+            if (currentTime - _lastPeriodicPurge >= PurgeIntervalSeconds)
+            {
+                _lastPeriodicPurge = currentTime;
+                PurgeInternal(false, currentTime);
+            }
+        }
+
+        /// <summary>
+        /// Explicitly purges eligible items from the pool.
+        /// </summary>
+        /// <returns>The number of items purged.</returns>
+        public int Purge()
+        {
+            return PurgeInternal(true, _timeProvider());
+        }
+
+        /// <summary>
+        /// Explicitly purges eligible items from the pool with a specified reason.
+        /// </summary>
+        /// <param name="reason">The reason for purging (used in callbacks).</param>
+        /// <returns>The number of items purged.</returns>
+        public int Purge(PurgeReason reason)
+        {
+            if (_disposed)
+            {
+                return 0;
+            }
+
+            int purged = 0;
+
+            for (int i = _pool.Count - 1; i >= 0 && _pool.Count > MinRetainCount; i--)
+            {
+                PooledEntry entry = _pool[i];
+                _pool.RemoveAt(i);
+                purged++;
+                _purgeCount++;
+
+                InvokeOnPurge(entry.Value, reason);
+                InvokeOnDispose(entry.Value);
+            }
+
+            return purged;
+        }
+
+        private int PurgeInternal(bool isExplicit, float currentTime)
+        {
+            if (_disposed)
+            {
+                return 0;
+            }
+
+            int purged = 0;
+
+            bool hasIdleTimeout = IdleTimeoutSeconds > 0f;
+            bool hasMaxSize = MaxPoolSize > 0;
+            bool useIntelligent = UseIntelligentPurging;
+
+            if (useIntelligent && _usageTracker.IsInHysteresisPeriod(currentTime))
+            {
+                return 0;
+            }
+
+            int comfortableSize = useIntelligent
+                ? _usageTracker.GetComfortableSize(currentTime, MinRetainCount)
+                : MinRetainCount;
+
+            for (int i = _pool.Count - 1; i >= 0 && _pool.Count > comfortableSize; i--)
+            {
+                PooledEntry entry = _pool[i];
+                PurgeReason reason = PurgeReason.Explicit;
+                bool shouldPurge = false;
+
+                if (hasIdleTimeout && (currentTime - entry.ReturnTime) >= IdleTimeoutSeconds)
+                {
+                    if (!useIntelligent || _pool.Count > comfortableSize)
+                    {
+                        reason = PurgeReason.IdleTimeout;
+                        shouldPurge = true;
+                        _idleTimeoutPurges++;
+                    }
+                }
+                else if (hasMaxSize && _pool.Count > MaxPoolSize)
+                {
+                    reason = PurgeReason.CapacityExceeded;
+                    shouldPurge = true;
+                    _capacityPurges++;
+                }
+                else if (isExplicit)
+                {
+                    shouldPurge = true;
+                }
+
+                if (shouldPurge)
+                {
+                    _pool.RemoveAt(i);
+                    purged++;
+                    _purgeCount++;
+
+                    InvokeOnPurge(entry.Value, reason);
+                    InvokeOnDispose(entry.Value);
+                }
+            }
+
+            return purged;
+        }
+
+        /// <summary>
+        /// Gets the current pool statistics.
+        /// </summary>
+        /// <returns>A snapshot of pool statistics.</returns>
+        public PoolStatistics GetStatistics()
+        {
+            return new PoolStatistics(
+                currentSize: _pool.Count,
+                peakSize: _peakSize,
+                rentCount: _rentCount,
+                returnCount: _returnCount,
+                purgeCount: _purgeCount,
+                idleTimeoutPurges: _idleTimeoutPurges,
+                capacityPurges: _capacityPurges
+            );
+        }
+
+        private void InvokeOnPurge(T value, PurgeReason reason)
+        {
+            if (OnPurge == null)
+            {
+                return;
+            }
+
+            try
+            {
+                OnPurge(value, reason);
+            }
+            catch
+            {
+                // Swallow exceptions from callbacks
+            }
+        }
+
+        private void InvokeOnDispose(T value)
+        {
+            if (_onDispose == null)
+            {
+                return;
+            }
+
+            try
+            {
+                _onDispose(value);
+            }
+            catch
+            {
+                // Swallow exceptions from callbacks
+            }
         }
 
         /// <summary>
@@ -1155,37 +1513,180 @@ namespace WallstopStudios.UnityHelpers.Utils
         /// </summary>
         public void Dispose()
         {
+            if (_disposed)
+            {
+                return;
+            }
+
+            _disposed = true;
+
             if (_onDispose == null)
             {
                 _pool.Clear();
                 return;
             }
 
-            while (_pool.TryPop(out T value))
+            for (int i = 0; i < _pool.Count; i++)
             {
-                _onDispose(value);
+                InvokeOnDispose(_pool[i].Value);
             }
+            _pool.Clear();
         }
     }
 #else
     /// <summary>
-    /// A thread-safe generic object pool that manages reusable instances of type T.
-    /// This multi-threaded implementation uses a ConcurrentStack for thread-safe storage.
+    /// A thread-safe generic object pool that manages reusable instances of type T with configurable auto-purging.
+    /// This multi-threaded implementation uses locks for thread-safe storage and purging operations.
     /// </summary>
     /// <typeparam name="T">The type of objects to pool.</typeparam>
+    /// <remarks>
+    /// <para>
+    /// The pool supports automatic purging of idle items and capacity-based eviction.
+    /// Configure purge behavior using <see cref="PoolOptions{T}"/> or by setting properties directly.
+    /// </para>
+    /// <para>
+    /// When <see cref="UseIntelligentPurging"/> is enabled, the pool tracks usage patterns and
+    /// only purges items that are unlikely to be needed, avoiding GC churn from purge-allocate cycles.
+    /// </para>
+    /// <example>
+    /// <code><![CDATA[
+    /// // Create a pool with auto-purging
+    /// PoolOptions<MyObject> options = new()
+    /// {
+    ///     MaxPoolSize = 100,
+    ///     IdleTimeoutSeconds = 60f,
+    ///     Triggers = PurgeTrigger.OnRent | PurgeTrigger.OnReturn
+    /// };
+    /// WallstopGenericPool<MyObject> pool = new(() => new MyObject(), options: options);
+    ///
+    /// // Create a pool with intelligent purging
+    /// PoolOptions<MyObject> smartOptions = new()
+    /// {
+    ///     UseIntelligentPurging = true,
+    ///     IdleTimeoutSeconds = 300f,
+    ///     Triggers = PurgeTrigger.OnRent
+    /// };
+    /// WallstopGenericPool<MyObject> smartPool = new(() => new MyObject(), options: smartOptions);
+    /// ]]></code>
+    /// </example>
+    /// </remarks>
     public sealed class WallstopGenericPool<T> : IDisposable
     {
+        private struct PooledEntry
+        {
+            public T Value;
+            public float ReturnTime;
+        }
+
         /// <summary>
         /// Gets the current number of instances in the pool.
         /// </summary>
-        internal int Count => _pool.Count;
+        internal int Count
+        {
+            get
+            {
+                lock (_lock)
+                {
+                    return _pool.Count;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Gets or sets the maximum number of items to retain in the pool.
+        /// A value of 0 or less means unbounded (no size limit).
+        /// </summary>
+        public int MaxPoolSize
+        {
+            get => Volatile.Read(ref _maxPoolSize);
+            set => Volatile.Write(ref _maxPoolSize, value);
+        }
+
+        /// <summary>
+        /// Gets or sets the minimum number of items to always retain during purge operations.
+        /// </summary>
+        public int MinRetainCount
+        {
+            get => Volatile.Read(ref _minRetainCount);
+            set => Volatile.Write(ref _minRetainCount, value);
+        }
+
+        /// <summary>
+        /// Gets or sets the idle timeout in seconds. Items idle longer than this are eligible for purging.
+        /// A value of 0 or less disables idle timeout purging.
+        /// </summary>
+        public float IdleTimeoutSeconds
+        {
+            get => Volatile.Read(ref _idleTimeoutSeconds);
+            set => Volatile.Write(ref _idleTimeoutSeconds, value);
+        }
+
+        /// <summary>
+        /// Gets or sets the interval in seconds between periodic purge checks.
+        /// Only used when <see cref="Triggers"/> includes <see cref="PurgeTrigger.Periodic"/>.
+        /// </summary>
+        public float PurgeIntervalSeconds
+        {
+            get => Volatile.Read(ref _purgeIntervalSeconds);
+            set => Volatile.Write(ref _purgeIntervalSeconds, value);
+        }
+
+        /// <summary>
+        /// Gets or sets when automatic purge operations should be triggered.
+        /// </summary>
+        public PurgeTrigger Triggers
+        {
+            get => (PurgeTrigger)Volatile.Read(ref _triggers);
+            set => Volatile.Write(ref _triggers, (int)value);
+        }
+
+        /// <summary>
+        /// Gets or sets the callback invoked when an item is purged from the pool.
+        /// This property is thread-safe.
+        /// </summary>
+        public Action<T, PurgeReason> OnPurge
+        {
+            get => Volatile.Read(ref _onPurge);
+            set => Volatile.Write(ref _onPurge, value);
+        }
+
+        /// <summary>
+        /// Gets or sets whether intelligent purging is enabled.
+        /// When enabled, the pool tracks usage patterns and avoids purging items likely to be needed.
+        /// </summary>
+        public bool UseIntelligentPurging
+        {
+            get => Volatile.Read(ref _useIntelligentPurging) != 0;
+            set => Volatile.Write(ref _useIntelligentPurging, value ? 1 : 0);
+        }
 
         private readonly Func<T> _producer;
         private readonly Action<T> _onGet;
         private readonly Action<T> _onRelease;
         private readonly Action<T> _onDispose;
+        private readonly Func<float> _timeProvider;
+        private readonly Action<T> _returnAction;
+        private readonly object _lock = new();
+        private readonly PoolUsageTracker _usageTracker;
+        private Action<T, PurgeReason> _onPurge;
 
-        private readonly ConcurrentStack<T> _pool = new();
+        private readonly List<PooledEntry> _pool = new();
+
+        private int _maxPoolSize;
+        private int _minRetainCount;
+        private float _idleTimeoutSeconds;
+        private float _purgeIntervalSeconds;
+        private int _triggers;
+        private int _useIntelligentPurging;
+
+        private long _rentCount;
+        private long _returnCount;
+        private long _purgeCount;
+        private long _idleTimeoutPurges;
+        private long _capacityPurges;
+        private int _peakSize;
+        private float _lastPeriodicPurge;
+        private int _disposed;
 
         /// <summary>
         /// Creates a new thread-safe generic pool with the specified producer function and optional callbacks.
@@ -1195,26 +1696,69 @@ namespace WallstopStudios.UnityHelpers.Utils
         /// <param name="onGet">Optional callback invoked when an instance is retrieved from the pool.</param>
         /// <param name="onRelease">Optional callback invoked when an instance is returned to the pool.</param>
         /// <param name="onDisposal">Optional callback invoked when the pool is disposed for each pooled instance.</param>
+        /// <param name="options">Optional pool configuration for auto-purging behavior.</param>
         /// <exception cref="ArgumentNullException">Thrown when producer is null.</exception>
         public WallstopGenericPool(
             Func<T> producer,
             int preWarmCount = 0,
             Action<T> onGet = null,
             Action<T> onRelease = null,
-            Action<T> onDisposal = null
+            Action<T> onDisposal = null,
+            PoolOptions<T> options = null
         )
         {
             _producer = producer ?? throw new ArgumentNullException(nameof(producer));
             _onGet = onGet;
-            _onRelease = onRelease ?? (_ => { });
-            _onRelease += _pool.Push;
+            _onRelease = onRelease;
             _onDispose = onDisposal;
+            _timeProvider = options?.TimeProvider ?? DefaultTimeProvider;
+            _returnAction = ReturnToPool;
+
+            _maxPoolSize = options?.MaxPoolSize ?? PoolOptions<T>.DefaultMaxPoolSize;
+            _minRetainCount = options?.MinRetainCount ?? PoolOptions<T>.DefaultMinRetainCount;
+            _idleTimeoutSeconds =
+                options?.IdleTimeoutSeconds ?? PoolOptions<T>.DefaultIdleTimeoutSeconds;
+            _purgeIntervalSeconds =
+                options?.PurgeIntervalSeconds ?? PoolOptions<T>.DefaultPurgeIntervalSeconds;
+            _triggers = (int)(options?.Triggers ?? PurgeTrigger.OnRent);
+            OnPurge = options?.OnPurge;
+
+            PoolPurgeEffectiveOptions effectiveOptions = PoolPurgeSettings.GetEffectiveOptions<T>();
+            bool useIntelligent = options?.UseIntelligentPurging ?? effectiveOptions.Enabled;
+            _useIntelligentPurging = useIntelligent ? 1 : 0;
+
+            float rollingWindow =
+                options?.RollingWindowSeconds ?? effectiveOptions.RollingWindowSeconds;
+            float hysteresis = options?.HysteresisSeconds ?? effectiveOptions.HysteresisSeconds;
+            float spikeThreshold =
+                options?.SpikeThresholdMultiplier ?? effectiveOptions.SpikeThresholdMultiplier;
+            float bufferMult = options?.BufferMultiplier ?? effectiveOptions.BufferMultiplier;
+
+            _usageTracker = new PoolUsageTracker(
+                rollingWindow,
+                hysteresis,
+                spikeThreshold,
+                bufferMult
+            );
+
+            if (useIntelligent && _idleTimeoutSeconds <= 0f)
+            {
+                _idleTimeoutSeconds = effectiveOptions.IdleTimeoutSeconds;
+            }
+
+            _lastPeriodicPurge = _timeProvider();
+
             for (int i = 0; i < preWarmCount; ++i)
             {
                 T value = _producer();
                 _onGet?.Invoke(value);
-                _onRelease(value);
+                ReturnToPool(value);
             }
+        }
+
+        private static float DefaultTimeProvider()
+        {
+            return UnityEngine.Time.realtimeSinceStartup;
         }
 
         /// <summary>
@@ -1237,13 +1781,299 @@ namespace WallstopStudios.UnityHelpers.Utils
         /// <returns>A PooledResource wrapping the retrieved instance.</returns>
         public PooledResource<T> Get(out T value)
         {
-            if (!_pool.TryPop(out value))
+            if (Volatile.Read(ref _disposed) != 0)
             {
                 value = _producer();
+                _onGet?.Invoke(value);
+                return new PooledResource<T>(value, _returnAction);
             }
 
+            float currentTime = _timeProvider();
+            PurgeTrigger currentTriggers = Triggers;
+
+            if ((currentTriggers & PurgeTrigger.OnRent) != 0)
+            {
+                PurgeInternal(false, currentTime);
+            }
+
+            if ((currentTriggers & PurgeTrigger.Periodic) != 0)
+            {
+                TryPeriodicPurge(currentTime);
+            }
+
+            Interlocked.Increment(ref _rentCount);
+            _usageTracker.RecordRent(currentTime);
+
+            lock (_lock)
+            {
+                if (_pool.Count > 0)
+                {
+                    int lastIndex = _pool.Count - 1;
+                    value = _pool[lastIndex].Value;
+                    _pool.RemoveAt(lastIndex);
+                    _onGet?.Invoke(value);
+                    return new PooledResource<T>(value, _returnAction);
+                }
+            }
+
+            value = _producer();
             _onGet?.Invoke(value);
-            return new PooledResource<T>(value, _onRelease);
+            return new PooledResource<T>(value, _returnAction);
+        }
+
+        private void ReturnToPool(T value)
+        {
+            if (Volatile.Read(ref _disposed) != 0)
+            {
+                InvokeOnDispose(value);
+                return;
+            }
+
+            _onRelease?.Invoke(value);
+
+            float currentTime = _timeProvider();
+            _usageTracker.RecordReturn(currentTime);
+
+            lock (_lock)
+            {
+                _pool.Add(new PooledEntry { Value = value, ReturnTime = currentTime });
+                Interlocked.Increment(ref _returnCount);
+
+                int currentCount = _pool.Count;
+                int peak = _peakSize;
+                while (currentCount > peak)
+                {
+                    int original = Interlocked.CompareExchange(ref _peakSize, currentCount, peak);
+                    if (original == peak)
+                    {
+                        break;
+                    }
+                    peak = original;
+                }
+            }
+
+            PurgeTrigger currentTriggers = Triggers;
+
+            if ((currentTriggers & PurgeTrigger.OnReturn) != 0)
+            {
+                PurgeInternal(false, currentTime);
+            }
+
+            if ((currentTriggers & PurgeTrigger.Periodic) != 0)
+            {
+                TryPeriodicPurge(currentTime);
+            }
+        }
+
+        private void TryPeriodicPurge(float currentTime)
+        {
+            float interval = PurgeIntervalSeconds;
+            if (interval <= 0f)
+            {
+                return;
+            }
+
+            float lastPurge = Volatile.Read(ref _lastPeriodicPurge);
+
+            if (currentTime - lastPurge >= interval)
+            {
+                float original = Interlocked.CompareExchange(
+                    ref _lastPeriodicPurge,
+                    currentTime,
+                    lastPurge
+                );
+                if (original == lastPurge)
+                {
+                    PurgeInternal(false, currentTime);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Explicitly purges eligible items from the pool.
+        /// This method is thread-safe.
+        /// </summary>
+        /// <returns>The number of items purged.</returns>
+        public int Purge()
+        {
+            return PurgeInternal(true, _timeProvider());
+        }
+
+        /// <summary>
+        /// Explicitly purges eligible items from the pool with a specified reason.
+        /// This method is thread-safe.
+        /// </summary>
+        /// <param name="reason">The reason for purging (used in callbacks).</param>
+        /// <returns>The number of items purged.</returns>
+        public int Purge(PurgeReason reason)
+        {
+            if (Volatile.Read(ref _disposed) != 0)
+            {
+                return 0;
+            }
+
+            using PooledResource<List<PooledEntry>> lease = Buffers<PooledEntry>.List.Get(
+                out List<PooledEntry> toPurge
+            );
+            int minRetain = MinRetainCount;
+
+            lock (_lock)
+            {
+                for (int i = _pool.Count - 1; i >= 0 && _pool.Count > minRetain; i--)
+                {
+                    toPurge.Add(_pool[i]);
+                    _pool.RemoveAt(i);
+                }
+            }
+
+            int purged = toPurge.Count;
+            Interlocked.Add(ref _purgeCount, purged);
+
+            for (int i = 0; i < toPurge.Count; i++)
+            {
+                InvokeOnPurge(toPurge[i].Value, reason);
+                InvokeOnDispose(toPurge[i].Value);
+            }
+
+            return purged;
+        }
+
+        private int PurgeInternal(bool isExplicit, float currentTime)
+        {
+            if (Volatile.Read(ref _disposed) != 0)
+            {
+                return 0;
+            }
+
+            float idleTimeout = IdleTimeoutSeconds;
+            int maxSize = MaxPoolSize;
+            int minRetain = MinRetainCount;
+
+            bool hasIdleTimeout = idleTimeout > 0f;
+            bool hasMaxSize = maxSize > 0;
+            bool useIntelligent = UseIntelligentPurging;
+
+            if (useIntelligent && _usageTracker.IsInHysteresisPeriod(currentTime))
+            {
+                return 0;
+            }
+
+            int comfortableSize = useIntelligent
+                ? _usageTracker.GetComfortableSize(currentTime, minRetain)
+                : minRetain;
+
+            using PooledResource<List<PooledEntry>> entryLease = Buffers<PooledEntry>.List.Get(
+                out List<PooledEntry> entriesToPurge
+            );
+            using PooledResource<List<PurgeReason>> reasonLease = Buffers<PurgeReason>.List.Get(
+                out List<PurgeReason> purgeReasons
+            );
+
+            lock (_lock)
+            {
+                for (int i = _pool.Count - 1; i >= 0 && _pool.Count > comfortableSize; i--)
+                {
+                    PooledEntry entry = _pool[i];
+                    PurgeReason reason = PurgeReason.Explicit;
+                    bool shouldPurge = false;
+
+                    if (hasIdleTimeout && (currentTime - entry.ReturnTime) >= idleTimeout)
+                    {
+                        if (!useIntelligent || _pool.Count > comfortableSize)
+                        {
+                            reason = PurgeReason.IdleTimeout;
+                            shouldPurge = true;
+                            Interlocked.Increment(ref _idleTimeoutPurges);
+                        }
+                    }
+                    else if (hasMaxSize && _pool.Count > maxSize)
+                    {
+                        reason = PurgeReason.CapacityExceeded;
+                        shouldPurge = true;
+                        Interlocked.Increment(ref _capacityPurges);
+                    }
+                    else if (isExplicit)
+                    {
+                        shouldPurge = true;
+                    }
+
+                    if (shouldPurge)
+                    {
+                        entriesToPurge.Add(entry);
+                        purgeReasons.Add(reason);
+                        _pool.RemoveAt(i);
+                    }
+                }
+            }
+
+            int purged = entriesToPurge.Count;
+            Interlocked.Add(ref _purgeCount, purged);
+
+            for (int i = 0; i < entriesToPurge.Count; i++)
+            {
+                InvokeOnPurge(entriesToPurge[i].Value, purgeReasons[i]);
+                InvokeOnDispose(entriesToPurge[i].Value);
+            }
+
+            return purged;
+        }
+
+        /// <summary>
+        /// Gets the current pool statistics.
+        /// This method is thread-safe.
+        /// </summary>
+        /// <returns>A snapshot of pool statistics.</returns>
+        public PoolStatistics GetStatistics()
+        {
+            int currentSize;
+            lock (_lock)
+            {
+                currentSize = _pool.Count;
+            }
+
+            return new PoolStatistics(
+                currentSize: currentSize,
+                peakSize: Volatile.Read(ref _peakSize),
+                rentCount: Interlocked.Read(ref _rentCount),
+                returnCount: Interlocked.Read(ref _returnCount),
+                purgeCount: Interlocked.Read(ref _purgeCount),
+                idleTimeoutPurges: Interlocked.Read(ref _idleTimeoutPurges),
+                capacityPurges: Interlocked.Read(ref _capacityPurges)
+            );
+        }
+
+        private void InvokeOnPurge(T value, PurgeReason reason)
+        {
+            if (OnPurge == null)
+            {
+                return;
+            }
+
+            try
+            {
+                OnPurge(value, reason);
+            }
+            catch
+            {
+                // Swallow exceptions from callbacks
+            }
+        }
+
+        private void InvokeOnDispose(T value)
+        {
+            if (_onDispose == null)
+            {
+                return;
+            }
+
+            try
+            {
+                _onDispose(value);
+            }
+            catch
+            {
+                // Swallow exceptions from callbacks
+            }
         }
 
         /// <summary>
@@ -1252,15 +2082,26 @@ namespace WallstopStudios.UnityHelpers.Utils
         /// </summary>
         public void Dispose()
         {
-            if (_onDispose == null)
+            if (Interlocked.Exchange(ref _disposed, 1) != 0)
             {
-                _pool.Clear();
                 return;
             }
 
-            while (_pool.TryPop(out T value))
+            List<PooledEntry> toDispose;
+            lock (_lock)
             {
-                _onDispose(value);
+                toDispose = new List<PooledEntry>(_pool);
+                _pool.Clear();
+            }
+
+            if (_onDispose == null)
+            {
+                return;
+            }
+
+            for (int i = 0; i < toDispose.Count; i++)
+            {
+                InvokeOnDispose(toDispose[i].Value);
             }
         }
     }

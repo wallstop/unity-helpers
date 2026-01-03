@@ -1,5 +1,7 @@
 # Skill: Mobile and XR Optimization
 
+<!-- trigger: mobile, vr, xr, ar, fps | Mobile, VR/AR, 90+ FPS targets | Performance -->
+
 **Trigger**: When developing for mobile platforms (iOS, Android), VR headsets, AR devices, or any scenario requiring consistent high framerates (90+ FPS).
 
 ---

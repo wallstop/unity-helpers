@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
@@ -249,21 +249,21 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         }
 
         // Data-driven test for CalculateRowsOnPage covering various scenarios
-        [TestCase(12, 5, 5, 2, TestName = "CalculateRowsOnPage_LastPage_Returns2")]
-        [TestCase(0, 5, 0, 1, TestName = "CalculateRowsOnPage_EmptyList_Returns1")]
-        [TestCase(6, 0, 0, 1, TestName = "CalculateRowsOnPage_ZeroPageSize_Returns1")]
-        [TestCase(3, 2, -2, 2, TestName = "CalculateRowsOnPage_NegativePage_ClampsToFirst")]
-        [TestCase(10, 5, 0, 5, TestName = "CalculateRowsOnPage_FirstFullPage_ReturnsPageSize")]
-        [TestCase(10, 5, 1, 5, TestName = "CalculateRowsOnPage_SecondFullPage_ReturnsPageSize")]
-        [TestCase(7, 5, 1, 2, TestName = "CalculateRowsOnPage_PartialLastPage_ReturnsRemaining")]
-        [TestCase(5, 5, 0, 5, TestName = "CalculateRowsOnPage_ExactlyOnePage_ReturnsPageSize")]
-        [TestCase(1, 10, 0, 1, TestName = "CalculateRowsOnPage_SingleItem_Returns1")]
+        [TestCase(12, 5, 5, 2, TestName = "CalculateRowsOnPage.LastPage.Returns2")]
+        [TestCase(0, 5, 0, 1, TestName = "CalculateRowsOnPage.EmptyList.Returns1")]
+        [TestCase(6, 0, 0, 1, TestName = "CalculateRowsOnPage.ZeroPageSize.Returns1")]
+        [TestCase(3, 2, -2, 2, TestName = "CalculateRowsOnPage.NegativePage.ClampsToFirst")]
+        [TestCase(10, 5, 0, 5, TestName = "CalculateRowsOnPage.FirstFullPage.ReturnsPageSize")]
+        [TestCase(10, 5, 1, 5, TestName = "CalculateRowsOnPage.SecondFullPage.ReturnsPageSize")]
+        [TestCase(7, 5, 1, 2, TestName = "CalculateRowsOnPage.PartialLastPage.ReturnsRemaining")]
+        [TestCase(5, 5, 0, 5, TestName = "CalculateRowsOnPage.ExactlyOnePage.ReturnsPageSize")]
+        [TestCase(1, 10, 0, 1, TestName = "CalculateRowsOnPage.SingleItem.Returns1")]
         [TestCase(
             100,
             10,
             9,
             10,
-            TestName = "CalculateRowsOnPage_LastPageExactFit_ReturnsPageSize"
+            TestName = "CalculateRowsOnPage.LastPageExactFit.ReturnsPageSize"
         )]
         public void CalculateRowsOnPageDataDrivenScenarios(
             int filteredCount,

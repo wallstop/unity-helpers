@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2026 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
@@ -7,32 +7,58 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
     using System;
     using System.Collections.Generic;
     using System.IO;
+    using System.Text;
     using System.Text.RegularExpressions;
+    using System.Threading;
     using NUnit.Framework;
     using UnityEditor;
+#if UNITY_2D_SPRITE
     using UnityEditor.U2D.Sprites;
+#endif
     using UnityEngine;
     using UnityEngine.TestTools;
     using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Editor.AssetProcessors;
     using WallstopStudios.UnityHelpers.Editor.Sprites;
     using WallstopStudios.UnityHelpers.Tests.Core;
+    using WallstopStudios.UnityHelpers.Tests.Core.TestUtils;
     using Object = UnityEngine.Object;
+    using PivotMode = UnityHelpers.Editor.Sprites.PivotMode;
 
     /// <summary>
     /// Tests for <see cref="SpriteSheetExtractor"/> covering sprite sheet discovery,
     /// extraction, naming patterns, sort modes, selection handling, and edge cases.
     /// </summary>
+    /// <remarks>
+    /// <para>
+    /// UNITY_2D_SPRITE is conditionally defined by the assembly definition when the
+    /// com.unity.2d.sprite package (version 1.0.0+) is installed. When available, tests
+    /// use the modern <c>ISpriteEditorDataProvider</c> API for sprite sheet configuration.
+    /// When absent, tests fall back to the deprecated <c>TextureImporter.spritesheet</c>
+    /// property which remains functional.
+    /// </para>
+    /// </remarks>
     [TestFixture]
     public sealed class SpriteSheetExtractorTests : CommonTestBase
     {
         private const string Root = "Assets/Temp/SpriteSheetExtractorTests";
         private const string OutputDir = "Assets/Temp/SpriteSheetExtractorTests/Output";
+        private const string SharedDir = "Assets/Temp/SpriteSheetExtractorTests/Shared";
 
         private static readonly Regex InvalidOutputDirectoryPattern = new(
             @"Invalid output directory\.",
             RegexOptions.Compiled
         );
+
+        // Shared fixture paths - created once in OneTimeSetUp, cleaned up in OneTimeTearDown
+        // These are used by read-only tests (discovery, selection, sort mode tests)
+        // Note: These are safe as static fields because Unity Test Runner runs tests sequentially,
+        // not in parallel. If parallel test execution is ever enabled, these would need locking.
+        private static string _shared2x2Path;
+        private static string _shared4x4Path;
+        private static string _shared8x8Path;
+        private static string _sharedSingleModePath;
+        private static bool _sharedFixturesCreated;
 
         [SetUp]
         public override void BaseSetUp()
@@ -58,6 +84,104 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             }
             DetectAssetChangeProcessor.ResetForTesting();
             CleanupTrackedFoldersAndAssets();
+        }
+
+        public override void CommonOneTimeSetUp()
+        {
+            base.CommonOneTimeSetUp();
+            using (AssetDatabaseBatchHelper.BeginBatch())
+            {
+                EnsureFolder(Root);
+                EnsureFolder(OutputDir);
+                EnsureFolder(SharedDir);
+
+                // If flag is set but fixtures don't exist (e.g., previous run failed), reset and recreate
+                if (_sharedFixturesCreated)
+                {
+                    if (
+                        string.IsNullOrEmpty(_shared2x2Path)
+                        || AssetDatabase.LoadAssetAtPath<Texture2D>(_shared2x2Path) == null
+                    )
+                    {
+                        _sharedFixturesCreated = false;
+                    }
+                }
+
+                // Create shared fixtures for read-only tests (discovery, selection, sort mode tests)
+                // These avoid recreating identical textures for each test
+                if (!_sharedFixturesCreated)
+                {
+                    _shared2x2Path = CreateSharedSpriteSheet(
+                        "shared_2x2",
+                        64,
+                        64,
+                        2,
+                        2,
+                        SpriteImportMode.Multiple
+                    );
+                    _shared4x4Path = CreateSharedSpriteSheet(
+                        "shared_4x4",
+                        128,
+                        128,
+                        4,
+                        4,
+                        SpriteImportMode.Multiple
+                    );
+                    _shared8x8Path = CreateSharedSpriteSheet(
+                        "shared_8x8",
+                        256,
+                        256,
+                        8,
+                        8,
+                        SpriteImportMode.Multiple
+                    );
+                    _sharedSingleModePath = CreateSharedSingleModeSprite(
+                        "shared_single",
+                        32,
+                        32,
+                        Color.red
+                    );
+                    _sharedFixturesCreated = true;
+                }
+            }
+        }
+
+        [OneTimeTearDown]
+        public override void OneTimeTearDown()
+        {
+            // Clean up shared fixtures
+            using (AssetDatabaseBatchHelper.BeginBatch())
+            {
+                if (!string.IsNullOrEmpty(_shared2x2Path))
+                {
+                    AssetDatabase.DeleteAsset(_shared2x2Path);
+                    _shared2x2Path = null;
+                }
+                if (!string.IsNullOrEmpty(_shared4x4Path))
+                {
+                    AssetDatabase.DeleteAsset(_shared4x4Path);
+                    _shared4x4Path = null;
+                }
+                if (!string.IsNullOrEmpty(_shared8x8Path))
+                {
+                    AssetDatabase.DeleteAsset(_shared8x8Path);
+                    _shared8x8Path = null;
+                }
+                if (!string.IsNullOrEmpty(_sharedSingleModePath))
+                {
+                    AssetDatabase.DeleteAsset(_sharedSingleModePath);
+                    _sharedSingleModePath = null;
+                }
+                _sharedFixturesCreated = false;
+
+                // Clean up shared directory
+                if (AssetDatabase.IsValidFolder(SharedDir))
+                {
+                    AssetDatabase.DeleteAsset(SharedDir);
+                }
+            }
+
+            base.OneTimeTearDown();
         }
 
         private string CreateSpriteSheet(
@@ -195,8 +319,144 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             return path;
         }
 
+        /// <summary>
+        /// Creates a shared sprite sheet that is not tracked for per-test cleanup.
+        /// These are created in OneTimeSetUp and cleaned up in OneTimeTearDown.
+        /// </summary>
+        private string CreateSharedSpriteSheet(
+            string name,
+            int width,
+            int height,
+            int gridColumns,
+            int gridRows,
+            SpriteImportMode mode
+        )
+        {
+            int cellWidth = width / gridColumns;
+            int cellHeight = height / gridRows;
+
+            Texture2D texture = new Texture2D(width, height, TextureFormat.RGBA32, false) // UNH-SUPPRESS: Temporary texture for PNG creation, destroyed immediately
+            {
+                alphaIsTransparency = true,
+            };
+
+            Color[] pixels = new Color[width * height];
+            for (int row = 0; row < gridRows; row++)
+            {
+                for (int col = 0; col < gridColumns; col++)
+                {
+                    int spriteIndex = row * gridColumns + col;
+                    float hue = (float)spriteIndex / (gridRows * gridColumns);
+                    Color cellColor = Color.HSVToRGB(hue, 0.8f, 0.9f);
+
+                    int startX = col * cellWidth;
+                    int startY = row * cellHeight;
+
+                    for (int y = startY; y < startY + cellHeight; y++)
+                    {
+                        for (int x = startX; x < startX + cellWidth; x++)
+                        {
+                            pixels[y * width + x] = cellColor;
+                        }
+                    }
+                }
+            }
+
+            texture.SetPixels(pixels);
+            texture.Apply();
+
+            string path = Path.Combine(SharedDir, name + ".png").SanitizePath();
+            string fullPath = RelToFull(path);
+            string directory = Path.GetDirectoryName(fullPath);
+            if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
+            {
+                Directory.CreateDirectory(directory);
+            }
+            File.WriteAllBytes(fullPath, texture.EncodeToPNG());
+
+            Object.DestroyImmediate(texture); // UNH-SUPPRESS: Cleanup temporary texture after PNG creation
+
+            AssetDatabase.ImportAsset(path);
+
+            TextureImporter importer = AssetImporter.GetAtPath(path) as TextureImporter;
+            if (importer == null)
+            {
+                return path;
+            }
+
+            importer.textureType = TextureImporterType.Sprite;
+            importer.spriteImportMode = mode;
+            importer.isReadable = true;
+            importer.textureCompression = TextureImporterCompression.Uncompressed;
+
+            if (mode == SpriteImportMode.Multiple)
+            {
+                SpriteMetaData[] spritesheet = new SpriteMetaData[gridColumns * gridRows];
+                for (int row = 0; row < gridRows; row++)
+                {
+                    for (int col = 0; col < gridColumns; col++)
+                    {
+                        int index = row * gridColumns + col;
+                        spritesheet[index] = new SpriteMetaData
+                        {
+                            name = $"{name}_sprite_{index}",
+                            rect = new Rect(
+                                col * cellWidth,
+                                row * cellHeight,
+                                cellWidth,
+                                cellHeight
+                            ),
+                            alignment = (int)SpriteAlignment.Center,
+                            pivot = new Vector2(0.5f, 0.5f),
+                            border = Vector4.zero,
+                        };
+                    }
+                }
+                SetSpriteSheet(importer, spritesheet);
+            }
+
+            importer.SaveAndReimport();
+            return path;
+        }
+
+        /// <summary>
+        /// Creates a shared single-mode sprite that is not tracked for per-test cleanup.
+        /// These are created in OneTimeSetUp and cleaned up in OneTimeTearDown.
+        /// </summary>
+        private string CreateSharedSingleModeSprite(string name, int width, int height, Color color)
+        {
+            Texture2D texture = new Texture2D(width, height, TextureFormat.RGBA32, false); // UNH-SUPPRESS: Temporary texture for PNG creation
+            Color[] pixels = new Color[width * height];
+            for (int i = 0; i < pixels.Length; i++)
+            {
+                pixels[i] = color;
+            }
+            texture.SetPixels(pixels);
+            texture.Apply();
+
+            string path = Path.Combine(SharedDir, name + ".png").SanitizePath();
+            File.WriteAllBytes(RelToFull(path), texture.EncodeToPNG());
+
+            Object.DestroyImmediate(texture); // UNH-SUPPRESS: Cleanup temporary texture after PNG creation
+
+            AssetDatabase.ImportAsset(path);
+            TextureImporter importer = AssetImporter.GetAtPath(path) as TextureImporter;
+            if (importer == null)
+            {
+                return path;
+            }
+            importer.textureType = TextureImporterType.Sprite;
+            importer.spriteImportMode = SpriteImportMode.Single;
+            importer.isReadable = true;
+            importer.textureCompression = TextureImporterCompression.Uncompressed;
+            importer.SaveAndReimport();
+
+            return path;
+        }
+
         private static void SetSpriteSheet(TextureImporter importer, SpriteMetaData[] spritesheet)
         {
+#if UNITY_2D_SPRITE
             SpriteDataProviderFactories factory = new();
             factory.Init();
             ISpriteEditorDataProvider dataProvider = factory.GetSpriteEditorDataProviderFromObject(
@@ -221,6 +481,15 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
 
             dataProvider.SetSpriteRects(spriteRects);
             dataProvider.Apply();
+            importer.SaveAndReimport();
+#else
+            // Fallback for when 2D Sprite package is not installed.
+            // Uses the deprecated spritesheet property which still works.
+#pragma warning disable CS0618 // Type or member is obsolete
+            importer.spritesheet = spritesheet;
+#pragma warning restore CS0618
+            importer.SaveAndReimport();
+#endif
         }
 
         private SpriteSheetExtractor CreateExtractor()
@@ -239,6 +508,26 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             return extractor;
         }
 
+        /// <summary>
+        /// Creates an extractor configured to use shared fixtures only.
+        /// Use this for read-only tests that don't need per-test sprite sheets.
+        /// </summary>
+        private SpriteSheetExtractor CreateExtractorWithSharedFixtures()
+        {
+            SpriteSheetExtractor extractor = Track(
+                ScriptableObject.CreateInstance<SpriteSheetExtractor>()
+            );
+            extractor._inputDirectories = new List<UnityEngine.Object>
+            {
+                AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(SharedDir),
+            };
+            extractor._outputDirectory = AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(
+                OutputDir
+            );
+            extractor._overwriteExisting = true;
+            return extractor;
+        }
+
         private static string RelToFull(string rel)
         {
             return Path.Combine(
@@ -249,6 +538,52 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
                     rel
                 )
                 .SanitizePath();
+        }
+
+        /// <summary>
+        /// Creates a simple sprite sheet pixel array with opaque squares in a grid pattern.
+        /// </summary>
+        private static Color32[] CreateSimpleSpriteSheetPixels(
+            int width,
+            int height,
+            int columns,
+            int rows
+        )
+        {
+            Color32[] pixels = new Color32[width * height];
+            int cellWidth = width / columns;
+            int cellHeight = height / rows;
+            int spriteWidth = cellWidth - 4;
+            int spriteHeight = cellHeight - 4;
+
+            // Fill with transparent
+            for (int i = 0; i < pixels.Length; ++i)
+            {
+                pixels[i] = new Color32(0, 0, 0, 0);
+            }
+
+            // Create opaque squares
+            for (int row = 0; row < rows; ++row)
+            {
+                for (int col = 0; col < columns; ++col)
+                {
+                    int startX = col * cellWidth + 2;
+                    int startY = row * cellHeight + 2;
+
+                    for (int y = startY; y < startY + spriteHeight; ++y)
+                    {
+                        for (int x = startX; x < startX + spriteWidth; ++x)
+                        {
+                            if (x >= 0 && x < width && y >= 0 && y < height)
+                            {
+                                pixels[y * width + x] = new Color32(255, 128, 64, 255);
+                            }
+                        }
+                    }
+                }
+            }
+
+            return pixels;
         }
 
         /// <summary>
@@ -358,9 +693,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
         [Test]
         public void DiscoverSheetsFindsMultipleModeSpriteSheet()
         {
-            string path = CreateSpriteSheet("test_2x2", 64, 64, 2, 2);
-
-            SpriteSheetExtractor extractor = CreateExtractor();
+            // Uses shared fixture - no per-test asset creation needed
+            SpriteSheetExtractor extractor = CreateExtractorWithSharedFixtures();
             extractor.DiscoverSpriteSheets();
 
             Assert.IsTrue(extractor._discoveredSheets != null);
@@ -369,7 +703,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             bool found = false;
             for (int i = 0; i < extractor._discoveredSheets.Count; i++)
             {
-                if (extractor._discoveredSheets[i]._assetPath == path)
+                if (extractor._discoveredSheets[i]._assetPath == _shared2x2Path)
                 {
                     found = true;
                     Assert.That(extractor._discoveredSheets[i]._sprites.Count, Is.EqualTo(4));
@@ -380,15 +714,14 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
                     break;
                 }
             }
-            Assert.IsTrue(found, "Should find the created sprite sheet");
+            Assert.IsTrue(found, "Should find the shared 2x2 sprite sheet");
         }
 
         [Test]
         public void DiscoverSheetsFindsSingleModeSprite()
         {
-            string path = CreateSingleModeSprite("single_mode", 32, 32, Color.red);
-
-            SpriteSheetExtractor extractor = CreateExtractor();
+            // Uses shared fixture - no per-test asset creation needed
+            SpriteSheetExtractor extractor = CreateExtractorWithSharedFixtures();
             extractor.DiscoverSpriteSheets();
 
             Assert.IsTrue(extractor._discoveredSheets != null);
@@ -396,7 +729,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             bool found = false;
             for (int i = 0; i < extractor._discoveredSheets.Count; i++)
             {
-                if (extractor._discoveredSheets[i]._assetPath == path)
+                if (extractor._discoveredSheets[i]._assetPath == _sharedSingleModePath)
                 {
                     found = true;
                     Assert.That(extractor._discoveredSheets[i]._sprites.Count, Is.EqualTo(1));
@@ -407,19 +740,20 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
                     break;
                 }
             }
-            Assert.IsTrue(found, "Should find single mode sprite");
+            Assert.IsTrue(found, "Should find shared single mode sprite");
         }
 
         [Test]
         public void ExtractsTwoSpriteSheetMinimumCase()
         {
-            CreateSpriteSheet("min_2x1", 64, 32, 2, 1);
+            using (AssetDatabaseBatchHelper.BeginBatch())
+            {
+                CreateSpriteSheet("min_2x1", 64, 32, 2, 1);
 
-            SpriteSheetExtractor extractor = CreateExtractor();
-            extractor.DiscoverSpriteSheets();
-            extractor.ExtractSelectedSprites();
-
-            AssetDatabase.Refresh();
+                SpriteSheetExtractor extractor = CreateExtractor();
+                extractor.DiscoverSpriteSheets();
+                extractor.ExtractSelectedSprites();
+            }
 
             string output0 = Path.Combine(OutputDir, "min_2x1_000.png").SanitizePath();
             string output1 = Path.Combine(OutputDir, "min_2x1_001.png").SanitizePath();
@@ -439,13 +773,14 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
         [Test]
         public void Extracts4x4GridSixteenSprites()
         {
-            CreateSpriteSheet("grid_4x4", 128, 128, 4, 4);
+            using (AssetDatabaseBatchHelper.BeginBatch())
+            {
+                CreateSpriteSheet("grid_4x4", 128, 128, 4, 4);
 
-            SpriteSheetExtractor extractor = CreateExtractor();
-            extractor.DiscoverSpriteSheets();
-            extractor.ExtractSelectedSprites();
-
-            AssetDatabase.Refresh();
+                SpriteSheetExtractor extractor = CreateExtractor();
+                extractor.DiscoverSpriteSheets();
+                extractor.ExtractSelectedSprites();
+            }
 
             for (int i = 0; i < 16; i++)
             {
@@ -476,13 +811,14 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
         public void ExtractsVariousSpriteSizes(int width, int height, int cols, int rows)
         {
             string name = $"size_{width}x{height}_{cols}x{rows}";
-            CreateSpriteSheet(name, width, height, cols, rows);
+            using (AssetDatabaseBatchHelper.BeginBatch())
+            {
+                CreateSpriteSheet(name, width, height, cols, rows);
 
-            SpriteSheetExtractor extractor = CreateExtractor();
-            extractor.DiscoverSpriteSheets();
-            extractor.ExtractSelectedSprites();
-
-            AssetDatabase.Refresh();
+                SpriteSheetExtractor extractor = CreateExtractor();
+                extractor.DiscoverSpriteSheets();
+                extractor.ExtractSelectedSprites();
+            }
 
             int expectedCount = cols * rows;
             for (int i = 0; i < expectedCount; i++)
@@ -517,7 +853,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             extractor.DiscoverSpriteSheets();
             extractor.ExtractSelectedSprites();
 
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             string outputPath = Path.Combine(OutputDir, $"{safeName}_000.png").SanitizePath();
             Assert.That(
@@ -560,7 +896,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             extractor.DiscoverSpriteSheets();
             extractor.ExtractSelectedSprites();
 
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             string outputPath = Path.Combine(OutputDir, "borders_9slice_000.png").SanitizePath();
             Assert.That(
@@ -586,7 +922,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             extractor.DiscoverSpriteSheets();
             extractor.ExtractSelectedSprites();
 
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             string outputPath = Path.Combine(OutputDir, "pixel_perfect_000.png").SanitizePath();
             VerifyExtractedSpriteDimensions(outputPath, cellWidth, cellHeight, "PixelPerfect");
@@ -595,9 +931,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
         [Test]
         public void SingleModeSpriteExtractsWithWarning()
         {
-            CreateSingleModeSprite("single_warn", 32, 32, Color.blue);
-
-            SpriteSheetExtractor extractor = CreateExtractor();
+            // Uses shared single mode fixture - no per-test asset creation needed
+            SpriteSheetExtractor extractor = CreateExtractorWithSharedFixtures();
             extractor.DiscoverSpriteSheets();
 
             bool foundSingleMode = false;
@@ -619,14 +954,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
         [Test]
         public void ProcessesMultipleSheetsInSingleDirectory()
         {
-            CreateSpriteSheet("multi_a", 64, 64, 2, 2);
-            CreateSpriteSheet("multi_b", 64, 64, 2, 2);
-            CreateSpriteSheet("multi_c", 64, 64, 2, 2);
-
-            SpriteSheetExtractor extractor = CreateExtractor();
+            // Uses shared fixtures - we have 4 shared sprites (2x2, 4x4, 8x8, single)
+            SpriteSheetExtractor extractor = CreateExtractorWithSharedFixtures();
             extractor.DiscoverSpriteSheets();
 
-            Assert.That(extractor._discoveredSheets.Count, Is.GreaterThanOrEqualTo(3));
+            // Should find at least the 4 shared fixtures
+            Assert.That(extractor._discoveredSheets.Count, Is.GreaterThanOrEqualTo(4));
         }
 
         [Test]
@@ -788,7 +1121,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             extractor.DiscoverSpriteSheets();
             extractor.ExtractSelectedSprites();
 
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             string output0 = Path.Combine(OutputDir, "naming_test_000.png").SanitizePath();
             string output1 = Path.Combine(OutputDir, "naming_test_001.png").SanitizePath();
@@ -815,7 +1148,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             extractor.DiscoverSpriteSheets();
             extractor.ExtractSelectedSprites();
 
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             string output0 = Path.Combine(OutputDir, "custom_prefix_000.png").SanitizePath();
             string output1 = Path.Combine(OutputDir, "custom_prefix_001.png").SanitizePath();
@@ -833,7 +1166,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             extractor.DiscoverSpriteSheets();
             extractor.ExtractSelectedSprites();
 
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             string output63 = Path.Combine(OutputDir, "large_grid_063.png").SanitizePath();
             Assert.That(
@@ -873,7 +1206,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             extractor.DiscoverSpriteSheets();
             extractor.ExtractSelectedSprites();
 
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             for (int i = 0; i < 4; i++)
             {
@@ -889,9 +1222,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
         [Test]
         public void SelectAllSelectsAllSprites()
         {
-            CreateSpriteSheet("select_all", 64, 64, 2, 2);
-
-            SpriteSheetExtractor extractor = CreateExtractor();
+            // Uses shared fixture - no per-test asset creation needed
+            SpriteSheetExtractor extractor = CreateExtractorWithSharedFixtures();
             extractor.DiscoverSpriteSheets();
 
             for (int i = 0; i < extractor._discoveredSheets.Count; i++)
@@ -929,9 +1261,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
         [Test]
         public void SelectNoneDeselectsAllSprites()
         {
-            CreateSpriteSheet("select_none", 64, 64, 2, 2);
-
-            SpriteSheetExtractor extractor = CreateExtractor();
+            // Uses shared fixture - no per-test asset creation needed
+            SpriteSheetExtractor extractor = CreateExtractorWithSharedFixtures();
             extractor.DiscoverSpriteSheets();
 
             for (int i = 0; i < extractor._discoveredSheets.Count; i++)
@@ -988,7 +1319,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             }
 
             extractor.ExtractSelectedSprites();
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             string output0 = Path.Combine(OutputDir, "individual_select_000.png").SanitizePath();
             string output1 = Path.Combine(OutputDir, "individual_select_001.png").SanitizePath();
@@ -1057,7 +1388,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
 
             Assert.DoesNotThrow(() => extractor.ExtractSelectedSprites());
 
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             string output0 = Path.Combine(OutputDir, "large_texture_000.png").SanitizePath();
             Assert.That(
@@ -1121,7 +1452,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             extractor.DiscoverSpriteSheets();
             extractor.ExtractSelectedSprites();
 
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             string output0 = Path.Combine(OutputDir, "alpha_texture_000.png").SanitizePath();
             Assert.That(
@@ -1171,7 +1502,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             extractor.DiscoverSpriteSheets();
             extractor.ExtractSelectedSprites();
 
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             string output0 = Path.Combine(OutputDir, "no_alpha_texture_000.png").SanitizePath();
             Assert.That(
@@ -1191,7 +1522,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             extractor.DiscoverSpriteSheets();
             extractor.ExtractSelectedSprites();
 
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             string output0 = Path.Combine(OutputDir, "dry_run_test_000.png").SanitizePath();
             Assert.That(
@@ -1228,7 +1559,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             extractor.DiscoverSpriteSheets();
             extractor.ExtractSelectedSprites();
 
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             FileInfo newInfo = new FileInfo(RelToFull(outputPath));
             Assert.That(newInfo.Length, Is.Not.EqualTo(originalSize), "File should be replaced");
@@ -1295,7 +1626,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             extractor.DiscoverSpriteSheets();
             extractor.ExtractSelectedSprites();
 
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             string outputPath = Path.Combine(OutputDir, "preserve_settings_000.png").SanitizePath();
             TextureImporter resultImporter = AssetImporter.GetAtPath(outputPath) as TextureImporter;
@@ -1418,7 +1749,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             extractor.DiscoverSpriteSheets();
             extractor.ExtractSelectedSprites();
 
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             string outputPath = Path.Combine(OutputDir, "single_import_000.png").SanitizePath();
             TextureImporter resultImporter = AssetImporter.GetAtPath(outputPath) as TextureImporter;
@@ -1442,7 +1773,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             extractor.DiscoverSpriteSheets();
             extractor.ExtractSelectedSprites();
 
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             string outputPath = Path.Combine(OutputDir, "dimension_check_000.png").SanitizePath();
             VerifyExtractedSpriteDimensions(outputPath, cellWidth, cellHeight, "DimensionCheck");
@@ -1460,7 +1791,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             Assert.DoesNotThrow(() => extractor.ExtractSelectedSprites());
             Assert.DoesNotThrow(() => extractor.ExtractSelectedSprites());
 
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             string output0 = Path.Combine(OutputDir, "multi_run_000.png").SanitizePath();
             Assert.That(
@@ -1669,7 +2000,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             extractor.DiscoverSpriteSheets();
             extractor.ExtractSelectedSprites();
 
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             string output0 = Path.Combine(OutputDir, "reverse_order_000.png").SanitizePath();
             string output1 = Path.Combine(OutputDir, "reverse_order_001.png").SanitizePath();
@@ -1718,7 +2049,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             extractor.DiscoverSpriteSheets();
             extractor.ExtractSelectedSprites();
 
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             string output0 = Path.Combine(OutputDir, "name_sort_000.png").SanitizePath();
             Assert.That(File.Exists(RelToFull(output0)), Is.True);
@@ -1733,7 +2064,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             extractor.DiscoverSpriteSheets();
             extractor.ExtractSelectedSprites();
 
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             string output0 = Path.Combine(OutputDir, "prefix_test_000.png").SanitizePath();
             Assert.That(File.Exists(RelToFull(output0)), Is.True);
@@ -1748,7 +2079,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             extractor.DiscoverSpriteSheets();
             extractor.ExtractSelectedSprites();
 
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             for (int i = 0; i < 100; i++)
             {
@@ -2230,7 +2561,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             extractor.DiscoverSpriteSheets();
             extractor.ExtractSelectedSprites();
 
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             string output0 = Path.Combine(OutputDir, "sort_alpha_test_000.png").SanitizePath();
             Assert.That(
@@ -2489,7 +2820,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             extractor.DiscoverSpriteSheets();
             extractor.ExtractSelectedSprites();
 
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             string output0 = Path.Combine(OutputDir, "obsolete_extract_test_000.png")
                 .SanitizePath();
@@ -4417,7 +4748,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             extractor.DiscoverSpriteSheets();
             extractor.ExtractSelectedSprites();
 
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             string outputPath = Path.Combine(OutputDir, $"{name}_000.png").SanitizePath();
             VerifyExtractedSpriteDimensions(
@@ -4453,7 +4784,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             extractor.DiscoverSpriteSheets();
             extractor.ExtractSelectedSprites();
 
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             string outputPath = Path.Combine(OutputDir, $"{name}_000.png").SanitizePath();
             VerifyExtractedSpriteDimensions(
@@ -4525,7 +4856,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             extractor.DiscoverSpriteSheets();
             extractor.ExtractSelectedSprites();
 
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             for (int i = 0; i < 4; i++)
             {
@@ -4605,7 +4936,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             extractor.DiscoverSpriteSheets();
             extractor.ExtractSelectedSprites();
 
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             string outputPath = Path.Combine(OutputDir, $"{name}_000.png").SanitizePath();
             VerifyExtractedSpriteDimensions(
@@ -4656,7 +4987,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             extractor.DiscoverSpriteSheets();
             extractor.ExtractSelectedSprites();
 
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             string outputPath = Path.Combine(OutputDir, "tiny_1x1_000.png").SanitizePath();
             VerifyExtractedSpriteDimensions(outputPath, 1, 1, "Tiny1x1");
@@ -4702,7 +5033,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             extractor.DiscoverSpriteSheets();
             extractor.ExtractSelectedSprites();
 
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             string outputPath = Path.Combine(OutputDir, "very_large_000.png").SanitizePath();
             VerifyExtractedSpriteDimensions(outputPath, 512, 512, "VeryLarge");
@@ -4775,7 +5106,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
                 "Extraction should not throw with 2048x2048 texture"
             );
 
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             for (int i = 0; i < 4; i++)
             {
@@ -4918,7 +5249,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             extractor.DiscoverSpriteSheets();
             extractor.ExtractSelectedSprites();
 
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             string outputPath = Path.Combine(OutputDir, "touching_edges_000.png").SanitizePath();
             VerifyExtractedSpriteDimensions(outputPath, 64, 64, "TouchingEdges");
@@ -4968,7 +5299,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
                 "Extraction should not throw when rect extends beyond texture"
             );
 
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             string outputPath = Path.Combine(OutputDir, "clamped_rect_000.png").SanitizePath();
             if (File.Exists(RelToFull(outputPath)))
@@ -5062,7 +5393,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             }
             Assert.IsTrue(found, "Should find negative_coords test sheet");
 
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             string normalPath = Path.Combine(OutputDir, "negative_coords_000.png").SanitizePath();
             Assert.That(
@@ -5167,7 +5498,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             }
             Assert.IsTrue(found, "Should find partial_oob test sheet");
 
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             string validPath = Path.Combine(OutputDir, "partial_oob_000.png").SanitizePath();
             Assert.That(
@@ -5284,7 +5615,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             }
             Assert.IsTrue(found, "Should find exact_bounds test sheet");
 
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             // Verify all 5 sprites were extracted
             for (int i = 0; i < 5; i++)
@@ -5413,7 +5744,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
                 $"Extraction of {totalSprites} sprites should not throw"
             );
 
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             int extractedCount = 0;
             for (int i = 0; i < 64; i++)
@@ -5618,7 +5949,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             extractor.DiscoverSpriteSheets();
             extractor.ExtractSelectedSprites();
 
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             string redPath = Path.Combine(OutputDir, "color_transfer_000.png").SanitizePath();
             string bluePath = Path.Combine(OutputDir, "color_transfer_001.png").SanitizePath();
@@ -5710,7 +6041,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             extractor.DiscoverSpriteSheets();
             extractor.ExtractSelectedSprites();
 
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             string outputPath = Path.Combine(OutputDir, "alpha_preserve_000.png").SanitizePath();
             Assert.That(File.Exists(RelToFull(outputPath)), Is.True);
@@ -5794,7 +6125,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
                 $"Extraction should work with {format}"
             );
 
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             string outputPath = Path.Combine(OutputDir, $"format_{formatName}_000.png")
                 .SanitizePath();
@@ -5867,7 +6198,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
                 $"Extraction should not throw with asymmetric NPOT dimensions {textureWidth}x{textureHeight}"
             );
 
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             string outputPath = Path.Combine(OutputDir, $"{name}_000.png").SanitizePath();
             Assert.That(
@@ -5952,7 +6283,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
                 "Extraction should not throw with NPOT dimensions"
             );
 
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             string outputPath = Path.Combine(OutputDir, $"{name}_000.png").SanitizePath();
             VerifyExtractedSpriteDimensions(outputPath, 25, 25, "NPOT");
@@ -6024,7 +6355,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
                 $"Extraction should not throw for {spriteWidth}x{spriteHeight} (array pool edge case)"
             );
 
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             string outputPath = Path.Combine(OutputDir, $"{name}_000.png").SanitizePath();
             VerifyExtractedSpriteDimensions(
@@ -6164,7 +6495,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
                 "Extraction should work with uneven grid dimensions"
             );
 
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             for (int i = 0; i < 3; i++)
             {
@@ -6193,7 +6524,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
                 "Multiple extractions with different sizes should not throw"
             );
 
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             string output16 = Path.Combine(OutputDir, "multi_size_16_000.png").SanitizePath();
             string output33 = Path.Combine(OutputDir, "multi_size_33_000.png").SanitizePath();
@@ -9202,6 +9533,1450 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             // For 8x8, we should get at least some valid output
             Assert.Greater(columns, 0, "Should have at least 1 column");
             Assert.Greater(rows, 0, "Should have at least 1 row");
+        }
+
+        #endregion
+
+        #region Pivot Mode Tests
+
+        [Test]
+        public void PivotModeToVector2ReturnsCorrectVectorForCenter()
+        {
+            Vector2 result = SpriteSheetExtractor.PivotModeToVector2(
+                UnityHelpers.Editor.Sprites.PivotMode.Center,
+                Vector2.zero
+            );
+            Assert.That(result, Is.EqualTo(new Vector2(0.5f, 0.5f)));
+        }
+
+        [Test]
+        public void PivotModeToVector2ReturnsCorrectVectorForBottomLeft()
+        {
+            Vector2 result = SpriteSheetExtractor.PivotModeToVector2(
+                PivotMode.BottomLeft,
+                Vector2.zero
+            );
+            Assert.That(result, Is.EqualTo(Vector2.zero));
+        }
+
+        [Test]
+        public void PivotModeToVector2ReturnsCorrectVectorForTopRight()
+        {
+            Vector2 result = SpriteSheetExtractor.PivotModeToVector2(
+                PivotMode.TopRight,
+                Vector2.zero
+            );
+            Assert.That(result, Is.EqualTo(Vector2.one));
+        }
+
+        [Test]
+        public void PivotModeToVector2ReturnsCorrectVectorForTopLeft()
+        {
+            Vector2 result = SpriteSheetExtractor.PivotModeToVector2(
+                PivotMode.TopLeft,
+                Vector2.zero
+            );
+            Assert.That(result, Is.EqualTo(new Vector2(0f, 1f)));
+        }
+
+        [Test]
+        public void PivotModeToVector2ReturnsCorrectVectorForBottomRight()
+        {
+            Vector2 result = SpriteSheetExtractor.PivotModeToVector2(
+                PivotMode.BottomRight,
+                Vector2.zero
+            );
+            Assert.That(result, Is.EqualTo(new Vector2(1f, 0f)));
+        }
+
+        [Test]
+        public void PivotModeToVector2ReturnsCorrectVectorForLeftCenter()
+        {
+            Vector2 result = SpriteSheetExtractor.PivotModeToVector2(
+                PivotMode.LeftCenter,
+                Vector2.zero
+            );
+            Assert.That(result, Is.EqualTo(new Vector2(0f, 0.5f)));
+        }
+
+        [Test]
+        public void PivotModeToVector2ReturnsCorrectVectorForRightCenter()
+        {
+            Vector2 result = SpriteSheetExtractor.PivotModeToVector2(
+                PivotMode.RightCenter,
+                Vector2.zero
+            );
+            Assert.That(result, Is.EqualTo(new Vector2(1f, 0.5f)));
+        }
+
+        [Test]
+        public void PivotModeToVector2ReturnsCorrectVectorForTopCenter()
+        {
+            Vector2 result = SpriteSheetExtractor.PivotModeToVector2(
+                PivotMode.TopCenter,
+                Vector2.zero
+            );
+            Assert.That(result, Is.EqualTo(new Vector2(0.5f, 1f)));
+        }
+
+        [Test]
+        public void PivotModeToVector2ReturnsCorrectVectorForBottomCenter()
+        {
+            Vector2 result = SpriteSheetExtractor.PivotModeToVector2(
+                PivotMode.BottomCenter,
+                Vector2.zero
+            );
+            Assert.That(result, Is.EqualTo(new Vector2(0.5f, 0f)));
+        }
+
+        [Test]
+        public void PivotModeToVector2ReturnsCustomPivotWhenModeIsCustom()
+        {
+            Vector2 customPivot = new(0.25f, 0.75f);
+            Vector2 result = SpriteSheetExtractor.PivotModeToVector2(PivotMode.Custom, customPivot);
+            Assert.That(result, Is.EqualTo(customPivot));
+        }
+
+        [Test]
+        public void GetEffectivePivotModeReturnsGlobalWhenUseGlobalSettingsTrue()
+        {
+            SpriteSheetExtractor extractor = CreateExtractor();
+            extractor._pivotMode = PivotMode.TopLeft;
+
+            SpriteSheetExtractor.SpriteSheetEntry entry = new()
+            {
+                _useGlobalSettings = true,
+                _pivotModeOverride = PivotMode.BottomRight,
+            };
+
+            PivotMode result = extractor.GetEffectivePivotMode(entry);
+            Assert.That(result, Is.EqualTo(PivotMode.TopLeft));
+        }
+
+        [Test]
+        public void GetEffectivePivotModeReturnsOverrideWhenUseGlobalSettingsFalse()
+        {
+            SpriteSheetExtractor extractor = CreateExtractor();
+            extractor._pivotMode = PivotMode.TopLeft;
+
+            SpriteSheetExtractor.SpriteSheetEntry entry = new()
+            {
+                _useGlobalSettings = false,
+                _pivotModeOverride = PivotMode.BottomRight,
+            };
+
+            PivotMode result = extractor.GetEffectivePivotMode(entry);
+            Assert.That(result, Is.EqualTo(PivotMode.BottomRight));
+        }
+
+        [Test]
+        public void GetEffectivePivotModeReturnsGlobalWhenOverrideIsNull()
+        {
+            SpriteSheetExtractor extractor = CreateExtractor();
+            extractor._pivotMode = PivotMode.TopCenter;
+
+            SpriteSheetExtractor.SpriteSheetEntry entry = new()
+            {
+                _useGlobalSettings = false,
+                _pivotModeOverride = null,
+            };
+
+            PivotMode result = extractor.GetEffectivePivotMode(entry);
+            Assert.That(result, Is.EqualTo(PivotMode.TopCenter));
+        }
+
+        [Test]
+        public void GetEffectiveCustomPivotReturnsGlobalWhenUseGlobalSettingsTrue()
+        {
+            SpriteSheetExtractor extractor = CreateExtractor();
+            extractor._customPivot = new Vector2(0.1f, 0.2f);
+
+            SpriteSheetExtractor.SpriteSheetEntry entry = new()
+            {
+                _useGlobalSettings = true,
+                _customPivotOverride = new Vector2(0.8f, 0.9f),
+            };
+
+            Vector2 result = extractor.GetEffectiveCustomPivot(entry);
+            Assert.That(result, Is.EqualTo(new Vector2(0.1f, 0.2f)));
+        }
+
+        [Test]
+        public void GetEffectiveCustomPivotReturnsOverrideWhenUseGlobalSettingsFalse()
+        {
+            SpriteSheetExtractor extractor = CreateExtractor();
+            extractor._customPivot = new Vector2(0.1f, 0.2f);
+
+            SpriteSheetExtractor.SpriteSheetEntry entry = new()
+            {
+                _useGlobalSettings = false,
+                _customPivotOverride = new Vector2(0.8f, 0.9f),
+            };
+
+            Vector2 result = extractor.GetEffectiveCustomPivot(entry);
+            Assert.That(result, Is.EqualTo(new Vector2(0.8f, 0.9f)));
+        }
+
+        [Test]
+        public void PivotModeToVector2ReturnsDefaultForObsoleteNoneValue()
+        {
+#pragma warning disable CS0618 // Type or member is obsolete
+            Vector2 result = SpriteSheetExtractor.PivotModeToVector2(PivotMode.None, Vector2.zero);
+#pragma warning restore CS0618
+            Assert.That(result, Is.EqualTo(new Vector2(0.5f, 0.5f)));
+        }
+
+        #endregion
+
+        #region Config Save/Load Tests
+
+        [Test]
+        public void ComputeFileHashReturnsNullForNullPath()
+        {
+            string result = SpriteSheetExtractor.ComputeFileHash(null);
+            Assert.IsNull(result);
+        }
+
+        [Test]
+        public void ComputeFileHashReturnsNullForEmptyPath()
+        {
+            string result = SpriteSheetExtractor.ComputeFileHash(string.Empty);
+            Assert.IsNull(result);
+        }
+
+        [Test]
+        public void ComputeFileHashReturnsNullForNonexistentFile()
+        {
+            string result = SpriteSheetExtractor.ComputeFileHash("/nonexistent/path/file.png");
+            Assert.IsNull(result);
+        }
+
+        [Test]
+        public void ComputeFileHashReturnsConsistentHashForSameFile()
+        {
+            string path = CreateSpriteSheet("hash_test", 32, 32, 2, 2);
+            string fullPath = RelToFull(path);
+
+            string hash1 = SpriteSheetExtractor.ComputeFileHash(fullPath);
+            string hash2 = SpriteSheetExtractor.ComputeFileHash(fullPath);
+
+            Assert.IsNotNull(hash1);
+            Assert.IsNotNull(hash2);
+            Assert.That(hash1, Is.EqualTo(hash2));
+        }
+
+        [Test]
+        public void ComputeFileHashReturnsLowercaseHex()
+        {
+            string path = CreateSpriteSheet("hash_hex_test", 32, 32, 2, 2);
+            string fullPath = RelToFull(path);
+
+            string hash = SpriteSheetExtractor.ComputeFileHash(fullPath);
+
+            Assert.IsNotNull(hash);
+            Assert.That(hash.Length, Is.EqualTo(64));
+            Assert.That(hash, Is.EqualTo(hash.ToLowerInvariant()));
+        }
+
+        [Test]
+        public void ComputeFileHashReturnsDifferentHashForDifferentFiles()
+        {
+            string path1 = CreateSpriteSheet("hash_different_test1", 32, 32, 2, 2);
+            string path2 = CreateSpriteSheet("hash_different_test2", 64, 64, 2, 2);
+            string fullPath1 = RelToFull(path1);
+            string fullPath2 = RelToFull(path2);
+
+            string hash1 = SpriteSheetExtractor.ComputeFileHash(fullPath1);
+            string hash2 = SpriteSheetExtractor.ComputeFileHash(fullPath2);
+
+            Assert.IsNotNull(hash1);
+            Assert.IsNotNull(hash2);
+            Assert.That(hash1, Is.Not.EqualTo(hash2));
+        }
+
+        [Test]
+        public void SaveConfigCreatesJsonFile()
+        {
+            string path = CreateSpriteSheet("save_config_test", 32, 32, 2, 2);
+            string configPath = SpriteSheetConfig.GetConfigPath(path);
+            string fullConfigPath = RelToFull(configPath);
+            TrackAssetPath(configPath);
+
+            SpriteSheetExtractor extractor = CreateExtractor();
+            SpriteSheetExtractor.SpriteSheetEntry entry = new()
+            {
+                _assetPath = path,
+                _useGlobalSettings = false,
+                _pivotModeOverride = PivotMode.TopLeft,
+                _customPivotOverride = new Vector2(0.3f, 0.7f),
+            };
+
+            bool result = extractor.SaveConfig(entry);
+
+            Assert.IsTrue(result);
+            Assert.IsTrue(File.Exists(fullConfigPath));
+        }
+
+        [Test]
+        public void SaveConfigSetsConfigLoadedFlag()
+        {
+            string path = CreateSpriteSheet("save_loaded_flag_test", 32, 32, 2, 2);
+            string configPath = SpriteSheetConfig.GetConfigPath(path);
+            TrackAssetPath(configPath);
+
+            SpriteSheetExtractor extractor = CreateExtractor();
+            SpriteSheetExtractor.SpriteSheetEntry entry = new()
+            {
+                _assetPath = path,
+                _useGlobalSettings = false,
+                _pivotModeOverride = PivotMode.Center,
+            };
+
+            Assert.IsFalse(entry._configLoaded);
+
+            _ = extractor.SaveConfig(entry);
+
+            Assert.IsTrue(entry._configLoaded);
+            Assert.IsFalse(entry._configStale);
+        }
+
+        [Test]
+        public void LoadConfigRestoresPivotSettings()
+        {
+            string path = CreateSpriteSheet("load_pivot_test", 32, 32, 2, 2);
+            string configPath = SpriteSheetConfig.GetConfigPath(path);
+            TrackAssetPath(configPath);
+
+            SpriteSheetExtractor extractor = CreateExtractor();
+            SpriteSheetExtractor.SpriteSheetEntry originalEntry = new()
+            {
+                _assetPath = path,
+                _useGlobalSettings = false,
+                _pivotModeOverride = PivotMode.BottomRight,
+                _customPivotOverride = new Vector2(0.1f, 0.9f),
+            };
+
+            _ = extractor.SaveConfig(originalEntry);
+
+            SpriteSheetExtractor.SpriteSheetEntry newEntry = new()
+            {
+                _assetPath = path,
+                _useGlobalSettings = true,
+                _pivotModeOverride = null,
+                _customPivotOverride = null,
+            };
+
+            bool loadResult = extractor.LoadConfig(newEntry);
+
+            Assert.IsTrue(loadResult);
+            Assert.That(newEntry._pivotModeOverride, Is.EqualTo(PivotMode.BottomRight));
+            Assert.That(newEntry._customPivotOverride, Is.EqualTo(new Vector2(0.1f, 0.9f)));
+            Assert.IsFalse(newEntry._useGlobalSettings);
+        }
+
+        [Test]
+        public void LoadConfigReturnsFalseForNonexistentConfig()
+        {
+            string path = CreateSpriteSheet("no_config_test", 32, 32, 2, 2);
+
+            SpriteSheetExtractor extractor = CreateExtractor();
+            SpriteSheetExtractor.SpriteSheetEntry entry = new() { _assetPath = path };
+
+            bool result = extractor.LoadConfig(entry);
+
+            Assert.IsFalse(result);
+            Assert.IsFalse(entry._configLoaded);
+        }
+
+        [Test]
+        public void LoadConfigDetectsStaleConfigWhenTextureChanged()
+        {
+            string path = CreateSpriteSheet("stale_config_test", 32, 32, 2, 2);
+            string configPath = SpriteSheetConfig.GetConfigPath(path);
+            string fullConfigPath = RelToFull(configPath);
+            TrackAssetPath(configPath);
+
+            SpriteSheetExtractor extractor = CreateExtractor();
+            SpriteSheetExtractor.SpriteSheetEntry entry = new()
+            {
+                _assetPath = path,
+                _useGlobalSettings = false,
+                _pivotModeOverride = PivotMode.Center,
+            };
+
+            _ = extractor.SaveConfig(entry);
+
+            string configJson = File.ReadAllText(fullConfigPath, System.Text.Encoding.UTF8);
+            configJson = configJson.Replace(
+                entry._loadedConfig.textureContentHash,
+                "0000000000000000000000000000000000000000000000000000000000000000"
+            );
+            File.WriteAllText(fullConfigPath, configJson, System.Text.Encoding.UTF8);
+
+            SpriteSheetExtractor.SpriteSheetEntry newEntry = new() { _assetPath = path };
+
+            _ = extractor.LoadConfig(newEntry);
+
+            Assert.IsTrue(newEntry._configLoaded);
+            Assert.IsTrue(newEntry._configStale);
+        }
+
+        [Test]
+        public void LoadConfigDoesNotMarkStaleWhenHashMatches()
+        {
+            string path = CreateSpriteSheet("fresh_config_test", 32, 32, 2, 2);
+            string configPath = SpriteSheetConfig.GetConfigPath(path);
+            TrackAssetPath(configPath);
+
+            SpriteSheetExtractor extractor = CreateExtractor();
+            SpriteSheetExtractor.SpriteSheetEntry entry = new()
+            {
+                _assetPath = path,
+                _useGlobalSettings = false,
+                _pivotModeOverride = PivotMode.TopCenter,
+            };
+
+            _ = extractor.SaveConfig(entry);
+
+            SpriteSheetExtractor.SpriteSheetEntry newEntry = new() { _assetPath = path };
+
+            _ = extractor.LoadConfig(newEntry);
+
+            Assert.IsTrue(newEntry._configLoaded);
+            Assert.IsFalse(newEntry._configStale);
+        }
+
+        [Test]
+        public void SaveConfigReturnsFalseForNullEntry()
+        {
+            SpriteSheetExtractor extractor = CreateExtractor();
+            bool result = extractor.SaveConfig(null);
+            Assert.IsFalse(result);
+        }
+
+        [Test]
+        public void SaveConfigReturnsFalseForEmptyAssetPath()
+        {
+            SpriteSheetExtractor extractor = CreateExtractor();
+            SpriteSheetExtractor.SpriteSheetEntry entry = new() { _assetPath = string.Empty };
+
+            bool result = extractor.SaveConfig(entry);
+            Assert.IsFalse(result);
+        }
+
+        [Test]
+        public void LoadConfigReturnsFalseForNullEntry()
+        {
+            SpriteSheetExtractor extractor = CreateExtractor();
+            bool result = extractor.LoadConfig(null);
+            Assert.IsFalse(result);
+        }
+
+        [Test]
+        public void LoadConfigReturnsFalseForEmptyAssetPath()
+        {
+            SpriteSheetExtractor extractor = CreateExtractor();
+            SpriteSheetExtractor.SpriteSheetEntry entry = new() { _assetPath = string.Empty };
+
+            bool result = extractor.LoadConfig(entry);
+            Assert.IsFalse(result);
+        }
+
+        [Test]
+        public void LoadConfigReturnsFalseForCorruptedJson()
+        {
+            string path = CreateSpriteSheet("corrupted_json_test", 32, 32, 2, 2);
+            string configPath = SpriteSheetConfig.GetConfigPath(path);
+            string fullConfigPath = RelToFull(configPath);
+            TrackAssetPath(configPath);
+
+            File.WriteAllText(fullConfigPath, "{ invalid json }}", Encoding.UTF8);
+
+            SpriteSheetExtractor extractor = CreateExtractor();
+            SpriteSheetExtractor.SpriteSheetEntry entry = new() { _assetPath = path };
+
+            bool result = extractor.LoadConfig(entry);
+
+            Assert.IsFalse(result);
+            Assert.IsFalse(entry._configLoaded);
+        }
+
+        [Test]
+        public void TryAutoLoadConfigLoadsExistingConfig()
+        {
+            string path = CreateSpriteSheet("auto_load_test", 32, 32, 2, 2);
+            string configPath = SpriteSheetConfig.GetConfigPath(path);
+            TrackAssetPath(configPath);
+
+            SpriteSheetExtractor extractor = CreateExtractor();
+            SpriteSheetExtractor.SpriteSheetEntry saveEntry = new()
+            {
+                _assetPath = path,
+                _useGlobalSettings = false,
+                _pivotModeOverride = PivotMode.LeftCenter,
+            };
+
+            _ = extractor.SaveConfig(saveEntry);
+
+            SpriteSheetExtractor.SpriteSheetEntry loadEntry = new()
+            {
+                _assetPath = path,
+                _useGlobalSettings = true,
+            };
+
+            extractor.TryAutoLoadConfig(loadEntry);
+
+            Assert.IsTrue(loadEntry._configLoaded);
+            Assert.That(loadEntry._pivotModeOverride, Is.EqualTo(PivotMode.LeftCenter));
+        }
+
+        [Test]
+        public void TryAutoLoadConfigDoesNothingForNoConfig()
+        {
+            string path = CreateSpriteSheet("no_auto_load_test", 32, 32, 2, 2);
+
+            SpriteSheetExtractor extractor = CreateExtractor();
+            SpriteSheetExtractor.SpriteSheetEntry entry = new()
+            {
+                _assetPath = path,
+                _useGlobalSettings = true,
+            };
+
+            extractor.TryAutoLoadConfig(entry);
+
+            Assert.IsFalse(entry._configLoaded);
+            Assert.IsNull(entry._pivotModeOverride);
+        }
+
+        [Test]
+        public void TryAutoLoadConfigHandlesNullEntry()
+        {
+            SpriteSheetExtractor extractor = CreateExtractor();
+            // Should not throw
+            extractor.TryAutoLoadConfig(null);
+        }
+
+        [Test]
+        public void TryAutoLoadConfigHandlesEmptyAssetPath()
+        {
+            SpriteSheetExtractor extractor = CreateExtractor();
+            SpriteSheetExtractor.SpriteSheetEntry entry = new() { _assetPath = string.Empty };
+            // Should not throw
+            extractor.TryAutoLoadConfig(entry);
+            Assert.IsFalse(entry._configLoaded);
+        }
+
+        [Test]
+        public void ConfigRoundTripPreservesAllFields()
+        {
+            string path = CreateSpriteSheet("round_trip_test", 32, 32, 2, 2);
+            string configPath = SpriteSheetConfig.GetConfigPath(path);
+            TrackAssetPath(configPath);
+
+            SpriteSheetExtractor extractor = CreateExtractor();
+            Vector2 customPivot = new(0.33f, 0.66f);
+
+            SpriteSheetExtractor.SpriteSheetEntry saveEntry = new()
+            {
+                _assetPath = path,
+                _useGlobalSettings = false,
+                _pivotModeOverride = PivotMode.Custom,
+                _customPivotOverride = customPivot,
+            };
+
+            _ = extractor.SaveConfig(saveEntry);
+
+            SpriteSheetExtractor.SpriteSheetEntry loadEntry = new() { _assetPath = path };
+
+            _ = extractor.LoadConfig(loadEntry);
+
+            Assert.That(loadEntry._pivotModeOverride, Is.EqualTo(PivotMode.Custom));
+            Assert.That(loadEntry._customPivotOverride, Is.EqualTo(customPivot));
+            Assert.IsNotNull(loadEntry._loadedConfig);
+            Assert.That(
+                loadEntry._loadedConfig.version,
+                Is.EqualTo(SpriteSheetConfig.CurrentVersion)
+            );
+        }
+
+        [Test]
+        public void GetConfigPathReturnsExpectedFormat()
+        {
+            string texturePath = "Assets/Textures/MySprite.png";
+            string configPath = SpriteSheetConfig.GetConfigPath(texturePath);
+
+            Assert.That(configPath, Is.EqualTo("Assets/Textures/MySprite.png.spritesheet.json"));
+        }
+
+        [Test]
+        public void GetConfigPathReturnsEmptyForNullPath()
+        {
+            string configPath = SpriteSheetConfig.GetConfigPath(null);
+            Assert.That(configPath, Is.EqualTo(string.Empty));
+        }
+
+        [Test]
+        public void GetConfigPathReturnsEmptyForEmptyPath()
+        {
+            string configPath = SpriteSheetConfig.GetConfigPath(string.Empty);
+            Assert.That(configPath, Is.EqualTo(string.Empty));
+        }
+
+        [Test]
+        public void MigrateConfigHandlesNullGracefully()
+        {
+            Assert.DoesNotThrow(() => SpriteSheetConfig.MigrateConfig(null));
+        }
+
+        [Test]
+        public void MigrateConfigSetsCurrentVersion()
+        {
+            SpriteSheetConfig config = new() { version = 0 };
+
+            SpriteSheetConfig.MigrateConfig(config);
+
+            Assert.That(config.version, Is.EqualTo(SpriteSheetConfig.CurrentVersion));
+        }
+
+        #endregion
+
+        #region Copy Settings Tests
+
+        [Test]
+        public void CopySettingsFromEntryCopiesPivotSettings()
+        {
+            SpriteSheetExtractor extractor = CreateExtractor();
+            SpriteSheetExtractor.SpriteSheetEntry source = new()
+            {
+                _pivotModeOverride = PivotMode.TopRight,
+                _customPivotOverride = new Vector2(0.2f, 0.8f),
+            };
+
+            SpriteSheetExtractor.SpriteSheetEntry target = new()
+            {
+                _pivotModeOverride = PivotMode.Center,
+                _customPivotOverride = new Vector2(0.5f, 0.5f),
+            };
+
+            extractor.CopySettingsFromEntry(source, target);
+
+            Assert.That(target._pivotModeOverride, Is.EqualTo(PivotMode.TopRight));
+            Assert.That(target._customPivotOverride, Is.EqualTo(new Vector2(0.2f, 0.8f)));
+        }
+
+        #endregion
+
+        #region Algorithm Tests
+
+        [Test]
+        public void BoundaryScoringAlgorithmProducesValidGridDimensions()
+        {
+            // Create a simple grid with transparent boundaries
+            int width = 128;
+            int height = 128;
+            Color32[] pixels = new Color32[width * height];
+
+            // Fill with transparent pixels
+            for (int i = 0; i < pixels.Length; ++i)
+            {
+                pixels[i] = new Color32(0, 0, 0, 0);
+            }
+
+            // Create 4x4 grid of opaque squares (32x32 cells)
+            int cellSize = 32;
+            for (int row = 0; row < 4; ++row)
+            {
+                for (int col = 0; col < 4; ++col)
+                {
+                    int startX = col * cellSize + 2;
+                    int startY = row * cellSize + 2;
+                    int endX = (col + 1) * cellSize - 2;
+                    int endY = (row + 1) * cellSize - 2;
+
+                    for (int y = startY; y < endY; ++y)
+                    {
+                        for (int x = startX; x < endX; ++x)
+                        {
+                            pixels[y * width + x] = new Color32(255, 128, 64, 255);
+                        }
+                    }
+                }
+            }
+
+            SpriteSheetAlgorithms.AlgorithmResult result = SpriteSheetAlgorithms.DetectGrid(
+                pixels,
+                width,
+                height,
+                0.01f,
+                AutoDetectionAlgorithm.BoundaryScoring
+            );
+
+            Assert.That(result.IsValid, Is.True, "BoundaryScoring should produce valid result");
+            Assert.That(result.CellWidth, Is.GreaterThanOrEqualTo(4));
+            Assert.That(result.CellHeight, Is.GreaterThanOrEqualTo(4));
+            Assert.That(result.Algorithm, Is.EqualTo(AutoDetectionAlgorithm.BoundaryScoring));
+        }
+
+        [Test]
+        public void UniformGridAlgorithmProducesValidGridDimensionsWithCount()
+        {
+            int width = 128;
+            int height = 64;
+            Color32[] pixels = new Color32[width * height];
+            for (int i = 0; i < pixels.Length; ++i)
+            {
+                pixels[i] = new Color32(255, 128, 64, 255);
+            }
+
+            SpriteSheetAlgorithms.AlgorithmResult result = SpriteSheetAlgorithms.DetectGrid(
+                pixels,
+                width,
+                height,
+                0.01f,
+                AutoDetectionAlgorithm.UniformGrid,
+                8
+            );
+
+            Assert.That(result.IsValid, Is.True, "UniformGrid should produce valid result");
+            Assert.That(result.CellWidth, Is.GreaterThanOrEqualTo(4));
+            Assert.That(result.CellHeight, Is.GreaterThanOrEqualTo(4));
+            Assert.That(result.Algorithm, Is.EqualTo(AutoDetectionAlgorithm.UniformGrid));
+            Assert.That(result.Confidence, Is.GreaterThan(0f));
+        }
+
+        [Test]
+        public void UniformGridAlgorithmReturnsInvalidWithoutCount()
+        {
+            int width = 64;
+            int height = 64;
+            Color32[] pixels = new Color32[width * height];
+            for (int i = 0; i < pixels.Length; ++i)
+            {
+                pixels[i] = new Color32(255, 128, 64, 255);
+            }
+
+            SpriteSheetAlgorithms.AlgorithmResult result = SpriteSheetAlgorithms.DetectGrid(
+                pixels,
+                width,
+                height,
+                0.01f,
+                AutoDetectionAlgorithm.UniformGrid,
+                -1
+            );
+
+            Assert.That(result.IsValid, Is.False, "UniformGrid should fail without expected count");
+        }
+
+        [Test]
+        public void ClusterCentroidAlgorithmProducesValidGridDimensions()
+        {
+            // Create 2x2 grid of opaque circles
+            int width = 128;
+            int height = 128;
+            Color32[] pixels = new Color32[width * height];
+
+            // Fill with transparent
+            for (int i = 0; i < pixels.Length; ++i)
+            {
+                pixels[i] = new Color32(0, 0, 0, 0);
+            }
+
+            // Create 4 opaque squares (simulate sprites)
+            int cellSize = 64;
+            int spriteSize = 48;
+            for (int row = 0; row < 2; ++row)
+            {
+                for (int col = 0; col < 2; ++col)
+                {
+                    int centerX = col * cellSize + cellSize / 2;
+                    int centerY = row * cellSize + cellSize / 2;
+                    int halfSize = spriteSize / 2;
+
+                    for (int y = centerY - halfSize; y < centerY + halfSize; ++y)
+                    {
+                        for (int x = centerX - halfSize; x < centerX + halfSize; ++x)
+                        {
+                            if (x >= 0 && x < width && y >= 0 && y < height)
+                            {
+                                pixels[y * width + x] = new Color32(255, 200, 100, 255);
+                            }
+                        }
+                    }
+                }
+            }
+
+            SpriteSheetAlgorithms.AlgorithmResult result = SpriteSheetAlgorithms.DetectGrid(
+                pixels,
+                width,
+                height,
+                0.01f,
+                AutoDetectionAlgorithm.ClusterCentroid
+            );
+
+            Assert.That(result.IsValid, Is.True, "ClusterCentroid should produce valid result");
+            Assert.That(result.CellWidth, Is.GreaterThanOrEqualTo(4));
+            Assert.That(result.CellHeight, Is.GreaterThanOrEqualTo(4));
+            Assert.That(result.Algorithm, Is.EqualTo(AutoDetectionAlgorithm.ClusterCentroid));
+        }
+
+        [Test]
+        public void DistanceTransformAlgorithmProducesValidGridDimensions()
+        {
+            // Create 2x2 grid of opaque squares
+            int width = 128;
+            int height = 128;
+            Color32[] pixels = new Color32[width * height];
+
+            // Fill with transparent
+            for (int i = 0; i < pixels.Length; ++i)
+            {
+                pixels[i] = new Color32(0, 0, 0, 0);
+            }
+
+            // Create 4 opaque squares
+            int cellSize = 64;
+            int spriteSize = 40;
+            for (int row = 0; row < 2; ++row)
+            {
+                for (int col = 0; col < 2; ++col)
+                {
+                    int startX = col * cellSize + (cellSize - spriteSize) / 2;
+                    int startY = row * cellSize + (cellSize - spriteSize) / 2;
+
+                    for (int y = startY; y < startY + spriteSize; ++y)
+                    {
+                        for (int x = startX; x < startX + spriteSize; ++x)
+                        {
+                            if (x >= 0 && x < width && y >= 0 && y < height)
+                            {
+                                pixels[y * width + x] = new Color32(128, 255, 64, 255);
+                            }
+                        }
+                    }
+                }
+            }
+
+            SpriteSheetAlgorithms.AlgorithmResult result = SpriteSheetAlgorithms.DetectGrid(
+                pixels,
+                width,
+                height,
+                0.01f,
+                AutoDetectionAlgorithm.DistanceTransform
+            );
+
+            Assert.That(result.IsValid, Is.True, "Algorithm should produce valid result");
+            Assert.That(result.CellWidth, Is.GreaterThanOrEqualTo(4));
+            Assert.That(result.CellHeight, Is.GreaterThanOrEqualTo(4));
+            Assert.That(result.Algorithm, Is.EqualTo(AutoDetectionAlgorithm.DistanceTransform));
+        }
+
+        [Test]
+        public void RegionGrowingAlgorithmProducesValidGridDimensions()
+        {
+            // Create 2x2 grid of opaque squares
+            int width = 128;
+            int height = 128;
+            Color32[] pixels = new Color32[width * height];
+
+            // Fill with transparent
+            for (int i = 0; i < pixels.Length; ++i)
+            {
+                pixels[i] = new Color32(0, 0, 0, 0);
+            }
+
+            // Create 4 opaque squares with varied colors
+            int cellSize = 64;
+            int spriteSize = 44;
+            for (int row = 0; row < 2; ++row)
+            {
+                for (int col = 0; col < 2; ++col)
+                {
+                    int startX = col * cellSize + (cellSize - spriteSize) / 2;
+                    int startY = row * cellSize + (cellSize - spriteSize) / 2;
+                    byte colorOffset = (byte)((row * 2 + col) * 40);
+
+                    for (int y = startY; y < startY + spriteSize; ++y)
+                    {
+                        for (int x = startX; x < startX + spriteSize; ++x)
+                        {
+                            if (x >= 0 && x < width && y >= 0 && y < height)
+                            {
+                                pixels[y * width + x] = new Color32(
+                                    (byte)(200 + colorOffset % 55),
+                                    (byte)(150 + colorOffset % 55),
+                                    (byte)(100 + colorOffset % 55),
+                                    255
+                                );
+                            }
+                        }
+                    }
+                }
+            }
+
+            SpriteSheetAlgorithms.AlgorithmResult result = SpriteSheetAlgorithms.DetectGrid(
+                pixels,
+                width,
+                height,
+                0.01f,
+                AutoDetectionAlgorithm.RegionGrowing
+            );
+
+            Assert.That(result.IsValid, Is.True, "Algorithm should produce valid result");
+            Assert.That(result.CellWidth, Is.GreaterThanOrEqualTo(4));
+            Assert.That(result.CellHeight, Is.GreaterThanOrEqualTo(4));
+            Assert.That(result.Algorithm, Is.EqualTo(AutoDetectionAlgorithm.RegionGrowing));
+        }
+
+        [Test]
+        public void AutoBestAlgorithmSelectsAppropriateAlgorithm()
+        {
+            // Create a simple grid with transparent boundaries
+            int width = 128;
+            int height = 128;
+            Color32[] pixels = new Color32[width * height];
+
+            for (int i = 0; i < pixels.Length; ++i)
+            {
+                pixels[i] = new Color32(0, 0, 0, 0);
+            }
+
+            int cellSize = 32;
+            for (int row = 0; row < 4; ++row)
+            {
+                for (int col = 0; col < 4; ++col)
+                {
+                    int startX = col * cellSize + 4;
+                    int startY = row * cellSize + 4;
+                    int endX = (col + 1) * cellSize - 4;
+                    int endY = (row + 1) * cellSize - 4;
+
+                    for (int y = startY; y < endY; ++y)
+                    {
+                        for (int x = startX; x < endX; ++x)
+                        {
+                            pixels[y * width + x] = new Color32(255, 128, 64, 255);
+                        }
+                    }
+                }
+            }
+
+            SpriteSheetAlgorithms.AlgorithmResult result = SpriteSheetAlgorithms.DetectGrid(
+                pixels,
+                width,
+                height,
+                0.01f,
+                AutoDetectionAlgorithm.AutoBest
+            );
+
+            Assert.That(result.IsValid, Is.True, "AutoBest should produce valid result");
+            Assert.That(result.Algorithm, Is.EqualTo(AutoDetectionAlgorithm.AutoBest));
+            Assert.That(result.Confidence, Is.GreaterThan(0f));
+        }
+
+        [Test]
+        public void ConfidenceValuesAreInValidRange()
+        {
+            int width = 64;
+            int height = 64;
+            Color32[] pixels = new Color32[width * height];
+
+            for (int i = 0; i < pixels.Length; ++i)
+            {
+                pixels[i] = new Color32(255, 128, 64, 255);
+            }
+
+            AutoDetectionAlgorithm[] algorithms =
+            {
+                AutoDetectionAlgorithm.BoundaryScoring,
+                AutoDetectionAlgorithm.ClusterCentroid,
+                AutoDetectionAlgorithm.DistanceTransform,
+                AutoDetectionAlgorithm.RegionGrowing,
+                AutoDetectionAlgorithm.AutoBest,
+            };
+
+            for (int i = 0; i < algorithms.Length; ++i)
+            {
+                SpriteSheetAlgorithms.AlgorithmResult result = SpriteSheetAlgorithms.DetectGrid(
+                    pixels,
+                    width,
+                    height,
+                    0.01f,
+                    algorithms[i],
+                    4
+                );
+
+                Assert.That(
+                    result.Confidence,
+                    Is.GreaterThanOrEqualTo(0f),
+                    $"{algorithms[i]} confidence should be >= 0"
+                );
+                Assert.That(
+                    result.Confidence,
+                    Is.LessThanOrEqualTo(1f),
+                    $"{algorithms[i]} confidence should be <= 1"
+                );
+            }
+        }
+
+        [Test]
+        public void DetectGridHandlesNullPixelsGracefully()
+        {
+            SpriteSheetAlgorithms.AlgorithmResult result = SpriteSheetAlgorithms.DetectGrid(
+                null,
+                64,
+                64,
+                0.01f,
+                AutoDetectionAlgorithm.BoundaryScoring
+            );
+
+            Assert.That(result.IsValid, Is.False, "Should return invalid for null pixels");
+        }
+
+        [Test]
+        public void DetectGridHandlesEmptyPixelsGracefully()
+        {
+            SpriteSheetAlgorithms.AlgorithmResult result = SpriteSheetAlgorithms.DetectGrid(
+                new Color32[0],
+                64,
+                64,
+                0.01f,
+                AutoDetectionAlgorithm.BoundaryScoring
+            );
+
+            Assert.That(result.IsValid, Is.False, "Should return invalid for empty pixels");
+        }
+
+        [Test]
+        public void DetectGridHandlesMismatchedDimensionsGracefully()
+        {
+            Color32[] pixels = new Color32[32 * 32];
+            for (int i = 0; i < pixels.Length; ++i)
+            {
+                pixels[i] = new Color32(255, 128, 64, 255);
+            }
+
+            SpriteSheetAlgorithms.AlgorithmResult result = SpriteSheetAlgorithms.DetectGrid(
+                pixels,
+                64,
+                64,
+                0.01f,
+                AutoDetectionAlgorithm.BoundaryScoring
+            );
+
+            Assert.That(
+                result.IsValid,
+                Is.False,
+                "Should return invalid for mismatched dimensions"
+            );
+        }
+
+        [Test]
+        public void DetectGridHandlesTooSmallDimensionsGracefully()
+        {
+            Color32[] pixels = new Color32[2 * 2];
+            for (int i = 0; i < pixels.Length; ++i)
+            {
+                pixels[i] = new Color32(255, 128, 64, 255);
+            }
+
+            SpriteSheetAlgorithms.AlgorithmResult result = SpriteSheetAlgorithms.DetectGrid(
+                pixels,
+                2,
+                2,
+                0.01f,
+                AutoDetectionAlgorithm.BoundaryScoring
+            );
+
+            Assert.That(result.IsValid, Is.False, "Should return invalid for tiny dimensions");
+        }
+
+        [Test]
+        public void DetectGridReturnsInvalidForNegativeAlphaThreshold()
+        {
+            Color32[] pixels = CreateSimpleSpriteSheetPixels(64, 64, 2, 2);
+
+            SpriteSheetAlgorithms.AlgorithmResult result = SpriteSheetAlgorithms.DetectGrid(
+                pixels,
+                64,
+                64,
+                alphaThreshold: -0.5f,
+                algorithm: AutoDetectionAlgorithm.BoundaryScoring
+            );
+
+            Assert.That(result.IsValid, Is.False);
+        }
+
+        [Test]
+        public void DetectGridReturnsInvalidForAlphaThresholdAtOne()
+        {
+            Color32[] pixels = CreateSimpleSpriteSheetPixels(64, 64, 2, 2);
+
+            SpriteSheetAlgorithms.AlgorithmResult result = SpriteSheetAlgorithms.DetectGrid(
+                pixels,
+                64,
+                64,
+                alphaThreshold: 1f,
+                algorithm: AutoDetectionAlgorithm.BoundaryScoring
+            );
+
+            Assert.That(result.IsValid, Is.False);
+        }
+
+        [Test]
+        public void DetectGridReturnsInvalidForAlphaThresholdAboveOne()
+        {
+            Color32[] pixels = CreateSimpleSpriteSheetPixels(64, 64, 2, 2);
+
+            SpriteSheetAlgorithms.AlgorithmResult result = SpriteSheetAlgorithms.DetectGrid(
+                pixels,
+                64,
+                64,
+                alphaThreshold: 2f,
+                algorithm: AutoDetectionAlgorithm.BoundaryScoring
+            );
+
+            Assert.That(result.IsValid, Is.False);
+        }
+
+        [Test]
+        public void DetectGridRespectsEarlyCancellation()
+        {
+            Color32[] pixels = CreateSimpleSpriteSheetPixels(64, 64, 2, 2);
+            using CancellationTokenSource cts = new();
+            cts.Cancel();
+
+            SpriteSheetAlgorithms.AlgorithmResult result = SpriteSheetAlgorithms.DetectGrid(
+                pixels,
+                64,
+                64,
+                alphaThreshold: 0.1f,
+                algorithm: AutoDetectionAlgorithm.AutoBest,
+                cancellationToken: cts.Token
+            );
+
+            Assert.That(
+                result.IsValid,
+                Is.False,
+                "Cancelled operation should return invalid result"
+            );
+        }
+
+        [Test]
+        public void CachedAlgorithmResultRoundTrips()
+        {
+            SpriteSheetAlgorithms.AlgorithmResult original = new(
+                32,
+                48,
+                0.85f,
+                AutoDetectionAlgorithm.ClusterCentroid
+            );
+
+            CachedAlgorithmResult cached = CachedAlgorithmResult.FromResult(original);
+            SpriteSheetAlgorithms.AlgorithmResult restored = cached.ToResult();
+
+            Assert.That(restored.CellWidth, Is.EqualTo(original.CellWidth));
+            Assert.That(restored.CellHeight, Is.EqualTo(original.CellHeight));
+            Assert.That(restored.Confidence, Is.EqualTo(original.Confidence).Within(0.001f));
+            Assert.That(restored.Algorithm, Is.EqualTo(original.Algorithm));
+        }
+
+        [Test]
+        public void GetEffectiveAutoDetectionAlgorithmReturnsGlobalWhenUsingGlobalSettings()
+        {
+            SpriteSheetExtractor extractor = CreateExtractor();
+            extractor._autoDetectionAlgorithm = AutoDetectionAlgorithm.ClusterCentroid;
+
+            SpriteSheetExtractor.SpriteSheetEntry entry = new()
+            {
+                _useGlobalSettings = true,
+                _autoDetectionAlgorithmOverride = AutoDetectionAlgorithm.BoundaryScoring,
+            };
+
+            AutoDetectionAlgorithm result = extractor.GetEffectiveAutoDetectionAlgorithm(entry);
+
+            Assert.That(result, Is.EqualTo(AutoDetectionAlgorithm.ClusterCentroid));
+        }
+
+        [Test]
+        public void GetEffectiveAutoDetectionAlgorithmReturnsOverrideWhenNotUsingGlobalSettings()
+        {
+            SpriteSheetExtractor extractor = CreateExtractor();
+            extractor._autoDetectionAlgorithm = AutoDetectionAlgorithm.ClusterCentroid;
+
+            SpriteSheetExtractor.SpriteSheetEntry entry = new()
+            {
+                _useGlobalSettings = false,
+                _autoDetectionAlgorithmOverride = AutoDetectionAlgorithm.BoundaryScoring,
+            };
+
+            AutoDetectionAlgorithm result = extractor.GetEffectiveAutoDetectionAlgorithm(entry);
+
+            Assert.That(result, Is.EqualTo(AutoDetectionAlgorithm.BoundaryScoring));
+        }
+
+        [Test]
+        public void GetEffectiveExpectedSpriteCountReturnsGlobalWhenUsingGlobalSettings()
+        {
+            SpriteSheetExtractor extractor = CreateExtractor();
+            extractor._expectedSpriteCountHint = 16;
+
+            SpriteSheetExtractor.SpriteSheetEntry entry = new()
+            {
+                _useGlobalSettings = true,
+                _expectedSpriteCountOverride = 8,
+            };
+
+            int result = extractor.GetEffectiveExpectedSpriteCount(entry);
+
+            Assert.That(result, Is.EqualTo(16));
+        }
+
+        [Test]
+        public void GetEffectiveExpectedSpriteCountReturnsOverrideWhenNotUsingGlobalSettings()
+        {
+            SpriteSheetExtractor extractor = CreateExtractor();
+            extractor._expectedSpriteCountHint = 16;
+
+            SpriteSheetExtractor.SpriteSheetEntry entry = new()
+            {
+                _useGlobalSettings = false,
+                _expectedSpriteCountOverride = 8,
+            };
+
+            int result = extractor.GetEffectiveExpectedSpriteCount(entry);
+
+            Assert.That(result, Is.EqualTo(8));
+        }
+
+        [Test]
+        public void CopySettingsFromEntryCopiesAlgorithmSettings()
+        {
+            SpriteSheetExtractor extractor = CreateExtractor();
+            SpriteSheetExtractor.SpriteSheetEntry source = new()
+            {
+                _autoDetectionAlgorithmOverride = AutoDetectionAlgorithm.DistanceTransform,
+                _expectedSpriteCountOverride = 24,
+            };
+
+            SpriteSheetExtractor.SpriteSheetEntry target = new()
+            {
+                _autoDetectionAlgorithmOverride = AutoDetectionAlgorithm.AutoBest,
+                _expectedSpriteCountOverride = -1,
+            };
+
+            extractor.CopySettingsFromEntry(source, target);
+
+            Assert.That(
+                target._autoDetectionAlgorithmOverride,
+                Is.EqualTo(AutoDetectionAlgorithm.DistanceTransform)
+            );
+            Assert.That(target._expectedSpriteCountOverride, Is.EqualTo(24));
+        }
+
+        [Test]
+        public void ConfigMigrationAddsAlgorithmFields()
+        {
+            SpriteSheetConfig config = new() { version = 1 };
+
+            SpriteSheetConfig.MigrateConfig(config);
+
+            Assert.That(config.version, Is.EqualTo(SpriteSheetConfig.CurrentVersion));
+            Assert.That(config.algorithm, Is.EqualTo((int)AutoDetectionAlgorithm.AutoBest));
+        }
+
+        #endregion
+
+        #region InitializeOverridesFromGlobal Tests
+
+        [Test]
+        public void InitializeOverridesFromGlobalCopiesAllGlobalValuesToOverrideFields()
+        {
+            SpriteSheetExtractor extractor = CreateExtractor();
+
+            // Set specific global values
+            extractor._extractionMode = SpriteSheetExtractor.ExtractionMode.GridBased;
+            extractor._gridSizeMode = SpriteSheetExtractor.GridSizeMode.Manual;
+            extractor._gridColumns = 8;
+            extractor._gridRows = 6;
+            extractor._cellWidth = 64;
+            extractor._cellHeight = 48;
+            extractor._paddingLeft = 2;
+            extractor._paddingRight = 3;
+            extractor._paddingTop = 4;
+            extractor._paddingBottom = 5;
+            extractor._alphaThreshold = 0.15f;
+            extractor._showGridOverlay = true;
+            extractor._pivotMode = PivotMode.TopLeft;
+            extractor._customPivot = new Vector2(0.25f, 0.75f);
+            extractor._autoDetectionAlgorithm = AutoDetectionAlgorithm.ClusterCentroid;
+            extractor._expectedSpriteCountHint = 48;
+
+            // Create entry with _useGlobalSettings = true and all overrides null
+            SpriteSheetExtractor.SpriteSheetEntry entry = new() { _useGlobalSettings = true };
+
+            // Simulate the toggle: set wasGlobal=true, then _useGlobalSettings=false, call InitializeOverridesFromGlobal
+            bool wasGlobal = entry._useGlobalSettings;
+            entry._useGlobalSettings = false;
+
+            Assert.That(wasGlobal, Is.True, "Entry should have started with global settings");
+            Assert.That(
+                entry._useGlobalSettings,
+                Is.False,
+                "Entry should now use per-sheet settings"
+            );
+
+            extractor.InitializeOverridesFromGlobal(entry);
+
+            // Assert all override fields match the global values
+            Assert.That(
+                entry._extractionModeOverride,
+                Is.EqualTo(SpriteSheetExtractor.ExtractionMode.GridBased)
+            );
+            Assert.That(
+                entry._gridSizeModeOverride,
+                Is.EqualTo(SpriteSheetExtractor.GridSizeMode.Manual)
+            );
+            Assert.That(entry._gridColumnsOverride, Is.EqualTo(8));
+            Assert.That(entry._gridRowsOverride, Is.EqualTo(6));
+            Assert.That(entry._cellWidthOverride, Is.EqualTo(64));
+            Assert.That(entry._cellHeightOverride, Is.EqualTo(48));
+            Assert.That(entry._paddingLeftOverride, Is.EqualTo(2));
+            Assert.That(entry._paddingRightOverride, Is.EqualTo(3));
+            Assert.That(entry._paddingTopOverride, Is.EqualTo(4));
+            Assert.That(entry._paddingBottomOverride, Is.EqualTo(5));
+            Assert.That(entry._alphaThresholdOverride, Is.EqualTo(0.15f).Within(0.0001f));
+            Assert.That(entry._showGridOverlayOverride, Is.True);
+            Assert.That(entry._pivotModeOverride, Is.EqualTo(PivotMode.TopLeft));
+            Assert.That(entry._customPivotOverride.HasValue, Is.True);
+            Assert.That(entry._customPivotOverride.Value.x, Is.EqualTo(0.25f).Within(0.0001f));
+            Assert.That(entry._customPivotOverride.Value.y, Is.EqualTo(0.75f).Within(0.0001f));
+            Assert.That(
+                entry._autoDetectionAlgorithmOverride,
+                Is.EqualTo(AutoDetectionAlgorithm.ClusterCentroid)
+            );
+            Assert.That(entry._expectedSpriteCountOverride, Is.EqualTo(48));
+        }
+
+        [Test]
+        public void InitializeOverridesFromGlobalClearsCachedAlgorithmResult()
+        {
+            SpriteSheetExtractor extractor = CreateExtractor();
+
+            SpriteSheetExtractor.SpriteSheetEntry entry = new()
+            {
+                _useGlobalSettings = true,
+                _cachedAlgorithmResult = new SpriteSheetAlgorithms.AlgorithmResult(
+                    cellWidth: 32,
+                    cellHeight: 32,
+                    confidence: 1.0f,
+                    algorithm: AutoDetectionAlgorithm.AutoBest
+                ),
+                _lastAlgorithmDisplayText = "Previous algorithm text",
+            };
+
+            entry._useGlobalSettings = false;
+            extractor.InitializeOverridesFromGlobal(entry);
+
+            Assert.That(entry._cachedAlgorithmResult, Is.Null);
+            Assert.That(entry._lastAlgorithmDisplayText, Is.Null);
+        }
+
+        [Test]
+        public void InitializeOverridesFromGlobalDoesNothingForNullEntry()
+        {
+            SpriteSheetExtractor extractor = CreateExtractor();
+
+            // Should not throw
+            Assert.DoesNotThrow(() => extractor.InitializeOverridesFromGlobal(null));
+        }
+
+        [Test]
+        public void TogglingFromPerSheetToGlobalDoesNotChangeOverrides()
+        {
+            SpriteSheetExtractor extractor = CreateExtractor();
+            extractor._extractionMode = SpriteSheetExtractor.ExtractionMode.FromMetadata;
+
+            // Entry with overrides set
+            SpriteSheetExtractor.SpriteSheetEntry entry = new()
+            {
+                _useGlobalSettings = false,
+                _extractionModeOverride = SpriteSheetExtractor.ExtractionMode.AlphaDetection,
+                _gridColumnsOverride = 12,
+                _gridRowsOverride = 8,
+                _showGridOverlayOverride = true,
+                _pivotModeOverride = PivotMode.BottomRight,
+            };
+
+            // Toggle to global (wasGlobal=false, _useGlobalSettings=true)
+            // This should NOT call InitializeOverridesFromGlobal - overrides should remain unchanged
+            bool wasGlobal = entry._useGlobalSettings;
+            entry._useGlobalSettings = true;
+
+            Assert.That(wasGlobal, Is.False, "Entry should have started with per-sheet settings");
+            Assert.That(entry._useGlobalSettings, Is.True, "Entry should now use global settings");
+
+            // Overrides should remain unchanged (they're just not used when _useGlobalSettings is true)
+            Assert.That(
+                entry._extractionModeOverride,
+                Is.EqualTo(SpriteSheetExtractor.ExtractionMode.AlphaDetection)
+            );
+            Assert.That(entry._gridColumnsOverride, Is.EqualTo(12));
+            Assert.That(entry._gridRowsOverride, Is.EqualTo(8));
+            Assert.That(entry._showGridOverlayOverride, Is.True);
+            Assert.That(entry._pivotModeOverride, Is.EqualTo(PivotMode.BottomRight));
+
+            // But effective values should now be global
+            Assert.That(
+                extractor.GetEffectiveExtractionMode(entry),
+                Is.EqualTo(SpriteSheetExtractor.ExtractionMode.FromMetadata)
+            );
+        }
+
+        [Test]
+        public void AfterInitializeOverridesFromGlobalEffectiveValuesRemainSame()
+        {
+            SpriteSheetExtractor extractor = CreateExtractor();
+
+            // Set specific global values
+            extractor._extractionMode = SpriteSheetExtractor.ExtractionMode.PaddedGrid;
+            extractor._gridSizeMode = SpriteSheetExtractor.GridSizeMode.Auto;
+            extractor._showGridOverlay = true;
+            extractor._pivotMode = PivotMode.BottomCenter;
+            extractor._autoDetectionAlgorithm = AutoDetectionAlgorithm.RegionGrowing;
+
+            // Create entry using global settings
+            SpriteSheetExtractor.SpriteSheetEntry entry = new() { _useGlobalSettings = true };
+
+            // Get effective values before toggle
+            SpriteSheetExtractor.ExtractionMode effectiveModeBefore =
+                extractor.GetEffectiveExtractionMode(entry);
+            SpriteSheetExtractor.GridSizeMode effectiveGridModeBefore =
+                extractor.GetEffectiveGridSizeMode(entry);
+            bool effectiveOverlayBefore = extractor.GetEffectiveShowGridOverlay(entry);
+            PivotMode effectivePivotBefore = extractor.GetEffectivePivotMode(entry);
+            AutoDetectionAlgorithm effectiveAlgorithmBefore =
+                extractor.GetEffectiveAutoDetectionAlgorithm(entry);
+
+            // Simulate toggle from global to per-sheet
+            entry._useGlobalSettings = false;
+            extractor.InitializeOverridesFromGlobal(entry);
+
+            // Get effective values after toggle
+            SpriteSheetExtractor.ExtractionMode effectiveModeAfter =
+                extractor.GetEffectiveExtractionMode(entry);
+            SpriteSheetExtractor.GridSizeMode effectiveGridModeAfter =
+                extractor.GetEffectiveGridSizeMode(entry);
+            bool effectiveOverlayAfter = extractor.GetEffectiveShowGridOverlay(entry);
+            PivotMode effectivePivotAfter = extractor.GetEffectivePivotMode(entry);
+            AutoDetectionAlgorithm effectiveAlgorithmAfter =
+                extractor.GetEffectiveAutoDetectionAlgorithm(entry);
+
+            // Effective values should remain the same
+            Assert.That(effectiveModeAfter, Is.EqualTo(effectiveModeBefore));
+            Assert.That(effectiveGridModeAfter, Is.EqualTo(effectiveGridModeBefore));
+            Assert.That(effectiveOverlayAfter, Is.EqualTo(effectiveOverlayBefore));
+            Assert.That(effectivePivotAfter, Is.EqualTo(effectivePivotBefore));
+            Assert.That(effectiveAlgorithmAfter, Is.EqualTo(effectiveAlgorithmBefore));
         }
 
         #endregion

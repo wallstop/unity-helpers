@@ -11,12 +11,24 @@ See [the roadmap](./docs/overview/roadmap.md) for details
 
 ### Added
 
-- **SpriteSheetExtractor Per-Sheet Configuration**: Each sprite sheet can now have its own extraction settings
-  - "Per-Sheet Settings" foldout in each sprite sheet entry with extraction mode, grid, padding, and alpha overrides
-  - "Use Global Settings" toggle (default: enabled) to quickly switch between global and per-sheet settings
-  - "Apply Global to All" button to copy current global settings to all discovered sheets
-  - "Copy from..." button to copy settings from one sheet to another
-  - Enables efficient batch processing of sprite sheets with different layouts
+- **SpriteSheetExtractor**: New editor tool for extracting individual sprites from sprite sheet textures
+  - Open via menu: `Tools ▸ Wallstop Studios ▸ Unity Helpers ▸ Sprite Sheet Extractor`
+  - Scans directories for textures with `SpriteImportMode.Multiple` and extracts each sprite as a separate PNG
+  - Multiple extraction modes: use existing Unity sprite data, auto-detect grid, or configure custom grid layout
+  - Preview panel with reordering, renaming, and selective extraction
+  - Per-sheet settings with extraction mode, grid size, padding, pivot, and alpha threshold overrides
+  - "Use Global Settings" toggle to quickly switch between global and per-sheet configuration
+  - Batch operations: "Apply Global to All", "Copy from..." to replicate settings across sheets
+  - Optional reference replacement in prefabs and scenes with undo support
+- **Cache Data Structure**: New high-performance, configurable `Cache<TKey, TValue>` with fluent builder API
+  - Multiple eviction policies: LRU, Segmented LRU (SLRU), LFU, FIFO, and Random
+  - Time-based expiration with `ExpireAfterWrite` and `ExpireAfterAccess`
+  - Weight-based sizing for entries of varying cost
+  - Dynamic growth with configurable thrash detection
+  - Loading cache support with `GetOrAdd` and custom loader functions
+  - Thread-safe by default (single-threaded mode via `SINGLE_THREADED` define)
+  - Eviction, get, and set callbacks for monitoring cache behavior
+  - Statistics tracking with hit/miss counts
 - **AnimationCreator Variable Framerate**: AnimationCreatorWindow now supports variable framerate animations using AnimationCurve
   - New `FramerateMode` enum (`Constant` or `Curve`) for choosing timing mode
   - Per-animation `framesPerSecondCurve` allows custom timing across animation progress
@@ -28,8 +40,27 @@ See [the roadmap](./docs/overview/roadmap.md) for details
   - Respects variable framerate curves during preview
   - Shows current frame index and FPS in preview panel
 - **AnimationData Cycle Offset**: New `cycleOffset` property (0-1) sets animation loop start point
+- **Pool Auto-Purging**: `WallstopGenericPool<T>` now supports configurable auto-purging and eviction
+  - New `PoolOptions<T>` class for configuring pool behavior at construction
+  - `MaxPoolSize` limits pool capacity with automatic eviction of excess items
+  - `IdleTimeoutSeconds` purges items that have been idle too long
+  - `PurgeTrigger` flags control when purging occurs: `OnRent`, `OnReturn`, `Periodic`, or `Explicit`
+  - `OnPurge` callback with `PurgeReason` (IdleTimeout, CapacityExceeded, Explicit) for monitoring
+  - Intelligent purging mode tracks usage patterns to avoid purge-allocate cycles
+  - `MinRetainCount` ensures a minimum number of items are always kept
+- **RandomExtensions `NextOfExcept`**: New extension methods for selecting random elements with exclusions
+  - `NextOfExcept(values)` - no exclusions (convenience overload)
+  - `NextOfExcept(values, exception1)` - exclude one value
+  - `NextOfExcept(values, exception1, exception2)` - exclude two values
+  - `NextOfExcept(values, exception1, exception2, exception3)` - exclude three values
+  - `NextOfExcept(values, exceptions)` - exclude arbitrary set of values
+  - Zero-allocation using pooled collections internally
 
 ### Changed
+
+- **DictionaryExtensions `ToDictionary`**: Now uses last-wins semantics for duplicate keys instead of throwing `ArgumentException`
+  - Aligns with common dictionary initialization patterns
+  - Applies to both `KeyValuePair<K,V>` and tuple `(K, V)` overloads
 
 - **IEnumerableExtensions return types**: `OrderBy`, `Ordered`, and `Shuffled` methods now return `List<T>` instead of `IEnumerable<T>` for improved usability (indexable, known count)
   - **Note**: These methods now use eager evaluation (execute immediately) instead of deferred evaluation
@@ -43,6 +74,10 @@ See [the roadmap](./docs/overview/roadmap.md) for details
   - Affects `EditorCacheHelper.AddToBoundedCache` and new `TryGetFromBoundedLRUCache` method
   - Applied to `InLineEditorShared`, `WShowIfPropertyDrawer`, and other bounded editor caches
 - **Shuffled performance**: `IEnumerableExtensions.Shuffled` now uses O(n) Fisher-Yates shuffle instead of O(n log n) sort-based approach
+- **LINQ elimination**: Removed LINQ usage across runtime code for reduced allocations and improved performance
+  - Affects `Trie`, `Geometry`, `Serializer`, `ValidateAssignmentAttribute`, `WShowIfAttribute`, relational component attributes, and more
+  - Uses pooled collections and explicit loops instead of LINQ methods
+  - Zero-allocation patterns applied throughout
 
 ## [3.0.5]
 

@@ -1,5 +1,7 @@
 # Skill: Use Discriminated Unions (OneOf Types)
 
+<!-- trigger: oneof, union, result, either, variant | OneOf/Result types, type-safe unions | Feature -->
+
 **Trigger**: When a value can be one of several distinct types and you need type-safe handling without inheritance hierarchies.
 
 ---

@@ -1,5 +1,7 @@
 # Skill: Use Threading Utilities
 
+<!-- trigger: thread, async, main, dispatch, marshal | Main thread dispatch, thread safety | Feature -->
+
 **Trigger**: When marshalling work between background threads/tasks and Unity's main thread, or when enforcing thread-safety for Unity API calls.
 
 ---

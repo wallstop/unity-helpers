@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Tests.Runtime.Performance
@@ -1772,17 +1772,25 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Performance
                 {
                     if (currentCategory != null)
                     {
+                        lines.Add("  </tbody>");
+                        lines.Add("</table>");
                         lines.Add("");
                     }
                     currentCategory = result.Category;
                     lines.Add($"### {currentCategory}");
                     lines.Add("");
-                    lines.Add(
-                        "| Test | Iterations | Time (ms) | Baseline (ms) | % of Baseline | Status |"
-                    );
-                    lines.Add(
-                        "|------|------------|-----------|---------------|---------------|--------|"
-                    );
+                    lines.Add("<table data-sortable>");
+                    lines.Add("  <thead>");
+                    lines.Add("    <tr>");
+                    lines.Add("      <th align=\"left\">Test</th>");
+                    lines.Add("      <th align=\"right\">Iterations</th>");
+                    lines.Add("      <th align=\"right\">Time (ms)</th>");
+                    lines.Add("      <th align=\"right\">Baseline (ms)</th>");
+                    lines.Add("      <th align=\"right\">% of Baseline</th>");
+                    lines.Add("      <th align=\"left\">Status</th>");
+                    lines.Add("    </tr>");
+                    lines.Add("  </thead>");
+                    lines.Add("  <tbody>");
                 }
 
                 double percent =
@@ -1792,8 +1800,14 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Performance
                 string status = result.Passed ? "Pass" : "FAIL";
                 string iterationsFormatted = FormatNumber(result.Iterations);
                 lines.Add(
-                    $"| {result.TestName} | {iterationsFormatted} | {result.TimeMs} | {result.BaselineMs} | {percent:F1}% | {status} |"
+                    $"    <tr><td align=\"left\">{result.TestName}</td><td align=\"right\">{iterationsFormatted}</td><td align=\"right\">{result.TimeMs}</td><td align=\"right\">{result.BaselineMs}</td><td align=\"right\">{percent:F1}%</td><td align=\"left\">{status}</td></tr>"
                 );
+            }
+
+            if (currentCategory != null)
+            {
+                lines.Add("  </tbody>");
+                lines.Add("</table>");
             }
 
             lines.Add("");

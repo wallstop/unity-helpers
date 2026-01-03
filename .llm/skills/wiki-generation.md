@@ -1,5 +1,7 @@
 # Wiki Generation
 
+<!-- trigger: wiki, sidebar, deploy, github, generate | GitHub Wiki deployment, sidebar links | Feature -->
+
 This skill covers best practices for GitHub Wiki generation and maintenance in this repository.
 
 ---

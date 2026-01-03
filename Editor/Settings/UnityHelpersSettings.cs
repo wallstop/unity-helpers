@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Editor.Settings
@@ -74,6 +74,61 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         public const float DefaultFoldoutSpeed = 2f;
         public const float MinFoldoutSpeed = 2f;
         public const float MaxFoldoutSpeed = 12f;
+
+        /// <summary>
+        /// Default value for pool max size (0 = unbounded).
+        /// </summary>
+        public const int DefaultPoolMaxSize = 0;
+
+        /// <summary>
+        /// Default value for pool minimum retain count during purge.
+        /// </summary>
+        public const int DefaultPoolMinRetainCount = 0;
+
+        /// <summary>
+        /// Default value for pool idle timeout in seconds (0 = disabled).
+        /// </summary>
+        public const float DefaultPoolIdleTimeoutSeconds = 0f;
+
+        /// <summary>
+        /// Default value for pool purge interval in seconds.
+        /// </summary>
+        public const float DefaultPoolPurgeIntervalSeconds = 60f;
+
+        /// <summary>
+        /// Default value for whether intelligent pool purging is enabled.
+        /// Defaults to false (disabled) to maintain backward compatibility.
+        /// </summary>
+        public const bool DefaultPoolIntelligentPurgingEnabled = false;
+
+        /// <summary>
+        /// Default value for pool idle timeout when intelligent purging is enabled.
+        /// Set to 5 minutes to be conservative and avoid GC churn.
+        /// </summary>
+        public const float DefaultPoolIntelligentIdleTimeoutSeconds = 300f;
+
+        /// <summary>
+        /// Default buffer multiplier for comfortable pool size calculation.
+        /// Comfortable size = max(MinRetainCount, rollingHighWaterMark * BufferMultiplier).
+        /// </summary>
+        public const float DefaultPoolBufferMultiplier = 1.5f;
+
+        /// <summary>
+        /// Default rolling window duration in seconds for high water mark tracking.
+        /// </summary>
+        public const float DefaultPoolRollingWindowSeconds = 300f;
+
+        /// <summary>
+        /// Default hysteresis duration in seconds.
+        /// Purging is suppressed for this duration after a usage spike.
+        /// </summary>
+        public const float DefaultPoolHysteresisSeconds = 60f;
+
+        /// <summary>
+        /// Default spike threshold multiplier.
+        /// A spike is detected when concurrent rentals exceed the rolling average by this factor.
+        /// </summary>
+        public const float DefaultPoolSpikeThresholdMultiplier = 2.0f;
         private static readonly Color DefaultColorKeyButtonColor = new(0.243f, 0.525f, 0.988f, 1f);
         private static readonly Color DefaultLightThemeButtonColor = new(0.78f, 0.78f, 0.78f, 1f);
         private static readonly Color DefaultDarkThemeButtonColor = new(0.35f, 0.35f, 0.35f, 1f);
@@ -315,6 +370,49 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                 "Foldout Speed",
                 "Animation speed used when expanding or collapsing WGroup foldouts."
             );
+        private const string PoolPurgingHelpText =
+            "Configure intelligent pool purging defaults. These settings control how pools automatically trim idle items based on usage patterns.";
+        private static readonly GUIContent PoolPurgingEnabledContent =
+            EditorGUIUtility.TrTextContent(
+                "Enable Global Purging",
+                "Enable intelligent pool purging globally. When enabled, pools automatically trim idle items based on usage patterns."
+            );
+        private static readonly GUIContent PoolIdleTimeoutContent = EditorGUIUtility.TrTextContent(
+            "Idle Timeout (s)",
+            "Default idle timeout in seconds. Items idle longer than this are eligible for purging."
+        );
+        private static readonly GUIContent PoolMinRetainCountContent =
+            EditorGUIUtility.TrTextContent(
+                "Min Retain Count",
+                "Minimum number of items to always retain in pools during purge operations."
+            );
+        private static readonly GUIContent PoolMaxSizeContent = EditorGUIUtility.TrTextContent(
+            "Max Pool Size",
+            "Maximum pool size (0 = unbounded). Items exceeding this limit will be purged."
+        );
+        private static readonly GUIContent PoolBufferMultiplierContent =
+            EditorGUIUtility.TrTextContent(
+                "Buffer Multiplier",
+                "Buffer multiplier for comfortable pool size calculation."
+            );
+        private static readonly GUIContent PoolRollingWindowContent =
+            EditorGUIUtility.TrTextContent(
+                "Rolling Window (s)",
+                "Rolling window duration in seconds for high water mark tracking."
+            );
+        private static readonly GUIContent PoolHysteresisContent = EditorGUIUtility.TrTextContent(
+            "Hysteresis (s)",
+            "Hysteresis duration in seconds. Purging is suppressed for this duration after a usage spike."
+        );
+        private static readonly GUIContent PoolSpikeThresholdContent =
+            EditorGUIUtility.TrTextContent(
+                "Spike Threshold",
+                "Spike threshold multiplier. A spike is detected when concurrent rentals exceed the rolling average by this factor."
+            );
+        private static readonly GUIContent PoolTypeConfigurationsContent =
+            EditorGUIUtility.TrTextContent("Per-Type Pool Configurations");
+        private static readonly GUIContent PoolApplyNowButtonContent =
+            EditorGUIUtility.TrTextContent("Apply Settings Now");
 
         public enum WButtonActionsPlacement
         {
@@ -821,6 +919,79 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         [WShowIf(nameof(_inlineEditorFoldoutTweenEnabled))]
         [Range(MinFoldoutSpeed, MaxFoldoutSpeed)]
         private float _inlineEditorFoldoutSpeed = DefaultFoldoutSpeed;
+
+        private const string PoolPurgingFoldoutKey = "PoolPurging";
+
+        [SerializeField]
+        [Tooltip(
+            "Enable intelligent pool purging globally. When enabled, pools automatically trim idle items based on usage patterns."
+        )]
+        [WGroup(
+            PoolPurgingFoldoutKey,
+            displayName: "Pool Purging",
+            autoIncludeCount: 6,
+            collapsible: true,
+            startCollapsed: true
+        )]
+        private bool _poolPurgingEnabled = DefaultPoolIntelligentPurgingEnabled;
+
+        [SerializeField]
+        [Tooltip(
+            "Default idle timeout in seconds. Items idle longer than this are eligible for purging."
+        )]
+        [Min(0f)]
+        private float _poolIdleTimeoutSeconds = DefaultPoolIntelligentIdleTimeoutSeconds;
+
+        [SerializeField]
+        [Tooltip("Minimum number of items to always retain in pools during purge operations.")]
+        [Min(0)]
+        private int _poolMinRetainCount = DefaultPoolMinRetainCount;
+
+        [SerializeField]
+        [Tooltip("Maximum pool size (0 = unbounded). Items exceeding this limit will be purged.")]
+        [Min(0)]
+        private int _poolMaxSize = DefaultPoolMaxSize;
+
+        [SerializeField]
+        [Tooltip(
+            "Buffer multiplier for comfortable pool size calculation. Comfortable size = max(MinRetainCount, rollingHighWaterMark * BufferMultiplier)."
+        )]
+        [Min(1f)]
+        private float _poolBufferMultiplier = DefaultPoolBufferMultiplier;
+
+        [SerializeField]
+        [Tooltip("Rolling window duration in seconds for high water mark tracking.")]
+        [Min(1f)]
+        private float _poolRollingWindowSeconds = DefaultPoolRollingWindowSeconds;
+
+        [SerializeField]
+        [Tooltip(
+            "Hysteresis duration in seconds. Purging is suppressed for this duration after a usage spike."
+        )]
+        [Min(0f)]
+        private float _poolHysteresisSeconds = DefaultPoolHysteresisSeconds;
+
+        [SerializeField]
+        [Tooltip(
+            "Spike threshold multiplier. A spike is detected when concurrent rentals exceed the rolling average by this factor."
+        )]
+        [Min(1f)]
+        [WGroupEnd(PoolPurgingFoldoutKey)]
+        private float _poolSpikeThresholdMultiplier = DefaultPoolSpikeThresholdMultiplier;
+
+        [SerializeField]
+        [Tooltip("Per-type pool purging configurations.")]
+        [WGroup(
+            "PoolTypeConfigurations",
+            displayName: "Per-Type Pool Settings",
+            collapsible: true,
+            startCollapsed: true
+        )]
+        private List<PoolTypeConfiguration> _poolTypeConfigurations = new();
+
+        [SerializeField]
+        [HideInInspector]
+        private bool _poolPurgingSettingsInitialized;
 
         internal HashSet<string> WButtonCustomColorSkipAutoSuggest
         {
@@ -1893,6 +2064,206 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             );
         }
 
+        /// <summary>
+        /// Gets whether intelligent pool purging is globally enabled in settings.
+        /// </summary>
+        public static bool GetPoolPurgingEnabled()
+        {
+            return instance._poolPurgingEnabled;
+        }
+
+        /// <summary>
+        /// Gets the default idle timeout in seconds for pool purging.
+        /// </summary>
+        public static float GetPoolIdleTimeoutSeconds()
+        {
+            return Mathf.Max(0f, instance._poolIdleTimeoutSeconds);
+        }
+
+        /// <summary>
+        /// Gets the default minimum retain count for pool purging.
+        /// </summary>
+        public static int GetPoolMinRetainCount()
+        {
+            return Mathf.Max(0, instance._poolMinRetainCount);
+        }
+
+        /// <summary>
+        /// Gets the default maximum pool size.
+        /// </summary>
+        public static int GetPoolMaxSize()
+        {
+            return Mathf.Max(0, instance._poolMaxSize);
+        }
+
+        /// <summary>
+        /// Gets the default buffer multiplier for comfortable pool size calculation.
+        /// </summary>
+        public static float GetPoolBufferMultiplier()
+        {
+            return Mathf.Max(1f, instance._poolBufferMultiplier);
+        }
+
+        /// <summary>
+        /// Gets the default rolling window duration in seconds.
+        /// </summary>
+        public static float GetPoolRollingWindowSeconds()
+        {
+            return Mathf.Max(1f, instance._poolRollingWindowSeconds);
+        }
+
+        /// <summary>
+        /// Gets the default hysteresis duration in seconds.
+        /// </summary>
+        public static float GetPoolHysteresisSeconds()
+        {
+            return Mathf.Max(0f, instance._poolHysteresisSeconds);
+        }
+
+        /// <summary>
+        /// Gets the default spike threshold multiplier.
+        /// </summary>
+        public static float GetPoolSpikeThresholdMultiplier()
+        {
+            return Mathf.Max(1f, instance._poolSpikeThresholdMultiplier);
+        }
+
+        /// <summary>
+        /// Gets the per-type pool configurations from settings.
+        /// </summary>
+        public static IReadOnlyList<PoolTypeConfiguration> GetPoolTypeConfigurations()
+        {
+            UnityHelpersSettings settings = instance;
+            if (settings._poolTypeConfigurations == null)
+            {
+                return Array.Empty<PoolTypeConfiguration>();
+            }
+
+            return settings._poolTypeConfigurations;
+        }
+
+        /// <summary>
+        /// Applies the current pool purging settings to PoolPurgeSettings.
+        /// </summary>
+        public static void ApplyPoolPurgingSettingsToRuntime()
+        {
+            UnityHelpersSettings settings = instance;
+            PoolPurgeSettings.GlobalEnabled = settings._poolPurgingEnabled;
+            PoolPurgeSettings.DefaultGlobalIdleTimeoutSeconds = Mathf.Max(
+                0f,
+                settings._poolIdleTimeoutSeconds
+            );
+            PoolPurgeSettings.DefaultGlobalMinRetainCount = Mathf.Max(
+                0,
+                settings._poolMinRetainCount
+            );
+            PoolPurgeSettings.DefaultGlobalBufferMultiplier = Mathf.Max(
+                1f,
+                settings._poolBufferMultiplier
+            );
+            PoolPurgeSettings.DefaultGlobalRollingWindowSeconds = Mathf.Max(
+                1f,
+                settings._poolRollingWindowSeconds
+            );
+            PoolPurgeSettings.DefaultGlobalHysteresisSeconds = Mathf.Max(
+                0f,
+                settings._poolHysteresisSeconds
+            );
+            PoolPurgeSettings.DefaultGlobalSpikeThresholdMultiplier = Mathf.Max(
+                1f,
+                settings._poolSpikeThresholdMultiplier
+            );
+
+            ApplyPoolTypeConfigurationsToRuntime(settings._poolTypeConfigurations);
+        }
+
+        private static void ApplyPoolTypeConfigurationsToRuntime(
+            List<PoolTypeConfiguration> configurations
+        )
+        {
+            // Clear previous settings-based configurations before reapplying
+            PoolPurgeSettings.ClearSettingsTypeConfigurations();
+
+            if (configurations == null || configurations.Count == 0)
+            {
+                return;
+            }
+
+            foreach (PoolTypeConfiguration config in configurations)
+            {
+                if (config == null)
+                {
+                    continue;
+                }
+
+                Type type = config.ResolveType();
+                if (type == null)
+                {
+                    continue;
+                }
+
+                if (!config.Enabled)
+                {
+                    // Use settings-based disable (lower priority than programmatic Disable)
+                    PoolPurgeSettings.DisableFromSettings(type);
+                    continue;
+                }
+
+                PoolPurgeTypeOptions options = config.ToPoolPurgeTypeOptions();
+                if (type.IsGenericTypeDefinition)
+                {
+                    // Use settings-based generic configuration (lower priority than programmatic ConfigureGeneric)
+                    PoolPurgeSettings.ConfigureGenericFromSettings(type, options);
+                }
+                else
+                {
+                    // Use settings-based configuration (lower priority than programmatic Configure<T>)
+                    PoolPurgeSettings.ConfigureFromSettings(type, options);
+                }
+            }
+        }
+
+        // Kept for backwards compatibility and possible future use
+        [System.Diagnostics.CodeAnalysis.SuppressMessage(
+            "CodeQuality",
+            "IDE0051:Remove unused private members",
+            Justification = "Reserved for future use"
+        )]
+        private static void ConfigureTypeViaReflection(Type type, PoolPurgeTypeOptions options)
+        {
+            System.Reflection.MethodInfo configureMethod = typeof(PoolPurgeSettings)
+                .GetMethod(
+                    nameof(PoolPurgeSettings.Configure),
+                    System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static
+                )
+                ?.MakeGenericMethod(type);
+
+            if (configureMethod == null)
+            {
+                return;
+            }
+
+            Action<PoolPurgeTypeOptions> configureAction = existing =>
+            {
+                existing.Enabled = options.Enabled;
+                existing.IdleTimeoutSeconds = options.IdleTimeoutSeconds;
+                existing.MinRetainCount = options.MinRetainCount;
+                existing.BufferMultiplier = options.BufferMultiplier;
+                existing.RollingWindowSeconds = options.RollingWindowSeconds;
+                existing.HysteresisSeconds = options.HysteresisSeconds;
+                existing.SpikeThresholdMultiplier = options.SpikeThresholdMultiplier;
+            };
+
+            try
+            {
+                configureMethod.Invoke(null, new object[] { configureAction });
+            }
+            catch
+            {
+                // Ignore configuration errors - they shouldn't crash the editor
+            }
+        }
+
         internal static void RegisterPaletteManualEdit(string propertyPath, string key)
         {
             if (string.IsNullOrWhiteSpace(propertyPath) || string.IsNullOrWhiteSpace(key))
@@ -2223,6 +2594,9 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             IReadOnlyList<string> patterns = GetSerializableTypeIgnorePatterns();
             SerializableTypeCatalog.ConfigureTypeNameIgnorePatterns(patterns);
             SerializableTypeCatalog.WarmPatternStats(patterns);
+
+            // Apply pool purging settings to runtime
+            ApplyPoolPurgingSettingsToRuntime();
         }
 
         private bool EnsureSerializableTypePatternDefaults()
@@ -4437,6 +4811,181 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                                 return true;
                             }
 
+                            if (
+                                string.Equals(
+                                    property.propertyPath,
+                                    nameof(_poolPurgingEnabled),
+                                    StringComparison.Ordinal
+                                )
+                            )
+                            {
+                                EditorGUILayout.HelpBox(PoolPurgingHelpText, MessageType.Info);
+                                bool changed = DrawToggleField(
+                                    PoolPurgingEnabledContent,
+                                    settings._poolPurgingEnabled,
+                                    value => settings._poolPurgingEnabled = value
+                                );
+                                dataChanged |= changed;
+                                return true;
+                            }
+
+                            if (
+                                string.Equals(
+                                    property.propertyPath,
+                                    nameof(_poolIdleTimeoutSeconds),
+                                    StringComparison.Ordinal
+                                )
+                            )
+                            {
+                                bool changed = DrawFloatField(
+                                    PoolIdleTimeoutContent,
+                                    settings._poolIdleTimeoutSeconds,
+                                    value => settings._poolIdleTimeoutSeconds = Mathf.Max(0f, value)
+                                );
+                                dataChanged |= changed;
+                                return true;
+                            }
+
+                            if (
+                                string.Equals(
+                                    property.propertyPath,
+                                    nameof(_poolMinRetainCount),
+                                    StringComparison.Ordinal
+                                )
+                            )
+                            {
+                                bool changed = DrawIntField(
+                                    PoolMinRetainCountContent,
+                                    settings._poolMinRetainCount,
+                                    value => settings._poolMinRetainCount = Mathf.Max(0, value)
+                                );
+                                dataChanged |= changed;
+                                return true;
+                            }
+
+                            if (
+                                string.Equals(
+                                    property.propertyPath,
+                                    nameof(_poolMaxSize),
+                                    StringComparison.Ordinal
+                                )
+                            )
+                            {
+                                bool changed = DrawIntField(
+                                    PoolMaxSizeContent,
+                                    settings._poolMaxSize,
+                                    value => settings._poolMaxSize = Mathf.Max(0, value)
+                                );
+                                dataChanged |= changed;
+                                return true;
+                            }
+
+                            if (
+                                string.Equals(
+                                    property.propertyPath,
+                                    nameof(_poolBufferMultiplier),
+                                    StringComparison.Ordinal
+                                )
+                            )
+                            {
+                                bool changed = DrawFloatField(
+                                    PoolBufferMultiplierContent,
+                                    settings._poolBufferMultiplier,
+                                    value => settings._poolBufferMultiplier = Mathf.Max(1f, value)
+                                );
+                                dataChanged |= changed;
+                                return true;
+                            }
+
+                            if (
+                                string.Equals(
+                                    property.propertyPath,
+                                    nameof(_poolRollingWindowSeconds),
+                                    StringComparison.Ordinal
+                                )
+                            )
+                            {
+                                bool changed = DrawFloatField(
+                                    PoolRollingWindowContent,
+                                    settings._poolRollingWindowSeconds,
+                                    value =>
+                                        settings._poolRollingWindowSeconds = Mathf.Max(1f, value)
+                                );
+                                dataChanged |= changed;
+                                return true;
+                            }
+
+                            if (
+                                string.Equals(
+                                    property.propertyPath,
+                                    nameof(_poolHysteresisSeconds),
+                                    StringComparison.Ordinal
+                                )
+                            )
+                            {
+                                bool changed = DrawFloatField(
+                                    PoolHysteresisContent,
+                                    settings._poolHysteresisSeconds,
+                                    value => settings._poolHysteresisSeconds = Mathf.Max(0f, value)
+                                );
+                                dataChanged |= changed;
+                                return true;
+                            }
+
+                            if (
+                                string.Equals(
+                                    property.propertyPath,
+                                    nameof(_poolSpikeThresholdMultiplier),
+                                    StringComparison.Ordinal
+                                )
+                            )
+                            {
+                                bool changed = DrawFloatField(
+                                    PoolSpikeThresholdContent,
+                                    settings._poolSpikeThresholdMultiplier,
+                                    value =>
+                                        settings._poolSpikeThresholdMultiplier = Mathf.Max(
+                                            1f,
+                                            value
+                                        )
+                                );
+                                dataChanged |= changed;
+
+                                // Draw Apply Now button after the last pool purging field
+                                EditorGUILayout.Space(4f);
+                                if (
+                                    GUILayout.Button(
+                                        PoolApplyNowButtonContent,
+                                        GUILayout.Width(150f)
+                                    )
+                                )
+                                {
+                                    ApplyPoolPurgingSettingsToRuntime();
+                                }
+                                return true;
+                            }
+
+                            if (
+                                string.Equals(
+                                    property.propertyPath,
+                                    nameof(_poolTypeConfigurations),
+                                    StringComparison.Ordinal
+                                )
+                            )
+                            {
+                                EditorGUI.BeginChangeCheck();
+                                EditorGUILayout.PropertyField(
+                                    property,
+                                    PoolTypeConfigurationsContent,
+                                    true
+                                );
+                                if (EditorGUI.EndChangeCheck())
+                                {
+                                    dataChanged = true;
+                                }
+                                return true;
+                            }
+
                             return false;
                         }
 
@@ -4562,6 +5111,11 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                     "Regex",
                     "Speed",
                     "Animation",
+                    "Pool",
+                    "Purge",
+                    "Purging",
+                    "Buffer",
+                    "Memory",
                 },
             };
         }

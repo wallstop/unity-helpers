@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2026 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Editor.Sprites
@@ -7,12 +7,16 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
     using System;
     using System.Collections.Generic;
     using System.IO;
+    using System.Security.Cryptography;
+    using System.Text;
+    using System.Text.Json;
     using System.Text.RegularExpressions;
     using System.Threading.Tasks;
     using CustomEditors;
     using UnityEditor;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Extension;
+    using WallstopStudios.UnityHelpers.Core.Serialization;
     using WallstopStudios.UnityHelpers.Utils;
     using Object = UnityEngine.Object;
 
@@ -115,6 +119,16 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             internal float? _alphaThresholdOverride;
             internal bool? _showGridOverlayOverride;
             internal bool _sourcePreviewExpanded;
+
+            internal PivotMode? _pivotModeOverride;
+            internal Vector2? _customPivotOverride;
+            internal AutoDetectionAlgorithm? _autoDetectionAlgorithmOverride;
+            internal int? _expectedSpriteCountOverride;
+            internal SpriteSheetConfig _loadedConfig;
+            internal bool _configLoaded;
+            internal bool _configStale;
+            internal SpriteSheetAlgorithms.AlgorithmResult? _cachedAlgorithmResult;
+            internal string _lastAlgorithmDisplayText;
         }
 
         /// <summary>
@@ -244,6 +258,18 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
         internal bool _showGridOverlay;
 
         [SerializeField]
+        internal PivotMode _pivotMode = PivotMode.Center;
+
+        [SerializeField]
+        internal Vector2 _customPivot = new(0.5f, 0.5f);
+
+        [SerializeField]
+        internal AutoDetectionAlgorithm _autoDetectionAlgorithm = AutoDetectionAlgorithm.AutoBest;
+
+        [SerializeField]
+        internal int _expectedSpriteCountHint = -1;
+
+        [SerializeField]
         internal Color _gridLineColor = new Color(1f, 0f, 0f, 0.5f);
 
         [SerializeField]
@@ -277,6 +303,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
         private SerializedProperty _paddingBottomProperty;
         private SerializedProperty _alphaThresholdProperty;
         private SerializedProperty _showGridOverlayProperty;
+        private SerializedProperty _pivotModeProperty;
+        private SerializedProperty _customPivotProperty;
+        private SerializedProperty _autoDetectionAlgorithmProperty;
+        private SerializedProperty _expectedSpriteCountHintProperty;
         private SerializedProperty _gridLineColorProperty;
         private SerializedProperty _sourcePreviewFoldoutProperty;
         private SerializedProperty _dangerZoneFoldoutProperty;
@@ -347,6 +377,14 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             _paddingBottomProperty = _serializedObject.FindProperty(nameof(_paddingBottom));
             _alphaThresholdProperty = _serializedObject.FindProperty(nameof(_alphaThreshold));
             _showGridOverlayProperty = _serializedObject.FindProperty(nameof(_showGridOverlay));
+            _pivotModeProperty = _serializedObject.FindProperty(nameof(_pivotMode));
+            _customPivotProperty = _serializedObject.FindProperty(nameof(_customPivot));
+            _autoDetectionAlgorithmProperty = _serializedObject.FindProperty(
+                nameof(_autoDetectionAlgorithm)
+            );
+            _expectedSpriteCountHintProperty = _serializedObject.FindProperty(
+                nameof(_expectedSpriteCountHint)
+            );
             _gridLineColorProperty = _serializedObject.FindProperty(nameof(_gridLineColor));
             _sourcePreviewFoldoutProperty = _serializedObject.FindProperty(
                 nameof(_sourcePreviewFoldout)
@@ -544,6 +582,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                         _cellWidth = Mathf.Max(0, _cellWidth);
                         _cellHeight = Mathf.Max(0, _cellHeight);
                     }
+                    else
+                    {
+                        DrawAutoDetectionAlgorithmUI();
+                    }
                 }
             }
 
@@ -589,6 +631,89 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                         )
                     );
                     _alphaThreshold = Mathf.Clamp01(_alphaThreshold);
+                }
+            }
+
+            EditorGUILayout.Space();
+            EditorGUILayout.LabelField("Pivot Settings", EditorStyles.miniBoldLabel);
+
+            EditorGUILayout.PropertyField(
+                _pivotModeProperty,
+                new GUIContent(
+                    "Pivot Mode",
+                    "Pivot point for extracted sprites. Custom allows specifying exact normalized coordinates."
+                )
+            );
+
+            if (_pivotMode == PivotMode.Custom)
+            {
+                using (new EditorGUI.IndentLevelScope())
+                {
+                    EditorGUILayout.PropertyField(
+                        _customPivotProperty,
+                        new GUIContent(
+                            "Custom Pivot",
+                            "Custom pivot point in normalized coordinates (0-1). (0,0) is bottom-left, (1,1) is top-right."
+                        )
+                    );
+                    _customPivot = new Vector2(
+                        Mathf.Clamp01(_customPivot.x),
+                        Mathf.Clamp01(_customPivot.y)
+                    );
+                }
+            }
+        }
+
+        private void DrawAutoDetectionAlgorithmUI()
+        {
+            EditorGUILayout.Space(2);
+            EditorGUILayout.LabelField("Auto-Detection Algorithm", EditorStyles.miniBoldLabel);
+
+            EditorGUILayout.PropertyField(
+                _autoDetectionAlgorithmProperty,
+                new GUIContent(
+                    "Algorithm",
+                    "Algorithm for automatic grid detection.\n"
+                        + "AutoBest: Tries algorithms in order of speed, stops at 70% confidence.\n"
+                        + "UniformGrid: Simple division (requires expected sprite count).\n"
+                        + "BoundaryScoring: Scores grid lines by transparency.\n"
+                        + "ClusterCentroid: Detects sprites, infers grid from spacing.\n"
+                        + "DistanceTransform: Uses distance field peaks.\n"
+                        + "RegionGrowing: Grows regions from local maxima."
+                )
+            );
+
+            if (_autoDetectionAlgorithm == AutoDetectionAlgorithm.UniformGrid)
+            {
+                EditorGUILayout.PropertyField(
+                    _expectedSpriteCountHintProperty,
+                    new GUIContent(
+                        "Expected Sprite Count",
+                        "Number of sprites in the sheet. Required for UniformGrid algorithm."
+                    )
+                );
+                _expectedSpriteCountHint = Mathf.Max(-1, _expectedSpriteCountHint);
+
+                if (_expectedSpriteCountHint <= 0)
+                {
+                    EditorGUILayout.HelpBox(
+                        "UniformGrid requires a valid expected sprite count (> 0).",
+                        MessageType.Warning
+                    );
+                }
+            }
+            else
+            {
+                using (new EditorGUI.IndentLevelScope())
+                {
+                    EditorGUILayout.PropertyField(
+                        _expectedSpriteCountHintProperty,
+                        new GUIContent(
+                            "Expected Sprite Count (Optional)",
+                            "Optional hint used as fallback. -1 means not set."
+                        )
+                    );
+                    _expectedSpriteCountHint = Mathf.Max(-1, _expectedSpriteCountHint);
                 }
             }
         }
@@ -1062,6 +1187,14 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                         entry._useGlobalSettings
                     );
 
+                    // When transitioning from global to per-sheet settings,
+                    // initialize overrides from current effective values to prevent UI desync
+                    if (previousUseGlobal && !entry._useGlobalSettings)
+                    {
+                        InitializeOverridesFromGlobal(entry);
+                        Repaint();
+                    }
+
                     if (!entry._useGlobalSettings)
                     {
                         DrawPerSheetOverrideFields(entry);
@@ -1069,9 +1202,51 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                         DrawCopySettingsFromButton(entry);
                     }
 
+                    DrawConfigButtons(entry);
+
                     if (previousUseGlobal != entry._useGlobalSettings)
                     {
                         SchedulePreviewRegenerationForEntry(entry);
+                    }
+                }
+            }
+        }
+
+        private void DrawConfigButtons(SpriteSheetEntry entry)
+        {
+            EditorGUILayout.Space();
+            EditorGUILayout.LabelField("Configuration", EditorStyles.miniBoldLabel);
+
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                if (GUILayout.Button("Save Config", GUILayout.Width(100)))
+                {
+                    _ = SaveConfig(entry);
+                }
+
+                if (GUILayout.Button("Load Config", GUILayout.Width(100)))
+                {
+                    _ = LoadConfig(entry);
+                    Repaint();
+                }
+
+                if (entry._configLoaded)
+                {
+                    GUIStyle badgeStyle = new(EditorStyles.miniLabel);
+
+                    if (entry._configStale)
+                    {
+                        badgeStyle.normal.textColor = new Color(0.8f, 0.6f, 0f);
+                        EditorGUILayout.LabelField("Config Stale", badgeStyle, GUILayout.Width(80));
+                    }
+                    else
+                    {
+                        badgeStyle.normal.textColor = new Color(0f, 0.7f, 0f);
+                        EditorGUILayout.LabelField(
+                            "Config Loaded",
+                            badgeStyle,
+                            GUILayout.Width(80)
+                        );
                     }
                 }
             }
@@ -1217,6 +1392,39 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 }
             }
 
+            EditorGUILayout.Space();
+            EditorGUILayout.LabelField("Pivot Settings", EditorStyles.miniBoldLabel);
+
+            PivotMode currentPivotMode = entry._pivotModeOverride ?? _pivotMode;
+            PivotMode newPivotMode = (PivotMode)
+                EditorGUILayout.EnumPopup(
+                    new GUIContent(
+                        "Pivot Mode",
+                        "Pivot point for sprites from this sheet. Custom allows specifying exact coordinates."
+                    ),
+                    currentPivotMode
+                );
+            entry._pivotModeOverride = newPivotMode;
+
+            if (newPivotMode == PivotMode.Custom)
+            {
+                using (new EditorGUI.IndentLevelScope())
+                {
+                    Vector2 currentCustomPivot = entry._customPivotOverride ?? _customPivot;
+                    Vector2 newCustomPivot = EditorGUILayout.Vector2Field(
+                        new GUIContent(
+                            "Custom Pivot",
+                            "Custom pivot in normalized coordinates (0-1). (0,0) is bottom-left, (1,1) is top-right."
+                        ),
+                        currentCustomPivot
+                    );
+                    entry._customPivotOverride = new Vector2(
+                        Mathf.Clamp01(newCustomPivot.x),
+                        Mathf.Clamp01(newCustomPivot.y)
+                    );
+                }
+            }
+
             if (previousExtractionMode != entry._extractionModeOverride)
             {
                 SchedulePreviewRegenerationForEntry(entry);
@@ -1275,6 +1483,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             target._paddingBottomOverride = source._paddingBottomOverride;
             target._alphaThresholdOverride = source._alphaThresholdOverride;
             target._showGridOverlayOverride = source._showGridOverlayOverride;
+            target._pivotModeOverride = source._pivotModeOverride;
+            target._customPivotOverride = source._customPivotOverride;
+            target._autoDetectionAlgorithmOverride = source._autoDetectionAlgorithmOverride;
+            target._expectedSpriteCountOverride = source._expectedSpriteCountOverride;
 
             SchedulePreviewRegenerationForEntry(target);
         }
@@ -1624,6 +1836,11 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             );
         }
 
+        /// <summary>
+        /// Calculates grid dimensions for sprite extraction.
+        /// In Manual mode, derives cell size from columns/rows.
+        /// In Auto mode, detects grid from transparency or uses fallback heuristics.
+        /// </summary>
         internal void CalculateGridDimensions(
             int textureWidth,
             int textureHeight,
@@ -1646,37 +1863,65 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 columns = Mathf.Max(1, effectiveGridColumns);
                 rows = Mathf.Max(1, effectiveGridRows);
 
-                if (effectiveCellWidth > 0 && effectiveCellHeight > 0)
-                {
-                    cellWidth = effectiveCellWidth;
-                    cellHeight = effectiveCellHeight;
-                }
-                else
-                {
-                    cellWidth = textureWidth / columns;
-                    cellHeight = textureHeight / rows;
-                }
+                // In Manual mode, always derive cell size from columns/rows
+                cellWidth = textureWidth / columns;
+                cellHeight = textureHeight / rows;
             }
             else
             {
                 float effectiveAlphaThreshold = GetEffectiveAlphaThreshold(entry);
-                bool detectedFromTransparency = false;
+                AutoDetectionAlgorithm algorithm = GetEffectiveAutoDetectionAlgorithm(entry);
+                int expectedSpriteCount = GetEffectiveExpectedSpriteCount(entry);
+                bool detectedFromAlgorithm = false;
                 cellWidth = 0;
                 cellHeight = 0;
 
                 if (pixels != null && pixels.Length == textureWidth * textureHeight)
                 {
-                    detectedFromTransparency = DetectOptimalGridFromTransparency(
-                        pixels,
-                        textureWidth,
-                        textureHeight,
-                        effectiveAlphaThreshold,
-                        out cellWidth,
-                        out cellHeight
-                    );
+                    // Try to use cached result if available and valid
+                    if (entry != null && entry._cachedAlgorithmResult.HasValue)
+                    {
+                        SpriteSheetAlgorithms.AlgorithmResult cached = entry
+                            ._cachedAlgorithmResult
+                            .Value;
+                        if (cached.IsValid)
+                        {
+                            cellWidth = cached.CellWidth;
+                            cellHeight = cached.CellHeight;
+                            detectedFromAlgorithm = true;
+                            entry._lastAlgorithmDisplayText =
+                                $"{cached.Algorithm}: {cached.Confidence:P0}";
+                        }
+                    }
+
+                    if (!detectedFromAlgorithm)
+                    {
+                        SpriteSheetAlgorithms.AlgorithmResult result =
+                            SpriteSheetAlgorithms.DetectGrid(
+                                pixels,
+                                textureWidth,
+                                textureHeight,
+                                effectiveAlphaThreshold,
+                                algorithm,
+                                expectedSpriteCount
+                            );
+
+                        if (result.IsValid)
+                        {
+                            cellWidth = result.CellWidth;
+                            cellHeight = result.CellHeight;
+                            detectedFromAlgorithm = true;
+                            if (entry != null)
+                            {
+                                entry._cachedAlgorithmResult = result;
+                                entry._lastAlgorithmDisplayText =
+                                    $"{result.Algorithm}: {result.Confidence:P0}";
+                            }
+                        }
+                    }
                 }
 
-                if (!detectedFromTransparency)
+                if (!detectedFromAlgorithm)
                 {
                     // Use smarter fallback that prefers common sprite sizes over GCD
                     cellWidth = FindSmallestReasonableDivisor(textureWidth);
@@ -1691,6 +1936,11 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                             cellWidth = gcd;
                             cellHeight = gcd;
                         }
+                    }
+
+                    if (entry != null)
+                    {
+                        entry._lastAlgorithmDisplayText = "Fallback (no algorithm match)";
                     }
                 }
 
@@ -1757,7 +2007,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
         /// <param name="textureWidth">Width of the texture in pixels.</param>
         /// <param name="textureHeight">Height of the texture in pixels.</param>
         /// <param name="alphaThreshold">Alpha value (0-1) below which a pixel is considered transparent.
-        /// Must be less than 1.0; a value of 1.0 or greater returns false immediately.</param>
+        /// Must be in range [0.0, 1.0); values outside this range return false immediately.</param>
         /// <param name="cellWidth">Output: Detected cell width, or 0 if no clear grid was detected.</param>
         /// <param name="cellHeight">Output: Detected cell height, or 0 if no clear grid was detected.</param>
         /// <returns>True if a valid grid was detected, false otherwise.</returns>
@@ -1788,7 +2038,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 return false;
             }
 
-            if (alphaThreshold >= 1f)
+            if (alphaThreshold < 0f || alphaThreshold >= 1f)
             {
                 return false;
             }
@@ -2442,6 +2692,145 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
         }
 
         /// <summary>
+        /// Returns the effective pivot mode for the given entry.
+        /// Uses per-sheet override if set, otherwise falls back to global setting.
+        /// </summary>
+        /// <param name="entry">The sprite sheet entry to check, or null to use global setting.</param>
+        /// <returns>The pivot mode to use for this entry.</returns>
+        internal PivotMode GetEffectivePivotMode(SpriteSheetEntry entry)
+        {
+            if (entry == null || entry._useGlobalSettings || !entry._pivotModeOverride.HasValue)
+            {
+                return _pivotMode;
+            }
+            return entry._pivotModeOverride.Value;
+        }
+
+        /// <summary>
+        /// Returns the effective custom pivot for the given entry.
+        /// Uses per-sheet override if set, otherwise falls back to global setting.
+        /// </summary>
+        /// <param name="entry">The sprite sheet entry to check, or null to use global setting.</param>
+        /// <returns>The custom pivot point to use for this entry.</returns>
+        internal Vector2 GetEffectiveCustomPivot(SpriteSheetEntry entry)
+        {
+            if (entry == null || entry._useGlobalSettings || !entry._customPivotOverride.HasValue)
+            {
+                return _customPivot;
+            }
+            return entry._customPivotOverride.Value;
+        }
+
+        /// <summary>
+        /// Returns the effective auto-detection algorithm for the given entry.
+        /// Uses per-sheet override if set, otherwise falls back to global setting.
+        /// </summary>
+        /// <param name="entry">The sprite sheet entry to check, or null to use global setting.</param>
+        /// <returns>The algorithm to use for this entry.</returns>
+        internal AutoDetectionAlgorithm GetEffectiveAutoDetectionAlgorithm(SpriteSheetEntry entry)
+        {
+            if (
+                entry == null
+                || entry._useGlobalSettings
+                || !entry._autoDetectionAlgorithmOverride.HasValue
+            )
+            {
+                return _autoDetectionAlgorithm;
+            }
+            return entry._autoDetectionAlgorithmOverride.Value;
+        }
+
+        /// <summary>
+        /// Returns the effective expected sprite count for the given entry.
+        /// Uses per-sheet override if set, otherwise falls back to global setting.
+        /// </summary>
+        /// <param name="entry">The sprite sheet entry to check, or null to use global setting.</param>
+        /// <returns>The expected sprite count, or -1 if not set.</returns>
+        internal int GetEffectiveExpectedSpriteCount(SpriteSheetEntry entry)
+        {
+            if (
+                entry == null
+                || entry._useGlobalSettings
+                || !entry._expectedSpriteCountOverride.HasValue
+            )
+            {
+                return _expectedSpriteCountHint;
+            }
+            return entry._expectedSpriteCountOverride.Value;
+        }
+
+        /// <summary>
+        /// Initializes all override fields from their corresponding global values.
+        /// Called when transitioning from global settings to per-sheet settings.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// This method is called AFTER <paramref name="entry"/>._useGlobalSettings has been set to false.
+        /// It copies all current effective values (which are still the global values) to the override fields,
+        /// ensuring the UI toggle states match the actual rendering behavior.
+        /// </para>
+        /// <para>
+        /// The method intentionally does NOT modify _useGlobalSettings since the caller has already changed it.
+        /// </para>
+        /// </remarks>
+        /// <param name="entry">The sprite sheet entry to initialize. If null, the method returns immediately.</param>
+        internal void InitializeOverridesFromGlobal(SpriteSheetEntry entry)
+        {
+            if (entry == null)
+            {
+                return;
+            }
+
+            // Copy all current effective values (global settings) to override fields.
+            // After this, the entry can be switched back to _useGlobalSettings=true
+            // without losing the customized values.
+            entry._extractionModeOverride = GetEffectiveExtractionMode(entry);
+            entry._gridSizeModeOverride = GetEffectiveGridSizeMode(entry);
+            entry._gridColumnsOverride = GetEffectiveGridColumns(entry);
+            entry._gridRowsOverride = GetEffectiveGridRows(entry);
+            entry._cellWidthOverride = GetEffectiveCellWidth(entry);
+            entry._cellHeightOverride = GetEffectiveCellHeight(entry);
+            entry._paddingLeftOverride = GetEffectivePaddingLeft(entry);
+            entry._paddingRightOverride = GetEffectivePaddingRight(entry);
+            entry._paddingTopOverride = GetEffectivePaddingTop(entry);
+            entry._paddingBottomOverride = GetEffectivePaddingBottom(entry);
+            entry._alphaThresholdOverride = GetEffectiveAlphaThreshold(entry);
+            entry._showGridOverlayOverride = GetEffectiveShowGridOverlay(entry);
+            entry._pivotModeOverride = GetEffectivePivotMode(entry);
+            entry._customPivotOverride = GetEffectiveCustomPivot(entry);
+            entry._autoDetectionAlgorithmOverride = GetEffectiveAutoDetectionAlgorithm(entry);
+            entry._expectedSpriteCountOverride = GetEffectiveExpectedSpriteCount(entry);
+
+            // Clear cached algorithm result to force recalculation with new settings
+            entry._cachedAlgorithmResult = null;
+            entry._lastAlgorithmDisplayText = null;
+        }
+
+        /// <summary>
+        /// Converts a PivotMode enum value to the corresponding normalized Vector2 pivot coordinates.
+        /// </summary>
+        /// <param name="pivotMode">The pivot mode to convert.</param>
+        /// <param name="customPivot">The custom pivot to use when pivotMode is Custom.</param>
+        /// <returns>Normalized pivot coordinates where (0,0) is bottom-left and (1,1) is top-right.</returns>
+        internal static Vector2 PivotModeToVector2(PivotMode pivotMode, Vector2 customPivot)
+        {
+            return pivotMode switch
+            {
+                PivotMode.Center => new Vector2(0.5f, 0.5f),
+                PivotMode.BottomLeft => new Vector2(0f, 0f),
+                PivotMode.TopLeft => new Vector2(0f, 1f),
+                PivotMode.BottomRight => new Vector2(1f, 0f),
+                PivotMode.TopRight => new Vector2(1f, 1f),
+                PivotMode.LeftCenter => new Vector2(0f, 0.5f),
+                PivotMode.RightCenter => new Vector2(1f, 0.5f),
+                PivotMode.TopCenter => new Vector2(0.5f, 1f),
+                PivotMode.BottomCenter => new Vector2(0.5f, 0f),
+                PivotMode.Custom => customPivot,
+                _ => new Vector2(0.5f, 0.5f),
+            };
+        }
+
+        /// <summary>
         /// Checks if any discovered sheet uses grid-based extraction mode.
         /// Returns true if the global mode is grid-based, or if any per-sheet override is grid-based.
         /// </summary>
@@ -2481,6 +2870,189 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             }
 
             return false;
+        }
+
+        /// <summary>
+        /// Computes the SHA256 hash of a file's contents.
+        /// </summary>
+        /// <param name="filePath">The path to the file to hash.</param>
+        /// <returns>The SHA256 hash as a lowercase hex string, or null if the file cannot be read.</returns>
+        internal static string ComputeFileHash(string filePath)
+        {
+            if (string.IsNullOrEmpty(filePath) || !File.Exists(filePath))
+            {
+                return null;
+            }
+
+            try
+            {
+                using SHA256 sha256 = SHA256.Create();
+                using FileStream stream = File.OpenRead(filePath);
+                byte[] hashBytes = sha256.ComputeHash(stream);
+                StringBuilder builder = new(hashBytes.Length * 2);
+                for (int i = 0; i < hashBytes.Length; ++i)
+                {
+                    _ = builder.Append(hashBytes[i].ToString("x2"));
+                }
+                return builder.ToString();
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Saves the configuration for a sprite sheet entry to a JSON file.
+        /// </summary>
+        /// <param name="entry">The entry to save configuration for.</param>
+        /// <returns>True if the config was saved successfully, false otherwise.</returns>
+        internal bool SaveConfig(SpriteSheetEntry entry)
+        {
+            if (entry == null || string.IsNullOrEmpty(entry._assetPath))
+            {
+                return false;
+            }
+
+            try
+            {
+                string configPath = SpriteSheetConfig.GetConfigPath(entry._assetPath);
+                string fullConfigPath = Path.GetFullPath(configPath);
+
+                string textureFullPath = Path.GetFullPath(entry._assetPath);
+                string hash = ComputeFileHash(textureFullPath);
+
+                CachedAlgorithmResult cachedResult = null;
+                if (
+                    entry._cachedAlgorithmResult.HasValue
+                    && entry._cachedAlgorithmResult.Value.IsValid
+                )
+                {
+                    cachedResult = CachedAlgorithmResult.FromResult(
+                        entry._cachedAlgorithmResult.Value
+                    );
+                }
+
+                SpriteSheetConfig config = new()
+                {
+                    version = SpriteSheetConfig.CurrentVersion,
+                    pivotMode = GetEffectivePivotMode(entry),
+                    customPivot = GetEffectiveCustomPivot(entry),
+                    algorithm = (int)GetEffectiveAutoDetectionAlgorithm(entry),
+                    expectedSpriteCount = GetEffectiveExpectedSpriteCount(entry),
+                    textureContentHash = hash,
+                    cachedAlgorithmResult = cachedResult,
+                };
+
+                string json = Serializer.JsonStringify(config, pretty: true);
+                File.WriteAllText(fullConfigPath, json, Encoding.UTF8);
+
+                entry._loadedConfig = config;
+                entry._configLoaded = true;
+                entry._configStale = false;
+
+                AssetDatabase.Refresh();
+                return true;
+            }
+            catch (Exception ex)
+            {
+                this.LogError($"Failed to save config for '{entry._assetPath}'.", ex);
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Loads the configuration for a sprite sheet entry from a JSON file.
+        /// </summary>
+        /// <param name="entry">The entry to load configuration for.</param>
+        /// <returns>True if the config was loaded successfully, false otherwise.</returns>
+        internal bool LoadConfig(SpriteSheetEntry entry)
+        {
+            if (entry == null || string.IsNullOrEmpty(entry._assetPath))
+            {
+                return false;
+            }
+
+            try
+            {
+                string configPath = SpriteSheetConfig.GetConfigPath(entry._assetPath);
+                string fullConfigPath = Path.GetFullPath(configPath);
+
+                if (!File.Exists(fullConfigPath))
+                {
+                    entry._configLoaded = false;
+                    entry._configStale = false;
+                    entry._loadedConfig = null;
+                    return false;
+                }
+
+                string json = File.ReadAllText(fullConfigPath, Encoding.UTF8);
+                SpriteSheetConfig config = Serializer.JsonDeserialize<SpriteSheetConfig>(json);
+
+                if (config == null)
+                {
+                    entry._configLoaded = false;
+                    entry._configStale = false;
+                    entry._loadedConfig = null;
+                    return false;
+                }
+
+                SpriteSheetConfig.MigrateConfig(config);
+
+                string textureFullPath = Path.GetFullPath(entry._assetPath);
+                string currentHash = ComputeFileHash(textureFullPath);
+                bool isStale =
+                    !string.IsNullOrEmpty(config.textureContentHash)
+                    && !string.Equals(
+                        config.textureContentHash,
+                        currentHash,
+                        StringComparison.OrdinalIgnoreCase
+                    );
+
+                entry._loadedConfig = config;
+                entry._configLoaded = true;
+                entry._configStale = isStale;
+
+                entry._pivotModeOverride = config.pivotMode;
+                entry._customPivotOverride = config.customPivot;
+                entry._autoDetectionAlgorithmOverride = (AutoDetectionAlgorithm)config.algorithm;
+                entry._expectedSpriteCountOverride = config.expectedSpriteCount;
+                if (config.cachedAlgorithmResult != null)
+                {
+                    entry._cachedAlgorithmResult = config.cachedAlgorithmResult.ToResult();
+                }
+                entry._useGlobalSettings = false;
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                this.LogError($"Failed to load config for '{entry._assetPath}'.", ex);
+                entry._configLoaded = false;
+                entry._configStale = false;
+                entry._loadedConfig = null;
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Attempts to auto-load config for an entry if the config file exists.
+        /// </summary>
+        /// <param name="entry">The entry to auto-load config for.</param>
+        internal void TryAutoLoadConfig(SpriteSheetEntry entry)
+        {
+            if (entry == null || string.IsNullOrEmpty(entry._assetPath))
+            {
+                return;
+            }
+
+            string configPath = SpriteSheetConfig.GetConfigPath(entry._assetPath);
+            string fullConfigPath = Path.GetFullPath(configPath);
+
+            if (File.Exists(fullConfigPath))
+            {
+                _ = LoadConfig(entry);
+            }
         }
 
         /// <summary>
@@ -3001,6 +3573,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                     SpriteSheetEntry entry = CreateSpriteSheetEntry(file, importer);
                     if (entry != null)
                     {
+                        TryAutoLoadConfig(entry);
                         _discoveredSheets.Add(entry);
                     }
                 }
@@ -4408,7 +4981,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
 
                 if (_preserveImportSettings)
                 {
-                    ApplyImportSettings(fullOutputPath, sheet._importer, sprite);
+                    ApplyImportSettings(fullOutputPath, sheet._importer, sprite, sheet);
                 }
 
                 return true;
@@ -4424,7 +4997,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
         private void ApplyImportSettings(
             string outputPath,
             TextureImporter sourceImporter,
-            SpriteEntryData sprite
+            SpriteEntryData sprite,
+            SpriteSheetEntry entry
         )
         {
             if (AssetImporter.GetAtPath(outputPath) is not TextureImporter newImporter)
@@ -4441,13 +5015,17 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             newImporter.mipmapEnabled = sourceImporter.mipmapEnabled;
             newImporter.isReadable = sourceImporter.isReadable;
 
+            PivotMode effectivePivotMode = GetEffectivePivotMode(entry);
+            Vector2 effectiveCustomPivot = GetEffectiveCustomPivot(entry);
+            Vector2 pivot = PivotModeToVector2(effectivePivotMode, effectiveCustomPivot);
+
             TextureImporterSettings settings = new();
             newImporter.ReadTextureSettings(settings);
-            settings.spritePivot = sprite._pivot;
+            settings.spritePivot = pivot;
             settings.spriteAlignment = (int)SpriteAlignment.Custom;
             settings.spriteBorder = sprite._border;
             newImporter.SetTextureSettings(settings);
-            newImporter.spritePivot = sprite._pivot;
+            newImporter.spritePivot = pivot;
 
             try
             {

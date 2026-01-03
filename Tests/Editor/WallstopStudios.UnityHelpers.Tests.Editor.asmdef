@@ -22,6 +22,12 @@
   ],
   "autoReferenced": false,
   "defineConstraints": ["UNITY_INCLUDE_TESTS"],
-  "versionDefines": [],
+  "versionDefines": [
+    {
+      "name": "com.unity.2d.sprite",
+      "expression": "1.0.0",
+      "define": "UNITY_2D_SPRITE"
+    }
+  ],
   "noEngineReferences": false
 }

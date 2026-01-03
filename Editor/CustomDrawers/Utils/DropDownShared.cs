@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers.Utils
@@ -9,6 +9,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers.Utils
     using UnityEditor;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Helper;
+    using WallstopStudios.UnityHelpers.Editor.Core.Helper;
 
     /// <summary>
     /// Provides shared constants, caching, and helper methods for dropdown drawer implementations.
@@ -70,8 +71,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers.Utils
         /// </summary>
         public static readonly GUIContent EmptyResultsContent = new(EmptyResultsMessage);
 
-        private static readonly Dictionary<int, string> IntToStringCache = new();
-        private static readonly Dictionary<(int, int), string> PaginationLabelCache = new();
         private static readonly Dictionary<object, string> FormattedOptionCache = new();
         private static readonly Dictionary<Type, string[]> EnumDisplayNameCache = new();
 
@@ -145,38 +144,25 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers.Utils
 
         /// <summary>
         /// Returns a cached string representation of an integer value.
+        /// Delegates to <see cref="EditorCacheHelper.GetCachedIntString"/> for shared LRU caching.
         /// </summary>
         /// <param name="value">The integer to convert to string.</param>
         /// <returns>The cached string representation.</returns>
         public static string GetCachedIntString(int value)
         {
-            if (!IntToStringCache.TryGetValue(value, out string cached))
-            {
-                cached = value.ToString();
-                IntToStringCache[value] = cached;
-            }
-            return cached;
+            return EditorCacheHelper.GetCachedIntString(value);
         }
 
         /// <summary>
-        /// Returns a cached pagination label string in the format "Page X/Y".
+        /// Returns a cached pagination label string in the format "Page X / Y".
+        /// Delegates to <see cref="EditorCacheHelper.GetPaginationLabel"/> for shared LRU caching.
         /// </summary>
         /// <param name="currentPage">The current page number (1-based).</param>
         /// <param name="totalPages">The total number of pages.</param>
         /// <returns>The cached pagination label string.</returns>
         public static string GetPaginationLabel(int currentPage, int totalPages)
         {
-            (int, int) key = (currentPage, totalPages);
-            if (!PaginationLabelCache.TryGetValue(key, out string cached))
-            {
-                cached =
-                    "Page "
-                    + GetCachedIntString(currentPage)
-                    + "/"
-                    + GetCachedIntString(totalPages);
-                PaginationLabelCache[key] = cached;
-            }
-            return cached;
+            return EditorCacheHelper.GetPaginationLabel(currentPage, totalPages);
         }
 
         /// <summary>
@@ -525,11 +511,10 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers.Utils
 
         /// <summary>
         /// Clears all cached data. Useful for testing or when options change significantly.
+        /// Note: IntToString and PaginationLabel caches are managed centrally by EditorCacheHelper.
         /// </summary>
         public static void ClearAllCaches()
         {
-            IntToStringCache.Clear();
-            PaginationLabelCache.Clear();
             FormattedOptionCache.Clear();
             EnumDisplayNameCache.Clear();
             s_cachedOptionControlHeight = -1f;
@@ -580,17 +565,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers.Utils
         /// </summary>
         internal static class TestHooks
         {
-            /// <summary>
-            /// Gets the int-to-string cache for testing.
-            /// </summary>
-            public static Dictionary<int, string> IntToStringCacheAccess => IntToStringCache;
-
-            /// <summary>
-            /// Gets the pagination label cache for testing.
-            /// </summary>
-            public static Dictionary<(int, int), string> PaginationLabelCacheAccess =>
-                PaginationLabelCache;
-
             /// <summary>
             /// Gets the formatted option cache for testing.
             /// </summary>

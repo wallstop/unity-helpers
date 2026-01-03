@@ -1,5 +1,7 @@
 # Skill: Create Enum
 
+<!-- trigger: enum, enumeration, create, type | Creating a new enum type | Core -->
+
 **Trigger**: When creating any new `enum` type in this repository.
 
 ---

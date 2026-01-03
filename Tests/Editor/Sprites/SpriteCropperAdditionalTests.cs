@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Tests.Sprites
@@ -13,6 +13,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
     using WallstopStudios.UnityHelpers.Editor.AssetProcessors;
     using WallstopStudios.UnityHelpers.Editor.Sprites;
     using WallstopStudios.UnityHelpers.Tests.Core;
+    using WallstopStudios.UnityHelpers.Tests.Core.TestUtils;
     using Object = UnityEngine.Object;
 
     public sealed class SpriteCropperAdditionalTests : CommonTestBase
@@ -42,7 +43,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
             string src = (Root + "/pad_src.png").SanitizePath();
             // 20x20, opaque 10x10 at (5,5)
             CreatePngWithOpaqueRect(src, 20, 20, 5, 5, 10, 10, Color.white);
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             TextureImporter imp = AssetImporter.GetAtPath(src) as TextureImporter;
             Assert.IsTrue(imp != null, $"TextureImporter should exist for source file at '{src}'");
@@ -71,7 +72,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
             );
 
             window.ProcessFoundSprites();
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             string dst = (Root + "/Cropped_pad_src.png").SanitizePath();
             Texture2D tex = AssetDatabase.LoadAssetAtPath<Texture2D>(dst);
@@ -120,7 +121,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
             string src = (Root + "/full_opaque.png").SanitizePath();
             // Entirely opaque 8x8
             CreatePngFilled(src, 8, 8, Color.white);
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             TextureImporter imp = AssetImporter.GetAtPath(src) as TextureImporter;
             Assert.IsTrue(imp != null, $"TextureImporter should exist for source file at '{src}'");
@@ -139,7 +140,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
             window.FindFilesToProcess();
             window.ProcessFoundSprites();
 
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             string dst = (Root + "/Cropped_full_opaque.png").SanitizePath();
             string fullPath = RelToFull(dst);
@@ -155,7 +156,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
         {
             string src = (Root + "/readable_toggle.png").SanitizePath();
             CreatePngWithOpaqueRect(src, 10, 10, 2, 2, 6, 6, Color.white);
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             TextureImporter imp = AssetImporter.GetAtPath(src) as TextureImporter;
             Assert.IsTrue(imp != null, $"TextureImporter should exist for source file at '{src}'");
@@ -174,7 +175,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
             // Mirror source readability
             window.FindFilesToProcess();
             window.ProcessFoundSprites();
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             // Original should be restored to unreadable
             imp = AssetImporter.GetAtPath(src) as TextureImporter;
@@ -212,7 +213,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
 
             window.FindFilesToProcess();
             window.ProcessFoundSprites();
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             string dst2 = (Root + "/Cropped_readable_toggle.png").SanitizePath();
             newImp = AssetImporter.GetAtPath(dst2) as TextureImporter;
@@ -232,7 +233,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
         {
             string src = (Root + "/all_transparent.png").SanitizePath();
             CreateTransparentPng(src, 12, 9);
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             TextureImporter imp = AssetImporter.GetAtPath(src) as TextureImporter;
             Assert.IsTrue(imp != null, $"TextureImporter should exist for source file at '{src}'");
@@ -250,7 +251,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
             window.FindFilesToProcess();
             window.ProcessFoundSprites();
 
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
             string dst = (Root + "/Cropped_all_transparent.png").SanitizePath();
             Texture2D tex = AssetDatabase.LoadAssetAtPath<Texture2D>(dst);
             Assert.IsTrue(
@@ -291,7 +292,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
         {
             string src = (Root + "/multi.png").SanitizePath();
             CreatePngWithOpaqueRect(src, 16, 16, 4, 4, 8, 8, Color.white);
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             TextureImporter imp = AssetImporter.GetAtPath(src) as TextureImporter;
             Assert.IsTrue(imp != null, $"TextureImporter should exist for source file at '{src}'");
@@ -307,7 +308,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
             };
             window.FindFilesToProcess();
             window.ProcessFoundSprites();
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             // Should not create Cropped_* and should not overwrite
             string dst = (Root + "/Cropped_multi.png").SanitizePath();
@@ -408,7 +409,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
             // Arrange: Create a single sprite that will be successfully cropped
             string src = (Root + "/single_test.png").SanitizePath();
             CreatePngWithOpaqueRect(src, 20, 20, 5, 5, 10, 10, Color.white);
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             TextureImporter imp = AssetImporter.GetAtPath(src) as TextureImporter;
             Assert.IsTrue(
@@ -447,7 +448,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
             );
 
             // Verify the output file was created
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
             string dst = (Root + "/Cropped_single_test.png").SanitizePath();
             Texture2D tex = AssetDatabase.LoadAssetAtPath<Texture2D>(dst);
             Assert.IsTrue(tex != null, $"Cropped texture should exist at '{dst}'");
@@ -467,7 +468,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
             CreatePngWithOpaqueRect(src1, 20, 20, 5, 5, 10, 10, Color.white);
             CreatePngWithOpaqueRect(src2, 30, 30, 5, 5, 15, 15, Color.red);
             CreatePngWithOpaqueRect(src3, 25, 25, 3, 3, 12, 12, Color.blue);
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             foreach (string src in new[] { src1, src2, src3 })
             {
@@ -506,7 +507,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
             );
 
             // Verify output files were created
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
             foreach (string src in new[] { src1, src2, src3 })
             {
                 string baseName = Path.GetFileName(src);
@@ -525,7 +526,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
             // Arrange: Create a fully opaque sprite (no cropping needed)
             string src = (Root + "/fully_opaque.png").SanitizePath();
             CreatePngFilled(src, 20, 20, Color.white);
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             TextureImporter imp = AssetImporter.GetAtPath(src) as TextureImporter;
             Assert.IsTrue(
@@ -599,7 +600,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
                 opaqueH,
                 Color.white
             );
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             TextureImporter imp = AssetImporter.GetAtPath(src) as TextureImporter;
             Assert.IsTrue(imp != null, $"TextureImporter should exist for '{src}'");
@@ -617,7 +618,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
 
             window.FindFilesToProcess();
             window.ProcessFoundSprites();
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             string dst = (Root + $"/Cropped_{testName}.png").SanitizePath();
             Texture2D tex = AssetDatabase.LoadAssetAtPath<Texture2D>(dst);
@@ -656,7 +657,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
             string src = (Root + $"/{testName}.png").SanitizePath();
             // 20x20 image with 10x10 opaque center at (5,5)
             CreatePngWithOpaqueRect(src, 20, 20, 5, 5, 10, 10, Color.white);
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             TextureImporter imp = AssetImporter.GetAtPath(src) as TextureImporter;
             Assert.IsTrue(imp != null, $"TextureImporter should exist for '{src}'");
@@ -678,7 +679,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
 
             window.FindFilesToProcess();
             window.ProcessFoundSprites();
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             string dst = (Root + $"/Cropped_{testName}.png").SanitizePath();
             Texture2D tex = AssetDatabase.LoadAssetAtPath<Texture2D>(dst);
@@ -720,7 +721,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
             string testName = $"edge_{edgeName}";
             string src = (Root + $"/{testName}.png").SanitizePath();
             CreatePngWithOpaqueRect(src, 10, 10, opaqueX, opaqueY, opaqueW, opaqueH, Color.white);
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             TextureImporter imp = AssetImporter.GetAtPath(src) as TextureImporter;
             Assert.IsTrue(imp != null, $"TextureImporter should exist for '{src}'");
@@ -738,7 +739,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
 
             window.FindFilesToProcess();
             window.ProcessFoundSprites();
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             string dst = (Root + $"/Cropped_{testName}.png").SanitizePath();
             Texture2D tex = AssetDatabase.LoadAssetAtPath<Texture2D>(dst);

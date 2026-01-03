@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
@@ -687,6 +687,10 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 ulong numericValue = EnumShared.ConvertToUInt64(value);
                 if (isFlags && numericValue != 0UL && !EnumShared.IsPowerOfTwo(numericValue))
                 {
+                    Debug.LogWarning(
+                        $"[{nameof(WEnumToggleButtonsOdinDrawer)}] Skipping composite flag value {name} "
+                            + $"in {enumType.Name} (value: {numericValue})"
+                    );
                     continue;
                 }
 

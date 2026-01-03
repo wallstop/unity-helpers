@@ -1,5 +1,7 @@
 # Skill: Use PRNG
 
+<!-- trigger: random, prng, seed, procedural, dice | Implementing randomization | Feature -->
+
 **Trigger**: When implementing randomization, procedural generation, or any random number generation.
 
 ---

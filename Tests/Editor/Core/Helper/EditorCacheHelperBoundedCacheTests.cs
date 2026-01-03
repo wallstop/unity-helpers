@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Tests.Editor.Core.Helper
@@ -1724,6 +1724,210 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Core.Helper
             );
             Assert.That(lru, Is.EqualTo(1), "1 should be the only remaining key and thus LRU");
         }
+
+        #region GetCachedIntString and GetPaginationLabel Tests (Cache<TKey, TValue> Migration)
+
+        [Test]
+        public void GetCachedIntStringReturnsCorrectStringForPositiveInt()
+        {
+            string result = EditorCacheHelper.GetCachedIntString(42);
+
+            Assert.That(result, Is.EqualTo("42"), "Should return correct string for positive int");
+        }
+
+        [Test]
+        public void GetCachedIntStringReturnsCorrectStringForNegativeInt()
+        {
+            string result = EditorCacheHelper.GetCachedIntString(-123);
+
+            Assert.That(
+                result,
+                Is.EqualTo("-123"),
+                "Should return correct string for negative int"
+            );
+        }
+
+        [Test]
+        public void GetCachedIntStringReturnsCorrectStringForZero()
+        {
+            string result = EditorCacheHelper.GetCachedIntString(0);
+
+            Assert.That(result, Is.EqualTo("0"), "Should return correct string for zero");
+        }
+
+        [Test]
+        public void GetCachedIntStringReturnsSameInstanceForSameValue()
+        {
+            string result1 = EditorCacheHelper.GetCachedIntString(999);
+            string result2 = EditorCacheHelper.GetCachedIntString(999);
+
+            Assert.That(
+                ReferenceEquals(result1, result2),
+                Is.True,
+                "Should return same cached instance for same value"
+            );
+        }
+
+        [Test]
+        public void GetCachedIntStringHandlesIntMaxValue()
+        {
+            string result = EditorCacheHelper.GetCachedIntString(int.MaxValue);
+
+            Assert.That(
+                result,
+                Is.EqualTo(int.MaxValue.ToString()),
+                "Should correctly convert int.MaxValue"
+            );
+        }
+
+        [Test]
+        public void GetCachedIntStringHandlesIntMinValue()
+        {
+            string result = EditorCacheHelper.GetCachedIntString(int.MinValue);
+
+            Assert.That(
+                result,
+                Is.EqualTo(int.MinValue.ToString()),
+                "Should correctly convert int.MinValue"
+            );
+        }
+
+        [Test]
+        public void GetPaginationLabelReturnsCorrectFormat()
+        {
+            string result = EditorCacheHelper.GetPaginationLabel(3, 10);
+
+            Assert.That(
+                result,
+                Is.EqualTo("Page 3 / 10"),
+                "Should return pagination label in correct format"
+            );
+        }
+
+        [Test]
+        public void GetPaginationLabelReturnsSameInstanceForSameValues()
+        {
+            string result1 = EditorCacheHelper.GetPaginationLabel(5, 20);
+            string result2 = EditorCacheHelper.GetPaginationLabel(5, 20);
+
+            Assert.That(
+                ReferenceEquals(result1, result2),
+                Is.True,
+                "Should return same cached instance for same page/total values"
+            );
+        }
+
+        [Test]
+        public void GetPaginationLabelHandlesFirstPage()
+        {
+            string result = EditorCacheHelper.GetPaginationLabel(1, 1);
+
+            Assert.That(
+                result,
+                Is.EqualTo("Page 1 / 1"),
+                "Should handle first page of single page correctly"
+            );
+        }
+
+        [Test]
+        public void GetPaginationLabelHandlesLargeValues()
+        {
+            string result = EditorCacheHelper.GetPaginationLabel(999, 1000);
+
+            Assert.That(
+                result,
+                Is.EqualTo("Page 999 / 1000"),
+                "Should handle large page numbers correctly"
+            );
+        }
+
+        [Test]
+        public void GetPaginationLabelReturnsDifferentInstancesForDifferentValues()
+        {
+            string result1 = EditorCacheHelper.GetPaginationLabel(1, 5);
+            string result2 = EditorCacheHelper.GetPaginationLabel(2, 5);
+
+            Assert.That(
+                ReferenceEquals(result1, result2),
+                Is.False,
+                "Should return different instances for different page values"
+            );
+        }
+
+        [Test]
+        public void ClearAllCachesClearsIntToStringCache()
+        {
+            // Populate the cache
+            EditorCacheHelper.GetCachedIntString(12345);
+            int countBefore = EditorCacheHelper.GetIntToStringCacheCount();
+
+            Assert.That(countBefore, Is.GreaterThan(0), "Cache should have entries before clear");
+
+            EditorCacheHelper.ClearAllCaches();
+
+            int countAfter = EditorCacheHelper.GetIntToStringCacheCount();
+            Assert.That(countAfter, Is.EqualTo(0), "Cache should be empty after clear");
+        }
+
+        [Test]
+        public void ClearAllCachesClearsPaginationLabelCache()
+        {
+            // Populate the cache
+            EditorCacheHelper.GetPaginationLabel(1, 100);
+            EditorCacheHelper.GetPaginationLabel(2, 100);
+            int countBefore = EditorCacheHelper.GetPaginationLabelCacheCount();
+
+            Assert.That(
+                countBefore,
+                Is.GreaterThan(0),
+                "Pagination cache should have entries before clear"
+            );
+
+            EditorCacheHelper.ClearAllCaches();
+
+            int countAfter = EditorCacheHelper.GetPaginationLabelCacheCount();
+            Assert.That(countAfter, Is.EqualTo(0), "Pagination cache should be empty after clear");
+        }
+
+        [Test]
+        public void GetCachedIntStringPopulatesCacheProgressively()
+        {
+            EditorCacheHelper.ClearAllCaches();
+
+            int initialCount = EditorCacheHelper.GetIntToStringCacheCount();
+
+            EditorCacheHelper.GetCachedIntString(1);
+            EditorCacheHelper.GetCachedIntString(2);
+            EditorCacheHelper.GetCachedIntString(3);
+
+            int afterCount = EditorCacheHelper.GetIntToStringCacheCount();
+
+            Assert.That(
+                afterCount,
+                Is.EqualTo(initialCount + 3),
+                "Cache should grow as new values are added"
+            );
+        }
+
+        [Test]
+        public void GetCachedIntStringDoesNotDuplicateExistingEntries()
+        {
+            EditorCacheHelper.ClearAllCaches();
+
+            EditorCacheHelper.GetCachedIntString(100);
+            int countAfterFirst = EditorCacheHelper.GetIntToStringCacheCount();
+
+            EditorCacheHelper.GetCachedIntString(100);
+            int countAfterSecond = EditorCacheHelper.GetIntToStringCacheCount();
+
+            Assert.That(
+                countAfterSecond,
+                Is.EqualTo(countAfterFirst),
+                "Calling GetCachedIntString with same value should not add duplicate entry"
+            );
+        }
+
+        #endregion
     }
 
 #endif

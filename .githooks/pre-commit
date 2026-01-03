@@ -222,3 +222,57 @@ if [ ${#SPELL_FILES_ARRAY[@]} -gt 0 ]; then
   fi
 fi
 
+# 9) Validate LLM instructions if .llm/ files are staged
+LLM_FILES_ARRAY=()
+for file in "${STAGED_FILES_ARRAY[@]}"; do
+    case "$file" in
+        .llm/*)
+            LLM_FILES_ARRAY+=("$file")
+            ;;
+    esac
+done
+
+if [ ${#LLM_FILES_ARRAY[@]} -gt 0 ]; then
+  echo "Validating LLM instructions..."
+  if command -v pwsh >/dev/null 2>&1; then
+    pwsh -NoProfile -File scripts/lint-llm-instructions.ps1 || {
+      echo "LLM instructions validation failed. Run 'pwsh -NoProfile -File scripts/lint-llm-instructions.ps1 -Fix' to auto-fix." >&2
+      exit 1
+    }
+  elif command -v powershell >/dev/null 2>&1; then
+    powershell -NoProfile -ExecutionPolicy Bypass -File scripts/lint-llm-instructions.ps1 || {
+      echo "LLM instructions validation failed. Run 'powershell -NoProfile -File scripts/lint-llm-instructions.ps1 -Fix' to auto-fix." >&2
+      exit 1
+    }
+  else
+    echo "PowerShell not found. Skipping LLM instructions validation." >&2
+  fi
+fi
+
+# 10) Check skill file sizes if .llm/skills/*.md files are staged
+LLM_SKILLS_ARRAY=()
+for file in "${STAGED_FILES_ARRAY[@]}"; do
+    case "$file" in
+        .llm/skills/*.md)
+            LLM_SKILLS_ARRAY+=("$file")
+            ;;
+    esac
+done
+
+if [ ${#LLM_SKILLS_ARRAY[@]} -gt 0 ]; then
+  echo "Checking skill file sizes..."
+  if command -v pwsh >/dev/null 2>&1; then
+    pwsh -NoProfile -File scripts/lint-skill-sizes.ps1 || {
+      echo "Skill file size check failed. Some files exceed 500 lines and must be split." >&2
+      exit 1
+    }
+  elif command -v powershell >/dev/null 2>&1; then
+    powershell -NoProfile -ExecutionPolicy Bypass -File scripts/lint-skill-sizes.ps1 || {
+      echo "Skill file size check failed. Some files exceed 500 lines and must be split." >&2
+      exit 1
+    }
+  else
+    echo "PowerShell not found. Skipping skill file size check." >&2
+  fi
+fi
+

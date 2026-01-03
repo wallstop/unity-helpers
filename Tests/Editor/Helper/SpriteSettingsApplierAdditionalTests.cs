@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Tests.Helper
@@ -135,6 +135,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         {
             string path = CreatePng("any_name", asSprite: false);
             _assetPath = path;
+
+            // Explicitly set texture type to Default to ensure it differs from the profile's Sprite type
+            TextureImporter initialImporter = AssetImporter.GetAtPath(path) as TextureImporter;
+            Assert.IsTrue(initialImporter != null, "Initial importer not found");
+            initialImporter.textureType = TextureImporterType.Default;
+            initialImporter.SaveAndReimport();
 
             List<SpriteSettings> profiles = new()
             {

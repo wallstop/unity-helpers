@@ -1,5 +1,7 @@
 # Skill: Avoid Magic Strings
 
+<!-- trigger: string, nameof, magic, identifier | ALL code - use nameof() not strings | Core -->
+
 **Trigger**: Any code that references identifiers (field names, method names, property names, type names, class names).
 
 ---

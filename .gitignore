@@ -13,6 +13,9 @@ TestFailures.txt.meta
 PlaceHolderSummary.md
 PlaceHolderSummary.md.meta
 
+.vscode/**
+
+
 .venv/**
 .venv
 .venv.meta
@@ -95,6 +98,7 @@ artifacts.meta
 *.tmp
 *.tmp_proj
 *.log
+*.log.meta
 *.vspscc
 *.vssscc
 .builds

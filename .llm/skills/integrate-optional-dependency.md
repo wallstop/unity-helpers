@@ -1,6 +1,22 @@
 # Skill: Integrate Optional Dependency
 
+<!-- trigger: odin, vcontainer, zenject, optional, define | Odin, VContainer, Zenject integration patterns | Feature -->
+
 **Trigger**: When adding support for optional packages (Odin Inspector, VContainer, Zenject, Reflex, etc.) to this repository.
+
+---
+
+## When to Use This Skill
+
+Use this skill when:
+
+- Adding support for a new optional third-party package
+- Creating conditional compilation patterns for optional features
+- Organizing code that depends on packages that may or may not be installed
+- Setting up test infrastructure for optional dependencies
+
+For Odin Inspector-specific patterns, see [integrate-odin-inspector](./integrate-odin-inspector.md).
+For testing Odin drawers specifically, see [test-odin-drawers](./test-odin-drawers.md).
 
 ---
 
@@ -16,7 +32,7 @@ This skill covers patterns for integrating with optional third-party packages th
 
 All optional dependency code should be wrapped in conditional compilation directives **inside** the namespace:
 
-✅ **CORRECT**:
+**Correct**:
 
 ```csharp
 namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
@@ -37,7 +53,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 }
 ```
 
-❌ **INCORRECT** (directive outside namespace):
+**Incorrect** (directive outside namespace):
 
 ```csharp
 #if UNITY_EDITOR && ODIN_INSPECTOR
@@ -72,7 +88,7 @@ Editor/CustomDrawers/
 
 When both standard Unity and optional dependency implementations share logic, extract it to a helper class:
 
-✅ **CORRECT**:
+**Correct**:
 
 ```csharp
 // WButtonOdinInspectorHelper.cs - Shared logic
@@ -105,7 +121,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomEditors
 }
 ```
 
-❌ **INCORRECT** (duplicate code across classes):
+**Incorrect** (duplicate code across classes):
 
 ```csharp
 // DON'T copy-paste the same 200 lines into multiple inspector classes
@@ -115,7 +131,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomEditors
 
 Caches used across multiple drawers/inspectors should be centralized:
 
-✅ **CORRECT**:
+**Correct**:
 
 ```csharp
 // EditorCacheHelper.cs - Shared caching
@@ -133,7 +149,7 @@ public static class EditorCacheHelper
 string display = EditorCacheHelper.GetCachedIntString(index);
 ```
 
-❌ **INCORRECT** (duplicate caches):
+**Incorrect** (duplicate caches):
 
 ```csharp
 // Drawer1.cs
@@ -157,6 +173,10 @@ private static readonly Dictionary<int, string> IntToStringCache = new(); // Dup
 | Zenject        | `ZENJECT`        | `Runtime/Integrations/Zenject/`                       |
 | Reflex         | `REFLEX`         | `Runtime/Integrations/Reflex/`                        |
 
+### Dependency-Specific Skills
+
+- **Odin Inspector**: See [integrate-odin-inspector](./integrate-odin-inspector.md) for detailed drawer patterns, property tree navigation, and shared utility architecture.
+
 ---
 
 ## Testing Optional Dependencies
@@ -166,14 +186,14 @@ private static readonly Dictionary<int, string> IntToStringCache = new(); // Dup
 For each optional dependency integration, create tests that:
 
 1. Use the same conditional compilation
-2. Are located in `Tests/Editor/CustomDrawers/Odin/` or similar
-3. Have test types in separate files under `Tests/Editor/TestTypes/Odin/`
+2. Are located in `Tests/Editor/CustomDrawers/{DependencyName}/` or similar
+3. Have test types in separate files under `Tests/Editor/TestTypes/{DependencyName}/`
 
 ### Test Type Extraction
 
 Test helper MonoBehaviours and ScriptableObjects **MUST** be in separate files:
 
-✅ **CORRECT**:
+**Correct**:
 
 ```text
 Tests/Editor/
@@ -189,7 +209,7 @@ Tests/Editor/
 │       └── WShowIfOdinDrawerTests.cs
 ```
 
-❌ **INCORRECT** (embedded test types):
+**Incorrect** (embedded test types):
 
 ```csharp
 // WEnumToggleButtonsOdinDrawerTests.cs
@@ -199,13 +219,13 @@ public sealed class WEnumToggleButtonsOdinDrawerTests
     [Test]
     public void TestSomething() { }
 
-    // ❌ WRONG - These should be in separate files!
+    // WRONG - These should be in separate files!
     private sealed class OdinEnumToggleButtonsTarget : SerializedScriptableObject
     {
         public TestEnum testField;
     }
 
-    private enum TestEnum { A, B, C }  // ❌ WRONG - Should be shared
+    private enum TestEnum { A, B, C }  // WRONG - Should be shared
 }
 ```
 
@@ -256,380 +276,109 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.TestTypes
 
 ---
 
-## Odin Inspector Integration (Detailed)
-
-### Odin Drawer Types
-
-| Drawer Type            | Use Case                               | Base Class                                |
-| ---------------------- | -------------------------------------- | ----------------------------------------- |
-| Attribute Drawer       | Drawers triggered by custom attributes | `OdinAttributeDrawer<TAttribute>`         |
-| Typed Attribute Drawer | Attribute + value type constraint      | `OdinAttributeDrawer<TAttribute, TValue>` |
-| Value Drawer           | Drawers for specific types             | `OdinValueDrawer<TValue>`                 |
-
-### Odin Drawer Lifecycle
+## VContainer Integration Pattern
 
 ```csharp
-namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
+namespace WallstopStudios.UnityHelpers.Runtime.Integrations.VContainer
 {
-#if UNITY_EDITOR && ODIN_INSPECTOR
-    using Sirenix.OdinInspector.Editor;
-    using UnityEngine;
+#if VCONTAINER
+    using global::VContainer;
+    using global::VContainer.Unity;
 
-    public sealed class MyOdinDrawer : OdinAttributeDrawer<MyAttribute>
+    public sealed class UnityHelpersInstaller : IInstaller
     {
-        /// <summary>
-        /// Called once when the drawer is created. Use for one-time setup.
-        /// </summary>
-        protected override void Initialize()
+        public void Install(IContainerBuilder builder)
         {
-            // Cache expensive computations here
-        }
-
-        /// <summary>
-        /// Main draw method. Called every frame while inspector is visible.
-        /// </summary>
-        protected override void DrawPropertyLayout(GUIContent label)
-        {
-            // Access property value: this.ValueEntry.SmartValue
-            // Access property info: this.Property
-            // Call next drawer: this.CallNextDrawer(label)
-        }
-
-        /// <summary>
-        /// Optional: Override to filter which properties this drawer handles.
-        /// </summary>
-        protected override bool CanDrawProperty(InspectorProperty property)
-        {
-            return base.CanDrawProperty(property);
+            // Register services
+            builder.Register<IMyService, MyServiceImplementation>(Lifetime.Singleton);
         }
     }
 #endif
 }
 ```
 
-### Property Tree Navigation
+---
+
+## Zenject Integration Pattern
 
 ```csharp
-// Access current property's value
-object value = this.Property.ValueEntry.WeakSmartValue;
-T typedValue = this.ValueEntry.SmartValue;
-
-// Access parent property
-InspectorProperty parent = this.Property.Parent;
-object parentValue = parent?.ValueEntry?.WeakSmartValue;
-
-// Access child properties
-foreach (InspectorProperty child in this.Property.Children)
+namespace WallstopStudios.UnityHelpers.Runtime.Integrations.Zenject
 {
-    child.Draw(child.Label);
-}
+#if ZENJECT
+    using global::Zenject;
 
-// Find sibling by name
-InspectorProperty sibling = this.Property.Parent?.Children[memberName];
-```
-
-### Common Sirenix Namespace Imports
-
-```csharp
-using Sirenix.OdinInspector;                // Attributes
-using Sirenix.OdinInspector.Editor;         // Drawers, editors
-using Sirenix.Serialization;                // Serialization
-using Sirenix.Utilities;                    // Utilities
-using Sirenix.Utilities.Editor;             // Editor utilities
-```
-
-### Odin vs Unity Property Access Comparison
-
-| Operation      | Unity PropertyDrawer                | Odin AttributeDrawer              |
-| -------------- | ----------------------------------- | --------------------------------- |
-| Get value      | `property.objectReferenceValue`     | `this.ValueEntry.SmartValue`      |
-| Set value      | `property.objectReferenceValue = x` | `this.ValueEntry.SmartValue = x`  |
-| Get parent     | Reflection required                 | `this.Property.Parent`            |
-| Get field info | `fieldInfo` parameter               | `this.Property.Info.MemberInfo`   |
-| Disable GUI    | `EditorGUI.BeginDisabledGroup()`    | `GUIHelper.PushGUIEnabled(false)` |
-| Draw property  | `EditorGUI.PropertyField()`         | `this.CallNextDrawer(label)`      |
-| Get attribute  | `attribute` field                   | `this.Attribute`                  |
-
-### Advanced Property Tree Navigation
-
-```csharp
-// Navigate to parent's value (e.g., to access sibling members for conditions)
-InspectorProperty parent = this.Property.Parent;
-object parentValue = parent?.ValueEntry?.WeakSmartValue;
-
-// Access sibling property by name (useful for WShowIf, conditions)
-string conditionMember = this.Attribute.conditionMember;
-InspectorProperty sibling = parent?.Children.Get(conditionMember);
-object conditionValue = sibling?.ValueEntry?.WeakSmartValue;
-
-// Resolve member via reflection fallback when property tree fails
-Type parentType = parentValue?.GetType();
-MemberInfo memberInfo = parentType?.GetField(conditionMember, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-
-// Draw children (for inline/nested editors)
-foreach (InspectorProperty child in this.Property.Children)
-{
-    child.Draw(child.Label);
-}
-
-// Check if property has Odin drawer chain
-bool hasNextDrawer = this.Property.GetNextDrawer() != null;
-```
-
-### Common Sirenix Namespace Imports Reference
-
-```csharp
-// Core attributes (runtime)
-using Sirenix.OdinInspector;                // [Button], [ShowIf], [Required], etc.
-
-// Drawer development (editor only)
-using Sirenix.OdinInspector.Editor;         // OdinAttributeDrawer, InspectorProperty
-using Sirenix.OdinInspector.Editor.ValueResolvers;  // ValueResolver for member evaluation
-using Sirenix.Utilities;                    // TypeExtensions, MemberFinder
-using Sirenix.Utilities.Editor;             // GUIHelper, SirenixEditorGUI
-
-// Serialization (for SerializedMonoBehaviour/SerializedScriptableObject)
-using Sirenix.Serialization;                // OdinSerializeAttribute, ISerializationCallbackReceiver
-```
-
-### Testing `OdinAttributeDrawer` Implementations
-
-```csharp
-namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
-{
-#if UNITY_EDITOR && ODIN_INSPECTOR
-    using NUnit.Framework;
-    using Sirenix.OdinInspector;
-    using UnityEditor;
-    using UnityEngine;
-    using WallstopStudios.UnityHelpers.Tests.Core;
-    using WallstopStudios.UnityHelpers.Tests.Editor.TestTypes.Odin.MyFeature;
-
-    [TestFixture]
-    public sealed class MyOdinDrawerTests : CommonTestBase
+    public sealed class UnityHelpersInstaller : MonoInstaller
     {
-        [Test]
-        public void DrawerRegistrationCreatesEditorForScriptableObject()
+        public override void InstallBindings()
         {
-            MyOdinTestTarget target = CreateScriptableObject<MyOdinTestTarget>();
-            Editor editor = Editor.CreateEditor(target);
-            Track(editor);
-
-            Assert.IsTrue(editor != null);
-        }
-
-        [Test]
-        public void DrawerRegistrationCreatesEditorForMonoBehaviour()
-        {
-            MyOdinTestMonoBehaviour target = NewGameObject("Test")
-                .AddComponent<MyOdinTestMonoBehaviour>();
-            Editor editor = Editor.CreateEditor(target);
-            Track(editor);
-
-            Assert.IsTrue(editor != null);
-        }
-
-        [Test]
-        public void OnInspectorGuiDoesNotThrowForValidTarget()
-        {
-            MyOdinTestTarget target = CreateScriptableObject<MyOdinTestTarget>();
-            Editor editor = Editor.CreateEditor(target);
-            Track(editor);
-
-            Assert.DoesNotThrow(() => editor.OnInspectorGUI());
-        }
-
-        [Test]
-        public void OnInspectorGuiHandlesDefaultValues()
-        {
-            MyOdinTestTarget target = CreateScriptableObject<MyOdinTestTarget>();
-            Editor editor = Editor.CreateEditor(target);
-            Track(editor);
-
-            Assert.DoesNotThrow(() =>
-            {
-                editor.OnInspectorGUI();
-                editor.OnInspectorGUI();  // Multiple calls to test caching
-            });
-        }
-
-        [Test]
-        public void DrawerHandlesMultipleFieldsOnSameTarget()
-        {
-            MyOdinMultipleFieldsTarget target = CreateScriptableObject<MyOdinMultipleFieldsTarget>();
-            Editor editor = Editor.CreateEditor(target);
-            Track(editor);
-
-            Assert.DoesNotThrow(() => editor.OnInspectorGUI());
+            Container.Bind<IMyService>()
+                .To<MyServiceImplementation>()
+                .AsSingle();
         }
     }
 #endif
 }
 ```
 
-### Consolidating Odin and Non-Odin Drawer Logic
+---
 
-When both implementations share significant logic, create utility classes:
-
-✅ **CORRECT** (shared utility):
+## Reflex Integration Pattern
 
 ```csharp
-// Editor/CustomDrawers/Utils/ShowIfConditionEvaluator.cs
-namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers.Utils
+namespace WallstopStudios.UnityHelpers.Runtime.Integrations.Reflex
 {
-    /// <summary>
-    /// Shared condition evaluation logic for WShowIf drawers.
-    /// Used by both Unity PropertyDrawer and Odin AttributeDrawer.
-    /// </summary>
-    public static class ShowIfConditionEvaluator
+#if REFLEX
+    using global::Reflex.Core;
+
+    public sealed class UnityHelpersInstaller : IInstaller
     {
-        public static bool EvaluateCondition(
-            object conditionValue,
-            object[] expectedValues,
-            WShowIfOperator op,
-            bool inverse)
+        public void InstallBindings(ContainerBuilder builder)
         {
-            // Shared implementation
-        }
-    }
-}
-
-// Editor/CustomDrawers/Odin/WShowIfOdinDrawer.cs
-protected override void DrawPropertyLayout(GUIContent label)
-{
-    object conditionValue = GetConditionValue(); // Odin-specific
-    bool show = ShowIfConditionEvaluator.EvaluateCondition(
-        conditionValue, Attribute.expectedValues, Attribute.op, Attribute.inverse);
-    if (show) CallNextDrawer(label);
-}
-
-// Editor/CustomDrawers/WShowIfPropertyDrawer.cs
-public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
-{
-    object conditionValue = GetConditionValue(property); // Unity-specific
-    bool show = ShowIfConditionEvaluator.EvaluateCondition(
-        conditionValue, attribute.expectedValues, attribute.op, attribute.inverse);
-    if (show) EditorGUI.PropertyField(position, property, label);
-}
-```
-
-❌ **INCORRECT** (duplicated logic):
-
-```csharp
-// DON'T copy 200 lines of condition evaluation into both drawers!
-```
-
-### Testing Odin Drawers
-
-```csharp
-namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
-{
-#if UNITY_EDITOR && ODIN_INSPECTOR
-    using NUnit.Framework;
-    using Sirenix.OdinInspector;
-    using UnityEditor;
-    using UnityEngine;
-
-    [TestFixture]
-    public sealed class MyOdinDrawerTests : CommonTestBase
-    {
-        [Test]
-        public void Inspector_OnInspectorGUI_DoesNotThrow()
-        {
-            // Create test target (from separate file)
-            OdinTestTarget target = ScriptableObject.CreateInstance<OdinTestTarget>();
-            TrackObject(target);
-
-            // Create editor
-            Editor editor = Editor.CreateEditor(target);
-            TrackObject(editor);
-
-            // Test doesn't throw
-            Assert.DoesNotThrow(() => editor.OnInspectorGUI());
-        }
-
-        [Test]
-        public void Inspector_SerializedMonoBehaviour_CreatesCorrectEditorType()
-        {
-            GameObject go = new GameObject("Test");
-            TrackObject(go);
-            OdinMonoBehaviourTarget component = go.AddComponent<OdinMonoBehaviourTarget>();
-
-            Editor editor = Editor.CreateEditor(component);
-            TrackObject(editor);
-
-            // Verify Odin inspector is used
-            Assert.That(editor.GetType().Name, Does.Contain("Odin"));
+            builder.AddSingleton<IMyService, MyServiceImplementation>();
         }
     }
 #endif
 }
 ```
 
-### Shared Utility Folder Structure
+---
 
-Based on the completed Odin consolidation (Sessions 22-26), the actual structure is:
+## Assembly Definition Configuration
 
-```text
-Editor/CustomDrawers/
-├── Utils/                               # Shared utilities (ALWAYS #if UNITY_EDITOR)
-│   ├── EnumToggleButtonsShared.cs       # Enum button logic (952 lines)
-│   ├── ShowIfConditionEvaluator.cs      # Condition evaluation (586 lines)
-│   ├── InLineEditorShared.cs            # Inline editor state (587 lines)
-│   ├── DropDownShared.cs                # Dropdown rendering (643 lines)
-│   └── ValidationShared.cs              # WNotNull/ValidateAssignment helpers (542 lines)
-Editor/Core/Helper/
-│   └── EditorCacheHelper.cs             # Centralized style/string/texture caching
-├── Odin/                                # Odin-specific drawers (#if ODIN_INSPECTOR)
-│   ├── WEnumToggleButtonsOdinDrawer.cs
-│   ├── WShowIfOdinDrawer.cs
-│   ├── WInLineEditorOdinDrawer.cs
-│   ├── WValueDropDownOdinDrawer.cs
-│   ├── IntDropDownOdinDrawer.cs
-│   ├── StringInListOdinDrawer.cs
-│   ├── WNotNullOdinDrawer.cs
-│   ├── ValidateAssignmentOdinDrawer.cs
-│   ├── WReadOnlyOdinDrawer.cs
-│   └── ...
-├── WEnumToggleButtonsPropertyDrawer.cs  # Standard Unity drawers
-├── WShowIfPropertyDrawer.cs
-└── ...
-```
+When optional dependencies affect assembly definitions, use Version Defines:
 
-### Shared Utility Design Principles
-
-1. **Pure Logic Only**: Shared utilities contain only data structures, constants, and pure helper methods
-2. **No GUI Drawing**: Actual drawing stays in drawer classes (different APIs between Unity/Odin)
-3. **State Management**: State dictionaries (foldouts, scroll positions, pagination) are centralized
-4. **Type Aliases**: Odin drawers use type aliases for cleaner imports:
-
-```csharp
-using EnumShared = WallstopStudios.UnityHelpers.Editor.CustomDrawers.Utils.EnumToggleButtonsShared;
-using CacheHelper = WallstopStudios.UnityHelpers.Editor.Core.Helper.EditorCacheHelper;
-```
-
-### Example: EnumToggleButtonsShared Usage
-
-```csharp
-// In Odin drawer (WEnumToggleButtonsOdinDrawer.cs)
-protected override void DrawPropertyLayout(GUIContent label)
+```json
 {
-    EnumShared.ToggleOption[] options = EnumShared.BuildToggleOptions(valueType);
-    ulong currentMask = EnumShared.ConvertToUInt64(this.ValueEntry.SmartValue);
-    EnumShared.SelectionSummary summary = EnumShared.BuildSelectionSummary(
-        options, currentMask, isFlags, startIndex, visibleCount, usePagination
-    );
-    // Odin-specific rendering...
-}
-
-// In Unity drawer (WEnumToggleButtonsPropertyDrawer.cs)
-public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
-{
-    EnumShared.ToggleOption[] options = EnumShared.BuildToggleOptions(enumType);
-    ulong currentMask = EnumShared.ConvertToUInt64(property.enumValueFlag);
-    EnumShared.SelectionSummary summary = EnumShared.BuildSelectionSummary(
-        options, currentMask, isFlags, startIndex, visibleCount, usePagination
-    );
-    // Unity-specific rendering...
+    "name": "WallstopStudios.UnityHelpers.Editor",
+    "references": [
+        "WallstopStudios.UnityHelpers.Runtime"
+    ],
+    "versionDefines": [
+        {
+            "name": "com.unity.odin-inspector",
+            "expression": "",
+            "define": "ODIN_INSPECTOR"
+        },
+        {
+            "name": "jp.hadashikick.vcontainer",
+            "expression": "",
+            "define": "VCONTAINER"
+        },
+        {
+            "name": "com.svermeulen.extenject",
+            "expression": "",
+            "define": "ZENJECT"
+        }
+    ]
 }
 ```
+
+---
+
+## Related Skills
+
+- [integrate-odin-inspector](./integrate-odin-inspector.md) - Detailed Odin Inspector drawer patterns
+- [test-odin-drawers](./test-odin-drawers.md) - Testing patterns for Odin drawers
+- [add-inspector-attribute](./add-inspector-attribute.md) - Inspector attributes with Odin compatibility
+- [create-property-drawer](./create-property-drawer.md) - Unity PropertyDrawer creation patterns
+- [editor-caching-patterns](./editor-caching-patterns.md) - Centralized caching for editor code

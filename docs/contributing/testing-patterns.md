@@ -102,6 +102,166 @@ This test verifies:
 3. Behavior after GameObject destruction (both references invalid)
 4. Explicit null input handling
 
+### Pattern: SerializedObject with Destroyed Target
+
+Editor code often works with `SerializedObject` and `SerializedProperty`. When the target object is destroyed, these become invalid but may not be null.
+
+```csharp
+[Test]
+public void DrawerHandlesDestroyedSerializedObjectTarget()
+{
+    MyScriptableObject target = CreateScriptableObject<MyScriptableObject>();
+    SerializedObject serializedObject = new SerializedObject(target);
+    SerializedProperty property = serializedObject.FindProperty("myField");
+
+    Object.DestroyImmediate(target); // UNH-SUPPRESS: Test verifies behavior after target destroyed
+
+    // SerializedObject.targetObject is now null
+    Assert.DoesNotThrow(() => drawer.OnGUI(rect, property, label));
+}
+```
+
+### Real Example: ScriptableSingletonSerializationTests.cs
+
+From `/workspaces/com.wallstop-studios.unity-helpers/Tests/Editor/CustomDrawers/ScriptableSingletonSerializationTests.cs`:
+
+```csharp
+[Test]
+public void IsScriptableSingletonTypeWithDestroyedObjectReturnsFalse()
+{
+    RegularScriptableObject target = CreateScriptableObject<RegularScriptableObject>();
+    Object.DestroyImmediate(target); // UNH-SUPPRESS: Testing destroyed object handling
+
+    // Unity's null check should handle destroyed objects
+    bool result = SerializableDictionaryPropertyDrawer.IsScriptableSingletonType(target);
+    Assert.IsFalse(result, "Destroyed object should return false (Unity null check).");
+}
+```
+
+### Real Example: WButtonRenderingTests.cs
+
+From `/workspaces/com.wallstop-studios.unity-helpers/Tests/Editor/Utils/WButton/WButtonRenderingTests.cs`:
+
+```csharp
+[Test]
+public void NullEditorTargetHandledGracefully()
+{
+    RenderingTargetSingleButton asset = Track(
+        ScriptableObject.CreateInstance<RenderingTargetSingleButton>()
+    );
+    UnityEditor.Editor editor = Track(UnityEditor.Editor.CreateEditor(asset));
+    Dictionary<WButtonGroupKey, WButtonPaginationState> paginationStates = new();
+    Dictionary<WButtonGroupKey, bool> foldoutStates = new();
+
+    Object.DestroyImmediate(asset); // UNH-SUPPRESS: Test verifies behavior when target is destroyed
+    _trackedObjects.Remove(asset);
+
+    bool drawn = WButtonGUI.DrawButtons(
+        editor,
+        WButtonPlacement.Top,
+        paginationStates,
+        foldoutStates,
+        UnityHelpersSettings.WButtonFoldoutBehavior.AlwaysOpen,
+        triggeredContexts: null,
+        globalPlacementIsTop: true
+    );
+
+    Assert.That(drawn, Is.False, "Should return false when target is destroyed");
+}
+```
+
+## Null References Where "Shouldn't Happen"
+
+References that "can't be null" sometimes become null due to serialization issues, race conditions, improper initialization, or user error. Robust code must handle these cases gracefully.
+
+### Pattern: Explicit Null Input Handling
+
+Test that methods handle null inputs gracefully, even when callers are "supposed to" provide non-null values.
+
+```csharp
+[Test]
+public void ProcessNullInputDoesNotThrow()
+{
+    Assert.DoesNotThrow(() => Processor.Process(null));
+}
+
+[Test]
+public void ProcessNullInputReturnsDefault()
+{
+    var result = Processor.Process(null);
+    Assert.AreEqual(default(MyType), result);
+}
+```
+
+### Real Example: ObjectHelperTests.cs
+
+From `/workspaces/com.wallstop-studios.unity-helpers/Tests/Runtime/Helper/ObjectHelperTests.cs`:
+
+```csharp
+[UnityTest]
+public IEnumerator GetGameObject()
+{
+    GameObject go = Track(new GameObject("Test", typeof(SpriteRenderer)));
+    SpriteRenderer spriteRenderer = go.GetComponent<SpriteRenderer>();
+
+    // ... (normal operation tests) ...
+
+    // Test explicit null input handling
+    result = ((GameObject)null).GetGameObject();
+    Assert.IsTrue(result == null);
+
+    result = ((SpriteRenderer)null).GetGameObject();
+    Assert.IsTrue(result == null);
+    yield break;
+}
+```
+
+This test verifies that extension methods handle explicit null inputs gracefully, returning null rather than throwing NullReferenceException.
+
+### Pattern: Null Serialized Property Handling
+
+Editor code may receive null SerializedProperty references due to timing issues or invalid property paths.
+
+```csharp
+[Test]
+public void DrawPropertyHandlesNullProperty()
+{
+    Assert.DoesNotThrow(() => CustomDrawer.DrawProperty(null, GUIContent.none));
+}
+
+[Test]
+public void GetValueFromNullPropertyReturnsDefault()
+{
+    object result = PropertyHelper.GetValue(null);
+    Assert.IsNull(result);
+}
+```
+
+### Pattern: Null Collection Elements
+
+Collections may contain null elements even when the code assumes they won't.
+
+```csharp
+[Test]
+public void ProcessCollectionWithNullElementsSucceeds()
+{
+    List<string> items = new() { "A", null, "B", null, "C" };
+
+    Assert.DoesNotThrow(() => Processor.ProcessAll(items));
+}
+
+[Test]
+public void FilterHandlesNullElements()
+{
+    List<Component> components = new() { validComponent, null, anotherValid };
+
+    List<Component> filtered = ComponentFilter.FilterValid(components);
+
+    Assert.That(filtered, Has.None.Null);
+    Assert.AreEqual(2, filtered.Count);
+}
+```
+
 ## Invalid Enum Values
 
 Enums can hold any integer value their underlying type supports, not just defined members. This occurs when:
@@ -379,6 +539,314 @@ public void ProtoDeserializeWithTypeNullDataThrowsException()
     Assert.Throws<ArgumentException>(() =>
         Serializer.ProtoDeserialize<object>(null, typeof(TestMessage))
     );
+}
+```
+
+## Concurrent Access Edge Cases
+
+Multi-threaded code can encounter states that are impossible in single-threaded execution. Unity Helpers uses `#if !SINGLE_THREADED` conditionals to wrap concurrent tests.
+
+### Pattern: Concurrent Operations Do Not Corrupt State
+
+```csharp
+#if !SINGLE_THREADED
+[Test]
+public void ConcurrentSetsDoNotCorruptCache()
+{
+    using Cache<int, int> cache = CacheBuilder<int, int>
+        .NewBuilder()
+        .MaximumSize(1000)
+        .Build();
+
+    int threadCount = 4;
+    int operationsPerThread = 250;
+    CountdownEvent countdownEvent = new(threadCount);
+    Exception capturedException = null;
+
+    for (int t = 0; t < threadCount; t++)
+    {
+        int threadIndex = t;
+        ThreadPool.QueueUserWorkItem(_ =>
+        {
+            try
+            {
+                for (int i = 0; i < operationsPerThread; i++)
+                {
+                    int key = threadIndex * operationsPerThread + i;
+                    cache.Set(key, key);
+                }
+            }
+            catch (Exception ex)
+            {
+                capturedException = ex;
+            }
+            finally
+            {
+                countdownEvent.Signal();
+            }
+        });
+    }
+
+    countdownEvent.Wait(TimeSpan.FromSeconds(10));
+
+    Assert.IsTrue(capturedException == null, $"Exception during concurrent sets: {capturedException}");
+    Assert.AreEqual(threadCount * operationsPerThread, cache.Count);
+}
+#endif
+```
+
+### Pattern: Mixed Read/Write Operations
+
+From `/workspaces/com.wallstop-studios.unity-helpers/Tests/Runtime/DataStructures/CacheTests.cs`:
+
+```csharp
+#if !SINGLE_THREADED
+[Test]
+public void ConcurrentSetsAndGetsDoNotCorruptCache()
+{
+    using Cache<int, int> cache = CacheBuilder<int, int>
+        .NewBuilder()
+        .MaximumSize(500)
+        .Build();
+
+    int threadCount = 4;
+    int operationsPerThread = 500;
+    CountdownEvent countdownEvent = new(threadCount);
+    Exception capturedException = null;
+
+    for (int t = 0; t < threadCount; t++)
+    {
+        int threadIndex = t;
+        ThreadPool.QueueUserWorkItem(_ =>
+        {
+            try
+            {
+                for (int i = 0; i < operationsPerThread; i++)
+                {
+                    if (i % 2 == 0)
+                    {
+                        int key = threadIndex * 100 + (i % 100);
+                        cache.Set(key, key);
+                    }
+                    else
+                    {
+                        int key = (threadIndex + 1) % threadCount * 100 + (i % 100);
+                        cache.TryGet(key, out _);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                capturedException = ex;
+            }
+            finally
+            {
+                countdownEvent.Signal();
+            }
+        });
+    }
+
+    countdownEvent.Wait(TimeSpan.FromSeconds(10));
+
+    Assert.IsNull(capturedException, $"Exception during concurrent operations: {capturedException}");
+}
+#endif
+```
+
+### Pattern: Rapid Allocation/Deallocation
+
+From `/workspaces/com.wallstop-studios.unity-helpers/Tests/Runtime/Utils/BuffersTests.cs`:
+
+```csharp
+#if !SINGLE_THREADED
+[Test]
+public void WallstopFastArrayPoolConcurrentAccessRapidAllocationDeallocation()
+{
+    const int iterations = 1000;
+    const int threadCount = 4;
+
+    CountdownEvent countdownEvent = new(threadCount);
+    Exception capturedException = null;
+
+    for (int t = 0; t < threadCount; t++)
+    {
+        ThreadPool.QueueUserWorkItem(_ =>
+        {
+            try
+            {
+                for (int i = 0; i < iterations; i++)
+                {
+                    using (PooledArray<int> pooled = WallstopFastArrayPool<int>.Get(64, out _))
+                    {
+                        // Rapid acquire/release cycle
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                capturedException = ex;
+            }
+            finally
+            {
+                countdownEvent.Signal();
+            }
+        });
+    }
+
+    countdownEvent.Wait(TimeSpan.FromSeconds(30));
+    Assert.IsNull(capturedException, $"Exception during rapid allocation: {capturedException}");
+}
+#endif
+```
+
+### Key Practices for Concurrent Tests
+
+1. **Use `CountdownEvent`** to synchronize thread completion
+2. **Capture exceptions** in threads since NUnit cannot catch them directly
+3. **Use reasonable timeouts** (10-30 seconds) to prevent test hangs
+4. **Wrap in `#if !SINGLE_THREADED`** for WebGL/IL2CPP compatibility
+5. **Test both success and exception cases** for thread safety
+
+## Invalid State Combinations
+
+Some states are logically impossible during normal execution but can occur due to reflection, serialization bugs, or corrupted data.
+
+### Pattern: Empty Collections Where Non-Empty Expected
+
+```csharp
+[Test]
+public void ProcessEmptyArrayGracefully()
+{
+    int[] emptyArray = Array.Empty<int>();
+
+    // Methods that "shouldn't" receive empty arrays should handle them
+    int result = collection.Min(emptyArray);
+
+    Assert.AreEqual(default(int), result);
+}
+
+[Test]
+public void SortEmptyCollection()
+{
+    List<int> emptyList = new();
+
+    Assert.DoesNotThrow(() => emptyList.Sort(SortAlgorithm.Tim));
+    Assert.AreEqual(0, emptyList.Count);
+}
+```
+
+### Real Example: Spatial Tree with Zero Elements
+
+From `/workspaces/com.wallstop-studios.unity-helpers/Tests/Runtime/DataStructures/QuadTree2DTests.cs`:
+
+```csharp
+[Test]
+public void ConstructorWithEmptyCollectionSucceeds()
+{
+    List<Vector2> points = new();
+    QuadTree2D<Vector2> tree = CreateTree(points);
+    Assert.IsNotNull(tree);
+
+    List<Vector2> results = new();
+    tree.GetElementsInRange(Vector2.zero, 10000f, results);
+    Assert.AreEqual(0, results.Count);
+}
+
+[Test]
+public void GetApproximateNearestNeighborsWithEmptyTreeReturnsEmpty()
+{
+    List<Vector2> points = new();
+    QuadTree2D<Vector2> tree = CreateTree(points);
+    List<Vector2> results = new();
+
+    tree.GetApproximateNearestNeighbors(Vector2.zero, 5, results);
+    Assert.AreEqual(0, results.Count);
+}
+```
+
+### Pattern: Invalid Index/Key Access
+
+```csharp
+[Test]
+public void IndexerThrowsOnInvalidIndex()
+{
+    CyclicBuffer<int> buffer = new(5) { 1, 2 };
+
+    Assert.Throws<IndexOutOfRangeException>(() => { _ = buffer[-1]; });
+    Assert.Throws<IndexOutOfRangeException>(() => { _ = buffer[2]; });
+    Assert.Throws<IndexOutOfRangeException>(() => { _ = buffer[int.MaxValue]; });
+    Assert.Throws<IndexOutOfRangeException>(() => { _ = buffer[int.MinValue]; });
+}
+```
+
+### Real Example: CyclicBufferTests.cs
+
+From `/workspaces/com.wallstop-studios.unity-helpers/Tests/Runtime/DataStructures/CyclicBufferTests.cs`:
+
+```csharp
+[Test]
+public void IndexerGetOutOfBounds()
+{
+    CyclicBuffer<int> buffer = new(5) { 1, 2 };
+
+    Assert.Throws<IndexOutOfRangeException>(() =>
+    {
+        _ = buffer[-1];
+    });
+    Assert.Throws<IndexOutOfRangeException>(() =>
+    {
+        _ = buffer[2];
+    });
+    Assert.Throws<IndexOutOfRangeException>(() =>
+    {
+        _ = buffer[5];
+    });
+    Assert.Throws<IndexOutOfRangeException>(() =>
+    {
+        _ = buffer[int.MaxValue];
+    });
+    Assert.Throws<IndexOutOfRangeException>(() =>
+    {
+        _ = buffer[int.MinValue];
+    });
+}
+```
+
+### Pattern: Disposed Object Access
+
+```csharp
+[Test]
+public void AccessAfterDisposeThrows()
+{
+    Cache<int, int> cache = CacheBuilder<int, int>
+        .NewBuilder()
+        .MaximumSize(100)
+        .Build();
+
+    cache.Dispose();
+
+    Assert.Throws<ObjectDisposedException>(() => cache.Set(1, 1));
+    Assert.Throws<ObjectDisposedException>(() => cache.TryGet(1, out _));
+}
+```
+
+### Pattern: Extreme Capacity Values
+
+```csharp
+[Test]
+public void IntMaxCapacityOk()
+{
+    CyclicBuffer<int> buffer = new(int.MaxValue);
+    CollectionAssert.AreEquivalent(Array.Empty<int>(), buffer);
+
+    const int tries = 50;
+    List<int> expected = new(tries);
+    for (int i = 0; i < tries; ++i)
+    {
+        buffer.Add(i);
+        expected.Add(i);
+        CollectionAssert.AreEquivalent(expected, buffer);
+    }
 }
 ```
 

@@ -1,27 +1,22 @@
 # Skill: Unity Performance Patterns
 
-**Trigger**: When writing Unity-specific code, accessing Unity APIs, or working with MonoBehaviours, GameObjects, Physics, or other Unity systems. This skill complements [high-performance-csharp](./high-performance-csharp.md) with Unity-specific patterns.
+<!-- trigger: unity, api, component, cache, pool | Unity-specific optimizations (APIs, pooling) | Performance -->
+
+**Trigger**: When writing Unity-specific code, accessing Unity APIs, or working with MonoBehaviours, GameObjects, or other Unity systems. This skill complements [high-performance-csharp](./high-performance-csharp.md) with Unity-specific patterns.
 
 ---
 
 ## Unity's Garbage Collector
 
-Unity uses the **Boehm-Demers-Weiser (BDW)** garbage collector, which differs from .NET's generational GC:
+Unity's Boehm GC differs significantly from .NET's generational collector. Key points:
 
-| Aspect            | Unity (BDW)                    | .NET CLR                   |
-| ----------------- | ------------------------------ | -------------------------- |
-| Algorithm         | Conservative, non-generational | Generational (Gen 0, 1, 2) |
-| Memory Compaction | **No**                         | Yes                        |
-| Stop-the-world    | Yes (full heap scan)           | Yes (per-generation)       |
-| Fragmentation     | Prone to fragmentation         | Reduced via compaction     |
+- **Non-generational** — scans entire heap on every collection
+- **No compaction** — memory fragments over time
+- **Stop-the-world** — game freezes during collection
 
-**Critical Insight**: Unity's GC must process the **entire object graph** on every collection. This makes allocation avoidance even more important in Unity than in standard .NET applications.
+**Target**: 0 bytes allocated per frame. At 60 FPS with 1KB/frame = **3.6 MB/minute** of garbage.
 
-### GC Spike Prevention
-
-- **Target**: 0 bytes allocated per frame (or as close as possible)
-- At 60 FPS with 1KB/frame = **3.6 MB/minute** of garbage
-- Use loading screens to manually trigger GC: `System.GC.Collect()`
+See [gc-architecture-unity](./gc-architecture-unity.md) for detailed architecture, incremental GC, and when to manually trigger collection.
 
 ---
 
@@ -118,17 +113,6 @@ void Update()
         float x = mesh.vertices[i].x;  // New array!
         float y = mesh.vertices[i].y;  // New array!
         float z = mesh.vertices[i].z;  // New array!
-        DoSomething(x, y, z);
-    }
-}
-
-// ✅ BETTER: Cache array locally
-void Update()
-{
-    Vector3[] vertices = mesh.vertices;  // Single allocation
-    for (int i = 0; i < vertices.Length; i++)
-    {
-        DoSomething(vertices[i].x, vertices[i].y, vertices[i].z);
     }
 }
 
@@ -153,43 +137,13 @@ void Update()
 | `mesh.normals`               | `mesh.GetNormals(list)`                                |
 | `mesh.uv`                    | `mesh.GetUVs(channel, list)`                           |
 | `mesh.triangles`             | `mesh.GetTriangles(list, submesh)`                     |
-| `Physics.RaycastAll`         | `Physics.RaycastNonAlloc`                              |
-| `Physics.OverlapSphere`      | `Physics.OverlapSphereNonAlloc`                        |
-| `Physics.OverlapBox`         | `Physics.OverlapBoxNonAlloc`                           |
-| `Physics2D.OverlapCircleAll` | `Physics2D.OverlapCircleNonAlloc`                      |
 | `Input.touches`              | `Input.touchCount` + `Input.GetTouch(i)`               |
 | `Animator.parameters`        | `Animator.parameterCount` + `Animator.GetParameter(i)` |
 | `Renderer.sharedMaterials`   | `Renderer.GetSharedMaterials(list)`                    |
 | `gameObject.tag`             | `gameObject.CompareTag("Tag")`                         |
 | `gameObject.name`            | Cache in Awake if needed repeatedly                    |
 
-### Physics Non-Alloc Pattern
-
-```csharp
-// ❌ BAD: Allocates new array every call
-void FindTargets()
-{
-    Collider[] hits = Physics.OverlapSphere(transform.position, radius);
-    foreach (Collider hit in hits)
-    {
-        ProcessTarget(hit);
-    }
-}
-
-// ✅ GOOD: Pre-allocated buffer
-private readonly Collider[] _hitBuffer = new Collider[32];
-
-void FindTargets()
-{
-    int count = Physics.OverlapSphereNonAlloc(
-        transform.position, radius, _hitBuffer);
-
-    for (int i = 0; i < count; i++)
-    {
-        ProcessTarget(_hitBuffer[i]);
-    }
-}
-```
+For physics-specific non-alloc APIs, see [optimize-unity-physics](./optimize-unity-physics.md).
 
 ---
 
@@ -382,45 +336,6 @@ public class BulletManager : MonoBehaviour
 }
 ```
 
-### Custom Pool Pattern
-
-```csharp
-public class SimpleGameObjectPool : MonoBehaviour
-{
-    [SerializeField] private GameObject _prefab;
-    [SerializeField] private int _initialSize = 20;
-
-    private readonly Stack<GameObject> _pool = new Stack<GameObject>();
-
-    void Awake()
-    {
-        for (int i = 0; i < _initialSize; i++)
-        {
-            GameObject obj = Instantiate(_prefab);
-            obj.SetActive(false);
-            _pool.Push(obj);
-        }
-    }
-
-    public GameObject Get()
-    {
-        if (_pool.Count > 0)
-        {
-            GameObject obj = _pool.Pop();
-            obj.SetActive(true);
-            return obj;
-        }
-        return Instantiate(_prefab);
-    }
-
-    public void Return(GameObject obj)
-    {
-        obj.SetActive(false);
-        _pool.Push(obj);
-    }
-}
-```
-
 ### What to Pool
 
 - Projectiles (bullets, missiles)
@@ -430,83 +345,7 @@ public class SimpleGameObjectPool : MonoBehaviour
 - Audio sources for sound effects
 - Any frequently Instantiated/Destroyed object
 
----
-
-## Material Access
-
-### Avoid Material Cloning
-
-```csharp
-// ❌ BAD: .material creates a clone (memory leak until scene change)
-renderer.material.color = Color.red;
-
-// ✅ GOOD for READ: Use sharedMaterial
-Color currentColor = renderer.sharedMaterial.color;
-
-// ✅ GOOD for WRITE: Use MaterialPropertyBlock
-private MaterialPropertyBlock _propertyBlock;
-private static readonly int ColorProperty = Shader.PropertyToID("_Color");
-
-void Awake()
-{
-    _propertyBlock = new MaterialPropertyBlock();
-}
-
-void SetColor(Color color)
-{
-    renderer.GetPropertyBlock(_propertyBlock);
-    _propertyBlock.SetColor(ColorProperty, color);
-    renderer.SetPropertyBlock(_propertyBlock);
-}
-```
-
-### Cache Shader Property IDs
-
-```csharp
-// ❌ BAD: String lookup every time
-material.SetFloat("_Glossiness", 0.5f);
-
-// ✅ GOOD: Cached ID
-private static readonly int GlossinessProperty = Shader.PropertyToID("_Glossiness");
-material.SetFloat(GlossinessProperty, 0.5f);
-```
-
----
-
-## Physics Optimization
-
-### Collider Performance (Best to Worst)
-
-| Collider Type     | Performance     |
-| ----------------- | --------------- |
-| Sphere            | ★★★★★ (fastest) |
-| Capsule           | ★★★★☆           |
-| Box               | ★★★☆☆           |
-| Mesh (Convex)     | ★★☆☆☆           |
-| Mesh (Non-Convex) | ★☆☆☆☆ (slowest) |
-
-**Rule**: Never use non-convex mesh colliders. Use compound primitive colliders instead.
-
-### Physics Layer Matrix
-
-Configure collision layers to avoid unnecessary collision checks:
-
-```csharp
-// In Project Settings > Physics > Layer Collision Matrix
-// Disable collisions between layers that never interact
-
-// Example: Player bullets only hit enemies
-// Bullets layer only collides with Enemy layer
-```
-
-### Rigidbody Best Practices
-
-```csharp
-// ✅ Mark non-moving colliders as static in Inspector
-// ✅ Use isKinematic for manually controlled objects
-// ✅ Disable gravity if not needed
-// ✅ Constrain unused axes (Freeze Position/Rotation)
-```
+See [use-pooling](./use-pooling.md) for detailed pooling patterns.
 
 ---
 
@@ -583,13 +422,8 @@ async Awaitable LoadDataAsync()
 {
     await Awaitable.WaitForSecondsAsync(1f);
     await Awaitable.NextFrameAsync();
-    // Process data...
 }
-```
 
-### Async Scene Loading
-
-```csharp
 // ✅ GOOD: Load scenes asynchronously
 public async Awaitable LoadSceneAsync(string sceneName)
 {
@@ -598,10 +432,8 @@ public async Awaitable LoadSceneAsync(string sceneName)
 
     while (asyncLoad.progress < 0.9f)
     {
-        UpdateLoadingBar(asyncLoad.progress);
         await Awaitable.NextFrameAsync();
     }
-
     asyncLoad.allowSceneActivation = true;
 }
 ```
@@ -638,79 +470,23 @@ Addressables.ReleaseInstance(gameObject);
 | `GetComponent<T>()` in Update    | Cache in Awake/Start        |
 | `Camera.main` in Update          | Cache the reference         |
 | `mesh.vertices` repeatedly       | Use `GetVertices(list)`     |
-| `Physics.OverlapSphere`          | Use `OverlapSphereNonAlloc` |
 | `gameObject.tag == "Tag"`        | Use `CompareTag("Tag")`     |
 | `new WaitForSeconds()` in loop   | Cache yield instructions    |
-| `renderer.material` for changes  | Use `MaterialPropertyBlock` |
 | `Debug.Log` in builds            | Use conditional compilation |
 | Empty Update/FixedUpdate         | Remove unused callbacks     |
-| Non-convex mesh colliders        | Use compound primitives     |
 | `Instantiate`/`Destroy` spam     | Use object pooling          |
-| String concat for UI every frame | Update only on change       |
 | `SendMessage`/`BroadcastMessage` | Direct interface calls      |
-| `FindObjectOfType` in Update     | Cache in Awake/Start        |
 | Many MonoBehaviours with Update  | Centralized update manager  |
-| `Transform.position` repeatedly  | Cache in local variable     |
 
----
-
-## XR/High-Performance Targets (90+ FPS)
-
-For VR/AR/MR applications requiring 90 FPS or higher:
-
-### Frame Budget
-
-- **90 FPS** = 11.1ms per frame
-- **120 FPS** = 8.3ms per frame
-- Consistent frame timing is critical for user comfort
-
-### XR-Specific Optimizations
-
-| Area                | Recommendation                                   |
-| ------------------- | ------------------------------------------------ |
-| **Rendering**       | Enable Single Pass Instanced Rendering           |
-| **Resolution**      | Use `XRSettings.renderViewportScale` (0.7-1.0)   |
-| **Depth Buffer**    | Use 16-bit depth instead of 24-bit               |
-| **Far Clip**        | Set to 50m (avoids z-fighting with 16-bit depth) |
-| **Post-Processing** | Avoid bloom, MSAA, HDR (millions of ops)         |
-| **GI**              | Disable real-time global illumination            |
-| **Shadows**         | Disable or set Quality to "Low"                  |
-
-### Service Pattern for Expensive Operations
-
-Run expensive operations (raycasts, input) once per frame via singleton service:
-
-```csharp
-public class RaycastService : MonoBehaviour
-{
-    private RaycastHit[] _hitBuffer = new RaycastHit[32];
-    private RaycastHit _cachedHit;
-    private bool _didHit;
-
-    void Update()
-    {
-        // Compute once per frame
-        Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
-        _didHit = Physics.RaycastNonAlloc(ray, _hitBuffer) > 0;
-        if (_didHit)
-        {
-            _cachedHit = _hitBuffer[0];
-        }
-    }
-
-    public bool TryGetHit(out RaycastHit hit)
-    {
-        hit = _cachedHit;
-        return _didHit;
-    }
-}
-```
+See also: [optimize-unity-physics](./optimize-unity-physics.md), [optimize-unity-rendering](./optimize-unity-rendering.md)
 
 ---
 
 ## Related Skills
 
 - [high-performance-csharp](./high-performance-csharp.md) — Core performance patterns (MANDATORY)
+- [optimize-unity-physics](./optimize-unity-physics.md) — Physics, colliders, raycasts
+- [optimize-unity-rendering](./optimize-unity-rendering.md) — Materials, shaders, batching
 - [use-pooling](./use-pooling.md) — Collection pooling patterns
 - [refactor-to-zero-alloc](./refactor-to-zero-alloc.md) — Migration guide
 - [performance-audit](./performance-audit.md) — Performance review checklist
