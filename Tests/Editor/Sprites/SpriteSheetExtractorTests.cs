@@ -2496,7 +2496,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
         }
 
         [Test]
-        public void GridOverlayRectsCalculatedCorrectly()
+        public void OverlayRectsCalculatedCorrectly()
         {
             SpriteSheetExtractor extractor = CreateExtractor();
             extractor._extractionMode = SpriteSheetExtractor.ExtractionMode.GridBased;
@@ -6720,6 +6720,123 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
         }
 
         [Test]
+        public void RegeneratePreviewTexturesOnlyKeepsSpritesIntact()
+        {
+            CreateSpriteSheet("preview_only_test", 64, 64, 2, 2);
+
+            SpriteSheetExtractor extractor = CreateExtractor();
+            extractor._extractionMode = SpriteSheetExtractor.ExtractionMode.FromMetadata;
+            extractor._previewSizeMode = SpriteSheetExtractor.PreviewSizeMode.Size32;
+            extractor.DiscoverSpriteSheets();
+
+            Assert.That(
+                extractor._discoveredSheets,
+                Is.Not.Null.And.Not.Empty,
+                "Should have discovered sheets"
+            );
+
+            SpriteSheetExtractor.SpriteSheetEntry entry = null;
+            for (int i = 0; i < extractor._discoveredSheets.Count; i++)
+            {
+                if (extractor._discoveredSheets[i]._assetPath.Contains("preview_only_test"))
+                {
+                    entry = extractor._discoveredSheets[i];
+                    break;
+                }
+            }
+
+            Assert.That(entry, Is.Not.Null, "Should find test entry");
+            Assert.That(entry._sprites, Is.Not.Null.And.Not.Empty, "Should have sprites");
+
+            int originalSpriteCount = entry._sprites.Count;
+            List<Rect> originalRects = new List<Rect>();
+            for (int i = 0; i < entry._sprites.Count; i++)
+            {
+                originalRects.Add(entry._sprites[i]._rect);
+            }
+
+            int originalPreviewSize = extractor.GetPreviewSize(entry._sprites[0]);
+            Assert.That(
+                originalPreviewSize,
+                Is.EqualTo(32),
+                "Initial preview size should be 32 for Size32 mode"
+            );
+
+            for (int i = 0; i < entry._sprites.Count; i++)
+            {
+                Texture2D tex = entry._sprites[i]._previewTexture;
+                if (tex != null)
+                {
+                    int maxDim = Mathf.Max(tex.width, tex.height);
+                    Assert.That(
+                        maxDim,
+                        Is.LessThanOrEqualTo(32),
+                        $"Sprite {i} preview texture should be scaled to Size32 mode (max dimension <= 32)"
+                    );
+                }
+            }
+
+            // Change preview size mode
+            extractor._previewSizeMode = SpriteSheetExtractor.PreviewSizeMode.Size64;
+
+            // Call the preview-only regeneration method
+            extractor.RegeneratePreviewTexturesOnly();
+
+            // Verify sprites are intact
+            Assert.That(entry._sprites, Is.Not.Null.And.Not.Empty, "Sprites should still exist");
+            Assert.That(
+                entry._sprites.Count,
+                Is.EqualTo(originalSpriteCount),
+                "Sprite count should remain the same"
+            );
+
+            // Verify rects are unchanged
+            for (int i = 0; i < entry._sprites.Count; i++)
+            {
+                Assert.That(
+                    entry._sprites[i]._rect,
+                    Is.EqualTo(originalRects[i]),
+                    $"Sprite rect at index {i} should be unchanged"
+                );
+            }
+
+            // Verify preview textures exist and have correct dimensions for new size mode
+            int newPreviewSize = extractor.GetPreviewSize(entry._sprites[0]);
+            Assert.That(
+                newPreviewSize,
+                Is.EqualTo(64),
+                "New preview size should be 64 for Size64 mode"
+            );
+
+            bool hasPreviewTextures = false;
+            for (int i = 0; i < entry._sprites.Count; i++)
+            {
+                Texture2D tex = entry._sprites[i]._previewTexture;
+                if (tex != null)
+                {
+                    hasPreviewTextures = true;
+                    int maxDim = Mathf.Max(tex.width, tex.height);
+                    Assert.That(
+                        maxDim,
+                        Is.LessThanOrEqualTo(64),
+                        $"Sprite {i} preview texture should be scaled to Size64 mode (max dimension <= 64)"
+                    );
+                    Assert.That(
+                        maxDim,
+                        Is.GreaterThan(32),
+                        $"Sprite {i} preview texture should be regenerated at larger size (max dimension > 32)"
+                    );
+                }
+            }
+
+            Assert.That(
+                hasPreviewTextures,
+                Is.True,
+                "Preview textures should still exist after regeneration"
+            );
+        }
+
+        [Test]
         public void SpritePreviewTexturesExistAfterDiscovery()
         {
             CreateSpriteSheet("preview_cleanup_test", 64, 64, 2, 2);
@@ -6751,31 +6868,31 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             );
         }
 
-        private static IEnumerable<TestCaseData> EffectiveShowGridOverlayTestCases()
+        private static IEnumerable<TestCaseData> EffectiveShowOverlayTestCases()
         {
             yield return new TestCaseData(true, true, null, true).SetName(
-                "ShowGridOverlay.UseGlobal.GlobalTrue.NoOverride.ReturnsTrue"
+                "ShowOverlay.UseGlobal.GlobalTrue.NoOverride.ReturnsTrue"
             );
             yield return new TestCaseData(false, true, null, false).SetName(
-                "ShowGridOverlay.UseGlobal.GlobalFalse.NoOverride.ReturnsFalse"
+                "ShowOverlay.UseGlobal.GlobalFalse.NoOverride.ReturnsFalse"
             );
             yield return new TestCaseData(true, true, false, true).SetName(
-                "ShowGridOverlay.UseGlobal.HasOverride.ReturnsGlobal"
+                "ShowOverlay.UseGlobal.HasOverride.ReturnsGlobal"
             );
             yield return new TestCaseData(false, false, true, true).SetName(
-                "ShowGridOverlay.UseOverride.OverrideTrue.ReturnsTrue"
+                "ShowOverlay.UseOverride.OverrideTrue.ReturnsTrue"
             );
             yield return new TestCaseData(true, false, false, false).SetName(
-                "ShowGridOverlay.UseOverride.OverrideFalse.ReturnsFalse"
+                "ShowOverlay.UseOverride.OverrideFalse.ReturnsFalse"
             );
             yield return new TestCaseData(false, false, null, false).SetName(
-                "ShowGridOverlay.UseOverride.NoValue.ReturnsGlobal"
+                "ShowOverlay.UseOverride.NoValue.ReturnsGlobal"
             );
         }
 
         [Test]
-        [TestCaseSource(nameof(EffectiveShowGridOverlayTestCases))]
-        public void GetEffectiveShowGridOverlayReturnsCorrectValue(
+        [TestCaseSource(nameof(EffectiveShowOverlayTestCases))]
+        public void GetEffectiveShowOverlayReturnsCorrectValue(
             bool globalValue,
             bool useGlobalSettings,
             bool? overrideValue,
@@ -6785,64 +6902,64 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             SpriteSheetExtractor window = Track(
                 ScriptableObject.CreateInstance<SpriteSheetExtractor>()
             );
-            window._showGridOverlay = globalValue;
+            window._showOverlay = globalValue;
 
             SpriteSheetExtractor.SpriteSheetEntry entry = new SpriteSheetExtractor.SpriteSheetEntry
             {
                 _useGlobalSettings = useGlobalSettings,
-                _showGridOverlayOverride = overrideValue,
+                _showOverlayOverride = overrideValue,
             };
 
-            bool result = window.GetEffectiveShowGridOverlay(entry);
+            bool result = window.GetEffectiveShowOverlay(entry);
 
             Assert.AreEqual(expected, result);
         }
 
         [Test]
-        public void GetEffectiveShowGridOverlayReturnsGlobalWhenEntryIsNull()
+        public void GetEffectiveShowOverlayReturnsGlobalWhenEntryIsNull()
         {
             SpriteSheetExtractor window = Track(
                 ScriptableObject.CreateInstance<SpriteSheetExtractor>()
             );
-            window._showGridOverlay = true;
+            window._showOverlay = true;
 
-            bool result = window.GetEffectiveShowGridOverlay(null);
+            bool result = window.GetEffectiveShowOverlay(null);
 
             Assert.AreEqual(true, result);
         }
 
         [Test]
-        public void GetEffectiveShowGridOverlayReturnsFalseWhenGlobalFalseAndEntryNull()
+        public void GetEffectiveShowOverlayReturnsFalseWhenGlobalFalseAndEntryNull()
         {
             SpriteSheetExtractor window = Track(
                 ScriptableObject.CreateInstance<SpriteSheetExtractor>()
             );
-            window._showGridOverlay = false;
+            window._showOverlay = false;
 
-            bool result = window.GetEffectiveShowGridOverlay(null);
+            bool result = window.GetEffectiveShowOverlay(null);
 
             Assert.AreEqual(false, result);
         }
 
-        private static IEnumerable<TestCaseData> ShowGridOverlayUpdatesCorrectFieldTestCases()
+        private static IEnumerable<TestCaseData> ShowOverlayUpdatesCorrectFieldTestCases()
         {
             yield return new TestCaseData(true, true).SetName(
-                "ShowGridOverlay.UpdatesCorrectField.UseGlobal.SetsGlobalToTrue"
+                "ShowOverlay.UpdatesCorrectField.UseGlobal.SetsGlobalToTrue"
             );
             yield return new TestCaseData(true, false).SetName(
-                "ShowGridOverlay.UpdatesCorrectField.UseGlobal.SetsGlobalToFalse"
+                "ShowOverlay.UpdatesCorrectField.UseGlobal.SetsGlobalToFalse"
             );
             yield return new TestCaseData(false, true).SetName(
-                "ShowGridOverlay.UpdatesCorrectField.NotUseGlobal.SetsOverrideToTrue"
+                "ShowOverlay.UpdatesCorrectField.NotUseGlobal.SetsOverrideToTrue"
             );
             yield return new TestCaseData(false, false).SetName(
-                "ShowGridOverlay.UpdatesCorrectField.NotUseGlobal.SetsOverrideToFalse"
+                "ShowOverlay.UpdatesCorrectField.NotUseGlobal.SetsOverrideToFalse"
             );
         }
 
         [Test]
-        [TestCaseSource(nameof(ShowGridOverlayUpdatesCorrectFieldTestCases))]
-        public void ShowGridOverlayUpdatesCorrectFieldBasedOnGlobalSettings(
+        [TestCaseSource(nameof(ShowOverlayUpdatesCorrectFieldTestCases))]
+        public void ShowOverlayUpdatesCorrectFieldBasedOnGlobalSettings(
             bool useGlobalSettings,
             bool newValue
         )
@@ -6850,28 +6967,28 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             SpriteSheetExtractor window = Track(
                 ScriptableObject.CreateInstance<SpriteSheetExtractor>()
             );
-            window._showGridOverlay = !newValue;
+            window._showOverlay = !newValue;
 
             SpriteSheetExtractor.SpriteSheetEntry entry = new()
             {
                 _useGlobalSettings = useGlobalSettings,
-                _showGridOverlayOverride = !newValue,
+                _showOverlayOverride = !newValue,
             };
 
             if (useGlobalSettings)
             {
-                window._showGridOverlay = newValue;
-                Assert.AreEqual(newValue, window._showGridOverlay);
-                Assert.AreEqual(!newValue, entry._showGridOverlayOverride);
+                window._showOverlay = newValue;
+                Assert.AreEqual(newValue, window._showOverlay);
+                Assert.AreEqual(!newValue, entry._showOverlayOverride);
             }
             else
             {
-                entry._showGridOverlayOverride = newValue;
-                Assert.AreEqual(newValue, entry._showGridOverlayOverride);
-                Assert.AreEqual(!newValue, window._showGridOverlay);
+                entry._showOverlayOverride = newValue;
+                Assert.AreEqual(newValue, entry._showOverlayOverride);
+                Assert.AreEqual(!newValue, window._showOverlay);
             }
 
-            bool effective = window.GetEffectiveShowGridOverlay(entry);
+            bool effective = window.GetEffectiveShowOverlay(entry);
             Assert.AreEqual(newValue, effective);
         }
 
@@ -7087,20 +7204,20 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
         }
 
         [Test]
-        public void CopySettingsFromEntryCopiesShowGridOverlayOverride()
+        public void CopySettingsFromEntryCopiesShowOverlayOverride()
         {
             SpriteSheetExtractor extractor = CreateExtractor();
 
             SpriteSheetExtractor.SpriteSheetEntry source = new SpriteSheetExtractor.SpriteSheetEntry
             {
                 _useGlobalSettings = false,
-                _showGridOverlayOverride = true,
+                _showOverlayOverride = true,
             };
 
             SpriteSheetExtractor.SpriteSheetEntry target = new SpriteSheetExtractor.SpriteSheetEntry
             {
                 _useGlobalSettings = true,
-                _showGridOverlayOverride = null,
+                _showOverlayOverride = null,
                 _sprites = new List<SpriteSheetExtractor.SpriteEntryData>(),
                 _assetPath = "test",
             };
@@ -7108,16 +7225,16 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             extractor.CopySettingsFromEntry(source, target);
 
             Assert.AreEqual(false, target._useGlobalSettings);
-            Assert.AreEqual(true, target._showGridOverlayOverride);
+            Assert.AreEqual(true, target._showOverlayOverride);
         }
 
         [Test]
-        public void NewEntryDefaultsToNullShowGridOverlayOverride()
+        public void NewEntryDefaultsToNullShowOverlayOverride()
         {
             SpriteSheetExtractor.SpriteSheetEntry entry =
                 new SpriteSheetExtractor.SpriteSheetEntry();
 
-            Assert.IsNull(entry._showGridOverlayOverride);
+            Assert.IsNull(entry._showOverlayOverride);
         }
 
         private static IEnumerable<TestCaseData> PreviewRegenerationToggleScenarioCases()
@@ -9718,6 +9835,166 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
         }
 
         [Test]
+        public void GetEffectivePivotReturnsSpriteOverrideWhenEnabled()
+        {
+            SpriteSheetExtractor extractor = CreateExtractor();
+            extractor._pivotMode = PivotMode.Center;
+            extractor._customPivot = new Vector2(0.5f, 0.5f);
+
+            SpriteSheetExtractor.SpriteSheetEntry entry = new()
+            {
+                _useGlobalSettings = false,
+                _pivotModeOverride = PivotMode.TopLeft,
+                _customPivotOverride = new Vector2(0.0f, 1.0f),
+            };
+
+            SpriteSheetExtractor.SpriteEntryData sprite = new()
+            {
+                _usePivotOverride = true,
+                _pivotModeOverride = PivotMode.BottomRight,
+                _customPivotOverride = new Vector2(1.0f, 0.0f),
+            };
+
+            Vector2 result = extractor.GetEffectivePivot(entry, sprite);
+            Assert.That(result, Is.EqualTo(new Vector2(1.0f, 0.0f)));
+        }
+
+        [Test]
+        public void GetEffectivePivotReturnsSheetOverrideWhenSpriteOverrideDisabled()
+        {
+            SpriteSheetExtractor extractor = CreateExtractor();
+            extractor._pivotMode = PivotMode.Center;
+            extractor._customPivot = new Vector2(0.5f, 0.5f);
+
+            SpriteSheetExtractor.SpriteSheetEntry entry = new()
+            {
+                _useGlobalSettings = false,
+                _pivotModeOverride = PivotMode.TopLeft,
+                _customPivotOverride = new Vector2(0.0f, 1.0f),
+            };
+
+            SpriteSheetExtractor.SpriteEntryData sprite = new()
+            {
+                _usePivotOverride = false,
+                _pivotModeOverride = PivotMode.BottomRight,
+                _customPivotOverride = new Vector2(1.0f, 0.0f),
+            };
+
+            Vector2 result = extractor.GetEffectivePivot(entry, sprite);
+            Assert.That(result, Is.EqualTo(new Vector2(0.0f, 1.0f)));
+        }
+
+        [Test]
+        public void GetEffectivePivotReturnsGlobalWhenBothOverridesDisabled()
+        {
+            SpriteSheetExtractor extractor = CreateExtractor();
+            extractor._pivotMode = PivotMode.BottomCenter;
+            extractor._customPivot = new Vector2(0.5f, 0.0f);
+
+            SpriteSheetExtractor.SpriteSheetEntry entry = new()
+            {
+                _useGlobalSettings = true,
+                _pivotModeOverride = PivotMode.TopLeft,
+                _customPivotOverride = new Vector2(0.0f, 1.0f),
+            };
+
+            SpriteSheetExtractor.SpriteEntryData sprite = new()
+            {
+                _usePivotOverride = false,
+                _pivotModeOverride = PivotMode.BottomRight,
+                _customPivotOverride = new Vector2(1.0f, 0.0f),
+            };
+
+            Vector2 result = extractor.GetEffectivePivot(entry, sprite);
+            Assert.That(result, Is.EqualTo(new Vector2(0.5f, 0.0f)));
+        }
+
+        [Test]
+        public void GetEffectivePivotHandlesNullSprite()
+        {
+            SpriteSheetExtractor extractor = CreateExtractor();
+            extractor._pivotMode = PivotMode.TopCenter;
+            extractor._customPivot = new Vector2(0.5f, 1.0f);
+
+            SpriteSheetExtractor.SpriteSheetEntry entry = new()
+            {
+                _useGlobalSettings = false,
+                _pivotModeOverride = PivotMode.LeftCenter,
+                _customPivotOverride = new Vector2(0.0f, 0.5f),
+            };
+
+            Vector2 result = extractor.GetEffectivePivot(entry, null);
+            Assert.That(result, Is.EqualTo(new Vector2(0.0f, 0.5f)));
+        }
+
+        [Test]
+        public void GetEffectivePivotHandlesNullEntry()
+        {
+            SpriteSheetExtractor extractor = CreateExtractor();
+            extractor._pivotMode = PivotMode.RightCenter;
+            extractor._customPivot = new Vector2(1.0f, 0.5f);
+
+            SpriteSheetExtractor.SpriteEntryData sprite = new()
+            {
+                _usePivotOverride = false,
+                _pivotModeOverride = PivotMode.BottomRight,
+                _customPivotOverride = new Vector2(1.0f, 0.0f),
+            };
+
+            Vector2 result = extractor.GetEffectivePivot(null, sprite);
+            Assert.That(result, Is.EqualTo(new Vector2(1.0f, 0.5f)));
+        }
+
+        [Test]
+        public void GetEffectivePivotHandlesCustomPivotMode()
+        {
+            SpriteSheetExtractor extractor = CreateExtractor();
+            extractor._pivotMode = PivotMode.Center;
+            extractor._customPivot = new Vector2(0.5f, 0.5f);
+
+            SpriteSheetExtractor.SpriteSheetEntry entry = new() { _useGlobalSettings = true };
+
+            SpriteSheetExtractor.SpriteEntryData sprite = new()
+            {
+                _usePivotOverride = true,
+                _pivotModeOverride = PivotMode.Custom,
+                _customPivotOverride = new Vector2(0.33f, 0.67f),
+            };
+
+            Vector2 result = extractor.GetEffectivePivot(entry, sprite);
+            Assert.That(result, Is.EqualTo(new Vector2(0.33f, 0.67f)));
+        }
+
+        [Test]
+        public void GetEffectivePivotUsesSpriteOverrideWhenEntryIsNull()
+        {
+            SpriteSheetExtractor extractor = CreateExtractor();
+            extractor._pivotMode = PivotMode.Center;
+            extractor._customPivot = new Vector2(0.5f, 0.5f);
+
+            SpriteSheetExtractor.SpriteEntryData sprite = new()
+            {
+                _usePivotOverride = true,
+                _pivotModeOverride = PivotMode.TopLeft,
+                _customPivotOverride = new Vector2(0.0f, 1.0f),
+            };
+
+            Vector2 result = extractor.GetEffectivePivot(null, sprite);
+            Assert.That(result, Is.EqualTo(new Vector2(0.0f, 1.0f)));
+        }
+
+        [Test]
+        public void GetEffectivePivotReturnsGlobalWhenBothAreNull()
+        {
+            SpriteSheetExtractor extractor = CreateExtractor();
+            extractor._pivotMode = PivotMode.BottomLeft;
+            extractor._customPivot = new Vector2(0.0f, 0.0f);
+
+            Vector2 result = extractor.GetEffectivePivot(null, null);
+            Assert.That(result, Is.EqualTo(new Vector2(0.0f, 0.0f)));
+        }
+
+        [Test]
         public void PivotModeToVector2ReturnsDefaultForObsoleteNoneValue()
         {
 #pragma warning disable CS0618 // Type or member is obsolete
@@ -10784,6 +11061,293 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             Assert.That(config.algorithm, Is.EqualTo((int)AutoDetectionAlgorithm.AutoBest));
         }
 
+        [Test]
+        public void ConfigMigrationV2ToV3AddsSnapToTextureDivisorField()
+        {
+            SpriteSheetConfig config = new() { version = 2, snapToTextureDivisor = false };
+
+            SpriteSheetConfig.MigrateConfig(config);
+
+            Assert.That(config.version, Is.EqualTo(SpriteSheetConfig.CurrentVersion));
+            Assert.That(config.snapToTextureDivisor, Is.True);
+        }
+
+        [Test]
+        public void ConfigMigrationV3PreservesSnapToTextureDivisor()
+        {
+            SpriteSheetConfig config = new() { version = 3, snapToTextureDivisor = false };
+
+            SpriteSheetConfig.MigrateConfig(config);
+
+            Assert.That(config.version, Is.EqualTo(SpriteSheetConfig.CurrentVersion));
+            Assert.That(config.snapToTextureDivisor, Is.False);
+        }
+
+        [Test]
+        [TestCase(64, 64, 32, 32, 0.1f, TestName = "Divisor.Uniform.32x32")]
+        [TestCase(128, 64, 64, 32, 0.1f, TestName = "Divisor.NonSquare.64x32")]
+        [TestCase(256, 256, 64, 64, 0.1f, TestName = "Divisor.Large.64x64")]
+        public void FindBestTransparencyAlignedDivisorReturnsValidDivisor(
+            int textureWidth,
+            int textureHeight,
+            int baseCellWidth,
+            int baseCellHeight,
+            float transparencyThreshold
+        )
+        {
+            Color32[] pixels = CreateSimpleSpriteSheetPixels(
+                textureWidth,
+                textureHeight,
+                textureWidth / baseCellWidth,
+                textureHeight / baseCellHeight
+            );
+
+            Vector2Int result = SpriteSheetAlgorithms.FindBestTransparencyAlignedDivisor(
+                pixels,
+                textureWidth,
+                textureHeight,
+                baseCellWidth,
+                baseCellHeight,
+                transparencyThreshold
+            );
+
+            Assert.That(result.x, Is.GreaterThanOrEqualTo(SpriteSheetAlgorithms.MinimumCellSize));
+            Assert.That(result.y, Is.GreaterThanOrEqualTo(SpriteSheetAlgorithms.MinimumCellSize));
+            Assert.That(textureWidth % result.x, Is.EqualTo(0), "Width must divide evenly");
+            Assert.That(textureHeight % result.y, Is.EqualTo(0), "Height must divide evenly");
+        }
+
+        [Test]
+        public void FindBestTransparencyAlignedDivisorHandlesCheckerPatternTexture()
+        {
+            int width = 64;
+            int height = 64;
+            Color32[] pixels = new Color32[width * height];
+
+            for (int y = 0; y < height; ++y)
+            {
+                for (int x = 0; x < width; ++x)
+                {
+                    bool isOpaqueCell = ((x / 16) + (y / 16)) % 2 == 0;
+                    pixels[y * width + x] = isOpaqueCell
+                        ? new Color32(255, 128, 64, 255)
+                        : new Color32(0, 0, 0, 0);
+                }
+            }
+
+            Vector2Int result = SpriteSheetAlgorithms.FindBestTransparencyAlignedDivisor(
+                pixels,
+                width,
+                height,
+                16,
+                16,
+                0.1f
+            );
+
+            Assert.That(result.x, Is.GreaterThanOrEqualTo(SpriteSheetAlgorithms.MinimumCellSize));
+            Assert.That(result.y, Is.GreaterThanOrEqualTo(SpriteSheetAlgorithms.MinimumCellSize));
+            Assert.That(width % result.x, Is.EqualTo(0));
+            Assert.That(height % result.y, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void FindBestTransparencyAlignedDivisorHandlesPartiallyTransparentTexture()
+        {
+            int width = 64;
+            int height = 64;
+            Color32[] pixels = new Color32[width * height];
+
+            for (int y = 0; y < height; ++y)
+            {
+                for (int x = 0; x < width; ++x)
+                {
+                    pixels[y * width + x] =
+                        x < width / 2 ? new Color32(255, 128, 64, 255) : new Color32(0, 0, 0, 0);
+                }
+            }
+
+            Vector2Int result = SpriteSheetAlgorithms.FindBestTransparencyAlignedDivisor(
+                pixels,
+                width,
+                height,
+                32,
+                32,
+                0.1f
+            );
+
+            Assert.That(result.x, Is.GreaterThanOrEqualTo(SpriteSheetAlgorithms.MinimumCellSize));
+            Assert.That(result.y, Is.GreaterThanOrEqualTo(SpriteSheetAlgorithms.MinimumCellSize));
+        }
+
+        [Test]
+        public void ScoreDivisorByTransparencyReturnsZeroForEmptyTexture()
+        {
+            Color32[] pixels = Array.Empty<Color32>();
+
+            float score = SpriteSheetAlgorithms.ScoreDivisorByTransparency(
+                pixels,
+                0,
+                0,
+                16,
+                16,
+                0.1f
+            );
+
+            Assert.That(score, Is.EqualTo(0f));
+        }
+
+        [Test]
+        public void ScoreDivisorByTransparencyReturnsZeroForAllOpaqueTexture()
+        {
+            int width = 64;
+            int height = 64;
+            Color32[] pixels = new Color32[width * height];
+            for (int i = 0; i < pixels.Length; ++i)
+            {
+                pixels[i] = new Color32(255, 128, 64, 255);
+            }
+
+            float score = SpriteSheetAlgorithms.ScoreDivisorByTransparency(
+                pixels,
+                width,
+                height,
+                32,
+                32,
+                0.1f
+            );
+
+            Assert.That(score, Is.EqualTo(0f));
+        }
+
+        [Test]
+        public void ScoreDivisorByTransparencyReturnsOneForAllTransparentTexture()
+        {
+            int width = 64;
+            int height = 64;
+            Color32[] pixels = new Color32[width * height];
+            for (int i = 0; i < pixels.Length; ++i)
+            {
+                pixels[i] = new Color32(0, 0, 0, 0);
+            }
+
+            float score = SpriteSheetAlgorithms.ScoreDivisorByTransparency(
+                pixels,
+                width,
+                height,
+                32,
+                32,
+                0.1f
+            );
+
+            Assert.That(score, Is.EqualTo(1f));
+        }
+
+        [Test]
+        public void ScoreDivisorByTransparencyReturnsHigherScoreForBetterAlignment()
+        {
+            int width = 64;
+            int height = 64;
+            Color32[] pixelsGoodAlignment = new Color32[width * height];
+            Color32[] pixelsPoorAlignment = new Color32[width * height];
+
+            for (int y = 0; y < height; ++y)
+            {
+                for (int x = 0; x < width; ++x)
+                {
+                    bool isAtGridLine = x % 32 == 0 || y % 32 == 0;
+                    pixelsGoodAlignment[y * width + x] = isAtGridLine
+                        ? new Color32(0, 0, 0, 0)
+                        : new Color32(255, 128, 64, 255);
+
+                    bool isAtOffset = (x + 16) % 32 == 0 || (y + 16) % 32 == 0;
+                    pixelsPoorAlignment[y * width + x] = isAtOffset
+                        ? new Color32(0, 0, 0, 0)
+                        : new Color32(255, 128, 64, 255);
+                }
+            }
+
+            float goodScore = SpriteSheetAlgorithms.ScoreDivisorByTransparency(
+                pixelsGoodAlignment,
+                width,
+                height,
+                32,
+                32,
+                0.1f
+            );
+            float poorScore = SpriteSheetAlgorithms.ScoreDivisorByTransparency(
+                pixelsPoorAlignment,
+                width,
+                height,
+                32,
+                32,
+                0.1f
+            );
+
+            Assert.That(
+                goodScore,
+                Is.GreaterThan(poorScore),
+                "Grid lines aligned with transparency should score higher"
+            );
+        }
+
+        [Test]
+        public void DetectGridWorksWithSnapToTextureDivisorDisabled()
+        {
+            Color32[] pixels = CreateSimpleSpriteSheetPixels(64, 64, 2, 2);
+
+            SpriteSheetAlgorithms.AlgorithmResult result = SpriteSheetAlgorithms.DetectGrid(
+                pixels,
+                64,
+                64,
+                alphaThreshold: 0.1f,
+                algorithm: AutoDetectionAlgorithm.BoundaryScoring,
+                snapToTextureDivisor: false
+            );
+
+            Assert.That(result.IsValid, Is.True);
+            Assert.That(
+                result.CellWidth,
+                Is.GreaterThanOrEqualTo(SpriteSheetAlgorithms.MinimumCellSize)
+            );
+            Assert.That(
+                result.CellHeight,
+                Is.GreaterThanOrEqualTo(SpriteSheetAlgorithms.MinimumCellSize)
+            );
+        }
+
+        [Test]
+        [TestCase(AutoDetectionAlgorithm.BoundaryScoring, TestName = "Snap.BoundaryScoring")]
+        [TestCase(AutoDetectionAlgorithm.ClusterCentroid, TestName = "Snap.ClusterCentroid")]
+        [TestCase(AutoDetectionAlgorithm.DistanceTransform, TestName = "Snap.DistanceTransform")]
+        [TestCase(AutoDetectionAlgorithm.RegionGrowing, TestName = "Snap.RegionGrowing")]
+        public void AlgorithmsProduceDivisorResultsWithSnapEnabled(AutoDetectionAlgorithm algorithm)
+        {
+            Color32[] pixels = CreateSimpleSpriteSheetPixels(128, 128, 4, 4);
+
+            SpriteSheetAlgorithms.AlgorithmResult result = SpriteSheetAlgorithms.DetectGrid(
+                pixels,
+                128,
+                128,
+                alphaThreshold: 0.1f,
+                algorithm: algorithm,
+                snapToTextureDivisor: true
+            );
+
+            if (result.IsValid)
+            {
+                Assert.That(
+                    128 % result.CellWidth,
+                    Is.EqualTo(0),
+                    $"{algorithm} width should divide evenly"
+                );
+                Assert.That(
+                    128 % result.CellHeight,
+                    Is.EqualTo(0),
+                    $"{algorithm} height should divide evenly"
+                );
+            }
+        }
+
         #endregion
 
         #region InitializeOverridesFromGlobal Tests
@@ -10805,7 +11369,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             extractor._paddingTop = 4;
             extractor._paddingBottom = 5;
             extractor._alphaThreshold = 0.15f;
-            extractor._showGridOverlay = true;
+            extractor._showOverlay = true;
             extractor._pivotMode = PivotMode.TopLeft;
             extractor._customPivot = new Vector2(0.25f, 0.75f);
             extractor._autoDetectionAlgorithm = AutoDetectionAlgorithm.ClusterCentroid;
@@ -10845,7 +11409,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             Assert.That(entry._paddingTopOverride, Is.EqualTo(4));
             Assert.That(entry._paddingBottomOverride, Is.EqualTo(5));
             Assert.That(entry._alphaThresholdOverride, Is.EqualTo(0.15f).Within(0.0001f));
-            Assert.That(entry._showGridOverlayOverride, Is.True);
+            Assert.That(entry._showOverlayOverride, Is.True);
             Assert.That(entry._pivotModeOverride, Is.EqualTo(PivotMode.TopLeft));
             Assert.That(entry._customPivotOverride.HasValue, Is.True);
             Assert.That(entry._customPivotOverride.Value.x, Is.EqualTo(0.25f).Within(0.0001f));
@@ -10903,7 +11467,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
                 _extractionModeOverride = SpriteSheetExtractor.ExtractionMode.AlphaDetection,
                 _gridColumnsOverride = 12,
                 _gridRowsOverride = 8,
-                _showGridOverlayOverride = true,
+                _showOverlayOverride = true,
                 _pivotModeOverride = PivotMode.BottomRight,
             };
 
@@ -10922,7 +11486,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             );
             Assert.That(entry._gridColumnsOverride, Is.EqualTo(12));
             Assert.That(entry._gridRowsOverride, Is.EqualTo(8));
-            Assert.That(entry._showGridOverlayOverride, Is.True);
+            Assert.That(entry._showOverlayOverride, Is.True);
             Assert.That(entry._pivotModeOverride, Is.EqualTo(PivotMode.BottomRight));
 
             // But effective values should now be global
@@ -10940,7 +11504,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             // Set specific global values
             extractor._extractionMode = SpriteSheetExtractor.ExtractionMode.PaddedGrid;
             extractor._gridSizeMode = SpriteSheetExtractor.GridSizeMode.Auto;
-            extractor._showGridOverlay = true;
+            extractor._showOverlay = true;
             extractor._pivotMode = PivotMode.BottomCenter;
             extractor._autoDetectionAlgorithm = AutoDetectionAlgorithm.RegionGrowing;
 
@@ -10952,7 +11516,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
                 extractor.GetEffectiveExtractionMode(entry);
             SpriteSheetExtractor.GridSizeMode effectiveGridModeBefore =
                 extractor.GetEffectiveGridSizeMode(entry);
-            bool effectiveOverlayBefore = extractor.GetEffectiveShowGridOverlay(entry);
+            bool effectiveOverlayBefore = extractor.GetEffectiveShowOverlay(entry);
             PivotMode effectivePivotBefore = extractor.GetEffectivePivotMode(entry);
             AutoDetectionAlgorithm effectiveAlgorithmBefore =
                 extractor.GetEffectiveAutoDetectionAlgorithm(entry);
@@ -10966,7 +11530,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
                 extractor.GetEffectiveExtractionMode(entry);
             SpriteSheetExtractor.GridSizeMode effectiveGridModeAfter =
                 extractor.GetEffectiveGridSizeMode(entry);
-            bool effectiveOverlayAfter = extractor.GetEffectiveShowGridOverlay(entry);
+            bool effectiveOverlayAfter = extractor.GetEffectiveShowOverlay(entry);
             PivotMode effectivePivotAfter = extractor.GetEffectivePivotMode(entry);
             AutoDetectionAlgorithm effectiveAlgorithmAfter =
                 extractor.GetEffectiveAutoDetectionAlgorithm(entry);
@@ -10977,6 +11541,1235 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             Assert.That(effectiveOverlayAfter, Is.EqualTo(effectiveOverlayBefore));
             Assert.That(effectivePivotAfter, Is.EqualTo(effectivePivotBefore));
             Assert.That(effectiveAlgorithmAfter, Is.EqualTo(effectiveAlgorithmBefore));
+        }
+
+        #endregion
+
+        #region Batch Pivot Operations Tests
+
+        [Test]
+        public void EnableAllPivotsButtonSetsPivotOverrideForAllSprites()
+        {
+            SpriteSheetExtractor extractor = CreateExtractor();
+            extractor._pivotMode = PivotMode.BottomLeft;
+            extractor._customPivot = new Vector2(0.0f, 0.0f);
+
+            SpriteSheetExtractor.SpriteSheetEntry entry = new()
+            {
+                _useGlobalSettings = true,
+                _sprites = new List<SpriteSheetExtractor.SpriteEntryData>(),
+            };
+
+            // Create 4 sprites, none with pivot override enabled
+            for (int i = 0; i < 4; i++)
+            {
+                SpriteSheetExtractor.SpriteEntryData sprite = new()
+                {
+                    _originalName = "sprite_" + i,
+                    _usePivotOverride = false,
+                    _pivotModeOverride = PivotMode.Center,
+                    _customPivotOverride = new Vector2(0.5f, 0.5f),
+                };
+                entry._sprites.Add(sprite);
+            }
+
+            // Simulate Enable All Pivots button logic
+            PivotMode effectiveMode = extractor.GetEffectivePivotMode(entry);
+            Vector2 effectivePivot = extractor.GetEffectiveCustomPivot(entry);
+
+            for (int i = 0; i < entry._sprites.Count; ++i)
+            {
+                SpriteSheetExtractor.SpriteEntryData sprite = entry._sprites[i];
+                if (!sprite._usePivotOverride)
+                {
+                    sprite._usePivotOverride = true;
+                    sprite._pivotModeOverride = effectiveMode;
+                    sprite._customPivotOverride = effectivePivot;
+                }
+            }
+
+            // Verify all sprites have pivot override enabled with correct values
+            for (int i = 0; i < entry._sprites.Count; i++)
+            {
+                SpriteSheetExtractor.SpriteEntryData sprite = entry._sprites[i];
+                Assert.That(
+                    sprite._usePivotOverride,
+                    Is.True,
+                    "Sprite " + i + " should have pivot override enabled"
+                );
+                Assert.That(
+                    sprite._pivotModeOverride,
+                    Is.EqualTo(PivotMode.BottomLeft),
+                    "Sprite " + i + " should have effective pivot mode copied"
+                );
+                Assert.That(
+                    sprite._customPivotOverride,
+                    Is.EqualTo(new Vector2(0.0f, 0.0f)),
+                    "Sprite " + i + " should have effective custom pivot copied"
+                );
+            }
+        }
+
+        [Test]
+        public void EnableAllPivotsButtonPreservesExistingOverrides()
+        {
+            SpriteSheetExtractor extractor = CreateExtractor();
+            extractor._pivotMode = PivotMode.Center;
+            extractor._customPivot = new Vector2(0.5f, 0.5f);
+
+            SpriteSheetExtractor.SpriteSheetEntry entry = new()
+            {
+                _useGlobalSettings = true,
+                _sprites = new List<SpriteSheetExtractor.SpriteEntryData>(),
+            };
+
+            // First sprite already has override with custom values
+            SpriteSheetExtractor.SpriteEntryData existingOverrideSprite = new()
+            {
+                _originalName = "sprite_0",
+                _usePivotOverride = true,
+                _pivotModeOverride = PivotMode.TopRight,
+                _customPivotOverride = new Vector2(1.0f, 1.0f),
+            };
+            entry._sprites.Add(existingOverrideSprite);
+
+            // Second sprite has no override
+            SpriteSheetExtractor.SpriteEntryData noOverrideSprite = new()
+            {
+                _originalName = "sprite_1",
+                _usePivotOverride = false,
+                _pivotModeOverride = PivotMode.Center,
+                _customPivotOverride = new Vector2(0.5f, 0.5f),
+            };
+            entry._sprites.Add(noOverrideSprite);
+
+            // Simulate Enable All Pivots button logic (preserves existing overrides)
+            PivotMode effectiveMode = extractor.GetEffectivePivotMode(entry);
+            Vector2 effectivePivot = extractor.GetEffectiveCustomPivot(entry);
+
+            for (int i = 0; i < entry._sprites.Count; ++i)
+            {
+                SpriteSheetExtractor.SpriteEntryData sprite = entry._sprites[i];
+                if (!sprite._usePivotOverride)
+                {
+                    sprite._usePivotOverride = true;
+                    sprite._pivotModeOverride = effectiveMode;
+                    sprite._customPivotOverride = effectivePivot;
+                }
+            }
+
+            // Verify first sprite's existing override is preserved
+            Assert.That(
+                entry._sprites[0]._usePivotOverride,
+                Is.True,
+                "Existing override should remain enabled"
+            );
+            Assert.That(
+                entry._sprites[0]._pivotModeOverride,
+                Is.EqualTo(PivotMode.TopRight),
+                "Existing pivot mode should be preserved"
+            );
+            Assert.That(
+                entry._sprites[0]._customPivotOverride,
+                Is.EqualTo(new Vector2(1.0f, 1.0f)),
+                "Existing custom pivot should be preserved"
+            );
+
+            // Verify second sprite now has override with effective values
+            Assert.That(
+                entry._sprites[1]._usePivotOverride,
+                Is.True,
+                "Previously disabled override should now be enabled"
+            );
+            Assert.That(
+                entry._sprites[1]._pivotModeOverride,
+                Is.EqualTo(PivotMode.Center),
+                "New override should use effective pivot mode"
+            );
+            Assert.That(
+                entry._sprites[1]._customPivotOverride,
+                Is.EqualTo(new Vector2(0.5f, 0.5f)),
+                "New override should use effective custom pivot"
+            );
+        }
+
+        [Test]
+        public void DisableAllPivotsButtonClearsAllPivotOverrides()
+        {
+            SpriteSheetExtractor extractor = CreateExtractor();
+
+            SpriteSheetExtractor.SpriteSheetEntry entry = new()
+            {
+                _useGlobalSettings = true,
+                _sprites = new List<SpriteSheetExtractor.SpriteEntryData>(),
+            };
+
+            // Create 4 sprites, all with pivot override enabled
+            for (int i = 0; i < 4; i++)
+            {
+                SpriteSheetExtractor.SpriteEntryData sprite = new()
+                {
+                    _originalName = "sprite_" + i,
+                    _usePivotOverride = true,
+                    _pivotModeOverride = PivotMode.Custom,
+                    _customPivotOverride = new Vector2(0.25f * i, 0.75f),
+                };
+                entry._sprites.Add(sprite);
+            }
+
+            // Verify initial state - all overrides enabled
+            for (int i = 0; i < entry._sprites.Count; i++)
+            {
+                Assert.That(
+                    entry._sprites[i]._usePivotOverride,
+                    Is.True,
+                    "Sprite " + i + " should initially have pivot override enabled"
+                );
+            }
+
+            // Simulate Disable All Pivots button logic
+            for (int i = 0; i < entry._sprites.Count; ++i)
+            {
+                entry._sprites[i]._usePivotOverride = false;
+            }
+
+            // Verify all sprites have pivot override disabled
+            for (int i = 0; i < entry._sprites.Count; i++)
+            {
+                Assert.That(
+                    entry._sprites[i]._usePivotOverride,
+                    Is.False,
+                    "Sprite " + i + " should have pivot override disabled"
+                );
+            }
+        }
+
+        [Test]
+        public void BatchPivotButtonsHandleEmptySpriteListSafely()
+        {
+            SpriteSheetExtractor extractor = CreateExtractor();
+            extractor._pivotMode = PivotMode.Center;
+            extractor._customPivot = new Vector2(0.5f, 0.5f);
+
+            SpriteSheetExtractor.SpriteSheetEntry entry = new()
+            {
+                _useGlobalSettings = true,
+                _sprites = new List<SpriteSheetExtractor.SpriteEntryData>(),
+            };
+
+            // Verify empty list
+            Assert.That(entry._sprites.Count, Is.EqualTo(0), "Sprites list should be empty");
+
+            // Simulate Enable All Pivots button logic on empty list
+            PivotMode effectiveMode = extractor.GetEffectivePivotMode(entry);
+            Vector2 effectivePivot = extractor.GetEffectiveCustomPivot(entry);
+
+            for (int i = 0; i < entry._sprites.Count; ++i)
+            {
+                SpriteSheetExtractor.SpriteEntryData sprite = entry._sprites[i];
+                if (!sprite._usePivotOverride)
+                {
+                    sprite._usePivotOverride = true;
+                    sprite._pivotModeOverride = effectiveMode;
+                    sprite._customPivotOverride = effectivePivot;
+                }
+            }
+
+            // Verify list is still empty and no exceptions occurred
+            Assert.That(
+                entry._sprites.Count,
+                Is.EqualTo(0),
+                "Sprites list should still be empty after Enable All"
+            );
+
+            // Simulate Disable All Pivots button logic on empty list
+            for (int i = 0; i < entry._sprites.Count; ++i)
+            {
+                entry._sprites[i]._usePivotOverride = false;
+            }
+
+            // Verify list is still empty and no exceptions occurred
+            Assert.That(
+                entry._sprites.Count,
+                Is.EqualTo(0),
+                "Sprites list should still be empty after Disable All"
+            );
+        }
+
+        #endregion
+
+        #region Cache Invalidation Tests
+
+        [Test]
+        public void GetBoundsCacheKeyReturnsDifferentValueForDifferentExtractionMode()
+        {
+            SpriteSheetExtractor extractor = CreateExtractor();
+            extractor._extractionMode = SpriteSheetExtractor.ExtractionMode.GridBased;
+
+            SpriteSheetExtractor.SpriteSheetEntry entry = new() { _useGlobalSettings = true };
+
+            int key1 = entry.GetBoundsCacheKey(extractor);
+
+            extractor._extractionMode = SpriteSheetExtractor.ExtractionMode.AlphaDetection;
+            int key2 = entry.GetBoundsCacheKey(extractor);
+
+            Assert.That(
+                key1,
+                Is.Not.EqualTo(key2),
+                "Cache key should differ for different extraction modes"
+            );
+        }
+
+        [Test]
+        public void GetBoundsCacheKeyReturnsDifferentValueForDifferentGridSize()
+        {
+            SpriteSheetExtractor extractor = CreateExtractor();
+            extractor._extractionMode = SpriteSheetExtractor.ExtractionMode.GridBased;
+            extractor._gridSizeMode = SpriteSheetExtractor.GridSizeMode.Manual;
+            extractor._gridColumns = 4;
+            extractor._gridRows = 4;
+
+            SpriteSheetExtractor.SpriteSheetEntry entry = new() { _useGlobalSettings = true };
+
+            int key1 = entry.GetBoundsCacheKey(extractor);
+
+            extractor._gridColumns = 8;
+            extractor._gridRows = 8;
+            int key2 = entry.GetBoundsCacheKey(extractor);
+
+            Assert.That(
+                key1,
+                Is.Not.EqualTo(key2),
+                "Cache key should differ for different grid sizes"
+            );
+        }
+
+        [Test]
+        public void GetBoundsCacheKeyReturnsDifferentValueForDifferentAlphaThreshold()
+        {
+            SpriteSheetExtractor extractor = CreateExtractor();
+            extractor._extractionMode = SpriteSheetExtractor.ExtractionMode.AlphaDetection;
+            extractor._alphaThreshold = 0.1f;
+
+            SpriteSheetExtractor.SpriteSheetEntry entry = new() { _useGlobalSettings = true };
+
+            int key1 = entry.GetBoundsCacheKey(extractor);
+
+            extractor._alphaThreshold = 0.5f;
+            int key2 = entry.GetBoundsCacheKey(extractor);
+
+            Assert.That(
+                key1,
+                Is.Not.EqualTo(key2),
+                "Cache key should differ for different alpha thresholds"
+            );
+        }
+
+        [Test]
+        public void GetBoundsCacheKeyReturnsDifferentValueForDifferentAlgorithm()
+        {
+            SpriteSheetExtractor extractor = CreateExtractor();
+            extractor._extractionMode = SpriteSheetExtractor.ExtractionMode.GridBased;
+            extractor._gridSizeMode = SpriteSheetExtractor.GridSizeMode.Auto;
+            extractor._autoDetectionAlgorithm = AutoDetectionAlgorithm.AutoBest;
+
+            SpriteSheetExtractor.SpriteSheetEntry entry = new() { _useGlobalSettings = true };
+
+            int key1 = entry.GetBoundsCacheKey(extractor);
+
+            extractor._autoDetectionAlgorithm = AutoDetectionAlgorithm.ClusterCentroid;
+            int key2 = entry.GetBoundsCacheKey(extractor);
+
+            Assert.That(
+                key1,
+                Is.Not.EqualTo(key2),
+                "Cache key should differ for different algorithms"
+            );
+        }
+
+        [Test]
+        public void GetBoundsCacheKeyReturnsSameValueForSameSettings()
+        {
+            SpriteSheetExtractor extractor = CreateExtractor();
+            extractor._extractionMode = SpriteSheetExtractor.ExtractionMode.GridBased;
+            extractor._gridSizeMode = SpriteSheetExtractor.GridSizeMode.Manual;
+            extractor._gridColumns = 4;
+            extractor._gridRows = 4;
+
+            SpriteSheetExtractor.SpriteSheetEntry entry = new() { _useGlobalSettings = true };
+
+            int key1 = entry.GetBoundsCacheKey(extractor);
+            int key2 = entry.GetBoundsCacheKey(extractor);
+
+            Assert.That(key1, Is.EqualTo(key2), "Cache key should be same for identical settings");
+        }
+
+        [Test]
+        public void GetBoundsCacheKeyReturnsZeroForNullExtractor()
+        {
+            SpriteSheetExtractor.SpriteSheetEntry entry = new() { _useGlobalSettings = true };
+
+            int key = entry.GetBoundsCacheKey(null);
+
+            Assert.That(key, Is.EqualTo(0), "Cache key should be 0 for null extractor");
+        }
+
+        [Test]
+        public void InvalidateEntrySetsNeedsRegenerationFlag()
+        {
+            SpriteSheetExtractor extractor = CreateExtractor();
+
+            SpriteSheetExtractor.SpriteSheetEntry entry = new()
+            {
+                _needsRegeneration = false,
+                _cachedAlgorithmResult = new SpriteSheetAlgorithms.AlgorithmResult(
+                    cellWidth: 32,
+                    cellHeight: 32,
+                    confidence: 1.0f,
+                    algorithm: AutoDetectionAlgorithm.AutoBest
+                ),
+                _lastAlgorithmDisplayText = "Previous text",
+            };
+
+            extractor.InvalidateEntry(entry);
+
+            Assert.That(
+                entry._needsRegeneration,
+                Is.True,
+                "InvalidateEntry should set _needsRegeneration to true"
+            );
+            Assert.That(
+                entry._cachedAlgorithmResult,
+                Is.Null,
+                "InvalidateEntry should clear _cachedAlgorithmResult"
+            );
+            Assert.That(
+                entry._lastAlgorithmDisplayText,
+                Is.Null,
+                "InvalidateEntry should clear _lastAlgorithmDisplayText"
+            );
+        }
+
+        [Test]
+        public void InvalidateEntryDoesNotThrowForNullEntry()
+        {
+            SpriteSheetExtractor extractor = CreateExtractor();
+
+            Assert.DoesNotThrow(() => extractor.InvalidateEntry(null));
+        }
+
+        [Test]
+        public void IsEntryStaleFalseForNullEntry()
+        {
+            SpriteSheetExtractor extractor = CreateExtractor();
+
+            bool isStale = extractor.IsEntryStale(null);
+
+            Assert.That(isStale, Is.False, "IsEntryStale should return false for null entry");
+        }
+
+        [Test]
+        public void IsEntryStaleTrueWhenNeedsRegenerationSet()
+        {
+            SpriteSheetExtractor extractor = CreateExtractor();
+
+            SpriteSheetExtractor.SpriteSheetEntry entry = new()
+            {
+                _needsRegeneration = true,
+                _lastCacheKey = 12345,
+            };
+
+            bool isStale = extractor.IsEntryStale(entry);
+
+            Assert.That(
+                isStale,
+                Is.True,
+                "IsEntryStale should return true when _needsRegeneration is set"
+            );
+        }
+
+        [Test]
+        public void IsEntryStaleTrueWhenCacheKeyDiffers()
+        {
+            SpriteSheetExtractor extractor = CreateExtractor();
+            extractor._extractionMode = SpriteSheetExtractor.ExtractionMode.GridBased;
+            extractor._gridSizeMode = SpriteSheetExtractor.GridSizeMode.Manual;
+            extractor._gridColumns = 4;
+            extractor._gridRows = 4;
+
+            SpriteSheetExtractor.SpriteSheetEntry entry = new()
+            {
+                _useGlobalSettings = true,
+                _needsRegeneration = false,
+                _lastCacheKey = 12345,
+            };
+
+            bool isStale = extractor.IsEntryStale(entry);
+
+            Assert.That(isStale, Is.True, "IsEntryStale should return true when cache key differs");
+        }
+
+        [Test]
+        public void IsEntryStaleFalseWhenCacheKeyMatches()
+        {
+            SpriteSheetExtractor extractor = CreateExtractor();
+            extractor._extractionMode = SpriteSheetExtractor.ExtractionMode.GridBased;
+            extractor._gridSizeMode = SpriteSheetExtractor.GridSizeMode.Manual;
+            extractor._gridColumns = 4;
+            extractor._gridRows = 4;
+
+            SpriteSheetExtractor.SpriteSheetEntry entry = new()
+            {
+                _useGlobalSettings = true,
+                _needsRegeneration = false,
+            };
+
+            entry._lastCacheKey = entry.GetBoundsCacheKey(extractor);
+
+            bool isStale = extractor.IsEntryStale(entry);
+
+            Assert.That(
+                isStale,
+                Is.False,
+                "IsEntryStale should return false when cache key matches"
+            );
+        }
+
+        [Test]
+        public void CheckAndEvictLRUCacheDoesNothingWhenUnderLimit()
+        {
+            SpriteSheetExtractor extractor = CreateExtractor();
+            extractor._discoveredSheets = new List<SpriteSheetExtractor.SpriteSheetEntry>();
+
+            for (int i = 0; i < 10; ++i)
+            {
+                SpriteSheetExtractor.SpriteSheetEntry entry = new()
+                {
+                    _assetPath = $"test{i}.png",
+                    _sprites = new List<SpriteSheetExtractor.SpriteEntryData>
+                    {
+                        new() { _originalName = "sprite1" },
+                    },
+                    _lastAccessTime = DateTime.UtcNow.Ticks - i * 1000,
+                };
+                extractor._discoveredSheets.Add(entry);
+            }
+
+            extractor.CheckAndEvictLRUCache();
+
+            int cachedCount = 0;
+            for (int i = 0; i < extractor._discoveredSheets.Count; ++i)
+            {
+                SpriteSheetExtractor.SpriteSheetEntry e = extractor._discoveredSheets[i];
+                if (e != null && e._sprites != null && e._sprites.Count > 0)
+                {
+                    ++cachedCount;
+                }
+            }
+
+            Assert.That(
+                cachedCount,
+                Is.EqualTo(10),
+                "All 10 entries should remain cached when under limit"
+            );
+        }
+
+        [Test]
+        public void CheckAndEvictLRUCacheEvictsLeastRecentlyUsedWhenOverLimit()
+        {
+            SpriteSheetExtractor extractor = CreateExtractor();
+            extractor._discoveredSheets = new List<SpriteSheetExtractor.SpriteSheetEntry>();
+
+            long now = DateTime.UtcNow.Ticks;
+
+            for (int i = 0; i < 55; ++i)
+            {
+                SpriteSheetExtractor.SpriteSheetEntry entry = new()
+                {
+                    _assetPath = $"test{i}.png",
+                    _sprites = new List<SpriteSheetExtractor.SpriteEntryData>
+                    {
+                        new() { _originalName = "sprite1" },
+                    },
+                    _lastAccessTime = now - ((55 - i) * TimeSpan.TicksPerSecond),
+                };
+                extractor._discoveredSheets.Add(entry);
+            }
+
+            extractor.CheckAndEvictLRUCache();
+
+            int cachedCount = 0;
+            for (int i = 0; i < extractor._discoveredSheets.Count; ++i)
+            {
+                SpriteSheetExtractor.SpriteSheetEntry e = extractor._discoveredSheets[i];
+                if (e != null && e._sprites != null && e._sprites.Count > 0)
+                {
+                    ++cachedCount;
+                }
+            }
+
+            Assert.That(
+                cachedCount,
+                Is.EqualTo(50),
+                "Should have exactly 50 cached entries after eviction (MaxCachedEntries limit)"
+            );
+        }
+
+        [Test]
+        public void CheckAndEvictLRUCacheEvictsOldestEntries()
+        {
+            SpriteSheetExtractor extractor = CreateExtractor();
+            extractor._discoveredSheets = new List<SpriteSheetExtractor.SpriteSheetEntry>();
+
+            long now = DateTime.UtcNow.Ticks;
+
+            for (int i = 0; i < 55; ++i)
+            {
+                SpriteSheetExtractor.SpriteSheetEntry entry = new()
+                {
+                    _assetPath = $"test{i}.png",
+                    _sprites = new List<SpriteSheetExtractor.SpriteEntryData>
+                    {
+                        new() { _originalName = "sprite1" },
+                    },
+                    _lastAccessTime = now - ((55 - i) * TimeSpan.TicksPerSecond),
+                };
+                extractor._discoveredSheets.Add(entry);
+            }
+
+            SpriteSheetExtractor.SpriteSheetEntry oldestEntry = extractor._discoveredSheets[0];
+            SpriteSheetExtractor.SpriteSheetEntry newestEntry = extractor._discoveredSheets[54];
+
+            extractor.CheckAndEvictLRUCache();
+
+            Assert.That(
+                oldestEntry._sprites == null || oldestEntry._sprites.Count == 0,
+                Is.True,
+                "Oldest entry should be evicted"
+            );
+            Assert.That(
+                newestEntry._sprites != null && newestEntry._sprites.Count > 0,
+                Is.True,
+                "Newest entry should not be evicted"
+            );
+        }
+
+        [Test]
+        public void CheckAndEvictLRUCacheDoesNothingWhenDiscoveredSheetsIsNull()
+        {
+            SpriteSheetExtractor extractor = CreateExtractor();
+            extractor._discoveredSheets = null;
+
+            Assert.DoesNotThrow(() => extractor.CheckAndEvictLRUCache());
+        }
+
+        [Test]
+        public void CheckAndEvictLRUCacheDoesNothingWhenListCountUnderLimit()
+        {
+            SpriteSheetExtractor extractor = CreateExtractor();
+            extractor._discoveredSheets = new List<SpriteSheetExtractor.SpriteSheetEntry>();
+
+            for (int i = 0; i < 49; ++i)
+            {
+                SpriteSheetExtractor.SpriteSheetEntry entry = new()
+                {
+                    _assetPath = $"test{i}.png",
+                    _sprites = new List<SpriteSheetExtractor.SpriteEntryData>
+                    {
+                        new() { _originalName = "sprite1" },
+                    },
+                    _lastAccessTime = DateTime.UtcNow.Ticks,
+                };
+                extractor._discoveredSheets.Add(entry);
+            }
+
+            extractor.CheckAndEvictLRUCache();
+
+            int cachedCount = 0;
+            for (int i = 0; i < extractor._discoveredSheets.Count; ++i)
+            {
+                SpriteSheetExtractor.SpriteSheetEntry e = extractor._discoveredSheets[i];
+                if (e != null && e._sprites != null && e._sprites.Count > 0)
+                {
+                    ++cachedCount;
+                }
+            }
+
+            Assert.That(
+                cachedCount,
+                Is.EqualTo(49),
+                "All entries should remain when list count is under limit"
+            );
+        }
+
+        [Test]
+        public void GetBoundsCacheKeyReturnsDifferentValueForDifferentPadding()
+        {
+            SpriteSheetExtractor extractor = CreateExtractor();
+            extractor._extractionMode = SpriteSheetExtractor.ExtractionMode.PaddedGrid;
+            extractor._paddingLeft = 0;
+            extractor._paddingRight = 0;
+            extractor._paddingTop = 0;
+            extractor._paddingBottom = 0;
+
+            SpriteSheetExtractor.SpriteSheetEntry entry = new() { _useGlobalSettings = true };
+
+            int key1 = entry.GetBoundsCacheKey(extractor);
+
+            extractor._paddingLeft = 2;
+            extractor._paddingRight = 2;
+            int key2 = entry.GetBoundsCacheKey(extractor);
+
+            Assert.That(
+                key1,
+                Is.Not.EqualTo(key2),
+                "Cache key should differ for different padding values"
+            );
+        }
+
+        [Test]
+        public void GetBoundsCacheKeyReturnsDifferentValueForDifferentSnapToDivisor()
+        {
+            SpriteSheetExtractor extractor = CreateExtractor();
+            extractor._extractionMode = SpriteSheetExtractor.ExtractionMode.GridBased;
+            extractor._gridSizeMode = SpriteSheetExtractor.GridSizeMode.Auto;
+            extractor._snapToTextureDivisor = false;
+
+            SpriteSheetExtractor.SpriteSheetEntry entry = new() { _useGlobalSettings = true };
+
+            int key1 = entry.GetBoundsCacheKey(extractor);
+
+            extractor._snapToTextureDivisor = true;
+            int key2 = entry.GetBoundsCacheKey(extractor);
+
+            Assert.That(
+                key1,
+                Is.Not.EqualTo(key2),
+                "Cache key should differ for different snap to divisor settings"
+            );
+        }
+
+        [Test]
+        public void GetBoundsCacheKeyReturnsDifferentValueForDifferentExpectedCount()
+        {
+            SpriteSheetExtractor extractor = CreateExtractor();
+            extractor._extractionMode = SpriteSheetExtractor.ExtractionMode.GridBased;
+            extractor._gridSizeMode = SpriteSheetExtractor.GridSizeMode.Auto;
+            extractor._expectedSpriteCountHint = 16;
+
+            SpriteSheetExtractor.SpriteSheetEntry entry = new() { _useGlobalSettings = true };
+
+            int key1 = entry.GetBoundsCacheKey(extractor);
+
+            extractor._expectedSpriteCountHint = 32;
+            int key2 = entry.GetBoundsCacheKey(extractor);
+
+            Assert.That(
+                key1,
+                Is.Not.EqualTo(key2),
+                "Cache key should differ for different expected sprite counts"
+            );
+        }
+
+        #endregion
+
+        #region FindNearestDivisorWithMinCells Tests
+
+        [Test]
+        public void FindNearestDivisorWithMinCellsReturnsTargetWhenExactDivisor()
+        {
+            int result = SpriteSheetExtractor.FindNearestDivisorWithMinCells(
+                dimension: 256,
+                target: 32,
+                minCells: 2
+            );
+            Assert.That(result, Is.EqualTo(32), "Should return exact divisor when target is valid");
+        }
+
+        [Test]
+        public void FindNearestDivisorWithMinCellsFindsNearestWhenNoExactMatch()
+        {
+            int result = SpriteSheetExtractor.FindNearestDivisorWithMinCells(
+                dimension: 100,
+                target: 33,
+                minCells: 2
+            );
+            Assert.That(
+                result == 25 || result == 50 || result == 20,
+                Is.True,
+                "Should find nearest valid divisor (25, 50, or 20) for dimension 100 with target 33"
+            );
+            Assert.That(100 % result, Is.EqualTo(0), "Result should be a divisor of dimension");
+            Assert.That(
+                100 / result,
+                Is.GreaterThanOrEqualTo(2),
+                "Should produce at least minCells cells"
+            );
+        }
+
+        [Test]
+        public void FindNearestDivisorWithMinCellsReturnsTargetForZeroDimension()
+        {
+            int result = SpriteSheetExtractor.FindNearestDivisorWithMinCells(
+                dimension: 0,
+                target: 32,
+                minCells: 2
+            );
+            Assert.That(result, Is.EqualTo(32), "Should return target when dimension is 0");
+        }
+
+        [Test]
+        public void FindNearestDivisorWithMinCellsReturnsTargetForZeroTarget()
+        {
+            int result = SpriteSheetExtractor.FindNearestDivisorWithMinCells(
+                dimension: 256,
+                target: 0,
+                minCells: 2
+            );
+            Assert.That(result, Is.EqualTo(0), "Should return target (0) when target is 0");
+        }
+
+        [Test]
+        public void FindNearestDivisorWithMinCellsReturnsTargetWhenMinCellsTooLarge()
+        {
+            int result = SpriteSheetExtractor.FindNearestDivisorWithMinCells(
+                dimension: 64,
+                target: 32,
+                minCells: 100
+            );
+            Assert.That(
+                result,
+                Is.EqualTo(32),
+                "Should return target when no divisor produces enough cells"
+            );
+        }
+
+        [Test]
+        public void FindNearestDivisorWithMinCellsHandlesSmallDimension()
+        {
+            int result = SpriteSheetExtractor.FindNearestDivisorWithMinCells(
+                dimension: 8,
+                target: 4,
+                minCells: 2
+            );
+            Assert.That(result, Is.EqualTo(4), "Should find valid divisor for small dimension");
+            Assert.That(8 / result, Is.GreaterThanOrEqualTo(2));
+        }
+
+        [Test]
+        public void FindNearestDivisorWithMinCellsHandlesPrimeNumber()
+        {
+            int result = SpriteSheetExtractor.FindNearestDivisorWithMinCells(
+                dimension: 17,
+                target: 5,
+                minCells: 2
+            );
+            Assert.That(
+                result,
+                Is.EqualTo(5),
+                "Should return target for prime dimension since no valid divisor exists"
+            );
+        }
+
+        #endregion
+
+        #region DetectCellSizeFromOpaqueRegions Tests
+
+        [Test]
+        public void DetectCellSizeFromOpaqueRegionsReturnsZeroForNullPixels()
+        {
+            (int cellWidth, int cellHeight) = SpriteSheetExtractor.DetectCellSizeFromOpaqueRegions(
+                pixels: null,
+                textureWidth: 64,
+                textureHeight: 64,
+                alphaThreshold: 0.1f
+            );
+            Assert.That(cellWidth, Is.EqualTo(0));
+            Assert.That(cellHeight, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void DetectCellSizeFromOpaqueRegionsReturnsZeroForEmptyPixels()
+        {
+            (int cellWidth, int cellHeight) = SpriteSheetExtractor.DetectCellSizeFromOpaqueRegions(
+                pixels: new Color32[0],
+                textureWidth: 64,
+                textureHeight: 64,
+                alphaThreshold: 0.1f
+            );
+            Assert.That(cellWidth, Is.EqualTo(0));
+            Assert.That(cellHeight, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void DetectCellSizeFromOpaqueRegionsReturnsZeroForAllTransparent()
+        {
+            Color32[] pixels = new Color32[64 * 64];
+            for (int i = 0; i < pixels.Length; ++i)
+            {
+                pixels[i] = new Color32(0, 0, 0, 0);
+            }
+
+            (int cellWidth, int cellHeight) = SpriteSheetExtractor.DetectCellSizeFromOpaqueRegions(
+                pixels: pixels,
+                textureWidth: 64,
+                textureHeight: 64,
+                alphaThreshold: 0.1f
+            );
+            Assert.That(cellWidth, Is.EqualTo(0), "All transparent texture should return 0 width");
+            Assert.That(
+                cellHeight,
+                Is.EqualTo(0),
+                "All transparent texture should return 0 height"
+            );
+        }
+
+        [Test]
+        public void DetectCellSizeFromOpaqueRegionsReturnsZeroForSingleRegion()
+        {
+            Color32[] pixels = new Color32[64 * 64];
+            for (int i = 0; i < pixels.Length; ++i)
+            {
+                pixels[i] = new Color32(0, 0, 0, 0);
+            }
+
+            for (int y = 10; y < 50; ++y)
+            {
+                for (int x = 10; x < 50; ++x)
+                {
+                    pixels[y * 64 + x] = new Color32(255, 128, 64, 255);
+                }
+            }
+
+            (int cellWidth, int cellHeight) = SpriteSheetExtractor.DetectCellSizeFromOpaqueRegions(
+                pixels: pixels,
+                textureWidth: 64,
+                textureHeight: 64,
+                alphaThreshold: 0.1f
+            );
+            Assert.That(
+                cellWidth,
+                Is.EqualTo(0),
+                "Single region should return 0 width (need 2+ regions)"
+            );
+            Assert.That(
+                cellHeight,
+                Is.EqualTo(0),
+                "Single region should return 0 height (need 2+ regions)"
+            );
+        }
+
+        [Test]
+        public void DetectCellSizeFromOpaqueRegionsDetectsGridPattern()
+        {
+            Color32[] pixels = CreateSimpleSpriteSheetPixels(128, 128, 4, 4);
+
+            (int cellWidth, int cellHeight) = SpriteSheetExtractor.DetectCellSizeFromOpaqueRegions(
+                pixels: pixels,
+                textureWidth: 128,
+                textureHeight: 128,
+                alphaThreshold: 0.1f
+            );
+
+            Assert.That(
+                cellWidth,
+                Is.GreaterThan(0),
+                "Should detect valid cell width for grid pattern"
+            );
+            Assert.That(
+                cellHeight,
+                Is.GreaterThan(0),
+                "Should detect valid cell height for grid pattern"
+            );
+            Assert.That(
+                128 % cellWidth,
+                Is.EqualTo(0),
+                "Cell width should evenly divide texture width"
+            );
+            Assert.That(
+                128 % cellHeight,
+                Is.EqualTo(0),
+                "Cell height should evenly divide texture height"
+            );
+        }
+
+        [Test]
+        public void DetectCellSizeFromOpaqueRegionsReturnsZeroForTextureSmallerThanMinCellSize()
+        {
+            Color32[] pixels = new Color32[3 * 3];
+            for (int i = 0; i < pixels.Length; ++i)
+            {
+                pixels[i] = new Color32(255, 255, 255, 255);
+            }
+
+            (int cellWidth, int cellHeight) = SpriteSheetExtractor.DetectCellSizeFromOpaqueRegions(
+                pixels: pixels,
+                textureWidth: 3,
+                textureHeight: 3,
+                alphaThreshold: 0.1f
+            );
+
+            Assert.That(
+                cellWidth,
+                Is.EqualTo(0),
+                "Texture smaller than MinimumCellSize should return 0"
+            );
+            Assert.That(
+                cellHeight,
+                Is.EqualTo(0),
+                "Texture smaller than MinimumCellSize should return 0"
+            );
+        }
+
+        [Test]
+        public void DetectCellSizeFromOpaqueRegionsHandlesMinimumValidTexture()
+        {
+            int size = SpriteSheetAlgorithms.MinimumCellSize * 2;
+            Color32[] pixels = new Color32[size * size];
+            for (int i = 0; i < pixels.Length; ++i)
+            {
+                pixels[i] = new Color32(0, 0, 0, 0);
+            }
+
+            int halfSize = size / 2;
+            int spriteSize = halfSize - 2;
+
+            for (int y = 1; y < 1 + spriteSize; ++y)
+            {
+                for (int x = 1; x < 1 + spriteSize; ++x)
+                {
+                    pixels[y * size + x] = new Color32(255, 128, 64, 255);
+                }
+            }
+
+            for (int y = 1; y < 1 + spriteSize; ++y)
+            {
+                for (int x = halfSize + 1; x < halfSize + 1 + spriteSize; ++x)
+                {
+                    pixels[y * size + x] = new Color32(255, 128, 64, 255);
+                }
+            }
+
+            (int cellWidth, int cellHeight) = SpriteSheetExtractor.DetectCellSizeFromOpaqueRegions(
+                pixels: pixels,
+                textureWidth: size,
+                textureHeight: size,
+                alphaThreshold: 0.1f
+            );
+
+            Assert.That(
+                cellWidth >= 0 && cellHeight >= 0,
+                Is.True,
+                "Minimum valid texture should not crash"
+            );
+        }
+
+        #endregion
+
+        #region VerifyGridDoesNotCutSprites Tests
+
+        [Test]
+        public void VerifyGridDoesNotCutSpritesReturnsTrueForNullPixels()
+        {
+            bool result = SpriteSheetExtractor.VerifyGridDoesNotCutSprites(
+                pixels: null,
+                textureWidth: 64,
+                textureHeight: 64,
+                cellWidth: 32,
+                cellHeight: 32,
+                alphaThreshold: 0.1f
+            );
+            Assert.That(result, Is.True, "Null pixels should return true (valid)");
+        }
+
+        [Test]
+        public void VerifyGridDoesNotCutSpritesReturnsTrueForEmptyPixels()
+        {
+            bool result = SpriteSheetExtractor.VerifyGridDoesNotCutSprites(
+                pixels: new Color32[0],
+                textureWidth: 64,
+                textureHeight: 64,
+                cellWidth: 32,
+                cellHeight: 32,
+                alphaThreshold: 0.1f
+            );
+            Assert.That(result, Is.True, "Empty pixels should return true (valid)");
+        }
+
+        [Test]
+        public void VerifyGridDoesNotCutSpritesReturnsTrueForValidGrid()
+        {
+            Color32[] pixels = CreateSimpleSpriteSheetPixels(64, 64, 2, 2);
+
+            bool result = SpriteSheetExtractor.VerifyGridDoesNotCutSprites(
+                pixels: pixels,
+                textureWidth: 64,
+                textureHeight: 64,
+                cellWidth: 32,
+                cellHeight: 32,
+                alphaThreshold: 0.1f
+            );
+            Assert.That(result, Is.True, "Grid with transparent gutters should be valid");
+        }
+
+        [Test]
+        public void VerifyGridDoesNotCutSpritesReturnsFalseForInvalidGrid()
+        {
+            Color32[] pixels = new Color32[64 * 64];
+            for (int i = 0; i < pixels.Length; ++i)
+            {
+                pixels[i] = new Color32(255, 128, 64, 255);
+            }
+
+            bool result = SpriteSheetExtractor.VerifyGridDoesNotCutSprites(
+                pixels: pixels,
+                textureWidth: 64,
+                textureHeight: 64,
+                cellWidth: 32,
+                cellHeight: 32,
+                alphaThreshold: 0.1f
+            );
+            Assert.That(
+                result,
+                Is.False,
+                "Grid cutting through all opaque pixels should be invalid"
+            );
+        }
+
+        [Test]
+        public void VerifyGridDoesNotCutSpritesReturnsFalseAtExactThreshold()
+        {
+            Color32[] pixels = new Color32[100 * 100];
+            for (int i = 0; i < pixels.Length; ++i)
+            {
+                pixels[i] = new Color32(0, 0, 0, 0);
+            }
+
+            int gridX = 50;
+            int opaquePixelsNeeded = 30;
+            for (int y = 0; y < opaquePixelsNeeded; ++y)
+            {
+                pixels[y * 100 + gridX] = new Color32(255, 128, 64, 255);
+            }
+
+            bool result = SpriteSheetExtractor.VerifyGridDoesNotCutSprites(
+                pixels: pixels,
+                textureWidth: 100,
+                textureHeight: 100,
+                cellWidth: 50,
+                cellHeight: 100,
+                alphaThreshold: 0.1f
+            );
+            Assert.That(
+                result,
+                Is.False,
+                "Exactly 30% opaque on grid line should return false (threshold is exclusive)"
+            );
+        }
+
+        [Test]
+        public void VerifyGridDoesNotCutSpritesReturnsTrueJustBelowThreshold()
+        {
+            Color32[] pixels = new Color32[100 * 100];
+            for (int i = 0; i < pixels.Length; ++i)
+            {
+                pixels[i] = new Color32(0, 0, 0, 0);
+            }
+
+            int gridX = 50;
+            int opaquePixelsNeeded = 29;
+            for (int y = 0; y < opaquePixelsNeeded; ++y)
+            {
+                pixels[y * 100 + gridX] = new Color32(255, 128, 64, 255);
+            }
+
+            bool result = SpriteSheetExtractor.VerifyGridDoesNotCutSprites(
+                pixels: pixels,
+                textureWidth: 100,
+                textureHeight: 100,
+                cellWidth: 50,
+                cellHeight: 100,
+                alphaThreshold: 0.1f
+            );
+            Assert.That(result, Is.True, "Just below 30% opaque on grid line should return true");
+        }
+
+        [Test]
+        public void VerifyGridDoesNotCutSpritesReturnsTrueForSingleCell()
+        {
+            Color32[] pixels = new Color32[64 * 64];
+            for (int i = 0; i < pixels.Length; ++i)
+            {
+                pixels[i] = new Color32(255, 128, 64, 255);
+            }
+
+            bool result = SpriteSheetExtractor.VerifyGridDoesNotCutSprites(
+                pixels: pixels,
+                textureWidth: 64,
+                textureHeight: 64,
+                cellWidth: 64,
+                cellHeight: 64,
+                alphaThreshold: 0.1f
+            );
+            Assert.That(
+                result,
+                Is.True,
+                "Single cell has no internal grid lines so should always be valid"
+            );
+        }
+
+        [Test]
+        public void VerifyGridDoesNotCutSpritesReturnsTrueForZeroCellSize()
+        {
+            Color32[] pixels = new Color32[64 * 64];
+            for (int i = 0; i < pixels.Length; ++i)
+            {
+                pixels[i] = new Color32(255, 128, 64, 255);
+            }
+
+            bool resultZeroWidth = SpriteSheetExtractor.VerifyGridDoesNotCutSprites(
+                pixels: pixels,
+                textureWidth: 64,
+                textureHeight: 64,
+                cellWidth: 0,
+                cellHeight: 32,
+                alphaThreshold: 0.1f
+            );
+            Assert.That(resultZeroWidth, Is.True, "Zero cell width should return true (valid)");
+
+            bool resultZeroHeight = SpriteSheetExtractor.VerifyGridDoesNotCutSprites(
+                pixels: pixels,
+                textureWidth: 64,
+                textureHeight: 64,
+                cellWidth: 32,
+                cellHeight: 0,
+                alphaThreshold: 0.1f
+            );
+            Assert.That(resultZeroHeight, Is.True, "Zero cell height should return true (valid)");
+        }
+
+        [Test]
+        public void VerifyGridDoesNotCutSpritesHandlesMismatchedPixelArraySize()
+        {
+            Color32[] pixels = new Color32[32 * 32];
+            for (int i = 0; i < pixels.Length; ++i)
+            {
+                pixels[i] = new Color32(255, 128, 64, 255);
+            }
+
+            bool result = SpriteSheetExtractor.VerifyGridDoesNotCutSprites(
+                pixels: pixels,
+                textureWidth: 64,
+                textureHeight: 64,
+                cellWidth: 32,
+                cellHeight: 32,
+                alphaThreshold: 0.1f
+            );
+            Assert.That(
+                result,
+                Is.True,
+                "Mismatched pixel array size should return true (defensive)"
+            );
         }
 
         #endregion

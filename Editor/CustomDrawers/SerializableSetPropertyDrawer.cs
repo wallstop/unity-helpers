@@ -94,14 +94,22 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         private const float ManualEntryFoldoutValueLeftShiftReduction = 6f;
         private const float ManualEntryFoldoutValueRightShift = 3f;
         private const float ManualEntryExpandableValueFoldoutGutter = 7f;
-        private static readonly GUIContent ManualEntryFoldoutContent =
-            EditorGUIUtility.TrTextContent("New Entry");
-        private static readonly GUIContent ManualEntryValueContent = EditorGUIUtility.TrTextContent(
-            "Value"
-        );
-        private static readonly GUIContent ManualEntryAddContent = EditorGUIUtility.TrTextContent(
-            "Add"
-        );
+
+        // Lazy initialization to avoid calling EditorGUIUtility during static class loading,
+        // which can hang Unity during "Open Project: Open Scene" if the class is accessed
+        // before EditorGUIUtility is fully initialized.
+        private static GUIContent _manualEntryFoldoutContent;
+        private static GUIContent _manualEntryValueContent;
+        private static GUIContent _manualEntryAddContent;
+
+        private static GUIContent ManualEntryFoldoutContent =>
+            _manualEntryFoldoutContent ??= EditorGUIUtility.TrTextContent("New Entry");
+
+        private static GUIContent ManualEntryValueContent =>
+            _manualEntryValueContent ??= EditorGUIUtility.TrTextContent("Value");
+
+        private static GUIContent ManualEntryAddContent =>
+            _manualEntryAddContent ??= EditorGUIUtility.TrTextContent("Add");
         private static readonly GUIContent ManualEntryResetContent = new("Reset");
         private static GUIStyle _manualEntryFoldoutLabelStyle;
         private const float DuplicateShakeAmplitude = 2f;

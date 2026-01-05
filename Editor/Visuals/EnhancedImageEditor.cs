@@ -130,9 +130,23 @@ namespace WallstopStudios.UnityHelpers.Editor.Visuals
         private const string SingletonName = "_ICON_OBJECT_SINGLETON_";
 
         private static EnhancedImage IconReference;
+        private static bool _isRegenerating;
 
         static ExtendedImageIcon()
         {
+            // Defer all initialization to avoid blocking during "Open Scene"
+            // Creating GameObjects during [InitializeOnLoad] can cause hangs
+            EditorApplication.delayCall += InitializeDeferred;
+        }
+
+        private static void InitializeDeferred()
+        {
+            // Guard against multiple deferred calls
+            if (_isRegenerating)
+            {
+                return;
+            }
+
             RegenerateIconSingleton();
             EnsureSingletonLifecycle();
         }
@@ -142,32 +156,53 @@ namespace WallstopStudios.UnityHelpers.Editor.Visuals
             AssemblyReloadEvents.beforeAssemblyReload += SingletonIconCleanup;
             EditorApplication.quitting += SingletonIconCleanup;
 
-            EditorSceneManager.sceneOpened += (_, _) => RegenerateIconSingleton();
-            EditorSceneManager.newSceneCreated += (_, _, _) => RegenerateIconSingleton();
-            SceneManager.sceneLoaded += (_, _) => RegenerateIconSingleton();
-            SceneManager.activeSceneChanged += (_, _) => RegenerateIconSingleton();
+            // Use a single consolidated handler to avoid redundant calls
+            EditorSceneManager.sceneOpened += (_, _) => DeferredRegenerate();
+            EditorSceneManager.newSceneCreated += (_, _, _) => DeferredRegenerate();
+            SceneManager.sceneLoaded += (_, _) => DeferredRegenerate();
+            SceneManager.activeSceneChanged += (_, _) => DeferredRegenerate();
+        }
+
+        private static void DeferredRegenerate()
+        {
+            // Defer to avoid blocking scene loading operations
+            EditorApplication.delayCall += RegenerateIconSingleton;
         }
 
         private static void RegenerateIconSingleton()
         {
-            GameObject existingSingleton = GameObject.Find(SingletonName);
-            if (existingSingleton == null)
+            // Reentrancy guard to prevent concurrent execution
+            if (_isRegenerating)
             {
-                IconReference = new GameObject(SingletonName)
-                {
-                    hideFlags = HideFlags.HideAndDontSave,
-                }.AddComponent<EnhancedImage>();
-            }
-            else
-            {
-                IconReference = existingSingleton.GetOrAddComponent<EnhancedImage>();
-                IconReference.hideFlags = HideFlags.HideAndDontSave;
+                return;
             }
 
-            EditorGUIUtility.SetIconForObject(
-                MonoScript.FromMonoBehaviour(IconReference),
-                EditorGUIUtility.IconContent("Image Icon").image as Texture2D
-            );
+            _isRegenerating = true;
+            try
+            {
+                GameObject existingSingleton = GameObject.Find(SingletonName);
+                if (existingSingleton == null)
+                {
+                    IconReference = new GameObject(SingletonName)
+                    {
+                        hideFlags = HideFlags.HideAndDontSave,
+                    }.AddComponent<EnhancedImage>();
+                }
+                else
+                {
+                    IconReference = existingSingleton.GetOrAddComponent<EnhancedImage>();
+                    IconReference.hideFlags = HideFlags.HideAndDontSave;
+                }
+
+                EditorGUIUtility.SetIconForObject(
+                    MonoScript.FromMonoBehaviour(IconReference),
+                    EditorGUIUtility.IconContent("Image Icon").image as Texture2D
+                );
+            }
+            finally
+            {
+                _isRegenerating = false;
+            }
         }
 
         private static void SingletonIconCleanup()

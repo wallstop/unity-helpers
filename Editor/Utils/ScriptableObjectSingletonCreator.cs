@@ -373,7 +373,22 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
                 if (anyChanges || foldersDeleted)
                 {
                     AssetDatabase.SaveAssets();
-                    AssetDatabase.Refresh();
+                    // Defer Refresh if Unity is in a state where it could cause a deadlock
+                    // (e.g., during scene loading which triggers "Open Project: Open Scene" hang)
+                    if (
+                        EditorApplication.isCompiling
+                        || EditorApplication.isUpdating
+                        || EditorApplication.isPlayingOrWillChangePlaymode
+                    )
+                    {
+                        // Defer the refresh to avoid blocking during critical operations
+                        EditorApplication.delayCall += () =>
+                            AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
+                    }
+                    else
+                    {
+                        AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
+                    }
                 }
 
                 if (retryRequested && !DisableAutomaticRetries)

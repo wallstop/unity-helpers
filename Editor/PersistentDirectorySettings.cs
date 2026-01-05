@@ -12,6 +12,7 @@ namespace WallstopStudios.UnityHelpers.Editor
     using UnityEngine.Serialization;
     using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Utils;
+    using Debug = UnityEngine.Debug;
 
     [Serializable]
     public sealed class DirectoryUsageData
@@ -174,7 +175,9 @@ namespace WallstopStudios.UnityHelpers.Editor
             }
             catch (Exception e)
             {
-                Debug.LogWarning($"CleanupLegacyEmptyFolders encountered an issue: {e.Message}");
+                UnityEngine.Debug.LogWarning(
+                    $"CleanupLegacyEmptyFolders encountered an issue: {e.Message}"
+                );
             }
         }
 
@@ -393,7 +396,7 @@ namespace WallstopStudios.UnityHelpers.Editor
                             else
                             {
                                 // Move failed - create new target and merge data from primary
-                                Debug.LogWarning(
+                                UnityEngine.Debug.LogWarning(
                                     $"Failed to move {nameof(PersistentDirectorySettings)} from {primaryPath} to {targetAssetPath}: {moveResult}. Will create new and merge."
                                 );
 
@@ -476,7 +479,7 @@ namespace WallstopStudios.UnityHelpers.Editor
             }
             catch (Exception e)
             {
-                Debug.LogWarning(
+                UnityEngine.Debug.LogWarning(
                     $"{nameof(PersistentDirectorySettings)} migration encountered an issue: {e.Message}\n{e}"
                 );
                 return null;
@@ -507,7 +510,9 @@ namespace WallstopStudios.UnityHelpers.Editor
                 || string.IsNullOrWhiteSpace(path)
             )
             {
-                Debug.LogWarning("RecordPath: toolName, contextKey, or path cannot be empty.");
+                UnityEngine.Debug.LogWarning(
+                    "RecordPath: toolName, contextKey, or path cannot be empty."
+                );
                 return;
             }
 
@@ -522,7 +527,7 @@ namespace WallstopStudios.UnityHelpers.Editor
                     && !sanitizedPath.StartsWith("Assets/", StringComparison.Ordinal)
                 )
                 {
-                    Debug.LogWarning(
+                    UnityEngine.Debug.LogWarning(
                         $"Recording path '{sanitizedPath}' that is not an 'Assets/' relative path or an absolute path. This might be intentional."
                     );
                 }
@@ -792,7 +797,7 @@ namespace WallstopStudios.UnityHelpers.Editor
                         }
                         catch (Exception ex)
                         {
-                            Debug.LogWarning(
+                            UnityEngine.Debug.LogWarning(
                                 $"PersistentDirectorySettings: Failed to create parent directory on disk '{absoluteParent}': {ex.Message}"
                             );
                         }
@@ -819,7 +824,7 @@ namespace WallstopStudios.UnityHelpers.Editor
                             }
                             catch (Exception ex)
                             {
-                                Debug.LogWarning(
+                                UnityEngine.Debug.LogWarning(
                                     $"PersistentDirectorySettings: Failed to create/import directory '{next}': {ex.Message}"
                                 );
                             }
@@ -871,7 +876,9 @@ namespace WallstopStudios.UnityHelpers.Editor
             }
             catch (Exception e)
             {
-                Debug.LogError($"Failed to delete {assetOrFolderPath} with error: {e}.");
+                UnityEngine.Debug.LogError(
+                    $"Failed to delete {assetOrFolderPath} with error: {e}."
+                );
             }
         }
     }

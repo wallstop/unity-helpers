@@ -16,6 +16,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
     using UnityEditor;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Extension;
+    using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Core.Serialization;
     using WallstopStudios.UnityHelpers.Utils;
     using Object = UnityEngine.Object;
@@ -57,10 +58,22 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
         private const string Name = "Sprite Sheet Extractor";
 
         /// <summary>
+        /// Controls whether diagnostic logging is enabled.
+        /// Set to true for debugging sprite regeneration and cache issues.
+        /// </summary>
+        private const bool DiagnosticsEnabled = false;
+
+        /// <summary>
         /// Minimum score threshold for boundary transparency detection.
         /// Lowered from 0.5 to 0.15 to handle sprite sheets with thin transparent gutters.
         /// </summary>
         private const float MinimumBoundaryScore = 0.15f;
+
+        /// <summary>
+        /// Maximum number of entries to keep fully cached with sprites.
+        /// Entries beyond this limit are evicted using LRU policy.
+        /// </summary>
+        private const int MaxCachedEntries = 50;
 
         private static readonly string[] ImageFileExtensions =
         {
@@ -91,6 +104,39 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             512,
         };
 
+        private static readonly Vector2 CenterPivot = new(0.5f, 0.5f);
+
+        /// <summary>
+        /// Color for sheet-level pivot markers (gold/yellow to differentiate from per-sprite markers).
+        /// </summary>
+        private static readonly Color SheetPivotColor = new Color(1f, 0.84f, 0f, 0.8f);
+
+        /// <summary>
+        /// EditorPrefs key for persisting splitter position.
+        /// </summary>
+        private const string SplitterPositionPrefsKey =
+            "WallstopStudios.UnityHelpers.SpriteSheetExtractor.SplitterPosition";
+
+        /// <summary>
+        /// Minimum height for the settings section (Input/Output/Discovery).
+        /// </summary>
+        private const float MinSettingsHeight = 100f;
+
+        /// <summary>
+        /// Minimum height for the preview section.
+        /// </summary>
+        private const float MinPreviewHeight = 150f;
+
+        /// <summary>
+        /// Height of the splitter bar in pixels.
+        /// </summary>
+        private const float SplitterHeight = 5f;
+
+        /// <summary>
+        /// Default splitter position as ratio of window height (0.4 = 40% settings, 60% preview).
+        /// </summary>
+        private const float DefaultSplitterRatio = 0.4f;
+
         /// <summary>
         /// Represents a discovered sprite sheet with its metadata.
         /// </summary>
@@ -117,18 +163,107 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             internal int? _paddingTopOverride;
             internal int? _paddingBottomOverride;
             internal float? _alphaThresholdOverride;
-            internal bool? _showGridOverlayOverride;
+            internal bool? _showOverlayOverride;
             internal bool _sourcePreviewExpanded;
 
             internal PivotMode? _pivotModeOverride;
             internal Vector2? _customPivotOverride;
             internal AutoDetectionAlgorithm? _autoDetectionAlgorithmOverride;
             internal int? _expectedSpriteCountOverride;
+
+            /// <summary>
+            /// Per-sheet override for snap to texture divisor. Only used when _useGlobalSettings is false.
+            /// </summary>
+            internal bool? _snapToTextureDivisorOverride;
+
+            /// <summary>
+            /// Whether to use a per-sheet pivot marker color override.
+            /// </summary>
+            internal bool _usePivotMarkerColorOverride;
+
+            /// <summary>
+            /// Per-sheet pivot marker color override.
+            /// UI-only preference; not saved to per-sheet config files.
+            /// </summary>
+            internal Color _pivotMarkerColorOverride = Color.cyan;
+
+            /// <summary>
+            /// When enabled, allows interactive pivot editing via click/drag in the source texture preview.
+            /// </summary>
+            internal bool _editPivotsMode;
+
             internal SpriteSheetConfig _loadedConfig;
             internal bool _configLoaded;
             internal bool _configStale;
             internal SpriteSheetAlgorithms.AlgorithmResult? _cachedAlgorithmResult;
             internal string _lastAlgorithmDisplayText;
+
+            /// <summary>
+            /// The last computed cache key used to detect when sprite bounds need regeneration.
+            /// </summary>
+            internal int _lastCacheKey;
+
+            /// <summary>
+            /// Indicates whether the sprite bounds need regeneration due to settings changes.
+            /// </summary>
+            internal bool _needsRegeneration;
+
+            /// <summary>
+            /// The last access time (ticks) for LRU cache eviction.
+            /// </summary>
+            internal long _lastAccessTime;
+
+            /// <summary>
+            /// Computes a composite cache key based on all settings that affect sprite bounds calculation.
+            /// Used to detect when cached sprite data is stale and needs regeneration.
+            /// </summary>
+            /// <param name="extractor">The SpriteSheetExtractor instance to read global settings from.</param>
+            /// <returns>A hash code representing the current configuration state.</returns>
+            internal int GetBoundsCacheKey(SpriteSheetExtractor extractor)
+            {
+                if (extractor == null)
+                {
+                    return 0;
+                }
+
+                ExtractionMode effectiveExtractionMode = extractor.GetEffectiveExtractionMode(this);
+                GridSizeMode effectiveGridSizeMode = extractor.GetEffectiveGridSizeMode(this);
+                int effectiveGridColumns = extractor.GetEffectiveGridColumns(this);
+                int effectiveGridRows = extractor.GetEffectiveGridRows(this);
+                int effectiveCellWidth = extractor.GetEffectiveCellWidth(this);
+                int effectiveCellHeight = extractor.GetEffectiveCellHeight(this);
+                int effectivePaddingLeft = extractor.GetEffectivePaddingLeft(this);
+                int effectivePaddingRight = extractor.GetEffectivePaddingRight(this);
+                int effectivePaddingTop = extractor.GetEffectivePaddingTop(this);
+                int effectivePaddingBottom = extractor.GetEffectivePaddingBottom(this);
+                float effectiveAlphaThreshold = extractor.GetEffectiveAlphaThreshold(this);
+                AutoDetectionAlgorithm effectiveAlgorithm =
+                    extractor.GetEffectiveAutoDetectionAlgorithm(this);
+                int effectiveExpectedCount = extractor.GetEffectiveExpectedSpriteCount(this);
+                bool effectiveSnapToDivisor = extractor.GetEffectiveSnapToTextureDivisor(this);
+
+                int textureWidth = _texture != null ? _texture.width : 0;
+                int textureHeight = _texture != null ? _texture.height : 0;
+
+                return Objects.HashCode(
+                    effectiveExtractionMode,
+                    effectiveGridSizeMode,
+                    effectiveGridColumns,
+                    effectiveGridRows,
+                    effectiveCellWidth,
+                    effectiveCellHeight,
+                    effectivePaddingLeft,
+                    effectivePaddingRight,
+                    effectivePaddingTop,
+                    effectivePaddingBottom,
+                    effectiveAlphaThreshold,
+                    effectiveAlgorithm,
+                    effectiveExpectedCount,
+                    effectiveSnapToDivisor,
+                    textureWidth,
+                    textureHeight
+                );
+            }
         }
 
         /// <summary>
@@ -144,6 +279,33 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             internal int _sortIndex;
             internal bool _isSelected;
             internal Texture2D _previewTexture;
+
+            /// <summary>
+            /// Whether to use a per-sprite pivot override.
+            /// </summary>
+            internal bool _usePivotOverride;
+
+            /// <summary>
+            /// Per-sprite pivot mode override. Only used when <see cref="_usePivotOverride"/> is true.
+            /// </summary>
+            internal PivotMode _pivotModeOverride;
+
+            /// <summary>
+            /// Per-sprite custom pivot override. Only used when <see cref="_usePivotOverride"/> is true
+            /// and <see cref="_pivotModeOverride"/> is <see cref="PivotMode.Custom"/>.
+            /// </summary>
+            internal Vector2 _customPivotOverride;
+
+            /// <summary>
+            /// Whether to use a per-sprite pivot marker color override.
+            /// </summary>
+            internal bool _usePivotColorOverride;
+
+            /// <summary>
+            /// Per-sprite pivot marker color override.
+            /// UI-only preference; not saved to per-sheet config files.
+            /// </summary>
+            internal Color _pivotColorOverride;
         }
 
         public enum SortMode
@@ -192,6 +354,17 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             Size32 = 2,
             Size64 = 3,
             RealSize = 4,
+        }
+
+        /// <summary>
+        /// Identifies whether a pivot drag operation targets a per-sprite or sheet-level pivot.
+        /// </summary>
+        private enum PivotDragType
+        {
+            [Obsolete("Use a specific PivotDragType value instead of None.")]
+            None = 0,
+            Sprite = 1,
+            Sheet = 2,
         }
 
         [SerializeField]
@@ -255,7 +428,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
         internal float _alphaThreshold = 0.01f;
 
         [SerializeField]
-        internal bool _showGridOverlay;
+        internal bool _showOverlay;
 
         [SerializeField]
         internal PivotMode _pivotMode = PivotMode.Center;
@@ -269,8 +442,26 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
         [SerializeField]
         internal int _expectedSpriteCountHint = -1;
 
+        /// <summary>
+        /// When enabled, algorithms adjust cell sizes to be exact divisors of texture dimensions,
+        /// using transparency analysis to handle remainders intelligently.
+        /// </summary>
         [SerializeField]
-        internal Color _gridLineColor = new Color(1f, 0f, 0f, 0.5f);
+        internal bool _snapToTextureDivisor = true;
+
+        /// <summary>
+        /// Color of the overlay lines in source texture previews.
+        /// UI-only preference; not saved to per-sheet config files.
+        /// </summary>
+        [SerializeField]
+        internal Color _overlayColor = new Color(0f, 1f, 1f, 0.5f);
+
+        /// <summary>
+        /// Color for pivot position crosshairs in sprite previews.
+        /// UI-only preference; not saved to per-sheet config files.
+        /// </summary>
+        [SerializeField]
+        internal Color _pivotMarkerColor = Color.cyan;
 
         [SerializeField]
         internal bool _sourcePreviewFoldout;
@@ -302,12 +493,14 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
         private SerializedProperty _paddingTopProperty;
         private SerializedProperty _paddingBottomProperty;
         private SerializedProperty _alphaThresholdProperty;
-        private SerializedProperty _showGridOverlayProperty;
+        private SerializedProperty _showOverlayProperty;
         private SerializedProperty _pivotModeProperty;
         private SerializedProperty _customPivotProperty;
         private SerializedProperty _autoDetectionAlgorithmProperty;
         private SerializedProperty _expectedSpriteCountHintProperty;
-        private SerializedProperty _gridLineColorProperty;
+        private SerializedProperty _snapToTextureDivisorProperty;
+        private SerializedProperty _overlayColorProperty;
+        private SerializedProperty _pivotMarkerColorProperty;
         private SerializedProperty _sourcePreviewFoldoutProperty;
         private SerializedProperty _dangerZoneFoldoutProperty;
 
@@ -321,15 +514,39 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
 
         private PreviewSizeMode _lastPreviewSizeMode;
         private ExtractionMode _lastExtractionMode;
+        private bool _lastShowOverlay;
         internal bool _previewRegenerationScheduled;
         private bool _regenerationInProgress;
 
         internal List<SpriteSheetEntry> _discoveredSheets;
         private Vector2 _scrollPosition;
 
+        /// <summary>
+        /// Scroll position for the settings section.
+        /// </summary>
+        private Vector2 _settingsScrollPosition;
+
+        /// <summary>
+        /// Current splitter position in pixels from top of content area.
+        /// </summary>
+        private float _splitterPosition;
+
+        /// <summary>
+        /// Whether the user is currently dragging the splitter.
+        /// </summary>
+        private bool _isDraggingSplitter;
+
         private int _lastExtractedCount;
         private int _lastSkippedCount;
         private int _lastErrorCount;
+
+        private SpriteSheetEntry _draggedPivotTarget;
+        private PivotDragType _draggedPivotType;
+        private int _draggedSpriteIndex;
+        private bool _isDraggingPivot;
+        private SpriteSheetEntry _hoveredPivotTarget;
+        private int _hoveredSpriteIndex;
+        private bool _isHoveringPivot;
 
         internal static bool SuppressUserPrompts { get; set; }
 
@@ -353,6 +570,12 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
 
         private void OnEnable()
         {
+            // Set minimum window size to prevent layout issues
+            minSize = new Vector2(
+                400f,
+                MinSettingsHeight + MinPreviewHeight + SplitterHeight + 50f
+            );
+
             _serializedObject = new SerializedObject(this);
             _inputDirectoriesProperty = _serializedObject.FindProperty(nameof(_inputDirectories));
             _spriteNameRegexProperty = _serializedObject.FindProperty(nameof(_spriteNameRegex));
@@ -376,7 +599,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             _paddingTopProperty = _serializedObject.FindProperty(nameof(_paddingTop));
             _paddingBottomProperty = _serializedObject.FindProperty(nameof(_paddingBottom));
             _alphaThresholdProperty = _serializedObject.FindProperty(nameof(_alphaThreshold));
-            _showGridOverlayProperty = _serializedObject.FindProperty(nameof(_showGridOverlay));
+            _showOverlayProperty = _serializedObject.FindProperty(nameof(_showOverlay));
             _pivotModeProperty = _serializedObject.FindProperty(nameof(_pivotMode));
             _customPivotProperty = _serializedObject.FindProperty(nameof(_customPivot));
             _autoDetectionAlgorithmProperty = _serializedObject.FindProperty(
@@ -385,7 +608,11 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             _expectedSpriteCountHintProperty = _serializedObject.FindProperty(
                 nameof(_expectedSpriteCountHint)
             );
-            _gridLineColorProperty = _serializedObject.FindProperty(nameof(_gridLineColor));
+            _snapToTextureDivisorProperty = _serializedObject.FindProperty(
+                nameof(_snapToTextureDivisor)
+            );
+            _overlayColorProperty = _serializedObject.FindProperty(nameof(_overlayColor));
+            _pivotMarkerColorProperty = _serializedObject.FindProperty(nameof(_pivotMarkerColor));
             _sourcePreviewFoldoutProperty = _serializedObject.FindProperty(
                 nameof(_sourcePreviewFoldout)
             );
@@ -393,6 +620,12 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
 
             _lastPreviewSizeMode = _previewSizeMode;
             _lastExtractionMode = _extractionMode;
+            _lastShowOverlay = _showOverlay;
+
+            // Load splitter position from EditorPrefs, defaulting to 40% of window height
+            float defaultPosition =
+                position.height > 0 ? position.height * DefaultSplitterRatio : 300f;
+            _splitterPosition = EditorPrefs.GetFloat(SplitterPositionPrefsKey, defaultPosition);
 
             EditorApplication.update += OnEditorUpdate;
         }
@@ -403,6 +636,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             CleanupPreviewTextures();
             _cachedSortedSprites = null;
             _lastSpritesSource = null;
+            _isDraggingSplitter = false;
         }
 
         /// <summary>
@@ -412,6 +646,12 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
         {
             if (_regenerationInProgress)
             {
+                if (DiagnosticsEnabled)
+                {
+                    Debug.Log(
+                        "[SpriteSheetExtractor] OnEditorUpdate: _regenerationInProgress=true, calling Repaint()"
+                    );
+                }
                 Repaint();
             }
         }
@@ -426,7 +666,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             for (int i = 0; i < _discoveredSheets.Count; ++i)
             {
                 SpriteSheetEntry entry = _discoveredSheets[i];
-                if (entry?._sprites == null)
+                if (entry == null || entry._sprites == null)
                 {
                     continue;
                 }
@@ -477,19 +717,130 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
         {
             _serializedObject.Update();
 
-            DrawInputSection();
-            EditorGUILayout.Space();
-            DrawOutputSection();
-            EditorGUILayout.Space();
-            DrawDiscoverySection();
-            EditorGUILayout.Space();
-            DrawPreviewSection();
-            EditorGUILayout.Space();
-            DrawExtractionSection();
-            EditorGUILayout.Space();
-            DrawDangerZone();
+            // Handle splitter drag events first (before any layout)
+            HandleSplitterEvents();
+
+            // Calculate available heights
+            float totalHeight = position.height;
+            float settingsHeight = Mathf.Clamp(
+                _splitterPosition,
+                MinSettingsHeight,
+                totalHeight - MinPreviewHeight - SplitterHeight
+            );
+            float previewHeight = Mathf.Max(
+                MinPreviewHeight,
+                totalHeight - settingsHeight - SplitterHeight
+            );
+
+            // Settings section (scrollable)
+            using (
+                EditorGUILayout.ScrollViewScope settingsScroll =
+                    new EditorGUILayout.ScrollViewScope(
+                        _settingsScrollPosition,
+                        GUILayout.Height(settingsHeight)
+                    )
+            )
+            {
+                _settingsScrollPosition = settingsScroll.scrollPosition;
+                DrawInputSection();
+                EditorGUILayout.Space();
+                DrawOutputSection();
+                EditorGUILayout.Space();
+                DrawDiscoverySection();
+            }
+
+            // Splitter bar
+            DrawSplitter();
+
+            // Preview section (already has its own scroll view)
+            using (new EditorGUILayout.VerticalScope(GUILayout.Height(previewHeight)))
+            {
+                DrawPreviewSection();
+                EditorGUILayout.Space();
+                DrawExtractionSection();
+                EditorGUILayout.Space();
+                DrawDangerZone();
+            }
 
             _serializedObject.ApplyModifiedProperties();
+        }
+
+        /// <summary>
+        /// Draws the horizontal splitter bar between settings and preview sections.
+        /// </summary>
+        private void DrawSplitter()
+        {
+            Rect splitterRect = GUILayoutUtility.GetRect(
+                GUIContent.none,
+                GUIStyle.none,
+                GUILayout.Height(SplitterHeight),
+                GUILayout.ExpandWidth(true)
+            );
+
+            // Draw splitter background
+            EditorGUI.DrawRect(splitterRect, new Color(0.2f, 0.2f, 0.2f, 1f));
+
+            // Draw grip lines in center
+            float centerY = splitterRect.y + splitterRect.height * 0.5f;
+            Rect gripRect = new Rect(splitterRect.center.x - 20f, centerY - 1f, 40f, 2f);
+            EditorGUI.DrawRect(gripRect, new Color(0.5f, 0.5f, 0.5f, 1f));
+
+            // Set cursor
+            EditorGUIUtility.AddCursorRect(splitterRect, MouseCursor.ResizeVertical);
+        }
+
+        /// <summary>
+        /// Handles mouse events for splitter dragging.
+        /// </summary>
+        private void HandleSplitterEvents()
+        {
+            Event e = Event.current;
+
+            // Calculate splitter rect position (approximate, will be refined after layout)
+            float splitterY = Mathf.Clamp(
+                _splitterPosition,
+                MinSettingsHeight,
+                position.height - MinPreviewHeight - SplitterHeight
+            );
+            Rect splitterRect = new Rect(0f, splitterY, position.width, SplitterHeight);
+
+            int controlId = GUIUtility.GetControlID(FocusType.Passive);
+
+            switch (e.type)
+            {
+                case EventType.MouseDown:
+                    if (e.button == 0 && splitterRect.Contains(e.mousePosition))
+                    {
+                        GUIUtility.hotControl = controlId;
+                        _isDraggingSplitter = true;
+                        e.Use();
+                    }
+                    break;
+
+                case EventType.MouseDrag:
+                    if (_isDraggingSplitter && GUIUtility.hotControl == controlId)
+                    {
+                        _splitterPosition += e.delta.y;
+                        _splitterPosition = Mathf.Clamp(
+                            _splitterPosition,
+                            MinSettingsHeight,
+                            position.height - MinPreviewHeight - SplitterHeight
+                        );
+                        Repaint();
+                        e.Use();
+                    }
+                    break;
+
+                case EventType.MouseUp:
+                    if (_isDraggingSplitter)
+                    {
+                        GUIUtility.hotControl = 0;
+                        _isDraggingSplitter = false;
+                        EditorPrefs.SetFloat(SplitterPositionPrefsKey, _splitterPosition);
+                        e.Use();
+                    }
+                    break;
+            }
         }
 
         private void DrawInputSection()
@@ -543,6 +894,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             {
                 using (new EditorGUI.IndentLevelScope())
                 {
+                    EditorGUI.BeginChangeCheck();
                     EditorGUILayout.PropertyField(
                         _gridSizeModeProperty,
                         new GUIContent(
@@ -551,9 +903,16 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                                 + "Manual: Specify columns/rows or cell dimensions."
                         )
                     );
+                    bool gridSizeModeChanged = EditorGUI.EndChangeCheck();
+
+                    if (gridSizeModeChanged)
+                    {
+                        RegenerateEntriesUsingGlobalSettings();
+                    }
 
                     if (_gridSizeMode == GridSizeMode.Manual)
                     {
+                        EditorGUI.BeginChangeCheck();
                         EditorGUILayout.PropertyField(
                             _gridColumnsProperty,
                             new GUIContent("Columns", "Number of columns in the grid.")
@@ -576,11 +935,17 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                                 "Height of each grid cell in pixels (0 = auto)."
                             )
                         );
+                        bool manualGridSettingsChanged = EditorGUI.EndChangeCheck();
 
                         _gridColumns = Mathf.Max(1, _gridColumns);
                         _gridRows = Mathf.Max(1, _gridRows);
                         _cellWidth = Mathf.Max(0, _cellWidth);
                         _cellHeight = Mathf.Max(0, _cellHeight);
+
+                        if (manualGridSettingsChanged)
+                        {
+                            RegenerateEntriesUsingGlobalSettings();
+                        }
                     }
                     else
                     {
@@ -595,6 +960,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 {
                     EditorGUILayout.LabelField("Padding", EditorStyles.miniBoldLabel);
 
+                    EditorGUI.BeginChangeCheck();
                     EditorGUILayout.PropertyField(
                         _paddingLeftProperty,
                         new GUIContent("Left", "Padding from left edge of each cell.")
@@ -611,11 +977,17 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                         _paddingBottomProperty,
                         new GUIContent("Bottom", "Padding from bottom edge of each cell.")
                     );
+                    bool paddingChanged = EditorGUI.EndChangeCheck();
 
                     _paddingLeft = Mathf.Max(0, _paddingLeft);
                     _paddingRight = Mathf.Max(0, _paddingRight);
                     _paddingTop = Mathf.Max(0, _paddingTop);
                     _paddingBottom = Mathf.Max(0, _paddingBottom);
+
+                    if (paddingChanged)
+                    {
+                        RegenerateEntriesUsingGlobalSettings();
+                    }
                 }
             }
 
@@ -623,6 +995,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             {
                 using (new EditorGUI.IndentLevelScope())
                 {
+                    EditorGUI.BeginChangeCheck();
                     EditorGUILayout.PropertyField(
                         _alphaThresholdProperty,
                         new GUIContent(
@@ -630,7 +1003,13 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                             "Pixels with alpha above this value are considered opaque. (0.0-1.0)"
                         )
                     );
+                    bool alphaThresholdChanged = EditorGUI.EndChangeCheck();
                     _alphaThreshold = Mathf.Clamp01(_alphaThreshold);
+
+                    if (alphaThresholdChanged)
+                    {
+                        RegenerateEntriesUsingGlobalSettings();
+                    }
                 }
             }
 
@@ -649,6 +1028,29 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             {
                 using (new EditorGUI.IndentLevelScope())
                 {
+                    // X slider
+                    using (new EditorGUILayout.HorizontalScope())
+                    {
+                        EditorGUILayout.LabelField("X", GUILayout.Width(20));
+                        float newX = EditorGUILayout.Slider(_customPivot.x, 0f, 1f);
+                        if (!Mathf.Approximately(newX, _customPivot.x))
+                        {
+                            _customPivot = new Vector2(newX, _customPivot.y);
+                        }
+                    }
+
+                    // Y slider
+                    using (new EditorGUILayout.HorizontalScope())
+                    {
+                        EditorGUILayout.LabelField("Y", GUILayout.Width(20));
+                        float newY = EditorGUILayout.Slider(_customPivot.y, 0f, 1f);
+                        if (!Mathf.Approximately(newY, _customPivot.y))
+                        {
+                            _customPivot = new Vector2(_customPivot.x, newY);
+                        }
+                    }
+
+                    // Combined Vector2Field for direct input with clamping
                     EditorGUILayout.PropertyField(
                         _customPivotProperty,
                         new GUIContent(
@@ -669,6 +1071,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             EditorGUILayout.Space(2);
             EditorGUILayout.LabelField("Auto-Detection Algorithm", EditorStyles.miniBoldLabel);
 
+            EditorGUI.BeginChangeCheck();
             EditorGUILayout.PropertyField(
                 _autoDetectionAlgorithmProperty,
                 new GUIContent(
@@ -682,39 +1085,53 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                         + "RegionGrowing: Grows regions from local maxima."
                 )
             );
+            bool algorithmChanged = EditorGUI.EndChangeCheck();
 
-            if (_autoDetectionAlgorithm == AutoDetectionAlgorithm.UniformGrid)
+            bool expectedCountChanged = false;
+            bool isUniformGrid = _autoDetectionAlgorithm == AutoDetectionAlgorithm.UniformGrid;
+            EditorGUI.BeginChangeCheck();
+            EditorGUILayout.PropertyField(
+                _expectedSpriteCountHintProperty,
+                new GUIContent(
+                    isUniformGrid ? "Expected Sprite Count" : "Expected Sprite Count (Recommended)",
+                    isUniformGrid
+                        ? "Number of sprites in the sheet. Required for UniformGrid algorithm."
+                        : "Number of sprites in the sheet. When set, algorithms use this to find the best grid that produces exactly this many cells. Highly recommended for accurate results."
+                )
+            );
+            expectedCountChanged = EditorGUI.EndChangeCheck();
+            _expectedSpriteCountHint = Mathf.Max(-1, _expectedSpriteCountHint);
+
+            if (_expectedSpriteCountHint <= 0)
             {
-                EditorGUILayout.PropertyField(
-                    _expectedSpriteCountHintProperty,
-                    new GUIContent(
-                        "Expected Sprite Count",
-                        "Number of sprites in the sheet. Required for UniformGrid algorithm."
-                    )
+                EditorGUILayout.HelpBox(
+                    isUniformGrid
+                        ? "UniformGrid requires a valid expected sprite count (> 0)."
+                        : "Setting expected sprite count improves detection accuracy. The algorithm will find a grid that produces exactly this many cells.",
+                    isUniformGrid ? MessageType.Warning : MessageType.Info
                 );
-                _expectedSpriteCountHint = Mathf.Max(-1, _expectedSpriteCountHint);
-
-                if (_expectedSpriteCountHint <= 0)
-                {
-                    EditorGUILayout.HelpBox(
-                        "UniformGrid requires a valid expected sprite count (> 0).",
-                        MessageType.Warning
-                    );
-                }
             }
-            else
+
+            EditorGUI.BeginChangeCheck();
+            EditorGUILayout.PropertyField(
+                _snapToTextureDivisorProperty,
+                new GUIContent(
+                    "Snap to Divisor",
+                    "When enabled, adjusts cell sizes to be exact divisors of texture dimensions, "
+                        + "using transparency analysis to handle remainders intelligently."
+                )
+            );
+            bool snapChanged = EditorGUI.EndChangeCheck();
+
+            if (algorithmChanged || expectedCountChanged || snapChanged)
             {
-                using (new EditorGUI.IndentLevelScope())
+                if (DiagnosticsEnabled)
                 {
-                    EditorGUILayout.PropertyField(
-                        _expectedSpriteCountHintProperty,
-                        new GUIContent(
-                            "Expected Sprite Count (Optional)",
-                            "Optional hint used as fallback. -1 means not set."
-                        )
+                    Debug.Log(
+                        $"[SpriteSheetExtractor] DrawAutoDetectionAlgorithmUI: settings changed (algorithmChanged={algorithmChanged}, expectedCountChanged={expectedCountChanged}, snapChanged={snapChanged}), calling RegenerateEntriesUsingGlobalSettings"
                     );
-                    _expectedSpriteCountHint = Mathf.Max(-1, _expectedSpriteCountHint);
                 }
+                RegenerateEntriesUsingGlobalSettings();
             }
         }
 
@@ -845,40 +1262,57 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 )
             );
 
-            bool previewSizeModeChanged = _lastPreviewSizeMode != _previewSizeMode;
-            bool extractionModeChanged = _lastExtractionMode != _extractionMode;
+            // Use SerializedProperty values for comparison because backing fields aren't updated
+            // until ApplyModifiedProperties() is called at the end of OnGUI
+            PreviewSizeMode currentPreviewSizeMode = (PreviewSizeMode)
+                _previewSizeModeProperty.enumValueIndex;
+            ExtractionMode currentExtractionMode = (ExtractionMode)
+                _extractionModeProperty.enumValueIndex;
+            bool previewSizeModeChanged = _lastPreviewSizeMode != currentPreviewSizeMode;
+            bool extractionModeChanged = _lastExtractionMode != currentExtractionMode;
 
-            if ((previewSizeModeChanged || extractionModeChanged) && !_previewRegenerationScheduled)
+            if (previewSizeModeChanged && !extractionModeChanged && !_previewRegenerationScheduled)
             {
-                _lastPreviewSizeMode = _previewSizeMode;
-                _lastExtractionMode = _extractionMode;
+                _lastPreviewSizeMode = currentPreviewSizeMode;
+                _previewRegenerationScheduled = true;
+                EditorApplication.delayCall += RegeneratePreviewTexturesOnly;
+            }
+            else if (extractionModeChanged && !_previewRegenerationScheduled)
+            {
+                _lastPreviewSizeMode = currentPreviewSizeMode;
+                _lastExtractionMode = currentExtractionMode;
                 _previewRegenerationScheduled = true;
                 EditorApplication.delayCall += RegenerateAllPreviewTextures;
             }
 
-            bool showGridOverlayOption = AnySheetUsesGridBasedExtraction();
-            if (showGridOverlayOption)
+            EditorGUILayout.PropertyField(
+                _showOverlayProperty,
+                new GUIContent(
+                    "Show Overlay",
+                    "Default setting for displaying sprite bounds outline on source texture previews. Can be overridden per-sheet."
+                )
+            );
+            // Use _showOverlayProperty.boolValue for comparison because _showOverlay isn't updated
+            // until ApplyModifiedProperties() is called at the end of OnGUI
+            if (_lastShowOverlay != _showOverlayProperty.boolValue)
+            {
+                _lastShowOverlay = _showOverlayProperty.boolValue;
+                Repaint();
+            }
+            if (_showOverlayProperty.boolValue)
             {
                 EditorGUILayout.PropertyField(
-                    _showGridOverlayProperty,
-                    new GUIContent(
-                        "Show Grid Overlay",
-                        "Display grid lines on source texture previews."
-                    )
+                    _overlayColorProperty,
+                    new GUIContent("Overlay Color", "Color of the overlay lines.")
                 );
-                if (_showGridOverlay)
-                {
-                    EditorGUILayout.PropertyField(
-                        _gridLineColorProperty,
-                        new GUIContent("Grid Line Color", "Color of the grid overlay lines.")
-                    );
-                }
             }
 
-            _scrollPosition = EditorGUILayout.BeginScrollView(
-                _scrollPosition,
-                GUILayout.MaxHeight(400)
+            EditorGUILayout.PropertyField(
+                _pivotMarkerColorProperty,
+                new GUIContent("Pivot Marker Color", "Color for pivot position crosshairs.")
             );
+
+            _scrollPosition = EditorGUILayout.BeginScrollView(_scrollPosition);
             try
             {
                 for (int i = 0; i < _discoveredSheets.Count; ++i)
@@ -941,7 +1375,9 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 entry._paddingTopOverride = _paddingTop;
                 entry._paddingBottomOverride = _paddingBottom;
                 entry._alphaThresholdOverride = _alphaThreshold;
-                entry._showGridOverlayOverride = _showGridOverlay;
+                entry._showOverlayOverride = _showOverlay;
+                entry._usePivotMarkerColorOverride = false;
+                entry._pivotMarkerColorOverride = _pivotMarkerColor;
             }
 
             Repaint();
@@ -988,6 +1424,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             using (new EditorGUILayout.VerticalScope("box"))
             {
                 int spriteCount = entry._sprites != null ? entry._sprites.Count : 0;
+                bool isStale = IsEntryStale(entry);
 
                 using (new EditorGUILayout.HorizontalScope())
                 {
@@ -996,9 +1433,13 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                         GUILayout.Width(20)
                     );
 
+                    string entryLabel = isStale
+                        ? $"{Path.GetFileName(entry._assetPath)} ({spriteCount} sprites) (stale)"
+                        : $"{Path.GetFileName(entry._assetPath)} ({spriteCount} sprites)";
+
                     entry._isExpanded = EditorGUILayout.Foldout(
                         entry._isExpanded,
-                        $"{Path.GetFileName(entry._assetPath)} ({spriteCount} sprites)",
+                        entryLabel,
                         true
                     );
 
@@ -1022,52 +1463,13 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
 
                 if (entry._isExpanded)
                 {
-                    ExtractionMode effectiveMode = GetEffectiveExtractionMode(entry);
-                    bool isGridBased =
-                        effectiveMode == ExtractionMode.GridBased
-                        || effectiveMode == ExtractionMode.PaddedGrid;
-
                     using (new EditorGUI.IndentLevelScope())
                     {
-                        using (new EditorGUILayout.HorizontalScope())
+                        GUILayout.Space(EditorGUI.indentLevel * 15f);
+                        if (GUILayout.Button("Preview Slicing", GUILayout.Width(120)))
                         {
-                            GUILayout.Space(EditorGUI.indentLevel * 15f);
-                            if (GUILayout.Button("Preview Slicing", GUILayout.Width(120)))
-                            {
-                                entry._sourcePreviewExpanded = true;
-                                if (isGridBased)
-                                {
-                                    if (entry._useGlobalSettings)
-                                    {
-                                        _showGridOverlayProperty.boolValue = true;
-                                    }
-                                    else
-                                    {
-                                        entry._showGridOverlayOverride = true;
-                                    }
-                                }
-                                Repaint();
-                            }
-
-                            if (isGridBased)
-                            {
-                                bool currentOverlay = GetEffectiveShowGridOverlay(entry);
-                                bool newOverlay = GUILayout.Toggle(
-                                    currentOverlay,
-                                    "Show Grid Overlay"
-                                );
-                                if (newOverlay != currentOverlay)
-                                {
-                                    if (entry._useGlobalSettings)
-                                    {
-                                        _showGridOverlayProperty.boolValue = newOverlay;
-                                    }
-                                    else
-                                    {
-                                        entry._showGridOverlayOverride = newOverlay;
-                                    }
-                                }
-                            }
+                            entry._sourcePreviewExpanded = true;
+                            Repaint();
                         }
                     }
                 }
@@ -1093,6 +1495,51 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                                 {
                                     entry._sprites[i]._isSelected = false;
                                 }
+                            }
+
+                            GUILayout.FlexibleSpace();
+
+                            if (
+                                GUILayout.Button(
+                                    new GUIContent(
+                                        "Enable All Pivots",
+                                        "Enable pivot override for all sprites, copying current effective pivot as starting value"
+                                    ),
+                                    GUILayout.Width(110)
+                                )
+                            )
+                            {
+                                PivotMode effectiveMode = GetEffectivePivotMode(entry);
+                                Vector2 effectivePivot = GetEffectiveCustomPivot(entry);
+
+                                for (int i = 0; i < entry._sprites.Count; ++i)
+                                {
+                                    SpriteEntryData sprite = entry._sprites[i];
+                                    if (!sprite._usePivotOverride)
+                                    {
+                                        sprite._usePivotOverride = true;
+                                        sprite._pivotModeOverride = effectiveMode;
+                                        sprite._customPivotOverride = effectivePivot;
+                                    }
+                                }
+                                Repaint();
+                            }
+
+                            if (
+                                GUILayout.Button(
+                                    new GUIContent(
+                                        "Disable All Pivots",
+                                        "Disable pivot override for all sprites (reverts to sheet/global pivot)"
+                                    ),
+                                    GUILayout.Width(115)
+                                )
+                            )
+                            {
+                                for (int i = 0; i < entry._sprites.Count; ++i)
+                                {
+                                    entry._sprites[i]._usePivotOverride = false;
+                                }
+                                Repaint();
                             }
                         }
 
@@ -1189,10 +1636,14 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
 
                     // When transitioning from global to per-sheet settings,
                     // initialize overrides from current effective values to prevent UI desync
+                    // and regenerate sprites to clear stale data from the previous mode
+                    bool regeneratedForGlobalToPerSheet = false;
                     if (previousUseGlobal && !entry._useGlobalSettings)
                     {
                         InitializeOverridesFromGlobal(entry);
-                        Repaint();
+                        // Use SchedulePreviewRegenerationForEntry to ensure overlay updates
+                        SchedulePreviewRegenerationForEntry(entry);
+                        regeneratedForGlobalToPerSheet = true;
                     }
 
                     if (!entry._useGlobalSettings)
@@ -1204,7 +1655,12 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
 
                     DrawConfigButtons(entry);
 
-                    if (previousUseGlobal != entry._useGlobalSettings)
+                    // Schedule preview regeneration when toggling between global and per-sheet settings,
+                    // but skip if we already regenerated during global-to-per-sheet transition above
+                    if (
+                        previousUseGlobal != entry._useGlobalSettings
+                        && !regeneratedForGlobalToPerSheet
+                    )
                     {
                         SchedulePreviewRegenerationForEntry(entry);
                     }
@@ -1252,6 +1708,12 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             }
         }
 
+        /// <summary>
+        /// Draws per-sheet override fields for extraction settings when global settings are disabled.
+        /// Allows configuration of extraction mode, grid options, padding, alpha threshold, and pivot.
+        /// Regenerates sprites immediately when extraction mode changes to clear stale outlines.
+        /// </summary>
+        /// <param name="entry">The sprite sheet entry to draw override fields for.</param>
         private void DrawPerSheetOverrideFields(SpriteSheetEntry entry)
         {
             ExtractionMode previousExtractionMode =
@@ -1273,6 +1735,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             {
                 using (new EditorGUI.IndentLevelScope())
                 {
+                    GridSizeMode previousGridSizeMode =
+                        entry._gridSizeModeOverride ?? _gridSizeMode;
                     entry._gridSizeModeOverride = (GridSizeMode)
                         EditorGUILayout.EnumPopup(
                             new GUIContent(
@@ -1282,9 +1746,21 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                             entry._gridSizeModeOverride ?? _gridSizeMode
                         );
 
+                    if (entry._gridSizeModeOverride.Value != previousGridSizeMode)
+                    {
+                        entry._cachedAlgorithmResult = null;
+                        // Use SchedulePreviewRegenerationForEntry to ensure overlay updates
+                        SchedulePreviewRegenerationForEntry(entry);
+                    }
+
                     GridSizeMode effectiveGridMode = entry._gridSizeModeOverride.Value;
                     if (effectiveGridMode == GridSizeMode.Manual)
                     {
+                        int previousColumns = entry._gridColumnsOverride ?? _gridColumns;
+                        int previousRows = entry._gridRowsOverride ?? _gridRows;
+                        int previousCellWidth = entry._cellWidthOverride ?? _cellWidth;
+                        int previousCellHeight = entry._cellHeightOverride ?? _cellHeight;
+
                         int gridColumnsValue = entry._gridColumnsOverride ?? _gridColumns;
                         gridColumnsValue = EditorGUILayout.IntField(
                             new GUIContent("Columns", "Number of columns in the grid."),
@@ -1318,6 +1794,97 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                             cellHeightValue
                         );
                         entry._cellHeightOverride = Mathf.Max(0, cellHeightValue);
+
+                        bool manualGridSettingsChanged =
+                            entry._gridColumnsOverride != previousColumns
+                            || entry._gridRowsOverride != previousRows
+                            || entry._cellWidthOverride != previousCellWidth
+                            || entry._cellHeightOverride != previousCellHeight;
+
+                        if (manualGridSettingsChanged)
+                        {
+                            entry._cachedAlgorithmResult = null;
+                            // Use SchedulePreviewRegenerationForEntry to ensure overlay updates
+                            SchedulePreviewRegenerationForEntry(entry);
+                        }
+                    }
+                    else if (effectiveGridMode == GridSizeMode.Auto)
+                    {
+                        AutoDetectionAlgorithm currentAlgorithm =
+                            entry._autoDetectionAlgorithmOverride ?? _autoDetectionAlgorithm;
+                        AutoDetectionAlgorithm newAlgorithm = (AutoDetectionAlgorithm)
+                            EditorGUILayout.EnumPopup(
+                                new GUIContent(
+                                    "Algorithm",
+                                    "Algorithm for automatic grid detection.\n"
+                                        + "AutoBest: Tries algorithms in order of speed, stops at 70% confidence.\n"
+                                        + "UniformGrid: Simple division (requires expected sprite count).\n"
+                                        + "BoundaryScoring: Scores grid lines by transparency.\n"
+                                        + "ClusterCentroid: Detects sprites, infers grid from spacing.\n"
+                                        + "DistanceTransform: Uses distance field peaks.\n"
+                                        + "RegionGrowing: Grows regions from local maxima."
+                                ),
+                                currentAlgorithm
+                            );
+                        if (newAlgorithm != currentAlgorithm)
+                        {
+                            entry._autoDetectionAlgorithmOverride = newAlgorithm;
+                            entry._cachedAlgorithmResult = null;
+                            // Use SchedulePreviewRegenerationForEntry to preserve preview textures
+                            // and ensure overlay updates properly when algorithm changes
+                            SchedulePreviewRegenerationForEntry(entry);
+                        }
+
+                        {
+                            bool entryIsUniformGrid =
+                                newAlgorithm == AutoDetectionAlgorithm.UniformGrid;
+                            int currentExpectedCount =
+                                entry._expectedSpriteCountOverride ?? _expectedSpriteCountHint;
+                            int newExpectedCount = EditorGUILayout.IntField(
+                                new GUIContent(
+                                    entryIsUniformGrid
+                                        ? "Expected Sprite Count"
+                                        : "Expected Sprite Count (Recommended)",
+                                    entryIsUniformGrid
+                                        ? "Number of sprites in the sheet. Required for UniformGrid algorithm."
+                                        : "Number of sprites in the sheet. When set, algorithms use this to find the best grid that produces exactly this many cells."
+                                ),
+                                currentExpectedCount
+                            );
+                            newExpectedCount = Mathf.Max(-1, newExpectedCount);
+                            if (newExpectedCount != currentExpectedCount)
+                            {
+                                entry._expectedSpriteCountOverride = newExpectedCount;
+                                entry._cachedAlgorithmResult = null;
+                                // Use SchedulePreviewRegenerationForEntry to ensure overlay updates
+                                SchedulePreviewRegenerationForEntry(entry);
+                            }
+
+                            if (newExpectedCount <= 0 && entryIsUniformGrid)
+                            {
+                                EditorGUILayout.HelpBox(
+                                    "UniformGrid requires a valid expected sprite count (> 0).",
+                                    MessageType.Warning
+                                );
+                            }
+                        }
+
+                        bool currentSnapValue =
+                            entry._snapToTextureDivisorOverride ?? _snapToTextureDivisor;
+                        bool newSnapValue = EditorGUILayout.Toggle(
+                            new GUIContent(
+                                "Snap to Divisor",
+                                "When enabled, adjusts cell sizes to be exact divisors of texture dimensions."
+                            ),
+                            currentSnapValue
+                        );
+                        if (newSnapValue != currentSnapValue)
+                        {
+                            entry._snapToTextureDivisorOverride = newSnapValue;
+                            entry._cachedAlgorithmResult = null;
+                            // Use SchedulePreviewRegenerationForEntry to ensure overlay updates
+                            SchedulePreviewRegenerationForEntry(entry);
+                        }
                     }
                 }
             }
@@ -1328,33 +1895,45 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 {
                     EditorGUILayout.LabelField("Padding", EditorStyles.miniBoldLabel);
 
-                    int paddingLeftValue = entry._paddingLeftOverride ?? _paddingLeft;
-                    paddingLeftValue = EditorGUILayout.IntField(
+                    int previousPaddingLeft = entry._paddingLeftOverride ?? _paddingLeft;
+                    int paddingLeftValue = EditorGUILayout.IntField(
                         new GUIContent("Left", "Padding from left edge of each cell."),
-                        paddingLeftValue
+                        previousPaddingLeft
                     );
                     entry._paddingLeftOverride = Mathf.Max(0, paddingLeftValue);
 
-                    int paddingRightValue = entry._paddingRightOverride ?? _paddingRight;
-                    paddingRightValue = EditorGUILayout.IntField(
+                    int previousPaddingRight = entry._paddingRightOverride ?? _paddingRight;
+                    int paddingRightValue = EditorGUILayout.IntField(
                         new GUIContent("Right", "Padding from right edge of each cell."),
-                        paddingRightValue
+                        previousPaddingRight
                     );
                     entry._paddingRightOverride = Mathf.Max(0, paddingRightValue);
 
-                    int paddingTopValue = entry._paddingTopOverride ?? _paddingTop;
-                    paddingTopValue = EditorGUILayout.IntField(
+                    int previousPaddingTop = entry._paddingTopOverride ?? _paddingTop;
+                    int paddingTopValue = EditorGUILayout.IntField(
                         new GUIContent("Top", "Padding from top edge of each cell."),
-                        paddingTopValue
+                        previousPaddingTop
                     );
                     entry._paddingTopOverride = Mathf.Max(0, paddingTopValue);
 
-                    int paddingBottomValue = entry._paddingBottomOverride ?? _paddingBottom;
-                    paddingBottomValue = EditorGUILayout.IntField(
+                    int previousPaddingBottom = entry._paddingBottomOverride ?? _paddingBottom;
+                    int paddingBottomValue = EditorGUILayout.IntField(
                         new GUIContent("Bottom", "Padding from bottom edge of each cell."),
-                        paddingBottomValue
+                        previousPaddingBottom
                     );
                     entry._paddingBottomOverride = Mathf.Max(0, paddingBottomValue);
+
+                    bool paddingChanged =
+                        previousPaddingLeft != entry._paddingLeftOverride
+                        || previousPaddingRight != entry._paddingRightOverride
+                        || previousPaddingTop != entry._paddingTopOverride
+                        || previousPaddingBottom != entry._paddingBottomOverride;
+                    if (paddingChanged)
+                    {
+                        entry._cachedAlgorithmResult = null;
+                        // Use SchedulePreviewRegenerationForEntry to ensure overlay updates
+                        SchedulePreviewRegenerationForEntry(entry);
+                    }
                 }
             }
 
@@ -1362,33 +1941,41 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             {
                 using (new EditorGUI.IndentLevelScope())
                 {
-                    float alphaThresholdValue = entry._alphaThresholdOverride ?? _alphaThreshold;
-                    alphaThresholdValue = EditorGUILayout.Slider(
+                    float currentAlphaThreshold = entry._alphaThresholdOverride ?? _alphaThreshold;
+                    float newAlphaThreshold = EditorGUILayout.Slider(
                         new GUIContent(
                             "Alpha Threshold",
                             "Pixels with alpha above this value are considered opaque. (0.0-1.0)"
                         ),
-                        alphaThresholdValue,
+                        currentAlphaThreshold,
                         0f,
                         1f
                     );
-                    entry._alphaThresholdOverride = alphaThresholdValue;
+                    if (!Mathf.Approximately(newAlphaThreshold, currentAlphaThreshold))
+                    {
+                        entry._alphaThresholdOverride = newAlphaThreshold;
+                        entry._cachedAlgorithmResult = null;
+                        // Use SchedulePreviewRegenerationForEntry to ensure overlay updates
+                        SchedulePreviewRegenerationForEntry(entry);
+                    }
                 }
             }
 
-            if (showGridOptions)
+            // Show Overlay toggle is available for ALL extraction modes, not just grid-based
+            // This allows users to see sprite bounds outlines regardless of how sprites are extracted
             {
-                using (new EditorGUI.IndentLevelScope())
+                bool currentOverlayValue = entry._showOverlayOverride ?? _showOverlay;
+                bool newOverlayValue = EditorGUILayout.Toggle(
+                    new GUIContent(
+                        "Show Overlay",
+                        "Display sprite bounds outline on the source texture preview for this specific sheet. Overrides the global setting."
+                    ),
+                    currentOverlayValue
+                );
+                if (currentOverlayValue != newOverlayValue)
                 {
-                    bool currentOverlayValue = entry._showGridOverlayOverride ?? _showGridOverlay;
-                    bool newOverlayValue = EditorGUILayout.Toggle(
-                        new GUIContent(
-                            "Show Grid Overlay",
-                            "Display grid lines on the source texture preview for this sheet."
-                        ),
-                        currentOverlayValue
-                    );
-                    entry._showGridOverlayOverride = newOverlayValue;
+                    entry._showOverlayOverride = newOverlayValue;
+                    Repaint();
                 }
             }
 
@@ -1411,6 +1998,30 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 using (new EditorGUI.IndentLevelScope())
                 {
                     Vector2 currentCustomPivot = entry._customPivotOverride ?? _customPivot;
+
+                    // X slider
+                    using (new EditorGUILayout.HorizontalScope())
+                    {
+                        EditorGUILayout.LabelField("X", GUILayout.Width(20));
+                        float newX = EditorGUILayout.Slider(currentCustomPivot.x, 0f, 1f);
+                        if (!Mathf.Approximately(newX, currentCustomPivot.x))
+                        {
+                            currentCustomPivot = new Vector2(newX, currentCustomPivot.y);
+                        }
+                    }
+
+                    // Y slider
+                    using (new EditorGUILayout.HorizontalScope())
+                    {
+                        EditorGUILayout.LabelField("Y", GUILayout.Width(20));
+                        float newY = EditorGUILayout.Slider(currentCustomPivot.y, 0f, 1f);
+                        if (!Mathf.Approximately(newY, currentCustomPivot.y))
+                        {
+                            currentCustomPivot = new Vector2(currentCustomPivot.x, newY);
+                        }
+                    }
+
+                    // Combined Vector2Field for direct input with clamping
                     Vector2 newCustomPivot = EditorGUILayout.Vector2Field(
                         new GUIContent(
                             "Custom Pivot",
@@ -1425,8 +2036,33 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 }
             }
 
-            if (previousExtractionMode != entry._extractionModeOverride)
+            entry._usePivotMarkerColorOverride = EditorGUILayout.Toggle(
+                new GUIContent(
+                    "Override Pivot Color",
+                    "Override the global pivot marker color for this sheet."
+                ),
+                entry._usePivotMarkerColorOverride
+            );
+            if (entry._usePivotMarkerColorOverride)
             {
+                using (new EditorGUI.IndentLevelScope())
+                {
+                    entry._pivotMarkerColorOverride = EditorGUILayout.ColorField(
+                        new GUIContent(
+                            "Pivot Marker Color",
+                            "Color for pivot position crosshairs on this sheet."
+                        ),
+                        entry._pivotMarkerColorOverride
+                    );
+                }
+            }
+
+            // When extraction mode changes, regenerate sprites to clear stale outlines
+            // and ensure the preview reflects the new extraction mode settings
+            if (previousExtractionMode != entry._extractionModeOverride.Value)
+            {
+                entry._cachedAlgorithmResult = null;
+                // Use SchedulePreviewRegenerationForEntry to ensure overlay updates properly
                 SchedulePreviewRegenerationForEntry(entry);
             }
         }
@@ -1463,6 +2099,22 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             }
         }
 
+        /// <summary>
+        /// Copies all extraction settings from a source sprite sheet entry to a target entry.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// This method transfers all per-entry configuration overrides including extraction mode,
+        /// grid dimensions, padding, alpha threshold, pivot settings, and auto-detection algorithm.
+        /// After copying settings, it automatically schedules preview regeneration for the target entry.
+        /// </para>
+        /// <para>
+        /// Use this method to quickly replicate configuration from one sprite sheet to another,
+        /// enabling consistent extraction settings across multiple sheets.
+        /// </para>
+        /// </remarks>
+        /// <param name="source">The sprite sheet entry to copy settings from. If null, the method returns immediately.</param>
+        /// <param name="target">The sprite sheet entry to apply settings to. If null, the method returns immediately.</param>
         internal void CopySettingsFromEntry(SpriteSheetEntry source, SpriteSheetEntry target)
         {
             if (source == null || target == null)
@@ -1482,22 +2134,61 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             target._paddingTopOverride = source._paddingTopOverride;
             target._paddingBottomOverride = source._paddingBottomOverride;
             target._alphaThresholdOverride = source._alphaThresholdOverride;
-            target._showGridOverlayOverride = source._showGridOverlayOverride;
+            target._showOverlayOverride = source._showOverlayOverride;
             target._pivotModeOverride = source._pivotModeOverride;
             target._customPivotOverride = source._customPivotOverride;
             target._autoDetectionAlgorithmOverride = source._autoDetectionAlgorithmOverride;
             target._expectedSpriteCountOverride = source._expectedSpriteCountOverride;
+            target._snapToTextureDivisorOverride = source._snapToTextureDivisorOverride;
+            target._usePivotMarkerColorOverride = source._usePivotMarkerColorOverride;
+            target._pivotMarkerColorOverride = source._pivotMarkerColorOverride;
 
             SchedulePreviewRegenerationForEntry(target);
         }
 
+        /// <summary>
+        /// Schedules preview regeneration for a sprite sheet entry while preserving existing preview textures.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// This method performs a careful sprite list repopulation that maintains visual continuity during
+        /// Unity Editor repaints. Preview textures from the old sprite list are transferred to matching
+        /// sprites in the new list based on their rects, preventing "grey question mark" artifacts that
+        /// would otherwise appear if Unity repaints during AssetDatabase operations.
+        /// </para>
+        /// <para>
+        /// The method follows this sequence:
+        /// <list type="number">
+        /// <item><description>Stores preview textures from existing sprites, keyed by rect</description></item>
+        /// <item><description>Refreshes the texture and importer references if needed</description></item>
+        /// <item><description>Repopulates sprites into a new list without modifying the original</description></item>
+        /// <item><description>Transfers matching previews to the new sprites</description></item>
+        /// <item><description>Atomically swaps the sprite lists to minimize visual disruption</description></item>
+        /// <item><description>Generates new previews for sprites that need them</description></item>
+        /// <item><description>Cleans up orphaned textures to prevent memory leaks</description></item>
+        /// </list>
+        /// </para>
+        /// </remarks>
+        /// <param name="entry">The sprite sheet entry to regenerate previews for. If null, the method returns immediately.</param>
         private void SchedulePreviewRegenerationForEntry(SpriteSheetEntry entry)
         {
             if (entry == null)
             {
+                if (DiagnosticsEnabled)
+                {
+                    Debug.Log(
+                        "[SpriteSheetExtractor] SchedulePreviewRegenerationForEntry: entry is null, returning early"
+                    );
+                }
                 return;
             }
 
+            if (DiagnosticsEnabled)
+            {
+                Debug.Log(
+                    $"[SpriteSheetExtractor] SchedulePreviewRegenerationForEntry: START for '{entry._assetPath}', setting _regenerationInProgress=true"
+                );
+            }
             _regenerationInProgress = true;
             // Store preview textures from current sprites, keyed by rect for transfer
             using PooledResource<Dictionary<Rect, Texture2D>> rectToPreviewLease = DictionaryBuffer<
@@ -1606,6 +2297,17 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                     GenerateAllPreviewTexturesInBatch(singleEntryList);
                 }
 
+                // Update cache key to mark entry as fresh (not stale)
+                entry._needsRegeneration = false;
+                entry._lastCacheKey = entry.GetBoundsCacheKey(this);
+                entry._lastAccessTime = DateTime.UtcNow.Ticks;
+                if (DiagnosticsEnabled)
+                {
+                    Debug.Log(
+                        $"[SpriteSheetExtractor] SchedulePreviewRegenerationForEntry: updated cache for '{entry._assetPath}', newCacheKey={entry._lastCacheKey}"
+                    );
+                }
+
                 Repaint();
 
                 // Schedule an additional delayed repaint to ensure the UI updates after any
@@ -1643,10 +2345,33 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 {
                     DestroyImmediate(orphanedTextures[i]);
                 }
+                if (DiagnosticsEnabled)
+                {
+                    Debug.Log(
+                        "[SpriteSheetExtractor] SchedulePreviewRegenerationForEntry: END, setting _regenerationInProgress=false"
+                    );
+                }
                 _regenerationInProgress = false;
             }
         }
 
+        /// <summary>
+        /// Clears and repopulates the sprite list for a sprite sheet entry based on its effective extraction mode.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// This method is called by <see cref="RegenerateSpritesForEntry"/> to perform the actual sprite
+        /// repopulation. It first clears the existing sprite list (or creates a new one if null), then
+        /// populates it based on the entry's effective extraction mode (GridBased, PaddedGrid,
+        /// AlphaDetection, or FromMetadata).
+        /// </para>
+        /// <para>
+        /// Unlike <see cref="SchedulePreviewRegenerationForEntry"/>, this method does not preserve
+        /// preview textures during repopulation. Use this method for immediate sprite list updates
+        /// where preview continuity is not required.
+        /// </para>
+        /// </remarks>
+        /// <param name="entry">The sprite sheet entry to repopulate. If null or has no texture, the method returns immediately.</param>
         internal void RepopulateSpritesForEntry(SpriteSheetEntry entry)
         {
             if (entry == null || entry._texture == null)
@@ -1681,6 +2406,316 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                     PopulateSpritesFromMetadata(entry, entry._assetPath, entry._importer);
                     break;
             }
+        }
+
+        /// <summary>
+        /// Regenerates sprites for a sprite sheet entry based on its effective extraction mode.
+        /// Clears the existing sprite list, repopulates it, and triggers a repaint.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// Use this method when the extraction mode changes (e.g., switching from global to per-sheet
+        /// settings or changing the extraction mode override) to ensure the sprite list reflects
+        /// the new mode immediately.
+        /// </para>
+        /// <para>
+        /// This method provides immediate visual feedback by clearing stale sprite data before
+        /// repopulating, preventing outdated rectangles from being drawn in the overlay.
+        /// </para>
+        /// </remarks>
+        /// <param name="entry">The sprite sheet entry to regenerate. If null, the method returns immediately.</param>
+        private void RegenerateSpritesForEntry(SpriteSheetEntry entry)
+        {
+            if (entry == null)
+            {
+                if (DiagnosticsEnabled)
+                {
+                    Debug.Log(
+                        "[SpriteSheetExtractor] RegenerateSpritesForEntry: entry is null, returning early"
+                    );
+                }
+                return;
+            }
+
+            if (DiagnosticsEnabled)
+            {
+                Debug.Log(
+                    $"[SpriteSheetExtractor] RegenerateSpritesForEntry: START for '{entry._assetPath}'"
+                );
+            }
+            RepopulateSpritesForEntry(entry);
+            entry._needsRegeneration = false;
+            entry._lastCacheKey = entry.GetBoundsCacheKey(this);
+            entry._lastAccessTime = DateTime.UtcNow.Ticks;
+            if (DiagnosticsEnabled)
+            {
+                Debug.Log(
+                    $"[SpriteSheetExtractor] RegenerateSpritesForEntry: END for '{entry._assetPath}', spriteCount={entry._sprites?.Count ?? 0}, newCacheKey={entry._lastCacheKey}"
+                );
+            }
+            Repaint();
+        }
+
+        /// <summary>
+        /// Marks a sprite sheet entry as needing regeneration.
+        /// The actual regeneration is deferred until the entry is next accessed.
+        /// </summary>
+        /// <param name="entry">The sprite sheet entry to invalidate. If null, the method returns immediately.</param>
+        internal void InvalidateEntry(SpriteSheetEntry entry)
+        {
+            if (entry == null)
+            {
+                return;
+            }
+
+            if (DiagnosticsEnabled)
+            {
+                Debug.Log(
+                    $"[SpriteSheetExtractor] InvalidateEntry: marking '{entry._assetPath}' for regeneration"
+                );
+            }
+
+            entry._needsRegeneration = true;
+            entry._cachedAlgorithmResult = null;
+            entry._lastAlgorithmDisplayText = null;
+        }
+
+        /// <summary>
+        /// Checks if an entry's cached sprite data is stale and needs regeneration.
+        /// </summary>
+        /// <param name="entry">The sprite sheet entry to check.</param>
+        /// <returns>True if the entry's cache is stale, false otherwise.</returns>
+        internal bool IsEntryStale(SpriteSheetEntry entry)
+        {
+            if (entry == null)
+            {
+                return false;
+            }
+
+            if (entry._needsRegeneration)
+            {
+                if (DiagnosticsEnabled)
+                {
+                    Debug.Log(
+                        $"[SpriteSheetExtractor] IsEntryStale: '{entry._assetPath}' is stale because _needsRegeneration=true"
+                    );
+                }
+                return true;
+            }
+
+            int currentCacheKey = entry.GetBoundsCacheKey(this);
+            bool isStale = entry._lastCacheKey != currentCacheKey;
+            if (isStale && DiagnosticsEnabled)
+            {
+                Debug.Log(
+                    $"[SpriteSheetExtractor] IsEntryStale: '{entry._assetPath}' is stale because cacheKey mismatch (stored={entry._lastCacheKey}, current={currentCacheKey})"
+                );
+            }
+            return isStale;
+        }
+
+        /// <summary>
+        /// Checks if an entry's cache is stale and regenerates if needed.
+        /// Call this before accessing sprite data to ensure freshness.
+        /// </summary>
+        /// <param name="entry">The sprite sheet entry to check.</param>
+        private void CheckAndRegenerateIfNeeded(SpriteSheetEntry entry)
+        {
+            if (entry == null)
+            {
+                return;
+            }
+
+            int currentCacheKey = entry.GetBoundsCacheKey(this);
+            if (entry._needsRegeneration || entry._lastCacheKey != currentCacheKey)
+            {
+                if (DiagnosticsEnabled)
+                {
+                    Debug.Log(
+                        $"[SpriteSheetExtractor] CheckAndRegenerateIfNeeded: regenerating '{entry._assetPath}' (needsRegeneration={entry._needsRegeneration}, cacheKeyMismatch={entry._lastCacheKey != currentCacheKey})"
+                    );
+                }
+                RegenerateSpritesForEntry(entry);
+                CheckAndEvictLRUCache();
+            }
+            else
+            {
+                entry._lastAccessTime = DateTime.UtcNow.Ticks;
+            }
+        }
+
+        /// <summary>
+        /// Invalidates all entries that are using global settings.
+        /// Call this when global extraction settings change.
+        /// </summary>
+        internal void InvalidateEntriesUsingGlobalSettings()
+        {
+            if (_discoveredSheets == null)
+            {
+                return;
+            }
+
+            for (int i = 0; i < _discoveredSheets.Count; ++i)
+            {
+                SpriteSheetEntry entry = _discoveredSheets[i];
+                if (entry != null && entry._useGlobalSettings)
+                {
+                    InvalidateEntry(entry);
+                }
+            }
+
+            Repaint();
+        }
+
+        /// <summary>
+        /// Regenerates previews for all entries that are using global settings.
+        /// Call this when global extraction settings change to immediately update previews.
+        /// </summary>
+        private void RegenerateEntriesUsingGlobalSettings()
+        {
+            if (DiagnosticsEnabled)
+            {
+                Debug.Log("[SpriteSheetExtractor] RegenerateEntriesUsingGlobalSettings: START");
+            }
+            if (_discoveredSheets == null)
+            {
+                if (DiagnosticsEnabled)
+                {
+                    Debug.Log(
+                        "[SpriteSheetExtractor] RegenerateEntriesUsingGlobalSettings: _discoveredSheets is null, returning early"
+                    );
+                }
+                return;
+            }
+
+            int regeneratedCount = 0;
+            for (int i = 0; i < _discoveredSheets.Count; ++i)
+            {
+                SpriteSheetEntry entry = _discoveredSheets[i];
+                if (entry != null && entry._useGlobalSettings)
+                {
+                    if (DiagnosticsEnabled)
+                    {
+                        Debug.Log(
+                            $"[SpriteSheetExtractor] RegenerateEntriesUsingGlobalSettings: regenerating entry '{entry._assetPath}'"
+                        );
+                    }
+                    regeneratedCount++;
+                    entry._cachedAlgorithmResult = null;
+                    // Use SchedulePreviewRegenerationForEntry instead of RegenerateSpritesForEntry
+                    // to preserve and regenerate preview textures when algorithm changes
+                    SchedulePreviewRegenerationForEntry(entry);
+                }
+            }
+            if (DiagnosticsEnabled)
+            {
+                Debug.Log(
+                    $"[SpriteSheetExtractor] RegenerateEntriesUsingGlobalSettings: END, regenerated {regeneratedCount} entries"
+                );
+            }
+        }
+
+        /// <summary>
+        /// Invalidates all discovered entries regardless of settings mode.
+        /// Call this when texture-affecting settings change.
+        /// </summary>
+        internal void InvalidateAllEntries()
+        {
+            if (_discoveredSheets == null)
+            {
+                return;
+            }
+
+            for (int i = 0; i < _discoveredSheets.Count; ++i)
+            {
+                SpriteSheetEntry entry = _discoveredSheets[i];
+                if (entry != null)
+                {
+                    InvalidateEntry(entry);
+                }
+            }
+
+            Repaint();
+        }
+
+        /// <summary>
+        /// Checks cache size and evicts least recently used entries if limit is exceeded.
+        /// Entries are evicted by clearing their sprite lists and preview textures.
+        /// </summary>
+        internal void CheckAndEvictLRUCache()
+        {
+            if (_discoveredSheets == null || _discoveredSheets.Count <= MaxCachedEntries)
+            {
+                return;
+            }
+
+            int cachedCount = 0;
+            for (int i = 0; i < _discoveredSheets.Count; ++i)
+            {
+                SpriteSheetEntry entry = _discoveredSheets[i];
+                if (entry != null && entry._sprites != null && entry._sprites.Count > 0)
+                {
+                    ++cachedCount;
+                }
+            }
+
+            if (cachedCount <= MaxCachedEntries)
+            {
+                return;
+            }
+
+            int entriesToEvict = cachedCount - MaxCachedEntries;
+
+            using PooledResource<List<SpriteSheetEntry>> sortedEntriesLease =
+                Buffers<SpriteSheetEntry>.List.Get(out List<SpriteSheetEntry> sortedEntries);
+
+            for (int i = 0; i < _discoveredSheets.Count; ++i)
+            {
+                SpriteSheetEntry entry = _discoveredSheets[i];
+                if (entry != null && entry._sprites != null && entry._sprites.Count > 0)
+                {
+                    sortedEntries.Add(entry);
+                }
+            }
+
+            sortedEntries.Sort((a, b) => a._lastAccessTime.CompareTo(b._lastAccessTime));
+
+            for (int i = 0; i < entriesToEvict && i < sortedEntries.Count; ++i)
+            {
+                SpriteSheetEntry entry = sortedEntries[i];
+                EvictEntry(entry);
+            }
+        }
+
+        /// <summary>
+        /// Evicts a single entry by clearing its sprite list and preview textures.
+        /// The entry remains in the discovered sheets list but its cache is cleared.
+        /// </summary>
+        /// <param name="entry">The entry to evict.</param>
+        private void EvictEntry(SpriteSheetEntry entry)
+        {
+            if (entry == null)
+            {
+                return;
+            }
+
+            if (entry._sprites != null)
+            {
+                for (int i = 0; i < entry._sprites.Count; ++i)
+                {
+                    SpriteEntryData sprite = entry._sprites[i];
+                    if (sprite != null && sprite._previewTexture != null)
+                    {
+                        DestroyImmediate(sprite._previewTexture);
+                        sprite._previewTexture = null;
+                    }
+                }
+                entry._sprites.Clear();
+            }
+
+            entry._needsRegeneration = true;
+            entry._cachedAlgorithmResult = null;
+            entry._lastAlgorithmDisplayText = null;
         }
 
         /// <summary>
@@ -1744,6 +2779,22 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 return;
             }
 
+            entry._editPivotsMode = EditorGUILayout.Toggle(
+                new GUIContent(
+                    "Edit Pivots",
+                    "Click empty area: Set sheet pivot | Click sprite: Set sprite pivot | Drag marker: Fine-tune"
+                ),
+                entry._editPivotsMode
+            );
+
+            if (entry._editPivotsMode)
+            {
+                EditorGUILayout.HelpBox(
+                    "Click empty area: Set sheet pivot | Click sprite: Set sprite pivot | Drag marker: Fine-tune",
+                    MessageType.Info
+                );
+            }
+
             int textureWidth = entry._texture.width;
             int textureHeight = entry._texture.height;
 
@@ -1760,37 +2811,293 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
 
             Rect previewRect = GUILayoutUtility.GetRect(displayWidth, displayHeight);
 
-            GUI.DrawTexture(previewRect, entry._texture, ScaleMode.ScaleToFit);
+            bool isStale = IsEntryStale(entry);
 
-            ExtractionMode effectiveExtractionMode = GetEffectiveExtractionMode(entry);
-            bool effectiveShowGridOverlay = GetEffectiveShowGridOverlay(entry);
-            bool shouldDrawGrid =
-                effectiveShowGridOverlay
-                && (
-                    effectiveExtractionMode == ExtractionMode.GridBased
-                    || effectiveExtractionMode == ExtractionMode.PaddedGrid
-                );
-            if (shouldDrawGrid)
+            Color previousColor = GUI.color;
+            if (isStale)
             {
-                DrawGridOverlay(
-                    previewRect,
-                    entry._texture.width,
-                    entry._texture.height,
-                    scale,
-                    entry
-                );
+                GUI.color = new Color(1f, 1f, 1f, 0.5f);
             }
 
-            // For non-grid modes, draw sprite rectangles if source preview is expanded
-            if (!shouldDrawGrid && entry._sprites != null && entry._sprites.Count > 0)
+            GUI.DrawTexture(previewRect, entry._texture, ScaleMode.ScaleToFit);
+
+            if (isStale)
             {
-                DrawSpriteRectsOverlay(
+                GUI.color = previousColor;
+                GUIStyle centerStyle = new GUIStyle(EditorStyles.boldLabel)
+                {
+                    alignment = TextAnchor.MiddleCenter,
+                    normal = { textColor = new Color(1f, 0.8f, 0f, 0.9f) },
+                };
+                GUI.Label(previewRect, "Regenerating...", centerStyle);
+            }
+
+            bool effectiveShowOverlay = GetEffectiveShowOverlay(entry);
+            if (effectiveShowOverlay)
+            {
+                if (entry._sprites != null && entry._sprites.Count > 0)
+                {
+                    DrawSpriteBoundsOverlay(
+                        previewRect,
+                        entry._texture.width,
+                        entry._texture.height,
+                        scale,
+                        entry
+                    );
+                }
+                else
+                {
+                    // Draw grid overlay based on current grid settings when sprites aren't available
+                    DrawGridOverlayFromSettings(
+                        previewRect,
+                        textureWidth,
+                        textureHeight,
+                        scale,
+                        entry
+                    );
+                }
+            }
+
+            if (entry._editPivotsMode)
+            {
+                Rect textureRect = CalculateTextureRectWithinPreview(
                     previewRect,
-                    entry._texture.width,
-                    entry._texture.height,
-                    scale,
-                    entry
+                    textureWidth,
+                    textureHeight,
+                    scale
                 );
+
+                HandlePivotEditingEvents(entry, textureRect, textureHeight, scale);
+                DrawSheetLevelPivotMarker(entry, textureRect);
+            }
+        }
+
+        /// <summary>
+        /// Handles mouse events for pivot editing when edit mode is active.
+        /// </summary>
+        private void HandlePivotEditingEvents(
+            SpriteSheetEntry entry,
+            Rect textureRect,
+            int textureHeight,
+            float scale
+        )
+        {
+            Event current = Event.current;
+            Vector2 mousePosition = current.mousePosition;
+
+            if (!textureRect.Contains(mousePosition) && !_isDraggingPivot)
+            {
+                ClearPivotHoverState();
+                return;
+            }
+
+            int controlId = GUIUtility.GetControlID(FocusType.Passive);
+
+            switch (current.GetTypeForControl(controlId))
+            {
+                case EventType.MouseDown:
+                    if (current.button == 0 && textureRect.Contains(mousePosition))
+                    {
+                        HandlePivotMouseDown(
+                            entry,
+                            textureRect,
+                            textureHeight,
+                            scale,
+                            mousePosition,
+                            controlId
+                        );
+                        current.Use();
+                    }
+                    break;
+
+                case EventType.MouseDrag:
+                    if (_isDraggingPivot && GUIUtility.hotControl == controlId)
+                    {
+                        HandlePivotMouseDrag(
+                            entry,
+                            textureRect,
+                            textureHeight,
+                            scale,
+                            mousePosition
+                        );
+                        current.Use();
+                    }
+                    break;
+
+                case EventType.MouseUp:
+                    if (_isDraggingPivot && GUIUtility.hotControl == controlId)
+                    {
+                        HandlePivotMouseUp();
+                        current.Use();
+                    }
+                    break;
+
+                case EventType.MouseMove:
+                    UpdatePivotHoverState(entry, textureRect, textureHeight, scale, mousePosition);
+                    break;
+
+                case EventType.Repaint:
+                    if (_isHoveringPivot || _isDraggingPivot)
+                    {
+                        EditorGUIUtility.AddCursorRect(textureRect, MouseCursor.Pan);
+                    }
+                    break;
+            }
+        }
+
+        private void HandlePivotMouseDown(
+            SpriteSheetEntry entry,
+            Rect textureRect,
+            int textureHeight,
+            float scale,
+            Vector2 mousePosition,
+            int controlId
+        )
+        {
+            GUIUtility.hotControl = controlId;
+            _isDraggingPivot = true;
+            _draggedPivotTarget = entry;
+
+            int spriteIndex = FindSpriteAtScreenPosition(
+                mousePosition,
+                textureRect,
+                entry,
+                textureHeight,
+                scale
+            );
+
+            if (spriteIndex >= 0)
+            {
+                _draggedPivotType = PivotDragType.Sprite;
+                _draggedSpriteIndex = spriteIndex;
+
+                SpriteEntryData sprite = entry._sprites[spriteIndex];
+                Rect spriteScreenRect = ConvertTextureRectToScreenRect(
+                    textureRect,
+                    sprite._rect,
+                    textureHeight,
+                    scale
+                );
+                Vector2 normalizedPivot = CalculateNormalizedPositionInSprite(
+                    mousePosition,
+                    spriteScreenRect
+                );
+
+                sprite._usePivotOverride = true;
+                sprite._pivotModeOverride = PivotMode.Custom;
+                sprite._customPivotOverride = normalizedPivot;
+            }
+            else
+            {
+                _draggedPivotType = PivotDragType.Sheet;
+                _draggedSpriteIndex = -1;
+
+                Vector2 normalizedPivot = CalculateNormalizedPositionInSprite(
+                    mousePosition,
+                    textureRect
+                );
+
+                entry._useGlobalSettings = false;
+                entry._pivotModeOverride = PivotMode.Custom;
+                entry._customPivotOverride = normalizedPivot;
+            }
+
+            Repaint();
+        }
+
+        private void HandlePivotMouseDrag(
+            SpriteSheetEntry entry,
+            Rect textureRect,
+            int textureHeight,
+            float scale,
+            Vector2 mousePosition
+        )
+        {
+            if (_draggedPivotTarget != entry)
+            {
+                return;
+            }
+
+            if (_draggedPivotType == PivotDragType.Sprite)
+            {
+                if (_draggedSpriteIndex >= 0 && _draggedSpriteIndex < entry._sprites.Count)
+                {
+                    SpriteEntryData sprite = entry._sprites[_draggedSpriteIndex];
+                    Rect spriteScreenRect = ConvertTextureRectToScreenRect(
+                        textureRect,
+                        sprite._rect,
+                        textureHeight,
+                        scale
+                    );
+                    Vector2 normalizedPivot = CalculateNormalizedPositionInSprite(
+                        mousePosition,
+                        spriteScreenRect
+                    );
+
+                    sprite._customPivotOverride = normalizedPivot;
+                }
+            }
+            else if (_draggedPivotType == PivotDragType.Sheet)
+            {
+                Vector2 normalizedPivot = CalculateNormalizedPositionInSprite(
+                    mousePosition,
+                    textureRect
+                );
+
+                entry._customPivotOverride = normalizedPivot;
+            }
+
+            Repaint();
+        }
+
+        private void HandlePivotMouseUp()
+        {
+            GUIUtility.hotControl = 0;
+            _isDraggingPivot = false;
+            _draggedPivotTarget = null;
+#pragma warning disable CS0618 // PivotDragType.None is Obsolete
+            _draggedPivotType = PivotDragType.None;
+#pragma warning restore CS0618
+            _draggedSpriteIndex = -1;
+            Repaint();
+        }
+
+        private void UpdatePivotHoverState(
+            SpriteSheetEntry entry,
+            Rect textureRect,
+            int textureHeight,
+            float scale,
+            Vector2 mousePosition
+        )
+        {
+            int spriteIndex = FindSpriteAtScreenPosition(
+                mousePosition,
+                textureRect,
+                entry,
+                textureHeight,
+                scale
+            );
+
+            bool wasHovering = _isHoveringPivot;
+            int previousSpriteIndex = _hoveredSpriteIndex;
+            _isHoveringPivot = true;
+            _hoveredPivotTarget = entry;
+            _hoveredSpriteIndex = spriteIndex;
+
+            if (wasHovering != _isHoveringPivot || previousSpriteIndex != _hoveredSpriteIndex)
+            {
+                Repaint();
+            }
+        }
+
+        private void ClearPivotHoverState()
+        {
+            if (_isHoveringPivot)
+            {
+                _isHoveringPivot = false;
+                _hoveredPivotTarget = null;
+                _hoveredSpriteIndex = -1;
+                Repaint();
             }
         }
 
@@ -1876,46 +3183,102 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 cellWidth = 0;
                 cellHeight = 0;
 
-                if (pixels != null && pixels.Length == textureWidth * textureHeight)
+                // Try to use cached result if available and valid (check BEFORE pixels check
+                // so cached results work even when called without pixel data)
+                if (entry != null && entry._cachedAlgorithmResult.HasValue)
                 {
-                    // Try to use cached result if available and valid
-                    if (entry != null && entry._cachedAlgorithmResult.HasValue)
+                    SpriteSheetAlgorithms.AlgorithmResult cached = entry
+                        ._cachedAlgorithmResult
+                        .Value;
+                    if (cached.IsValid)
                     {
-                        SpriteSheetAlgorithms.AlgorithmResult cached = entry
-                            ._cachedAlgorithmResult
-                            .Value;
-                        if (cached.IsValid)
-                        {
-                            cellWidth = cached.CellWidth;
-                            cellHeight = cached.CellHeight;
-                            detectedFromAlgorithm = true;
-                            entry._lastAlgorithmDisplayText =
-                                $"{cached.Algorithm}: {cached.Confidence:P0}";
-                        }
+                        cellWidth = cached.CellWidth;
+                        cellHeight = cached.CellHeight;
+                        detectedFromAlgorithm = true;
+                        entry._lastAlgorithmDisplayText =
+                            $"{cached.Algorithm}: {cached.Confidence:P0}";
+                    }
+                }
+
+                // If no cached result and pixels available, run algorithm detection
+                if (
+                    !detectedFromAlgorithm
+                    && pixels != null
+                    && pixels.Length == textureWidth * textureHeight
+                )
+                {
+                    bool snapToTextureDivisor = GetEffectiveSnapToTextureDivisor(entry);
+                    SpriteSheetAlgorithms.AlgorithmResult result = SpriteSheetAlgorithms.DetectGrid(
+                        pixels,
+                        textureWidth,
+                        textureHeight,
+                        effectiveAlphaThreshold,
+                        algorithm,
+                        expectedSpriteCount,
+                        snapToTextureDivisor
+                    );
+
+                    if (DiagnosticsEnabled && entry != null)
+                    {
+                        Debug.Log(
+                            $"[SpriteSheetExtractor] Algorithm detection for '{Path.GetFileName(entry._assetPath)}': algorithm={algorithm}, expectedSpriteCount={expectedSpriteCount}, textureSize={textureWidth}x{textureHeight}, isValid={result.IsValid}, cellSize={result.CellWidth}x{result.CellHeight}, confidence={result.Confidence:P0}"
+                        );
                     }
 
-                    if (!detectedFromAlgorithm)
+                    if (result.IsValid)
                     {
-                        SpriteSheetAlgorithms.AlgorithmResult result =
-                            SpriteSheetAlgorithms.DetectGrid(
+                        cellWidth = result.CellWidth;
+                        cellHeight = result.CellHeight;
+                        detectedFromAlgorithm = true;
+                        if (entry != null)
+                        {
+                            entry._cachedAlgorithmResult = result;
+                            entry._lastAlgorithmDisplayText =
+                                $"{result.Algorithm}: {result.Confidence:P0}";
+                        }
+
+                        // Task 5: Verify grid does not cut through sprites after successful detection
+                        // IMPORTANT: Skip this verification when user has specified expectedSpriteCount,
+                        // because the user explicitly told us how many sprites they want and we should trust that.
+                        // The verification can incorrectly fail for sprites with anti-aliasing or shadows.
+                        bool skipVerification = expectedSpriteCount > 0;
+                        if (
+                            !skipVerification
+                            && !VerifyGridDoesNotCutSprites(
                                 pixels,
                                 textureWidth,
                                 textureHeight,
-                                effectiveAlphaThreshold,
-                                algorithm,
-                                expectedSpriteCount
-                            );
-
-                        if (result.IsValid)
+                                cellWidth,
+                                cellHeight,
+                                effectiveAlphaThreshold
+                            )
+                        )
                         {
-                            cellWidth = result.CellWidth;
-                            cellHeight = result.CellHeight;
-                            detectedFromAlgorithm = true;
-                            if (entry != null)
+                            // Grid cuts sprites - try region-based detection as alternative
+                            (int regionCellWidth, int regionCellHeight) =
+                                DetectCellSizeFromOpaqueRegions(
+                                    pixels,
+                                    textureWidth,
+                                    textureHeight,
+                                    effectiveAlphaThreshold
+                                );
+
+                            if (DiagnosticsEnabled && entry != null)
                             {
-                                entry._cachedAlgorithmResult = result;
-                                entry._lastAlgorithmDisplayText =
-                                    $"{result.Algorithm}: {result.Confidence:P0}";
+                                Debug.Log(
+                                    $"[SpriteSheetExtractor] VerifyGridDoesNotCutSprites FAILED for '{Path.GetFileName(entry._assetPath)}': original cellSize={cellWidth}x{cellHeight}, region detection returned {regionCellWidth}x{regionCellHeight}"
+                                );
+                            }
+
+                            if (regionCellWidth > 0 && regionCellHeight > 0)
+                            {
+                                cellWidth = regionCellWidth;
+                                cellHeight = regionCellHeight;
+                                if (entry != null)
+                                {
+                                    entry._lastAlgorithmDisplayText =
+                                        $"{result.Algorithm}: {result.Confidence:P0} (adjusted)";
+                                }
                             }
                         }
                     }
@@ -1923,32 +3286,75 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
 
                 if (!detectedFromAlgorithm)
                 {
-                    // Use smarter fallback that prefers common sprite sizes over GCD
-                    cellWidth = FindSmallestReasonableDivisor(textureWidth);
-                    cellHeight = FindSmallestReasonableDivisor(textureHeight);
+                    // Task 4: First try region-based detection for accurate cell size detection
+                    (int regionWidth, int regionHeight) = DetectCellSizeFromOpaqueRegions(
+                        pixels,
+                        textureWidth,
+                        textureHeight,
+                        effectiveAlphaThreshold
+                    );
 
-                    // If both return the full dimension, try using GCD as a fallback
-                    if (cellWidth == textureWidth && cellHeight == textureHeight)
+                    if (regionWidth > 0 && regionHeight > 0)
                     {
-                        int gcd = CalculateGCD(textureWidth, textureHeight);
-                        if (gcd >= 8 && gcd < textureWidth && gcd < textureHeight)
+                        cellWidth = regionWidth;
+                        cellHeight = regionHeight;
+                        if (entry != null)
                         {
-                            cellWidth = gcd;
-                            cellHeight = gcd;
+                            entry._lastAlgorithmDisplayText = "Fallback (region analysis)";
                         }
                     }
-
-                    if (entry != null)
+                    else
                     {
-                        entry._lastAlgorithmDisplayText = "Fallback (no algorithm match)";
+                        // Use smarter fallback that prefers common sprite sizes over GCD
+                        cellWidth = FindSmallestReasonableDivisor(textureWidth);
+                        cellHeight = FindSmallestReasonableDivisor(textureHeight);
+
+                        // If both return the full dimension, try using GCD as a fallback
+                        if (cellWidth == textureWidth && cellHeight == textureHeight)
+                        {
+                            int gcd = CalculateGCD(textureWidth, textureHeight);
+                            if (gcd >= 8 && gcd < textureWidth && gcd < textureHeight)
+                            {
+                                cellWidth = gcd;
+                                cellHeight = gcd;
+                            }
+                        }
+
+                        if (entry != null)
+                        {
+                            entry._lastAlgorithmDisplayText = "Fallback (divisor heuristic)";
+                        }
                     }
                 }
 
-                columns = Mathf.Max(1, textureWidth / cellWidth);
-                rows = Mathf.Max(1, textureHeight / cellHeight);
+                // Only recalculate cell dimensions if they don't evenly divide the texture
+                // This preserves algorithm-detected values when they're already valid
+                if (textureWidth % cellWidth == 0)
+                {
+                    columns = textureWidth / cellWidth;
+                }
+                else
+                {
+                    columns = Mathf.Max(1, textureWidth / cellWidth);
+                    cellWidth = textureWidth / columns;
+                }
 
-                cellWidth = textureWidth / columns;
-                cellHeight = textureHeight / rows;
+                if (textureHeight % cellHeight == 0)
+                {
+                    rows = textureHeight / cellHeight;
+                }
+                else
+                {
+                    rows = Mathf.Max(1, textureHeight / cellHeight);
+                    cellHeight = textureHeight / rows;
+                }
+
+                if (DiagnosticsEnabled && entry != null)
+                {
+                    Debug.Log(
+                        $"[SpriteSheetExtractor] CalculateGridDimensions FINAL for '{Path.GetFileName(entry._assetPath)}': columns={columns}, rows={rows}, cellWidth={cellWidth}, cellHeight={cellHeight}, detectedFromAlgorithm={detectedFromAlgorithm}"
+                    );
+                }
             }
         }
 
@@ -2028,7 +3434,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 return false;
             }
 
-            if (textureWidth < 4 || textureHeight < 4)
+            if (
+                textureWidth < SpriteSheetAlgorithms.MinimumCellSize
+                || textureHeight < SpriteSheetAlgorithms.MinimumCellSize
+            )
             {
                 return false;
             }
@@ -2392,6 +3801,324 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
         }
 
         /// <summary>
+        /// Finds the nearest divisor of a dimension to a target value that produces at least minCells cells.
+        /// </summary>
+        /// <param name="dimension">The texture dimension to find a divisor for.</param>
+        /// <param name="target">The target cell size to find the nearest divisor to.</param>
+        /// <param name="minCells">The minimum number of cells the divisor must produce.</param>
+        /// <returns>The nearest divisor that produces at least minCells cells, or target if none found.</returns>
+        internal static int FindNearestDivisorWithMinCells(int dimension, int target, int minCells)
+        {
+            if (dimension <= 0 || target <= 0 || minCells <= 0)
+            {
+                return target;
+            }
+
+            int bestDivisor = target;
+            int bestDiff = int.MaxValue;
+            bool found = false;
+
+            for (int div = 1; div <= dimension; ++div)
+            {
+                if (dimension % div != 0)
+                {
+                    continue;
+                }
+
+                int cellCount = dimension / div;
+                if (cellCount < minCells)
+                {
+                    continue;
+                }
+
+                int diff = Math.Abs(div - target);
+                if (diff < bestDiff)
+                {
+                    bestDiff = diff;
+                    bestDivisor = div;
+                    found = true;
+                }
+            }
+
+            return found ? bestDivisor : target;
+        }
+
+        /// <summary>
+        /// Detects cell size by analyzing opaque regions using flood-fill.
+        /// Identifies individual sprite regions, computes their median dimensions,
+        /// and finds the nearest divisor that produces multiple cells.
+        /// </summary>
+        /// <param name="pixels">The texture pixel data in Color32 format.</param>
+        /// <param name="textureWidth">Width of the texture in pixels.</param>
+        /// <param name="textureHeight">Height of the texture in pixels.</param>
+        /// <param name="alphaThreshold">Alpha value (0-1) below which a pixel is considered transparent.</param>
+        /// <returns>A tuple of (cellWidth, cellHeight), or (0, 0) if detection failed.</returns>
+        internal static (int cellWidth, int cellHeight) DetectCellSizeFromOpaqueRegions(
+            Color32[] pixels,
+            int textureWidth,
+            int textureHeight,
+            float alphaThreshold
+        )
+        {
+            if (pixels == null || pixels.Length == 0)
+            {
+                return (0, 0);
+            }
+
+            if (
+                textureWidth < SpriteSheetAlgorithms.MinimumCellSize
+                || textureHeight < SpriteSheetAlgorithms.MinimumCellSize
+            )
+            {
+                return (0, 0);
+            }
+
+            if (pixels.Length != textureWidth * textureHeight)
+            {
+                return (0, 0);
+            }
+
+            byte alphaThresholdByte = (byte)(alphaThreshold * 255f);
+
+            using PooledArray<bool> visitedLease = SystemArrayPool<bool>.Get(
+                pixels.Length,
+                out bool[] visited
+            );
+            Array.Clear(visited, 0, visited.Length);
+
+            using PooledResource<List<int>> widthsLease = Buffers<int>.List.Get(
+                out List<int> regionWidths
+            );
+            using PooledResource<List<int>> heightsLease = Buffers<int>.List.Get(
+                out List<int> regionHeights
+            );
+            using PooledResource<List<int>> stackLease = Buffers<int>.List.Get(out List<int> stack);
+
+            const int minimumRegionSize = SpriteSheetAlgorithms.MinimumCellSize;
+            const int maxRegionCount = 256;
+
+            for (int startY = 0; startY < textureHeight; ++startY)
+            {
+                if (regionWidths.Count >= maxRegionCount)
+                {
+                    break;
+                }
+
+                for (int startX = 0; startX < textureWidth; ++startX)
+                {
+                    int startIdx = startY * textureWidth + startX;
+                    if (visited[startIdx])
+                    {
+                        continue;
+                    }
+
+                    if (pixels[startIdx].a <= alphaThresholdByte)
+                    {
+                        visited[startIdx] = true;
+                        continue;
+                    }
+
+                    int minX = startX;
+                    int maxX = startX;
+                    int minY = startY;
+                    int maxY = startY;
+
+                    stack.Clear();
+                    stack.Add(startIdx);
+                    visited[startIdx] = true;
+
+                    while (stack.Count > 0)
+                    {
+                        int lastIndex = stack.Count - 1;
+                        int idx = stack[lastIndex];
+                        stack.RemoveAt(lastIndex);
+
+                        int px = idx % textureWidth;
+                        int py = idx / textureWidth;
+
+                        if (px < minX)
+                        {
+                            minX = px;
+                        }
+                        if (px > maxX)
+                        {
+                            maxX = px;
+                        }
+                        if (py < minY)
+                        {
+                            minY = py;
+                        }
+                        if (py > maxY)
+                        {
+                            maxY = py;
+                        }
+
+                        // 4-connected neighbors (up, down, left, right)
+                        if (px > 0)
+                        {
+                            int left = idx - 1;
+                            if (!visited[left] && pixels[left].a > alphaThresholdByte)
+                            {
+                                visited[left] = true;
+                                stack.Add(left);
+                            }
+                        }
+                        if (px < textureWidth - 1)
+                        {
+                            int right = idx + 1;
+                            if (!visited[right] && pixels[right].a > alphaThresholdByte)
+                            {
+                                visited[right] = true;
+                                stack.Add(right);
+                            }
+                        }
+                        if (py > 0)
+                        {
+                            int down = idx - textureWidth;
+                            if (!visited[down] && pixels[down].a > alphaThresholdByte)
+                            {
+                                visited[down] = true;
+                                stack.Add(down);
+                            }
+                        }
+                        if (py < textureHeight - 1)
+                        {
+                            int up = idx + textureWidth;
+                            if (!visited[up] && pixels[up].a > alphaThresholdByte)
+                            {
+                                visited[up] = true;
+                                stack.Add(up);
+                            }
+                        }
+                    }
+
+                    int regionWidth = maxX - minX + 1;
+                    int regionHeight = maxY - minY + 1;
+
+                    // Only include regions at least 4x4 pixels
+                    if (regionWidth >= minimumRegionSize && regionHeight >= minimumRegionSize)
+                    {
+                        regionWidths.Add(regionWidth);
+                        regionHeights.Add(regionHeight);
+                    }
+                }
+            }
+
+            if (regionWidths.Count < 2)
+            {
+                return (0, 0);
+            }
+
+            // Sort to find median
+            regionWidths.Sort();
+            regionHeights.Sort();
+
+            int medianWidth = regionWidths[regionWidths.Count / 2];
+            int medianHeight = regionHeights[regionHeights.Count / 2];
+
+            // Find nearest divisors that produce at least 2 cells
+            int cellWidth = FindNearestDivisorWithMinCells(textureWidth, medianWidth, 2);
+            int cellHeight = FindNearestDivisorWithMinCells(textureHeight, medianHeight, 2);
+
+            if (cellWidth < minimumRegionSize || cellHeight < minimumRegionSize)
+            {
+                return (0, 0);
+            }
+
+            return (cellWidth, cellHeight);
+        }
+
+        /// <summary>
+        /// Verifies that grid lines do not cut through opaque sprite content.
+        /// Checks both vertical and horizontal grid boundaries for excessive opaque pixels.
+        /// </summary>
+        /// <param name="pixels">The texture pixel data in Color32 format.</param>
+        /// <param name="textureWidth">Width of the texture in pixels.</param>
+        /// <param name="textureHeight">Height of the texture in pixels.</param>
+        /// <param name="cellWidth">The cell width to verify.</param>
+        /// <param name="cellHeight">The cell height to verify.</param>
+        /// <param name="alphaThreshold">Alpha value (0-1) below which a pixel is considered transparent.</param>
+        /// <returns>True if the grid is valid (does not cut sprites), false if more than 30% of grid line pixels are opaque.</returns>
+        internal static bool VerifyGridDoesNotCutSprites(
+            Color32[] pixels,
+            int textureWidth,
+            int textureHeight,
+            int cellWidth,
+            int cellHeight,
+            float alphaThreshold
+        )
+        {
+            if (pixels == null || pixels.Length == 0)
+            {
+                return true;
+            }
+
+            if (cellWidth <= 0 || cellHeight <= 0)
+            {
+                return true;
+            }
+
+            if (pixels.Length != textureWidth * textureHeight)
+            {
+                return true;
+            }
+
+            byte alphaThresholdByte = (byte)(alphaThreshold * 255f);
+            int opaqueOnGridLines = 0;
+            int totalGridLinePixels = 0;
+
+            // Check vertical grid lines (at each column boundary)
+            for (int col = 1; col < textureWidth / cellWidth; ++col)
+            {
+                int x = col * cellWidth;
+                if (x >= textureWidth)
+                {
+                    break;
+                }
+
+                for (int y = 0; y < textureHeight; ++y)
+                {
+                    int idx = y * textureWidth + x;
+                    ++totalGridLinePixels;
+                    if (pixels[idx].a > alphaThresholdByte)
+                    {
+                        ++opaqueOnGridLines;
+                    }
+                }
+            }
+
+            // Check horizontal grid lines (at each row boundary)
+            for (int row = 1; row < textureHeight / cellHeight; ++row)
+            {
+                int y = row * cellHeight;
+                if (y >= textureHeight)
+                {
+                    break;
+                }
+
+                for (int x = 0; x < textureWidth; ++x)
+                {
+                    int idx = y * textureWidth + x;
+                    ++totalGridLinePixels;
+                    if (pixels[idx].a > alphaThresholdByte)
+                    {
+                        ++opaqueOnGridLines;
+                    }
+                }
+            }
+
+            if (totalGridLinePixels == 0)
+            {
+                return true;
+            }
+
+            float opaqueRatio = (float)opaqueOnGridLines / totalGridLinePixels;
+
+            // Return false if 30% or more of grid line pixels are opaque
+            return opaqueRatio < 0.3f;
+        }
+
+        /// <summary>
         /// Fallback method that finds consistent spacing using the legacy approach.
         /// First identifies highly transparent boundaries, then looks for consistent gaps.
         /// </summary>
@@ -2673,22 +4400,18 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
         }
 
         /// <summary>
-        /// Returns whether the grid overlay should be shown for the given entry.
+        /// Returns whether the overlay should be shown for the given entry.
         /// Uses per-sheet override if set, otherwise falls back to global setting.
         /// </summary>
         /// <param name="entry">The sprite sheet entry to check, or null to use global setting.</param>
-        /// <returns>True if the grid overlay should be displayed for this entry.</returns>
-        internal bool GetEffectiveShowGridOverlay(SpriteSheetEntry entry)
+        /// <returns>True if the overlay should be displayed for this entry.</returns>
+        internal bool GetEffectiveShowOverlay(SpriteSheetEntry entry)
         {
-            if (
-                entry == null
-                || entry._useGlobalSettings
-                || !entry._showGridOverlayOverride.HasValue
-            )
+            if (entry == null || entry._useGlobalSettings || !entry._showOverlayOverride.HasValue)
             {
-                return _showGridOverlay;
+                return _showOverlay;
             }
-            return entry._showGridOverlayOverride.Value;
+            return entry._showOverlayOverride.Value;
         }
 
         /// <summary>
@@ -2760,6 +4483,72 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
         }
 
         /// <summary>
+        /// Returns the effective snap to texture divisor setting for the given entry.
+        /// Uses per-sheet override if set, otherwise falls back to global setting.
+        /// </summary>
+        /// <param name="entry">The sprite sheet entry to check, or null to use global setting.</param>
+        /// <returns>True if cell sizes should be adjusted to be exact divisors of texture dimensions.</returns>
+        internal bool GetEffectiveSnapToTextureDivisor(SpriteSheetEntry entry)
+        {
+            if (
+                entry == null
+                || entry._useGlobalSettings
+                || !entry._snapToTextureDivisorOverride.HasValue
+            )
+            {
+                return _snapToTextureDivisor;
+            }
+            return entry._snapToTextureDivisorOverride.Value;
+        }
+
+        /// <summary>
+        /// Gets the effective pivot marker color for a sprite, respecting the cascade:
+        /// per-element, per-sheet, global.
+        /// </summary>
+        /// <param name="entry">The sprite sheet entry containing the sprite.</param>
+        /// <param name="sprite">The individual sprite entry to get the color for.</param>
+        /// <returns>The effective pivot marker color for the sprite.</returns>
+        internal Color GetEffectivePivotColor(SpriteSheetEntry entry, SpriteEntryData sprite)
+        {
+            if (sprite != null && sprite._usePivotColorOverride)
+            {
+                return sprite._pivotColorOverride;
+            }
+
+            if (entry != null && entry._usePivotMarkerColorOverride)
+            {
+                return entry._pivotMarkerColorOverride;
+            }
+
+            return _pivotMarkerColor;
+        }
+
+        /// <summary>
+        /// Gets the effective pivot position for a sprite, respecting the cascade:
+        /// per-element override, per-sheet override, global settings.
+        /// </summary>
+        /// <param name="entry">The sprite sheet entry containing the sprite.</param>
+        /// <param name="sprite">The individual sprite entry to get the pivot for.</param>
+        /// <returns>
+        /// The effective pivot as a normalized Vector2 where (0,0) is bottom-left and (1,1) is top-right.
+        /// </returns>
+        internal Vector2 GetEffectivePivot(SpriteSheetEntry entry, SpriteEntryData sprite)
+        {
+            if (sprite != null && sprite._usePivotOverride)
+            {
+                return PivotModeToVector2(sprite._pivotModeOverride, sprite._customPivotOverride);
+            }
+
+            if (entry != null && !entry._useGlobalSettings && entry._pivotModeOverride.HasValue)
+            {
+                Vector2 customPivot = entry._customPivotOverride ?? _customPivot;
+                return PivotModeToVector2(entry._pivotModeOverride.Value, customPivot);
+            }
+
+            return PivotModeToVector2(_pivotMode, _customPivot);
+        }
+
+        /// <summary>
         /// Initializes all override fields from their corresponding global values.
         /// Called when transitioning from global settings to per-sheet settings.
         /// </summary>
@@ -2795,11 +4584,14 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             entry._paddingTopOverride = GetEffectivePaddingTop(entry);
             entry._paddingBottomOverride = GetEffectivePaddingBottom(entry);
             entry._alphaThresholdOverride = GetEffectiveAlphaThreshold(entry);
-            entry._showGridOverlayOverride = GetEffectiveShowGridOverlay(entry);
+            entry._showOverlayOverride = GetEffectiveShowOverlay(entry);
             entry._pivotModeOverride = GetEffectivePivotMode(entry);
             entry._customPivotOverride = GetEffectiveCustomPivot(entry);
             entry._autoDetectionAlgorithmOverride = GetEffectiveAutoDetectionAlgorithm(entry);
             entry._expectedSpriteCountOverride = GetEffectiveExpectedSpriteCount(entry);
+            entry._snapToTextureDivisorOverride = GetEffectiveSnapToTextureDivisor(entry);
+            entry._usePivotMarkerColorOverride = false;
+            entry._pivotMarkerColorOverride = _pivotMarkerColor;
 
             // Clear cached algorithm result to force recalculation with new settings
             entry._cachedAlgorithmResult = null;
@@ -2831,45 +4623,89 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
         }
 
         /// <summary>
-        /// Checks if any discovered sheet uses grid-based extraction mode.
-        /// Returns true if the global mode is grid-based, or if any per-sheet override is grid-based.
+        /// Converts a sprite rect (in texture coordinates) to screen coordinates within the preview rect.
         /// </summary>
-        /// <returns>True if any sheet uses GridBased or PaddedGrid extraction mode.</returns>
-        internal bool AnySheetUsesGridBasedExtraction()
+        /// <param name="textureRect">The texture-space rect within the preview.</param>
+        /// <param name="spriteRect">The sprite rect in texture coordinates.</param>
+        /// <param name="textureHeight">The height of the source texture.</param>
+        /// <param name="scale">The scale factor from texture to screen coordinates.</param>
+        /// <returns>The screen-space rect corresponding to the sprite.</returns>
+        internal static Rect ConvertTextureRectToScreenRect(
+            Rect textureRect,
+            Rect spriteRect,
+            int textureHeight,
+            float scale
+        )
         {
-            bool globalIsGridBased =
-                _extractionMode == ExtractionMode.GridBased
-                || _extractionMode == ExtractionMode.PaddedGrid;
+            float screenX = textureRect.x + spriteRect.x * scale;
+            float screenY =
+                textureRect.y + (textureHeight - spriteRect.y - spriteRect.height) * scale;
+            float screenWidth = spriteRect.width * scale;
+            float screenHeight = spriteRect.height * scale;
+            return new Rect(screenX, screenY, screenWidth, screenHeight);
+        }
 
-            if (globalIsGridBased)
+        /// <summary>
+        /// Calculates the normalized pivot position within a sprite based on a screen position.
+        /// </summary>
+        /// <param name="screenPosition">The mouse position in screen coordinates.</param>
+        /// <param name="spriteScreenRect">The sprite rect in screen coordinates.</param>
+        /// <returns>Normalized position (0-1) where (0,0) is bottom-left and (1,1) is top-right.</returns>
+        internal static Vector2 CalculateNormalizedPositionInSprite(
+            Vector2 screenPosition,
+            Rect spriteScreenRect
+        )
+        {
+            float normalizedX = (screenPosition.x - spriteScreenRect.x) / spriteScreenRect.width;
+            float normalizedY =
+                1f - (screenPosition.y - spriteScreenRect.y) / spriteScreenRect.height;
+            return new Vector2(Mathf.Clamp01(normalizedX), Mathf.Clamp01(normalizedY));
+        }
+
+        /// <summary>
+        /// Finds which sprite (if any) contains the given screen position.
+        /// </summary>
+        /// <param name="screenPosition">The mouse position in screen coordinates.</param>
+        /// <param name="textureRect">The texture-space rect within the preview.</param>
+        /// <param name="entry">The sprite sheet entry containing the sprites.</param>
+        /// <param name="textureHeight">The height of the source texture.</param>
+        /// <param name="scale">The scale factor from texture to screen coordinates.</param>
+        /// <returns>The index of the sprite containing the position, or -1 if none.</returns>
+        internal static int FindSpriteAtScreenPosition(
+            Vector2 screenPosition,
+            Rect textureRect,
+            SpriteSheetEntry entry,
+            int textureHeight,
+            float scale
+        )
+        {
+            if (entry == null || entry._sprites == null)
             {
-                return true;
+                return -1;
             }
 
-            if (_discoveredSheets == null || _discoveredSheets.Count == 0)
+            for (int i = 0; i < entry._sprites.Count; ++i)
             {
-                return false;
-            }
-
-            for (int i = 0; i < _discoveredSheets.Count; ++i)
-            {
-                SpriteSheetEntry entry = _discoveredSheets[i];
-                if (entry == null || entry._useGlobalSettings)
+                SpriteEntryData sprite = entry._sprites[i];
+                if (sprite == null)
                 {
                     continue;
                 }
 
-                ExtractionMode effectiveMode = GetEffectiveExtractionMode(entry);
-                if (
-                    effectiveMode == ExtractionMode.GridBased
-                    || effectiveMode == ExtractionMode.PaddedGrid
-                )
+                Rect screenRect = ConvertTextureRectToScreenRect(
+                    textureRect,
+                    sprite._rect,
+                    textureHeight,
+                    scale
+                );
+
+                if (screenRect.Contains(screenPosition))
                 {
-                    return true;
+                    return i;
                 }
             }
 
-            return false;
+            return -1;
         }
 
         /// <summary>
@@ -2942,6 +4778,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                     expectedSpriteCount = GetEffectiveExpectedSpriteCount(entry),
                     textureContentHash = hash,
                     cachedAlgorithmResult = cachedResult,
+                    snapToTextureDivisor = GetEffectiveSnapToTextureDivisor(entry),
                 };
 
                 string json = Serializer.JsonStringify(config, pretty: true);
@@ -3017,10 +4854,12 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 entry._customPivotOverride = config.customPivot;
                 entry._autoDetectionAlgorithmOverride = (AutoDetectionAlgorithm)config.algorithm;
                 entry._expectedSpriteCountOverride = config.expectedSpriteCount;
-                if (config.cachedAlgorithmResult != null)
-                {
-                    entry._cachedAlgorithmResult = config.cachedAlgorithmResult.ToResult();
-                }
+                entry._snapToTextureDivisorOverride = config.snapToTextureDivisor;
+                // IMPORTANT: Do NOT restore cachedAlgorithmResult from config.
+                // The cached result may have been computed with different settings (like a different
+                // expectedSpriteCount), and restoring it can cause stale results to be used.
+                // The algorithm will re-run and cache fresh results as needed.
+                entry._cachedAlgorithmResult = null;
                 entry._useGlobalSettings = false;
 
                 return true;
@@ -3084,76 +4923,16 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             );
         }
 
-        internal void DrawGridOverlay(
-            Rect previewRect,
-            int textureWidth,
-            int textureHeight,
-            float scale
-        )
-        {
-            DrawGridOverlay(previewRect, textureWidth, textureHeight, scale, null);
-        }
-
-        internal void DrawGridOverlay(
-            Rect previewRect,
-            int textureWidth,
-            int textureHeight,
-            float scale,
-            SpriteSheetEntry entry
-        )
-        {
-            int columns;
-            int rows;
-            int cellWidth;
-            int cellHeight;
-
-            CalculateGridDimensions(
-                textureWidth,
-                textureHeight,
-                entry,
-                out columns,
-                out rows,
-                out cellWidth,
-                out cellHeight
-            );
-
-            // Calculate actual texture rect to account for ScaleToFit centering
-            Rect textureRect = CalculateTextureRectWithinPreview(
-                previewRect,
-                textureWidth,
-                textureHeight,
-                scale
-            );
-
-            float scaledCellWidth = cellWidth * scale;
-            float scaledCellHeight = cellHeight * scale;
-
-            Color previousColor = GUI.color;
-            GUI.color = _gridLineColor;
-
-            try
-            {
-                for (int col = 1; col < columns; ++col)
-                {
-                    float x = textureRect.x + col * scaledCellWidth;
-                    Rect lineRect = new Rect(x, textureRect.y, 1, textureRect.height);
-                    EditorGUI.DrawRect(lineRect, _gridLineColor);
-                }
-
-                for (int row = 1; row < rows; ++row)
-                {
-                    float y = textureRect.y + row * scaledCellHeight;
-                    Rect lineRect = new Rect(textureRect.x, y, textureRect.width, 1);
-                    EditorGUI.DrawRect(lineRect, _gridLineColor);
-                }
-            }
-            finally
-            {
-                GUI.color = previousColor;
-            }
-        }
-
-        private void DrawSpriteRectsOverlay(
+        /// <summary>
+        /// Draws outline rectangles around each sprite bound in the source texture preview.
+        /// This method replaces the old grid overlay with actual sprite bounds visualization.
+        /// </summary>
+        /// <param name="previewRect">The preview area rectangle.</param>
+        /// <param name="textureWidth">Width of the source texture.</param>
+        /// <param name="textureHeight">Height of the source texture.</param>
+        /// <param name="scale">Scale factor for drawing.</param>
+        /// <param name="entry">The sprite sheet entry containing sprite bounds.</param>
+        internal void DrawSpriteBoundsOverlay(
             Rect previewRect,
             int textureWidth,
             int textureHeight,
@@ -3161,12 +4940,32 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             SpriteSheetEntry entry
         )
         {
-            if (entry._sprites == null || entry._sprites.Count == 0)
+            if (entry == null)
             {
                 return;
             }
 
-            // Calculate actual texture rect to account for ScaleToFit centering
+            CheckAndRegenerateIfNeeded(entry);
+
+            if (entry._sprites == null || entry._sprites.Count == 0)
+            {
+                if (DiagnosticsEnabled)
+                {
+                    Debug.Log(
+                        $"[SpriteSheetExtractor] DrawSpriteBoundsOverlay: no sprites for '{entry._assetPath}', sprites={entry._sprites?.Count ?? 0}"
+                    );
+                }
+                return;
+            }
+
+            if (DiagnosticsEnabled && entry._sprites.Count > 0)
+            {
+                SpriteEntryData firstSprite = entry._sprites[0];
+                Debug.Log(
+                    $"[SpriteSheetExtractor] DrawSpriteBoundsOverlay: drawing {entry._sprites.Count} sprites for '{Path.GetFileName(entry._assetPath)}', firstRect={firstSprite._rect}, algorithm={entry._lastAlgorithmDisplayText}"
+                );
+            }
+
             Rect textureRect = CalculateTextureRectWithinPreview(
                 previewRect,
                 textureWidth,
@@ -3188,25 +4987,368 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 float rectWidth = sprite._rect.width * scale;
                 float rectHeight = sprite._rect.height * scale;
 
-                EditorGUI.DrawRect(new Rect(rectX, rectY, rectWidth, 1), _gridLineColor);
+                EditorGUI.DrawRect(new Rect(rectX, rectY, rectWidth, 1), _overlayColor);
                 EditorGUI.DrawRect(
                     new Rect(rectX, rectY + rectHeight - 1, rectWidth, 1),
-                    _gridLineColor
+                    _overlayColor
                 );
-                EditorGUI.DrawRect(new Rect(rectX, rectY, 1, rectHeight), _gridLineColor);
+                EditorGUI.DrawRect(new Rect(rectX, rectY, 1, rectHeight), _overlayColor);
                 EditorGUI.DrawRect(
                     new Rect(rectX + rectWidth - 1, rectY, 1, rectHeight),
-                    _gridLineColor
+                    _overlayColor
                 );
+
+                Vector2 effectivePivot = GetEffectivePivot(entry, sprite);
+                bool isNonDefaultPivot = effectivePivot != CenterPivot || sprite._usePivotOverride;
+
+                if (isNonDefaultPivot)
+                {
+                    Color pivotColor = GetEffectivePivotColor(entry, sprite);
+                    Rect screenRect = new Rect(rectX, rectY, rectWidth, rectHeight);
+                    DrawPivotMarker(screenRect, effectivePivot, pivotColor);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Draws a grid overlay based on current grid settings when sprites haven't been generated yet.
+        /// This provides visual feedback during regeneration or before sprites are populated.
+        /// </summary>
+        /// <param name="previewRect">The preview area rectangle.</param>
+        /// <param name="textureWidth">Width of the source texture.</param>
+        /// <param name="textureHeight">Height of the source texture.</param>
+        /// <param name="scale">Scale factor for drawing.</param>
+        /// <param name="entry">The sprite sheet entry to get grid settings from.</param>
+        private void DrawGridOverlayFromSettings(
+            Rect previewRect,
+            int textureWidth,
+            int textureHeight,
+            float scale,
+            SpriteSheetEntry entry
+        )
+        {
+            if (entry == null || textureWidth <= 0 || textureHeight <= 0)
+            {
+                return;
+            }
+
+            Rect textureRect = CalculateTextureRectWithinPreview(
+                previewRect,
+                textureWidth,
+                textureHeight,
+                scale
+            );
+
+            int columns;
+            int rows;
+            int cellWidth;
+            int cellHeight;
+
+            // For Auto mode, try to use cached algorithm result or read texture pixels
+            // to ensure the overlay reflects the algorithm-detected grid
+            GridSizeMode effectiveGridSizeMode = GetEffectiveGridSizeMode(entry);
+            if (effectiveGridSizeMode == GridSizeMode.Auto)
+            {
+                // First check for cached algorithm result
+                if (
+                    entry._cachedAlgorithmResult.HasValue
+                    && entry._cachedAlgorithmResult.Value.IsValid
+                )
+                {
+                    cellWidth = entry._cachedAlgorithmResult.Value.CellWidth;
+                    cellHeight = entry._cachedAlgorithmResult.Value.CellHeight;
+                    columns = textureWidth / cellWidth;
+                    rows = textureHeight / cellHeight;
+                }
+                else if (entry._texture != null && entry._texture.isReadable)
+                {
+                    // No cached result - try to calculate with pixels for algorithm detection
+                    Color32[] pixels = entry._texture.GetPixels32();
+                    CalculateGridDimensions(
+                        textureWidth,
+                        textureHeight,
+                        entry,
+                        pixels,
+                        out columns,
+                        out rows,
+                        out cellWidth,
+                        out cellHeight
+                    );
+                }
+                else
+                {
+                    // No cached result and texture not readable - cannot show accurate overlay
+                    // The sprite population methods will make the texture readable and cache the result
+                    // Don't draw anything rather than show inaccurate heuristic-based overlay
+                    if (DiagnosticsEnabled)
+                    {
+                        Debug.Log(
+                            $"[SpriteSheetExtractor] DrawGridOverlayFromSettings: No cached algorithm result and texture not readable for '{entry._assetPath}'"
+                        );
+                    }
+                    return;
+                }
+            }
+            else
+            {
+                // Manual mode - calculate directly from settings
+                CalculateGridDimensions(
+                    textureWidth,
+                    textureHeight,
+                    entry,
+                    out columns,
+                    out rows,
+                    out cellWidth,
+                    out cellHeight
+                );
+            }
+
+            if (columns <= 0 || rows <= 0 || cellWidth <= 0 || cellHeight <= 0)
+            {
+                return;
+            }
+
+            // Get padding values for positioning
+            int paddingLeft = GetEffectivePaddingLeft(entry);
+            int paddingBottom = GetEffectivePaddingBottom(entry);
+
+            // Draw grid cells as rectangles
+            for (int row = 0; row < rows; ++row)
+            {
+                for (int col = 0; col < columns; ++col)
+                {
+                    // Calculate sprite rect in texture space (bottom-left origin)
+                    int spriteX = paddingLeft + col * cellWidth;
+                    int spriteY = paddingBottom + row * cellHeight;
+
+                    // Convert to screen coordinates (top-left origin)
+                    float rectX = textureRect.x + spriteX * scale;
+                    float rectY = textureRect.y + (textureHeight - spriteY - cellHeight) * scale;
+                    float rectWidth = cellWidth * scale;
+                    float rectHeight = cellHeight * scale;
+
+                    // Draw rectangle outline (same style as DrawSpriteBoundsOverlay)
+                    EditorGUI.DrawRect(new Rect(rectX, rectY, rectWidth, 1), _overlayColor);
+                    EditorGUI.DrawRect(
+                        new Rect(rectX, rectY + rectHeight - 1, rectWidth, 1),
+                        _overlayColor
+                    );
+                    EditorGUI.DrawRect(new Rect(rectX, rectY, 1, rectHeight), _overlayColor);
+                    EditorGUI.DrawRect(
+                        new Rect(rectX + rectWidth - 1, rectY, 1, rectHeight),
+                        _overlayColor
+                    );
+                }
+            }
+        }
+
+        /// <summary>
+        /// Draws a crosshair pivot marker at the specified pivot position within a sprite rect.
+        /// </summary>
+        /// <remarks>
+        /// The pivot position is normalized where (0,0) is bottom-left and (1,1) is top-right.
+        /// The Y coordinate is flipped for screen coordinates where (0,0) is top-left.
+        /// </remarks>
+        /// <param name="spriteRect">The screen-space rectangle of the sprite.</param>
+        /// <param name="pivot">The normalized pivot position (0-1 range).</param>
+        /// <param name="color">The color to draw the crosshair.</param>
+        private void DrawPivotMarker(Rect spriteRect, Vector2 pivot, Color color)
+        {
+            DrawPivotMarker(spriteRect, pivot, color, false, false);
+        }
+
+        /// <summary>
+        /// Draws a crosshair pivot marker with optional hover/drag feedback.
+        /// </summary>
+        /// <param name="spriteRect">The screen-space rectangle of the sprite.</param>
+        /// <param name="pivot">The normalized pivot position (0-1 range).</param>
+        /// <param name="color">The base color to draw the crosshair.</param>
+        /// <param name="isHovering">If true, applies brighter color feedback.</param>
+        /// <param name="isDragging">If true, applies larger marker size feedback.</param>
+        private void DrawPivotMarker(
+            Rect spriteRect,
+            Vector2 pivot,
+            Color color,
+            bool isHovering,
+            bool isDragging
+        )
+        {
+            float pivotX = spriteRect.x + pivot.x * spriteRect.width;
+            float pivotY = spriteRect.y + (1f - pivot.y) * spriteRect.height;
+
+            float armLength = isDragging ? 10f : 6f;
+            float armThickness = isDragging ? 3f : 2f;
+
+            Color effectiveColor = color;
+            if (isHovering && !isDragging)
+            {
+                effectiveColor = new Color(
+                    Mathf.Min(1f, color.r * 1.3f),
+                    Mathf.Min(1f, color.g * 1.3f),
+                    Mathf.Min(1f, color.b * 1.3f),
+                    color.a
+                );
+            }
+            else if (isDragging)
+            {
+                effectiveColor = new Color(
+                    Mathf.Min(1f, color.r * 1.5f),
+                    Mathf.Min(1f, color.g * 1.5f),
+                    Mathf.Min(1f, color.b * 1.5f),
+                    color.a
+                );
+            }
+
+            EditorGUI.DrawRect(
+                new Rect(
+                    pivotX - armLength,
+                    pivotY - armThickness / 2f,
+                    armLength * 2f,
+                    armThickness
+                ),
+                effectiveColor
+            );
+
+            EditorGUI.DrawRect(
+                new Rect(
+                    pivotX - armThickness / 2f,
+                    pivotY - armLength,
+                    armThickness,
+                    armLength * 2f
+                ),
+                effectiveColor
+            );
+        }
+
+        /// <summary>
+        /// Draws the sheet-level pivot marker with dashed lines across the entire preview.
+        /// Uses gold/yellow color to differentiate from per-sprite markers.
+        /// </summary>
+        private void DrawSheetLevelPivotMarker(SpriteSheetEntry entry, Rect textureRect)
+        {
+            if (entry == null)
+            {
+                return;
+            }
+
+            PivotMode effectivePivotMode = GetEffectivePivotMode(entry);
+            Vector2 effectiveCustomPivot = GetEffectiveCustomPivot(entry);
+            Vector2 pivot = PivotModeToVector2(effectivePivotMode, effectiveCustomPivot);
+
+            bool hasCustomSheetPivot =
+                !entry._useGlobalSettings
+                && entry._pivotModeOverride.HasValue
+                && entry._pivotModeOverride.Value == PivotMode.Custom;
+
+            if (!hasCustomSheetPivot && !_isDraggingPivot)
+            {
+                return;
+            }
+
+            float pivotX = textureRect.x + pivot.x * textureRect.width;
+            float pivotY = textureRect.y + (1f - pivot.y) * textureRect.height;
+
+            bool isSheetDragging =
+                _isDraggingPivot
+                && _draggedPivotTarget == entry
+                && _draggedPivotType == PivotDragType.Sheet;
+            bool isSheetHovering =
+                _isHoveringPivot && _hoveredPivotTarget == entry && _hoveredSpriteIndex < 0;
+
+            DrawDashedLine(
+                new Vector2(textureRect.x, pivotY),
+                new Vector2(textureRect.xMax, pivotY),
+                SheetPivotColor,
+                4f,
+                4f
+            );
+
+            DrawDashedLine(
+                new Vector2(pivotX, textureRect.y),
+                new Vector2(pivotX, textureRect.yMax),
+                SheetPivotColor,
+                4f,
+                4f
+            );
+
+            DrawPivotMarker(textureRect, pivot, SheetPivotColor, isSheetHovering, isSheetDragging);
+        }
+
+        /// <summary>
+        /// Draws a dashed line between two points.
+        /// </summary>
+        /// <param name="start">The starting point of the line.</param>
+        /// <param name="end">The ending point of the line.</param>
+        /// <param name="color">The color of the dashes.</param>
+        /// <param name="dashLength">The length of each dash in pixels.</param>
+        /// <param name="gapLength">The length of each gap in pixels.</param>
+        private static void DrawDashedLine(
+            Vector2 start,
+            Vector2 end,
+            Color color,
+            float dashLength,
+            float gapLength
+        )
+        {
+            Vector2 direction = end - start;
+            float totalLength = direction.magnitude;
+
+            if (totalLength < 0.001f)
+            {
+                return;
+            }
+
+            direction /= totalLength;
+
+            float segmentLength = dashLength + gapLength;
+            float currentPosition = 0f;
+            bool isHorizontal = Mathf.Abs(direction.x) > Mathf.Abs(direction.y);
+            float lineThickness = 1f;
+
+            while (currentPosition < totalLength)
+            {
+                float dashEnd = Mathf.Min(currentPosition + dashLength, totalLength);
+                Vector2 dashStart = start + direction * currentPosition;
+                Vector2 dashEndPoint = start + direction * dashEnd;
+
+                if (isHorizontal)
+                {
+                    EditorGUI.DrawRect(
+                        new Rect(
+                            dashStart.x,
+                            dashStart.y - lineThickness / 2f,
+                            dashEndPoint.x - dashStart.x,
+                            lineThickness
+                        ),
+                        color
+                    );
+                }
+                else
+                {
+                    EditorGUI.DrawRect(
+                        new Rect(
+                            dashStart.x - lineThickness / 2f,
+                            dashStart.y,
+                            lineThickness,
+                            dashEndPoint.y - dashStart.y
+                        ),
+                        color
+                    );
+                }
+
+                currentPosition += segmentLength;
             }
         }
 
         private List<SpriteEntryData> GetSortedSprites(List<SpriteEntryData> sprites)
         {
+            // Use SerializedProperty value for immediate response because backing field isn't updated
+            // until ApplyModifiedProperties() is called at the end of OnGUI
+            SortMode currentSortMode = (SortMode)_sortModeProperty.enumValueIndex;
             bool needsRefresh =
                 _cachedSortedSprites == null
                 || _lastSpritesSource != sprites
-                || _lastSortMode != _sortMode;
+                || _lastSortMode != currentSortMode;
 
             if (!needsRefresh)
             {
@@ -3221,7 +5363,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 _cachedSortedSprites.Add(sprites[i]);
             }
 
-            switch (_sortMode)
+            switch (currentSortMode)
             {
                 case SortMode.ByName:
                     _cachedSortedSprites.Sort(
@@ -3260,7 +5402,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             }
 
             _lastSpritesSource = sprites;
-            _lastSortMode = _sortMode;
+            _lastSortMode = currentSortMode;
             return _cachedSortedSprites;
         }
 
@@ -3282,6 +5424,17 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                         GUILayout.Width(previewSize),
                         GUILayout.Height(previewSize)
                     );
+                    Rect previewRect = GUILayoutUtility.GetLastRect();
+
+                    Vector2 effectivePivot = GetEffectivePivot(sheet, sprite);
+                    bool isNonDefaultPivot =
+                        effectivePivot != CenterPivot || sprite._usePivotOverride;
+
+                    if (isNonDefaultPivot)
+                    {
+                        Color pivotColor = GetEffectivePivotColor(sheet, sprite);
+                        DrawPivotMarker(previewRect, effectivePivot, pivotColor);
+                    }
                 }
                 else
                 {
@@ -3331,8 +5484,112 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                             ? $"Preview: {sprite._previewTexture.width}x{sprite._previewTexture.height}"
                             : "Preview: MISSING";
                     EditorGUILayout.LabelField(previewStatus, EditorStyles.miniLabel);
+
+                    DrawSpritePivotOverrideControls(sheet, sprite);
                 }
             }
+        }
+
+        /// <summary>
+        /// Draws the per-element pivot override controls within a sprite entry.
+        /// </summary>
+        /// <param name="sheet">The parent sprite sheet entry.</param>
+        /// <param name="sprite">The sprite entry to draw controls for.</param>
+        private void DrawSpritePivotOverrideControls(SpriteSheetEntry sheet, SpriteEntryData sprite)
+        {
+            if (sprite == null)
+            {
+                return;
+            }
+
+            bool previousOverride = sprite._usePivotOverride;
+            sprite._usePivotOverride = EditorGUILayout.ToggleLeft(
+                "Override Pivot",
+                sprite._usePivotOverride,
+                EditorStyles.miniLabel
+            );
+
+            if (sprite._usePivotOverride && !previousOverride)
+            {
+                sprite._pivotModeOverride = GetEffectivePivotMode(sheet);
+                sprite._customPivotOverride = GetEffectiveCustomPivot(sheet);
+            }
+
+            if (!sprite._usePivotOverride)
+            {
+                return;
+            }
+
+            ++EditorGUI.indentLevel;
+
+            PivotMode newPivotMode = (PivotMode)
+                EditorGUILayout.EnumPopup("Pivot Mode", sprite._pivotModeOverride);
+            sprite._pivotModeOverride = newPivotMode;
+
+            if (sprite._pivotModeOverride == PivotMode.Custom)
+            {
+                // X slider
+                using (new EditorGUILayout.HorizontalScope())
+                {
+                    EditorGUILayout.LabelField("X", GUILayout.Width(20));
+                    float newX = EditorGUILayout.Slider(sprite._customPivotOverride.x, 0f, 1f);
+                    if (!Mathf.Approximately(newX, sprite._customPivotOverride.x))
+                    {
+                        sprite._customPivotOverride = new Vector2(
+                            newX,
+                            sprite._customPivotOverride.y
+                        );
+                    }
+                }
+
+                // Y slider
+                using (new EditorGUILayout.HorizontalScope())
+                {
+                    EditorGUILayout.LabelField("Y", GUILayout.Width(20));
+                    float newY = EditorGUILayout.Slider(sprite._customPivotOverride.y, 0f, 1f);
+                    if (!Mathf.Approximately(newY, sprite._customPivotOverride.y))
+                    {
+                        sprite._customPivotOverride = new Vector2(
+                            sprite._customPivotOverride.x,
+                            newY
+                        );
+                    }
+                }
+
+                // Combined Vector2Field for direct input with clamping
+                Vector2 newPivot = EditorGUILayout.Vector2Field(
+                    "Custom Pivot",
+                    sprite._customPivotOverride
+                );
+                sprite._customPivotOverride = new Vector2(
+                    Mathf.Clamp01(newPivot.x),
+                    Mathf.Clamp01(newPivot.y)
+                );
+            }
+
+            bool previousColorOverride = sprite._usePivotColorOverride;
+            sprite._usePivotColorOverride = EditorGUILayout.ToggleLeft(
+                "Override Pivot Color",
+                sprite._usePivotColorOverride,
+                EditorStyles.miniLabel
+            );
+
+            if (sprite._usePivotColorOverride && !previousColorOverride)
+            {
+                sprite._pivotColorOverride = GetEffectivePivotColor(sheet, null);
+            }
+
+            if (sprite._usePivotColorOverride)
+            {
+                ++EditorGUI.indentLevel;
+                sprite._pivotColorOverride = EditorGUILayout.ColorField(
+                    "Pivot Color",
+                    sprite._pivotColorOverride
+                );
+                --EditorGUI.indentLevel;
+            }
+
+            --EditorGUI.indentLevel;
         }
 
         internal int GetPreviewSize(SpriteEntryData sprite)
@@ -3574,12 +5831,27 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                     if (entry != null)
                     {
                         TryAutoLoadConfig(entry);
+                        // Update cache key after loading config to prevent stale detection
+                        // TryAutoLoadConfig may change entry settings that affect the cache key
+                        entry._lastCacheKey = entry.GetBoundsCacheKey(this);
                         _discoveredSheets.Add(entry);
                     }
                 }
             }
 
+            if (DiagnosticsEnabled)
+            {
+                Debug.Log(
+                    $"[SpriteSheetExtractor] DiscoverSpriteSheets: About to call GenerateAllPreviewTexturesInBatch with {_discoveredSheets?.Count ?? 0} entries"
+                );
+            }
             GenerateAllPreviewTexturesInBatch(_discoveredSheets);
+            if (DiagnosticsEnabled)
+            {
+                Debug.Log(
+                    "[SpriteSheetExtractor] DiscoverSpriteSheets: GenerateAllPreviewTexturesInBatch completed"
+                );
+            }
 
             this.Log($"Discovered {_discoveredSheets.Count} sprite sheet(s).");
             Repaint();
@@ -3621,6 +5893,16 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                     break;
             }
 
+            // Initialize cache key to prevent entries appearing stale immediately after creation
+            entry._lastCacheKey = entry.GetBoundsCacheKey(this);
+            entry._lastAccessTime = DateTime.UtcNow.Ticks;
+            if (DiagnosticsEnabled)
+            {
+                Debug.Log(
+                    $"[SpriteSheetExtractor] CreateSpriteSheetEntry: created entry for '{assetPath}', spriteCount={entry._sprites.Count}, initialCacheKey={entry._lastCacheKey}"
+                );
+            }
+
             return entry;
         }
 
@@ -3635,7 +5917,12 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
         /// </remarks>
         private void GeneratePreviewTexturesForEntry(SpriteSheetEntry entry)
         {
-            if (entry?._sprites == null || entry._sprites.Count == 0 || entry._texture == null)
+            if (
+                entry == null
+                || entry._sprites == null
+                || entry._sprites.Count == 0
+                || entry._texture == null
+            )
             {
                 return;
             }
@@ -3722,9 +6009,21 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
         {
             if (entries == null || entries.Count == 0)
             {
+                if (DiagnosticsEnabled)
+                {
+                    Debug.Log(
+                        "[SpriteSheetExtractor] GenerateAllPreviewTexturesInBatch: entries null or empty, returning early"
+                    );
+                }
                 return;
             }
 
+            if (DiagnosticsEnabled)
+            {
+                Debug.Log(
+                    $"[SpriteSheetExtractor] GenerateAllPreviewTexturesInBatch: START with {entries.Count} entries"
+                );
+            }
             WallstopGenericPool<Dictionary<string, bool>> originalReadablePool = DictionaryBuffer<
                 string,
                 bool
@@ -3738,12 +6037,13 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             for (int i = 0; i < entries.Count; ++i)
             {
                 SpriteSheetEntry entry = entries[i];
-                if (entry?._sprites == null || entry._sprites.Count == 0 || entry._texture == null)
-                {
-                    continue;
-                }
-
-                if (entry._importer == null)
+                if (
+                    entry == null
+                    || entry._sprites == null
+                    || entry._sprites.Count == 0
+                    || entry._texture == null
+                    || entry._importer == null
+                )
                 {
                     continue;
                 }
@@ -3792,7 +6092,12 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             for (int i = 0; i < entries.Count; ++i)
             {
                 SpriteSheetEntry entry = entries[i];
-                if (entry?._sprites == null || entry._sprites.Count == 0 || entry._texture == null)
+                if (
+                    entry == null
+                    || entry._sprites == null
+                    || entry._sprites.Count == 0
+                    || entry._texture == null
+                )
                 {
                     continue;
                 }
@@ -3828,6 +6133,12 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                             sprite
                         );
                         sprite._previewTexture = preview;
+                        if (DiagnosticsEnabled)
+                        {
+                            Debug.Log(
+                                $"[SpriteSheetExtractor] GenerateAllPreviewTexturesInBatch: Generated preview for sprite '{sprite._originalName}' in '{entry._assetPath}', preview={preview != null}"
+                            );
+                        }
 
                         // Destroy old texture after new one is assigned
                         if (oldTexture != null)
@@ -3851,7 +6162,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             for (int i = 0; i < entries.Count; ++i)
             {
                 SpriteSheetEntry entry = entries[i];
-                if (entry?._importer == null)
+                if (entry == null || entry._importer == null)
                 {
                     continue;
                 }
@@ -3900,6 +6211,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                         windowRef.Repaint();
                     }
                 };
+            }
+            if (DiagnosticsEnabled)
+            {
+                Debug.Log("[SpriteSheetExtractor] GenerateAllPreviewTexturesInBatch: END");
             }
         }
 
@@ -4025,21 +6340,38 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
         }
 
         /// <summary>
-        /// Regenerates preview textures for all discovered sprite sheets.
+        /// Regenerates preview textures for all discovered sprite sheets, including repopulating sprites.
         /// </summary>
         /// <remarks>
-        /// Called when preview size mode or extraction mode changes to update all existing
-        /// preview thumbnails. Uses batch processing to minimize reimport operations.
+        /// Called when extraction mode changes, which requires repopulating the sprite list
+        /// in addition to regenerating preview thumbnails. Uses batch processing to minimize
+        /// reimport operations. For preview size changes only, use <see cref="RegeneratePreviewTexturesOnly"/>.
         /// </remarks>
         internal void RegenerateAllPreviewTextures()
         {
+            if (DiagnosticsEnabled)
+            {
+                Debug.Log("[SpriteSheetExtractor] RegenerateAllPreviewTextures: START");
+            }
             _previewRegenerationScheduled = false;
 
             if (!this || _discoveredSheets == null || _discoveredSheets.Count == 0)
             {
+                if (DiagnosticsEnabled)
+                {
+                    Debug.Log(
+                        "[SpriteSheetExtractor] RegenerateAllPreviewTextures: no sheets discovered, returning early"
+                    );
+                }
                 return;
             }
 
+            if (DiagnosticsEnabled)
+            {
+                Debug.Log(
+                    $"[SpriteSheetExtractor] RegenerateAllPreviewTextures: setting _regenerationInProgress=true, sheetCount={_discoveredSheets.Count}"
+                );
+            }
             _regenerationInProgress = true;
 
             // Collect old textures to destroy after new ones are generated
@@ -4069,6 +6401,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 }
 
                 RepopulateSpritesForEntry(entry);
+                // Update cache state after repopulating sprites
+                entry._needsRegeneration = false;
+                entry._lastCacheKey = entry.GetBoundsCacheKey(this);
+                entry._lastAccessTime = DateTime.UtcNow.Ticks;
             }
 
             GenerateAllPreviewTexturesInBatch(_discoveredSheets);
@@ -4083,6 +6419,61 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 }
             }
 
+            if (DiagnosticsEnabled)
+            {
+                Debug.Log(
+                    "[SpriteSheetExtractor] RegenerateAllPreviewTextures: END, setting _regenerationInProgress=false"
+                );
+            }
+            _regenerationInProgress = false;
+            Repaint();
+        }
+
+        /// <summary>
+        /// Regenerates only the preview textures without repopulating sprites.
+        /// </summary>
+        /// <remarks>
+        /// Called when only the preview size mode changes. Since sprite rects don't change,
+        /// we can skip repopulating and just regenerate the textures at the new size.
+        /// This avoids the window where sprites have null textures during repopulation.
+        /// </remarks>
+        internal void RegeneratePreviewTexturesOnly()
+        {
+            if (DiagnosticsEnabled)
+            {
+                Debug.Log("[SpriteSheetExtractor] RegeneratePreviewTexturesOnly: START");
+            }
+            _previewRegenerationScheduled = false;
+
+            if (!this || _discoveredSheets == null || _discoveredSheets.Count == 0)
+            {
+                if (DiagnosticsEnabled)
+                {
+                    Debug.Log(
+                        "[SpriteSheetExtractor] RegeneratePreviewTexturesOnly: no sheets discovered, returning early"
+                    );
+                }
+                return;
+            }
+
+            if (DiagnosticsEnabled)
+            {
+                Debug.Log(
+                    $"[SpriteSheetExtractor] RegeneratePreviewTexturesOnly: setting _regenerationInProgress=true, sheetCount={_discoveredSheets.Count}"
+                );
+            }
+            _regenerationInProgress = true;
+
+            // GenerateAllPreviewTexturesInBatch handles old texture cleanup atomically
+            // by keeping old texture until new one is assigned, then destroying old
+            GenerateAllPreviewTexturesInBatch(_discoveredSheets);
+
+            if (DiagnosticsEnabled)
+            {
+                Debug.Log(
+                    "[SpriteSheetExtractor] RegeneratePreviewTexturesOnly: END, setting _regenerationInProgress=false"
+                );
+            }
             _regenerationInProgress = false;
             Repaint();
         }
@@ -4114,6 +6505,11 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                         _sortIndex = spriteIndex++,
                         _isSelected = true,
                         _previewTexture = null,
+                        _usePivotOverride = false,
+                        _pivotModeOverride = PivotMode.Center,
+                        _customPivotOverride = new Vector2(0.5f, 0.5f),
+                        _usePivotColorOverride = false,
+                        _pivotColorOverride = Color.cyan,
                     };
                     entry._sprites.Add(spriteEntry);
                 }
@@ -4133,6 +6529,11 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                         _sortIndex = 0,
                         _isSelected = true,
                         _previewTexture = null,
+                        _usePivotOverride = false,
+                        _pivotModeOverride = PivotMode.Center,
+                        _customPivotOverride = new Vector2(0.5f, 0.5f),
+                        _usePivotColorOverride = false,
+                        _pivotColorOverride = Color.cyan,
                     };
                     entry._sprites.Add(spriteEntry);
                 }
@@ -4183,6 +6584,11 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                         _sortIndex = spriteIndex++,
                         _isSelected = true,
                         _previewTexture = null,
+                        _usePivotOverride = false,
+                        _pivotModeOverride = PivotMode.Center,
+                        _customPivotOverride = new Vector2(0.5f, 0.5f),
+                        _usePivotColorOverride = false,
+                        _pivotColorOverride = Color.cyan,
                     };
                     entry._sprites.Add(spriteEntry);
                 }
@@ -4252,6 +6658,11 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                         _sortIndex = spriteIndex++,
                         _isSelected = true,
                         _previewTexture = null,
+                        _usePivotOverride = false,
+                        _pivotModeOverride = PivotMode.Center,
+                        _customPivotOverride = new Vector2(0.5f, 0.5f),
+                        _usePivotColorOverride = false,
+                        _pivotColorOverride = Color.cyan,
                     };
                     entry._sprites.Add(spriteEntry);
                 }
@@ -4300,6 +6711,11 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                     _sortIndex = spriteIndex,
                     _isSelected = true,
                     _previewTexture = null,
+                    _usePivotOverride = false,
+                    _pivotModeOverride = PivotMode.Center,
+                    _customPivotOverride = new Vector2(0.5f, 0.5f),
+                    _usePivotColorOverride = false,
+                    _pivotColorOverride = Color.cyan,
                 };
                 entry._sprites.Add(spriteEntry);
                 ++spriteIndex;
@@ -4334,6 +6750,11 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                         _sortIndex = spriteIndex++,
                         _isSelected = true,
                         _previewTexture = null,
+                        _usePivotOverride = false,
+                        _pivotModeOverride = PivotMode.Center,
+                        _customPivotOverride = new Vector2(0.5f, 0.5f),
+                        _usePivotColorOverride = false,
+                        _pivotColorOverride = Color.cyan,
                     };
                     targetList.Add(spriteEntry);
                 }
@@ -4353,6 +6774,11 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                         _sortIndex = 0,
                         _isSelected = true,
                         _previewTexture = null,
+                        _usePivotOverride = false,
+                        _pivotModeOverride = PivotMode.Center,
+                        _customPivotOverride = new Vector2(0.5f, 0.5f),
+                        _usePivotColorOverride = false,
+                        _pivotColorOverride = Color.cyan,
                     };
                     targetList.Add(spriteEntry);
                 }
@@ -4371,8 +6797,32 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             int cellHeight;
 
             Color32[] pixels = null;
-            if (texture.isReadable)
+
+            // For Auto grid size mode, we need pixel data for algorithm detection
+            GridSizeMode effectiveGridSizeMode = GetEffectiveGridSizeMode(entry);
+            bool needsPixels = effectiveGridSizeMode == GridSizeMode.Auto;
+
+            if (needsPixels)
             {
+                // Use MakeReadable extension to ensure texture is readable
+                texture.MakeReadable();
+
+                // Reload texture after potential reimport
+                if (!texture.isReadable)
+                {
+                    texture = AssetDatabase.LoadAssetAtPath<Texture2D>(entry._assetPath);
+                    entry._texture = texture;
+                }
+
+                if (texture == null || !texture.isReadable)
+                {
+                    this.LogError(
+                        $"Failed to make texture readable for algorithm detection: {entry._assetPath}. Cannot detect grid automatically."
+                    );
+                    entry._lastAlgorithmDisplayText = "Error: Texture not readable";
+                    return;
+                }
+
                 pixels = texture.GetPixels32();
             }
 
@@ -4386,6 +6836,13 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 out cellWidth,
                 out cellHeight
             );
+
+            if (DiagnosticsEnabled && entry != null)
+            {
+                Debug.Log(
+                    $"[SpriteSheetExtractor] PopulateSpritesFromGridIntoList for '{Path.GetFileName(entry._assetPath)}': columns={columns}, rows={rows}, cellWidth={cellWidth}, cellHeight={cellHeight}, totalSprites={columns * rows}"
+                );
+            }
 
             int spriteIndex = 0;
             for (int row = 0; row < rows; ++row)
@@ -4407,6 +6864,11 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                         _sortIndex = spriteIndex++,
                         _isSelected = true,
                         _previewTexture = null,
+                        _usePivotOverride = false,
+                        _pivotModeOverride = PivotMode.Center,
+                        _customPivotOverride = new Vector2(0.5f, 0.5f),
+                        _usePivotColorOverride = false,
+                        _pivotColorOverride = Color.cyan,
                     };
                     targetList.Add(spriteEntry);
                 }
@@ -4425,8 +6887,32 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             int cellHeight;
 
             Color32[] pixels = null;
-            if (texture.isReadable)
+
+            // For Auto grid size mode, we need pixel data for algorithm detection
+            GridSizeMode effectiveGridSizeMode = GetEffectiveGridSizeMode(entry);
+            bool needsPixels = effectiveGridSizeMode == GridSizeMode.Auto;
+
+            if (needsPixels)
             {
+                // Use MakeReadable extension to ensure texture is readable
+                texture.MakeReadable();
+
+                // Reload texture after potential reimport
+                if (!texture.isReadable)
+                {
+                    texture = AssetDatabase.LoadAssetAtPath<Texture2D>(entry._assetPath);
+                    entry._texture = texture;
+                }
+
+                if (texture == null || !texture.isReadable)
+                {
+                    this.LogError(
+                        $"Failed to make texture readable for algorithm detection: {entry._assetPath}. Cannot detect grid automatically."
+                    );
+                    entry._lastAlgorithmDisplayText = "Error: Texture not readable";
+                    return;
+                }
+
                 pixels = texture.GetPixels32();
             }
 
@@ -4480,6 +6966,11 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                         _sortIndex = spriteIndex++,
                         _isSelected = true,
                         _previewTexture = null,
+                        _usePivotOverride = false,
+                        _pivotModeOverride = PivotMode.Center,
+                        _customPivotOverride = new Vector2(0.5f, 0.5f),
+                        _usePivotColorOverride = false,
+                        _pivotColorOverride = Color.cyan,
                     };
                     targetList.Add(spriteEntry);
                 }
@@ -4492,10 +6983,20 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             List<SpriteEntryData> targetList
         )
         {
+            // Use MakeReadable extension to ensure texture is readable
+            texture.MakeReadable();
+
+            // Reload texture after potential reimport
             if (!texture.isReadable)
             {
-                this.LogWarn(
-                    $"Texture {entry._assetPath} is not readable. Enable 'Read/Write' in import settings for alpha detection."
+                texture = AssetDatabase.LoadAssetAtPath<Texture2D>(entry._assetPath);
+                entry._texture = texture;
+            }
+
+            if (texture == null || !texture.isReadable)
+            {
+                this.LogError(
+                    $"Failed to make texture readable for alpha detection: {entry._assetPath}."
                 );
                 return;
             }
@@ -4532,6 +7033,11 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                     _sortIndex = spriteIndex,
                     _isSelected = true,
                     _previewTexture = null,
+                    _usePivotOverride = false,
+                    _pivotModeOverride = PivotMode.Center,
+                    _customPivotOverride = new Vector2(0.5f, 0.5f),
+                    _usePivotColorOverride = false,
+                    _pivotColorOverride = Color.cyan,
                 };
                 targetList.Add(spriteEntry);
                 ++spriteIndex;
@@ -5015,9 +7521,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             newImporter.mipmapEnabled = sourceImporter.mipmapEnabled;
             newImporter.isReadable = sourceImporter.isReadable;
 
-            PivotMode effectivePivotMode = GetEffectivePivotMode(entry);
-            Vector2 effectiveCustomPivot = GetEffectiveCustomPivot(entry);
-            Vector2 pivot = PivotModeToVector2(effectivePivotMode, effectiveCustomPivot);
+            Vector2 pivot = GetEffectivePivot(entry, sprite);
 
             TextureImporterSettings settings = new();
             newImporter.ReadTextureSettings(settings);

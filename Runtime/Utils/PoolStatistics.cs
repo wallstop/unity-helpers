@@ -17,6 +17,11 @@ namespace WallstopStudios.UnityHelpers.Utils
     public readonly struct PoolStatistics : IEquatable<PoolStatistics>
     {
         /// <summary>
+        /// Tolerance for floating-point equality comparisons.
+        /// </summary>
+        private const float FloatEqualityTolerance = 0.001f;
+
+        /// <summary>
         /// The current number of items in the pool.
         /// </summary>
         public int CurrentSize { get; }
@@ -51,6 +56,53 @@ namespace WallstopStudios.UnityHelpers.Utils
         /// </summary>
         public long CapacityPurges { get; }
 
+        /// <summary>
+        /// The number of purge operations that completed fully (purged all eligible items).
+        /// </summary>
+        public long FullPurgeOperations { get; }
+
+        /// <summary>
+        /// The number of purge operations that were partial (hit <c>MaxPurgesPerOperation</c> limit).
+        /// Partial purges continue on subsequent Rent/Return/Periodic operations.
+        /// </summary>
+        public long PartialPurgeOperations { get; }
+
+        /// <summary>
+        /// The current rentals-per-minute rate based on the rolling frequency window.
+        /// Used for intelligent purge decisions - high-frequency pools keep larger buffers.
+        /// </summary>
+        public float RentalsPerMinute { get; }
+
+        /// <summary>
+        /// The average time between consecutive rentals in seconds.
+        /// This represents the inter-arrival time between rental operations, not the duration items are held.
+        /// Returns 0 if fewer than two rentals have occurred.
+        /// </summary>
+        public float AverageInterRentalTimeSeconds { get; }
+
+        /// <summary>
+        /// The time of the most recent access (rent or return).
+        /// </summary>
+        public float LastAccessTime { get; }
+
+        /// <summary>
+        /// Whether this pool is considered high-frequency (10+ rentals/minute).
+        /// High-frequency pools benefit from larger buffers to avoid GC churn.
+        /// </summary>
+        public bool IsHighFrequency { get; }
+
+        /// <summary>
+        /// Whether this pool is considered low-frequency (less than 1 rental/minute).
+        /// Low-frequency pools can be purged more aggressively.
+        /// </summary>
+        public bool IsLowFrequency { get; }
+
+        /// <summary>
+        /// Whether this pool is considered unused (no access in 5+ minutes).
+        /// Unused pools are candidates for aggressive purging.
+        /// </summary>
+        public bool IsUnused { get; }
+
         private readonly int _hash;
 
         /// <summary>
@@ -63,6 +115,14 @@ namespace WallstopStudios.UnityHelpers.Utils
         /// <param name="purgeCount">Total purge operations.</param>
         /// <param name="idleTimeoutPurges">Purges due to idle timeout.</param>
         /// <param name="capacityPurges">Purges due to capacity limits.</param>
+        /// <param name="fullPurgeOperations">Purge operations that completed fully.</param>
+        /// <param name="partialPurgeOperations">Purge operations that were partial (hit max limit).</param>
+        /// <param name="rentalsPerMinute">Current rentals-per-minute rate.</param>
+        /// <param name="averageInterRentalTimeSeconds">Average time between consecutive rentals in seconds.</param>
+        /// <param name="lastAccessTime">Time of most recent access.</param>
+        /// <param name="isHighFrequency">Whether this is a high-frequency pool.</param>
+        /// <param name="isLowFrequency">Whether this is a low-frequency pool.</param>
+        /// <param name="isUnused">Whether this pool is unused.</param>
         public PoolStatistics(
             int currentSize,
             int peakSize,
@@ -70,7 +130,15 @@ namespace WallstopStudios.UnityHelpers.Utils
             long returnCount,
             long purgeCount,
             long idleTimeoutPurges,
-            long capacityPurges
+            long capacityPurges,
+            long fullPurgeOperations = 0,
+            long partialPurgeOperations = 0,
+            float rentalsPerMinute = 0f,
+            float averageInterRentalTimeSeconds = 0f,
+            float lastAccessTime = 0f,
+            bool isHighFrequency = false,
+            bool isLowFrequency = false,
+            bool isUnused = false
         )
         {
             CurrentSize = currentSize;
@@ -80,6 +148,14 @@ namespace WallstopStudios.UnityHelpers.Utils
             PurgeCount = purgeCount;
             IdleTimeoutPurges = idleTimeoutPurges;
             CapacityPurges = capacityPurges;
+            FullPurgeOperations = fullPurgeOperations;
+            PartialPurgeOperations = partialPurgeOperations;
+            RentalsPerMinute = rentalsPerMinute;
+            AverageInterRentalTimeSeconds = averageInterRentalTimeSeconds;
+            LastAccessTime = lastAccessTime;
+            IsHighFrequency = isHighFrequency;
+            IsLowFrequency = isLowFrequency;
+            IsUnused = isUnused;
             _hash = Objects.HashCode(
                 currentSize,
                 peakSize,
@@ -87,7 +163,15 @@ namespace WallstopStudios.UnityHelpers.Utils
                 returnCount,
                 purgeCount,
                 idleTimeoutPurges,
-                capacityPurges
+                capacityPurges,
+                fullPurgeOperations,
+                partialPurgeOperations,
+                rentalsPerMinute,
+                averageInterRentalTimeSeconds,
+                lastAccessTime,
+                isHighFrequency,
+                isLowFrequency,
+                isUnused
             );
         }
 
@@ -102,7 +186,16 @@ namespace WallstopStudios.UnityHelpers.Utils
                 && ReturnCount == other.ReturnCount
                 && PurgeCount == other.PurgeCount
                 && IdleTimeoutPurges == other.IdleTimeoutPurges
-                && CapacityPurges == other.CapacityPurges;
+                && CapacityPurges == other.CapacityPurges
+                && FullPurgeOperations == other.FullPurgeOperations
+                && PartialPurgeOperations == other.PartialPurgeOperations
+                && Math.Abs(RentalsPerMinute - other.RentalsPerMinute) < FloatEqualityTolerance
+                && Math.Abs(AverageInterRentalTimeSeconds - other.AverageInterRentalTimeSeconds)
+                    < FloatEqualityTolerance
+                && Math.Abs(LastAccessTime - other.LastAccessTime) < FloatEqualityTolerance
+                && IsHighFrequency == other.IsHighFrequency
+                && IsLowFrequency == other.IsLowFrequency
+                && IsUnused == other.IsUnused;
         }
 
         /// <inheritdoc />
@@ -140,7 +233,10 @@ namespace WallstopStudios.UnityHelpers.Utils
         public override string ToString()
         {
             return $"PoolStatistics(Size={CurrentSize}, Peak={PeakSize}, Rents={RentCount}, "
-                + $"Returns={ReturnCount}, Purges={PurgeCount}, IdleTimeout={IdleTimeoutPurges}, Capacity={CapacityPurges})";
+                + $"Returns={ReturnCount}, Purges={PurgeCount}, IdleTimeout={IdleTimeoutPurges}, "
+                + $"Capacity={CapacityPurges}, FullPurgeOps={FullPurgeOperations}, PartialPurgeOps={PartialPurgeOperations}, "
+                + $"RentalsPerMin={RentalsPerMinute:F2}, AvgInterRentalTime={AverageInterRentalTimeSeconds:F3}s, "
+                + $"LastAccess={LastAccessTime:F2}s, High={IsHighFrequency}, Low={IsLowFrequency}, Unused={IsUnused})";
         }
     }
 }

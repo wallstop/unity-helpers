@@ -54,6 +54,11 @@ namespace WallstopStudios.UnityHelpers.Utils
         public const int DefaultMinRetainCount = 0;
 
         /// <summary>
+        /// Default value for <see cref="WarmRetainCount"/>.
+        /// </summary>
+        public const int DefaultWarmRetainCount = 2;
+
+        /// <summary>
         /// Default value for <see cref="IdleTimeoutSeconds"/> (0 = disabled).
         /// </summary>
         public const float DefaultIdleTimeoutSeconds = 0f;
@@ -66,7 +71,7 @@ namespace WallstopStudios.UnityHelpers.Utils
         /// <summary>
         /// Default value for <see cref="BufferMultiplier"/>.
         /// </summary>
-        public const float DefaultBufferMultiplier = 1.5f;
+        public const float DefaultBufferMultiplier = 2.0f;
 
         /// <summary>
         /// Default value for <see cref="RollingWindowSeconds"/>.
@@ -76,12 +81,17 @@ namespace WallstopStudios.UnityHelpers.Utils
         /// <summary>
         /// Default value for <see cref="HysteresisSeconds"/>.
         /// </summary>
-        public const float DefaultHysteresisSeconds = 60f;
+        public const float DefaultHysteresisSeconds = 120f;
 
         /// <summary>
         /// Default value for <see cref="SpikeThresholdMultiplier"/>.
         /// </summary>
-        public const float DefaultSpikeThresholdMultiplier = 2.0f;
+        public const float DefaultSpikeThresholdMultiplier = 2.5f;
+
+        /// <summary>
+        /// Default value for <see cref="MaxPurgesPerOperation"/>.
+        /// </summary>
+        public const int DefaultMaxPurgesPerOperation = 10;
 
         /// <summary>
         /// Maximum number of items to retain in the pool.
@@ -92,10 +102,19 @@ namespace WallstopStudios.UnityHelpers.Utils
 
         /// <summary>
         /// Minimum number of items to always retain in the pool during purge operations.
-        /// Purge will never reduce the pool below this count.
+        /// This is the absolute floor - purge will never reduce the pool below this count.
         /// Default is 0 (no minimum).
         /// </summary>
         public int MinRetainCount { get; set; } = DefaultMinRetainCount;
+
+        /// <summary>
+        /// Warm retain count for active pools.
+        /// Active pools (accessed within <see cref="IdleTimeoutSeconds"/>) keep this many items warm
+        /// to avoid cold-start allocations. Idle pools purge to <see cref="MinRetainCount"/>.
+        /// Effective floor = <c>max(MinRetainCount, isActive ? WarmRetainCount : 0)</c>.
+        /// Default is 2.
+        /// </summary>
+        public int? WarmRetainCount { get; set; }
 
         /// <summary>
         /// Time in seconds after which an idle item becomes eligible for purging.
@@ -129,7 +148,7 @@ namespace WallstopStudios.UnityHelpers.Utils
 
         /// <summary>
         /// Optional function to provide the current time for idle tracking.
-        /// If null, uses <see cref="UnityEngine.Time.realtimeSinceStartup"/>.
+        /// If null, uses a Stopwatch-based provider (safe during static initialization).
         /// Useful for testing or custom time sources.
         /// </summary>
         public Func<float> TimeProvider { get; set; }
@@ -179,5 +198,25 @@ namespace WallstopStudios.UnityHelpers.Utils
         /// Default is 2.0 (spike is 2x the average).
         /// </summary>
         public float? SpikeThresholdMultiplier { get; set; }
+
+        /// <summary>
+        /// Maximum number of items to purge per operation.
+        /// Limits GC pressure by spreading large purge operations across multiple calls.
+        /// A value of 0 means unlimited (purge all eligible items in one operation).
+        /// If null, uses global default from <see cref="PoolPurgeSettings.DefaultGlobalMaxPurgesPerOperation"/>.
+        /// Default is null (uses global setting, which defaults to 10).
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// When set to a positive value, purge operations will process at most this many items
+        /// before returning, setting a "pending purges" flag to continue on subsequent operations.
+        /// This prevents GC spikes from bulk deallocation.
+        /// </para>
+        /// <para>
+        /// Emergency purges (e.g., <see cref="PurgeReason.MemoryPressure"/>) bypass this limit
+        /// to ensure memory is freed immediately when the system is under memory pressure.
+        /// </para>
+        /// </remarks>
+        public int? MaxPurgesPerOperation { get; set; }
     }
 }

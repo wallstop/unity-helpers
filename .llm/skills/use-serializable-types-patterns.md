@@ -15,8 +15,8 @@ Use this skill when you need:
 - Advanced usage examples for serializable collections
 - Best practices for working with SerializableDictionary, SerializableHashSet, and related types
 
-For basic type definitions and API reference, see [use-serializable-types.md](./use-serializable-types.md).
-For serialization system details, see [use-serialization.md](./use-serialization.md).
+For basic type definitions and API reference, see [Serializable Types](./use-serializable-types.md).
+For serialization system details, see [Serialization](./use-serialization.md).
 
 ---
 
@@ -461,7 +461,7 @@ public int GetValue(string key)
 
 ## Related Skills
 
-- [use-serializable-types.md](./use-serializable-types.md) - Type definitions and API reference
-- [use-serialization.md](./use-serialization.md) - JSON and Protobuf serialization details
-- [use-data-structures.md](./use-data-structures.md) - Other available data structures
-- [gc-architecture-unity.md](./gc-architecture-unity.md) - Memory management considerations
+- [Serializable Types](./use-serializable-types.md) - Type definitions and API reference
+- [Serialization](./use-serialization.md) - JSON and Protobuf serialization details
+- [Data Structures](./use-data-structures.md) - Other available data structures
+- [GC Architecture](./gc-architecture-unity.md) - Memory management considerations

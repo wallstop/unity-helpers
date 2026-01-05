@@ -67,7 +67,11 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
 
         private readonly CacheOptions<TKey, TValue> _options;
         private readonly Func<float> _timeProvider;
-        private readonly IRandom _random;
+
+        // Lazy initialization to avoid triggering PRNG static initialization during Cache construction,
+        // which can cause deadlocks during Unity's "Open Project: Open Scene" phase.
+        private IRandom _random;
+        private IRandom Random => _random ??= PRNG.Instance;
 
 #if SINGLE_THREADED
         private readonly Dictionary<TKey, int> _keyToIndex;
@@ -198,7 +202,8 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
 
             _options = options;
             _timeProvider = options.TimeProvider ?? DefaultTimeProvider;
-            _random = PRNG.Instance;
+            // Note: _random is now lazy-initialized via the Random property to avoid
+            // triggering PRNG static initialization during Cache construction.
 
             int initialCapacity = Math.Max(1, options.MaximumSize);
             _capacity = initialCapacity;
@@ -218,9 +223,16 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             InitializeLinkedLists();
         }
 
+        // Use Stopwatch for timing instead of Time.realtimeSinceStartup to avoid
+        // hanging during Unity's early initialization (e.g., during "Open Scene").
+        // Time.realtimeSinceStartup can block or behave unexpectedly when accessed
+        // during static initialization before Unity is fully loaded.
+        private static readonly System.Diagnostics.Stopwatch Stopwatch =
+            System.Diagnostics.Stopwatch.StartNew();
+
         private static float DefaultTimeProvider()
         {
-            return Time.realtimeSinceStartup;
+            return (float)Stopwatch.Elapsed.TotalSeconds;
         }
 
         private void InitializeFreeList()
@@ -755,7 +767,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             {
                 float maxJitter =
                     _options.JitterMaxSeconds > 0f ? _options.JitterMaxSeconds : ttl * 0.1f;
-                ttl += _random.NextFloat(0f, maxJitter);
+                ttl += Random.NextFloat(0f, maxJitter);
             }
 
             return currentTime + ttl;
@@ -1014,7 +1026,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 return InvalidIndex;
             }
 
-            int targetCount = _random.Next(0, _count);
+            int targetCount = Random.Next(0, _count);
             int current = 0;
 
             for (int i = 0; i < _entries.Length; i++)

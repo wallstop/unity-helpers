@@ -76,12 +76,27 @@ namespace WallstopStudios.UnityHelpers.Utils
 
         /// <summary>
         /// Minimum number of items to always retain in the pool during purge operations.
+        /// This is the absolute floor - pools never purge below this.
         /// </summary>
         [FormerlySerializedAs("minRetainCount")]
         [SerializeField]
-        [Tooltip("Minimum number of items to always retain during purge operations.")]
+        [Tooltip(
+            "Minimum number of items to always retain during purge operations. Absolute floor."
+        )]
         [Min(0)]
         private int _minRetainCount = PoolPurgeSettings.DefaultMinRetainCount;
+
+        /// <summary>
+        /// Warm retain count for active pools.
+        /// Active pools (accessed within IdleTimeoutSeconds) keep this many items warm
+        /// to avoid cold-start allocations.
+        /// </summary>
+        [SerializeField]
+        [Tooltip(
+            "Warm retain count for active pools. Active pools keep this many items warm to avoid cold-start allocations."
+        )]
+        [Min(0)]
+        private int _warmRetainCount = PoolPurgeSettings.DefaultWarmRetainCount;
 
         /// <summary>
         /// Maximum pool size. Items exceeding this limit will be purged.
@@ -169,6 +184,15 @@ namespace WallstopStudios.UnityHelpers.Utils
         {
             get => _minRetainCount;
             set => _minRetainCount = value < 0 ? 0 : value;
+        }
+
+        /// <summary>
+        /// Gets or sets the warm retain count for active pools.
+        /// </summary>
+        public int WarmRetainCount
+        {
+            get => _warmRetainCount;
+            set => _warmRetainCount = value < 0 ? 0 : value;
         }
 
         /// <summary>
@@ -392,6 +416,7 @@ namespace WallstopStudios.UnityHelpers.Utils
                 Enabled = _enabled,
                 IdleTimeoutSeconds = _idleTimeoutSeconds,
                 MinRetainCount = _minRetainCount,
+                WarmRetainCount = _warmRetainCount,
                 BufferMultiplier = _bufferMultiplier,
                 RollingWindowSeconds = _rollingWindowSeconds,
                 HysteresisSeconds = _hysteresisSeconds,
@@ -403,7 +428,7 @@ namespace WallstopStudios.UnityHelpers.Utils
         public override string ToString()
         {
             return $"PoolTypeConfiguration(Type={_typeName}, Enabled={_enabled}, IdleTimeout={_idleTimeoutSeconds}s, "
-                + $"MinRetain={_minRetainCount}, MaxSize={_maxPoolSize}, Buffer={_bufferMultiplier})";
+                + $"MinRetain={_minRetainCount}, WarmRetain={_warmRetainCount}, MaxSize={_maxPoolSize}, Buffer={_bufferMultiplier})";
         }
     }
 }

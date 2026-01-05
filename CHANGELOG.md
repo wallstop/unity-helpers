@@ -11,15 +11,143 @@ See [the roadmap](./docs/overview/roadmap.md) for details
 
 ### Added
 
+- **Pool Access Frequency Tracking**: Intelligent purge decisions based on pool usage patterns
+  - `RentalsPerMinute` tracked per pool with rolling 60-second window
+  - `AverageInterRentalTimeSeconds` tracks the average time between consecutive rentals (inter-arrival time)
+  - `LastAccessTime` tracks time of most recent rent or return operation
+  - `IsHighFrequency` (10+ rentals/minute): Pools get 50% larger buffer to avoid GC churn
+  - `IsLowFrequency` (less than 1 rental/minute): Pools use 50% shorter idle timeout for faster purging
+  - `IsUnused` (no access in 5+ minutes): Pools purge to minimum retain count immediately
+  - `PoolFrequencyStatistics` struct provides a snapshot of all frequency metrics with `IEquatable<T>` support
+  - All frequency metrics exposed via `PoolStatistics` struct and `GetStatistics()` method
+  - `PoolUsageTracker` provides helper methods: `GetFrequencyAdjustedBufferMultiplier()`, `GetFrequencyAdjustedIdleTimeout()`, `IsHighFrequency()`, `IsLowFrequency()`, `IsUnused()`
+- `WarmRetainCount` setting for intelligent pool purging - keeps active pools warm (default 2) to avoid cold-start allocations
+  - `MinRetainCount` remains the absolute floor (default 0)
+  - Active pools (accessed within `IdleTimeoutSeconds`): purge to `max(MinRetainCount, WarmRetainCount)`
+  - Idle pools: purge to `MinRetainCount`
+  - Configurable via `PoolOptions<T>.WarmRetainCount`, `PoolPurgeSettings.DefaultGlobalWarmRetainCount`, or `PoolTypeConfiguration.WarmRetainCount`
+- `PoolPurgeSettings.DisableGlobally()` convenience method for easy opt-out of automatic purging
+- **Gradual/Spread Purging**: Prevents GC spikes from bulk pool deallocation
+  - `MaxPurgesPerOperation` setting limits items purged per call (default 10, 0 = unlimited)
+  - Pending purges continue automatically on subsequent Rent/Return/Periodic operations
+  - `HasPendingPurges` property indicates when deferred purge work remains
+  - `ForceFullPurge()` method bypasses limit for immediate cleanup when needed
+  - The following operations bypass `MaxPurgesPerOperation` and purge all eligible items immediately:
+    - Emergency purges via `PurgeReason.MemoryPressure` (triggered by `Application.lowMemory`)
+    - Explicit `Purge(reason)` calls with a specified reason
+    - `ForceFullPurge()` method calls
+  - Statistics track partial vs full purge operations via `PoolStatistics.PartialPurgeOperations` and `FullPurgeOperations`
+  - Configurable via `PoolOptions<T>.MaxPurgesPerOperation`, `PoolPurgeSettings.DefaultGlobalMaxPurgesPerOperation`, or `PoolPurgeTypeOptions.MaxPurgesPerOperation`
+- **Memory Pressure Detection**: Proactive memory monitoring for intelligent pool purging
+  - `MemoryPressureMonitor` static class tracks memory usage via `GC.GetTotalMemory()` and GC collection frequency
+  - `MemoryPressureLevel` enum with five levels: `None`, `Low`, `Medium`, `High`, `Critical`
+  - Memory pressure detection considers absolute memory usage, GC collection rate, and memory growth rate
+  - Purge aggressiveness automatically scales with pressure level:
+    - `None`: Normal purging (respects hysteresis, buffer multiplier, warm retain count)
+    - `Low`: Reduces buffer multiplier to 1.5x
+    - `Medium`: Reduces buffer multiplier to 1.0x, ignores warm retain count
+    - `High`: Ignores hysteresis protection, purges to min retain count
+    - `Critical`: Emergency purge - purges all pools to min retain count immediately
+  - Configurable thresholds: `MemoryPressureThresholdBytes` (default 512MB), `CheckIntervalSeconds` (default 5s)
+  - Additional thresholds: `GCCollectionRateThreshold` and `MemoryGrowthRateThreshold` for fine-tuning
+  - Enable/disable via `MemoryPressureMonitor.Enabled` (enabled by default)
+  - `PoolUsageTracker.GetComfortableSize()` and `GetEffectiveMinRetainCount()` now accept pressure level parameter
+- **Cross-Pool Global Memory Budget**: Prevents aggregate memory bloat across all pools
+  - `GlobalPoolRegistry.GlobalMaxPooledItems` setting limits total pooled items across all pools (default 50,000)
+  - `GlobalPoolRegistry.EnforceBudget()` purges items from least-recently-used pools when budget exceeded
+  - `GlobalPoolRegistry.TryEnforceBudgetIfNeeded()` for automatic periodic budget enforcement
+  - `GlobalPoolRegistry.BudgetEnforcementEnabled` toggle for enabling/disabling automatic enforcement (default true)
+  - `GlobalPoolRegistry.BudgetEnforcementIntervalSeconds` configures check interval (default 30s)
+  - `GlobalPoolRegistry.CurrentTotalPooledItems` property exposes current aggregate pool size
+  - `GlobalPoolRegistry.GetStatistics()` returns `GlobalPoolStatistics` snapshot with:
+    - `LivePoolCount`, `StatisticsPoolCount`, `TotalPooledItems`, `GlobalMaxPooledItems`
+    - `BudgetUtilization` ratio and `IsBudgetExceeded` boolean
+    - `OldestPoolAccessTime` and `NewestPoolAccessTime` for LRU diagnostics
+  - New `GlobalPoolRegistry.IPoolStatistics` interface for pools to report their state
+  - `WallstopGenericPool<T>` now implements `IPoolStatistics` with `CurrentPooledCount`, `LastAccessTime`, and `PurgeForBudget(int count)`
+  - New `PurgeReason.BudgetExceeded` for items purged due to global budget enforcement
+  - LRU-based purging: pools accessed least recently are purged first when budget exceeded
+  - Individual pool `MinRetainCount` is respected during budget enforcement
+- **Size-Aware Purge Policies**: Large objects (above LOH threshold) get stricter purge policies
+  - `PoolSizeEstimator` static class estimates item size for pools to detect large objects
+    - `EstimateItemSizeBytes<T>()` returns approximate size in bytes for any type
+    - `EstimateArraySizeBytes<T>(int length)` calculates array size including overhead
+    - `GetLohThresholdLength<T>()` returns array length that would trigger LOH allocation
+    - `IsLargeObject<T>()` and `IsLargeObject(Type)` check if type exceeds the LOH threshold
+    - Thread-safe with concurrent caching for performance
+  - `PoolPurgeSettings.SizeAwarePoliciesEnabled` toggle for enabling/disabling (default true)
+  - `PoolPurgeSettings.LargeObjectThresholdBytes` configures LOH threshold (default 85,000)
+  - Large object pool adjustments (automatic when size-aware policies enabled):
+    - `LargeObjectBufferMultiplier` (default 1.0x vs 2.0x) - less buffer above peak usage
+    - `LargeObjectIdleTimeoutMultiplier` (default 0.5x) - 50% faster idle timeout
+    - `LargeObjectWarmRetainCount` (default 1 vs 2) - fewer warm items retained
+  - `PoolPurgeSettings.GetSizeAwareEffectiveOptions<T>()` and `GetSizeAwareEffectiveOptions(Type)` return options adjusted for item size
+  - `PoolPurgeSettings.IsLargeObject<T>()` and `IsLargeObject(Type)` convenience methods to check if type is large
+  - `WallstopGenericPool<T>` automatically uses size-aware options during construction
+
 - **SpriteSheetExtractor**: New editor tool for extracting individual sprites from sprite sheet textures
   - Open via menu: `Tools ▸ Wallstop Studios ▸ Unity Helpers ▸ Sprite Sheet Extractor`
   - Scans directories for textures with `SpriteImportMode.Multiple` and extracts each sprite as a separate PNG
   - Multiple extraction modes: use existing Unity sprite data, auto-detect grid, or configure custom grid layout
   - Preview panel with reordering, renaming, and selective extraction
-  - Per-sheet settings with extraction mode, grid size, padding, pivot, and alpha threshold overrides
+  - Per-sheet settings with extraction mode, grid size, padding, pivot, algorithm, and alpha threshold overrides
+  - Per-sheet algorithm dropdown for Auto grid size mode to select detection algorithm per sprite sheet
+  - Global and per-sheet pivot marker color settings with cascade support (per-element, per-sheet, global)
+  - Visual pivot markers (cyan crosshairs) rendered at pivot positions in texture preview and individual sprite previews when pivot is non-default (not Center) or has per-element override
   - "Use Global Settings" toggle to quickly switch between global and per-sheet configuration
   - Batch operations: "Apply Global to All", "Copy from..." to replicate settings across sheets
   - Optional reference replacement in prefabs and scenes with undo support
+  - **Algorithm Improvements**: Comprehensive grid detection overhaul for accurate sprite boundary detection
+    - "Snap to Texture Divisor" toggle (global and per-sheet) for transparency-aware grid snapping
+    - **ClusterCentroid unique positions approach**: Groups sprite centroids by tolerance (25% of average sprite size) to determine grid dimensions directly from unique X/Y position counts; compares adjacent positions rather than group starts to prevent tolerance accumulation
+    - **Sprite-fit validation**: All algorithms validate that detected sprites fit within cells; severity-based scoring measures how deeply grid lines cut into sprites (center cuts penalized more than edge clips)
+    - **Integrated sprite-fit in divisor selection**: `FindBestTransparencyAlignedDivisor` accepts sprite bounds and penalizes divisors that would split sprites, applied in BoundaryScoring, DistanceTransform, and RegionGrowing
+    - **Contrast scoring**: Boundary scoring compares boundary transparency vs interior opacity - good grids have transparent boundaries AND opaque sprite content inside cells
+    - **DistanceTransform non-maximum suppression**: Filters close peaks by strength to prevent over-segmentation; uses texture-based minimum separation
+    - **Expanded divisor search**: Searches ALL valid divisors of texture dimensions with sqrt optimization for O(sqrt(n)) performance on 4K+ textures
+    - **Grid line continuity**: Checks adjacent pixels (+/- 1 pixel) around grid line positions and takes the best transparency value, preventing off-by-one misses
+    - Linear transparency scoring ensures proportional differences (100% vs 90% = 0.1, not 0.3)
+    - Proximity-weighted divisor selection: only overrides detected cell size when transparency improves by more than 15%
+    - AutoBest early-exit threshold set to 90% so multiple algorithms are compared for better accuracy
+    - BoundaryScoring penalizes very high cell counts (>64 cells) to prefer reasonable grid sizes
+    - Size preference: when scores are similar, algorithms prefer larger cell sizes over smaller ones
+    - Intelligent remainder handling: analyzes transparency in remainder pixels to decide inclusion/exclusion
+    - Consistent 25% tolerance multiplier across all algorithms for uniform position grouping behavior
+    - Improved cache invalidation: algorithm cache clears when algorithm, expected count, alpha threshold, or snap setting changes
+    - **Expected Sprite Count UI for all algorithms**: All grid detection algorithms now show "Expected Sprite Count (Recommended)" field in UI, not just UniformGrid; when set, algorithms use sprite count to find the optimal grid dimensions that produce exactly that many cells
+    - **Sprite-count-driven grid inference**: New `InferGridFromSpriteCount` internal method finds factor pairs of the sprite count and selects the grid layout that produces the most square cells; all algorithms now use this as the primary method when sprite count is provided
+  - **Pivot UI Improvements**: Enhanced pivot editing controls
+    - X/Y sliders (0-1 range) for intuitive custom pivot adjustment at global, sheet, and sprite levels
+    - Combined Vector2 field preserved for direct numeric input with automatic clamping
+    - "Enable All Pivots" batch button enables pivot override for all sprites with current effective pivot as starting value
+    - "Disable All Pivots" batch button reverts all sprites to sheet/global pivot
+  - **Overlay Terminology**: Renamed "Grid Overlay" to "Overlay" for consistency across global and per-sheet settings
+    - `_showGridOverlay` renamed to `_showOverlay`
+    - `_showGridOverlayOverride` renamed to `_showOverlayOverride`
+    - `GetEffectiveShowGridOverlay()` renamed to `GetEffectiveShowOverlay()`
+  - **Smart Cache Invalidation**: Automatic detection of stale cached sprite data
+    - `GetBoundsCacheKey()` computes a composite hash of all settings affecting sprite bounds
+    - Settings tracked: extraction mode, grid size, padding, alpha threshold, algorithm, expected count, snap-to-divisor, and texture dimensions
+    - `InvalidateEntry()` marks entries for lazy regeneration
+    - `IsEntryStale()` detects when cache key differs from last computed value
+    - Stale entries are visually indicated with dimmed preview and "(stale)" label
+    - Lazy regeneration: sprites are only regenerated when the entry is next accessed
+  - **LRU Cache Eviction**: Bounded cache prevents memory bloat with large sprite sheet collections
+    - `MaxCachedEntries = 50` limits the number of fully-cached sprite sheet entries
+    - `CheckAndEvictLRUCache()` evicts least-recently-used entries when limit is exceeded
+    - `_lastAccessTime` tracks entry access for LRU ordering
+    - Eviction clears sprite lists and preview textures while preserving entry metadata
+  - Preview size changes (Size24, Size32, Size64, RealSize) update efficiently without breaking previews
+  - Overlay toggle changes apply immediately with automatic repaint
+  - Space-efficient UI labels prevent truncation in narrow windows
+- **CachePresets**: Factory methods for creating pre-configured caches optimized for common gamedev scenarios
+  - `CachePresets.ShortLived<TKey, TValue>()` - 100 entries, 60s TTL, LRU (frame-local computations, temporary lookups)
+  - `CachePresets.LongLived<TKey, TValue>()` - 1000 entries, no TTL, LRU (asset references, configuration data)
+  - `CachePresets.SessionCache<TKey, TValue>()` - 500 entries, 30 min sliding window, LRU (player state, inventory)
+  - `CachePresets.HighThroughput<TKey, TValue>()` - 2000 entries, 5 min TTL, SLRU, statistics, auto-growth to 4000 (AI pathfinding, physics queries)
+  - `CachePresets.RenderCache<TKey, TValue>()` - 200 entries, 30s TTL, FIFO (shader parameters, material instances)
+  - `CachePresets.NetworkCache<TKey, TValue>()` - 100 entries, 2 min TTL with 12s jitter, LRU (API responses, leaderboards)
+  - All presets return `CacheBuilder<TKey, TValue>` for further customization before `Build()`
 - **Cache Data Structure**: New high-performance, configurable `Cache<TKey, TValue>` with fluent builder API
   - Multiple eviction policies: LRU, Segmented LRU (SLRU), LFU, FIFO, and Random
   - Time-based expiration with `ExpireAfterWrite` and `ExpireAfterAccess`
@@ -48,6 +176,14 @@ See [the roadmap](./docs/overview/roadmap.md) for details
   - `OnPurge` callback with `PurgeReason` (IdleTimeout, CapacityExceeded, Explicit) for monitoring
   - Intelligent purging mode tracks usage patterns to avoid purge-allocate cycles
   - `MinRetainCount` ensures a minimum number of items are always kept
+- **Application Lifecycle Hooks for Pool Purging**: Automatic pool purging in response to system events
+  - `Application.lowMemory` triggers emergency purge (ignores hysteresis, purges to `MinRetainCount`)
+  - `Application.focusChanged` triggers purge when app backgrounds (mobile platforms)
+  - New `PurgeReason` values: `MemoryPressure`, `AppBackgrounded`, `SceneUnloaded` (reserved)
+  - Configurable via `PoolPurgeSettings.PurgeOnLowMemory` and `PoolPurgeSettings.PurgeOnAppBackground`
+  - `GlobalPoolRegistry` tracks all pool instances for cross-pool operations
+  - `PoolPurgeSettings.PurgeAllPools()` method for manual global purge
+  - Lifecycle hooks automatically registered via `RuntimeInitializeOnLoadMethod`
 - **RandomExtensions `NextOfExcept`**: New extension methods for selecting random elements with exclusions
   - `NextOfExcept(values)` - no exclusions (convenience overload)
   - `NextOfExcept(values, exception1)` - exclude one value
@@ -57,6 +193,13 @@ See [the roadmap](./docs/overview/roadmap.md) for details
   - Zero-allocation using pooled collections internally
 
 ### Changed
+
+- **BREAKING:** Pool purging now enabled by default with conservative settings
+  - `GlobalEnabled` defaults to `true` (was `false`)
+  - `DefaultBufferMultiplier` defaults to `2.0` (was `1.5`)
+  - `DefaultHysteresisSeconds` defaults to `120` (was `60`)
+  - `DefaultSpikeThresholdMultiplier` defaults to `2.5` (was `2.0`)
+  - Use `PoolPurgeSettings.DisableGlobally()` to restore previous behavior
 
 - **DictionaryExtensions `ToDictionary`**: Now uses last-wins semantics for duplicate keys instead of throwing `ArgumentException`
   - Aligns with common dictionary initialization patterns
@@ -78,6 +221,7 @@ See [the roadmap](./docs/overview/roadmap.md) for details
   - Affects `Trie`, `Geometry`, `Serializer`, `ValidateAssignmentAttribute`, `WShowIfAttribute`, relational component attributes, and more
   - Uses pooled collections and explicit loops instead of LINQ methods
   - Zero-allocation patterns applied throughout
+- **GlobalPoolRegistry.EnforceBudget() zero-allocation**: Replaced per-call `List<IPoolStatistics>` allocation with static reusable list protected by existing lock
 
 ## [3.0.5]
 
@@ -106,6 +250,11 @@ See [the roadmap](./docs/overview/roadmap.md) for details
 
 ### Fixed
 
+- **Sprite Sheet Auto-Detection Preferring Non-Transparent Boundaries**: Fixed an issue where the "Auto Best" algorithm and other detection methods could select grid boundaries that pass through non-transparent pixels when transparent alternatives existed
+  - Changed scoring system from linear to non-linear, heavily favoring fully transparent grid lines (10x higher score) over partially transparent ones
+  - Adjusted boundary comparison to only prefer alternatives when transparency score differs by more than 5%, preventing minor variations from overriding better transparent boundaries
+  - When scores are similar, the algorithm now prefers divisors closer to the originally detected cell size
+  - This fix affects `ScoreDivisorByTransparency`, `ScoreCellSizeForDimension`, and `FindBestTransparencyAlignedDivisor` methods
 - **Manual Recompile Silent Failure After Build**: Fixed an issue where the "Request Script Recompilation" menu item and shortcut would stop responding after building a project (particularly on Linux)
   - Added defensive null check in compilation pending evaluator to prevent silent `NullReferenceException`
   - The null evaluator scenario could occur when static field initialization failed or was corrupted during build operations without a domain reload

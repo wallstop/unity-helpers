@@ -3,8 +3,11 @@
 
 namespace WallstopStudios.UnityHelpers.Utils
 {
+    using System;
     using System.Collections.Generic;
+    using System.Runtime.CompilerServices;
     using System.Threading;
+    using WallstopStudios.UnityHelpers.Core.Helper;
 
     /// <summary>
     /// Tracks the rolling high-water mark (peak value) within a configurable time window.
@@ -50,8 +53,8 @@ namespace WallstopStudios.UnityHelpers.Utils
             }
         }
 
-        private readonly List<Sample> _samples = new();
-        private readonly object _lock = new();
+        private readonly List<Sample> _samples = new List<Sample>();
+        private readonly object _lock = new object();
         private float _windowSeconds;
         private int _cachedPeak;
         private float _lastCleanupTime;
@@ -253,21 +256,81 @@ namespace WallstopStudios.UnityHelpers.Utils
     /// Tracks usage statistics for intelligent pool purging.
     /// </summary>
     /// <remarks>
-    /// This class maintains concurrent rental tracking and spike detection
-    /// to enable hysteresis-based purge protection.
+    /// This class maintains concurrent rental tracking, spike detection,
+    /// and access frequency metrics to enable hysteresis-based purge protection
+    /// and frequency-informed purge decisions.
     /// </remarks>
     internal sealed class PoolUsageTracker
     {
+        /// <summary>
+        /// Number of seconds per minute for time conversions.
+        /// </summary>
+        private const float SecondsPerMinute = 60f;
+
+        /// <summary>
+        /// Default duration in seconds for frequency tracking window (1 minute).
+        /// </summary>
+        private const float DefaultFrequencyWindowSeconds = 60f;
+
+        /// <summary>
+        /// Buffer cap applied under medium memory pressure (no additional buffer).
+        /// </summary>
+        private const float MediumPressureBufferCap = 1.0f;
+
+        /// <summary>
+        /// Buffer cap applied under low memory pressure (modest additional buffer).
+        /// </summary>
+        private const float LowPressureBufferCap = 1.5f;
+
+        /// <summary>
+        /// Multiplier for high-frequency pools to increase buffer size.
+        /// High-frequency pools get 50% extra buffer.
+        /// </summary>
+        private const float HighFrequencyBufferBoost = 1.5f;
+
+        /// <summary>
+        /// Threshold for rentals-per-minute to be considered high frequency.
+        /// Pools with 10+ rentals per minute are high-frequency.
+        /// </summary>
+        private const float HighFrequencyThreshold = 10f;
+
+        /// <summary>
+        /// Multiplier for low-frequency pools idle timeout reduction.
+        /// Low-frequency pools purge 50% faster.
+        /// </summary>
+        private const float LowFrequencyTimeoutMultiplier = 0.5f;
+
+        /// <summary>
+        /// Threshold for rentals-per-minute to be considered low frequency.
+        /// Pools with less than 1 rental per minute are low-frequency.
+        /// </summary>
+        private const float LowFrequencyThreshold = 1f;
+
+        /// <summary>
+        /// Threshold in minutes for unused pool aggressive purge.
+        /// Pools with no access for 5+ minutes are candidates for aggressive purge.
+        /// </summary>
+        private const float UnusedPoolThresholdMinutes = 5f;
+
         private readonly RollingHighWaterMark _rollingHighWaterMark;
-        private readonly object _lock = new();
+        private readonly object _lock = new object();
 
         private int _currentlyRented;
         private int _peakConcurrentRentals;
         private float _lastRentalTime;
+        private float _lastReturnTime;
         private float _lastSpikeTime;
         private float _hysteresisSeconds;
         private float _spikeThresholdMultiplier;
         private float _bufferMultiplier;
+
+        private int _rentalCountThisWindow;
+        private float _windowStartTime;
+        private float _cachedRentalsPerMinute;
+        private long _totalRentalCount;
+        private double _totalInterRentalTimeSeconds;
+        private int _interRentalCount;
+        private float _previousRentalTime;
 
         /// <summary>
         /// Gets the current number of items rented from the pool.
@@ -307,6 +370,92 @@ namespace WallstopStudios.UnityHelpers.Utils
                 lock (_lock)
                 {
                     return _lastRentalTime;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Gets the time of the last return.
+        /// </summary>
+        public float LastReturnTime
+        {
+            get
+            {
+                lock (_lock)
+                {
+                    return _lastReturnTime;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Gets the time of the most recent access (rent or return).
+        /// </summary>
+        public float LastAccessTime
+        {
+            get
+            {
+                lock (_lock)
+                {
+                    return _lastRentalTime > _lastReturnTime ? _lastRentalTime : _lastReturnTime;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Gets the current rentals-per-minute rate based on the rolling frequency window.
+        /// </summary>
+        public float RentalsPerMinute
+        {
+            get
+            {
+                lock (_lock)
+                {
+                    return _cachedRentalsPerMinute;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Gets the average time between consecutive rentals in seconds.
+        /// This represents the inter-arrival time between rental operations, not the duration items are held.
+        /// Returns 0 if fewer than two rentals have occurred.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// This metric tracks the time between consecutive rent calls, which can be accurately measured
+        /// without per-item state tracking. For concurrent pools with overlapping rentals, this provides
+        /// a useful measure of rental frequency (inverse of rentals-per-second).
+        /// </para>
+        /// <para>
+        /// Example: If rentals occur at t=0, t=1, t=3, the average inter-rental time is (1 + 2) / 2 = 1.5 seconds.
+        /// </para>
+        /// </remarks>
+        public float AverageInterRentalTimeSeconds
+        {
+            get
+            {
+                lock (_lock)
+                {
+                    if (_interRentalCount == 0)
+                    {
+                        return 0f;
+                    }
+                    return (float)(_totalInterRentalTimeSeconds / _interRentalCount);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Gets the total number of rentals since pool creation.
+        /// </summary>
+        public long TotalRentalCount
+        {
+            get
+            {
+                lock (_lock)
+                {
+                    return _totalRentalCount;
                 }
             }
         }
@@ -412,6 +561,16 @@ namespace WallstopStudios.UnityHelpers.Utils
             lock (_lock)
             {
                 _currentlyRented++;
+                _totalRentalCount++;
+
+                if (_previousRentalTime > 0f && currentTime >= _previousRentalTime)
+                {
+                    float interRentalTime = currentTime - _previousRentalTime;
+                    _totalInterRentalTimeSeconds += interRentalTime;
+                    _interRentalCount++;
+                }
+
+                _previousRentalTime = currentTime;
                 _lastRentalTime = currentTime;
 
                 if (_currentlyRented > _peakConcurrentRentals)
@@ -429,6 +588,8 @@ namespace WallstopStudios.UnityHelpers.Utils
                 {
                     _lastSpikeTime = currentTime;
                 }
+
+                UpdateFrequencyTracking(currentTime);
             }
         }
 
@@ -445,6 +606,7 @@ namespace WallstopStudios.UnityHelpers.Utils
                     _currentlyRented--;
                 }
 
+                _lastReturnTime = currentTime;
                 _rollingHighWaterMark.Record(currentTime, _currentlyRented);
             }
         }
@@ -473,19 +635,147 @@ namespace WallstopStudios.UnityHelpers.Utils
         /// Calculates the "comfortable" pool size based on usage patterns.
         /// </summary>
         /// <param name="currentTime">The current time.</param>
-        /// <param name="minRetainCount">The minimum retain count configured for the pool.</param>
+        /// <param name="effectiveMinRetainCount">The effective minimum retain count (already accounts for warm/min logic).</param>
         /// <returns>The comfortable pool size.</returns>
-        public int GetComfortableSize(float currentTime, int minRetainCount)
+        public int GetComfortableSize(float currentTime, int effectiveMinRetainCount)
         {
+            return GetComfortableSize(
+                currentTime,
+                effectiveMinRetainCount,
+                MemoryPressureLevel.None
+            );
+        }
+
+        /// <summary>
+        /// Calculates the "comfortable" pool size based on usage patterns and memory pressure.
+        /// </summary>
+        /// <param name="currentTime">The current time.</param>
+        /// <param name="effectiveMinRetainCount">The effective minimum retain count (already accounts for warm/min logic).</param>
+        /// <param name="pressureLevel">The current memory pressure level.</param>
+        /// <returns>The comfortable pool size, adjusted for memory pressure.</returns>
+        /// <remarks>
+        /// <para>
+        /// Memory pressure affects the buffer multiplier used:
+        /// <list type="bullet">
+        ///   <item><description><see cref="MemoryPressureLevel.None"/>: Uses configured buffer multiplier</description></item>
+        ///   <item><description><see cref="MemoryPressureLevel.Low"/>: Caps buffer at 1.5x</description></item>
+        ///   <item><description><see cref="MemoryPressureLevel.Medium"/>: Caps buffer at 1.0x</description></item>
+        ///   <item><description><see cref="MemoryPressureLevel.High"/> and above: Returns effective min retain count</description></item>
+        /// </list>
+        /// </para>
+        /// </remarks>
+        public int GetComfortableSize(
+            float currentTime,
+            int effectiveMinRetainCount,
+            MemoryPressureLevel pressureLevel
+        )
+        {
+            if (pressureLevel >= MemoryPressureLevel.High)
+            {
+                return effectiveMinRetainCount;
+            }
+
             int rollingPeak = _rollingHighWaterMark.GetPeak(currentTime);
             float buffer;
+            float rentalsPerMin;
+            float lastAccess;
             lock (_lock)
             {
                 buffer = _bufferMultiplier;
+                rentalsPerMin = _cachedRentalsPerMinute;
+                lastAccess = _lastRentalTime > _lastReturnTime ? _lastRentalTime : _lastReturnTime;
+            }
+
+            if (rentalsPerMin >= HighFrequencyThreshold)
+            {
+                buffer *= HighFrequencyBufferBoost;
+            }
+
+            if (pressureLevel == MemoryPressureLevel.Medium)
+            {
+                buffer = buffer > MediumPressureBufferCap ? MediumPressureBufferCap : buffer;
+            }
+            else if (pressureLevel == MemoryPressureLevel.Low)
+            {
+                buffer = buffer > LowPressureBufferCap ? LowPressureBufferCap : buffer;
+            }
+
+            float unusedThresholdSeconds = UnusedPoolThresholdMinutes * SecondsPerMinute;
+            if (lastAccess > 0f && (currentTime - lastAccess) >= unusedThresholdSeconds)
+            {
+                return effectiveMinRetainCount;
             }
 
             int bufferedSize = (int)(rollingPeak * buffer);
-            return bufferedSize > minRetainCount ? bufferedSize : minRetainCount;
+            return bufferedSize > effectiveMinRetainCount ? bufferedSize : effectiveMinRetainCount;
+        }
+
+        /// <summary>
+        /// Calculates the effective minimum retain count based on whether the pool is active.
+        /// Active pools use WarmRetainCount, idle pools use MinRetainCount.
+        /// </summary>
+        /// <param name="currentTime">The current time.</param>
+        /// <param name="idleTimeoutSeconds">The idle timeout in seconds.</param>
+        /// <param name="minRetainCount">The absolute floor (MinRetainCount).</param>
+        /// <param name="warmRetainCount">The warm retain count for active pools.</param>
+        /// <returns>The effective minimum retain count.</returns>
+        public int GetEffectiveMinRetainCount(
+            float currentTime,
+            float idleTimeoutSeconds,
+            int minRetainCount,
+            int warmRetainCount
+        )
+        {
+            return GetEffectiveMinRetainCount(
+                currentTime,
+                idleTimeoutSeconds,
+                minRetainCount,
+                warmRetainCount,
+                MemoryPressureLevel.None
+            );
+        }
+
+        /// <summary>
+        /// Calculates the effective minimum retain count based on pool activity and memory pressure.
+        /// </summary>
+        /// <param name="currentTime">The current time.</param>
+        /// <param name="idleTimeoutSeconds">The idle timeout in seconds.</param>
+        /// <param name="minRetainCount">The absolute floor (MinRetainCount).</param>
+        /// <param name="warmRetainCount">The warm retain count for active pools.</param>
+        /// <param name="pressureLevel">The current memory pressure level.</param>
+        /// <returns>The effective minimum retain count, adjusted for memory pressure.</returns>
+        /// <remarks>
+        /// <para>
+        /// Memory pressure affects warm retain count:
+        /// <list type="bullet">
+        ///   <item><description><see cref="MemoryPressureLevel.None"/> and <see cref="MemoryPressureLevel.Low"/>: Uses full warm retain count for active pools</description></item>
+        ///   <item><description><see cref="MemoryPressureLevel.Medium"/> and above: Ignores warm retain count, returns min retain count</description></item>
+        /// </list>
+        /// </para>
+        /// </remarks>
+        public int GetEffectiveMinRetainCount(
+            float currentTime,
+            float idleTimeoutSeconds,
+            int minRetainCount,
+            int warmRetainCount,
+            MemoryPressureLevel pressureLevel
+        )
+        {
+            if (pressureLevel >= MemoryPressureLevel.Medium)
+            {
+                return minRetainCount;
+            }
+
+            float lastRental;
+            lock (_lock)
+            {
+                lastRental = _lastRentalTime;
+            }
+
+            bool isActive =
+                idleTimeoutSeconds > 0f && (currentTime - lastRental) < idleTimeoutSeconds;
+            int warmFloor = isActive ? warmRetainCount : 0;
+            return warmFloor > minRetainCount ? warmFloor : minRetainCount;
         }
 
         /// <summary>
@@ -507,6 +797,127 @@ namespace WallstopStudios.UnityHelpers.Utils
         }
 
         /// <summary>
+        /// Checks if this pool is high-frequency (many rentals per minute).
+        /// High-frequency pools benefit from larger buffers.
+        /// </summary>
+        /// <returns><c>true</c> if the pool is high-frequency; otherwise, <c>false</c>.</returns>
+        public bool IsHighFrequency()
+        {
+            lock (_lock)
+            {
+                return _cachedRentalsPerMinute >= HighFrequencyThreshold;
+            }
+        }
+
+        /// <summary>
+        /// Checks if this pool is low-frequency (few rentals per minute).
+        /// Low-frequency pools can be purged more aggressively.
+        /// </summary>
+        /// <returns><c>true</c> if the pool is low-frequency; otherwise, <c>false</c>.</returns>
+        public bool IsLowFrequency()
+        {
+            lock (_lock)
+            {
+                return _cachedRentalsPerMinute < LowFrequencyThreshold && _totalRentalCount > 0;
+            }
+        }
+
+        /// <summary>
+        /// Checks if the pool has been unused for an extended period.
+        /// </summary>
+        /// <param name="currentTime">The current time.</param>
+        /// <returns><c>true</c> if the pool is unused; otherwise, <c>false</c>.</returns>
+        public bool IsUnused(float currentTime)
+        {
+            lock (_lock)
+            {
+                float lastAccess =
+                    _lastRentalTime > _lastReturnTime ? _lastRentalTime : _lastReturnTime;
+                if (lastAccess <= 0f)
+                {
+                    return false;
+                }
+
+                float unusedThresholdSeconds = UnusedPoolThresholdMinutes * SecondsPerMinute;
+                return (currentTime - lastAccess) >= unusedThresholdSeconds;
+            }
+        }
+
+        /// <summary>
+        /// Gets the effective buffer multiplier adjusted for frequency.
+        /// High-frequency pools get a larger buffer, low-frequency pools get standard buffer.
+        /// </summary>
+        /// <returns>The adjusted buffer multiplier.</returns>
+        public float GetFrequencyAdjustedBufferMultiplier()
+        {
+            lock (_lock)
+            {
+                if (_cachedRentalsPerMinute >= HighFrequencyThreshold)
+                {
+                    return _bufferMultiplier * HighFrequencyBufferBoost;
+                }
+
+                return _bufferMultiplier;
+            }
+        }
+
+        /// <summary>
+        /// Gets the effective idle timeout adjusted for frequency.
+        /// Low-frequency pools have shorter effective timeout for faster purging.
+        /// </summary>
+        /// <param name="baseIdleTimeoutSeconds">The base idle timeout in seconds.</param>
+        /// <returns>The adjusted idle timeout in seconds.</returns>
+        public float GetFrequencyAdjustedIdleTimeout(float baseIdleTimeoutSeconds)
+        {
+            lock (_lock)
+            {
+                if (
+                    _cachedRentalsPerMinute < LowFrequencyThreshold
+                    && _cachedRentalsPerMinute > 0f
+                    && _totalRentalCount > 0
+                )
+                {
+                    return baseIdleTimeoutSeconds * LowFrequencyTimeoutMultiplier;
+                }
+
+                return baseIdleTimeoutSeconds;
+            }
+        }
+
+        /// <summary>
+        /// Gets a snapshot of the current frequency statistics.
+        /// </summary>
+        /// <param name="currentTime">The current time.</param>
+        /// <returns>A snapshot of frequency metrics.</returns>
+        public PoolFrequencyStatistics GetFrequencyStatistics(float currentTime)
+        {
+            lock (_lock)
+            {
+                UpdateFrequencyTrackingLocked(currentTime);
+
+                float lastAccess =
+                    _lastRentalTime > _lastReturnTime ? _lastRentalTime : _lastReturnTime;
+                float averageInterRentalTime =
+                    _interRentalCount > 0
+                        ? (float)(_totalInterRentalTimeSeconds / _interRentalCount)
+                        : 0f;
+
+                return new PoolFrequencyStatistics(
+                    rentalsPerMinute: _cachedRentalsPerMinute,
+                    averageInterRentalTimeSeconds: averageInterRentalTime,
+                    lastAccessTime: lastAccess,
+                    totalRentalCount: _totalRentalCount,
+                    isHighFrequency: _cachedRentalsPerMinute >= HighFrequencyThreshold,
+                    isLowFrequency: _cachedRentalsPerMinute < LowFrequencyThreshold
+                        && _totalRentalCount > 0,
+                    isUnused: lastAccess > 0f
+                        && (currentTime - lastAccess)
+                            >= UnusedPoolThresholdMinutes * SecondsPerMinute
+                );
+            }
+        }
+
+        /// <summary>
         /// Clears all tracking data.
         /// </summary>
         public void Clear()
@@ -516,9 +927,181 @@ namespace WallstopStudios.UnityHelpers.Utils
                 _currentlyRented = 0;
                 _peakConcurrentRentals = 0;
                 _lastRentalTime = 0f;
+                _lastReturnTime = 0f;
                 _lastSpikeTime = 0f;
+                _rentalCountThisWindow = 0;
+                _windowStartTime = 0f;
+                _cachedRentalsPerMinute = 0f;
+                _totalRentalCount = 0;
+                _totalInterRentalTimeSeconds = 0;
+                _interRentalCount = 0;
+                _previousRentalTime = 0f;
                 _rollingHighWaterMark.Clear();
             }
+        }
+
+        private void UpdateFrequencyTracking(float currentTime)
+        {
+            UpdateFrequencyTrackingLocked(currentTime);
+        }
+
+        private void UpdateFrequencyTrackingLocked(float currentTime)
+        {
+            _rentalCountThisWindow++;
+
+            if (_windowStartTime <= 0f)
+            {
+                _windowStartTime = currentTime;
+            }
+
+            float windowElapsed = currentTime - _windowStartTime;
+
+            if (windowElapsed >= DefaultFrequencyWindowSeconds)
+            {
+                if (windowElapsed > 0f)
+                {
+                    _cachedRentalsPerMinute =
+                        _rentalCountThisWindow * (SecondsPerMinute / DefaultFrequencyWindowSeconds);
+                }
+
+                _rentalCountThisWindow = 0;
+                _windowStartTime = currentTime;
+            }
+            else if (windowElapsed > 0f)
+            {
+                float estimatedMinuteRate =
+                    _rentalCountThisWindow * (SecondsPerMinute / windowElapsed);
+                _cachedRentalsPerMinute = estimatedMinuteRate;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Immutable snapshot of pool frequency statistics for debugging and monitoring.
+    /// </summary>
+    public readonly struct PoolFrequencyStatistics : IEquatable<PoolFrequencyStatistics>
+    {
+        /// <summary>
+        /// Tolerance for floating-point equality comparisons.
+        /// </summary>
+        private const float FloatEqualityTolerance = 0.0001f;
+
+        /// <summary>
+        /// Gets the current rentals-per-minute rate.
+        /// </summary>
+        public float RentalsPerMinute { get; }
+
+        /// <summary>
+        /// Gets the average time between consecutive rentals in seconds.
+        /// This represents the inter-arrival time between rental operations, not the duration items are held.
+        /// Returns 0 if fewer than two rentals have occurred.
+        /// </summary>
+        public float AverageInterRentalTimeSeconds { get; }
+
+        /// <summary>
+        /// Gets the time of the most recent access (rent or return).
+        /// </summary>
+        public float LastAccessTime { get; }
+
+        /// <summary>
+        /// Gets the total number of rentals since pool creation.
+        /// </summary>
+        public long TotalRentalCount { get; }
+
+        /// <summary>
+        /// Gets whether this pool is considered high-frequency.
+        /// </summary>
+        public bool IsHighFrequency { get; }
+
+        /// <summary>
+        /// Gets whether this pool is considered low-frequency.
+        /// </summary>
+        public bool IsLowFrequency { get; }
+
+        /// <summary>
+        /// Gets whether this pool is considered unused.
+        /// </summary>
+        public bool IsUnused { get; }
+
+        /// <summary>
+        /// Creates a new frequency statistics snapshot.
+        /// </summary>
+        public PoolFrequencyStatistics(
+            float rentalsPerMinute,
+            float averageInterRentalTimeSeconds,
+            float lastAccessTime,
+            long totalRentalCount,
+            bool isHighFrequency,
+            bool isLowFrequency,
+            bool isUnused
+        )
+        {
+            RentalsPerMinute = rentalsPerMinute;
+            AverageInterRentalTimeSeconds = averageInterRentalTimeSeconds;
+            LastAccessTime = lastAccessTime;
+            TotalRentalCount = totalRentalCount;
+            IsHighFrequency = isHighFrequency;
+            IsLowFrequency = isLowFrequency;
+            IsUnused = isUnused;
+        }
+
+        /// <inheritdoc />
+        public bool Equals(PoolFrequencyStatistics other)
+        {
+            return Math.Abs(RentalsPerMinute - other.RentalsPerMinute) < FloatEqualityTolerance
+                && Math.Abs(AverageInterRentalTimeSeconds - other.AverageInterRentalTimeSeconds)
+                    < FloatEqualityTolerance
+                && Math.Abs(LastAccessTime - other.LastAccessTime) < FloatEqualityTolerance
+                && TotalRentalCount == other.TotalRentalCount
+                && IsHighFrequency == other.IsHighFrequency
+                && IsLowFrequency == other.IsLowFrequency
+                && IsUnused == other.IsUnused;
+        }
+
+        /// <inheritdoc />
+        public override bool Equals(object obj)
+        {
+            return obj is PoolFrequencyStatistics other && Equals(other);
+        }
+
+        /// <inheritdoc />
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public override int GetHashCode()
+        {
+            return Objects.HashCode(
+                RentalsPerMinute,
+                AverageInterRentalTimeSeconds,
+                LastAccessTime,
+                TotalRentalCount,
+                IsHighFrequency,
+                IsLowFrequency,
+                IsUnused
+            );
+        }
+
+        /// <summary>
+        /// Determines whether two <see cref="PoolFrequencyStatistics"/> instances are equal.
+        /// </summary>
+        public static bool operator ==(PoolFrequencyStatistics left, PoolFrequencyStatistics right)
+        {
+            return left.Equals(right);
+        }
+
+        /// <summary>
+        /// Determines whether two <see cref="PoolFrequencyStatistics"/> instances are not equal.
+        /// </summary>
+        public static bool operator !=(PoolFrequencyStatistics left, PoolFrequencyStatistics right)
+        {
+            return !left.Equals(right);
+        }
+
+        /// <inheritdoc />
+        public override string ToString()
+        {
+            return $"PoolFrequencyStatistics(RentalsPerMin={RentalsPerMinute:F2}, "
+                + $"AvgInterRentalTime={AverageInterRentalTimeSeconds:F3}s, "
+                + $"LastAccess={LastAccessTime:F2}s, Total={TotalRentalCount}, "
+                + $"High={IsHighFrequency}, Low={IsLowFrequency}, Unused={IsUnused})";
         }
     }
 }

@@ -15,8 +15,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
     using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Editor.Utils;
     using WallstopStudios.UnityHelpers.Tests.Core;
-    using WallstopStudios.UnityHelpers.Tests.Editor.TestTypes;
     using WallstopStudios.UnityHelpers.Tests.Core.TestUtils;
+    using WallstopStudios.UnityHelpers.Tests.Editor.TestTypes;
     using Object = UnityEngine.Object;
 
     public sealed class DuplicateSingletonCleanupTests : CommonTestBase

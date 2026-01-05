@@ -111,25 +111,30 @@ namespace WallstopStudios.UnityHelpers.Editor.Core.Helper
         private const int MaxPaginationCacheSize = 1000;
         private const int MaxGUIStyleCacheSize = 500;
 
+        // Lazy initialization to avoid triggering Cache/PRNG static initialization during
+        // EditorCacheHelper class loading, which can cause deadlocks during Unity's
+        // "Open Project: Open Scene" phase.
+        private static Cache<int, string> _intToStringCache;
+        private static Cache<(int, int), string> _paginationLabelCache;
+
         /// <summary>
         /// LRU cache for integer-to-string conversions.
         /// Used by GetCachedIntString() and pagination labels across all editor UI.
         /// </summary>
-        private static readonly Cache<int, string> IntToStringCache = CacheBuilder<int, string>
-            .NewBuilder()
-            .MaximumSize(MaxIntCacheSize)
-            .Build();
+        private static Cache<int, string> IntToStringCache =>
+            _intToStringCache ??= CacheBuilder<int, string>
+                .NewBuilder()
+                .MaximumSize(MaxIntCacheSize)
+                .Build();
 
         /// <summary>
         /// LRU cache for pagination labels in format "Page X / Y".
         /// </summary>
-        private static readonly Cache<(int, int), string> PaginationLabelCache = CacheBuilder<
-            (int, int),
-            string
-        >
-            .NewBuilder()
-            .MaximumSize(MaxPaginationCacheSize)
-            .Build();
+        private static Cache<(int, int), string> PaginationLabelCache =>
+            _paginationLabelCache ??= CacheBuilder<(int, int), string>
+                .NewBuilder()
+                .MaximumSize(MaxPaginationCacheSize)
+                .Build();
 
         private static readonly Dictionary<Color, Texture2D> SolidTextureCache = new(
             new ColorComparer()
@@ -500,8 +505,9 @@ namespace WallstopStudios.UnityHelpers.Editor.Core.Helper
         /// </summary>
         public static void ClearAllCaches()
         {
-            IntToStringCache.Clear();
-            PaginationLabelCache.Clear();
+            // Only clear caches if they've been initialized (avoid triggering lazy init just to clear)
+            _intToStringCache?.Clear();
+            _paginationLabelCache?.Clear();
             EnumDisplayNameCache.Clear();
             GUIStyleCache.Clear();
             foreach (Texture2D texture in SolidTextureCache.Values)

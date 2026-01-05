@@ -219,7 +219,8 @@
         "AsyncOperation",
         "YieldInstruction",
         "CustomYieldInstruction",
-        "EditorCoroutineUtility"
+        "EditorCoroutineUtility",
+        "Blit"
       ]
     },
     {
@@ -252,6 +253,8 @@
         "ConcurrentBag",
         "ArrayPool",
         "MemoryPool",
+        "LOH",
+        "Loh",
         "Span",
         "ReadOnlySpan",
         "Memory",
@@ -340,7 +343,9 @@
         "init",
         "record",
         "covariant",
-        "contravariant"
+        "contravariant",
+        "vtable",
+        "blittable"
       ]
     },
     {
@@ -783,7 +788,9 @@
         "failsafe",
         "fallback",
         "fallbacks",
-        "lacunarity"
+        "lacunarity",
+        "reentrancy",
+        "unsubscription"
       ]
     }
   ],

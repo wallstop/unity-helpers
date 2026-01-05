@@ -17,18 +17,15 @@ namespace WallstopStudios.UnityHelpers.Editor.Internal
     {
         static EditorCacheManager()
         {
-            ClearAllCaches();
-        }
-
-        [InitializeOnLoadMethod]
-        private static void Initialize()
-        {
-            ClearAllCaches();
+            // Defer cache clearing to avoid blocking during Unity's early initialization
+            // (e.g., during "Open Project: Open Scene"). The caches will be cleared
+            // once Unity is fully loaded.
+            EditorApplication.delayCall += ClearAllCaches;
         }
 
         /// <summary>
         /// Clears all editor caches. This method is called automatically on domain reload
-        /// via <see cref="InitializeOnLoadAttribute"/> and <see cref="InitializeOnLoadMethodAttribute"/>
+        /// via <see cref="InitializeOnLoadAttribute"/> (deferred via <see cref="EditorApplication.delayCall"/>)
         /// to ensure all cached state is properly reset when Unity reloads the domain
         /// (after script compilation, entering/exiting play mode, etc.).
         /// </summary>

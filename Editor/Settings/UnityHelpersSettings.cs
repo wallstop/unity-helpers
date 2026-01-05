@@ -86,6 +86,12 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         public const int DefaultPoolMinRetainCount = 0;
 
         /// <summary>
+        /// Default value for pool warm retain count during purge.
+        /// Active pools keep this many warm to avoid cold-start allocations.
+        /// </summary>
+        public const int DefaultPoolWarmRetainCount = 2;
+
+        /// <summary>
         /// Default value for pool idle timeout in seconds (0 = disabled).
         /// </summary>
         public const float DefaultPoolIdleTimeoutSeconds = 0f;
@@ -97,9 +103,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
 
         /// <summary>
         /// Default value for whether intelligent pool purging is enabled.
-        /// Defaults to false (disabled) to maintain backward compatibility.
+        /// Defaults to true with conservative settings. Use <see cref="WallstopStudios.UnityHelpers.Utils.PoolPurgeSettings.DisableGlobally"/>
+        /// to restore previous behavior.
         /// </summary>
-        public const bool DefaultPoolIntelligentPurgingEnabled = false;
+        public const bool DefaultPoolIntelligentPurgingEnabled = true;
 
         /// <summary>
         /// Default value for pool idle timeout when intelligent purging is enabled.
@@ -111,7 +118,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         /// Default buffer multiplier for comfortable pool size calculation.
         /// Comfortable size = max(MinRetainCount, rollingHighWaterMark * BufferMultiplier).
         /// </summary>
-        public const float DefaultPoolBufferMultiplier = 1.5f;
+        public const float DefaultPoolBufferMultiplier = 2.0f;
 
         /// <summary>
         /// Default rolling window duration in seconds for high water mark tracking.
@@ -122,13 +129,13 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         /// Default hysteresis duration in seconds.
         /// Purging is suppressed for this duration after a usage spike.
         /// </summary>
-        public const float DefaultPoolHysteresisSeconds = 60f;
+        public const float DefaultPoolHysteresisSeconds = 120f;
 
         /// <summary>
         /// Default spike threshold multiplier.
         /// A spike is detected when concurrent rentals exceed the rolling average by this factor.
         /// </summary>
-        public const float DefaultPoolSpikeThresholdMultiplier = 2.0f;
+        public const float DefaultPoolSpikeThresholdMultiplier = 2.5f;
         private static readonly Color DefaultColorKeyButtonColor = new(0.243f, 0.525f, 0.988f, 1f);
         private static readonly Color DefaultLightThemeButtonColor = new(0.78f, 0.78f, 0.78f, 1f);
         private static readonly Color DefaultDarkThemeButtonColor = new(0.35f, 0.35f, 0.35f, 1f);
@@ -385,6 +392,11 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             EditorGUIUtility.TrTextContent(
                 "Min Retain Count",
                 "Minimum number of items to always retain in pools during purge operations."
+            );
+        private static readonly GUIContent PoolWarmRetainCountContent =
+            EditorGUIUtility.TrTextContent(
+                "Warm Retain Count",
+                "Number of items to keep warm in active pools to avoid cold-start allocations."
             );
         private static readonly GUIContent PoolMaxSizeContent = EditorGUIUtility.TrTextContent(
             "Max Pool Size",
@@ -946,6 +958,11 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         [Tooltip("Minimum number of items to always retain in pools during purge operations.")]
         [Min(0)]
         private int _poolMinRetainCount = DefaultPoolMinRetainCount;
+
+        [SerializeField]
+        [Tooltip("Number of items to keep warm in active pools to avoid cold-start allocations.")]
+        [Min(0)]
+        private int _poolWarmRetainCount = DefaultPoolWarmRetainCount;
 
         [SerializeField]
         [Tooltip("Maximum pool size (0 = unbounded). Items exceeding this limit will be purged.")]
@@ -2089,6 +2106,15 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         }
 
         /// <summary>
+        /// Gets the default warm retain count for pool purging.
+        /// Active pools keep this many warm to avoid cold-start allocations.
+        /// </summary>
+        public static int GetPoolWarmRetainCount()
+        {
+            return Mathf.Max(0, instance._poolWarmRetainCount);
+        }
+
+        /// <summary>
         /// Gets the default maximum pool size.
         /// </summary>
         public static int GetPoolMaxSize()
@@ -2156,6 +2182,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             PoolPurgeSettings.DefaultGlobalMinRetainCount = Mathf.Max(
                 0,
                 settings._poolMinRetainCount
+            );
+            PoolPurgeSettings.DefaultGlobalWarmRetainCount = Mathf.Max(
+                0,
+                settings._poolWarmRetainCount
             );
             PoolPurgeSettings.DefaultGlobalBufferMultiplier = Mathf.Max(
                 1f,
@@ -2248,6 +2278,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                 existing.Enabled = options.Enabled;
                 existing.IdleTimeoutSeconds = options.IdleTimeoutSeconds;
                 existing.MinRetainCount = options.MinRetainCount;
+                existing.WarmRetainCount = options.WarmRetainCount;
                 existing.BufferMultiplier = options.BufferMultiplier;
                 existing.RollingWindowSeconds = options.RollingWindowSeconds;
                 existing.HysteresisSeconds = options.HysteresisSeconds;
@@ -4858,6 +4889,23 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                                     PoolMinRetainCountContent,
                                     settings._poolMinRetainCount,
                                     value => settings._poolMinRetainCount = Mathf.Max(0, value)
+                                );
+                                dataChanged |= changed;
+                                return true;
+                            }
+
+                            if (
+                                string.Equals(
+                                    property.propertyPath,
+                                    nameof(_poolWarmRetainCount),
+                                    StringComparison.Ordinal
+                                )
+                            )
+                            {
+                                bool changed = DrawIntField(
+                                    PoolWarmRetainCountContent,
+                                    settings._poolWarmRetainCount,
+                                    value => settings._poolWarmRetainCount = Mathf.Max(0, value)
                                 );
                                 dataChanged |= changed;
                                 return true;

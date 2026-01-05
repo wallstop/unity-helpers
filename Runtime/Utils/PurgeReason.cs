@@ -33,5 +33,33 @@ namespace WallstopStudios.UnityHelpers.Utils
         /// The item was explicitly purged via a call to the Purge method.
         /// </summary>
         Explicit = 3,
+
+        /// <summary>
+        /// The item was purged due to memory pressure from the system.
+        /// This occurs when <see cref="UnityEngine.Application.lowMemory"/> is triggered.
+        /// </summary>
+        MemoryPressure = 4,
+
+        /// <summary>
+        /// The item was purged because the application was backgrounded.
+        /// This occurs when the app loses focus, typically on mobile platforms.
+        /// </summary>
+        AppBackgrounded = 5,
+
+        /// <summary>
+        /// The item was purged because a scene was unloaded.
+        /// This occurs when <see cref="UnityEngine.SceneManagement.SceneManager.sceneUnloaded"/> is triggered
+        /// and <see cref="PoolPurgeSettings.PurgeOnSceneUnload"/> is enabled.
+        /// The purge respects hysteresis settings to avoid purge-allocate cycles during rapid scene transitions.
+        /// </summary>
+        SceneUnloaded = 6,
+
+        /// <summary>
+        /// The item was purged because the global pool memory budget was exceeded.
+        /// This occurs when <see cref="GlobalPoolRegistry.EnforceBudget"/> determines that
+        /// the total pooled items across all pools exceeds <see cref="GlobalPoolRegistry.GlobalMaxPooledItems"/>.
+        /// Pools are purged in LRU order (least recently accessed first).
+        /// </summary>
+        BudgetExceeded = 7,
     }
 }

@@ -152,7 +152,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
 
         /// <summary>
         /// Function that returns the current time in seconds.
-        /// Defaults to <see cref="Time.realtimeSinceStartup"/> when null.
+        /// Defaults to a Stopwatch-based provider when null (safe during static initialization).
         /// </summary>
         public Func<float> TimeProvider;
 

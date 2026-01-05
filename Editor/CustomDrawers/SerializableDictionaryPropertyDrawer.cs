@@ -736,34 +736,41 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         private static readonly GUIContent DuplicateIconContentCache = new();
         private static readonly GUIContent NullKeyTooltipContent = new();
         private static readonly GUIContent NullKeyIconContentCache = new();
-        private static readonly GUIContent DuplicateIconTemplate = EditorGUIUtility.IconContent(
-            "console.warnicon.sml"
-        );
-        private static readonly GUIContent PendingFoldoutContent = EditorGUIUtility.TrTextContent(
-            "New Entry"
-        );
+
+        // Lazy initialization to avoid calling EditorGUIUtility during static class loading,
+        // which can hang Unity during "Open Project: Open Scene" if the class is accessed
+        // before EditorGUIUtility is fully initialized.
+        private static GUIContent _duplicateIconTemplate;
+        private static GUIContent _pendingFoldoutContent;
+        private static GUIContent _paginationPrevContent;
+        private static GUIContent _paginationNextContent;
+        private static GUIContent _paginationFirstContent;
+        private static GUIContent _paginationLastContent;
+
+        private static GUIContent DuplicateIconTemplate =>
+            _duplicateIconTemplate ??= EditorGUIUtility.IconContent("console.warnicon.sml");
+
+        private static GUIContent PendingFoldoutContent =>
+            _pendingFoldoutContent ??= EditorGUIUtility.TrTextContent("New Entry");
+
         private static readonly GUIContent FoldoutLabelContent = new();
         private static readonly GUIContent PaginationPageLabelContent = new();
         private static readonly GUIContent PaginationRangeContent = new();
         private static readonly GUIContent UnsupportedTypeContent = new();
         private static readonly Dictionary<Type, string> UnsupportedTypeMessageCache = new();
         private static readonly Dictionary<(int, int, int), string> RangeLabelCache = new();
-        private static readonly GUIContent PaginationPrevContent = EditorGUIUtility.TrTextContent(
-            "<",
-            "Previous page"
-        );
-        private static readonly GUIContent PaginationNextContent = EditorGUIUtility.TrTextContent(
-            ">",
-            "Next page"
-        );
-        private static readonly GUIContent PaginationFirstContent = EditorGUIUtility.TrTextContent(
-            "<<",
-            "Jump to first page"
-        );
-        private static readonly GUIContent PaginationLastContent = EditorGUIUtility.TrTextContent(
-            ">>",
-            "Jump to last page"
-        );
+
+        private static GUIContent PaginationPrevContent =>
+            _paginationPrevContent ??= EditorGUIUtility.TrTextContent("<", "Previous page");
+
+        private static GUIContent PaginationNextContent =>
+            _paginationNextContent ??= EditorGUIUtility.TrTextContent(">", "Next page");
+
+        private static GUIContent PaginationFirstContent =>
+            _paginationFirstContent ??= EditorGUIUtility.TrTextContent("<<", "Jump to first page");
+
+        private static GUIContent PaginationLastContent =>
+            _paginationLastContent ??= EditorGUIUtility.TrTextContent(">>", "Jump to last page");
         private static GUIStyle _footerLabelStyle;
         private static GUIStyle _pendingFoldoutLabelStyle;
         private static GUIStyle _rowChildLabelStyle;

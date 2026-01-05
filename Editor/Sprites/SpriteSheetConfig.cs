@@ -22,7 +22,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
         /// <summary>
         /// Current configuration version for migration support.
         /// </summary>
-        public const int CurrentVersion = 2;
+        public const int CurrentVersion = 3;
 
         /// <summary>
         /// Configuration version number for future migration support.
@@ -66,6 +66,13 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
         public CachedAlgorithmResult cachedAlgorithmResult;
 
         /// <summary>
+        /// Whether to snap detected cell sizes to exact divisors of texture dimensions
+        /// using transparency-aware analysis. When true, adjusts cell sizes to align
+        /// grid lines with transparent regions for cleaner sprite boundaries.
+        /// </summary>
+        public bool snapToTextureDivisor = true;
+
+        /// <summary>
         /// Gets the config file path for a given texture path.
         /// </summary>
         /// <param name="texturePath">The path to the source texture.</param>
@@ -99,8 +106,12 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 config.version = 2;
             }
 
-            // Future migrations would be handled here:
-            // if (config.version < 3) { /* migrate v2 -> v3 */ config.version = 3; }
+            // Migrate v2 -> v3: Add snapToTextureDivisor persistence
+            if (config.version < 3)
+            {
+                config.snapToTextureDivisor = true;
+                config.version = 3;
+            }
 
             config.version = CurrentVersion;
         }

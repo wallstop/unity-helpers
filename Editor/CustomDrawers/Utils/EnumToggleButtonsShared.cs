@@ -148,21 +148,23 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers.Utils
         /// </summary>
         public static readonly GUIContent SearchContent = new("🔍", "Search");
 
+        // Lazy initialization to avoid calling EditorGUIUtility during static class loading,
+        // which can hang Unity during "Open Project: Open Scene" if the class is accessed
+        // before EditorGUIUtility is fully initialized.
+        private static GUIContent _firstPageContent;
+        private static GUIContent _lastPageContent;
+
         /// <summary>
         /// Content for navigating to first page.
         /// </summary>
-        public static readonly GUIContent FirstPageContent = EditorGUIUtility.TrTextContent(
-            "<<",
-            "First Page"
-        );
+        public static GUIContent FirstPageContent =>
+            _firstPageContent ??= EditorGUIUtility.TrTextContent("<<", "First Page");
 
         /// <summary>
         /// Content for navigating to last page.
         /// </summary>
-        public static readonly GUIContent LastPageContent = EditorGUIUtility.TrTextContent(
-            ">>",
-            "Last Page"
-        );
+        public static GUIContent LastPageContent =>
+            _lastPageContent ??= EditorGUIUtility.TrTextContent(">>", "Last Page");
 
         private static readonly Dictionary<ButtonStyleCacheKey, GUIStyle> ButtonStyleCache = new(
             new ButtonStyleCacheKeyComparer()

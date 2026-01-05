@@ -98,6 +98,48 @@ The CHANGELOG follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) f
 - ❌ **NEVER**: Edit entries under versioned headings like `## [3.0.5]`
 - ❌ **NEVER**: "Clean up" or "improve" wording in released notes
 
+### Unreleased Features: Edit In Place
+
+**CRITICAL**: If a feature is still in the `[Unreleased]` section and you're modifying it, **edit the existing entry directly** rather than creating new "Fixed" or "Changed" entries.
+
+**Why?** From the user's perspective, unreleased features don't exist yet. There's nothing to "fix" or "change" — it's all part of the same new feature that hasn't shipped.
+
+| Scenario                                      | Correct Action                                        |
+| --------------------------------------------- | ----------------------------------------------------- |
+| Bug in unreleased feature                     | Edit the feature's entry to describe correct behavior |
+| Behavior change in unreleased feature         | Update the feature's entry with new behavior          |
+| Performance improvement in unreleased feature | Update the feature's entry to reflect final perf      |
+| API change in unreleased feature              | Update the feature's entry with correct API           |
+
+**Example**:
+
+```markdown
+## [Unreleased]
+
+### Added
+
+- **Sprite Sheet Extractor**: New tool for extracting individual sprites from sprite sheets
+  - Auto-detection algorithm strongly prefers transparent boundaries ← Edit this line when fixing algorithm
+  - Preview size changes update immediately without breaking ← Edit this line when fixing preview
+```
+
+❌ **WRONG** — Creating separate entries for unreleased feature issues:
+
+```markdown
+## [Unreleased]
+
+### Added
+
+- **Sprite Sheet Extractor**: New tool for extracting individual sprites
+
+### Fixed
+
+- Fixed Sprite Sheet Extractor algorithm selecting non-transparent boundaries ← NO! Feature isn't released yet
+- Fixed preview breaking when changing size ← NO! Nothing to "fix" for users
+```
+
+**Exception**: If a _released_ version introduced a bug and the fix is in `[Unreleased]`, then a "Fixed" entry is appropriate because users experienced the bug.
+
 ### Required Format
 
 ```markdown

@@ -2585,9 +2585,21 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         public void DefaultOptionsHasExpectedDefaults()
         {
             CacheOptions<string, int> options = default;
-            Assert.AreEqual(0, options.MaximumSize, "Default MaximumSize should be 0 (constructor normalizes)");
-            Assert.AreEqual(0f, options.ExpireAfterWriteSeconds, "Default ExpireAfterWriteSeconds should be 0");
-            Assert.AreEqual(0f, options.ExpireAfterAccessSeconds, "Default ExpireAfterAccessSeconds should be 0");
+            Assert.AreEqual(
+                0,
+                options.MaximumSize,
+                "Default MaximumSize should be 0 (constructor normalizes)"
+            );
+            Assert.AreEqual(
+                0f,
+                options.ExpireAfterWriteSeconds,
+                "Default ExpireAfterWriteSeconds should be 0"
+            );
+            Assert.AreEqual(
+                0f,
+                options.ExpireAfterAccessSeconds,
+                "Default ExpireAfterAccessSeconds should be 0"
+            );
         }
 
         [Test]
@@ -2606,7 +2618,11 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         {
             CacheOptions<string, int> options = new() { MaximumSize = maxSize };
             using Cache<string, int> cache = new(options);
-            Assert.AreEqual(maxSize, cache.Capacity, $"Cache capacity should match configured MaximumSize {maxSize}");
+            Assert.AreEqual(
+                maxSize,
+                cache.Capacity,
+                $"Cache capacity should match configured MaximumSize {maxSize}"
+            );
         }
 
         [TestCase(0)]
@@ -2867,14 +2883,15 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
 
             _currentTime = 2.0f; // Advance time past expiration
 
-            Assert.IsFalse(
-                cache.TryGet("key", out int value2),
-                "Key should be expired after TTL"
-            );
+            Assert.IsFalse(cache.TryGet("key", out int value2), "Key should be expired after TTL");
             Assert.AreEqual(default(int), value2, "Value should be default after expiration");
 
             CacheStatistics statsAfterExpiration = cache.GetStatistics();
-            Assert.AreEqual(1, statsAfterExpiration.MissCount, "Should have 1 miss after expiration");
+            Assert.AreEqual(
+                1,
+                statsAfterExpiration.MissCount,
+                "Should have 1 miss after expiration"
+            );
             Assert.AreEqual(1, statsAfterExpiration.ExpiredCount, "Should have 1 expired entry");
         }
 

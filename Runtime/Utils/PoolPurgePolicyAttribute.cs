@@ -55,14 +55,26 @@ namespace WallstopStudios.UnityHelpers.Utils
         public int? MinRetainCount { get; }
 
         /// <summary>
+        /// Gets the warm retain count for active pools, or null to use defaults.
+        /// Active pools (accessed within <see cref="IdleTimeoutSeconds"/>) keep this many items warm
+        /// to avoid cold-start allocations.
+        /// </summary>
+        public int? WarmRetainCount { get; }
+
+        /// <summary>
         /// Creates a new pool purge policy attribute.
         /// </summary>
         /// <param name="enabled">Whether intelligent purging is enabled for this type.</param>
-        public PoolPurgePolicyAttribute(bool enabled)
+        /// <param name="warmRetainCount">
+        /// Optional warm retain count for active pools. Active pools keep this many items warm
+        /// to avoid cold-start allocations. If not specified, uses global defaults.
+        /// </param>
+        public PoolPurgePolicyAttribute(bool enabled, int warmRetainCount = -1)
         {
             Enabled = enabled;
             IdleTimeoutSeconds = null;
             MinRetainCount = null;
+            WarmRetainCount = warmRetainCount >= 0 ? warmRetainCount : null;
         }
 
         /// <summary>
@@ -70,11 +82,20 @@ namespace WallstopStudios.UnityHelpers.Utils
         /// </summary>
         /// <param name="enabled">Whether intelligent purging is enabled for this type.</param>
         /// <param name="idleTimeoutSeconds">Custom idle timeout in seconds.</param>
-        public PoolPurgePolicyAttribute(bool enabled, float idleTimeoutSeconds)
+        /// <param name="warmRetainCount">
+        /// Optional warm retain count for active pools. Active pools keep this many items warm
+        /// to avoid cold-start allocations. If not specified, uses global defaults.
+        /// </param>
+        public PoolPurgePolicyAttribute(
+            bool enabled,
+            float idleTimeoutSeconds,
+            int warmRetainCount = -1
+        )
         {
             Enabled = enabled;
             IdleTimeoutSeconds = idleTimeoutSeconds;
             MinRetainCount = null;
+            WarmRetainCount = warmRetainCount >= 0 ? warmRetainCount : null;
         }
 
         /// <summary>
@@ -83,11 +104,21 @@ namespace WallstopStudios.UnityHelpers.Utils
         /// <param name="enabled">Whether intelligent purging is enabled for this type.</param>
         /// <param name="idleTimeoutSeconds">Custom idle timeout in seconds.</param>
         /// <param name="minRetainCount">Minimum number of items to retain.</param>
-        public PoolPurgePolicyAttribute(bool enabled, float idleTimeoutSeconds, int minRetainCount)
+        /// <param name="warmRetainCount">
+        /// Optional warm retain count for active pools. Active pools keep this many items warm
+        /// to avoid cold-start allocations. If not specified, uses global defaults.
+        /// </param>
+        public PoolPurgePolicyAttribute(
+            bool enabled,
+            float idleTimeoutSeconds,
+            int minRetainCount,
+            int warmRetainCount = -1
+        )
         {
             Enabled = enabled;
             IdleTimeoutSeconds = idleTimeoutSeconds;
             MinRetainCount = minRetainCount;
+            WarmRetainCount = warmRetainCount >= 0 ? warmRetainCount : null;
         }
     }
 }

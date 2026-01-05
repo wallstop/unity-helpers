@@ -15,8 +15,8 @@ Use this skill when you need:
 - Type references (`System.Type`) stored in assets
 - GUIDs that survive Unity serialization
 
-For common patterns and integration examples, see [use-serializable-types-patterns.md](./use-serializable-types-patterns.md).
-For serialization system details, see [use-serialization.md](./use-serialization.md).
+For common patterns and integration examples, see [Serializable Types Patterns](./use-serializable-types-patterns.md).
+For serialization system details, see [Serialization](./use-serialization.md).
 
 ---
 
@@ -456,19 +456,19 @@ names[id1] = "Player";
 
 ## Quick Reference
 
-| Type                       | Create                       | Check Value           | Get Value                       |
-| -------------------------- | ---------------------------- | --------------------- | ------------------------------- |
-| `SerializableDictionary`   | `new()`                      | `ContainsKey(key)`    | `TryGetValue(key, out value)`   |
-| `SerializableSortedDict`   | `new()`                      | `ContainsKey(key)`    | `TryGetValue(key, out value)`   |
-| `SerializableHashSet`      | `new()`                      | `Contains(item)`      | N/A (set membership)            |
-| `SerializableNullable<T>`  | `new()` or `new(value)`      | `HasValue`            | `Value` or `GetValueOrDefault`  |
-| `SerializableType`         | `new(typeof(T))`             | `!IsEmpty`            | `Value` or `TryGetValue`        |
-| `WGuid`                    | `WGuid.NewGuid()`            | `!= WGuid.Empty`      | Implicit conversion to `Guid`   |
+| Type                      | Create                  | Check Value        | Get Value                      |
+| ------------------------- | ----------------------- | ------------------ | ------------------------------ |
+| `SerializableDictionary`  | `new()`                 | `ContainsKey(key)` | `TryGetValue(key, out value)`  |
+| `SerializableSortedDict`  | `new()`                 | `ContainsKey(key)` | `TryGetValue(key, out value)`  |
+| `SerializableHashSet`     | `new()`                 | `Contains(item)`   | N/A (set membership)           |
+| `SerializableNullable<T>` | `new()` or `new(value)` | `HasValue`         | `Value` or `GetValueOrDefault` |
+| `SerializableType`        | `new(typeof(T))`        | `!IsEmpty`         | `Value` or `TryGetValue`       |
+| `WGuid`                   | `WGuid.NewGuid()`       | `!= WGuid.Empty`   | Implicit conversion to `Guid`  |
 
 ---
 
 ## Related Skills
 
-- [use-serializable-types-patterns.md](./use-serializable-types-patterns.md) - Common patterns and integration examples
-- [use-serialization.md](./use-serialization.md) - JSON and Protobuf serialization details
-- [use-data-structures.md](./use-data-structures.md) - Other available data structures
+- [Serializable Types Patterns](./use-serializable-types-patterns.md) - Common patterns and integration examples
+- [Serialization](./use-serialization.md) - JSON and Protobuf serialization details
+- [Data Structures](./use-data-structures.md) - Other available data structures

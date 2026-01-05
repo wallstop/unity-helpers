@@ -120,15 +120,25 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers.Utils
         >(StringComparer.Ordinal);
 
         /// <summary>
+        /// Backing field for lazy-initialized EditorCache.
+        /// Lazy initialization is CRITICAL to prevent Unity Editor hangs during static initialization.
+        /// Eager initialization would trigger Cache construction during domain reload,
+        /// which can cause deadlocks during Unity's "Open Project: Open Scene" phase.
+        /// </summary>
+        private static Cache<int, Editor> _editorCache;
+
+        /// <summary>
         /// Cache for Unity Editor instances, keyed by object instance ID.
         /// Uses <see cref="Cache{TKey,TValue}"/> with LRU eviction and eviction callback
         /// to properly destroy Editor instances when they are evicted from the cache.
+        /// Lazy-initialized to prevent Unity Editor hangs during static initialization.
         /// </summary>
-        private static readonly Cache<int, Editor> EditorCache = CacheBuilder<int, Editor>
-            .NewBuilder()
-            .MaximumSize(MaxEditorCacheSize)
-            .OnEviction(OnEditorEvicted)
-            .Build();
+        private static Cache<int, Editor> EditorCache =>
+            _editorCache ??= CacheBuilder<int, Editor>
+                .NewBuilder()
+                .MaximumSize(MaxEditorCacheSize)
+                .OnEviction(OnEditorEvicted)
+                .Build();
 
         /// <summary>
         /// Callback invoked when an Editor is evicted from the cache.
@@ -605,8 +615,9 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers.Utils
 
             ScrollPositions.Clear();
 
+            // Only clear if the cache has been initialized (avoid triggering lazy initialization during cache clear)
             // Clear() triggers OnEviction callback for each entry, which calls DestroyImmediate
-            EditorCache.Clear();
+            _editorCache?.Clear();
         }
 
         /// <summary>
