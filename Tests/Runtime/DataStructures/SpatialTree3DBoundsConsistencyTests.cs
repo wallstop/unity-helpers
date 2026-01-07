@@ -11,6 +11,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
     using WallstopStudios.UnityHelpers.Tests.TestUtils;
     using Vector3 = UnityEngine.Vector3;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class SpatialTree3DBoundsConsistencyTests
     {
         private static Vector3[] CreateGridPoints(Vector3Int gridSize)

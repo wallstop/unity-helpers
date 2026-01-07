@@ -11,6 +11,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Tags
     using WallstopStudios.UnityHelpers.Tests.Tags.Helpers;
 
     [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class CosmeticEffectComponentTests : TagsTestBase
     {
         [Test]
@@ -43,6 +44,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Tags
     }
 
     [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class CollisionSensesTests : TagsTestBase
     {
         [UnityTest]

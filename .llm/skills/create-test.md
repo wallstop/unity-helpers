@@ -107,6 +107,8 @@ namespace WallstopStudios.UnityHelpers.Tests.{Subsystem}
 - ~~`AsyncTask_Invocation_Completes_And_Records_History`~~
 - ~~`When_Input_Is_Empty_Returns_Default_Value`~~
 
+**Pre-commit Hook Enforcement:** The pre-commit hook runs `scripts/lint-tests.ps1` and will **reject commits** that contain underscores in test method names, `TestName` values, or `SetName()` calls. Commits will fail with specific error messages indicating which files and lines violate the naming convention.
+
 ### 2. NEVER Use `#region`
 
 ### 3. One File Per MonoBehaviour/ScriptableObject
@@ -171,6 +173,29 @@ All data-driven test names must use `.` (dot) separator or PascalCase—**NEVER 
 [TestCase(null, TestName = "Input_Null")]
 ```
 
+#### Anti-Patterns to Avoid
+
+```csharp
+// ❌ WRONG - Underscores in TestName
+[TestCase(null, TestName = "Input_Null_Returns_False")]
+[TestCase("", TestName = "Empty_String")]
+
+// ❌ WRONG - Underscores in SetName()
+yield return new TestCaseData(null).SetName("Null_Input_Throws");
+yield return new TestCaseData(Array.Empty<int>()).SetName("Empty_Array");
+
+// ❌ WRONG - Underscore-separated TestCaseSource method names
+private static IEnumerable<TestCaseData> Edge_Case_Test_Data() { }
+private static IEnumerable<TestCaseData> null_input_cases() { }
+
+// ✅ CORRECT - PascalCase method names, dot notation in SetName
+private static IEnumerable<TestCaseData> EdgeCaseTestData()
+{
+    yield return new TestCaseData(null).SetName("Input.Null.Throws");
+    yield return new TestCaseData(Array.Empty<int>()).SetName("Input.Empty.ReturnsZero");
+}
+```
+
 ---
 
 ## Data-Driven Testing (PREFERRED)
@@ -218,6 +243,23 @@ private static IEnumerable<TestCaseData> EdgeCaseTestData()
         .SetName("Input.MaxValue.HandlesCorrectly");
 }
 ```
+
+### Automated Enforcement
+
+**ALWAYS run linters after every change** to catch naming violations early:
+
+```bash
+pwsh -NoProfile -File scripts/lint-tests.ps1
+```
+
+This linter detects:
+
+- Underscores in test method names
+- Underscores in `TestName` values
+- Underscores in `SetName()` calls
+- Non-PascalCase `TestCaseSource` method names
+
+**Note:** Pre-commit hooks enforce these rules automatically, but running the linter manually during development catches issues before commit.
 
 ---
 
@@ -366,7 +408,9 @@ Every test MUST be completely independent:
 - [ ] Data-driven tests used where appropriate
 - [ ] Tests are completely independent
 - [ ] Test method names follow convention (PascalCase, no underscores)
-- [ ] TestCaseSource names use dot notation
+- [ ] Data-driven test names use dot notation (e.g., "Input.Null.ReturnsFalse")
+- [ ] No underscores in TestName values
+- [ ] No underscores in TestCaseSource method names
 - [ ] No comments in test code (self-documenting)
 
 ### Quality
@@ -382,6 +426,7 @@ Every test MUST be completely independent:
 - [ ] No `async Task` test methods
 - [ ] No `#region` blocks
 - [ ] MonoBehaviour/ScriptableObject helpers in separate files
+- [ ] Ran `pwsh -NoProfile -File scripts/lint-tests.ps1` and fixed any issues
 
 ---
 
@@ -419,6 +464,30 @@ Every test MUST be completely independent:
 | **Large**      | 10K+ elements              | Performance, memory            |
 | **Invalid**    | `"@#$%"`, `(MyEnum)999`    | Graceful error handling        |
 | **Concurrent** | Parallel access            | Thread safety                  |
+
+---
+
+## Migrating Legacy Tests
+
+If you encounter existing tests with underscores in method names or test names, follow this migration process:
+
+1. **Run the linter** to identify all violations:
+
+   ```bash
+   pwsh -NoProfile -File scripts/lint-tests.ps1
+   ```
+
+2. **Rename test methods** from `Snake_Case` to `PascalCase`:
+   - `Process_Null_Input_Throws` → `ProcessNullInputThrows`
+   - `Calculate_Returns_Sum_When_Valid` → `CalculateReturnsSumWhenValid`
+3. **Update TestName values** to use dot notation:
+   - `TestName = "Null_Input_Throws"` → `TestName = "Input.Null.Throws"`
+4. **Update SetName() calls** similarly:
+   - `.SetName("Empty_Array")` → `.SetName("Input.Empty.Array")`
+5. **Re-run the linter** to verify all violations are fixed
+6. **Run affected tests** to ensure they still pass after renaming
+
+**Note:** When migrating a large number of tests, consider making incremental commits by file or test fixture to keep changes reviewable.
 
 ---
 

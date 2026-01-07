@@ -26,6 +26,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
     /// </para>
     /// </remarks>
     [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class SceneUnloadPurgeTests
     {
         private sealed class TestPoolItem
@@ -55,7 +56,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
         [SetUp]
         public void SetUp()
         {
-            _currentTime = 0f;
+            // Start at t=1 to ensure spike time > 0 check works
+            // (time 0 is treated as uninitialized in the tracker)
+            _currentTime = 1f;
             TestPoolItem.ResetIdCounter();
             PoolPurgeSettings.ResetToDefaults();
             GlobalPoolRegistry.Clear();
@@ -97,6 +100,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
             {
                 Triggers = PurgeTrigger.Explicit,
                 TimeProvider = TestTimeProvider,
+                MinRetainCount = 0, // Explicit min retain count
+                WarmRetainCount = 0, // Disable warm buffer to allow full purge
             };
 
             using WallstopGenericPool<TestPoolItem> pool1 = new(
@@ -135,6 +140,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
                 Triggers = PurgeTrigger.Explicit,
                 OnPurge = (_, reason) => reasons.Add(reason),
                 TimeProvider = TestTimeProvider,
+                MinRetainCount = 0, // Explicit min retain count
+                WarmRetainCount = 0, // Disable warm buffer to allow full purge
             };
 
             using WallstopGenericPool<TestPoolItem> pool = new(
@@ -187,10 +194,15 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
         {
             GlobalPoolRegistry.Clear();
 
+            // Start at t=1 to ensure spike time > 0 check works
+            // (time 0 is treated as uninitialized in the tracker)
+            _currentTime = 1f;
+
             PoolOptions<TestPoolItem> options = new()
             {
                 UseIntelligentPurging = true,
                 HysteresisSeconds = 60f,
+                SpikeThresholdMultiplier = 0.1f, // Low threshold to ensure spike triggers on first rental
                 Triggers = PurgeTrigger.Explicit,
                 TimeProvider = TestTimeProvider,
             };
@@ -227,10 +239,16 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
         {
             GlobalPoolRegistry.Clear();
 
+            // Start at t=1 to ensure spike time > 0 check works
+            // (time 0 is treated as uninitialized in the tracker)
+            _currentTime = 1f;
+
             PoolOptions<TestPoolItem> options = new()
             {
                 UseIntelligentPurging = true,
                 HysteresisSeconds = 60f,
+                SpikeThresholdMultiplier = 0.1f, // Low threshold to ensure spike triggers on first rental
+                WarmRetainCount = 0, // Disable warm buffer for predictable purge count
                 Triggers = PurgeTrigger.Explicit,
                 TimeProvider = TestTimeProvider,
             };
@@ -263,10 +281,16 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
         {
             GlobalPoolRegistry.Clear();
 
+            // Start at t=1 to ensure spike time > 0 check works
+            // (time 0 is treated as uninitialized in the tracker)
+            _currentTime = 1f;
+
             PoolOptions<TestPoolItem> options = new()
             {
                 UseIntelligentPurging = true,
                 HysteresisSeconds = 60f,
+                SpikeThresholdMultiplier = 0.1f, // Low threshold to ensure spike triggers on first rental
+                WarmRetainCount = 0, // Disable warm buffer for predictable purge count
                 Triggers = PurgeTrigger.Explicit,
                 TimeProvider = TestTimeProvider,
             };
@@ -280,8 +304,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
             // Rent and return to trigger spike detection
             pool.Get().Dispose();
 
-            // Advance time past hysteresis period
-            _currentTime = 120f;
+            // Advance time past hysteresis period (1 + 60 = 61, so 121 should be past)
+            _currentTime = 121f;
 
             // Now the purge should proceed
             int purged = PoolPurgeSettings.PurgeAllPools(
@@ -324,6 +348,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
 
             PoolOptions<TestPoolItem> options = new()
             {
+                MinRetainCount = 0, // Explicit min retain count
+                WarmRetainCount = 0, // Disable warm buffer for predictable purge count
                 Triggers = PurgeTrigger.Explicit,
                 TimeProvider = TestTimeProvider,
             };
@@ -375,6 +401,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
         {
             PoolOptions<TestPoolItem> options = new()
             {
+                MinRetainCount = 0, // Explicit min retain count
+                WarmRetainCount = 0, // Disable warm buffer for predictable purge count
                 Triggers = PurgeTrigger.Explicit,
                 TimeProvider = TestTimeProvider,
             };
@@ -418,6 +446,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
         {
             PoolOptions<TestPoolItem> options = new()
             {
+                WarmRetainCount = 0, // Disable warm buffer for predictable purge count
                 IdleTimeoutSeconds = 1f,
                 Triggers = PurgeTrigger.Explicit,
                 TimeProvider = TestTimeProvider,
@@ -609,6 +638,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
             List<PurgeReason> reasons = new();
             PoolOptions<TestPoolItem> options = new()
             {
+                MinRetainCount = 0, // Explicit min retain count
+                WarmRetainCount = 0, // Disable warm buffer for predictable purge count
                 Triggers = PurgeTrigger.Explicit,
                 OnPurge = (_, reason) => reasons.Add(reason),
                 TimeProvider = TestTimeProvider,

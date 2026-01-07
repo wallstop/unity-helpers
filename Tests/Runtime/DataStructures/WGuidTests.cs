@@ -11,6 +11,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
     using NUnit.Framework;
     using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class WGuidTests
     {
         private const string NonVersionFourGuid = "00000000-0000-1000-8000-000000000000";

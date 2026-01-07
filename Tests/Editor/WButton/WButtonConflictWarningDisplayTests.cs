@@ -21,6 +21,8 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
     /// and handling of all conflict types (placement, priority, draw order).
     /// </summary>
     [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class WButtonConflictWarningDisplayTests : CommonTestBase
     {
         [SetUp]

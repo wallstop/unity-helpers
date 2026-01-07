@@ -21,6 +21,9 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
     /// Integration tests for SerializableDictionary and SerializableSet property drawers
     /// when rendered inside WGroup contexts, verifying correct indentation and tweening behavior.
     /// </summary>
+    [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class WGroupSerializableCollectionIntegrationTests : CommonTestBase
     {
         private bool _originalDictionaryTweenEnabled;

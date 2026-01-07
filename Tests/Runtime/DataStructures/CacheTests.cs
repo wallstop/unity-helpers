@@ -9,6 +9,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
     using WallstopStudios.UnityHelpers.Core.DataStructure;
 
     [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class CacheTests
     {
         private float _currentTime;
@@ -145,9 +146,12 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
 
             cache.Set("key1", 42);
 
-            Assert.IsTrue(cache.TryRemove("key1"));
-            Assert.AreEqual(0, cache.Count);
-            Assert.IsFalse(cache.TryGet("key1", out _));
+            Assert.IsTrue(cache.TryRemove("key1"), "TryRemove should return true for existing key");
+            Assert.AreEqual(0, cache.Count, "Cache should be empty after removal");
+            Assert.IsFalse(
+                cache.TryGet("key1", out _),
+                "TryGet should return false after key removal"
+            );
         }
 
         [Test]
@@ -158,7 +162,10 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
                 .MaximumSize(10)
                 .Build();
 
-            Assert.IsFalse(cache.TryRemove("nonexistent"));
+            Assert.IsFalse(
+                cache.TryRemove("nonexistent"),
+                "TryRemove should return false for non-existent key"
+            );
         }
 
         [Test]
@@ -208,7 +215,10 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
 
             cache.Set("key1", 42);
 
-            Assert.IsTrue(cache.ContainsKey("key1"));
+            Assert.IsTrue(
+                cache.ContainsKey("key1"),
+                "ContainsKey should return true for existing key"
+            );
         }
 
         [Test]
@@ -219,7 +229,10 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
                 .MaximumSize(10)
                 .Build();
 
-            Assert.IsFalse(cache.ContainsKey("nonexistent"));
+            Assert.IsFalse(
+                cache.ContainsKey("nonexistent"),
+                "ContainsKey should return false for non-existent key"
+            );
         }
 
         [Test]
@@ -325,6 +338,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
     }
 
     [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class CacheLruEvictionTests
     {
         private float _currentTime;
@@ -362,10 +376,13 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
 
             cache.Set("d", 4);
 
-            Assert.IsTrue(cache.ContainsKey("a"));
-            Assert.IsFalse(cache.ContainsKey("b"));
-            Assert.IsTrue(cache.ContainsKey("c"));
-            Assert.IsTrue(cache.ContainsKey("d"));
+            Assert.IsTrue(cache.ContainsKey("a"), "Key 'a' should remain (recently accessed)");
+            Assert.IsFalse(
+                cache.ContainsKey("b"),
+                "Key 'b' should be evicted (least recently used)"
+            );
+            Assert.IsTrue(cache.ContainsKey("c"), "Key 'c' should remain");
+            Assert.IsTrue(cache.ContainsKey("d"), "Key 'd' should be present (just added)");
         }
 
         [Test]
@@ -393,15 +410,16 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             cache.Set("d", 4);
             cache.Set("e", 5);
 
-            Assert.IsTrue(cache.ContainsKey("b"));
-            Assert.IsFalse(cache.ContainsKey("c"));
-            Assert.IsFalse(cache.ContainsKey("a"));
-            Assert.IsTrue(cache.ContainsKey("d"));
-            Assert.IsTrue(cache.ContainsKey("e"));
+            Assert.IsTrue(cache.ContainsKey("b"), "Key 'b' should remain (most recently accessed)");
+            Assert.IsFalse(cache.ContainsKey("c"), "Key 'c' should be evicted");
+            Assert.IsFalse(cache.ContainsKey("a"), "Key 'a' should be evicted");
+            Assert.IsTrue(cache.ContainsKey("d"), "Key 'd' should remain");
+            Assert.IsTrue(cache.ContainsKey("e"), "Key 'e' should be present (just added)");
         }
     }
 
     [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class CacheFifoEvictionTests
     {
         private float _currentTime;
@@ -433,10 +451,13 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
 
             cache.Set("d", 4);
 
-            Assert.IsFalse(cache.ContainsKey("a"));
-            Assert.IsTrue(cache.ContainsKey("b"));
-            Assert.IsTrue(cache.ContainsKey("c"));
-            Assert.IsTrue(cache.ContainsKey("d"));
+            Assert.IsFalse(
+                cache.ContainsKey("a"),
+                "Key 'a' should be evicted (oldest entry in FIFO)"
+            );
+            Assert.IsTrue(cache.ContainsKey("b"), "Key 'b' should remain");
+            Assert.IsTrue(cache.ContainsKey("c"), "Key 'c' should remain");
+            Assert.IsTrue(cache.ContainsKey("d"), "Key 'd' should be present (just added)");
         }
 
         [Test]
@@ -457,14 +478,18 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
 
             cache.Set("d", 4);
 
-            Assert.IsFalse(cache.ContainsKey("a"));
-            Assert.IsTrue(cache.ContainsKey("b"));
-            Assert.IsTrue(cache.ContainsKey("c"));
-            Assert.IsTrue(cache.ContainsKey("d"));
+            Assert.IsFalse(
+                cache.ContainsKey("a"),
+                "Key 'a' should be evicted (FIFO ignores access)"
+            );
+            Assert.IsTrue(cache.ContainsKey("b"), "Key 'b' should remain");
+            Assert.IsTrue(cache.ContainsKey("c"), "Key 'c' should remain");
+            Assert.IsTrue(cache.ContainsKey("d"), "Key 'd' should be present (just added)");
         }
     }
 
     [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class CacheLfuEvictionTests
     {
         private float _currentTime;
@@ -533,6 +558,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
     }
 
     [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class CacheSlruEvictionTests
     {
         private float _currentTime;
@@ -621,6 +647,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
     }
 
     [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class CacheRandomEvictionTests
     {
         private float _currentTime;
@@ -658,6 +685,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
     }
 
     [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class CacheExpirationTests
     {
         private float _currentTime;
@@ -772,6 +800,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
     }
 
     [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class CacheStatisticsTests
     {
         private float _currentTime;
@@ -892,6 +921,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
     }
 
     [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class CacheCallbackTests
     {
         private float _currentTime;
@@ -1056,6 +1086,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
     }
 
     [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class CacheWeightedTests
     {
         private float _currentTime;
@@ -1068,7 +1099,9 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [SetUp]
         public void SetUp()
         {
-            _currentTime = 0f;
+            // Start at t=1 to avoid time=0 initialization issues
+            // (time 0 can cause problems with thrash detection and eviction timing)
+            _currentTime = 1f;
         }
 
         [Test]
@@ -1079,6 +1112,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
                 .MaximumWeight(100)
                 .Weigher(static (k, v) => v.Length)
                 .TimeProvider(TimeProvider)
+                .AllowGrowth(0f, 0) // Disable growth for predictable eviction
                 .Build();
 
             cache.Set("a", new string('x', 40));
@@ -1107,9 +1141,297 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
 
             Assert.AreEqual(11, cache.Size);
         }
+
+        /// <summary>
+        ///     Tests that a weighted cache correctly handles items that fill the cache exactly to its maximum weight.
+        ///     This boundary case verifies no off-by-one errors in weight tracking.
+        /// </summary>
+        [Test]
+        public void WeightedCacheWithExactlyMaxWeightWorksCorrectly()
+        {
+            const int maxWeight = 100;
+            using Cache<string, string> cache = CacheBuilder<string, string>
+                .NewBuilder()
+                .MaximumWeight(maxWeight)
+                .Weigher(static (k, v) => v.Length)
+                .TimeProvider(TimeProvider)
+                .AllowGrowth(0f, 0) // Disable growth for predictable behavior
+                .Build();
+
+            // Add items that exactly fill the max weight (50 + 50 = 100)
+            cache.Set("a", new string('x', 50));
+            cache.Set("b", new string('y', 50));
+
+            Assert.That(
+                cache.Count,
+                Is.EqualTo(2),
+                "Cache should contain exactly 2 items when at max weight"
+            );
+            Assert.That(
+                cache.Size,
+                Is.EqualTo(maxWeight),
+                $"Cache size should be exactly {maxWeight} when filled to max weight"
+            );
+
+            // Adding one more item should trigger eviction
+            cache.Set("c", new string('z', 10));
+
+            Assert.That(
+                cache.Size,
+                Is.LessThanOrEqualTo(maxWeight),
+                $"Cache size should not exceed {maxWeight} after adding new item"
+            );
+            Assert.That(
+                cache.ContainsKey("c"),
+                Is.True,
+                "Newly added item should be present after eviction"
+            );
+        }
+
+        /// <summary>
+        ///     Tests that a weighted cache correctly handles items with zero weight.
+        ///     Zero-weight items are a special case that should still occupy space in the cache.
+        /// </summary>
+        [Test]
+        public void WeightedCacheWithZeroWeightItemsWorksCorrectly()
+        {
+            const int maxWeight = 100;
+            using Cache<string, string> cache = CacheBuilder<string, string>
+                .NewBuilder()
+                .MaximumWeight(maxWeight)
+                .Weigher(static (k, v) => v.Length) // Empty string has weight 0
+                .TimeProvider(TimeProvider)
+                .AllowGrowth(0f, 0)
+                .Build();
+
+            // Add zero-weight items (empty strings)
+            cache.Set("empty1", "");
+            cache.Set("empty2", "");
+            cache.Set("empty3", "");
+
+            Assert.That(cache.Count, Is.EqualTo(3), "Cache should contain all zero-weight items");
+            Assert.That(
+                cache.Size,
+                Is.EqualTo(0),
+                "Cache size should be 0 when all items have zero weight"
+            );
+
+            // Add a weighted item
+            cache.Set("weighted", new string('x', 50));
+
+            Assert.That(
+                cache.Count,
+                Is.EqualTo(4),
+                "Cache should contain zero-weight items plus weighted item"
+            );
+            Assert.That(
+                cache.Size,
+                Is.EqualTo(50),
+                "Cache size should reflect only the weighted item"
+            );
+            Assert.That(
+                cache.TryGet("empty1", out string empty1Value),
+                Is.True,
+                "Zero-weight items should still be retrievable"
+            );
+            Assert.That(
+                empty1Value,
+                Is.EqualTo(""),
+                "Retrieved zero-weight item should have correct value"
+            );
+        }
+
+        /// <summary>
+        ///     Tests weighted cache eviction order to verify that items are evicted according to the eviction policy.
+        ///     Uses LRU policy to verify that least recently used items are evicted first.
+        /// </summary>
+        [Test]
+        public void WeightedCacheEvictionOrderIsCorrect()
+        {
+            const int maxWeight = 100;
+            using Cache<string, string> cache = CacheBuilder<string, string>
+                .NewBuilder()
+                .MaximumWeight(maxWeight)
+                .Weigher(static (k, v) => v.Length)
+                .EvictionPolicy(EvictionPolicy.Lru)
+                .TimeProvider(TimeProvider)
+                .AllowGrowth(0f, 0)
+                .Build();
+
+            // Add items with different weights
+            cache.Set("a", new string('a', 30)); // Weight 30
+            _currentTime += 0.1f;
+            cache.Set("b", new string('b', 30)); // Weight 30
+            _currentTime += 0.1f;
+            cache.Set("c", new string('c', 30)); // Weight 30, total = 90
+
+            // Access 'a' to make it most recently used
+            _currentTime += 0.1f;
+            cache.TryGet("a", out _);
+
+            // Add new item that exceeds max weight, forcing eviction
+            _currentTime += 0.1f;
+            cache.Set("d", new string('d', 30)); // Would exceed 100, must evict
+
+            Assert.That(
+                cache.ContainsKey("a"),
+                Is.True,
+                "Most recently accessed item 'a' should not be evicted"
+            );
+            Assert.That(
+                cache.ContainsKey("b"),
+                Is.False,
+                "Least recently used item 'b' should be evicted first"
+            );
+            Assert.That(cache.ContainsKey("d"), Is.True, "Newly added item 'd' should be present");
+        }
+    }
+
+    /// <summary>
+    ///     Tests for cache edge cases with maximum size of exactly 1.
+    /// </summary>
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
+    public sealed class CacheSizeOneTests
+    {
+        private float _currentTime;
+
+        private float TimeProvider()
+        {
+            return _currentTime;
+        }
+
+        [SetUp]
+        public void SetUp()
+        {
+            _currentTime = 1f;
+        }
+
+        /// <summary>
+        ///     Tests that a cache with maximum size 1 correctly evicts the existing item when a new item is added.
+        /// </summary>
+        [Test]
+        public void CacheWithSizeOneEvictsOnSecondItem()
+        {
+            using Cache<string, int> cache = CacheBuilder<string, int>
+                .NewBuilder()
+                .MaximumSize(1)
+                .TimeProvider(TimeProvider)
+                .Build();
+
+            cache.Set("first", 1);
+
+            Assert.That(cache.Count, Is.EqualTo(1), "Cache should contain exactly one item");
+            Assert.That(
+                cache.TryGet("first", out int value1),
+                Is.True,
+                "First item should be retrievable"
+            );
+            Assert.That(value1, Is.EqualTo(1), "First item value should be 1");
+
+            // Add second item, should evict first
+            cache.Set("second", 2);
+
+            Assert.That(
+                cache.Count,
+                Is.EqualTo(1),
+                "Cache should still contain exactly one item after eviction"
+            );
+            Assert.That(cache.ContainsKey("first"), Is.False, "First item should be evicted");
+            Assert.That(
+                cache.TryGet("second", out int value2),
+                Is.True,
+                "Second item should be retrievable"
+            );
+            Assert.That(value2, Is.EqualTo(2), "Second item value should be 2");
+        }
+
+        /// <summary>
+        ///     Tests that updating the same key in a size-1 cache works correctly.
+        /// </summary>
+        [Test]
+        public void CacheWithSizeOneUpdatesExistingKey()
+        {
+            using Cache<string, int> cache = CacheBuilder<string, int>
+                .NewBuilder()
+                .MaximumSize(1)
+                .TimeProvider(TimeProvider)
+                .Build();
+
+            cache.Set("key", 1);
+            cache.Set("key", 2);
+
+            Assert.That(
+                cache.Count,
+                Is.EqualTo(1),
+                "Cache should contain exactly one item after update"
+            );
+            Assert.That(
+                cache.TryGet("key", out int value),
+                Is.True,
+                "Updated key should be retrievable"
+            );
+            Assert.That(value, Is.EqualTo(2), "Value should be updated to 2");
+        }
+
+        /// <summary>
+        ///     Tests statistics tracking in a size-1 cache to verify eviction counts are accurate.
+        /// </summary>
+        [Test]
+        public void CacheWithSizeOneTracksEvictionsCorrectly()
+        {
+            using Cache<string, int> cache = CacheBuilder<string, int>
+                .NewBuilder()
+                .MaximumSize(1)
+                .RecordStatistics()
+                .TimeProvider(TimeProvider)
+                .Build();
+
+            cache.Set("a", 1);
+            cache.Set("b", 2);
+            cache.Set("c", 3);
+
+            CacheStatistics stats = cache.GetStatistics();
+
+            Assert.That(cache.Count, Is.EqualTo(1), "Cache should contain exactly one item");
+            Assert.That(
+                stats.EvictionCount,
+                Is.EqualTo(2),
+                "Should have evicted 2 items (a and b)"
+            );
+        }
+
+        /// <summary>
+        ///     Tests that a size-1 cache correctly handles expiration.
+        /// </summary>
+        [Test]
+        public void CacheWithSizeOneHandlesExpirationCorrectly()
+        {
+            using Cache<string, int> cache = CacheBuilder<string, int>
+                .NewBuilder()
+                .MaximumSize(1)
+                .ExpireAfterWrite(1.0f)
+                .TimeProvider(TimeProvider)
+                .Build();
+
+            cache.Set("key", 42);
+
+            Assert.That(
+                cache.TryGet("key", out int value1),
+                Is.True,
+                "Key should exist before expiration"
+            );
+            Assert.That(value1, Is.EqualTo(42), "Value should be 42");
+
+            _currentTime = 2.5f; // Advance past TTL
+
+            Assert.That(cache.TryGet("key", out _), Is.False, "Key should be expired after TTL");
+            Assert.That(cache.Count, Is.EqualTo(0), "Cache should be empty after expiration");
+        }
     }
 
     [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class CacheDynamicSizingTests
     {
         private float _currentTime;
@@ -1122,7 +1444,9 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         [SetUp]
         public void SetUp()
         {
-            _currentTime = 0f;
+            // Start at t=1 to avoid time=0 initialization issues
+            // (time 0 can cause problems with thrash detection and eviction timing)
+            _currentTime = 1f;
         }
 
         [Test]
@@ -1168,6 +1492,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
     }
 
     [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class CacheBuilderTests
     {
         [Test]
@@ -1250,6 +1575,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
     }
 
     [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class CacheStatisticsStructTests
     {
         [Test]
@@ -1356,6 +1682,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
     }
 
     [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class CacheEdgeCaseTests
     {
         private float _currentTime;
@@ -1532,6 +1859,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
     }
 
     [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class CacheJitterTests
     {
         private float _currentTime;
@@ -1567,6 +1895,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
     }
 
     [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class EvictionPolicyEnumTests
     {
         [Test]
@@ -1584,6 +1913,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
     }
 
     [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class EvictionReasonEnumTests
     {
         [Test]
@@ -1600,6 +1930,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
     }
 
     [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class CacheGetKeysMethodTests
     {
         private float _currentTime;
@@ -1725,6 +2056,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
     }
 
     [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class CacheIListOverloadTests
     {
         private float _currentTime;
@@ -1850,6 +2182,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
     }
 
     [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class CacheSlruSegmentCountTests
     {
         private float _currentTime;
@@ -1948,6 +2281,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
     }
 
     [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class CacheExtremeCaseTests
     {
         private float _currentTime;
@@ -2110,6 +2444,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
     }
 
     [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class CacheDataDrivenTests
     {
         private float _currentTime;
@@ -2143,12 +2478,23 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
                 cache.Set(i, i);
             }
 
-            Assert.AreEqual(capacity, cache.Count);
+            Assert.AreEqual(
+                capacity,
+                cache.Count,
+                $"Cache with capacity {capacity} should contain exactly {capacity} items after filling"
+            );
 
             for (int i = 0; i < capacity; i++)
             {
-                Assert.IsTrue(cache.TryGet(i, out int value));
-                Assert.AreEqual(i, value);
+                Assert.IsTrue(
+                    cache.TryGet(i, out int value),
+                    $"Cache with capacity {capacity}: key {i} should be retrievable"
+                );
+                Assert.AreEqual(
+                    i,
+                    value,
+                    $"Cache with capacity {capacity}: key {i} should have value {i}"
+                );
             }
         }
 
@@ -2173,7 +2519,11 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             }
 
             int expectedCount = Math.Min(capacity, itemsToAdd);
-            Assert.AreEqual(expectedCount, cache.Count);
+            Assert.AreEqual(
+                expectedCount,
+                cache.Count,
+                $"Policy {policy}: after adding {itemsToAdd} items to cache with capacity {capacity}, count should be {expectedCount}"
+            );
         }
 
         private static IEnumerable<TestCaseData> EvictionPolicyTestData()
@@ -2215,10 +2565,16 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
                 .Build();
 
             cache.Set("key", 42);
-            Assert.IsTrue(cache.TryGet("key", out _));
+            Assert.IsTrue(
+                cache.TryGet("key", out _),
+                $"TTL {ttl}s: key should exist immediately after set"
+            );
 
             _currentTime = ttl + 0.1f;
-            Assert.IsFalse(cache.TryGet("key", out _));
+            Assert.IsFalse(
+                cache.TryGet("key", out _),
+                $"TTL {ttl}s: key should be expired after {ttl + 0.1f}s (TTL + 0.1s)"
+            );
         }
 
         [Test]
@@ -2242,7 +2598,11 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
 
             cache.Compact(percentage);
 
-            Assert.AreEqual(expectedAfterCompact, cache.Count);
+            Assert.AreEqual(
+                expectedAfterCompact,
+                cache.Count,
+                $"Compact({percentage:P0}): starting with {initialCount} items should result in {expectedAfterCompact} items"
+            );
         }
 
         private static IEnumerable<TestCaseData> CompactPercentageTestData()
@@ -2257,6 +2617,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
 
 #if !SINGLE_THREADED
     [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class CacheConcurrentAccessTests
     {
         private float _currentTime;
@@ -2579,6 +2940,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
 #endif
 
     [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class CacheOptionsStructTests
     {
         [Test]
@@ -2620,8 +2982,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             using Cache<string, int> cache = new(options);
             Assert.AreEqual(
                 maxSize,
-                cache.Capacity,
-                $"Cache capacity should match configured MaximumSize {maxSize}"
+                cache.MaximumSize,
+                $"Cache MaximumSize should match configured MaximumSize {maxSize}"
             );
         }
 
@@ -2635,8 +2997,221 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             using Cache<string, int> cache = new(options);
             Assert.AreEqual(
                 CacheOptions<string, int>.DefaultMaximumSize,
-                cache.Capacity,
+                cache.MaximumSize,
                 $"Invalid MaximumSize {invalidMaxSize} should normalize to default"
+            );
+        }
+
+        [TestCase(1)]
+        [TestCase(8)]
+        [TestCase(16)]
+        [TestCase(100)]
+        public void CacheInitialCapacityIsRespected(int initialCapacity)
+        {
+            CacheOptions<string, int> options = new()
+            {
+                MaximumSize = 10000,
+                InitialCapacity = initialCapacity,
+            };
+            using Cache<string, int> cache = new(options);
+            Assert.AreEqual(10000, cache.MaximumSize, "MaximumSize should be configured value");
+            Assert.AreEqual(
+                initialCapacity,
+                cache.Capacity,
+                $"Initial capacity should match configured InitialCapacity {initialCapacity}"
+            );
+        }
+
+        [Test]
+        public void CacheInitialCapacityClampedToMaximumSize()
+        {
+            CacheOptions<string, int> options = new() { MaximumSize = 50, InitialCapacity = 1000 };
+            using Cache<string, int> cache = new(options);
+            Assert.AreEqual(50, cache.MaximumSize, "MaximumSize should be configured value");
+            Assert.AreEqual(
+                50,
+                cache.Capacity,
+                "Initial capacity should be clamped to MaximumSize when larger"
+            );
+        }
+
+        [Test]
+        public void CacheInitialCapacityClampedToMaxReasonableCapacity()
+        {
+            CacheOptions<string, int> options = new()
+            {
+                MaximumSize = int.MaxValue,
+                InitialCapacity = int.MaxValue,
+            };
+            using Cache<string, int> cache = new(options);
+            Assert.AreEqual(int.MaxValue, cache.MaximumSize, "MaximumSize should be int.MaxValue");
+            Assert.LessOrEqual(
+                cache.Capacity,
+                CacheOptions<string, int>.MaxReasonableInitialCapacity,
+                "Initial capacity should be clamped to reasonable maximum"
+            );
+        }
+
+        [Test]
+        public void CacheDefaultInitialCapacityUsedWhenNotSpecified()
+        {
+            CacheOptions<string, int> options = new() { MaximumSize = 10000 };
+            using Cache<string, int> cache = new(options);
+            Assert.AreEqual(
+                10000,
+                cache.Capacity,
+                "Initial capacity should default to MaximumSize when InitialCapacity is not explicitly set"
+            );
+        }
+
+        [TestCase(0)]
+        [TestCase(-1)]
+        [TestCase(-100)]
+        public void CacheInvalidInitialCapacityNormalizesToDefault(int invalidInitialCapacity)
+        {
+            CacheOptions<string, int> options = new()
+            {
+                MaximumSize = 10000,
+                InitialCapacity = invalidInitialCapacity,
+            };
+            using Cache<string, int> cache = new(options);
+            Assert.AreEqual(
+                10000,
+                cache.Capacity,
+                $"Invalid InitialCapacity {invalidInitialCapacity} should normalize to MaximumSize"
+            );
+        }
+
+        [Test]
+        public void CacheGrowsFromInitialCapacityToMaximumSize()
+        {
+            const int initialCapacity = 4;
+            const int maxSize = 100;
+            using Cache<string, int> cache = CacheBuilder<string, int>
+                .NewBuilder()
+                .MaximumSize(maxSize)
+                .InitialCapacity(initialCapacity)
+                .AllowGrowth(1.0f, maxSize)
+                .Build();
+
+            Assert.AreEqual(initialCapacity, cache.Capacity, "Should start at InitialCapacity");
+
+            for (int i = 0; i < maxSize; i++)
+            {
+                cache.Set($"key{i}", i);
+            }
+
+            Assert.AreEqual(maxSize, cache.Count, "All items should be in cache");
+            Assert.GreaterOrEqual(
+                cache.Capacity,
+                maxSize,
+                "Capacity should have grown to at least MaximumSize"
+            );
+        }
+
+        [Test]
+        public void CacheGrowthWithMaximumSizeCloseToInitialCapacity()
+        {
+            const int initialCapacity = 10;
+            const int maxSize = 12;
+            using Cache<string, int> cache = CacheBuilder<string, int>
+                .NewBuilder()
+                .MaximumSize(maxSize)
+                .InitialCapacity(initialCapacity)
+                .AllowGrowth(1.5f, maxSize)
+                .Build();
+
+            Assert.That(
+                cache.Capacity,
+                Is.EqualTo(initialCapacity),
+                "Should start at InitialCapacity"
+            );
+
+            for (int i = 0; i < maxSize; i++)
+            {
+                cache.Set($"key{i}", i);
+            }
+
+            Assert.That(
+                cache.Count,
+                Is.EqualTo(maxSize),
+                "All items should be stored when MaximumSize is close to InitialCapacity"
+            );
+            Assert.That(
+                cache.Capacity,
+                Is.GreaterThanOrEqualTo(maxSize),
+                "Capacity should accommodate MaximumSize even when close to InitialCapacity"
+            );
+        }
+
+        [TestCase(1.01f, TestName = "CacheGrowthWithSmallGrowthFactor.1Point01")]
+        [TestCase(1.05f, TestName = "CacheGrowthWithSmallGrowthFactor.1Point05")]
+        [TestCase(1.1f, TestName = "CacheGrowthWithSmallGrowthFactor.1Point1")]
+        public void CacheGrowthWithSmallGrowthFactor(float growthFactor)
+        {
+            const int initialCapacity = 4;
+            const int maxSize = 50;
+            using Cache<string, int> cache = CacheBuilder<string, int>
+                .NewBuilder()
+                .MaximumSize(maxSize)
+                .InitialCapacity(initialCapacity)
+                .AllowGrowth(growthFactor, maxSize)
+                .Build();
+
+            Assert.That(
+                cache.Capacity,
+                Is.EqualTo(initialCapacity),
+                $"Should start at InitialCapacity with growth factor {growthFactor}"
+            );
+
+            for (int i = 0; i < maxSize; i++)
+            {
+                cache.Set($"key{i}", i);
+            }
+
+            Assert.That(
+                cache.Count,
+                Is.EqualTo(maxSize),
+                $"All items should be stored with small growth factor {growthFactor}"
+            );
+            Assert.That(
+                cache.Capacity,
+                Is.GreaterThanOrEqualTo(maxSize),
+                $"Capacity should grow to accommodate items with growth factor {growthFactor}"
+            );
+        }
+
+        [Test]
+        public void CacheAutomaticGrowthWorksWithoutExplicitAllowGrowth()
+        {
+            const int initialCapacity = 4;
+            const int maxSize = 100;
+            using Cache<string, int> cache = CacheBuilder<string, int>
+                .NewBuilder()
+                .MaximumSize(maxSize)
+                .InitialCapacity(initialCapacity)
+                .Build();
+
+            Assert.That(
+                cache.Capacity,
+                Is.LessThanOrEqualTo(maxSize),
+                "Initial capacity should be at or below MaximumSize"
+            );
+
+            for (int i = 0; i < maxSize; i++)
+            {
+                cache.Set($"key{i}", i);
+            }
+
+            Assert.That(
+                cache.Count,
+                Is.EqualTo(maxSize),
+                "Cache should store all items up to MaximumSize"
+            );
+            Assert.That(
+                cache.Capacity,
+                Is.GreaterThanOrEqualTo(cache.Count),
+                "Capacity should be at least equal to Count after growth"
             );
         }
 
@@ -2663,6 +3238,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
     }
 
     [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class EnumValueStabilityTests
     {
         // Data-driven test to ensure enum integer values remain stable for serialization compatibility
@@ -2719,6 +3295,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
     }
 
     [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class CacheBuilderStructTests
     {
         [Test]
@@ -2772,6 +3349,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
     }
 
     [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class CacheOptionsIsValueTypeTests
     {
         [Test]
@@ -2795,6 +3373,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
     }
 
     [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class TryGetEdgeCaseTests
     {
         private float _currentTime;
@@ -2935,6 +3514,289 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
 
             Assert.IsTrue(cache.TryGet("withNull", out int? value2));
             Assert.IsNull(value2, "Should successfully retrieve null value");
+        }
+    }
+
+    /// <summary>
+    /// Tests for cache capacity and size edge cases to ensure proper handling of boundary conditions.
+    /// These tests verify that MaximumSize, InitialCapacity, and capacity clamping work correctly.
+    /// </summary>
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
+    public sealed class CacheCapacityDiagnosticTests
+    {
+        private float _currentTime;
+
+        private float TimeProvider()
+        {
+            return _currentTime;
+        }
+
+        [SetUp]
+        public void SetUp()
+        {
+            _currentTime = 0f;
+        }
+
+        [Test]
+        [TestCase(0, TestName = "MaximumSize.Zero")]
+        [TestCase(-1, TestName = "MaximumSize.NegativeOne")]
+        [TestCase(int.MinValue, TestName = "MaximumSize.IntMinValue")]
+        public void MaximumSizeZeroOrNegativeResultsInDefaultCapacity(int invalidMaxSize)
+        {
+            CacheOptions<string, int> options = new() { MaximumSize = invalidMaxSize };
+            using Cache<string, int> cache = new(options);
+
+            Assert.That(
+                cache.MaximumSize,
+                Is.EqualTo(CacheOptions<string, int>.DefaultMaximumSize),
+                $"MaximumSize of {invalidMaxSize} should normalize to DefaultMaximumSize ({CacheOptions<string, int>.DefaultMaximumSize})"
+            );
+            Assert.That(
+                cache.Capacity,
+                Is.GreaterThan(0),
+                $"Capacity should be positive even when MaximumSize is {invalidMaxSize}"
+            );
+            Assert.That(
+                cache.Capacity,
+                Is.LessThanOrEqualTo(cache.MaximumSize),
+                "Capacity should not exceed MaximumSize"
+            );
+        }
+
+        [Test]
+        public void MaximumSizeOfOneUsesCapacityOne()
+        {
+            CacheOptions<string, int> options = new() { MaximumSize = 1 };
+            using Cache<string, int> cache = new(options);
+
+            Assert.That(cache.MaximumSize, Is.EqualTo(1), "MaximumSize should be exactly 1");
+            Assert.That(
+                cache.Capacity,
+                Is.EqualTo(1),
+                "Capacity should be exactly 1 for MaximumSize of 1"
+            );
+
+            cache.Set("first", 1);
+            Assert.That(cache.Count, Is.EqualTo(1), "Should hold exactly one item");
+
+            cache.Set("second", 2);
+            Assert.That(
+                cache.Count,
+                Is.EqualTo(1),
+                "Should still hold exactly one item after eviction"
+            );
+            Assert.That(cache.ContainsKey("second"), Is.True, "Should contain newly added item");
+            Assert.That(cache.ContainsKey("first"), Is.False, "Should have evicted first item");
+        }
+
+        [Test]
+        public void MaximumSizeIntMaxValueIsProperlyHandled()
+        {
+            CacheOptions<string, int> options = new() { MaximumSize = int.MaxValue };
+            using Cache<string, int> cache = new(options);
+
+            Assert.That(
+                cache.MaximumSize,
+                Is.EqualTo(int.MaxValue),
+                "MaximumSize should accept int.MaxValue"
+            );
+            Assert.That(
+                cache.Capacity,
+                Is.LessThanOrEqualTo(CacheOptions<string, int>.MaxReasonableInitialCapacity),
+                $"Initial capacity should be clamped to MaxReasonableInitialCapacity ({CacheOptions<string, int>.MaxReasonableInitialCapacity}) to prevent excessive allocations"
+            );
+            Assert.That(cache.Capacity, Is.GreaterThan(0), "Capacity should be positive");
+        }
+
+        [Test]
+        [TestCase(1, 100, TestName = "InitialCapacity.1.MaxSize.100")]
+        [TestCase(10, 1000, TestName = "InitialCapacity.10.MaxSize.1000")]
+        [TestCase(50, 100, TestName = "InitialCapacity.50.MaxSize.100")]
+        public void ExplicitInitialCapacityRespectedWhenSmallerThanMaximumSize(
+            int initialCapacity,
+            int maxSize
+        )
+        {
+            CacheOptions<string, int> options = new()
+            {
+                MaximumSize = maxSize,
+                InitialCapacity = initialCapacity,
+            };
+            using Cache<string, int> cache = new(options);
+
+            Assert.That(cache.MaximumSize, Is.EqualTo(maxSize), $"MaximumSize should be {maxSize}");
+            Assert.That(
+                cache.Capacity,
+                Is.EqualTo(initialCapacity),
+                $"InitialCapacity of {initialCapacity} should be respected when smaller than MaximumSize ({maxSize})"
+            );
+
+            for (int i = 0; i < initialCapacity; i++)
+            {
+                cache.Set($"key{i}", i);
+            }
+            Assert.That(
+                cache.Count,
+                Is.EqualTo(initialCapacity),
+                $"Should be able to add {initialCapacity} items up to initial capacity"
+            );
+        }
+
+        [Test]
+        [TestCase(100, 50, TestName = "InitialCapacity.100.MaxSize.50")]
+        [TestCase(1000, 10, TestName = "InitialCapacity.1000.MaxSize.10")]
+        [TestCase(int.MaxValue, 100, TestName = "InitialCapacity.IntMaxValue.MaxSize.100")]
+        public void ExplicitInitialCapacityLargerThanMaximumSizeIsClamped(
+            int initialCapacity,
+            int maxSize
+        )
+        {
+            CacheOptions<string, int> options = new()
+            {
+                MaximumSize = maxSize,
+                InitialCapacity = initialCapacity,
+            };
+            using Cache<string, int> cache = new(options);
+
+            Assert.That(cache.MaximumSize, Is.EqualTo(maxSize), $"MaximumSize should be {maxSize}");
+            Assert.That(
+                cache.Capacity,
+                Is.EqualTo(maxSize),
+                $"InitialCapacity of {initialCapacity} should be clamped to MaximumSize ({maxSize})"
+            );
+        }
+
+        [Test]
+        public void InitialCapacityZeroDefaultsToMaximumSize()
+        {
+            const int maxSize = 50;
+            CacheOptions<string, int> options = new()
+            {
+                MaximumSize = maxSize,
+                InitialCapacity = 0,
+            };
+            using Cache<string, int> cache = new(options);
+
+            Assert.That(cache.MaximumSize, Is.EqualTo(maxSize), $"MaximumSize should be {maxSize}");
+            Assert.That(
+                cache.Capacity,
+                Is.EqualTo(maxSize),
+                $"InitialCapacity of 0 should default to MaximumSize ({maxSize})"
+            );
+        }
+
+        [Test]
+        public void CacheCanGrowFromInitialCapacityToMaximumSizeWithDiagnostics()
+        {
+            const int initialCapacity = 4;
+            const int maxSize = 20;
+            using Cache<string, int> cache = CacheBuilder<string, int>
+                .NewBuilder()
+                .MaximumSize(maxSize)
+                .InitialCapacity(initialCapacity)
+                .TimeProvider(TimeProvider)
+                .Build();
+
+            Assert.That(
+                cache.Capacity,
+                Is.EqualTo(initialCapacity),
+                $"Should start at InitialCapacity ({initialCapacity})"
+            );
+
+            int previousCapacity = cache.Capacity;
+            for (int i = 0; i < maxSize; i++)
+            {
+                cache.Set($"key{i}", i);
+                if (cache.Capacity > previousCapacity)
+                {
+                    Assert.That(
+                        cache.Capacity,
+                        Is.GreaterThan(previousCapacity),
+                        $"Capacity should grow when needed (was {previousCapacity}, now {cache.Capacity}) at item {i}"
+                    );
+                    previousCapacity = cache.Capacity;
+                }
+            }
+
+            Assert.That(cache.Count, Is.EqualTo(maxSize), $"Should contain all {maxSize} items");
+            Assert.That(
+                cache.Capacity,
+                Is.GreaterThanOrEqualTo(maxSize),
+                $"Final capacity should be at least MaximumSize ({maxSize})"
+            );
+        }
+
+        [Test]
+        [TestCase(1, 1, TestName = "Capacity.1.Items.1")]
+        [TestCase(2, 2, TestName = "Capacity.2.Items.2")]
+        [TestCase(3, 3, TestName = "Capacity.3.Items.3")]
+        public void SmallCapacityCachesWorkCorrectly(int maxSize, int itemCount)
+        {
+            using Cache<int, int> cache = CacheBuilder<int, int>
+                .NewBuilder()
+                .MaximumSize(maxSize)
+                .TimeProvider(TimeProvider)
+                .Build();
+
+            Assert.That(cache.MaximumSize, Is.EqualTo(maxSize), $"MaximumSize should be {maxSize}");
+            Assert.That(
+                cache.Capacity,
+                Is.EqualTo(maxSize),
+                $"Capacity should equal MaximumSize for small caches"
+            );
+
+            for (int i = 0; i < itemCount; i++)
+            {
+                cache.Set(i, i * 10);
+            }
+
+            Assert.That(cache.Count, Is.EqualTo(itemCount), $"Should contain {itemCount} items");
+
+            for (int i = 0; i < itemCount; i++)
+            {
+                Assert.That(
+                    cache.TryGet(i, out int value),
+                    Is.True,
+                    $"Should retrieve item with key {i}"
+                );
+                Assert.That(value, Is.EqualTo(i * 10), $"Value for key {i} should be {i * 10}");
+            }
+        }
+
+        [Test]
+        public void CapacityDoesNotExceedMaximumSizeAfterManyOperations()
+        {
+            const int maxSize = 10;
+            using Cache<int, int> cache = CacheBuilder<int, int>
+                .NewBuilder()
+                .MaximumSize(maxSize)
+                .TimeProvider(TimeProvider)
+                .Build();
+
+            for (int round = 0; round < 5; round++)
+            {
+                for (int i = 0; i < maxSize * 2; i++)
+                {
+                    cache.Set(round * 100 + i, i);
+                    Assert.That(
+                        cache.Count,
+                        Is.LessThanOrEqualTo(maxSize),
+                        $"Count should not exceed MaximumSize after set operation (round {round}, item {i})"
+                    );
+                }
+
+                for (int i = 0; i < maxSize / 2; i++)
+                {
+                    cache.TryRemove(round * 100 + i);
+                }
+
+                Assert.That(
+                    cache.Capacity,
+                    Is.GreaterThanOrEqualTo(cache.Count),
+                    $"Capacity should be at least Count after round {round}"
+                );
+            }
         }
     }
 }

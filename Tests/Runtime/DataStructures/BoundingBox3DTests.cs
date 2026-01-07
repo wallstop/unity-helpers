@@ -9,6 +9,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
     using WallstopStudios.UnityHelpers.Core.Math;
 
     [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class BoundingBox3DTests
     {
         [Test]

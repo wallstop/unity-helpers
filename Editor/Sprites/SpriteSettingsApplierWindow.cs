@@ -10,6 +10,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
     using UnityEditor;
     using UnityEngine;
     using CustomEditors;
+    using Utils;
     using WallstopStudios.UnityHelpers.Core.Extension;
     using WallstopStudios.UnityHelpers.Utils;
     using Object = UnityEngine.Object;
@@ -380,8 +381,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 return;
             }
 
-            AssetDatabase.StartAssetEditing();
-            try
+            using (AssetDatabaseBatchHelper.BeginBatch(refreshOnDispose: false))
             {
                 // Prepare profile matchers once via API for unification
                 List<SpriteSettingsApplierAPI.PreparedProfile> prepared =
@@ -431,37 +431,34 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                     }
                 }
             }
-            finally
+
+            Utils.EditorUi.ClearProgress();
+            foreach (TextureImporter importer in updatedImporters)
             {
-                AssetDatabase.StopAssetEditing();
-                Utils.EditorUi.ClearProgress();
-                foreach (TextureImporter importer in updatedImporters)
-                {
-                    importer.SaveAndReimport();
-                }
-
-                if (_applyCanceled)
-                {
-                    this.Log($"Canceled. Processed {spriteCount} sprites before cancel.");
-                }
-                else
-                {
-                    this.Log($"Processed {spriteCount} sprites.");
-                }
-                if (0 < spriteCount)
-                {
-                    AssetDatabase.SaveAssets();
-                    AssetDatabase.Refresh();
-                    this.Log($"Asset database saved and refreshed.");
-                }
-                else
-                {
-                    this.Log($"No sprites required changes.");
-                }
-
-                _totalSpritesToProcess = -1;
-                _spritesThatWillChange = -1;
+                importer.SaveAndReimport();
             }
+
+            if (_applyCanceled)
+            {
+                this.Log($"Canceled. Processed {spriteCount} sprites before cancel.");
+            }
+            else
+            {
+                this.Log($"Processed {spriteCount} sprites.");
+            }
+            if (0 < spriteCount)
+            {
+                AssetDatabase.SaveAssets();
+                AssetDatabase.Refresh();
+                this.Log($"Asset database saved and refreshed.");
+            }
+            else
+            {
+                this.Log($"No sprites required changes.");
+            }
+
+            _totalSpritesToProcess = -1;
+            _spritesThatWillChange = -1;
         }
 
         // Matching and application logic lives in SpriteSettingsApplierAPI.

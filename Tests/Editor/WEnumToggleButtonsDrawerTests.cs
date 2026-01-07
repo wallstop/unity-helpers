@@ -20,6 +20,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor
     using WallstopStudios.UnityHelpers.Tests.TestUtils;
 
     [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class WEnumToggleButtonsDrawerTests : CommonTestBase
     {
         [SetUp]
@@ -258,11 +260,14 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor
                 nameof(ToggleDropDownAsset.mode),
                 BindingFlags.Instance | BindingFlags.Public
             );
-            Assert.IsNotNull(fieldInfo);
+            Assert.IsNotNull(fieldInfo, "FieldInfo should be found for mode field");
 
             WEnumToggleButtonsAttribute toggleAttribute =
                 fieldInfo.GetCustomAttribute<WEnumToggleButtonsAttribute>();
-            Assert.IsNotNull(toggleAttribute);
+            Assert.IsNotNull(
+                toggleAttribute,
+                "WEnumToggleButtonsAttribute should be present on mode field"
+            );
 
             WEnumToggleButtonsDrawer drawer = new();
             ConfigureDrawer(drawer, fieldInfo, toggleAttribute);

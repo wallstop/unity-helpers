@@ -12,6 +12,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Visuals
     using WallstopStudios.UnityHelpers.Visuals;
     using WallstopStudios.UnityHelpers.Visuals.UIToolkit;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class LayeredImageTests : CommonTestBase
     {
         // Tracking handled by CommonTestBase

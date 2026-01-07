@@ -1422,9 +1422,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             }
             catch (Exception e)
             {
-                this.LogError(
-                    $"Exception during OnFrameItemPointerDown before StartDrag: {e.Message}\n{e.StackTrace}"
-                );
+                this.LogError($"Exception during OnFrameItemPointerDown before StartDrag", e);
 
                 if (_draggedFrameElement != null)
                 {

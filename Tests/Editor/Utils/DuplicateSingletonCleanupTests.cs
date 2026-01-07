@@ -19,6 +19,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
     using WallstopStudios.UnityHelpers.Tests.Editor.TestTypes;
     using Object = UnityEngine.Object;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class DuplicateSingletonCleanupTests : CommonTestBase
     {
         private const string TestRoot = "Assets/Resources/DuplicateCleanupTests";

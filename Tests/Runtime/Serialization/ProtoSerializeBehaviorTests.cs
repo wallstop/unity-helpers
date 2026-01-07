@@ -8,6 +8,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
     using Serializer = WallstopStudios.UnityHelpers.Core.Serialization.Serializer;
 
     [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class ProtoSerializeBehaviorTests
     {
         [ProtoContract]

@@ -131,6 +131,11 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
     /// </threadsafety>
     public static partial class ReflectionHelpers
     {
+        /// <summary>
+        /// The standard property name for Unity's Behaviour.enabled property.
+        /// </summary>
+        private const string EnabledPropertyName = "enabled";
+
         // Cache for type resolution by name
 #if !SINGLE_THREADED
         private static readonly ConcurrentDictionary<string, Type> TypeResolutionCache = new(
@@ -3028,7 +3033,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             try
             {
                 PropertyInfo property = type.GetProperty(
-                    "enabled",
+                    EnabledPropertyName,
                     BindingFlags.Instance | BindingFlags.Public
                 );
 

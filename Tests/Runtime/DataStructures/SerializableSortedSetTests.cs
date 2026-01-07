@@ -14,6 +14,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
     using WallstopStudios.UnityHelpers.Tests.Core;
     using WallstopStudios.UnityHelpers.Utils;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class SerializableSortedSetTests : CommonTestBase
     {
         [Test]

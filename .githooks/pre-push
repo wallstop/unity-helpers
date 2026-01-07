@@ -124,13 +124,31 @@ else
   echo "lychee not found; skipping external link check. CI will run lychee." >&2
 fi
 
-# Test lifecycle lint
+# Test lifecycle lint (UNH001-UNH003: lifecycle, UNH004: naming conventions)
 if command -v pwsh >/dev/null 2>&1; then
-  pwsh -NoProfile -File scripts/lint-tests.ps1 -VerboseOutput
+  pwsh -NoProfile -File scripts/lint-tests.ps1 -VerboseOutput || {
+    echo ""
+    echo "=== Test lint failed ==="
+    echo "Fix the issues above or add // UNH-SUPPRESS comments for valid exceptions."
+    echo "For naming convention errors (UNH004):"
+    echo "  - Use PascalCase or dot notation in TestName/SetName (e.g., 'Input.Null.ReturnsFalse')"
+    echo "  - Use PascalCase for TestCaseSource method names (e.g., 'EdgeCaseTestData')"
+    echo ""
+    exit 1
+  }
 elif command -v powershell >/dev/null 2>&1; then
-  powershell -NoProfile -ExecutionPolicy Bypass -File scripts/lint-tests.ps1 -VerboseOutput
+  powershell -NoProfile -ExecutionPolicy Bypass -File scripts/lint-tests.ps1 -VerboseOutput || {
+    echo ""
+    echo "=== Test lint failed ==="
+    echo "Fix the issues above or add // UNH-SUPPRESS comments for valid exceptions."
+    echo "For naming convention errors (UNH004):"
+    echo "  - Use PascalCase or dot notation in TestName/SetName (e.g., 'Input.Null.ReturnsFalse')"
+    echo "  - Use PascalCase for TestCaseSource method names (e.g., 'EdgeCaseTestData')"
+    echo ""
+    exit 1
+  }
 else
-  echo  'PowerShell not found; skipping test lints.' >&2 
+  echo 'PowerShell not found; skipping test lints.' >&2
 fi
 
 # Wiki generation tests (validates sidebar format, link transformations)

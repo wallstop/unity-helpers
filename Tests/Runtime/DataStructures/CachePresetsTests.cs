@@ -9,6 +9,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.DataStructures
     using WallstopStudios.UnityHelpers.Core.DataStructure;
 
     [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class CachePresetsShortLivedTests
     {
         [Test]
@@ -117,6 +118,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.DataStructures
     }
 
     [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class CachePresetsLongLivedTests
     {
         [Test]
@@ -218,6 +220,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.DataStructures
     }
 
     [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class CachePresetsSessionCacheTests
     {
         [Test]
@@ -314,6 +317,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.DataStructures
     }
 
     [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class CachePresetsHighThroughputTests
     {
         [Test]
@@ -427,6 +431,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.DataStructures
     }
 
     [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class CachePresetsRenderCacheTests
     {
         [Test]
@@ -520,6 +525,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.DataStructures
     }
 
     [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class CachePresetsNetworkCacheTests
     {
         [Test]
@@ -615,6 +621,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.DataStructures
     }
 
     [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class CachePresetsCustomizationTests
     {
         [Test]
@@ -756,6 +763,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.DataStructures
     }
 
     [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class CachePresetsEvictionCallbackTests
     {
         [Test]
@@ -819,9 +827,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.DataStructures
         {
             List<(int key, int value, EvictionReason reason)> evictions = new();
 
+            // Disable growth to get predictable eviction behavior
             using Cache<int, int> cache = CachePresets
                 .HighThroughput<int, int>()
                 .MaximumSize(5)
+                .AllowGrowth(0f, 0) // Disable growth
                 .OnEviction((k, v, r) => evictions.Add((k, v, r)))
                 .Build();
 
@@ -893,6 +903,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.DataStructures
     }
 
     [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class CachePresetsDifferentKeyValueTypesTests
     {
         [Test]
@@ -1016,6 +1027,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.DataStructures
     }
 
     [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class CachePresetsEdgeCaseTests
     {
         [Test]
@@ -1143,6 +1155,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.DataStructures
     }
 
     [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class CachePresetsCompactAndResizeTests
     {
         [Test]
@@ -1203,6 +1216,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.DataStructures
     }
 
     [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class CachePresetsDisposeTests
     {
         [Test]
@@ -1253,6 +1267,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.DataStructures
     }
 
     [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class CachePresetsDataDrivenTests
     {
         [Test]

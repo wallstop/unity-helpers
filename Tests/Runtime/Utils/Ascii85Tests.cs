@@ -9,12 +9,14 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
     using WallstopStudios.UnityHelpers.Core.Random;
     using WallstopStudios.UnityHelpers.Utils;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class Ascii85Tests
     {
         [Test]
         public void EncodeNullReturnsNull()
         {
-            Assert.IsNull(Ascii85.Encode(null));
+            Assert.IsNull(Ascii85.Encode(null), "Encode should return null for null input");
         }
 
         [Test]

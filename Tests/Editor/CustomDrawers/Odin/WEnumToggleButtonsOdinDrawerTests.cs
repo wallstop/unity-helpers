@@ -24,6 +24,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
     /// works correctly with Odin Inspector for both regular and flags enums.
     /// </summary>
     [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class WEnumToggleButtonsOdinDrawerTests : CommonTestBase
     {
         [Test]

@@ -13,6 +13,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
     using WallstopStudios.UnityHelpers.Tests.Core;
     using WallstopStudios.UnityHelpers.Tests.Runtime.Random;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class RandomExtensionTests : CommonTestBase
     {
         [Test]

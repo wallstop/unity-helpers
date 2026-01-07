@@ -65,11 +65,11 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers.TestTypes
     {
         [FormerlySerializedAs("primary")]
         [SerializeField]
-        private Color _primary = Color.white;
+        internal Color _primary = Color.white;
 
         [FormerlySerializedAs("secondary")]
         [SerializeField]
-        private Color _secondary = Color.black;
+        internal Color _secondary = Color.black;
 
         public Color Primary
         {

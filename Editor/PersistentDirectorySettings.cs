@@ -10,6 +10,7 @@ namespace WallstopStudios.UnityHelpers.Editor
     using System.Collections.Generic;
     using System.IO;
     using UnityEngine.Serialization;
+    using WallstopStudios.UnityHelpers.Core.Extension;
     using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Utils;
     using Debug = UnityEngine.Debug;
@@ -510,9 +511,7 @@ namespace WallstopStudios.UnityHelpers.Editor
                 || string.IsNullOrWhiteSpace(path)
             )
             {
-                UnityEngine.Debug.LogWarning(
-                    "RecordPath: toolName, contextKey, or path cannot be empty."
-                );
+                this.LogWarn($"RecordPath: toolName, contextKey, or path cannot be empty");
                 return;
             }
 
@@ -527,8 +526,8 @@ namespace WallstopStudios.UnityHelpers.Editor
                     && !sanitizedPath.StartsWith("Assets/", StringComparison.Ordinal)
                 )
                 {
-                    UnityEngine.Debug.LogWarning(
-                        $"Recording path '{sanitizedPath}' that is not an 'Assets/' relative path or an absolute path. This might be intentional."
+                    this.LogWarn(
+                        $"Recording path '{sanitizedPath}' that is not an 'Assets/' relative path or an absolute path. This might be intentional"
                     );
                 }
             }

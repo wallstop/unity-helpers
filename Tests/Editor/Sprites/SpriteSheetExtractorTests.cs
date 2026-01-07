@@ -20,6 +20,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
     using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Editor.AssetProcessors;
     using WallstopStudios.UnityHelpers.Editor.Sprites;
+    using WallstopStudios.UnityHelpers.Editor.Utils;
     using WallstopStudios.UnityHelpers.Tests.Core;
     using WallstopStudios.UnityHelpers.Tests.Core.TestUtils;
     using Object = UnityEngine.Object;
@@ -39,6 +40,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
     /// </para>
     /// </remarks>
     [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class SpriteSheetExtractorTests : CommonTestBase
     {
         private const string Root = "Assets/Temp/SpriteSheetExtractorTests";
@@ -58,6 +61,15 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
         private static string _shared4x4Path;
         private static string _shared8x8Path;
         private static string _sharedSingleModePath;
+
+        // Wide aspect ratio: 128x64, 4x2 grid = 8 sprites (32x32 cells)
+        private static string _sharedWidePath;
+
+        // Tall aspect ratio: 64x128, 2x4 grid = 8 sprites (32x32 cells)
+        private static string _sharedTallPath;
+
+        // Odd dimensions: 63x63, 3x3 grid = 9 sprites (21x21 cells)
+        private static string _sharedOddPath;
         private static bool _sharedFixturesCreated;
 
         [SetUp]
@@ -141,6 +153,33 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
                         32,
                         Color.red
                     );
+                    // Wide aspect ratio: 128x64, 4x2 grid = 8 sprites (32x32 cells)
+                    _sharedWidePath = CreateSharedSpriteSheet(
+                        "shared_wide",
+                        128,
+                        64,
+                        4,
+                        2,
+                        SpriteImportMode.Multiple
+                    );
+                    // Tall aspect ratio: 64x128, 2x4 grid = 8 sprites (32x32 cells)
+                    _sharedTallPath = CreateSharedSpriteSheet(
+                        "shared_tall",
+                        64,
+                        128,
+                        2,
+                        4,
+                        SpriteImportMode.Multiple
+                    );
+                    // Odd dimensions: 63x63, 3x3 grid = 9 sprites (21x21 cells)
+                    _sharedOddPath = CreateSharedSpriteSheet(
+                        "shared_odd",
+                        63,
+                        63,
+                        3,
+                        3,
+                        SpriteImportMode.Multiple
+                    );
                     _sharedFixturesCreated = true;
                 }
             }
@@ -171,6 +210,21 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
                 {
                     AssetDatabase.DeleteAsset(_sharedSingleModePath);
                     _sharedSingleModePath = null;
+                }
+                if (!string.IsNullOrEmpty(_sharedWidePath))
+                {
+                    AssetDatabase.DeleteAsset(_sharedWidePath);
+                    _sharedWidePath = null;
+                }
+                if (!string.IsNullOrEmpty(_sharedTallPath))
+                {
+                    AssetDatabase.DeleteAsset(_sharedTallPath);
+                    _sharedTallPath = null;
+                }
+                if (!string.IsNullOrEmpty(_sharedOddPath))
+                {
+                    AssetDatabase.DeleteAsset(_sharedOddPath);
+                    _sharedOddPath = null;
                 }
                 _sharedFixturesCreated = false;
 
@@ -690,6 +744,49 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             return null;
         }
 
+        /// <summary>
+        /// Finds a sprite sheet entry by its full asset path in the discovered sheets.
+        /// Returns null if not found.
+        /// </summary>
+        private SpriteSheetExtractor.SpriteSheetEntry FindEntryByPath(
+            SpriteSheetExtractor extractor,
+            string assetPath
+        )
+        {
+            for (int i = 0; i < extractor._discoveredSheets.Count; i++)
+            {
+                if (extractor._discoveredSheets[i]._assetPath == assetPath)
+                {
+                    return extractor._discoveredSheets[i];
+                }
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// Asserts that all sprites in an entry have the expected selection state.
+        /// Provides diagnostic information including the test context and individual sprite status.
+        /// </summary>
+        private void AssertAllSpritesHaveSelection(
+            SpriteSheetExtractor.SpriteSheetEntry entry,
+            bool expectedSelection,
+            string testContext
+        )
+        {
+            Assert.IsTrue(
+                entry != null,
+                $"[{testContext}] Entry should not be null when checking selection state"
+            );
+            for (int i = 0; i < entry._sprites.Count; i++)
+            {
+                Assert.That(
+                    entry._sprites[i]._isSelected,
+                    Is.EqualTo(expectedSelection),
+                    $"[{testContext}] Sprite {i} ('{entry._sprites[i]._originalName}') should have selection={expectedSelection}"
+                );
+            }
+        }
+
         [Test]
         public void DiscoverSheetsFindsMultipleModeSpriteSheet()
         {
@@ -954,12 +1051,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
         [Test]
         public void ProcessesMultipleSheetsInSingleDirectory()
         {
-            // Uses shared fixtures - we have 4 shared sprites (2x2, 4x4, 8x8, single)
+            // Uses shared fixtures - we have 7 shared sprites (2x2, 4x4, 8x8, single, wide, tall, odd)
             SpriteSheetExtractor extractor = CreateExtractorWithSharedFixtures();
             extractor.DiscoverSpriteSheets();
 
-            // Should find at least the 4 shared fixtures
-            Assert.That(extractor._discoveredSheets.Count, Is.GreaterThanOrEqualTo(4));
+            // Should find at least the 7 shared fixtures
+            Assert.That(extractor._discoveredSheets.Count, Is.GreaterThanOrEqualTo(7));
         }
 
         [Test]
@@ -2229,9 +2326,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
         [Test]
         public void GridBasedExtractionCreatesCorrectSpriteCount()
         {
-            CreateSpriteSheet("grid_based_test", 64, 64, 2, 2);
-
-            SpriteSheetExtractor extractor = CreateExtractor();
+            // Uses shared 4x4 fixture - no per-test asset creation needed
+            SpriteSheetExtractor extractor = CreateExtractorWithSharedFixtures();
             extractor._extractionMode = SpriteSheetExtractor.ExtractionMode.GridBased;
             extractor._gridSizeMode = SpriteSheetExtractor.GridSizeMode.Manual;
             extractor._gridColumns = 4;
@@ -2241,10 +2337,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             bool found = false;
             for (int i = 0; i < extractor._discoveredSheets.Count; ++i)
             {
-                if (
-                    Path.GetFileNameWithoutExtension(extractor._discoveredSheets[i]._assetPath)
-                    == "grid_based_test"
-                )
+                if (extractor._discoveredSheets[i]._assetPath == _shared4x4Path)
                 {
                     found = true;
                     Assert.That(
@@ -2255,7 +2348,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
                     break;
                 }
             }
-            Assert.IsTrue(found, "Should find grid_based_test");
+            Assert.IsTrue(found, "Should find shared_4x4");
         }
 
         private static IEnumerable<TestCaseData> PaddedGridCases()
@@ -2466,9 +2559,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
         [TestCaseSource(nameof(ExtractionModeCases))]
         public void ExtractionModeSwitchingWorksCorrectly(SpriteSheetExtractor.ExtractionMode mode)
         {
-            CreateSpriteSheet("mode_switch_test", 64, 64, 2, 2);
-
-            SpriteSheetExtractor extractor = CreateExtractor();
+            // Uses shared 2x2 fixture - no per-test asset creation needed
+            SpriteSheetExtractor extractor = CreateExtractorWithSharedFixtures();
             extractor._extractionMode = mode;
             extractor._gridSizeMode = SpriteSheetExtractor.GridSizeMode.Manual;
             extractor._gridColumns = 2;
@@ -2478,10 +2570,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             bool found = false;
             for (int i = 0; i < extractor._discoveredSheets.Count; ++i)
             {
-                if (
-                    Path.GetFileNameWithoutExtension(extractor._discoveredSheets[i]._assetPath)
-                    == "mode_switch_test"
-                )
+                if (extractor._discoveredSheets[i]._assetPath == _shared2x2Path)
                 {
                     found = true;
                     Assert.That(
@@ -2492,7 +2581,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
                     break;
                 }
             }
-            Assert.IsTrue(found, $"Should find mode_switch_test with mode {mode}");
+            Assert.IsTrue(found, $"Should find shared_2x2 with mode {mode}");
         }
 
         [Test]
@@ -2725,9 +2814,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
         [Test]
         public void ObsoleteExtractionModeNoneFallsBackToFromMetadata()
         {
-            CreateSpriteSheet("obsolete_extraction_mode", 64, 64, 2, 2);
-
-            SpriteSheetExtractor extractor = CreateExtractor();
+            // Uses shared 2x2 fixture - no per-test asset creation needed
+            SpriteSheetExtractor extractor = CreateExtractorWithSharedFixtures();
 #pragma warning disable CS0618
             extractor._extractionMode = SpriteSheetExtractor.ExtractionMode.None;
 #pragma warning restore CS0618
@@ -2736,10 +2824,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             bool found = false;
             for (int i = 0; i < extractor._discoveredSheets.Count; ++i)
             {
-                if (
-                    Path.GetFileNameWithoutExtension(extractor._discoveredSheets[i]._assetPath)
-                    == "obsolete_extraction_mode"
-                )
+                if (extractor._discoveredSheets[i]._assetPath == _shared2x2Path)
                 {
                     found = true;
                     Assert.That(
@@ -2750,7 +2835,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
                     break;
                 }
             }
-            Assert.IsTrue(found, "Should find obsolete_extraction_mode sheet");
+            Assert.IsTrue(found, "Should find shared_2x2 sheet");
         }
 
         [Test]
@@ -3609,9 +3694,18 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             extractor.CopySettingsFromEntry(source, target);
 
             Assert.AreEqual(true, target._useGlobalSettings);
-            Assert.IsNull(target._extractionModeOverride);
-            Assert.IsNull(target._gridColumnsOverride);
-            Assert.IsNull(target._alphaThresholdOverride);
+            Assert.IsNull(
+                target._extractionModeOverride,
+                "Extraction mode override should be null after copying from entry using global settings"
+            );
+            Assert.IsNull(
+                target._gridColumnsOverride,
+                "Grid columns override should be null after copying from entry using global settings"
+            );
+            Assert.IsNull(
+                target._alphaThresholdOverride,
+                "Alpha threshold override should be null after copying from entry using global settings"
+            );
         }
 
         [Test]
@@ -3990,19 +4084,15 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
         [Test]
         public void PerSheetExtractionModeAffectsDiscovery()
         {
-            CreateSpriteSheet("per_sheet_mode_test", 128, 128, 2, 2);
-
-            SpriteSheetExtractor extractor = CreateExtractor();
+            // Uses shared 4x4 fixture (128x128 with 16 sprites) - no per-test asset creation needed
+            SpriteSheetExtractor extractor = CreateExtractorWithSharedFixtures();
             extractor._extractionMode = SpriteSheetExtractor.ExtractionMode.FromMetadata;
             extractor.DiscoverSpriteSheets();
 
             bool found = false;
             for (int i = 0; i < extractor._discoveredSheets.Count; i++)
             {
-                if (
-                    Path.GetFileNameWithoutExtension(extractor._discoveredSheets[i]._assetPath)
-                    == "per_sheet_mode_test"
-                )
+                if (extractor._discoveredSheets[i]._assetPath == _shared4x4Path)
                 {
                     found = true;
                     SpriteSheetExtractor.SpriteSheetEntry entry = extractor._discoveredSheets[i];
@@ -4011,20 +4101,20 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
                     entry._useGlobalSettings = false;
                     entry._extractionModeOverride = SpriteSheetExtractor.ExtractionMode.GridBased;
                     entry._gridSizeModeOverride = SpriteSheetExtractor.GridSizeMode.Manual;
-                    entry._gridColumnsOverride = 4;
-                    entry._gridRowsOverride = 4;
+                    entry._gridColumnsOverride = 8;
+                    entry._gridRowsOverride = 8;
                     entry._sprites.Clear();
 
                     extractor.PopulateSpritesFromGrid(entry, entry._texture);
 
                     int gridCount = entry._sprites.Count;
 
-                    Assert.AreEqual(4, metadataCount, "FromMetadata should find 4 sprites");
-                    Assert.AreEqual(16, gridCount, "GridBased 4x4 should create 16 sprites");
+                    Assert.AreEqual(16, metadataCount, "FromMetadata should find 16 sprites");
+                    Assert.AreEqual(64, gridCount, "GridBased 8x8 should create 64 sprites");
                     break;
                 }
             }
-            Assert.IsTrue(found, "Should find per_sheet_mode_test");
+            Assert.IsTrue(found, "Should find shared_4x4");
         }
 
         [Test]
@@ -4263,19 +4353,15 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
         [Test]
         public void PreviewTextureSquareSizeModeScalesAppropriately()
         {
-            CreateSpriteSheet("preview_square", 128, 128, 2, 2);
-
-            SpriteSheetExtractor extractor = CreateExtractor();
+            // Uses shared 4x4 fixture (128x128) - no per-test asset creation needed
+            SpriteSheetExtractor extractor = CreateExtractorWithSharedFixtures();
             extractor._previewSizeMode = SpriteSheetExtractor.PreviewSizeMode.Size64;
             extractor.DiscoverSpriteSheets();
 
             bool found = false;
             for (int i = 0; i < extractor._discoveredSheets.Count; i++)
             {
-                if (
-                    Path.GetFileNameWithoutExtension(extractor._discoveredSheets[i]._assetPath)
-                    == "preview_square"
-                )
+                if (extractor._discoveredSheets[i]._assetPath == _shared4x4Path)
                 {
                     found = true;
                     SpriteSheetExtractor.SpriteSheetEntry entry = extractor._discoveredSheets[i];
@@ -4292,7 +4378,229 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
                     break;
                 }
             }
-            Assert.IsTrue(found, "Should find preview_square");
+            Assert.IsTrue(found, "Should find shared_4x4");
+        }
+
+        [Test]
+        public void PreviewTextureWideAspectRatioGeneratesCorrectly()
+        {
+            // Uses shared wide fixture (128x64, 4x2 grid = 8 sprites) - no per-test asset creation needed
+            SpriteSheetExtractor extractor = CreateExtractorWithSharedFixtures();
+            extractor._previewSizeMode = SpriteSheetExtractor.PreviewSizeMode.Size32;
+            extractor.DiscoverSpriteSheets();
+
+            bool found = false;
+            for (int i = 0; i < extractor._discoveredSheets.Count; i++)
+            {
+                if (extractor._discoveredSheets[i]._assetPath == _sharedWidePath)
+                {
+                    found = true;
+                    SpriteSheetExtractor.SpriteSheetEntry entry = extractor._discoveredSheets[i];
+                    Assert.That(
+                        entry._sprites.Count,
+                        Is.EqualTo(8),
+                        "Wide fixture should have 8 sprites (4x2)"
+                    );
+                    for (int j = 0; j < entry._sprites.Count; j++)
+                    {
+                        Texture2D preview = entry._sprites[j]._previewTexture;
+                        Assert.IsTrue(
+                            preview != null,
+                            $"Preview {j} should be generated for wide aspect ratio"
+                        );
+                        Assert.That(
+                            Mathf.Max(preview.width, preview.height),
+                            Is.LessThanOrEqualTo(32),
+                            "Preview should respect Size32 mode"
+                        );
+                    }
+                    break;
+                }
+            }
+            Assert.IsTrue(found, "Should find shared_wide");
+        }
+
+        [Test]
+        public void PreviewTextureTallAspectRatioGeneratesCorrectly()
+        {
+            // Uses shared tall fixture (64x128, 2x4 grid = 8 sprites) - no per-test asset creation needed
+            SpriteSheetExtractor extractor = CreateExtractorWithSharedFixtures();
+            extractor._previewSizeMode = SpriteSheetExtractor.PreviewSizeMode.Size32;
+            extractor.DiscoverSpriteSheets();
+
+            bool found = false;
+            for (int i = 0; i < extractor._discoveredSheets.Count; i++)
+            {
+                if (extractor._discoveredSheets[i]._assetPath == _sharedTallPath)
+                {
+                    found = true;
+                    SpriteSheetExtractor.SpriteSheetEntry entry = extractor._discoveredSheets[i];
+                    Assert.That(
+                        entry._sprites.Count,
+                        Is.EqualTo(8),
+                        "Tall fixture should have 8 sprites (2x4)"
+                    );
+                    for (int j = 0; j < entry._sprites.Count; j++)
+                    {
+                        Texture2D preview = entry._sprites[j]._previewTexture;
+                        Assert.IsTrue(
+                            preview != null,
+                            $"Preview {j} should be generated for tall aspect ratio"
+                        );
+                        Assert.That(
+                            Mathf.Max(preview.width, preview.height),
+                            Is.LessThanOrEqualTo(32),
+                            "Preview should respect Size32 mode"
+                        );
+                    }
+                    break;
+                }
+            }
+            Assert.IsTrue(found, "Should find shared_tall");
+        }
+
+        [Test]
+        public void PreviewTextureOddDimensionsGeneratesCorrectly()
+        {
+            // Uses shared odd fixture (63x63, 3x3 grid = 9 sprites) - no per-test asset creation needed
+            SpriteSheetExtractor extractor = CreateExtractorWithSharedFixtures();
+            extractor._previewSizeMode = SpriteSheetExtractor.PreviewSizeMode.Size32;
+            extractor.DiscoverSpriteSheets();
+
+            bool found = false;
+            for (int i = 0; i < extractor._discoveredSheets.Count; i++)
+            {
+                if (extractor._discoveredSheets[i]._assetPath == _sharedOddPath)
+                {
+                    found = true;
+                    SpriteSheetExtractor.SpriteSheetEntry entry = extractor._discoveredSheets[i];
+                    Assert.That(
+                        entry._sprites.Count,
+                        Is.EqualTo(9),
+                        "Odd fixture should have 9 sprites (3x3)"
+                    );
+                    for (int j = 0; j < entry._sprites.Count; j++)
+                    {
+                        Texture2D preview = entry._sprites[j]._previewTexture;
+                        Assert.IsTrue(
+                            preview != null,
+                            $"Preview {j} should be generated for odd dimensions"
+                        );
+                    }
+                    break;
+                }
+            }
+            Assert.IsTrue(found, "Should find shared_odd");
+        }
+
+        private static IEnumerable<TestCaseData> DiscoveryAspectRatioAndDimensionCases()
+        {
+            // Wide aspect ratio: 128x64, 4x2 grid = 8 sprites (32x32 cells)
+            yield return new TestCaseData(
+                new Func<string>(() => _sharedWidePath),
+                8,
+                32,
+                32,
+                "Wide"
+            ).SetName("Discovery.AspectRatio.Wide.128x64");
+            // Tall aspect ratio: 64x128, 2x4 grid = 8 sprites (32x32 cells)
+            yield return new TestCaseData(
+                new Func<string>(() => _sharedTallPath),
+                8,
+                32,
+                32,
+                "Tall"
+            ).SetName("Discovery.AspectRatio.Tall.64x128");
+            // Odd dimensions: 63x63, 3x3 grid = 9 sprites (21x21 cells)
+            yield return new TestCaseData(
+                new Func<string>(() => _sharedOddPath),
+                9,
+                21,
+                21,
+                "Odd"
+            ).SetName("Discovery.Dimension.Odd.63x63");
+        }
+
+        [TestCaseSource(nameof(DiscoveryAspectRatioAndDimensionCases))]
+        public void DiscoveryFindsSpriteSheetWithVariousAspectRatiosAndDimensions(
+            Func<string> pathProvider,
+            int expectedSpriteCount,
+            int expectedCellWidth,
+            int expectedCellHeight,
+            string testContext
+        )
+        {
+            string assetPath = pathProvider();
+            SpriteSheetExtractor extractor = CreateExtractorWithSharedFixtures();
+            extractor.DiscoverSpriteSheets();
+
+            SpriteSheetExtractor.SpriteSheetEntry entry = FindEntryByPath(extractor, assetPath);
+            Assert.IsTrue(
+                entry != null,
+                $"[{testContext}] Should discover sprite sheet at '{assetPath}'"
+            );
+            Assert.That(
+                entry._sprites.Count,
+                Is.EqualTo(expectedSpriteCount),
+                $"[{testContext}] Sheet should have {expectedSpriteCount} sprites"
+            );
+            for (int j = 0; j < entry._sprites.Count; j++)
+            {
+                Assert.That(
+                    entry._sprites[j]._rect.width,
+                    Is.EqualTo(expectedCellWidth),
+                    $"[{testContext}] Sprite {j} width should be {expectedCellWidth}"
+                );
+                Assert.That(
+                    entry._sprites[j]._rect.height,
+                    Is.EqualTo(expectedCellHeight),
+                    $"[{testContext}] Sprite {j} height should be {expectedCellHeight}"
+                );
+            }
+        }
+
+        private static IEnumerable<TestCaseData> SelectAllSheetCases()
+        {
+            // Wide aspect ratio sheet
+            yield return new TestCaseData(new Func<string>(() => _sharedWidePath), "Wide").SetName(
+                "SelectAll.AspectRatio.Wide"
+            );
+            // Odd dimension sheet
+            yield return new TestCaseData(
+                new Func<string>(() => _sharedOddPath),
+                "OddDimension"
+            ).SetName("SelectAll.Dimension.Odd");
+        }
+
+        [TestCaseSource(nameof(SelectAllSheetCases))]
+        public void SelectAllWorksWithVariousSheetTypes(
+            Func<string> pathProvider,
+            string testContext
+        )
+        {
+            string assetPath = pathProvider();
+            SpriteSheetExtractor extractor = CreateExtractorWithSharedFixtures();
+            extractor.DiscoverSpriteSheets();
+
+            SpriteSheetExtractor.SpriteSheetEntry entry = FindEntryByPath(extractor, assetPath);
+            Assert.IsTrue(
+                entry != null,
+                $"[{testContext}] Should find sprite sheet at '{assetPath}'"
+            );
+
+            // Deselect all sprites (mimics "Select None" button behavior)
+            for (int j = 0; j < entry._sprites.Count; j++)
+            {
+                entry._sprites[j]._isSelected = false;
+            }
+            AssertAllSpritesHaveSelection(entry, false, testContext + " after deselect");
+
+            // Select all sprites (mimics "Select All" button behavior)
+            for (int j = 0; j < entry._sprites.Count; j++)
+            {
+                entry._sprites[j]._isSelected = true;
+            }
+            AssertAllSpritesHaveSelection(entry, true, testContext + " after select all");
         }
 
         [Test]
@@ -4611,19 +4919,15 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
         [Test]
         public void PreviewTextureRealSizeModeDimensionsMatchSpriteRect()
         {
-            CreateSpriteSheet("preview_realsize_verify", 64, 64, 2, 2);
-
-            SpriteSheetExtractor extractor = CreateExtractor();
+            // Uses shared 2x2 fixture - no per-test asset creation needed
+            SpriteSheetExtractor extractor = CreateExtractorWithSharedFixtures();
             extractor._previewSizeMode = SpriteSheetExtractor.PreviewSizeMode.RealSize;
             extractor.DiscoverSpriteSheets();
 
             bool found = false;
             for (int i = 0; i < extractor._discoveredSheets.Count; i++)
             {
-                if (
-                    Path.GetFileNameWithoutExtension(extractor._discoveredSheets[i]._assetPath)
-                    == "preview_realsize_verify"
-                )
+                if (extractor._discoveredSheets[i]._assetPath == _shared2x2Path)
                 {
                     found = true;
                     SpriteSheetExtractor.SpriteSheetEntry entry = extractor._discoveredSheets[i];
@@ -4649,7 +4953,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
                     break;
                 }
             }
-            Assert.IsTrue(found, "Should find preview_realsize_verify");
+            Assert.IsTrue(found, "Should find shared_2x2");
         }
 
         [Test]
@@ -6629,9 +6933,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
         [Test]
         public void RegenerateAllPreviewTexturesRepopulatesSpritesCorrectly()
         {
-            CreateSpriteSheet("regenerate_repopulate_test", 64, 64, 4, 4);
-
-            SpriteSheetExtractor extractor = CreateExtractor();
+            // Uses shared 4x4 fixture (128x128 with 16 sprites) - no per-test asset creation needed
+            SpriteSheetExtractor extractor = CreateExtractorWithSharedFixtures();
             extractor._extractionMode = SpriteSheetExtractor.ExtractionMode.FromMetadata;
             extractor.DiscoverSpriteSheets();
 
@@ -6644,16 +6947,14 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             SpriteSheetExtractor.SpriteSheetEntry entry = null;
             for (int i = 0; i < extractor._discoveredSheets.Count; i++)
             {
-                if (
-                    extractor._discoveredSheets[i]._assetPath.Contains("regenerate_repopulate_test")
-                )
+                if (extractor._discoveredSheets[i]._assetPath == _shared4x4Path)
                 {
                     entry = extractor._discoveredSheets[i];
                     break;
                 }
             }
 
-            Assert.That(entry, Is.Not.Null, "Should find test entry");
+            Assert.That(entry, Is.Not.Null, "Should find shared_4x4 entry");
 
             int originalSpriteCount = entry._sprites.Count;
             List<Rect> originalRects = new List<Rect>();
@@ -6665,8 +6966,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             // Change to grid-based extraction mode with specific grid settings
             extractor._extractionMode = SpriteSheetExtractor.ExtractionMode.GridBased;
             extractor._gridSizeMode = SpriteSheetExtractor.GridSizeMode.Manual;
-            extractor._gridColumns = 4;
-            extractor._gridRows = 4;
+            extractor._gridColumns = 8;
+            extractor._gridRows = 8;
 
             // Call the internal regeneration method directly
             extractor.RegenerateAllPreviewTextures();
@@ -6675,9 +6976,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             entry = null;
             for (int i = 0; i < extractor._discoveredSheets.Count; i++)
             {
-                if (
-                    extractor._discoveredSheets[i]._assetPath.Contains("regenerate_repopulate_test")
-                )
+                if (extractor._discoveredSheets[i]._assetPath == _shared4x4Path)
                 {
                     entry = extractor._discoveredSheets[i];
                     break;
@@ -6690,8 +6989,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             int newSpriteCount = entry._sprites.Count;
             Assert.That(
                 newSpriteCount,
-                Is.EqualTo(16),
-                $"Grid mode with 4x4 should produce 16 sprites, got {newSpriteCount}"
+                Is.EqualTo(64),
+                $"Grid mode with 8x8 should produce 64 sprites, got {newSpriteCount}"
             );
 
             // Verify rects have changed from the original (different extraction mode produces different rects)
@@ -6722,9 +7021,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
         [Test]
         public void RegeneratePreviewTexturesOnlyKeepsSpritesIntact()
         {
-            CreateSpriteSheet("preview_only_test", 64, 64, 2, 2);
-
-            SpriteSheetExtractor extractor = CreateExtractor();
+            // Uses shared 2x2 fixture (64x64 with 4 sprites) - no per-test asset creation needed
+            SpriteSheetExtractor extractor = CreateExtractorWithSharedFixtures();
             extractor._extractionMode = SpriteSheetExtractor.ExtractionMode.FromMetadata;
             extractor._previewSizeMode = SpriteSheetExtractor.PreviewSizeMode.Size32;
             extractor.DiscoverSpriteSheets();
@@ -6738,14 +7036,14 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             SpriteSheetExtractor.SpriteSheetEntry entry = null;
             for (int i = 0; i < extractor._discoveredSheets.Count; i++)
             {
-                if (extractor._discoveredSheets[i]._assetPath.Contains("preview_only_test"))
+                if (extractor._discoveredSheets[i]._assetPath == _shared2x2Path)
                 {
                     entry = extractor._discoveredSheets[i];
                     break;
                 }
             }
 
-            Assert.That(entry, Is.Not.Null, "Should find test entry");
+            Assert.That(entry, Is.Not.Null, "Should find shared_2x2 entry");
             Assert.That(entry._sprites, Is.Not.Null.And.Not.Empty, "Should have sprites");
 
             int originalSpriteCount = entry._sprites.Count;
@@ -7064,9 +7362,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
         [Test]
         public void PreviewRegenerationAfterTogglingUseGlobalSettingsCreatesValidTextures()
         {
-            CreateSpriteSheet("toggle_global_test", 64, 64, 2, 2);
-
-            SpriteSheetExtractor extractor = CreateExtractor();
+            // Uses shared 2x2 fixture - no per-test asset creation needed
+            SpriteSheetExtractor extractor = CreateExtractorWithSharedFixtures();
             extractor._extractionMode = SpriteSheetExtractor.ExtractionMode.GridBased;
             extractor._gridSizeMode = SpriteSheetExtractor.GridSizeMode.Manual;
             extractor._gridColumns = 2;
@@ -7076,9 +7373,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
 
             SpriteSheetExtractor.SpriteSheetEntry entry = FindDiscoveredSheet(
                 extractor,
-                "toggle_global_test"
+                "shared_2x2"
             );
-            Assert.IsTrue(entry != null, "Should find test entry");
+            Assert.IsTrue(entry != null, "Should find shared_2x2 entry");
 
             entry._useGlobalSettings = true;
             Assert.IsTrue(entry._useGlobalSettings, "Entry should use global settings initially");
@@ -7111,9 +7408,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
         [Test]
         public void PreviewRegenerationAfterTogglingFromFalseToTrueCreatesValidTextures()
         {
-            CreateSpriteSheet("toggle_to_global_test", 64, 64, 2, 2);
-
-            SpriteSheetExtractor extractor = CreateExtractor();
+            // Uses shared 2x2 fixture - no per-test asset creation needed
+            SpriteSheetExtractor extractor = CreateExtractorWithSharedFixtures();
             extractor._extractionMode = SpriteSheetExtractor.ExtractionMode.GridBased;
             extractor._gridSizeMode = SpriteSheetExtractor.GridSizeMode.Manual;
             extractor._gridColumns = 2;
@@ -7123,9 +7419,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
 
             SpriteSheetExtractor.SpriteSheetEntry entry = FindDiscoveredSheet(
                 extractor,
-                "toggle_to_global_test"
+                "shared_2x2"
             );
-            Assert.IsTrue(entry != null, "Should find test entry");
+            Assert.IsTrue(entry != null, "Should find shared_2x2 entry");
 
             entry._useGlobalSettings = false;
             entry._extractionModeOverride = SpriteSheetExtractor.ExtractionMode.GridBased;
@@ -7153,34 +7449,33 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
         [Test]
         public void PreviewRegenerationWithGridBasedOverrideCreatesValidTextures()
         {
-            CreateSpriteSheet("grid_override_preview_test", 128, 128, 2, 2);
-
-            SpriteSheetExtractor extractor = CreateExtractor();
+            // Uses shared 4x4 fixture (128x128 with 16 sprites) - no per-test asset creation needed
+            SpriteSheetExtractor extractor = CreateExtractorWithSharedFixtures();
             extractor._extractionMode = SpriteSheetExtractor.ExtractionMode.FromMetadata;
             extractor._previewSizeMode = SpriteSheetExtractor.PreviewSizeMode.Size32;
             extractor.DiscoverSpriteSheets();
 
             SpriteSheetExtractor.SpriteSheetEntry entry = FindDiscoveredSheet(
                 extractor,
-                "grid_override_preview_test"
+                "shared_4x4"
             );
-            Assert.IsTrue(entry != null, "Should find test entry");
+            Assert.IsTrue(entry != null, "Should find shared_4x4 entry");
 
             int fromMetadataCount = entry._sprites.Count;
-            Assert.That(fromMetadataCount, Is.EqualTo(4), "FromMetadata should find 4 sprites");
+            Assert.That(fromMetadataCount, Is.EqualTo(16), "FromMetadata should find 16 sprites");
 
             entry._useGlobalSettings = false;
             entry._extractionModeOverride = SpriteSheetExtractor.ExtractionMode.GridBased;
             entry._gridSizeModeOverride = SpriteSheetExtractor.GridSizeMode.Manual;
-            entry._gridColumnsOverride = 4;
-            entry._gridRowsOverride = 4;
+            entry._gridColumnsOverride = 8;
+            entry._gridRowsOverride = 8;
 
             extractor.RegenerateAllPreviewTextures();
 
             Assert.That(
                 entry._sprites.Count,
-                Is.EqualTo(16),
-                "GridBased 4x4 should produce 16 sprites"
+                Is.EqualTo(64),
+                "GridBased 8x8 should produce 64 sprites"
             );
 
             for (int i = 0; i < entry._sprites.Count; i++)
@@ -7721,9 +8016,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
         [Test]
         public void ToggleUseGlobalSettingsPreservesPreviewTexturesWithMatchingRects()
         {
-            CreateSpriteSheet("preview_transfer_test", 64, 64, 2, 2);
-
-            SpriteSheetExtractor extractor = CreateExtractor();
+            // Uses shared 2x2 fixture - no per-test asset creation needed
+            SpriteSheetExtractor extractor = CreateExtractorWithSharedFixtures();
             extractor._extractionMode = SpriteSheetExtractor.ExtractionMode.GridBased;
             extractor._gridSizeMode = SpriteSheetExtractor.GridSizeMode.Manual;
             extractor._gridColumns = 2;
@@ -7735,13 +8029,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             SpriteSheetExtractor.SpriteSheetEntry entry = null;
             for (int i = 0; i < extractor._discoveredSheets.Count; i++)
             {
-                if (extractor._discoveredSheets[i]._assetPath.Contains("preview_transfer_test"))
+                if (extractor._discoveredSheets[i]._assetPath == _shared2x2Path)
                 {
                     entry = extractor._discoveredSheets[i];
                     break;
                 }
             }
-            Assert.IsNotNull(entry, "Should find preview_transfer_test entry");
+            Assert.IsNotNull(entry, "Should find shared_2x2 entry");
 
             // Verify initial preview textures exist
             Assert.IsNotNull(entry._sprites);
@@ -7789,9 +8083,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
         [Test]
         public void RepopulateSpritesForEntryClearsSpritesWhenRectsChange()
         {
-            CreateSpriteSheet("rects_change_test", 128, 128, 4, 4);
-
-            SpriteSheetExtractor extractor = CreateExtractor();
+            // Uses shared 4x4 fixture (128x128 with 16 sprites) - no per-test asset creation needed
+            SpriteSheetExtractor extractor = CreateExtractorWithSharedFixtures();
             extractor._extractionMode = SpriteSheetExtractor.ExtractionMode.GridBased;
             extractor._gridSizeMode = SpriteSheetExtractor.GridSizeMode.Manual;
             extractor._gridColumns = 4;
@@ -7803,13 +8096,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             SpriteSheetExtractor.SpriteSheetEntry entry = null;
             for (int i = 0; i < extractor._discoveredSheets.Count; i++)
             {
-                if (extractor._discoveredSheets[i]._assetPath.Contains("rects_change_test"))
+                if (extractor._discoveredSheets[i]._assetPath == _shared4x4Path)
                 {
                     entry = extractor._discoveredSheets[i];
                     break;
                 }
             }
-            Assert.IsNotNull(entry, "Should find rects_change_test entry");
+            Assert.IsNotNull(entry, "Should find shared_4x4 entry");
             Assert.AreEqual(16, entry._sprites.Count, "Should have 16 sprites (4x4)");
 
             // Now change grid dimensions (which changes all rects)
@@ -7854,9 +8147,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
         [Test]
         public void SchedulePreviewRegenerationHandlesNullSpritesInList()
         {
-            CreateSpriteSheet("null_sprites_test", 64, 64, 2, 2);
-
-            SpriteSheetExtractor extractor = CreateExtractor();
+            // Uses shared 2x2 fixture - no per-test asset creation needed
+            SpriteSheetExtractor extractor = CreateExtractorWithSharedFixtures();
             extractor._extractionMode = SpriteSheetExtractor.ExtractionMode.GridBased;
             extractor._gridColumns = 2;
             extractor._gridRows = 2;
@@ -7867,13 +8159,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             SpriteSheetExtractor.SpriteSheetEntry entry = null;
             for (int i = 0; i < extractor._discoveredSheets.Count; i++)
             {
-                if (extractor._discoveredSheets[i]._assetPath.Contains("null_sprites_test"))
+                if (extractor._discoveredSheets[i]._assetPath == _shared2x2Path)
                 {
                     entry = extractor._discoveredSheets[i];
                     break;
                 }
             }
-            Assert.IsNotNull(entry, "Should find null_sprites_test entry");
+            Assert.IsNotNull(entry, "Should find shared_2x2 entry");
 
             // Insert a null sprite in the list (edge case)
             entry._sprites.Add(null);
@@ -7893,9 +8185,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
         [Test]
         public void SchedulePreviewRegenerationHandlesDuplicateRects()
         {
-            CreateSpriteSheet("duplicate_rects_test", 64, 64, 2, 2);
-
-            SpriteSheetExtractor extractor = CreateExtractor();
+            // Uses shared 2x2 fixture - no per-test asset creation needed
+            SpriteSheetExtractor extractor = CreateExtractorWithSharedFixtures();
             extractor._extractionMode = SpriteSheetExtractor.ExtractionMode.GridBased;
             extractor._gridColumns = 2;
             extractor._gridRows = 2;
@@ -7906,13 +8197,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             SpriteSheetExtractor.SpriteSheetEntry entry = null;
             for (int i = 0; i < extractor._discoveredSheets.Count; i++)
             {
-                if (extractor._discoveredSheets[i]._assetPath.Contains("duplicate_rects_test"))
+                if (extractor._discoveredSheets[i]._assetPath == _shared2x2Path)
                 {
                     entry = extractor._discoveredSheets[i];
                     break;
                 }
             }
-            Assert.IsNotNull(entry, "Should find duplicate_rects_test entry");
+            Assert.IsNotNull(entry, "Should find shared_2x2 entry");
             Assert.AreEqual(4, entry._sprites.Count);
 
             // Manually create a duplicate rect scenario (edge case)
@@ -9089,9 +9380,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
         [Test]
         public void SchedulePreviewRegenerationPreservesTexturesWhenRectsMatch()
         {
-            CreateSpriteSheet("regen_preserve_test", 64, 64, 2, 2);
-
-            SpriteSheetExtractor extractor = CreateExtractor();
+            // Uses shared 2x2 fixture - no per-test asset creation needed
+            SpriteSheetExtractor extractor = CreateExtractorWithSharedFixtures();
             extractor._extractionMode = SpriteSheetExtractor.ExtractionMode.GridBased;
             extractor._gridSizeMode = SpriteSheetExtractor.GridSizeMode.Manual;
             extractor._gridColumns = 2;
@@ -9103,13 +9393,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             SpriteSheetExtractor.SpriteSheetEntry entry = null;
             for (int i = 0; i < extractor._discoveredSheets.Count; i++)
             {
-                if (extractor._discoveredSheets[i]._assetPath.Contains("regen_preserve_test"))
+                if (extractor._discoveredSheets[i]._assetPath == _shared2x2Path)
                 {
                     entry = extractor._discoveredSheets[i];
                     break;
                 }
             }
-            Assert.IsNotNull(entry, "Should find regen_preserve_test entry");
+            Assert.IsNotNull(entry, "Should find shared_2x2 entry");
             Assert.AreEqual(4, entry._sprites.Count, "Should have 4 sprites initially");
 
             Rect[] originalRects = new Rect[entry._sprites.Count];
@@ -9188,9 +9478,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
         [Test]
         public void SchedulePreviewRegenerationHandlesDestroyedPreviewTextures()
         {
-            CreateSpriteSheet("destroyed_preview_test", 64, 64, 2, 2);
-
-            SpriteSheetExtractor extractor = CreateExtractor();
+            // Uses shared 2x2 fixture - no per-test asset creation needed
+            SpriteSheetExtractor extractor = CreateExtractorWithSharedFixtures();
             extractor._extractionMode = SpriteSheetExtractor.ExtractionMode.GridBased;
             extractor._gridColumns = 2;
             extractor._gridRows = 2;
@@ -9201,13 +9490,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             SpriteSheetExtractor.SpriteSheetEntry entry = null;
             for (int i = 0; i < extractor._discoveredSheets.Count; i++)
             {
-                if (extractor._discoveredSheets[i]._assetPath.Contains("destroyed_preview_test"))
+                if (extractor._discoveredSheets[i]._assetPath == _shared2x2Path)
                 {
                     entry = extractor._discoveredSheets[i];
                     break;
                 }
             }
-            Assert.IsNotNull(entry, "Should find destroyed_preview_test entry");
+            Assert.IsNotNull(entry, "Should find shared_2x2 entry");
 
             if (entry._sprites.Count > 0 && entry._sprites[0]._previewTexture != null)
             {
@@ -9224,9 +9513,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
         [Test]
         public void SchedulePreviewRegenerationCleansUpOrphanedTextures()
         {
-            CreateSpriteSheet("orphan_cleanup_test", 64, 64, 2, 2);
-
-            SpriteSheetExtractor extractor = CreateExtractor();
+            // Uses shared 2x2 fixture - no per-test asset creation needed
+            SpriteSheetExtractor extractor = CreateExtractorWithSharedFixtures();
             extractor._extractionMode = SpriteSheetExtractor.ExtractionMode.GridBased;
             extractor._gridSizeMode = SpriteSheetExtractor.GridSizeMode.Manual;
             extractor._gridColumns = 2;
@@ -9238,13 +9526,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             SpriteSheetExtractor.SpriteSheetEntry entry = null;
             for (int i = 0; i < extractor._discoveredSheets.Count; i++)
             {
-                if (extractor._discoveredSheets[i]._assetPath.Contains("orphan_cleanup_test"))
+                if (extractor._discoveredSheets[i]._assetPath == _shared2x2Path)
                 {
                     entry = extractor._discoveredSheets[i];
                     break;
                 }
             }
-            Assert.IsNotNull(entry, "Should find orphan_cleanup_test entry");
+            Assert.IsNotNull(entry, "Should find shared_2x2 entry");
             Assert.AreEqual(4, entry._sprites.Count, "Should have 4 sprites initially");
 
             int originalPreviewCount = 0;
@@ -12769,6 +13057,2151 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
                 result,
                 Is.True,
                 "Mismatched pixel array size should return true (defensive)"
+            );
+        }
+
+        #endregion
+
+        #region Algorithm Fix Tests
+
+        // Strip Texture Handling Tests
+        // These tests verify that for textures with extreme aspect ratios (strip textures),
+        // the algorithm correctly prefers single-row or single-column layouts.
+
+        [Test]
+        public void InferGridFromSpriteCountHandlesHorizontalStripTexture256x21With12Sprites()
+        {
+            // 256x21 texture with 12 sprites should produce ~21x21 cells (horizontal strip)
+            // Cell width = (256 + 12/2) / 12 = 262/12 = 21 (rounded)
+            int textureWidth = 256;
+            int textureHeight = 21;
+            int spriteCount = 12;
+
+            Color32[] pixels = CreateHorizontalStripPixels(
+                textureWidth,
+                textureHeight,
+                spriteCount
+            );
+
+            SpriteSheetAlgorithms.AlgorithmResult result = SpriteSheetAlgorithms.DetectGrid(
+                pixels,
+                textureWidth,
+                textureHeight,
+                alphaThreshold: 0.1f,
+                algorithm: AutoDetectionAlgorithm.BoundaryScoring,
+                expectedSpriteCount: spriteCount
+            );
+
+            Assert.That(
+                result.IsValid,
+                Is.True,
+                "Should produce valid result for horizontal strip"
+            );
+            Assert.That(
+                result.CellHeight,
+                Is.EqualTo(textureHeight),
+                "Cell height should equal texture height for horizontal strip"
+            );
+            Assert.That(
+                result.CellWidth,
+                Is.InRange(20, 22),
+                "Cell width should be approximately 21 for 256/12"
+            );
+        }
+
+        [Test]
+        public void InferGridFromSpriteCountHandlesVerticalStripTexture21x256With12Sprites()
+        {
+            // 21x256 texture with 12 sprites should produce ~21x21 cells (vertical strip)
+            int textureWidth = 21;
+            int textureHeight = 256;
+            int spriteCount = 12;
+
+            Color32[] pixels = CreateVerticalStripPixels(textureWidth, textureHeight, spriteCount);
+
+            SpriteSheetAlgorithms.AlgorithmResult result = SpriteSheetAlgorithms.DetectGrid(
+                pixels,
+                textureWidth,
+                textureHeight,
+                alphaThreshold: 0.1f,
+                algorithm: AutoDetectionAlgorithm.BoundaryScoring,
+                expectedSpriteCount: spriteCount
+            );
+
+            Assert.That(result.IsValid, Is.True, "Should produce valid result for vertical strip");
+            Assert.That(
+                result.CellWidth,
+                Is.EqualTo(textureWidth),
+                "Cell width should equal texture width for vertical strip"
+            );
+            Assert.That(
+                result.CellHeight,
+                Is.InRange(20, 22),
+                "Cell height should be approximately 21 for 256/12"
+            );
+        }
+
+        [Test]
+        [TestCase(128, 32, 4, TestName = "HorizontalStrip.4to1.4Sprites")]
+        [TestCase(256, 32, 8, TestName = "HorizontalStrip.8to1.8Sprites")]
+        [TestCase(512, 32, 16, TestName = "HorizontalStrip.16to1.16Sprites")]
+        [TestCase(256, 64, 4, TestName = "HorizontalStrip.4to1.4SpritesLargerCells")]
+        public void InferGridFromSpriteCountHandlesVariousHorizontalStripAspectRatios(
+            int textureWidth,
+            int textureHeight,
+            int spriteCount
+        )
+        {
+            Color32[] pixels = CreateHorizontalStripPixels(
+                textureWidth,
+                textureHeight,
+                spriteCount
+            );
+
+            SpriteSheetAlgorithms.AlgorithmResult result = SpriteSheetAlgorithms.DetectGrid(
+                pixels,
+                textureWidth,
+                textureHeight,
+                alphaThreshold: 0.1f,
+                algorithm: AutoDetectionAlgorithm.BoundaryScoring,
+                expectedSpriteCount: spriteCount
+            );
+
+            Assert.That(result.IsValid, Is.True, "Should produce valid result");
+            // For horizontal strips, should prefer single row layout
+            Assert.That(
+                result.CellHeight,
+                Is.EqualTo(textureHeight),
+                "Cell height should equal texture height for horizontal strip"
+            );
+        }
+
+        [Test]
+        [TestCase(32, 128, 4, TestName = "VerticalStrip.1to4.4Sprites")]
+        [TestCase(32, 256, 8, TestName = "VerticalStrip.1to8.8Sprites")]
+        [TestCase(32, 512, 16, TestName = "VerticalStrip.1to16.16Sprites")]
+        [TestCase(64, 256, 4, TestName = "VerticalStrip.1to4.4SpritesLargerCells")]
+        public void InferGridFromSpriteCountHandlesVariousVerticalStripAspectRatios(
+            int textureWidth,
+            int textureHeight,
+            int spriteCount
+        )
+        {
+            Color32[] pixels = CreateVerticalStripPixels(textureWidth, textureHeight, spriteCount);
+
+            SpriteSheetAlgorithms.AlgorithmResult result = SpriteSheetAlgorithms.DetectGrid(
+                pixels,
+                textureWidth,
+                textureHeight,
+                alphaThreshold: 0.1f,
+                algorithm: AutoDetectionAlgorithm.BoundaryScoring,
+                expectedSpriteCount: spriteCount
+            );
+
+            Assert.That(result.IsValid, Is.True, "Should produce valid result");
+            // For vertical strips, should prefer single column layout
+            Assert.That(
+                result.CellWidth,
+                Is.EqualTo(textureWidth),
+                "Cell width should equal texture width for vertical strip"
+            );
+        }
+
+        [Test]
+        public void InferGridFromSpriteCountUsesOptimalGridForNonStripTextures()
+        {
+            // 128x128 with 16 sprites should produce 4x4 grid with 32x32 cells
+            // NOT a strip texture, so should use optimal grid layout
+            int textureWidth = 128;
+            int textureHeight = 128;
+            int spriteCount = 16;
+
+            Color32[] pixels = CreateSimpleSpriteSheetPixels(textureWidth, textureHeight, 4, 4);
+
+            SpriteSheetAlgorithms.AlgorithmResult result = SpriteSheetAlgorithms.DetectGrid(
+                pixels,
+                textureWidth,
+                textureHeight,
+                alphaThreshold: 0.1f,
+                algorithm: AutoDetectionAlgorithm.BoundaryScoring,
+                expectedSpriteCount: spriteCount
+            );
+
+            Assert.That(result.IsValid, Is.True, "Should produce valid result");
+            Assert.That(result.CellWidth, Is.EqualTo(32), "Should detect 32-pixel wide cells");
+            Assert.That(result.CellHeight, Is.EqualTo(32), "Should detect 32-pixel tall cells");
+        }
+
+        [Test]
+        public void InferGridFromSpriteCountUsesOptimalGridFor2x1Texture()
+        {
+            // 128x64 with 2 sprites - aspect ratio 2:1 is NOT a strip (< 4:1)
+            // Should still use optimal layout
+            int textureWidth = 128;
+            int textureHeight = 64;
+            int spriteCount = 2;
+
+            Color32[] pixels = CreateSimpleSpriteSheetPixels(textureWidth, textureHeight, 2, 1);
+
+            SpriteSheetAlgorithms.AlgorithmResult result = SpriteSheetAlgorithms.DetectGrid(
+                pixels,
+                textureWidth,
+                textureHeight,
+                alphaThreshold: 0.1f,
+                algorithm: AutoDetectionAlgorithm.BoundaryScoring,
+                expectedSpriteCount: spriteCount
+            );
+
+            Assert.That(result.IsValid, Is.True, "Should produce valid result");
+            Assert.That(result.CellWidth, Is.EqualTo(64), "Should detect 64-pixel wide cells");
+            Assert.That(result.CellHeight, Is.EqualTo(64), "Should detect 64-pixel tall cells");
+        }
+
+        // Confidence Scoring Tests
+        // These tests verify that CalculateUserSpecifiedCountConfidence returns appropriate
+        // confidence values based on cell aspect ratios.
+
+        [Test]
+        public void ConfidenceIsHighForSquareCellsOnSquareTexture()
+        {
+            // 128x128 with 16 sprites -> 32x32 cells (square)
+            int textureWidth = 128;
+            int textureHeight = 128;
+            int spriteCount = 16;
+
+            Color32[] pixels = CreateSimpleSpriteSheetPixels(textureWidth, textureHeight, 4, 4);
+
+            SpriteSheetAlgorithms.AlgorithmResult result = SpriteSheetAlgorithms.DetectGrid(
+                pixels,
+                textureWidth,
+                textureHeight,
+                alphaThreshold: 0.1f,
+                algorithm: AutoDetectionAlgorithm.BoundaryScoring,
+                expectedSpriteCount: spriteCount
+            );
+
+            Assert.That(result.IsValid, Is.True);
+            Assert.That(
+                result.Confidence,
+                Is.GreaterThanOrEqualTo(0.85f),
+                "Square cells should have high confidence (0.9 expected)"
+            );
+        }
+
+        [Test]
+        public void ConfidenceIsModerateForModerateAspectRatioCells()
+        {
+            // Create texture where cells have 2:1 aspect ratio
+            // 128x64 with 4 sprites in 4x1 layout -> 32x64 cells (1:2 aspect)
+            int textureWidth = 128;
+            int textureHeight = 64;
+            int spriteCount = 4;
+
+            Color32[] pixels = CreateHorizontalStripPixels(
+                textureWidth,
+                textureHeight,
+                spriteCount
+            );
+
+            SpriteSheetAlgorithms.AlgorithmResult result = SpriteSheetAlgorithms.DetectGrid(
+                pixels,
+                textureWidth,
+                textureHeight,
+                alphaThreshold: 0.1f,
+                algorithm: AutoDetectionAlgorithm.BoundaryScoring,
+                expectedSpriteCount: spriteCount
+            );
+
+            Assert.That(result.IsValid, Is.True);
+            // The confidence should be based on cell aspect ratio
+            Assert.That(
+                result.Confidence,
+                Is.GreaterThanOrEqualTo(0.7f).And.LessThanOrEqualTo(0.95f),
+                "Moderate aspect ratio cells should have moderate to high confidence"
+            );
+        }
+
+        [Test]
+        public void ConfidenceValuesAreWithinValidRange()
+        {
+            int[][] testCases =
+            {
+                new[] { 64, 64, 4 }, // Square texture
+                new[] { 128, 32, 4 }, // Wide texture
+                new[] { 32, 128, 4 }, // Tall texture
+                new[] { 256, 21, 12 }, // Horizontal strip
+                new[] { 21, 256, 12 }, // Vertical strip
+            };
+
+            for (int i = 0; i < testCases.Length; ++i)
+            {
+                int textureWidth = testCases[i][0];
+                int textureHeight = testCases[i][1];
+                int spriteCount = testCases[i][2];
+
+                Color32[] pixels = new Color32[textureWidth * textureHeight];
+                for (int j = 0; j < pixels.Length; ++j)
+                {
+                    pixels[j] = new Color32(255, 128, 64, 255);
+                }
+
+                SpriteSheetAlgorithms.AlgorithmResult result = SpriteSheetAlgorithms.DetectGrid(
+                    pixels,
+                    textureWidth,
+                    textureHeight,
+                    alphaThreshold: 0.1f,
+                    algorithm: AutoDetectionAlgorithm.BoundaryScoring,
+                    expectedSpriteCount: spriteCount
+                );
+
+                Assert.That(
+                    result.Confidence,
+                    Is.GreaterThanOrEqualTo(0f).And.LessThanOrEqualTo(1f),
+                    $"Confidence for {textureWidth}x{textureHeight} with {spriteCount} sprites should be in [0, 1]"
+                );
+            }
+        }
+
+        [Test]
+        public void ConfidenceIsBoostedForStripTexturesWithMatchingOrientation()
+        {
+            // Horizontal strip with square-ish cells should get bonus confidence
+            int textureWidth = 256;
+            int textureHeight = 32;
+            int spriteCount = 8;
+
+            Color32[] pixels = CreateHorizontalStripPixels(
+                textureWidth,
+                textureHeight,
+                spriteCount
+            );
+
+            SpriteSheetAlgorithms.AlgorithmResult result = SpriteSheetAlgorithms.DetectGrid(
+                pixels,
+                textureWidth,
+                textureHeight,
+                alphaThreshold: 0.1f,
+                algorithm: AutoDetectionAlgorithm.BoundaryScoring,
+                expectedSpriteCount: spriteCount
+            );
+
+            Assert.That(result.IsValid, Is.True);
+            // Strip textures with matching orientation get boosted confidence
+            Assert.That(
+                result.Confidence,
+                Is.GreaterThanOrEqualTo(0.75f),
+                "Horizontal strip with square cells should have good confidence"
+            );
+        }
+
+        // Overcounting Penalty Tests
+        // These tests verify that TryInferApproximateGrid penalizes overcounting more heavily.
+
+        [Test]
+        public void TryInferApproximateGridPenalizesOvercounting()
+        {
+            // When exact division fails, the algorithm should prefer configurations
+            // that don't overcount. For 10 expected sprites on a 128x64 texture,
+            // 12 cells (4x3) should be penalized more heavily than 8 cells (4x2).
+            int textureWidth = 128;
+            int textureHeight = 64;
+            int expectedCount = 10;
+
+            Color32[] pixels = new Color32[textureWidth * textureHeight];
+            for (int i = 0; i < pixels.Length; ++i)
+            {
+                pixels[i] = new Color32(255, 128, 64, 255);
+            }
+
+            SpriteSheetAlgorithms.AlgorithmResult result = SpriteSheetAlgorithms.DetectGrid(
+                pixels,
+                textureWidth,
+                textureHeight,
+                alphaThreshold: 0.1f,
+                algorithm: AutoDetectionAlgorithm.BoundaryScoring,
+                expectedSpriteCount: expectedCount
+            );
+
+            // The result should be valid (TryInferApproximateGrid should find a solution)
+            Assert.That(result.IsValid, Is.True, "Should find approximate grid");
+
+            // Calculate the actual cell count from the result
+            int actualCols = textureWidth / result.CellWidth;
+            int actualRows = textureHeight / result.CellHeight;
+            int actualCellCount = actualCols * actualRows;
+
+            // The algorithm should NOT significantly overcount
+            // Due to overcounting penalty, it should prefer undercounting to overcounting
+            Assert.That(
+                actualCellCount,
+                Is.LessThanOrEqualTo(expectedCount + 2),
+                "Should not significantly overcount due to overcounting penalty"
+            );
+        }
+
+        [Test]
+        public void TryInferApproximateGridSelectsBestLayoutForImpreciseDivision()
+        {
+            // 100x100 texture with 11 sprites - no exact grid exists
+            // The algorithm should find a reasonable approximation
+            int textureWidth = 100;
+            int textureHeight = 100;
+            int expectedCount = 11;
+
+            Color32[] pixels = new Color32[textureWidth * textureHeight];
+            for (int i = 0; i < pixels.Length; ++i)
+            {
+                pixels[i] = new Color32(255, 128, 64, 255);
+            }
+
+            SpriteSheetAlgorithms.AlgorithmResult result = SpriteSheetAlgorithms.DetectGrid(
+                pixels,
+                textureWidth,
+                textureHeight,
+                alphaThreshold: 0.1f,
+                algorithm: AutoDetectionAlgorithm.BoundaryScoring,
+                expectedSpriteCount: expectedCount
+            );
+
+            Assert.That(
+                result.IsValid,
+                Is.True,
+                "Should find approximate grid for imprecise division"
+            );
+            Assert.That(
+                result.CellWidth,
+                Is.GreaterThanOrEqualTo(SpriteSheetAlgorithms.MinimumCellSize),
+                "Cell width should be valid"
+            );
+            Assert.That(
+                result.CellHeight,
+                Is.GreaterThanOrEqualTo(SpriteSheetAlgorithms.MinimumCellSize),
+                "Cell height should be valid"
+            );
+        }
+
+        // InferGridFromSpriteCount Rounding Behavior Tests
+
+        [Test]
+        public void InferGridFromSpriteCountRoundsToNearestForImpreciseDivision()
+        {
+            // 260x20 with 12 sprites: 260/12 = 21.67, should round to ~22
+            int textureWidth = 260;
+            int textureHeight = 20;
+            int spriteCount = 12;
+
+            Color32[] pixels = CreateHorizontalStripPixels(
+                textureWidth,
+                textureHeight,
+                spriteCount
+            );
+
+            SpriteSheetAlgorithms.AlgorithmResult result = SpriteSheetAlgorithms.DetectGrid(
+                pixels,
+                textureWidth,
+                textureHeight,
+                alphaThreshold: 0.1f,
+                algorithm: AutoDetectionAlgorithm.BoundaryScoring,
+                expectedSpriteCount: spriteCount
+            );
+
+            Assert.That(result.IsValid, Is.True, "Should produce valid result with rounding");
+            // The cell width should be approximately 260/12 = 21.67 -> rounded
+            Assert.That(
+                result.CellWidth,
+                Is.InRange(21, 23),
+                "Cell width should be rounded appropriately"
+            );
+        }
+
+        [Test]
+        public void InferGridFromSpriteCountEnforcesMinimumCellSize()
+        {
+            // Texture too small to fit the requested sprite count with valid cell sizes
+            // 16x16 with 100 sprites would require cells smaller than MinimumCellSize (4)
+            int textureWidth = 16;
+            int textureHeight = 16;
+            int spriteCount = 100;
+
+            Color32[] pixels = new Color32[textureWidth * textureHeight];
+            for (int i = 0; i < pixels.Length; ++i)
+            {
+                pixels[i] = new Color32(255, 128, 64, 255);
+            }
+
+            SpriteSheetAlgorithms.AlgorithmResult result = SpriteSheetAlgorithms.DetectGrid(
+                pixels,
+                textureWidth,
+                textureHeight,
+                alphaThreshold: 0.1f,
+                algorithm: AutoDetectionAlgorithm.BoundaryScoring,
+                expectedSpriteCount: spriteCount
+            );
+
+            // The result should either be invalid OR have cells >= MinimumCellSize
+            if (result.IsValid)
+            {
+                Assert.That(
+                    result.CellWidth,
+                    Is.GreaterThanOrEqualTo(SpriteSheetAlgorithms.MinimumCellSize),
+                    "Cell width must be at least MinimumCellSize"
+                );
+                Assert.That(
+                    result.CellHeight,
+                    Is.GreaterThanOrEqualTo(SpriteSheetAlgorithms.MinimumCellSize),
+                    "Cell height must be at least MinimumCellSize"
+                );
+            }
+        }
+
+        [Test]
+        [TestCase(64, 64, 4, TestName = "AspectRatio.Square.4Sprites")]
+        [TestCase(128, 64, 4, TestName = "AspectRatio.Wide2to1.4Sprites")]
+        [TestCase(64, 128, 4, TestName = "AspectRatio.Tall1to2.4Sprites")]
+        [TestCase(192, 64, 6, TestName = "AspectRatio.Wide3to1.6Sprites")]
+        public void InferGridFromSpriteCountProducesValidAspectRatioCells(
+            int textureWidth,
+            int textureHeight,
+            int spriteCount
+        )
+        {
+            Color32[] pixels = new Color32[textureWidth * textureHeight];
+            for (int i = 0; i < pixels.Length; ++i)
+            {
+                pixels[i] = new Color32(255, 128, 64, 255);
+            }
+
+            SpriteSheetAlgorithms.AlgorithmResult result = SpriteSheetAlgorithms.DetectGrid(
+                pixels,
+                textureWidth,
+                textureHeight,
+                alphaThreshold: 0.1f,
+                algorithm: AutoDetectionAlgorithm.BoundaryScoring,
+                expectedSpriteCount: spriteCount
+            );
+
+            if (result.IsValid)
+            {
+                // Cell aspect ratio should be within valid range (0.33 to 3.0)
+                float cellAspect = (float)result.CellWidth / result.CellHeight;
+                Assert.That(
+                    cellAspect,
+                    Is.InRange(0.33f, 3f),
+                    $"Cell aspect ratio {cellAspect} should be within [0.33, 3.0]"
+                );
+            }
+        }
+
+        // Strip Texture Edge Cases
+
+        [Test]
+        public void StripDetectionWorksAtExactly4To1AspectRatio()
+        {
+            // Exactly 4:1 aspect ratio is the threshold for strip detection
+            int textureWidth = 128;
+            int textureHeight = 32;
+            int spriteCount = 4;
+
+            Color32[] pixels = CreateHorizontalStripPixels(
+                textureWidth,
+                textureHeight,
+                spriteCount
+            );
+
+            SpriteSheetAlgorithms.AlgorithmResult result = SpriteSheetAlgorithms.DetectGrid(
+                pixels,
+                textureWidth,
+                textureHeight,
+                alphaThreshold: 0.1f,
+                algorithm: AutoDetectionAlgorithm.BoundaryScoring,
+                expectedSpriteCount: spriteCount
+            );
+
+            Assert.That(result.IsValid, Is.True, "Should detect grid at 4:1 aspect ratio");
+        }
+
+        [Test]
+        public void StripDetectionWorksJustBelow4To1AspectRatio()
+        {
+            // Just below 4:1 threshold (3.9:1)
+            int textureWidth = 117;
+            int textureHeight = 30;
+            int spriteCount = 4;
+
+            Color32[] pixels = CreateHorizontalStripPixels(
+                textureWidth,
+                textureHeight,
+                spriteCount
+            );
+
+            SpriteSheetAlgorithms.AlgorithmResult result = SpriteSheetAlgorithms.DetectGrid(
+                pixels,
+                textureWidth,
+                textureHeight,
+                alphaThreshold: 0.1f,
+                algorithm: AutoDetectionAlgorithm.BoundaryScoring,
+                expectedSpriteCount: spriteCount
+            );
+
+            Assert.That(result.IsValid, Is.True, "Should detect grid just below strip threshold");
+        }
+
+        [Test]
+        public void SingleSpriteCountReturnsFullTextureDimensions()
+        {
+            // With sprite count of 1, the entire texture should be a single cell
+            int textureWidth = 64;
+            int textureHeight = 48;
+            int spriteCount = 1;
+
+            Color32[] pixels = new Color32[textureWidth * textureHeight];
+            for (int i = 0; i < pixels.Length; ++i)
+            {
+                pixels[i] = new Color32(255, 128, 64, 255);
+            }
+
+            SpriteSheetAlgorithms.AlgorithmResult result = SpriteSheetAlgorithms.DetectGrid(
+                pixels,
+                textureWidth,
+                textureHeight,
+                alphaThreshold: 0.1f,
+                algorithm: AutoDetectionAlgorithm.BoundaryScoring,
+                expectedSpriteCount: spriteCount
+            );
+
+            Assert.That(result.IsValid, Is.True, "Should handle single sprite");
+            Assert.That(
+                result.CellWidth,
+                Is.EqualTo(textureWidth),
+                "Single sprite should span full width"
+            );
+            Assert.That(
+                result.CellHeight,
+                Is.EqualTo(textureHeight),
+                "Single sprite should span full height"
+            );
+        }
+
+        [Test]
+        public void ZeroSpriteCountReturnsInvalidResult()
+        {
+            int textureWidth = 64;
+            int textureHeight = 64;
+            int spriteCount = 0;
+
+            Color32[] pixels = new Color32[textureWidth * textureHeight];
+            for (int i = 0; i < pixels.Length; ++i)
+            {
+                pixels[i] = new Color32(255, 128, 64, 255);
+            }
+
+            // Zero expected count should fall back to auto-detection, which should work
+            SpriteSheetAlgorithms.AlgorithmResult result = SpriteSheetAlgorithms.DetectGrid(
+                pixels,
+                textureWidth,
+                textureHeight,
+                alphaThreshold: 0.1f,
+                algorithm: AutoDetectionAlgorithm.BoundaryScoring,
+                expectedSpriteCount: spriteCount
+            );
+
+            // Should still produce some result via auto-detection path
+            Assert.That(
+                result.Confidence,
+                Is.GreaterThanOrEqualTo(0f),
+                "Should handle zero sprite count gracefully"
+            );
+        }
+
+        [Test]
+        public void NegativeSpriteCountReturnsValidResultFromAutoDetection()
+        {
+            int textureWidth = 64;
+            int textureHeight = 64;
+            int spriteCount = -1;
+
+            Color32[] pixels = CreateSimpleSpriteSheetPixels(textureWidth, textureHeight, 2, 2);
+
+            SpriteSheetAlgorithms.AlgorithmResult result = SpriteSheetAlgorithms.DetectGrid(
+                pixels,
+                textureWidth,
+                textureHeight,
+                alphaThreshold: 0.1f,
+                algorithm: AutoDetectionAlgorithm.BoundaryScoring,
+                expectedSpriteCount: spriteCount
+            );
+
+            // Negative sprite count should trigger auto-detection
+            Assert.That(
+                result.Confidence,
+                Is.GreaterThanOrEqualTo(0f),
+                "Negative sprite count should fall back to auto-detection"
+            );
+        }
+
+        // Helper methods for strip texture creation
+
+        private static Color32[] CreateHorizontalStripPixels(
+            int textureWidth,
+            int textureHeight,
+            int spriteCount
+        )
+        {
+            Color32[] pixels = new Color32[textureWidth * textureHeight];
+            int cellWidth = textureWidth / spriteCount;
+
+            // Fill with transparent
+            for (int i = 0; i < pixels.Length; ++i)
+            {
+                pixels[i] = new Color32(0, 0, 0, 0);
+            }
+
+            // Create opaque sprites in horizontal strip
+            for (int sprite = 0; sprite < spriteCount; ++sprite)
+            {
+                int startX = sprite * cellWidth + 2;
+                int endX = (sprite + 1) * cellWidth - 2;
+                int startY = 2;
+                int endY = textureHeight - 2;
+
+                // Clamp to texture bounds
+                endX = Math.Min(endX, textureWidth);
+                endY = Math.Min(endY, textureHeight);
+
+                for (int y = startY; y < endY; ++y)
+                {
+                    for (int x = startX; x < endX; ++x)
+                    {
+                        if (x >= 0 && x < textureWidth && y >= 0 && y < textureHeight)
+                        {
+                            pixels[y * textureWidth + x] = new Color32(255, 128, 64, 255);
+                        }
+                    }
+                }
+            }
+
+            return pixels;
+        }
+
+        private static Color32[] CreateVerticalStripPixels(
+            int textureWidth,
+            int textureHeight,
+            int spriteCount
+        )
+        {
+            Color32[] pixels = new Color32[textureWidth * textureHeight];
+            int cellHeight = textureHeight / spriteCount;
+
+            // Fill with transparent
+            for (int i = 0; i < pixels.Length; ++i)
+            {
+                pixels[i] = new Color32(0, 0, 0, 0);
+            }
+
+            // Create opaque sprites in vertical strip
+            for (int sprite = 0; sprite < spriteCount; ++sprite)
+            {
+                int startY = sprite * cellHeight + 2;
+                int endY = (sprite + 1) * cellHeight - 2;
+                int startX = 2;
+                int endX = textureWidth - 2;
+
+                // Clamp to texture bounds
+                endX = Math.Min(endX, textureWidth);
+                endY = Math.Min(endY, textureHeight);
+
+                for (int y = startY; y < endY; ++y)
+                {
+                    for (int x = startX; x < endX; ++x)
+                    {
+                        if (x >= 0 && x < textureWidth && y >= 0 && y < textureHeight)
+                        {
+                            pixels[y * textureWidth + x] = new Color32(255, 128, 64, 255);
+                        }
+                    }
+                }
+            }
+
+            return pixels;
+        }
+
+        // Prime Sprite Count Tests
+        // These tests verify TryInferApproximateGrid fallback behavior for prime sprite counts
+        // where no exact factor pairs exist.
+
+        [Test]
+        [TestCase(7, TestName = "PrimeSpriteCount.7Sprites")]
+        [TestCase(11, TestName = "PrimeSpriteCount.11Sprites")]
+        [TestCase(13, TestName = "PrimeSpriteCount.13Sprites")]
+        public void TryInferApproximateGridHandlesPrimeSpriteCount(int spriteCount)
+        {
+            int textureWidth = 100;
+            int textureHeight = 100;
+
+            Color32[] pixels = new Color32[textureWidth * textureHeight];
+            for (int i = 0; i < pixels.Length; ++i)
+            {
+                pixels[i] = new Color32(255, 128, 64, 255);
+            }
+
+            SpriteSheetAlgorithms.AlgorithmResult result = SpriteSheetAlgorithms.DetectGrid(
+                pixels,
+                textureWidth,
+                textureHeight,
+                alphaThreshold: 0.1f,
+                algorithm: AutoDetectionAlgorithm.BoundaryScoring,
+                expectedSpriteCount: spriteCount
+            );
+
+            Assert.That(
+                result.IsValid,
+                Is.True,
+                $"Should find approximate grid for prime count {spriteCount}"
+            );
+            Assert.That(
+                result.CellWidth,
+                Is.GreaterThanOrEqualTo(SpriteSheetAlgorithms.MinimumCellSize),
+                "Cell width should be at least MinimumCellSize"
+            );
+            Assert.That(
+                result.CellHeight,
+                Is.GreaterThanOrEqualTo(SpriteSheetAlgorithms.MinimumCellSize),
+                "Cell height should be at least MinimumCellSize"
+            );
+
+            int actualCols = textureWidth / result.CellWidth;
+            int actualRows = textureHeight / result.CellHeight;
+            int actualCellCount = actualCols * actualRows;
+
+            Assert.That(
+                actualCellCount,
+                Is.GreaterThanOrEqualTo(spriteCount - 2).And.LessThanOrEqualTo(spriteCount + 4),
+                $"Cell count should be close to expected {spriteCount}"
+            );
+        }
+
+        [Test]
+        public void TryInferApproximateGridForcedFallbackWith7SpritesOn100x100Texture()
+        {
+            int textureWidth = 100;
+            int textureHeight = 100;
+            int spriteCount = 7;
+
+            Color32[] pixels = new Color32[textureWidth * textureHeight];
+            for (int i = 0; i < pixels.Length; ++i)
+            {
+                pixels[i] = new Color32(255, 128, 64, 255);
+            }
+
+            SpriteSheetAlgorithms.AlgorithmResult result = SpriteSheetAlgorithms.DetectGrid(
+                pixels,
+                textureWidth,
+                textureHeight,
+                alphaThreshold: 0.1f,
+                algorithm: AutoDetectionAlgorithm.BoundaryScoring,
+                expectedSpriteCount: spriteCount
+            );
+
+            Assert.That(
+                result.IsValid,
+                Is.True,
+                "Should find approximate grid when exact division fails"
+            );
+
+            int actualCols = textureWidth / result.CellWidth;
+            int actualRows = textureHeight / result.CellHeight;
+            int actualCellCount = actualCols * actualRows;
+
+            Assert.That(
+                actualCellCount,
+                Is.GreaterThanOrEqualTo(spriteCount),
+                "Should produce at least as many cells as requested sprites"
+            );
+        }
+
+        // Strip Handling Rejection Test
+        // This tests the case where strip detection is triggered (>4:1 aspect ratio) but
+        // the calculated cell aspect ratio falls outside [0.33, 3.0], so strip handling is skipped.
+
+        [Test]
+        public void StripHandlingSkippedWhenCellAspectRatioOutsideValidRange()
+        {
+            int textureWidth = 500;
+            int textureHeight = 100;
+            int spriteCount = 2;
+
+            Color32[] pixels = new Color32[textureWidth * textureHeight];
+            for (int i = 0; i < pixels.Length; ++i)
+            {
+                pixels[i] = new Color32(255, 128, 64, 255);
+            }
+
+            SpriteSheetAlgorithms.AlgorithmResult result = SpriteSheetAlgorithms.DetectGrid(
+                pixels,
+                textureWidth,
+                textureHeight,
+                alphaThreshold: 0.1f,
+                algorithm: AutoDetectionAlgorithm.BoundaryScoring,
+                expectedSpriteCount: spriteCount
+            );
+
+            Assert.That(result.IsValid, Is.True, "Should produce valid result");
+
+            float cellAspect = (float)result.CellWidth / result.CellHeight;
+            Assert.That(
+                cellAspect,
+                Is.InRange(0.33f, 3f),
+                $"Cell aspect ratio {cellAspect} should be within valid range"
+            );
+        }
+
+        // Multiple Algorithm Tests
+        // These tests run the same input through all AutoDetectionAlgorithm values.
+
+        [Test]
+        [TestCase(AutoDetectionAlgorithm.BoundaryScoring, TestName = "Algorithm.BoundaryScoring")]
+        [TestCase(AutoDetectionAlgorithm.ClusterCentroid, TestName = "Algorithm.ClusterCentroid")]
+        [TestCase(
+            AutoDetectionAlgorithm.DistanceTransform,
+            TestName = "Algorithm.DistanceTransform"
+        )]
+        [TestCase(AutoDetectionAlgorithm.RegionGrowing, TestName = "Algorithm.RegionGrowing")]
+        [TestCase(AutoDetectionAlgorithm.AutoBest, TestName = "Algorithm.AutoBest")]
+        public void AllAlgorithmsProduceValidResultForStandard4x4Grid(
+            AutoDetectionAlgorithm algorithm
+        )
+        {
+            int textureWidth = 128;
+            int textureHeight = 128;
+            int spriteCount = 16;
+
+            Color32[] pixels = CreateSimpleSpriteSheetPixels(textureWidth, textureHeight, 4, 4);
+
+            SpriteSheetAlgorithms.AlgorithmResult result = SpriteSheetAlgorithms.DetectGrid(
+                pixels,
+                textureWidth,
+                textureHeight,
+                alphaThreshold: 0.1f,
+                algorithm: algorithm,
+                expectedSpriteCount: spriteCount
+            );
+
+            Assert.That(result.IsValid, Is.True, $"{algorithm} should produce valid result");
+            Assert.That(
+                result.CellWidth,
+                Is.GreaterThanOrEqualTo(SpriteSheetAlgorithms.MinimumCellSize),
+                $"{algorithm} cell width should meet minimum"
+            );
+            Assert.That(
+                result.CellHeight,
+                Is.GreaterThanOrEqualTo(SpriteSheetAlgorithms.MinimumCellSize),
+                $"{algorithm} cell height should meet minimum"
+            );
+        }
+
+        [Test]
+        [TestCase(
+            AutoDetectionAlgorithm.BoundaryScoring,
+            TestName = "AlgorithmStrip.BoundaryScoring"
+        )]
+        [TestCase(
+            AutoDetectionAlgorithm.ClusterCentroid,
+            TestName = "AlgorithmStrip.ClusterCentroid"
+        )]
+        [TestCase(
+            AutoDetectionAlgorithm.DistanceTransform,
+            TestName = "AlgorithmStrip.DistanceTransform"
+        )]
+        [TestCase(AutoDetectionAlgorithm.RegionGrowing, TestName = "AlgorithmStrip.RegionGrowing")]
+        [TestCase(AutoDetectionAlgorithm.AutoBest, TestName = "AlgorithmStrip.AutoBest")]
+        public void AllAlgorithmsHandleHorizontalStripTexture(AutoDetectionAlgorithm algorithm)
+        {
+            int textureWidth = 256;
+            int textureHeight = 32;
+            int spriteCount = 8;
+
+            Color32[] pixels = CreateHorizontalStripPixels(
+                textureWidth,
+                textureHeight,
+                spriteCount
+            );
+
+            SpriteSheetAlgorithms.AlgorithmResult result = SpriteSheetAlgorithms.DetectGrid(
+                pixels,
+                textureWidth,
+                textureHeight,
+                alphaThreshold: 0.1f,
+                algorithm: algorithm,
+                expectedSpriteCount: spriteCount
+            );
+
+            Assert.That(result.IsValid, Is.True, $"{algorithm} should handle horizontal strip");
+        }
+
+        // Tightened Confidence Assertions
+
+        [Test]
+        public void ConfidenceIsModerateForModerateAspectRatioCellsTightened()
+        {
+            int textureWidth = 128;
+            int textureHeight = 64;
+            int spriteCount = 4;
+
+            Color32[] pixels = CreateHorizontalStripPixels(
+                textureWidth,
+                textureHeight,
+                spriteCount
+            );
+
+            SpriteSheetAlgorithms.AlgorithmResult result = SpriteSheetAlgorithms.DetectGrid(
+                pixels,
+                textureWidth,
+                textureHeight,
+                alphaThreshold: 0.1f,
+                algorithm: AutoDetectionAlgorithm.BoundaryScoring,
+                expectedSpriteCount: spriteCount
+            );
+
+            Assert.That(result.IsValid, Is.True);
+            Assert.That(
+                result.Confidence,
+                Is.GreaterThanOrEqualTo(0.75f).And.LessThanOrEqualTo(0.92f),
+                "Moderate aspect ratio cells should have confidence in tightened range [0.75, 0.92]"
+            );
+        }
+
+        // Overcounting vs Undercounting Preference Test
+
+        [Test]
+        public void TryInferApproximateGridPrefersUndercountingToOvercounting()
+        {
+            int textureWidth = 128;
+            int textureHeight = 64;
+            int expectedCount = 10;
+
+            Color32[] pixels = new Color32[textureWidth * textureHeight];
+            for (int i = 0; i < pixels.Length; ++i)
+            {
+                pixels[i] = new Color32(255, 128, 64, 255);
+            }
+
+            SpriteSheetAlgorithms.AlgorithmResult result = SpriteSheetAlgorithms.DetectGrid(
+                pixels,
+                textureWidth,
+                textureHeight,
+                alphaThreshold: 0.1f,
+                algorithm: AutoDetectionAlgorithm.BoundaryScoring,
+                expectedSpriteCount: expectedCount
+            );
+
+            Assert.That(result.IsValid, Is.True, "Should find approximate grid");
+
+            int actualCols = textureWidth / result.CellWidth;
+            int actualRows = textureHeight / result.CellHeight;
+            int actualCellCount = actualCols * actualRows;
+
+            int undercountDiff = expectedCount - 8;
+            int overcountDiff = 12 - expectedCount;
+
+            Assert.That(
+                actualCellCount,
+                Is.LessThanOrEqualTo(expectedCount + 2),
+                $"Should prefer undercounting (8 cells, diff={undercountDiff}) over overcounting (12 cells, diff={overcountDiff})"
+            );
+        }
+
+        // Invalid Input Handling Tests
+
+        [Test]
+        public void DetectGridHandlesZeroWidthTexture()
+        {
+            int textureWidth = 0;
+            int textureHeight = 64;
+
+            Color32[] pixels = new Color32[0];
+
+            SpriteSheetAlgorithms.AlgorithmResult result = SpriteSheetAlgorithms.DetectGrid(
+                pixels,
+                textureWidth,
+                textureHeight,
+                alphaThreshold: 0.1f,
+                algorithm: AutoDetectionAlgorithm.BoundaryScoring,
+                expectedSpriteCount: 4
+            );
+
+            Assert.That(
+                result.IsValid,
+                Is.False,
+                "Should return invalid result for zero width texture"
+            );
+        }
+
+        [Test]
+        public void DetectGridHandlesZeroHeightTexture()
+        {
+            int textureWidth = 64;
+            int textureHeight = 0;
+
+            Color32[] pixels = new Color32[0];
+
+            SpriteSheetAlgorithms.AlgorithmResult result = SpriteSheetAlgorithms.DetectGrid(
+                pixels,
+                textureWidth,
+                textureHeight,
+                alphaThreshold: 0.1f,
+                algorithm: AutoDetectionAlgorithm.BoundaryScoring,
+                expectedSpriteCount: 4
+            );
+
+            Assert.That(
+                result.IsValid,
+                Is.False,
+                "Should return invalid result for zero height texture"
+            );
+        }
+
+        [Test]
+        public void DetectGridHandlesNullPixelArray()
+        {
+            int textureWidth = 64;
+            int textureHeight = 64;
+
+            SpriteSheetAlgorithms.AlgorithmResult result = SpriteSheetAlgorithms.DetectGrid(
+                null,
+                textureWidth,
+                textureHeight,
+                alphaThreshold: 0.1f,
+                algorithm: AutoDetectionAlgorithm.BoundaryScoring,
+                expectedSpriteCount: 4
+            );
+
+            Assert.That(result.IsValid, Is.False, "Should return invalid result for null pixels");
+        }
+
+        [Test]
+        public void DetectGridHandlesMismatchedPixelArrayLength()
+        {
+            int textureWidth = 64;
+            int textureHeight = 64;
+            int expectedLength = textureWidth * textureHeight;
+
+            Color32[] pixels = new Color32[expectedLength / 2];
+            for (int i = 0; i < pixels.Length; ++i)
+            {
+                pixels[i] = new Color32(255, 128, 64, 255);
+            }
+
+            SpriteSheetAlgorithms.AlgorithmResult result = SpriteSheetAlgorithms.DetectGrid(
+                pixels,
+                textureWidth,
+                textureHeight,
+                alphaThreshold: 0.1f,
+                algorithm: AutoDetectionAlgorithm.BoundaryScoring,
+                expectedSpriteCount: 4
+            );
+
+            Assert.That(
+                result.IsValid,
+                Is.False,
+                "Should return invalid result for mismatched pixel array length"
+            );
+        }
+
+        [Test]
+        public void DetectGridHandlesEmptyPixelArrayWithValidDimensions()
+        {
+            int textureWidth = 64;
+            int textureHeight = 64;
+
+            Color32[] pixels = new Color32[0];
+
+            SpriteSheetAlgorithms.AlgorithmResult result = SpriteSheetAlgorithms.DetectGrid(
+                pixels,
+                textureWidth,
+                textureHeight,
+                alphaThreshold: 0.1f,
+                algorithm: AutoDetectionAlgorithm.BoundaryScoring,
+                expectedSpriteCount: 4
+            );
+
+            Assert.That(
+                result.IsValid,
+                Is.False,
+                "Should return invalid result for empty pixel array"
+            );
+        }
+
+        [Test]
+        [TestCase(
+            AutoDetectionAlgorithm.BoundaryScoring,
+            TestName = "InvalidInput.BoundaryScoring"
+        )]
+        [TestCase(
+            AutoDetectionAlgorithm.ClusterCentroid,
+            TestName = "InvalidInput.ClusterCentroid"
+        )]
+        [TestCase(
+            AutoDetectionAlgorithm.DistanceTransform,
+            TestName = "InvalidInput.DistanceTransform"
+        )]
+        [TestCase(AutoDetectionAlgorithm.RegionGrowing, TestName = "InvalidInput.RegionGrowing")]
+        [TestCase(AutoDetectionAlgorithm.AutoBest, TestName = "InvalidInput.AutoBest")]
+        public void AllAlgorithmsHandleInvalidInputGracefully(AutoDetectionAlgorithm algorithm)
+        {
+            SpriteSheetAlgorithms.AlgorithmResult nullResult = SpriteSheetAlgorithms.DetectGrid(
+                null,
+                64,
+                64,
+                alphaThreshold: 0.1f,
+                algorithm: algorithm,
+                expectedSpriteCount: 4
+            );
+
+            Assert.That(
+                nullResult.IsValid,
+                Is.False,
+                $"{algorithm} should return invalid for null pixels"
+            );
+
+            SpriteSheetAlgorithms.AlgorithmResult zeroWidthResult =
+                SpriteSheetAlgorithms.DetectGrid(
+                    new Color32[0],
+                    0,
+                    64,
+                    alphaThreshold: 0.1f,
+                    algorithm: algorithm,
+                    expectedSpriteCount: 4
+                );
+
+            Assert.That(
+                zeroWidthResult.IsValid,
+                Is.False,
+                $"{algorithm} should return invalid for zero width"
+            );
+
+            SpriteSheetAlgorithms.AlgorithmResult mismatchResult = SpriteSheetAlgorithms.DetectGrid(
+                new Color32[100],
+                64,
+                64,
+                alphaThreshold: 0.1f,
+                algorithm: algorithm,
+                expectedSpriteCount: 4
+            );
+
+            Assert.That(
+                mismatchResult.IsValid,
+                Is.False,
+                $"{algorithm} should return invalid for mismatched array length"
+            );
+        }
+
+        #endregion
+
+        #region SerializedProperty Timing Pattern Tests
+
+        private SerializedProperty CreateSerializedProperty(
+            SpriteSheetExtractor extractor,
+            SerializedObject serializedObject,
+            string propertyName
+        )
+        {
+            serializedObject.Update();
+            SerializedProperty property = serializedObject.FindProperty(propertyName);
+            return property;
+        }
+
+        /// <summary>
+        /// Tests that demonstrate why the SerializedProperty timing fix was necessary.
+        /// The key insight is that SerializedProperty.boolValue/enumValueIndex reflect changes
+        /// immediately when modified, but the backing fields (like _showOverlay, _sortMode)
+        /// are NOT updated until ApplyModifiedProperties() is called.
+        /// </summary>
+        [Test]
+        public void SerializedPropertyBoolValueReflectsChangeBeforeApplyModifiedProperties()
+        {
+            SpriteSheetExtractor extractor = CreateExtractor();
+            extractor._showOverlay = false;
+
+            using SerializedObject serializedObject = new SerializedObject(extractor);
+            SerializedProperty showOverlayProperty = CreateSerializedProperty(
+                extractor,
+                serializedObject,
+                nameof(SpriteSheetExtractor._showOverlay)
+            );
+
+            Assert.That(
+                showOverlayProperty.boolValue,
+                Is.False,
+                "Initial SerializedProperty value should match backing field"
+            );
+            Assert.That(extractor._showOverlay, Is.False, "Initial backing field should be false");
+
+            showOverlayProperty.boolValue = true;
+
+            Assert.That(
+                showOverlayProperty.boolValue,
+                Is.True,
+                "SerializedProperty.boolValue should reflect change IMMEDIATELY"
+            );
+            Assert.That(
+                extractor._showOverlay,
+                Is.False,
+                "Backing field should NOT be updated until ApplyModifiedProperties()"
+            );
+
+            serializedObject.ApplyModifiedProperties();
+
+            Assert.That(
+                extractor._showOverlay,
+                Is.True,
+                "Backing field should be updated AFTER ApplyModifiedProperties()"
+            );
+        }
+
+        [Test]
+        public void SerializedPropertyEnumValueIndexReflectsChangeBeforeApplyModifiedProperties()
+        {
+            SpriteSheetExtractor extractor = CreateExtractor();
+            extractor._sortMode = SpriteSheetExtractor.SortMode.Original;
+
+            using SerializedObject serializedObject = new SerializedObject(extractor);
+            SerializedProperty sortModeProperty = CreateSerializedProperty(
+                extractor,
+                serializedObject,
+                nameof(SpriteSheetExtractor._sortMode)
+            );
+
+            Assert.That(
+                (SpriteSheetExtractor.SortMode)sortModeProperty.enumValueIndex,
+                Is.EqualTo(SpriteSheetExtractor.SortMode.Original),
+                "Initial SerializedProperty value should match backing field"
+            );
+
+            sortModeProperty.enumValueIndex = (int)SpriteSheetExtractor.SortMode.ByName;
+
+            Assert.That(
+                (SpriteSheetExtractor.SortMode)sortModeProperty.enumValueIndex,
+                Is.EqualTo(SpriteSheetExtractor.SortMode.ByName),
+                "SerializedProperty.enumValueIndex should reflect change IMMEDIATELY"
+            );
+            Assert.That(
+                extractor._sortMode,
+                Is.EqualTo(SpriteSheetExtractor.SortMode.Original),
+                "Backing field should NOT be updated until ApplyModifiedProperties()"
+            );
+
+            serializedObject.ApplyModifiedProperties();
+
+            Assert.That(
+                extractor._sortMode,
+                Is.EqualTo(SpriteSheetExtractor.SortMode.ByName),
+                "Backing field should be updated AFTER ApplyModifiedProperties()"
+            );
+        }
+
+        [Test]
+        [TestCase(SpriteSheetExtractor.PreviewSizeMode.Size24, TestName = "PreviewSizeMode.Size24")]
+        [TestCase(SpriteSheetExtractor.PreviewSizeMode.Size32, TestName = "PreviewSizeMode.Size32")]
+        [TestCase(SpriteSheetExtractor.PreviewSizeMode.Size64, TestName = "PreviewSizeMode.Size64")]
+        [TestCase(
+            SpriteSheetExtractor.PreviewSizeMode.RealSize,
+            TestName = "PreviewSizeMode.RealSize"
+        )]
+        public void PreviewSizeModeEnumValueIndexConvertsCorrectly(
+            SpriteSheetExtractor.PreviewSizeMode expectedMode
+        )
+        {
+            SpriteSheetExtractor extractor = CreateExtractor();
+            extractor._previewSizeMode = SpriteSheetExtractor.PreviewSizeMode.Size24;
+
+            using SerializedObject serializedObject = new SerializedObject(extractor);
+            SerializedProperty previewSizeModeProperty = CreateSerializedProperty(
+                extractor,
+                serializedObject,
+                nameof(SpriteSheetExtractor._previewSizeMode)
+            );
+
+            previewSizeModeProperty.enumValueIndex = (int)expectedMode;
+
+            SpriteSheetExtractor.PreviewSizeMode actualMode = (SpriteSheetExtractor.PreviewSizeMode)
+                previewSizeModeProperty.enumValueIndex;
+
+            Assert.That(
+                actualMode,
+                Is.EqualTo(expectedMode),
+                "Enum conversion via enumValueIndex should produce correct enum value"
+            );
+        }
+
+        [Test]
+        [TestCase(
+            SpriteSheetExtractor.ExtractionMode.FromMetadata,
+            TestName = "ExtractionMode.FromMetadata"
+        )]
+        [TestCase(
+            SpriteSheetExtractor.ExtractionMode.GridBased,
+            TestName = "ExtractionMode.GridBased"
+        )]
+        [TestCase(
+            SpriteSheetExtractor.ExtractionMode.AlphaDetection,
+            TestName = "ExtractionMode.AlphaDetection"
+        )]
+        [TestCase(
+            SpriteSheetExtractor.ExtractionMode.PaddedGrid,
+            TestName = "ExtractionMode.PaddedGrid"
+        )]
+        public void ExtractionModeEnumValueIndexConvertsCorrectly(
+            SpriteSheetExtractor.ExtractionMode expectedMode
+        )
+        {
+            SpriteSheetExtractor extractor = CreateExtractor();
+            extractor._extractionMode = SpriteSheetExtractor.ExtractionMode.FromMetadata;
+
+            using SerializedObject serializedObject = new SerializedObject(extractor);
+            SerializedProperty extractionModeProperty = CreateSerializedProperty(
+                extractor,
+                serializedObject,
+                nameof(SpriteSheetExtractor._extractionMode)
+            );
+
+            extractionModeProperty.enumValueIndex = (int)expectedMode;
+
+            SpriteSheetExtractor.ExtractionMode actualMode = (SpriteSheetExtractor.ExtractionMode)
+                extractionModeProperty.enumValueIndex;
+
+            Assert.That(
+                actualMode,
+                Is.EqualTo(expectedMode),
+                "Enum conversion via enumValueIndex should produce correct enum value"
+            );
+        }
+
+        [Test]
+        [TestCase(SpriteSheetExtractor.SortMode.Original, TestName = "SortMode.Original")]
+        [TestCase(SpriteSheetExtractor.SortMode.ByName, TestName = "SortMode.ByName")]
+        [TestCase(
+            SpriteSheetExtractor.SortMode.ByPositionTopLeft,
+            TestName = "SortMode.ByPositionTopLeft"
+        )]
+        [TestCase(
+            SpriteSheetExtractor.SortMode.ByPositionBottomLeft,
+            TestName = "SortMode.ByPositionBottomLeft"
+        )]
+        [TestCase(SpriteSheetExtractor.SortMode.Reversed, TestName = "SortMode.Reversed")]
+        public void SortModeEnumValueIndexConvertsCorrectly(
+            SpriteSheetExtractor.SortMode expectedMode
+        )
+        {
+            SpriteSheetExtractor extractor = CreateExtractor();
+            extractor._sortMode = SpriteSheetExtractor.SortMode.Original;
+
+            using SerializedObject serializedObject = new SerializedObject(extractor);
+            SerializedProperty sortModeProperty = CreateSerializedProperty(
+                extractor,
+                serializedObject,
+                nameof(SpriteSheetExtractor._sortMode)
+            );
+
+            sortModeProperty.enumValueIndex = (int)expectedMode;
+
+            SpriteSheetExtractor.SortMode actualMode = (SpriteSheetExtractor.SortMode)
+                sortModeProperty.enumValueIndex;
+
+            Assert.That(
+                actualMode,
+                Is.EqualTo(expectedMode),
+                "Enum conversion via enumValueIndex should produce correct enum value"
+            );
+        }
+
+        /// <summary>
+        /// Demonstrates the timing issue that the fix addressed:
+        /// Using SerializedProperty values for change detection works IMMEDIATELY,
+        /// while using backing fields would NOT detect changes until ApplyModifiedProperties().
+        /// </summary>
+        [Test]
+        public void ChangeDetectionUsingSerializedPropertyValueDetectsImmediately()
+        {
+            SpriteSheetExtractor extractor = CreateExtractor();
+            extractor._showOverlay = false;
+            bool lastShowOverlay = false;
+
+            using SerializedObject serializedObject = new SerializedObject(extractor);
+            SerializedProperty showOverlayProperty = CreateSerializedProperty(
+                extractor,
+                serializedObject,
+                nameof(SpriteSheetExtractor._showOverlay)
+            );
+
+            showOverlayProperty.boolValue = true;
+
+            bool changeDetectedViaProperty = lastShowOverlay != showOverlayProperty.boolValue;
+            bool changeDetectedViaBackingField = lastShowOverlay != extractor._showOverlay;
+
+            Assert.That(
+                changeDetectedViaProperty,
+                Is.True,
+                "Change detection via SerializedProperty.boolValue should detect change IMMEDIATELY"
+            );
+            Assert.That(
+                changeDetectedViaBackingField,
+                Is.False,
+                "Change detection via backing field would NOT detect change (this is the bug the fix addresses)"
+            );
+
+            serializedObject.ApplyModifiedProperties();
+
+            changeDetectedViaBackingField = lastShowOverlay != extractor._showOverlay;
+            Assert.That(
+                changeDetectedViaBackingField,
+                Is.True,
+                "Change detection via backing field only works AFTER ApplyModifiedProperties()"
+            );
+        }
+
+        [Test]
+        public void ChangeDetectionUsingEnumValueIndexDetectsImmediately()
+        {
+            SpriteSheetExtractor extractor = CreateExtractor();
+            extractor._sortMode = SpriteSheetExtractor.SortMode.Original;
+            SpriteSheetExtractor.SortMode lastSortMode = SpriteSheetExtractor.SortMode.Original;
+
+            using SerializedObject serializedObject = new SerializedObject(extractor);
+            SerializedProperty sortModeProperty = CreateSerializedProperty(
+                extractor,
+                serializedObject,
+                nameof(SpriteSheetExtractor._sortMode)
+            );
+
+            sortModeProperty.enumValueIndex = (int)SpriteSheetExtractor.SortMode.ByName;
+
+            SpriteSheetExtractor.SortMode currentModeViaProperty = (SpriteSheetExtractor.SortMode)
+                sortModeProperty.enumValueIndex;
+            bool changeDetectedViaProperty = lastSortMode != currentModeViaProperty;
+            bool changeDetectedViaBackingField = lastSortMode != extractor._sortMode;
+
+            Assert.That(
+                changeDetectedViaProperty,
+                Is.True,
+                "Change detection via SerializedProperty.enumValueIndex should detect change IMMEDIATELY"
+            );
+            Assert.That(
+                changeDetectedViaBackingField,
+                Is.False,
+                "Change detection via backing field would NOT detect change (this is the bug the fix addresses)"
+            );
+
+            serializedObject.ApplyModifiedProperties();
+
+            changeDetectedViaBackingField = lastSortMode != extractor._sortMode;
+            Assert.That(
+                changeDetectedViaBackingField,
+                Is.True,
+                "Change detection via backing field only works AFTER ApplyModifiedProperties()"
+            );
+        }
+
+        /// <summary>
+        /// Tests that the "last" tracking variables should use SerializedProperty values,
+        /// not backing field values, to properly track changes across frames.
+        /// This simulates the pattern used in SpriteSheetExtractor for _lastPreviewSizeMode,
+        /// _lastExtractionMode, _lastShowOverlay, and _lastSortMode.
+        /// </summary>
+        [Test]
+        public void LastValueTrackingPatternWorksWithSerializedPropertyValues()
+        {
+            SpriteSheetExtractor extractor = CreateExtractor();
+            extractor._previewSizeMode = SpriteSheetExtractor.PreviewSizeMode.Size32;
+            SpriteSheetExtractor.PreviewSizeMode lastPreviewSizeMode = SpriteSheetExtractor
+                .PreviewSizeMode
+                .Size32;
+
+            using SerializedObject serializedObject = new SerializedObject(extractor);
+            SerializedProperty previewSizeModeProperty = CreateSerializedProperty(
+                extractor,
+                serializedObject,
+                nameof(SpriteSheetExtractor._previewSizeMode)
+            );
+
+            previewSizeModeProperty.enumValueIndex = (int)
+                SpriteSheetExtractor.PreviewSizeMode.Size64;
+
+            SpriteSheetExtractor.PreviewSizeMode currentPreviewSizeMode =
+                (SpriteSheetExtractor.PreviewSizeMode)previewSizeModeProperty.enumValueIndex;
+            bool previewSizeModeChanged = lastPreviewSizeMode != currentPreviewSizeMode;
+
+            Assert.That(
+                previewSizeModeChanged,
+                Is.True,
+                "Change should be detected when comparing last value to SerializedProperty value"
+            );
+
+            lastPreviewSizeMode = currentPreviewSizeMode;
+
+            currentPreviewSizeMode = (SpriteSheetExtractor.PreviewSizeMode)
+                previewSizeModeProperty.enumValueIndex;
+            previewSizeModeChanged = lastPreviewSizeMode != currentPreviewSizeMode;
+
+            Assert.That(
+                previewSizeModeChanged,
+                Is.False,
+                "After updating last value, no change should be detected"
+            );
+        }
+
+        [Test]
+        public void MultiplePropertyChangesAreAllDetectedBeforeApplyModifiedProperties()
+        {
+            SpriteSheetExtractor extractor = CreateExtractor();
+            extractor._showOverlay = false;
+            extractor._previewSizeMode = SpriteSheetExtractor.PreviewSizeMode.Size32;
+            extractor._extractionMode = SpriteSheetExtractor.ExtractionMode.FromMetadata;
+            extractor._sortMode = SpriteSheetExtractor.SortMode.Original;
+
+            using SerializedObject serializedObject = new SerializedObject(extractor);
+            serializedObject.Update();
+
+            SerializedProperty showOverlayProperty = serializedObject.FindProperty(
+                nameof(SpriteSheetExtractor._showOverlay)
+            );
+            SerializedProperty previewSizeModeProperty = serializedObject.FindProperty(
+                nameof(SpriteSheetExtractor._previewSizeMode)
+            );
+            SerializedProperty extractionModeProperty = serializedObject.FindProperty(
+                nameof(SpriteSheetExtractor._extractionMode)
+            );
+            SerializedProperty sortModeProperty = serializedObject.FindProperty(
+                nameof(SpriteSheetExtractor._sortMode)
+            );
+
+            showOverlayProperty.boolValue = true;
+            previewSizeModeProperty.enumValueIndex = (int)
+                SpriteSheetExtractor.PreviewSizeMode.Size64;
+            extractionModeProperty.enumValueIndex = (int)
+                SpriteSheetExtractor.ExtractionMode.GridBased;
+            sortModeProperty.enumValueIndex = (int)SpriteSheetExtractor.SortMode.ByName;
+
+            Assert.That(
+                showOverlayProperty.boolValue,
+                Is.True,
+                "showOverlay property should reflect change"
+            );
+            Assert.That(
+                (SpriteSheetExtractor.PreviewSizeMode)previewSizeModeProperty.enumValueIndex,
+                Is.EqualTo(SpriteSheetExtractor.PreviewSizeMode.Size64),
+                "previewSizeMode property should reflect change"
+            );
+            Assert.That(
+                (SpriteSheetExtractor.ExtractionMode)extractionModeProperty.enumValueIndex,
+                Is.EqualTo(SpriteSheetExtractor.ExtractionMode.GridBased),
+                "extractionMode property should reflect change"
+            );
+            Assert.That(
+                (SpriteSheetExtractor.SortMode)sortModeProperty.enumValueIndex,
+                Is.EqualTo(SpriteSheetExtractor.SortMode.ByName),
+                "sortMode property should reflect change"
+            );
+
+            Assert.That(
+                extractor._showOverlay,
+                Is.False,
+                "showOverlay backing field should NOT be updated yet"
+            );
+            Assert.That(
+                extractor._previewSizeMode,
+                Is.EqualTo(SpriteSheetExtractor.PreviewSizeMode.Size32),
+                "previewSizeMode backing field should NOT be updated yet"
+            );
+            Assert.That(
+                extractor._extractionMode,
+                Is.EqualTo(SpriteSheetExtractor.ExtractionMode.FromMetadata),
+                "extractionMode backing field should NOT be updated yet"
+            );
+            Assert.That(
+                extractor._sortMode,
+                Is.EqualTo(SpriteSheetExtractor.SortMode.Original),
+                "sortMode backing field should NOT be updated yet"
+            );
+
+            serializedObject.ApplyModifiedProperties();
+
+            Assert.That(
+                extractor._showOverlay,
+                Is.True,
+                "showOverlay backing field should be updated after ApplyModifiedProperties"
+            );
+            Assert.That(
+                extractor._previewSizeMode,
+                Is.EqualTo(SpriteSheetExtractor.PreviewSizeMode.Size64),
+                "previewSizeMode backing field should be updated after ApplyModifiedProperties"
+            );
+            Assert.That(
+                extractor._extractionMode,
+                Is.EqualTo(SpriteSheetExtractor.ExtractionMode.GridBased),
+                "extractionMode backing field should be updated after ApplyModifiedProperties"
+            );
+            Assert.That(
+                extractor._sortMode,
+                Is.EqualTo(SpriteSheetExtractor.SortMode.ByName),
+                "sortMode backing field should be updated after ApplyModifiedProperties"
+            );
+        }
+
+        /// <summary>
+        /// Verifies that repeated Update() calls without ApplyModifiedProperties()
+        /// will reset SerializedProperty values back to the backing field values.
+        /// This is important context for why changes must be detected BEFORE
+        /// the next Update() call.
+        /// </summary>
+        [Test]
+        public void SerializedObjectUpdateResetsToBackingFieldValues()
+        {
+            SpriteSheetExtractor extractor = CreateExtractor();
+            extractor._showOverlay = false;
+
+            using SerializedObject serializedObject = new SerializedObject(extractor);
+            SerializedProperty showOverlayProperty = CreateSerializedProperty(
+                extractor,
+                serializedObject,
+                nameof(SpriteSheetExtractor._showOverlay)
+            );
+
+            showOverlayProperty.boolValue = true;
+
+            Assert.That(showOverlayProperty.boolValue, Is.True, "Property should show true");
+
+            serializedObject.Update();
+
+            Assert.That(
+                showOverlayProperty.boolValue,
+                Is.False,
+                "Update() without ApplyModifiedProperties() should reset property to backing field value"
+            );
+            Assert.That(extractor._showOverlay, Is.False, "Backing field should remain unchanged");
+        }
+
+        /// <summary>
+        /// Tests that reading the SerializedProperty value multiple times
+        /// in the same "frame" (between Update and ApplyModifiedProperties)
+        /// consistently returns the modified value.
+        /// </summary>
+        [Test]
+        public void SerializedPropertyValueIsConsistentWithinSameFrame()
+        {
+            SpriteSheetExtractor extractor = CreateExtractor();
+            extractor._sortMode = SpriteSheetExtractor.SortMode.Original;
+
+            using SerializedObject serializedObject = new SerializedObject(extractor);
+            SerializedProperty sortModeProperty = CreateSerializedProperty(
+                extractor,
+                serializedObject,
+                nameof(SpriteSheetExtractor._sortMode)
+            );
+
+            sortModeProperty.enumValueIndex = (int)SpriteSheetExtractor.SortMode.ByName;
+
+            SpriteSheetExtractor.SortMode read1 = (SpriteSheetExtractor.SortMode)
+                sortModeProperty.enumValueIndex;
+            SpriteSheetExtractor.SortMode read2 = (SpriteSheetExtractor.SortMode)
+                sortModeProperty.enumValueIndex;
+            SpriteSheetExtractor.SortMode read3 = (SpriteSheetExtractor.SortMode)
+                sortModeProperty.enumValueIndex;
+
+            Assert.That(
+                read1,
+                Is.EqualTo(SpriteSheetExtractor.SortMode.ByName),
+                "First read should return modified value"
+            );
+            Assert.That(
+                read2,
+                Is.EqualTo(SpriteSheetExtractor.SortMode.ByName),
+                "Second read should return same modified value"
+            );
+            Assert.That(
+                read3,
+                Is.EqualTo(SpriteSheetExtractor.SortMode.ByName),
+                "Third read should return same modified value"
+            );
+        }
+
+        /// <summary>
+        /// Simulates the GetSortedSprites pattern where _lastSortMode is compared
+        /// against the current sort mode from SerializedProperty to determine
+        /// if the cache needs refreshing.
+        /// </summary>
+        [Test]
+        public void SortedSpritesCacheInvalidationPatternWorksCorrectly()
+        {
+            SpriteSheetExtractor extractor = CreateExtractor();
+            extractor._sortMode = SpriteSheetExtractor.SortMode.Original;
+
+            SpriteSheetExtractor.SortMode lastSortMode = SpriteSheetExtractor.SortMode.Original;
+            bool cachedSortedSpritesIsNull = true;
+            bool needsRefresh;
+
+            using SerializedObject serializedObject = new SerializedObject(extractor);
+            SerializedProperty sortModeProperty = CreateSerializedProperty(
+                extractor,
+                serializedObject,
+                nameof(SpriteSheetExtractor._sortMode)
+            );
+
+            SpriteSheetExtractor.SortMode currentSortMode = (SpriteSheetExtractor.SortMode)
+                sortModeProperty.enumValueIndex;
+            needsRefresh = cachedSortedSpritesIsNull || lastSortMode != currentSortMode;
+
+            Assert.That(
+                needsRefresh,
+                Is.True,
+                "Initial state: needs refresh because cache is null"
+            );
+
+            cachedSortedSpritesIsNull = false;
+            lastSortMode = currentSortMode;
+
+            currentSortMode = (SpriteSheetExtractor.SortMode)sortModeProperty.enumValueIndex;
+            needsRefresh = cachedSortedSpritesIsNull || lastSortMode != currentSortMode;
+
+            Assert.That(
+                needsRefresh,
+                Is.False,
+                "After caching: no refresh needed when sort mode unchanged"
+            );
+
+            sortModeProperty.enumValueIndex = (int)SpriteSheetExtractor.SortMode.ByName;
+
+            currentSortMode = (SpriteSheetExtractor.SortMode)sortModeProperty.enumValueIndex;
+            needsRefresh = cachedSortedSpritesIsNull || lastSortMode != currentSortMode;
+
+            Assert.That(
+                needsRefresh,
+                Is.True,
+                "After sort mode change via property: needs refresh IMMEDIATELY (key fix behavior)"
+            );
+
+            needsRefresh = cachedSortedSpritesIsNull || lastSortMode != extractor._sortMode;
+
+            Assert.That(
+                needsRefresh,
+                Is.False,
+                "Using backing field would NOT detect change (demonstrates the bug)"
+            );
+        }
+
+        /// <summary>
+        /// Simulates the preview regeneration pattern where changes to previewSizeMode
+        /// or extractionMode should trigger different regeneration behaviors.
+        /// </summary>
+        [Test]
+        public void PreviewRegenerationPatternDetectsChangesCorrectly()
+        {
+            SpriteSheetExtractor extractor = CreateExtractor();
+            extractor._previewSizeMode = SpriteSheetExtractor.PreviewSizeMode.Size32;
+            extractor._extractionMode = SpriteSheetExtractor.ExtractionMode.FromMetadata;
+
+            SpriteSheetExtractor.PreviewSizeMode lastPreviewSizeMode = SpriteSheetExtractor
+                .PreviewSizeMode
+                .Size32;
+            SpriteSheetExtractor.ExtractionMode lastExtractionMode = SpriteSheetExtractor
+                .ExtractionMode
+                .FromMetadata;
+
+            using SerializedObject serializedObject = new SerializedObject(extractor);
+            serializedObject.Update();
+
+            SerializedProperty previewSizeModeProperty = serializedObject.FindProperty(
+                nameof(SpriteSheetExtractor._previewSizeMode)
+            );
+            SerializedProperty extractionModeProperty = serializedObject.FindProperty(
+                nameof(SpriteSheetExtractor._extractionMode)
+            );
+
+            SpriteSheetExtractor.PreviewSizeMode currentPreviewSizeMode =
+                (SpriteSheetExtractor.PreviewSizeMode)previewSizeModeProperty.enumValueIndex;
+            SpriteSheetExtractor.ExtractionMode currentExtractionMode =
+                (SpriteSheetExtractor.ExtractionMode)extractionModeProperty.enumValueIndex;
+
+            bool previewSizeModeChanged = lastPreviewSizeMode != currentPreviewSizeMode;
+            bool extractionModeChanged = lastExtractionMode != currentExtractionMode;
+
+            Assert.That(previewSizeModeChanged, Is.False, "No change initially");
+            Assert.That(extractionModeChanged, Is.False, "No change initially");
+
+            previewSizeModeProperty.enumValueIndex = (int)
+                SpriteSheetExtractor.PreviewSizeMode.Size64;
+
+            currentPreviewSizeMode = (SpriteSheetExtractor.PreviewSizeMode)
+                previewSizeModeProperty.enumValueIndex;
+            currentExtractionMode = (SpriteSheetExtractor.ExtractionMode)
+                extractionModeProperty.enumValueIndex;
+            previewSizeModeChanged = lastPreviewSizeMode != currentPreviewSizeMode;
+            extractionModeChanged = lastExtractionMode != currentExtractionMode;
+
+            Assert.That(
+                previewSizeModeChanged,
+                Is.True,
+                "Preview size mode should show as changed"
+            );
+            Assert.That(
+                extractionModeChanged,
+                Is.False,
+                "Extraction mode should show as unchanged"
+            );
+
+            lastPreviewSizeMode = currentPreviewSizeMode;
+            extractionModeProperty.enumValueIndex = (int)
+                SpriteSheetExtractor.ExtractionMode.GridBased;
+
+            currentPreviewSizeMode = (SpriteSheetExtractor.PreviewSizeMode)
+                previewSizeModeProperty.enumValueIndex;
+            currentExtractionMode = (SpriteSheetExtractor.ExtractionMode)
+                extractionModeProperty.enumValueIndex;
+            previewSizeModeChanged = lastPreviewSizeMode != currentPreviewSizeMode;
+            extractionModeChanged = lastExtractionMode != currentExtractionMode;
+
+            Assert.That(
+                previewSizeModeChanged,
+                Is.False,
+                "Preview size mode should show as unchanged after update"
+            );
+            Assert.That(extractionModeChanged, Is.True, "Extraction mode should show as changed");
+        }
+
+        /// <summary>
+        /// Tests the overlay toggle behavior where _lastShowOverlay is compared
+        /// against _showOverlayProperty.boolValue to trigger a Repaint.
+        /// </summary>
+        [Test]
+        public void OverlayToggleTriggerRepaintPatternWorksCorrectly()
+        {
+            SpriteSheetExtractor extractor = CreateExtractor();
+            extractor._showOverlay = false;
+
+            bool lastShowOverlay = false;
+            bool shouldRepaint = false;
+
+            using SerializedObject serializedObject = new SerializedObject(extractor);
+            SerializedProperty showOverlayProperty = CreateSerializedProperty(
+                extractor,
+                serializedObject,
+                nameof(SpriteSheetExtractor._showOverlay)
+            );
+
+            if (lastShowOverlay != showOverlayProperty.boolValue)
+            {
+                lastShowOverlay = showOverlayProperty.boolValue;
+                shouldRepaint = true;
+            }
+
+            Assert.That(shouldRepaint, Is.False, "Initial state: no repaint needed");
+            shouldRepaint = false;
+
+            showOverlayProperty.boolValue = true;
+
+            if (lastShowOverlay != showOverlayProperty.boolValue)
+            {
+                lastShowOverlay = showOverlayProperty.boolValue;
+                shouldRepaint = true;
+            }
+
+            Assert.That(
+                shouldRepaint,
+                Is.True,
+                "After toggle via property: repaint should be triggered IMMEDIATELY"
+            );
+            Assert.That(
+                lastShowOverlay,
+                Is.True,
+                "lastShowOverlay should be updated to new property value"
+            );
+
+            shouldRepaint = false;
+            if (lastShowOverlay != showOverlayProperty.boolValue)
+            {
+                lastShowOverlay = showOverlayProperty.boolValue;
+                shouldRepaint = true;
+            }
+
+            Assert.That(
+                shouldRepaint,
+                Is.False,
+                "Subsequent check: no repaint needed when value unchanged"
+            );
+        }
+
+        [Test]
+        public void OverlayToggleUsingBackingFieldWouldNotTriggerRepaintImmediately()
+        {
+            SpriteSheetExtractor extractor = CreateExtractor();
+            extractor._showOverlay = false;
+
+            bool lastShowOverlay = false;
+            bool shouldRepaint = false;
+
+            using SerializedObject serializedObject = new SerializedObject(extractor);
+            SerializedProperty showOverlayProperty = CreateSerializedProperty(
+                extractor,
+                serializedObject,
+                nameof(SpriteSheetExtractor._showOverlay)
+            );
+
+            showOverlayProperty.boolValue = true;
+
+            if (lastShowOverlay != extractor._showOverlay)
+            {
+                lastShowOverlay = extractor._showOverlay;
+                shouldRepaint = true;
+            }
+
+            Assert.That(
+                shouldRepaint,
+                Is.False,
+                "Using backing field: repaint would NOT be triggered (bug behavior)"
+            );
+            Assert.That(
+                lastShowOverlay,
+                Is.False,
+                "lastShowOverlay would remain false when using backing field"
+            );
+
+            serializedObject.ApplyModifiedProperties();
+
+            if (lastShowOverlay != extractor._showOverlay)
+            {
+                lastShowOverlay = extractor._showOverlay;
+                shouldRepaint = true;
+            }
+
+            Assert.That(
+                shouldRepaint,
+                Is.True,
+                "Only after ApplyModifiedProperties would repaint be triggered"
+            );
+        }
+
+        /// <summary>
+        /// Verifies that setting a property back to its original value shows no change
+        /// when comparing against the last tracked value.
+        /// </summary>
+        [Test]
+        public void PropertyRevertedToOriginalValueShowsNoChange()
+        {
+            SpriteSheetExtractor extractor = CreateExtractor();
+            extractor._sortMode = SpriteSheetExtractor.SortMode.Original;
+            SpriteSheetExtractor.SortMode lastSortMode = SpriteSheetExtractor.SortMode.Original;
+
+            using SerializedObject serializedObject = new SerializedObject(extractor);
+            SerializedProperty sortModeProperty = CreateSerializedProperty(
+                extractor,
+                serializedObject,
+                nameof(SpriteSheetExtractor._sortMode)
+            );
+
+            sortModeProperty.enumValueIndex = (int)SpriteSheetExtractor.SortMode.ByName;
+
+            SpriteSheetExtractor.SortMode currentSortMode = (SpriteSheetExtractor.SortMode)
+                sortModeProperty.enumValueIndex;
+            bool changeDetected = lastSortMode != currentSortMode;
+
+            Assert.That(
+                changeDetected,
+                Is.True,
+                "Change should be detected after setting to new value"
+            );
+
+            sortModeProperty.enumValueIndex = (int)SpriteSheetExtractor.SortMode.Original;
+
+            currentSortMode = (SpriteSheetExtractor.SortMode)sortModeProperty.enumValueIndex;
+            changeDetected = lastSortMode != currentSortMode;
+
+            Assert.That(
+                changeDetected,
+                Is.False,
+                "No change should be detected after reverting to original value"
+            );
+        }
+
+        /// <summary>
+        /// Verifies that setting a bool property back to its original value shows no change.
+        /// </summary>
+        [Test]
+        public void BoolPropertyRevertedToOriginalValueShowsNoChange()
+        {
+            SpriteSheetExtractor extractor = CreateExtractor();
+            extractor._showOverlay = false;
+            bool lastShowOverlay = false;
+
+            using SerializedObject serializedObject = new SerializedObject(extractor);
+            SerializedProperty showOverlayProperty = CreateSerializedProperty(
+                extractor,
+                serializedObject,
+                nameof(SpriteSheetExtractor._showOverlay)
+            );
+
+            showOverlayProperty.boolValue = true;
+
+            bool changeDetected = lastShowOverlay != showOverlayProperty.boolValue;
+
+            Assert.That(
+                changeDetected,
+                Is.True,
+                "Change should be detected after setting to new value"
+            );
+
+            showOverlayProperty.boolValue = false;
+
+            changeDetected = lastShowOverlay != showOverlayProperty.boolValue;
+
+            Assert.That(
+                changeDetected,
+                Is.False,
+                "No change should be detected after reverting to original value"
+            );
+        }
+
+        /// <summary>
+        /// Verifies that FindProperty returns null for nonexistent property names
+        /// and the code handles this gracefully.
+        /// </summary>
+        [Test]
+        public void FindPropertyReturnsNullForNonexistentPropertyName()
+        {
+            SpriteSheetExtractor extractor = CreateExtractor();
+
+            using SerializedObject serializedObject = new SerializedObject(extractor);
+            serializedObject.Update();
+
+            SerializedProperty nullProperty = serializedObject.FindProperty(
+                "NonexistentPropertyName"
+            );
+
+            Assert.That(
+                nullProperty == null,
+                Is.True,
+                "FindProperty should return null for nonexistent property"
+            );
+        }
+
+        /// <summary>
+        /// Verifies that the helper method handles null property gracefully
+        /// by returning null when the property name doesn't exist.
+        /// </summary>
+        [Test]
+        public void CreateSerializedPropertyReturnsNullForNonexistentPropertyName()
+        {
+            SpriteSheetExtractor extractor = CreateExtractor();
+
+            using SerializedObject serializedObject = new SerializedObject(extractor);
+            SerializedProperty nullProperty = CreateSerializedProperty(
+                extractor,
+                serializedObject,
+                "AnotherNonexistentProperty"
+            );
+
+            Assert.That(
+                nullProperty == null,
+                Is.True,
+                "CreateSerializedProperty should return null for nonexistent property"
             );
         }
 

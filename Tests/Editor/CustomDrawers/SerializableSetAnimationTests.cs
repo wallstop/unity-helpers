@@ -18,6 +18,8 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
     /// and repaint triggering mechanisms to match SerializableDictionaryPropertyDrawer behavior.
     /// </summary>
     [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class SerializableSetAnimationTests : CommonTestBase
     {
         [Test]

@@ -15,6 +15,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
     using CustomEditors;
     using WallstopStudios.UnityHelpers.Core.Extension;
     using WallstopStudios.UnityHelpers.Core.Helper;
+    using WallstopStudios.UnityHelpers.Editor.Utils;
     using WallstopStudios.UnityHelpers.Utils;
 
     public sealed class AnimationCopierWindow : EditorWindow
@@ -723,11 +724,9 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                             }
                         }
                     }
-                    catch (Exception ex)
+                    catch (Exception e)
                     {
-                        this.LogError(
-                            $"Error while scanning destination for orphans: {ex.Message}"
-                        );
+                        this.LogError($"Error while scanning destination for orphans", e);
                     }
                 }
 
@@ -735,10 +734,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                     $"Analysis complete: {_newAnimations.Count} New, {_changedAnimations.Count} Changed, {_unchangedAnimations.Count} Unchanged, {_destinationOrphans.Count} Orphans."
                 );
             }
-            catch (Exception ex)
+            catch (Exception e)
             {
-                this.LogError($"Error during analysis: {ex.Message}\n{ex.StackTrace}");
-                Info("Analysis Error", $"An error occurred during analysis: {ex.Message}");
+                this.LogError($"Error during analysis", e);
+                Info("Analysis Error", $"An error occurred during analysis: {e.Message}");
                 ClearAnalysisResults();
             }
             finally
@@ -814,80 +813,64 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 {
                     DirectoryHelper.EnsureDirectoryExists(destDirectory);
                 }
-                catch (Exception ex)
+                catch (Exception e)
                 {
                     this.LogError(
-                        $"Failed to create destination directory '{destDirectory}' for animation '{animInfo.FileName}'. Error: {ex.Message}. Skipping."
+                        $"Failed to create destination directory '{destDirectory}' for animation '{animInfo.FileName}'. Skipping.",
+                        e
                     );
                 }
             }
 
-            AssetDatabase.StartAssetEditing();
             try
             {
-                for (int i = 0; i < animationsToCopy.Count; i++)
+                using (AssetDatabaseBatchHelper.BeginBatch(refreshOnDispose: false))
                 {
-                    AnimationFileInfo animInfo = animationsToCopy[i];
-                    float progress = (float)(i + 1) / animationsToCopy.Count;
-                    bool userCancelled = false;
-                    if (i == 0 || i % 10 == 0 || i == animationsToCopy.Count - 1)
+                    for (int i = 0; i < animationsToCopy.Count; i++)
                     {
-                        userCancelled = CancelableProgress(
-                            $"Copying Animations ({mode})",
-                            $"Copying: {animInfo.FileName} ({i + 1}/{animationsToCopy.Count})",
-                            progress
-                        );
-                    }
-
-                    if (userCancelled)
-                    {
-                        this.LogWarn($"Copy operation cancelled by user.");
-                        break;
-                    }
-
-                    string sourceAssetPath = animInfo.RelativePath;
-                    string destinationAssetPath = animInfo.DestinationRelativePath;
-                    bool operationSuccessful = false;
-                    try
-                    {
-                        string destFullPath = GetFullPathFromRelative(destinationAssetPath);
-                        bool destExists =
-                            !string.IsNullOrWhiteSpace(destFullPath) && File.Exists(destFullPath);
-
-                        if (_dryRun)
+                        AnimationFileInfo animInfo = animationsToCopy[i];
+                        float progress = (float)(i + 1) / animationsToCopy.Count;
+                        bool userCancelled = false;
+                        if (i == 0 || i % 10 == 0 || i == animationsToCopy.Count - 1)
                         {
-                            // Simulate
-                            operationSuccessful = true;
-                        }
-                        else if (!destExists || animInfo.Status == AnimationStatus.New)
-                        {
-                            operationSuccessful = AssetDatabase.CopyAsset(
-                                sourceAssetPath,
-                                destinationAssetPath
+                            userCancelled = CancelableProgress(
+                                $"Copying Animations ({mode})",
+                                $"Copying: {animInfo.FileName} ({i + 1}/{animationsToCopy.Count})",
+                                progress
                             );
                         }
-                        else if (animInfo.Status == AnimationStatus.Changed)
+
+                        if (userCancelled)
                         {
-                            // Preserve GUID: replace file on disk and reimport
-                            string sourceFullPath = animInfo.FullPath;
-                            if (
-                                !string.IsNullOrWhiteSpace(sourceFullPath)
-                                && !string.IsNullOrWhiteSpace(destFullPath)
-                            )
+                            this.LogWarn($"Copy operation cancelled by user.");
+                            break;
+                        }
+
+                        string sourceAssetPath = animInfo.RelativePath;
+                        string destinationAssetPath = animInfo.DestinationRelativePath;
+                        bool operationSuccessful = false;
+                        try
+                        {
+                            string destFullPath = GetFullPathFromRelative(destinationAssetPath);
+                            bool destExists =
+                                !string.IsNullOrWhiteSpace(destFullPath)
+                                && File.Exists(destFullPath);
+
+                            if (_dryRun)
                             {
-                                FileUtil.ReplaceFile(sourceFullPath, destFullPath);
-                                AssetDatabase.ImportAsset(
-                                    destinationAssetPath,
-                                    ImportAssetOptions.ForceUpdate
-                                );
+                                // Simulate
                                 operationSuccessful = true;
                             }
-                        }
-                        else
-                        {
-                            // Unchanged
-                            if (_includeUnchangedInCopyAll && mode == CopyMode.All)
+                            else if (!destExists || animInfo.Status == AnimationStatus.New)
                             {
+                                operationSuccessful = AssetDatabase.CopyAsset(
+                                    sourceAssetPath,
+                                    destinationAssetPath
+                                );
+                            }
+                            else if (animInfo.Status == AnimationStatus.Changed)
+                            {
+                                // Preserve GUID: replace file on disk and reimport
                                 string sourceFullPath = animInfo.FullPath;
                                 if (
                                     !string.IsNullOrWhiteSpace(sourceFullPath)
@@ -904,43 +887,61 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                             }
                             else
                             {
-                                // skip unchanged by default
-                                operationSuccessful = true;
+                                // Unchanged
+                                if (_includeUnchangedInCopyAll && mode == CopyMode.All)
+                                {
+                                    string sourceFullPath = animInfo.FullPath;
+                                    if (
+                                        !string.IsNullOrWhiteSpace(sourceFullPath)
+                                        && !string.IsNullOrWhiteSpace(destFullPath)
+                                    )
+                                    {
+                                        FileUtil.ReplaceFile(sourceFullPath, destFullPath);
+                                        AssetDatabase.ImportAsset(
+                                            destinationAssetPath,
+                                            ImportAssetOptions.ForceUpdate
+                                        );
+                                        operationSuccessful = true;
+                                    }
+                                }
+                                else
+                                {
+                                    // skip unchanged by default
+                                    operationSuccessful = true;
+                                }
                             }
                         }
-                    }
-                    catch (Exception ex)
-                    {
-                        this.LogError(
-                            $"Failed to copy/replace '{sourceAssetPath}' -> '{destinationAssetPath}'. {ex.Message}"
-                        );
-                        operationSuccessful = false;
-                    }
+                        catch (Exception e)
+                        {
+                            this.LogError(
+                                $"Failed to copy/replace '{sourceAssetPath}' -> '{destinationAssetPath}'",
+                                e
+                            );
+                            operationSuccessful = false;
+                        }
 
-                    if (operationSuccessful)
-                    {
-                        successCount++;
-                    }
-                    else
-                    {
-                        errorCount++;
+                        if (operationSuccessful)
+                        {
+                            successCount++;
+                        }
+                        else
+                        {
+                            errorCount++;
+                        }
                     }
                 }
             }
-            catch (Exception ex)
+            catch (Exception e)
             {
-                this.LogError(
-                    $"An unexpected error occurred during the copy process: {ex.Message}\n{ex.StackTrace}"
-                );
+                this.LogError($"An unexpected error occurred during the copy process", e);
                 errorCount = animationsToCopy.Count - successCount;
             }
             finally
             {
-                AssetDatabase.StopAssetEditing();
                 if (!_dryRun)
                 {
                     AssetDatabase.SaveAssets();
-                    AssetDatabase.Refresh();
+                    AssetDatabaseBatchHelper.RefreshIfNotBatching();
                 }
                 ClearProgress();
                 _isCopying = false;
@@ -1002,66 +1003,65 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
 
             int successCount = 0;
             int errorCount = 0;
-            if (!_dryRun)
-            {
-                AssetDatabase.StartAssetEditing();
-            }
-
             try
             {
-                for (int i = 0; i < animationsToDelete.Count; i++)
+                using (
+                    _dryRun
+                        ? default(AssetDatabaseBatchScope?)
+                        : AssetDatabaseBatchHelper.BeginBatch(refreshOnDispose: false)
+                )
                 {
-                    AnimationFileInfo animInfo = animationsToDelete[i];
-                    float progress = (float)(i + 1) / animationsToDelete.Count;
-                    bool userCancelled = false;
-                    if (i == 0 || i % 10 == 0 || i == animationsToDelete.Count - 1)
+                    for (int i = 0; i < animationsToDelete.Count; i++)
                     {
-                        userCancelled = CancelableProgress(
-                            "Deleting Source Duplicates",
-                            $"Deleting: {animInfo.FileName} ({i + 1}/{animationsToDelete.Count})",
-                            progress
-                        );
-                    }
+                        AnimationFileInfo animInfo = animationsToDelete[i];
+                        float progress = (float)(i + 1) / animationsToDelete.Count;
+                        bool userCancelled = false;
+                        if (i == 0 || i % 10 == 0 || i == animationsToDelete.Count - 1)
+                        {
+                            userCancelled = CancelableProgress(
+                                "Deleting Source Duplicates",
+                                $"Deleting: {animInfo.FileName} ({i + 1}/{animationsToDelete.Count})",
+                                progress
+                            );
+                        }
 
-                    if (userCancelled)
-                    {
-                        this.LogWarn($"Delete operation cancelled by user.");
-                        break;
-                    }
+                        if (userCancelled)
+                        {
+                            this.LogWarn($"Delete operation cancelled by user.");
+                            break;
+                        }
 
-                    bool deleteSuccessful = true;
-                    string sourceAssetPath = animInfo.RelativePath;
-                    if (!_dryRun)
-                    {
-                        deleteSuccessful = AssetDatabase.DeleteAsset(sourceAssetPath);
-                    }
+                        bool deleteSuccessful = true;
+                        string sourceAssetPath = animInfo.RelativePath;
+                        if (!_dryRun)
+                        {
+                            deleteSuccessful = AssetDatabase.DeleteAsset(sourceAssetPath);
+                        }
 
-                    if (deleteSuccessful)
-                    {
-                        successCount++;
-                    }
-                    else
-                    {
-                        this.LogError(
-                            $"Failed to delete source duplicate: '{sourceAssetPath}'. It might have been moved or deleted already."
-                        );
-                        errorCount++;
+                        if (deleteSuccessful)
+                        {
+                            successCount++;
+                        }
+                        else
+                        {
+                            this.LogError(
+                                $"Failed to delete source duplicate: '{sourceAssetPath}'. It might have been moved or deleted already."
+                            );
+                            errorCount++;
+                        }
                     }
                 }
             }
-            catch (Exception ex)
+            catch (Exception e)
             {
-                this.LogError(
-                    $"An unexpected error occurred during the delete process: {ex.Message}\n{ex.StackTrace}"
-                );
+                this.LogError($"An unexpected error occurred during the delete process", e);
                 errorCount = animationsToDelete.Count - successCount;
             }
             finally
             {
                 if (!_dryRun)
                 {
-                    AssetDatabase.StopAssetEditing();
-                    AssetDatabase.Refresh();
+                    AssetDatabaseBatchHelper.RefreshIfNotBatching();
                 }
                 ClearProgress();
                 _isDeleting = false;
@@ -1143,12 +1143,9 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 Hash128 hash = AssetDatabase.GetAssetDependencyHash(assetPath);
                 return hash.ToString();
             }
-            catch (Exception ex)
+            catch (Exception e)
             {
-                this.LogError(
-                    $"[AnimationCopierWindow] Error getting dependency hash for {assetPath}.",
-                    ex
-                );
+                this.LogError($"Error getting dependency hash for {assetPath}.", e);
                 return string.Empty;
             }
         }
@@ -1340,9 +1337,9 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                             }
                         }
                     }
-                    catch (Exception ex)
+                    catch (Exception e)
                     {
-                        this.LogWarn($"Invalid regex '{_filterText}': {ex.Message}");
+                        this.LogWarn($"Invalid regex '{_filterText}'", e);
                     }
                 }
                 else
@@ -1418,57 +1415,59 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
 
             int success = 0;
             int errors = 0;
-            if (!_dryRun)
-            {
-                AssetDatabase.StartAssetEditing();
-            }
             try
             {
-                for (int i = 0; i < toDelete.Count; i++)
+                using (
+                    _dryRun
+                        ? default(AssetDatabaseBatchScope?)
+                        : AssetDatabaseBatchHelper.BeginBatch(refreshOnDispose: false)
+                )
                 {
-                    AnimationFileInfo info = toDelete[i];
-                    float progress = (float)(i + 1) / toDelete.Count;
-                    bool userCancelled = false;
-                    if (i == 0 || i % 10 == 0 || i == toDelete.Count - 1)
+                    for (int i = 0; i < toDelete.Count; i++)
                     {
-                        userCancelled = CancelableProgress(
-                            "Mirror Deleting Destination Orphans",
-                            $"Deleting: {info.FileName} ({i + 1}/{toDelete.Count})",
-                            progress
-                        );
-                    }
-                    if (userCancelled)
-                    {
-                        this.LogWarn($"Mirror delete cancelled by user.");
-                        break;
-                    }
+                        AnimationFileInfo info = toDelete[i];
+                        float progress = (float)(i + 1) / toDelete.Count;
+                        bool userCancelled = false;
+                        if (i == 0 || i % 10 == 0 || i == toDelete.Count - 1)
+                        {
+                            userCancelled = CancelableProgress(
+                                "Mirror Deleting Destination Orphans",
+                                $"Deleting: {info.FileName} ({i + 1}/{toDelete.Count})",
+                                progress
+                            );
+                        }
+                        if (userCancelled)
+                        {
+                            this.LogWarn($"Mirror delete cancelled by user.");
+                            break;
+                        }
 
-                    bool ok = true;
-                    if (!_dryRun)
-                    {
-                        ok = AssetDatabase.DeleteAsset(info.DestinationRelativePath);
-                    }
-                    if (ok)
-                    {
-                        success++;
-                    }
-                    else
-                    {
-                        errors++;
+                        bool ok = true;
+                        if (!_dryRun)
+                        {
+                            ok = AssetDatabase.DeleteAsset(info.DestinationRelativePath);
+                        }
+                        if (ok)
+                        {
+                            success++;
+                        }
+                        else
+                        {
+                            errors++;
+                        }
                     }
                 }
             }
-            catch (Exception ex)
+            catch (Exception e)
             {
-                this.LogError($"Error during mirror delete: {ex.Message}\n{ex.StackTrace}");
+                this.LogError($"Error during mirror delete", e);
                 errors = toDelete.Count - success;
             }
             finally
             {
                 if (!_dryRun)
                 {
-                    AssetDatabase.StopAssetEditing();
-                    AssetDatabase.Refresh();
+                    AssetDatabaseBatchHelper.RefreshIfNotBatching();
                 }
                 ClearProgress();
                 _isDeleting = false;
@@ -1570,9 +1569,9 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                     EditorUtility.RevealInFinder(savePath);
                 }
             }
-            catch (Exception ex)
+            catch (Exception e)
             {
-                this.LogError($"Failed to export preview report: {ex.Message}\n{ex.StackTrace}");
+                this.LogError($"Failed to export preview report", e);
             }
         }
 
@@ -1593,9 +1592,9 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                     this.LogWarn($"Cannot open folder: '{relativeAssetsPath}'");
                 }
             }
-            catch (Exception ex)
+            catch (Exception e)
             {
-                this.LogError($"Failed to open folder '{relativeAssetsPath}': {ex.Message}");
+                this.LogError($"Failed to open folder '{relativeAssetsPath}'", e);
             }
         }
     }

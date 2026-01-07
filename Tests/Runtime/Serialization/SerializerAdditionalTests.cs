@@ -21,6 +21,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
     /// Additional tests for Serializer methods that were not covered by existing test files.
     /// Tests BinarySerialize/Deserialize, generic Serialize/Deserialize, and file I/O methods.
     /// </summary>
+    [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class SerializerAdditionalTests
     {
         private string _tempDirectory;
@@ -177,8 +180,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
             TestMessage deserialized = Serializer.BinaryDeserialize<TestMessage>(serialized);
 
             Assert.AreEqual(msg.Id, deserialized.Id);
-            Assert.IsNull(deserialized.Name);
-            Assert.IsNull(deserialized.Values);
+            Assert.IsNull(deserialized.Name, "Name should be null after round-trip of null value");
+            Assert.IsNull(
+                deserialized.Values,
+                "Values should be null after round-trip of null value"
+            );
         }
 
         [Test]

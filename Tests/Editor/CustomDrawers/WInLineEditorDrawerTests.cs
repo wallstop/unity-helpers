@@ -16,6 +16,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
     using WallstopStudios.UnityHelpers.Tests.Core;
     using WallstopStudios.UnityHelpers.Tests.TestUtils;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class WInLineEditorDrawerTests : CommonTestBase
     {
         private const float InlinePaddingContribution = 4f;

@@ -9,6 +9,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Visuals
     using WallstopStudios.UnityHelpers.Tests.Core;
     using WallstopStudios.UnityHelpers.Visuals.UGUI;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class EnhancedImageTests : CommonTestBase
     {
         // Tracking handled by CommonTestBase

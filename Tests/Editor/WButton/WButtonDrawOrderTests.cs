@@ -23,6 +23,8 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
     /// - Declaration order is preserved within groups
     /// </summary>
     [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class WButtonDrawOrderTests : CommonTestBase
     {
         [Test]

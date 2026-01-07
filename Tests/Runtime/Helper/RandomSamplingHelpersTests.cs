@@ -7,6 +7,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
     using NUnit.Framework;
     using WallstopStudios.UnityHelpers.Core.Helper;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class RandomSamplingHelpersTests
     {
         [TestCase(double.NaN)]

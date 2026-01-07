@@ -18,6 +18,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
     using WallstopStudios.UnityHelpers.Settings;
     using WallstopStudios.UnityHelpers.Utils;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class UnityHelpersSettingsTests
     {
         [Test]
@@ -2027,7 +2030,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
             );
             Assert.IsNotNull(paletteProperty, "Should find WButtonCustomColors property.");
 
-            SerializedProperty keysProperty = paletteProperty.FindPropertyRelative("_keys");
+            SerializedProperty keysProperty = paletteProperty.FindPropertyRelative(
+                nameof(SerializableDictionary<object, object>._keys)
+            );
             Assert.IsNotNull(keysProperty, "Should find keys property in dictionary.");
 
             if (keysProperty.arraySize == 0)
@@ -2038,7 +2043,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
                 return;
             }
 
-            SerializedProperty valuesProperty = paletteProperty.FindPropertyRelative("_values");
+            SerializedProperty valuesProperty = paletteProperty.FindPropertyRelative(
+                nameof(SerializableDictionary<object, object>._values)
+            );
             Assert.IsNotNull(valuesProperty, "Should find values property in dictionary.");
             Assert.Greater(valuesProperty.arraySize, 0, "Should have at least one value entry.");
 
@@ -2087,7 +2094,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
                 "Should find WEnumToggleButtonsCustomColors property."
             );
 
-            SerializedProperty keysProperty = paletteProperty.FindPropertyRelative("_keys");
+            SerializedProperty keysProperty = paletteProperty.FindPropertyRelative(
+                nameof(SerializableDictionary<object, object>._keys)
+            );
             Assert.IsNotNull(keysProperty, "Should find keys property in dictionary.");
 
             if (keysProperty.arraySize == 0)
@@ -2098,7 +2107,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
                 return;
             }
 
-            SerializedProperty valuesProperty = paletteProperty.FindPropertyRelative("_values");
+            SerializedProperty valuesProperty = paletteProperty.FindPropertyRelative(
+                nameof(SerializableDictionary<object, object>._values)
+            );
             Assert.IsNotNull(valuesProperty, "Should find values property in dictionary.");
             Assert.Greater(valuesProperty.arraySize, 0, "Should have at least one value entry.");
 

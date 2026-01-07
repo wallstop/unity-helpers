@@ -19,6 +19,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Tags
     }
 
     [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class AttributeModificationTests
     {
         [Test]

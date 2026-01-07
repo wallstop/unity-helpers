@@ -13,6 +13,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Tags
     using WallstopStudios.UnityHelpers.Tests.Tags.Helpers;
 
     [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class EffectHandlerTests : TagsTestBase
     {
         private const float RemainingDurationEpsilon = 1e-3f;

@@ -1139,7 +1139,8 @@
     "shopt",
     "pytest",
     "GHA",
-    "venv"
+    "venv",
+    "rcs"
   ],
   "flagWords": [],
   "minWordLength": 3,

@@ -441,7 +441,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomEditors
                 if (useLabels)
                 {
                     SerializedProperty labelModeProp = property.FindPropertyRelative(
-                        "labelSelectionMode"
+                        nameof(SourceFolderEntry.labelSelectionMode)
                     );
                     Rect rectLabelMode = new(
                         startX,

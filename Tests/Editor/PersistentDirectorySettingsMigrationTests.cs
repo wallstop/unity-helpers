@@ -19,6 +19,9 @@ namespace WallstopStudios.UnityHelpers.Tests
     using WallstopStudios.UnityHelpers.Tests.Core.TestUtils;
     using Object = UnityEngine.Object;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class PersistentDirectorySettingsMigrationTests : CommonTestBase
     {
         private readonly List<string> _createdAssets = new();

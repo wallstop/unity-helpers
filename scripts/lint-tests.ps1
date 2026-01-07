@@ -20,6 +20,14 @@ $createAssignObjectPattern = [regex]'(?<var>\b\w+)\s*=\s*new\s+(?<type>GameObjec
 $createInlineTrackPattern = [regex]'\bTrack\s*\(\s*new\s+(?:GameObject|Texture2D|Material|Mesh|Camera)\s*\('
 $createSoAssignPattern = [regex]'(?<var>\b\w+)\s*=\s*ScriptableObject\.CreateInstance\s*<'
 
+# Naming convention patterns (UNH004: No underscores in test names)
+# Matches: TestName = "Some_Name" or TestName = @"Some_Name"
+$testNameUnderscorePattern = [regex]'TestName\s*=\s*@?"[^"]*_[^"]*"'
+# Matches: .SetName("Some_Name") or .SetName(@"Some_Name")
+$setNameUnderscorePattern = [regex]'\.SetName\s*\(\s*@?"[^"]*_[^"]*"\s*\)'
+# Matches: TestCaseSource method names with underscores (nameof(Some_Method) or "Some_Method")
+$testCaseSourcePattern = [regex]'\[TestCaseSource\s*\(\s*(?:nameof\s*\(\s*(?<methodName>\w+)\s*\)|"(?<stringName>\w+)")\s*\)\]'
+
 # Returns true if line contains an allowlisted helper file path
 function Is-AllowlistedFile([string]$relPath) {
   foreach ($a in $allowedHelperFiles) {
@@ -107,6 +115,8 @@ foreach ($root in $testRoots) {
         # locate first occurrence for line number
         $m = [regex]::Match($text, '\bnew\s+(GameObject|Texture2D|Material|Mesh|Camera)\s*\(')
         $lineNo = (($text.Substring(0, $m.Index)) -split "`n").Length
+        # Skip if line has UNH-SUPPRESS
+        if ($content[$lineNo-1] -match 'UNH-SUPPRESS') { continue }
         $violations += (@{
           Path=$rel; Line=$lineNo; Message="UNH002: Inline Unity object creation should be passed to Track(new …)"
         })
@@ -136,6 +146,49 @@ foreach ($root in $testRoots) {
         $violations += (@{
           Path=$rel; Line=$lineNo; Message="UNH002: ScriptableObject instance should be tracked: add Track($var)"
         })
+      }
+    }
+
+    # UNH004: Check for underscores in TestName values
+    $lineIndex = 0
+    foreach ($line in $content) {
+      $lineIndex++
+      if ($line -match 'UNH-SUPPRESS') { continue }
+      if ($testNameUnderscorePattern.IsMatch($line)) {
+        $violations += (@{
+          Path=$rel; Line=$lineIndex; Message="UNH004: TestName contains underscore. Use PascalCase or dot notation (e.g., 'Input.Null.ReturnsFalse')"
+        })
+      }
+    }
+
+    # UNH004: Check for underscores in SetName() calls
+    $lineIndex = 0
+    foreach ($line in $content) {
+      $lineIndex++
+      if ($line -match 'UNH-SUPPRESS') { continue }
+      if ($setNameUnderscorePattern.IsMatch($line)) {
+        $violations += (@{
+          Path=$rel; Line=$lineIndex; Message="UNH004: SetName() contains underscore. Use PascalCase or dot notation (e.g., 'Input.Null.ReturnsFalse')"
+        })
+      }
+    }
+
+    # UNH004: Check for underscores in TestCaseSource method names
+    $lineIndex = 0
+    foreach ($line in $content) {
+      $lineIndex++
+      if ($line -match 'UNH-SUPPRESS') { continue }
+      $sourceMatch = $testCaseSourcePattern.Match($line)
+      if ($sourceMatch.Success) {
+        $methodName = $sourceMatch.Groups['methodName'].Value
+        if ([string]::IsNullOrWhiteSpace($methodName)) {
+          $methodName = $sourceMatch.Groups['stringName'].Value
+        }
+        if (-not [string]::IsNullOrWhiteSpace($methodName) -and $methodName -match '_') {
+          $violations += (@{
+            Path=$rel; Line=$lineIndex; Message="UNH004: TestCaseSource method '$methodName' contains underscore. Use PascalCase (e.g., 'EdgeCaseTestData')"
+          })
+        }
       }
     }
 

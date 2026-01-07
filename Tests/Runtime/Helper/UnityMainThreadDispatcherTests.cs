@@ -17,6 +17,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
     using WallstopStudios.UnityHelpers.Tests.Core;
     using WallstopStudios.UnityHelpers.Tests.TestUtils;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class UnityMainThreadDispatcherTests : CommonTestBase
     {
         [SetUp]
@@ -72,7 +74,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             UnityMainThreadDispatcherTestHelper.EnableAutoCreation();
 
             UnityMainThreadDispatcher dispatcher = UnityMainThreadDispatcher.Instance;
-            Assert.IsNotNull(dispatcher);
+            Assert.IsNotNull(dispatcher, "Dispatcher should be auto-created when enabled");
             Assert.IsTrue(UnityMainThreadDispatcher.HasInstance);
 
             using (
@@ -89,7 +91,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
 
                 UnityMainThreadDispatcher.SetAutoCreationEnabled(true);
                 dispatcher = UnityMainThreadDispatcher.Instance;
-                Assert.IsNotNull(dispatcher);
+                Assert.IsNotNull(dispatcher, "Dispatcher should be re-created inside scope");
                 Assert.IsTrue(UnityMainThreadDispatcher.HasInstance);
             }
 
@@ -106,7 +108,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             UnityMainThreadDispatcherTestHelper.EnableAutoCreation();
 
             UnityMainThreadDispatcher dispatcher = UnityMainThreadDispatcher.Instance;
-            Assert.IsNotNull(dispatcher);
+            Assert.IsNotNull(dispatcher, "Dispatcher should be auto-created when enabled");
             Track(dispatcher.gameObject);
 
             using (
@@ -120,11 +122,14 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             {
                 Assert.IsFalse(UnityMainThreadDispatcher.AutoCreationEnabled);
                 Assert.IsFalse(UnityMainThreadDispatcher.HasInstance);
-                Assert.IsNull(UnityMainThreadDispatcher.Instance);
+                Assert.IsNull(
+                    UnityMainThreadDispatcher.Instance,
+                    "Instance should be null when auto-creation is disabled"
+                );
             }
 
             UnityMainThreadDispatcher recreated = UnityMainThreadDispatcher.Instance;
-            Assert.IsNotNull(recreated);
+            Assert.IsNotNull(recreated, "Dispatcher should be re-created after scope exits");
             Track(recreated.gameObject);
 
             yield return null;
@@ -136,7 +141,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             UnityMainThreadDispatcherTestHelper.DestroyDispatcherIfExists(immediate: true);
             UnityMainThreadDispatcher.SetAutoCreationEnabled(false);
             Assert.IsFalse(UnityMainThreadDispatcher.AutoCreationEnabled);
-            Assert.IsNull(UnityMainThreadDispatcher.Instance);
+            Assert.IsNull(
+                UnityMainThreadDispatcher.Instance,
+                "Instance should be null when auto-creation is disabled"
+            );
             Assert.IsFalse(UnityMainThreadDispatcher.HasInstance);
 
             using (
@@ -150,14 +158,20 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             {
                 Assert.IsTrue(UnityMainThreadDispatcher.AutoCreationEnabled);
                 UnityMainThreadDispatcher dispatcher = UnityMainThreadDispatcher.Instance;
-                Assert.IsNotNull(dispatcher);
+                Assert.IsNotNull(
+                    dispatcher,
+                    "Dispatcher should be auto-created inside enabled scope"
+                );
                 Track(dispatcher.gameObject);
                 Assert.IsTrue(UnityMainThreadDispatcher.HasInstance);
             }
 
             Assert.IsFalse(UnityMainThreadDispatcher.AutoCreationEnabled);
             Assert.IsFalse(UnityMainThreadDispatcher.HasInstance);
-            Assert.IsNull(UnityMainThreadDispatcher.Instance);
+            Assert.IsNull(
+                UnityMainThreadDispatcher.Instance,
+                "Instance should be null after scope exits"
+            );
 
             UnityMainThreadDispatcherTestHelper.EnableAutoCreation();
 
@@ -171,7 +185,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             UnityMainThreadDispatcherTestHelper.EnableAutoCreation();
 
             UnityMainThreadDispatcher dispatcher = UnityMainThreadDispatcher.Instance;
-            Assert.IsNotNull(dispatcher);
+            Assert.IsNotNull(dispatcher, "Dispatcher should be auto-created");
             Track(dispatcher.gameObject);
 
             bool destroyed = UnityMainThreadDispatcher.DestroyExistingDispatcher(immediate: false);
@@ -250,11 +264,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
 
             UnityMainThreadDispatcher.AutoCreationScope scope =
                 UnityMainThreadDispatcher.CreateTestScope(destroyImmediate: true);
-            Assert.IsNotNull(scope);
+            Assert.IsNotNull(scope, "Test scope should not be null");
             Assert.IsTrue(UnityMainThreadDispatcher.AutoCreationEnabled);
 
             UnityMainThreadDispatcher dispatcher = UnityMainThreadDispatcher.Instance;
-            Assert.IsNotNull(dispatcher);
+            Assert.IsNotNull(dispatcher, "Dispatcher should be auto-created in test scope");
             Track(dispatcher.gameObject);
             Assert.IsTrue(UnityMainThreadDispatcher.HasInstance);
 
@@ -276,7 +290,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             UnityMainThreadDispatcher dispatcher = UnityMainThreadDispatcher.Instance;
             LogAssert.Expect(
                 LogType.Error,
-                new Regex("UnityMainThreadDispatcher action threw InvalidOperationException.*")
+                new Regex(".*UnityMainThreadDispatcher action threw an exception.*")
             );
 
             dispatcher.RunOnMainThread(() =>
@@ -466,7 +480,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
                 }
             }
 
-            Assert.IsNull(backgroundException);
+            Assert.IsNull(
+                backgroundException,
+                "Background thread should not throw exception when accessing bootstrapped instance"
+            );
             Assert.AreSame(dispatcher, backgroundInstance);
         }
 
@@ -505,7 +522,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             yield return null;
             yield return null;
 
-            Assert.IsNull(backgroundException);
+            Assert.IsNull(
+                backgroundException,
+                "Background thread should not throw exception when scheduling work"
+            );
             Assert.IsTrue(executed);
         }
 
@@ -635,7 +655,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
                 }
             }
 
-            Assert.IsNull(backgroundException);
+            Assert.IsNull(
+                backgroundException,
+                "Background thread should not throw exception during cleanup test"
+            );
             Assert.IsFalse(UnityMainThreadDispatcher.HasInstance);
             Assert.AreEqual(
                 0,

@@ -13,9 +13,13 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Editor.AssetProcessors;
     using WallstopStudios.UnityHelpers.Editor.Settings;
+    using WallstopStudios.UnityHelpers.Editor.Utils;
     using WallstopStudios.UnityHelpers.Tests.Core;
     using Object = UnityEngine.Object;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class DetectAssetChangeProcessorTests : CommonTestBase
     {
         private const string Root = "Assets/__DetectAssetChangedTests__";
@@ -33,7 +37,7 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
         {
             // Clean up any leftover test folders from previous test runs
             CleanupTestFolders();
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
         }
 
         [SetUp]
@@ -66,7 +70,7 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
             // Clean up test folder and any duplicates that may have been created
             CleanupTestFolders();
 
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
             ClearTestState();
             DetectAssetChangeProcessor.TimeProvider = _originalTimeProvider;
             DetectAssetChangeProcessor.LoopWindowSecondsOverride = null;
@@ -888,7 +892,7 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
             );
             AssetDatabase.CreateAsset(payload, PayloadAssetPath);
             AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
         }
 
         private void CreateAlternatePayloadAsset()
@@ -898,7 +902,7 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
             );
             AssetDatabase.CreateAsset(payload, AlternatePayloadAssetPath);
             AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
         }
 
         private void EnsureHandlerAsset<T>(string assetPath)
@@ -912,7 +916,7 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
             T handler = Track(ScriptableObject.CreateInstance<T>());
             AssetDatabase.CreateAsset(handler, assetPath);
             AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
         }
 
         private static void EnsureFolder()

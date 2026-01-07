@@ -502,9 +502,9 @@ namespace WallstopStudios.UnityHelpers.Editor
                 {
                     nameRegex = new Regex(_nameFilter, opts);
                 }
-                catch (Exception ex)
+                catch (Exception e)
                 {
-                    this.LogError($"Invalid name regex '{_nameFilter}': {ex.Message}");
+                    this.LogError($"Invalid name regex '{_nameFilter}'", e);
                     nameRegex = null;
                 }
             }
@@ -546,11 +546,10 @@ namespace WallstopStudios.UnityHelpers.Editor
                     }
                 }
             }
-            if (applyChanges)
-            {
-                AssetDatabase.StartAssetEditing();
-            }
             int totalAssets = textureGuids.Count;
+            AssetDatabaseBatchScope batchScope = applyChanges
+                ? AssetDatabaseBatchHelper.BeginBatch(refreshOnDispose: false)
+                : default;
             try
             {
                 for (int i = 0; i < textureGuids.Count; i++)
@@ -773,7 +772,7 @@ namespace WallstopStudios.UnityHelpers.Editor
                 }
                 if (applyChanges)
                 {
-                    AssetDatabase.StopAssetEditing();
+                    batchScope.Dispose();
                 }
                 EditorUi.ClearProgress();
 

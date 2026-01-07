@@ -223,6 +223,16 @@ See [the roadmap](./docs/overview/roadmap.md) for details
   - Zero-allocation patterns applied throughout
 - **GlobalPoolRegistry.EnforceBudget() zero-allocation**: Replaced per-call `List<IPoolStatistics>` allocation with static reusable list protected by existing lock
 
+### Fixed
+
+- **Cache pre-allocation OutOfMemoryException**: Fixed production bug where `Cache<TKey, TValue>` would pre-allocate internal storage to `MaximumSize` instead of using a small initial capacity
+  - Creating a cache with `MaximumSize = int.MaxValue` now works correctly instead of throwing `OutOfMemoryException`
+  - New `InitialCapacity` option allows explicit control over starting allocation size (default 16)
+  - Cache grows dynamically from `InitialCapacity` toward `MaximumSize` as items are added
+  - `CacheBuilder<TKey, TValue>.InitialCapacity(int)` method for fluent configuration
+  - `Cache<TKey, TValue>.MaximumSize` property added to expose configured maximum (distinct from `Capacity`)
+  - Large `InitialCapacity` values are clamped to `MaxReasonableInitialCapacity` (65536) to prevent excessive allocations
+
 ## [3.0.5]
 
 ### Added

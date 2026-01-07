@@ -9,6 +9,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Core.Random
     using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
     using WallstopStudios.UnityHelpers.Core.Random;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class RandomComparerTests
     {
         [Test]

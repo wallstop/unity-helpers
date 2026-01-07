@@ -3,8 +3,11 @@
 
 namespace WallstopStudios.UnityHelpers.Tests.Runtime.Random
 {
+    using NUnit.Framework;
     using WallstopStudios.UnityHelpers.Core.Random;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class XoroShiroRandomTests : RandomTestBase
     {
         protected override IRandom NewRandom() =>

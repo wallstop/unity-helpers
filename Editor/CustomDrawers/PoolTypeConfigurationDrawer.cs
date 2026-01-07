@@ -28,15 +28,25 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             public readonly GUIContent statusContent = new();
         }
 
-        private const string TypeNameFieldName = "_typeName";
-        private const string EnabledFieldName = "_enabled";
-        private const string IdleTimeoutFieldName = "_idleTimeoutSeconds";
-        private const string MinRetainCountFieldName = "_minRetainCount";
-        private const string MaxPoolSizeFieldName = "_maxPoolSize";
-        private const string BufferMultiplierFieldName = "_bufferMultiplier";
-        private const string RollingWindowFieldName = "_rollingWindowSeconds";
-        private const string HysteresisFieldName = "_hysteresisSeconds";
-        private const string SpikeThresholdFieldName = "_spikeThresholdMultiplier";
+        private const string TypeNameFieldName = nameof(PoolTypeConfiguration._typeName);
+        private const string EnabledFieldName = nameof(PoolTypeConfiguration._enabled);
+        private const string IdleTimeoutFieldName = nameof(
+            PoolTypeConfiguration._idleTimeoutSeconds
+        );
+        private const string MinRetainCountFieldName = nameof(
+            PoolTypeConfiguration._minRetainCount
+        );
+        private const string MaxPoolSizeFieldName = nameof(PoolTypeConfiguration._maxPoolSize);
+        private const string BufferMultiplierFieldName = nameof(
+            PoolTypeConfiguration._bufferMultiplier
+        );
+        private const string RollingWindowFieldName = nameof(
+            PoolTypeConfiguration._rollingWindowSeconds
+        );
+        private const string HysteresisFieldName = nameof(PoolTypeConfiguration._hysteresisSeconds);
+        private const string SpikeThresholdFieldName = nameof(
+            PoolTypeConfiguration._spikeThresholdMultiplier
+        );
 
         private const float StatusBoxMargin = 4f;
         private const float MinStatusBoxWidth = 200f;

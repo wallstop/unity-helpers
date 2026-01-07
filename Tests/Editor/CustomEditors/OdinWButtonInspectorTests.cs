@@ -24,6 +24,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomEditors
     /// properly render WButton methods in the inspector.
     /// </summary>
     [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class OdinWButtonInspectorTests : CommonTestBase
     {
         [Test]

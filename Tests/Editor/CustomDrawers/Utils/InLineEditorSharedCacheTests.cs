@@ -13,6 +13,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers.Utils
     using WallstopStudios.UnityHelpers.Tests.Core;
 
     [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class InLineEditorSharedCacheTests : CommonTestBase
     {
         [SetUp]

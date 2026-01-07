@@ -11,6 +11,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
     using WallstopStudios.UnityHelpers.Editor.Sprites;
     using WallstopStudios.UnityHelpers.Tests.Core;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class AnimationCopierFilterTests : CommonTestBase
     {
         private static AnimationCopierWindow.AnimationFileInfo NewFileInfo(string name)

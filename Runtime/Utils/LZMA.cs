@@ -99,9 +99,9 @@ namespace WallstopStudios.UnityHelpers.Utils
                         null
                     );
                 }
-                catch (Exception ex)
+                catch (Exception e)
                 {
-                    throw new Exception("Failed to decompress LZMA data.", ex);
+                    throw new Exception("Failed to decompress LZMA data.", e);
                 }
 
                 if (outStream.Length != fileLength)
@@ -198,9 +198,9 @@ namespace WallstopStudios.UnityHelpers.Utils
                         null
                     );
                 }
-                catch (Exception ex)
+                catch (Exception e)
                 {
-                    throw new Exception("Failed to decompress LZMA data.", ex);
+                    throw new Exception("Failed to decompress LZMA data.", e);
                 }
 
                 if (inStream.Position != inStream.Length)

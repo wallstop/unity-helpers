@@ -9,6 +9,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Math
     using WallstopStudios.UnityHelpers.Core.Math;
 
     [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class RangeTests
     {
         private static IEnumerable<TestCaseData> WithinRangeTestCases()

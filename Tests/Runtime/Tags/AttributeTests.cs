@@ -10,6 +10,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Tags
     using Attribute = WallstopStudios.UnityHelpers.Tags.Attribute;
 
     [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class AttributeTests : AttributeTagsTestBase
     {
         [SetUp]

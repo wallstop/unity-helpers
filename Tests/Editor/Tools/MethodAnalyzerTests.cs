@@ -15,6 +15,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Tools
     /// and avoids false positives.
     /// </summary>
     [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class MethodAnalyzerTests
     {
         private MethodAnalyzer _analyzer;

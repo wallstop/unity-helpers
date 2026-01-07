@@ -9,6 +9,8 @@ namespace WallstopStudios.UnityHelpers.Tests
     using NUnit.Framework;
     using WallstopStudios.UnityHelpers.Editor;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class PrefabCheckerReportTests
     {
         [Test]

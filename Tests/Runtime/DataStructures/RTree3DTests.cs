@@ -13,6 +13,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
     using Vector3 = UnityEngine.Vector3;
 
     [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class RTree3DTests : SpatialTree3DTests<RTree3D<Vector3>>
     {
         private IRandom Random => PRNG.Instance;

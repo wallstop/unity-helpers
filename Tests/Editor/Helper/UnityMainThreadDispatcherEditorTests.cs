@@ -7,6 +7,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Helper;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class UnityMainThreadDispatcherEditorTests
     {
         private const HideFlags ExpectedHideFlags =

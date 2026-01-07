@@ -12,6 +12,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
     using UnityEditor;
     using UnityEngine;
     using CustomEditors;
+    using Utils;
     using WallstopStudios.UnityHelpers.Core.Animation;
     using WallstopStudios.UnityHelpers.Core.Extension;
     using WallstopStudios.UnityHelpers.Core.Helper;
@@ -1332,76 +1333,80 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             int currentAnimationIndex = 0;
             bool errorOccurred = false;
 
-            AssetDatabase.StartAssetEditing();
             try
             {
-                foreach (AnimationData data in dataToCreate)
+                using (AssetDatabaseBatchHelper.BeginBatch(refreshOnDispose: false))
                 {
-                    currentAnimationIndex++;
-                    string animationName = data.animationName;
-                    if (string.IsNullOrWhiteSpace(animationName))
+                    foreach (AnimationData data in dataToCreate)
                     {
-                        this.LogWarn(
-                            $"Ignoring animation data entry (original index unknown due to filtering) without an animation name."
-                        );
-                        continue;
-                    }
-
-                    Utils.EditorUi.ShowProgress(
-                        "Creating Animations",
-                        $"Processing '{animationName}' ({currentAnimationIndex}/{totalAnimations})",
-                        (float)currentAnimationIndex / totalAnimations
-                    );
-
-                    List<Sprite> frames = data.frames;
-                    if (frames is not { Count: > 0 })
-                    {
-                        this.LogWarn(
-                            $"Ignoring animation '{animationName}' because it has no frames."
-                        );
-                        continue;
-                    }
-
-                    using PooledResource<List<Sprite>> validFramesResource =
-                        Buffers<Sprite>.List.Get(out List<Sprite> validFrames);
-                    foreach (Sprite f in frames)
-                    {
-                        if (f != null)
+                        currentAnimationIndex++;
+                        string animationName = data.animationName;
+                        if (string.IsNullOrWhiteSpace(animationName))
                         {
-                            validFrames.Add(f);
+                            this.LogWarn(
+                                $"Ignoring animation data entry (original index unknown due to filtering) without an animation name."
+                            );
+                            continue;
                         }
-                    }
-                    if (validFrames.Count == 0)
-                    {
-                        this.LogWarn(
-                            $"Ignoring animation '{animationName}' because it only contains null frames."
+
+                        Utils.EditorUi.ShowProgress(
+                            "Creating Animations",
+                            $"Processing '{animationName}' ({currentAnimationIndex}/{totalAnimations})",
+                            (float)currentAnimationIndex / totalAnimations
                         );
-                        continue;
+
+                        List<Sprite> frames = data.frames;
+                        if (frames is not { Count: > 0 })
+                        {
+                            this.LogWarn(
+                                $"Ignoring animation '{animationName}' because it has no frames."
+                            );
+                            continue;
+                        }
+
+                        using PooledResource<List<Sprite>> validFramesResource =
+                            Buffers<Sprite>.List.Get(out List<Sprite> validFrames);
+                        foreach (Sprite f in frames)
+                        {
+                            if (f != null)
+                            {
+                                validFrames.Add(f);
+                            }
+                        }
+                        if (validFrames.Count == 0)
+                        {
+                            this.LogWarn(
+                                $"Ignoring animation '{animationName}' because it only contains null frames."
+                            );
+                            continue;
+                        }
+
+                        validFrames.Sort(
+                            (s1, s2) => EditorUtility.NaturalCompare(s1.name, s2.name)
+                        );
+
+                        AnimationClip animationClip = CreateAnimationClip(data, validFrames);
+
+                        string firstFramePath = AssetDatabase.GetAssetPath(validFrames[0]);
+                        string assetPath =
+                            Path.GetDirectoryName(firstFramePath).SanitizePath() ?? "Assets";
+                        if (!assetPath.EndsWith("/"))
+                        {
+                            assetPath += "/";
+                        }
+
+                        string finalPath = AssetDatabase.GenerateUniqueAssetPath(
+                            $"{assetPath}{animationName}.anim"
+                        );
+                        AssetDatabase.CreateAsset(animationClip, finalPath);
+                        this.Log($"Created animation at '{finalPath}'.");
                     }
-
-                    validFrames.Sort((s1, s2) => EditorUtility.NaturalCompare(s1.name, s2.name));
-
-                    AnimationClip animationClip = CreateAnimationClip(data, validFrames);
-
-                    string firstFramePath = AssetDatabase.GetAssetPath(validFrames[0]);
-                    string assetPath =
-                        Path.GetDirectoryName(firstFramePath).SanitizePath() ?? "Assets";
-                    if (!assetPath.EndsWith("/"))
-                    {
-                        assetPath += "/";
-                    }
-
-                    string finalPath = AssetDatabase.GenerateUniqueAssetPath(
-                        $"{assetPath}{animationName}.anim"
-                    );
-                    AssetDatabase.CreateAsset(animationClip, finalPath);
-                    this.Log($"Created animation at '{finalPath}'.");
                 }
             }
             catch (Exception e)
             {
                 errorOccurred = true;
-                this.LogError($"An error occurred during animation creation: {e}");
+                this.LogError($"An error occurred during animation creation", e);
             }
             finally
             {
@@ -1415,7 +1420,6 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                     this.LogError($"Animation creation finished with errors. Check console.");
                 }
 
-                AssetDatabase.StopAssetEditing();
                 AssetDatabase.SaveAssets();
                 AssetDatabase.Refresh();
             }
@@ -1494,12 +1498,12 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                     _errorMessage = "";
                     this.Log($"Regex updated to: {spriteNameRegex}");
                 }
-                catch (ArgumentException ex)
+                catch (ArgumentException e)
                 {
                     _compiledRegex = null;
                     _lastUsedRegex = spriteNameRegex;
-                    _errorMessage = $"Invalid Regex: {ex.Message}";
-                    this.LogError($"Invalid Regex '{spriteNameRegex}': {ex.Message}");
+                    _errorMessage = $"Invalid Regex: {e.Message}";
+                    this.LogError($"Invalid Regex '{spriteNameRegex}'", e);
                 }
             }
         }
@@ -1531,12 +1535,12 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 _compiledGroupRegex = new Regex(customGroupRegex, options);
                 _lastGroupRegex = customGroupRegex;
             }
-            catch (ArgumentException ex)
+            catch (ArgumentException e)
             {
                 _compiledGroupRegex = null;
                 _lastGroupRegex = customGroupRegex;
-                _groupRegexErrorMessage = $"Invalid Custom Group Regex: {ex.Message}";
-                this.LogError($"Invalid Custom Group Regex '{customGroupRegex}': {ex.Message}");
+                _groupRegexErrorMessage = $"Invalid Custom Group Regex: {e.Message}";
+                this.LogError($"Invalid Custom Group Regex '{customGroupRegex}'", e);
             }
         }
 

@@ -13,6 +13,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Core.Attributes
     using WallstopStudios.UnityHelpers.Tests.Core;
     using WallstopStudios.UnityHelpers.Tests.Core.TestTypes;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class RelationalComponentAssignerTests : CommonTestBase
     {
         private AttributeMetadataCache CreateCacheWithSiblingSelfInclusionMetadata()

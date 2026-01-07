@@ -9,6 +9,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
     using UnityEditor;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Attributes;
+    using WallstopStudios.UnityHelpers.Core.Extension;
     using WallstopStudios.UnityHelpers.Editor.CustomDrawers.Utils;
     using WallstopStudios.UnityHelpers.Editor.Internal;
     using Object = UnityEngine.Object;
@@ -252,11 +253,9 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 EditorGUILayout.EndVertical();
                 verticalGroupStarted = false;
             }
-            catch (Exception ex)
+            catch (Exception e)
             {
-                Debug.LogError(
-                    $"[{nameof(WInLineEditorOdinDrawer)}] Exception drawing inline inspector: {ex}"
-                );
+                this.LogError($"Exception drawing inline inspector", e);
             }
             finally
             {

@@ -9,6 +9,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
     using NUnit.Framework;
     using WallstopStudios.UnityHelpers.Core.DataStructure;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class TrieTests
     {
         [Test]
@@ -1382,7 +1384,10 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             using Trie.Enumerator enumerator = trie.GetEnumerator();
 
             // Current should be null before first MoveNext
-            Assert.IsNull(enumerator.Current);
+            Assert.IsNull(
+                enumerator.Current,
+                "Enumerator.Current should be null before first MoveNext"
+            );
         }
 
         [Test]
@@ -1423,6 +1428,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
     }
 
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class GenericTrieTests
     {
         [Test]
@@ -1474,7 +1481,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             Trie<string> trie = new(dict);
 
             Assert.IsFalse(trie.TryGetValue("nonexistent", out string value));
-            Assert.IsNull(value);
+            Assert.IsNull(value, "Value should be null for non-existent key");
         }
 
         [Test]
@@ -1670,7 +1677,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             Trie<int?> trie = new(dict);
 
             Assert.IsTrue(trie.TryGetValue("null", out int? value1));
-            Assert.IsNull(value1);
+            Assert.IsNull(value1, "Value should be null for key storing null");
             Assert.IsTrue(trie.TryGetValue("value", out int? value2));
             Assert.AreEqual(42, value2);
         }
@@ -1689,7 +1696,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             Assert.IsTrue(trie.TryGetValue("key1", out string value1));
             Assert.AreEqual("value1", value1);
             Assert.IsTrue(trie.TryGetValue("key3", out string value3));
-            Assert.IsNull(value3);
+            Assert.IsNull(value3, "Value should be null for key storing null string");
         }
 
         [Test]

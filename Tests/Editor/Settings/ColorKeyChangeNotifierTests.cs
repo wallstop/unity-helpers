@@ -16,6 +16,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
     /// Tests for verifying that <see cref="ColorKeyChangeNotifier"/> correctly detects
     /// and notifies when WButton and WEnumToggleButtons custom color entries are modified.
     /// </summary>
+    [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class ColorKeyChangeNotifierTests
     {
         private UnityHelpersSettings _settings;

@@ -20,6 +20,9 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
     /// Tests for pending entry section padding resolution in SerializableDictionary property drawer.
     /// Verifies that settings context uses reduced padding to compensate for WGroup padding stacking.
     /// </summary>
+    [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class SerializableDictionaryPendingPaddingTests : CommonTestBase
     {
         [SetUp]

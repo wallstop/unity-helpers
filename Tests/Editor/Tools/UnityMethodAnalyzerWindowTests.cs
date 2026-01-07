@@ -21,6 +21,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Tools
     /// cancellation behavior, and UI state consistency.
     /// </summary>
     [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     // UNH-SUPPRESS: Complex test class with manual EditorWindow lifecycle management in TearDown
     public sealed class UnityMethodAnalyzerWindowTests
     {

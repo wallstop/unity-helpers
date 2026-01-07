@@ -18,6 +18,8 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
     /// Comprehensive tests for WValueDropDown bool and char primitive type support.
     /// </summary>
     [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class WValueDropDownPrimitiveTypeTests : CommonTestBase
     {
         [Test]

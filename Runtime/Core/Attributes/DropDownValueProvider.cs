@@ -61,10 +61,10 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                 {
                     result = ReflectionHelpers.InvokeStaticMethod(resolved);
                 }
-                catch (Exception exception)
+                catch (Exception e)
                 {
                     Debug.LogError(
-                        $"{attributeName}: Invocation of '{providerType.FullName}.{methodName}' threw {exception.GetType().Name}."
+                        $"{attributeName}: Invocation of '{providerType.FullName}.{methodName}' threw {e.GetType().Name}."
                     );
                     return Array.Empty<T>();
                 }
@@ -240,10 +240,10 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                 {
                     result = ReflectionHelpers.InvokeStaticMethod(resolved);
                 }
-                catch (Exception exception)
+                catch (Exception e)
                 {
                     Debug.LogError(
-                        $"{attributeName}: Invocation of '{providerType.FullName}.{methodName}' threw {exception.GetType().Name}."
+                        $"{attributeName}: Invocation of '{providerType.FullName}.{methodName}' threw {e.GetType().Name}."
                     );
                     return Array.Empty<object>();
                 }
@@ -331,10 +331,10 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                 {
                     result = ReflectionHelpers.InvokeStaticMethod(resolved);
                 }
-                catch (Exception exception)
+                catch (Exception e)
                 {
                     Debug.LogError(
-                        $"{attributeName}: Invocation of '{providerType.FullName}.{methodName}' threw {exception.GetType().Name}."
+                        $"{attributeName}: Invocation of '{providerType.FullName}.{methodName}' threw {e.GetType().Name}."
                     );
                     return Array.Empty<object>();
                 }

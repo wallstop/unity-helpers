@@ -17,6 +17,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
     using WallstopStudios.UnityHelpers.Core.Serialization;
     using WallstopStudios.UnityHelpers.Tests.Core;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     [DataContract]
     public sealed class TestDataObject
     {
@@ -33,6 +35,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
         public List<Type> TypeProperties { get; set; } = new();
     }
 
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class JsonSerializationTest : CommonTestBase
     {
         [Test]

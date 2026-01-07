@@ -8,6 +8,8 @@ namespace WallstopStudios.UnityHelpers.Tests
     using UnityEditor;
     using WallstopStudios.UnityHelpers.Editor.Persistence;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class MultiFileSelectorPersistenceManagerTests
     {
         [SetUp]

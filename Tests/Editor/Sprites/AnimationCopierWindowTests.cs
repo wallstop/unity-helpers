@@ -13,6 +13,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
     using WallstopStudios.UnityHelpers.Editor.Utils;
     using WallstopStudios.UnityHelpers.Tests.Core;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class AnimationCopierWindowTests : CommonTestBase
     {
         private const string SrcRoot = "Assets/Temp/AnimationCopierTests/Src";

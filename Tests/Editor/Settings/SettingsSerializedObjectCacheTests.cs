@@ -15,6 +15,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
     /// Tests for verifying SerializedObject caching and foldout state persistence
     /// in the UnityHelpersSettings panel.
     /// </summary>
+    [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class SettingsSerializedObjectCacheTests
     {
         private bool _originalDictionaryTweenEnabled;

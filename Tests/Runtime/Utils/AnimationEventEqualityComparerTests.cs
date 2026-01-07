@@ -7,6 +7,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Utils;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class AnimationEventEqualityComparerTests
     {
         [Test]

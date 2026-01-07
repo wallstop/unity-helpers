@@ -21,6 +21,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
     using WallstopStudios.UnityHelpers.Tests.Core.TestTypes;
     using Object = UnityEngine.Object;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class SingletonAssetPollutionPreventionTests : CommonTestBase
     {
         private const string ResourcesRoot = "Assets/Resources";
@@ -93,7 +96,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             ScriptableObjectSingletonCreator.AllowAssetCreationDuringSuppression = false;
             EditorUi.Suppress = _previousEditorUiSuppress;
             AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             // Clean up all known test folders including duplicates
             CleanupAllKnownTestFolders();
@@ -383,7 +386,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             ScriptableObjectSingletonCreator.EnsureSingletonAssets();
             yield return null;
             AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
             yield return null;
 
             List<string> unexpectedlyCreated = new();
@@ -427,7 +430,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             ScriptableObjectSingletonCreator.EnsureSingletonAssets();
             yield return null;
             AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
             yield return null;
 
             List<string> createdAssets = new();
@@ -466,7 +469,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             ScriptableObjectSingletonCreator.EnsureSingletonAssets();
             yield return null;
             AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
             yield return null;
 
             List<string> createdAssets = new();
@@ -511,7 +514,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                 ScriptableObjectSingletonCreator.EnsureSingletonAssets();
                 yield return null;
                 AssetDatabase.SaveAssets();
-                AssetDatabase.Refresh();
+                AssetDatabaseBatchHelper.RefreshIfNotBatching();
                 yield return null;
             }
 
@@ -586,7 +589,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             ScriptableObjectSingletonCreator.EnsureSingletonAssets();
             yield return null;
             AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
             yield return null;
 
             List<string> createdAssets = new();
@@ -722,7 +725,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                 }
 
                 CleanupAllKnownTestFolders();
-                AssetDatabase.Refresh();
+                AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
                 subFolders = AssetDatabase.GetSubFolders(testCase.ParentPath);
                 duplicates.Clear();
@@ -784,7 +787,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             }
 
             AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
             yield return null;
         }
 

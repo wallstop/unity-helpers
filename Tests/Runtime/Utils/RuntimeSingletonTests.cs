@@ -14,6 +14,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
     using WallstopStudios.UnityHelpers.Utils;
     using Object = UnityEngine.Object;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class RuntimeSingletonTests : CommonTestBase
     {
         [SetUp]
@@ -808,7 +810,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                     .GetResult();
             });
 
-            Assert.IsNotNull(exception);
+            Assert.IsNotNull(
+                exception,
+                "InvalidOperationException should be thrown for background thread access"
+            );
             StringAssert.Contains("main thread", exception.Message);
             Assert.IsFalse(TestRuntimeSingleton.HasInstance);
         }

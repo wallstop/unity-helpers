@@ -10,6 +10,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
     using WallstopStudios.UnityHelpers.Tests.Core;
 
     [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class WNotNullAttributeTests : CommonTestBase
     {
         [Test]

@@ -20,6 +20,8 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
     /// to verify the generic reflection-based approach works for any serializable type.
     /// </summary>
     [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class WValueDropDownUnityTypesTests : CommonTestBase
     {
         [TearDown]

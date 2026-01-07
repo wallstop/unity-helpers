@@ -23,6 +23,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
     /// and SerializedScriptableObject types.
     /// </summary>
     [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class WInLineEditorOdinDrawerTests : CommonTestBase
     {
         public override void BaseSetUp()

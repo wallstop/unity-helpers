@@ -19,6 +19,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
     using WallstopStudios.UnityHelpers.Utils;
     using Object = UnityEngine.Object;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class ScriptableObjectSingletonTests : CommonTestBase
     {
         private static readonly System.Collections.Generic.List<string> CreatedAssetPaths = new();
@@ -123,7 +126,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             {
                 AssetDatabase.DeleteAsset(assetPath);
                 AssetDatabase.SaveAssets();
-                AssetDatabase.Refresh();
+                AssetDatabaseBatchHelper.RefreshIfNotBatching();
                 PruneResourceFoldersForPath(assetPath);
             }
         }
@@ -184,7 +187,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
 
             AssetDatabase.DeleteAsset(folderPath);
             AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
         }
 
         private static string ToFullResourcePath(string relativePath)
@@ -229,7 +232,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
 
             AssetDatabase.CreateAsset(instance, fullPath);
             AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             CreatedAssetPaths.Add(fullPath);
             return instance;
@@ -298,7 +301,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             InMemoryInstances.Clear();
             yield return null;
             AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
             yield return null;
             DeleteFolderIfEmpty("Assets/Resources/CustomPath");
             yield return null;
@@ -719,7 +722,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             TestSingleton instance = TestSingleton.Instance;
             string result = instance.ToString();
 
-            Assert.IsNotNull(result);
+            Assert.IsNotNull(result, "ToString result should not be null");
             Assert.IsTrue(result.Contains("TestSingleton") || result.Length > 0);
             yield break;
         }
@@ -732,7 +735,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
 
             MissingResourceSingleton instance = MissingResourceSingleton.Instance;
 
-            Assert.IsNull(instance);
+            Assert.IsNull(instance, "Instance should be null when resource is missing");
             Assert.IsFalse(MissingResourceSingleton.HasInstance);
             Assert.IsTrue(MissingResourceSingleton._lazyInstance.IsValueCreated);
             yield break;
@@ -824,7 +827,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             yield return null;
 
             AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
             yield return null;
 
             using (
@@ -838,7 +841,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             yield return null;
 
             AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
             yield return null;
 
             ScriptableObjectSingletonMetadata metadata =
@@ -1261,7 +1264,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             {
                 AssetDatabase.DeleteAsset(path);
                 AssetDatabase.SaveAssets();
-                AssetDatabase.Refresh();
+                AssetDatabaseBatchHelper.RefreshIfNotBatching();
             }
 
             TestSingleton.ClearInstance();
@@ -1295,12 +1298,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
 
             Assert.IsTrue(task.IsFaulted);
             AggregateException aggregate = task.Exception;
-            Assert.IsNotNull(aggregate);
+            Assert.IsNotNull(aggregate, "Task exception should not be null for faulted task");
             AggregateException flattened = aggregate.Flatten();
             Assert.IsTrue(flattened.InnerExceptions.Count > 0);
             InvalidOperationException exception =
                 flattened.InnerExceptions[0] as InvalidOperationException;
-            Assert.IsNotNull(exception);
+            Assert.IsNotNull(exception, "Inner exception should be InvalidOperationException");
             StringAssert.Contains("main thread", exception.Message);
             Assert.IsFalse(TestSingleton.HasInstance);
         }

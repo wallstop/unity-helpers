@@ -10,6 +10,8 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Editor.Utils.WButton;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class WButtonGuiHeaderTests
     {
         [SetUp]

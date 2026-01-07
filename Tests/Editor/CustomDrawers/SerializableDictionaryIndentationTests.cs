@@ -20,6 +20,9 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
     /// Tests for ensuring correct indentation behavior of SerializableDictionary and
     /// SerializableSet property drawers in various contexts (normal inspector vs SettingsProvider).
     /// </summary>
+    [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class SerializableDictionaryIndentationTests : CommonTestBase
     {
         [SetUp]
@@ -1098,10 +1101,10 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         private static IEnumerable<TestCaseData> SettingsContextWithPaddingTestCases()
         {
             // Test case: (leftPadding, rightPadding, inputX, inputWidth)
-            yield return new TestCaseData(10f, 5f, 0f, 400f).SetName("SmallPadding_ZeroStart");
-            yield return new TestCaseData(20f, 15f, 5f, 500f).SetName("LargePadding_SmallOffset");
-            yield return new TestCaseData(0f, 0f, 10f, 300f).SetName("NoPadding_NonZeroStart");
-            yield return new TestCaseData(12f, 8f, 0f, 450f).SetName("MixedPadding_ZeroStart");
+            yield return new TestCaseData(10f, 5f, 0f, 400f).SetName("SmallPadding.ZeroStart");
+            yield return new TestCaseData(20f, 15f, 5f, 500f).SetName("LargePadding.SmallOffset");
+            yield return new TestCaseData(0f, 0f, 10f, 300f).SetName("NoPadding.NonZeroStart");
+            yield return new TestCaseData(12f, 8f, 0f, 450f).SetName("MixedPadding.ZeroStart");
         }
 
         [TestCaseSource(nameof(SettingsContextWithPaddingTestCases))]
@@ -3059,26 +3062,26 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         private static IEnumerable<TestCaseData> WGroupPropertyContextEdgeCases()
         {
             // Standard cases
-            yield return new TestCaseData(0f, 400f, 0).SetName("X0_Width400_Indent0");
-            yield return new TestCaseData(4f, 400f, 0).SetName("X4_Width400_Indent0_XBecomesZero");
+            yield return new TestCaseData(0f, 400f, 0).SetName("X0.Width400.Indent0");
+            yield return new TestCaseData(4f, 400f, 0).SetName("X4.Width400.Indent0.XBecomesZero");
             yield return new TestCaseData(2f, 400f, 0).SetName(
-                "X2_Width400_Indent0_XBecomesNegative"
+                "X2.Width400.Indent0.XBecomesNegative"
             );
 
             // Various widths
-            yield return new TestCaseData(10f, 100f, 0).SetName("X10_Width100_Indent0");
-            yield return new TestCaseData(10f, 200f, 0).SetName("X10_Width200_Indent0");
-            yield return new TestCaseData(10f, 500f, 0).SetName("X10_Width500_Indent0");
+            yield return new TestCaseData(10f, 100f, 0).SetName("X10.Width100.Indent0");
+            yield return new TestCaseData(10f, 200f, 0).SetName("X10.Width200.Indent0");
+            yield return new TestCaseData(10f, 500f, 0).SetName("X10.Width500.Indent0");
 
             // Different indent levels (indent level shouldn't matter in WGroupPropertyContext)
-            yield return new TestCaseData(10f, 400f, 1).SetName("X10_Width400_Indent1");
-            yield return new TestCaseData(10f, 400f, 2).SetName("X10_Width400_Indent2");
+            yield return new TestCaseData(10f, 400f, 1).SetName("X10.Width400.Indent1");
+            yield return new TestCaseData(10f, 400f, 2).SetName("X10.Width400.Indent2");
 
             // Edge case: very small rect
-            yield return new TestCaseData(4f, 10f, 0).SetName("SmallRect_X4_Width10");
+            yield return new TestCaseData(4f, 10f, 0).SetName("SmallRect.X4.Width10");
 
             // Edge case: large x offset
-            yield return new TestCaseData(100f, 400f, 0).SetName("LargeX_100_Width400");
+            yield return new TestCaseData(100f, 400f, 0).SetName("LargeX.100.Width400");
         }
 
         [TestCaseSource(nameof(WGroupPropertyContextEdgeCases))]
@@ -3140,13 +3143,15 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             const float UnityListAlignmentOffset = -1.25f;
 
             // Case: x starts at 0, gets clamped
-            yield return new TestCaseData(0f, 400f, 0f, 400f).SetName("X0_ClampedToZero");
+            yield return new TestCaseData(0f, 400f, 0f, 400f).SetName("X0.ClampedToZero");
 
             // Case: x starts at 0.5, would go negative, gets clamped
-            yield return new TestCaseData(0.5f, 400f, 0f, 400.5f).SetName("X0_5_ClampedToZero");
+            yield return new TestCaseData(0.5f, 400f, 0f, 400.5f).SetName("X0Point5.ClampedToZero");
 
             // Case: x starts at 1.25, goes exactly to 0
-            yield return new TestCaseData(1.25f, 400f, 0f, 401.25f).SetName("X1_25_ExactlyZero");
+            yield return new TestCaseData(1.25f, 400f, 0f, 401.25f).SetName(
+                "X1Point25.ExactlyZero"
+            );
 
             // Case: x starts above 1.25, normal shift
             yield return new TestCaseData(
@@ -3154,7 +3159,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 300f,
                 50f + UnityListAlignmentOffset,
                 300f - UnityListAlignmentOffset
-            ).SetName("X50_NormalShift");
+            ).SetName("X50.NormalShift");
 
             // Case: large x, normal shift
             yield return new TestCaseData(
@@ -3162,7 +3167,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 500f,
                 100f + UnityListAlignmentOffset,
                 500f - UnityListAlignmentOffset
-            ).SetName("X100_LargeRect");
+            ).SetName("X100.LargeRect");
         }
 
         [TestCaseSource(nameof(UnityListAlignmentOffsetEdgeCases))]
@@ -3465,19 +3470,19 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         {
             // Indent level 0: production code skips IndentedRect entirely
             yield return new TestCaseData(0, 0f, 400f).SetName(
-                "IndentLevel0_ZeroStart_ProductionSkipsCall"
+                "IndentLevel0.ZeroStart.ProductionSkipsCall"
             );
             yield return new TestCaseData(0, 50f, 400f).SetName(
-                "IndentLevel0_NonZeroStart_ProductionSkipsCall"
+                "IndentLevel0.NonZeroStart.ProductionSkipsCall"
             );
             yield return new TestCaseData(0, 0f, 200f).SetName(
-                "IndentLevel0_SmallWidth_ProductionSkipsCall"
+                "IndentLevel0.SmallWidth.ProductionSkipsCall"
             );
 
             // Higher indent levels: IndentedRect is called normally
-            yield return new TestCaseData(1, 0f, 400f).SetName("IndentLevel1_NormalIndentation");
-            yield return new TestCaseData(2, 0f, 400f).SetName("IndentLevel2_NormalIndentation");
-            yield return new TestCaseData(3, 50f, 300f).SetName("IndentLevel3_OffsetStart");
+            yield return new TestCaseData(1, 0f, 400f).SetName("IndentLevel1.NormalIndentation");
+            yield return new TestCaseData(2, 0f, 400f).SetName("IndentLevel2.NormalIndentation");
+            yield return new TestCaseData(3, 50f, 300f).SetName("IndentLevel3.OffsetStart");
         }
 
         [TestCaseSource(nameof(IndentedRectBehaviorTestCases))]

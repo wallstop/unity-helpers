@@ -19,6 +19,9 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
     /// Tests for precise pixel-level indent alignment of SerializableDictionary and SerializableSet
     /// when rendered in various contexts (WGroup, SettingsProvider, nested groups, etc.).
     /// </summary>
+    [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class SerializableCollectionIndentAlignmentTests : CommonTestBase
     {
         private const float PixelTolerance = 0.01f;

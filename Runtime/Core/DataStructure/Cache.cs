@@ -124,7 +124,14 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
         public long Size => _options.Weigher != null ? _currentWeight : _count;
 
         /// <summary>
-        /// Gets the current maximum capacity of the cache.
+        /// Gets the configured maximum number of entries the cache can hold.
+        /// The cache may start smaller and grow up to this limit.
+        /// </summary>
+        public int MaximumSize => _options.MaximumSize;
+
+        /// <summary>
+        /// Gets the current internal capacity of the cache.
+        /// This may be smaller than <see cref="MaximumSize"/> if the cache hasn't grown yet.
         /// </summary>
         public int Capacity => _capacity;
 
@@ -205,7 +212,22 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             // Note: _random is now lazy-initialized via the Random property to avoid
             // triggering PRNG static initialization during Cache construction.
 
-            int initialCapacity = Math.Max(1, options.MaximumSize);
+            // Determine initial capacity for internal data structures.
+            // Use InitialCapacity if specified, otherwise default to MaximumSize to ensure the cache
+            // can hold the expected number of items without requiring growth.
+            // Clamp to prevent excessive initial allocations while respecting MaximumSize as upper bound.
+            int requestedInitialCapacity =
+                options.InitialCapacity > 0 ? options.InitialCapacity : options.MaximumSize;
+
+            // Clamp to reasonable bounds: at least 1, at most min(MaxReasonableInitialCapacity, MaximumSize)
+            int maxInitialCapacity = Math.Min(
+                CacheOptions<TKey, TValue>.MaxReasonableInitialCapacity,
+                options.MaximumSize
+            );
+            int initialCapacity = Math.Max(
+                1,
+                Math.Min(requestedInitialCapacity, maxInitialCapacity)
+            );
             _capacity = initialCapacity;
 
 #if SINGLE_THREADED
@@ -399,15 +421,34 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 return;
             }
 
-            EnsureCapacity();
+            long weight = _options.Weigher != null ? _options.Weigher(key, value) : 0;
+
+            // Evict until we have room for the new weight
+            while (
+                _options.Weigher != null
+                && _currentWeight + weight > _options.MaximumWeight
+                && _count > 0
+            )
+            {
+                if (_options.AllowGrowth && ShouldGrow())
+                {
+                    Grow();
+                    break;
+                }
+                EvictOne(EvictionReason.Capacity);
+            }
+
+            // For non-weighted caches, use standard capacity check
+            if (_options.Weigher == null)
+            {
+                EnsureCapacity();
+            }
 
             int newIndex = AllocateEntry();
             if (newIndex == InvalidIndex)
             {
                 return;
             }
-
-            long weight = _options.Weigher != null ? _options.Weigher(key, value) : 0;
 
             _entries[newIndex] = new CacheEntry
             {
@@ -818,27 +859,87 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 case EvictionPolicy.Random:
                     break;
             }
+
+            EnsureCapacity();
         }
 
         private void EnsureCapacity()
         {
-            bool needsEviction =
-                _options.Weigher != null
-                    ? _currentWeight >= _options.MaximumWeight
-                    : _count >= _capacity;
+            EnsureCapacityForWeight(0);
+        }
 
-            if (!needsEviction)
+        private void EnsureCapacityForWeight(long incomingWeight)
+        {
+            // First, grow internal array if needed and possible (before eviction check)
+            // We need to grow if count has reached capacity AND we haven't reached MaximumSize yet
+            if (_options.Weigher == null && _count >= _capacity && _capacity < _options.MaximumSize)
+            {
+                GrowTowardsMaximumSize();
+            }
+
+            // For weighted caches, evict based on weight
+            if (_options.Weigher != null)
+            {
+                if (_currentWeight + incomingWeight > _options.MaximumWeight)
+                {
+                    if (_options.AllowGrowth && ShouldGrow())
+                    {
+                        Grow();
+                    }
+                    else
+                    {
+                        EvictOne(EvictionReason.Capacity);
+                    }
+                }
+                return;
+            }
+
+            // For non-weighted caches, evict based on count vs MaximumSize
+            // Only evict if we've reached the maximum allowed size (not just internal capacity)
+            if (_count >= _options.MaximumSize)
+            {
+                if (_options.AllowGrowth && ShouldGrow())
+                {
+                    Grow();
+                }
+                else
+                {
+                    EvictOne(EvictionReason.Capacity);
+                }
+            }
+        }
+
+        private void GrowTowardsMaximumSize()
+        {
+            int newCapacity = Math.Min(
+                (int)(_capacity * _options.GrowthFactor),
+                _options.MaximumSize
+            );
+            if (newCapacity <= _capacity)
+            {
+                newCapacity = Math.Min(_capacity + 1, _options.MaximumSize);
+            }
+
+            if (newCapacity <= _capacity)
             {
                 return;
             }
 
-            if (_options.AllowGrowth && ShouldGrow())
-            {
-                Grow();
-                return;
-            }
+            CacheEntry[] newEntries = new CacheEntry[newCapacity];
+            Array.Copy(_entries, newEntries, _entries.Length);
 
-            EvictOne(EvictionReason.Capacity);
+            int oldLength = _entries.Length;
+            _entries = newEntries;
+
+            for (int i = oldLength; i < newCapacity - 1; i++)
+            {
+                _entries[i].NextIndex = i + 1;
+            }
+            _entries[newCapacity - 1].NextIndex = _freeListHead;
+            _freeListHead = oldLength;
+
+            _capacity = newCapacity;
+            _protectedCapacity = (int)(_capacity * _options.ProtectedRatio);
         }
 
         private bool ShouldGrow()

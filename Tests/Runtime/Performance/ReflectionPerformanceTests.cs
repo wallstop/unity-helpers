@@ -11,6 +11,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Performance
     using NUnit.Framework;
     using WallstopStudios.UnityHelpers.Core.Helper;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class ReflectionPerformanceTests
     {
         private const int BatchSize = 256;

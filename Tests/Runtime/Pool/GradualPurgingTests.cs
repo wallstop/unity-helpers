@@ -15,6 +15,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
     /// to prevent GC spikes from bulk deallocation.
     /// </summary>
     [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class GradualPurgingTests
     {
         private sealed class TestPoolItem
@@ -44,7 +45,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
         [SetUp]
         public void SetUp()
         {
-            _currentTime = 0f;
+            // Start at t=1 to avoid time=0 initialization issues
+            // (time 0 is treated as uninitialized in the tracker)
+            _currentTime = 1f;
             TestPoolItem.ResetIdCounter();
             PoolPurgeSettings.ResetToDefaults();
         }

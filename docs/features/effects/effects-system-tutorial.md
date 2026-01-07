@@ -410,7 +410,7 @@ public class AbilitySystem : AttributesComponent
 void TryApplyBuff(AttributeEffect effect)
 {
     // Check if player already has max buffs
-    if (this.GetTagCount("Buff") >= 5)
+    if (this.TryGetTagCount("Buff", out int buffCount) && buffCount >= 5)
     {
         Debug.Log("Too many buffs active!");
         return;

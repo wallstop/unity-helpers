@@ -17,6 +17,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
     using WallstopStudios.UnityHelpers.Tests.TestDoubles;
     using Object = UnityEngine.Object;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class HelpersTests : CommonTestBase
     {
         // Tracking handled by CommonTestBase

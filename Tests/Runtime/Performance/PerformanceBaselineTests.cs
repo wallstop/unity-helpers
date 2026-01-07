@@ -39,7 +39,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Performance
     /// </para>
     /// </remarks>
     [TestFixture]
-    [Category("Performance")]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class PerformanceBaselineTests
     {
         private const int WarmupIterations = 10;

@@ -22,6 +22,12 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
     public static partial class ReflectionHelpers
     {
         /// <summary>
+        /// The standard property name for C# indexers ("Item").
+        /// Used to avoid magic strings when looking up indexer properties via reflection.
+        /// </summary>
+        private const string IndexerPropertyName = "Item";
+
+        /// <summary>
         /// Returns all loaded types across accessible assemblies, swallowing reflection errors.
         /// </summary>
         public static IEnumerable<Type> GetAllLoadedTypes()
@@ -62,9 +68,9 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             {
                 return assembly.GetTypes();
             }
-            catch (ReflectionTypeLoadException ex)
+            catch (ReflectionTypeLoadException e)
             {
-                return ex.Types.Where(t => t != null).ToArray();
+                return e.Types.Where(t => t != null).ToArray();
             }
             catch
             {
@@ -513,7 +519,11 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 #if SINGLE_THREADED
             if (!IndexerLookup.TryGetValue(key, out property))
             {
-                PropertyInfo found = type.GetProperty("Item", returnType, indexParameterTypes);
+                PropertyInfo found = type.GetProperty(
+                    IndexerPropertyName,
+                    returnType,
+                    indexParameterTypes
+                );
                 // Unity's Mono may not strictly validate return type in GetProperty,
                 // so we explicitly check that the found property matches our criteria
                 property = ValidateIndexerProperty(found, returnType, indexParameterTypes);
@@ -524,7 +534,11 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 key,
                 static (k, state) =>
                 {
-                    PropertyInfo found = k.type.GetProperty("Item", k.returnType, state);
+                    PropertyInfo found = k.type.GetProperty(
+                        IndexerPropertyName,
+                        k.returnType,
+                        state
+                    );
                     // Unity's Mono may not strictly validate return type in GetProperty,
                     // so we explicitly check that the found property matches our criteria
                     return ValidateIndexerProperty(found, k.returnType, state);

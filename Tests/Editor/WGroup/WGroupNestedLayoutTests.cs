@@ -18,6 +18,8 @@ namespace WallstopStudios.UnityHelpers.Tests.WGroup
     /// orphan children, and proper operation ordering.
     /// </summary>
     [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class WGroupNestedLayoutTests : CommonTestBase
     {
         private UnityHelpersSettings.WGroupAutoIncludeConfiguration _previousConfiguration;

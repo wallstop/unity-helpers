@@ -64,8 +64,10 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization.JsonConverters
             : JsonConverter<SerializableSortedDictionary<TKey, TValue>>
             where TKey : IComparable<TKey>
         {
-            private const string KeysPropertyName = "_keys";
-            private const string ValuesPropertyName = "_values";
+            private const string KeysPropertyName =
+                SerializableDictionarySerializedPropertyNames.Keys;
+            private const string ValuesPropertyName =
+                SerializableDictionarySerializedPropertyNames.Values;
 
             public override SerializableSortedDictionary<TKey, TValue> Read(
                 ref Utf8JsonReader reader,
@@ -172,11 +174,11 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization.JsonConverters
                 Type baseType = typeof(SerializableSortedDictionaryBase<TKey, TValue, TValue>);
 
                 FieldInfo keysField = baseType.GetField(
-                    "_keys",
+                    KeysPropertyName,
                     BindingFlags.Instance | BindingFlags.NonPublic
                 );
                 FieldInfo valuesField = baseType.GetField(
-                    "_values",
+                    ValuesPropertyName,
                     BindingFlags.Instance | BindingFlags.NonPublic
                 );
 
@@ -193,8 +195,10 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization.JsonConverters
             where TKey : IComparable<TKey>
             where TValueCache : SerializableDictionary.Cache<TValue>, new()
         {
-            private const string KeysPropertyName = "_keys";
-            private const string ValuesPropertyName = "_values";
+            private const string KeysPropertyName =
+                SerializableDictionarySerializedPropertyNames.Keys;
+            private const string ValuesPropertyName =
+                SerializableDictionarySerializedPropertyNames.Values;
 
             public override SerializableSortedDictionary<TKey, TValue, TValueCache> Read(
                 ref Utf8JsonReader reader,
@@ -304,11 +308,11 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization.JsonConverters
                 Type baseType = typeof(SerializableSortedDictionaryBase<TKey, TValue, TValueCache>);
 
                 FieldInfo keysField = baseType.GetField(
-                    "_keys",
+                    KeysPropertyName,
                     BindingFlags.Instance | BindingFlags.NonPublic
                 );
                 FieldInfo valuesField = baseType.GetField(
-                    "_values",
+                    ValuesPropertyName,
                     BindingFlags.Instance | BindingFlags.NonPublic
                 );
 

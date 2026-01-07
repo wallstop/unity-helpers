@@ -16,6 +16,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
     using WallstopStudios.UnityHelpers.Core.Random;
     using WallstopStudios.UnityHelpers.Tests.Core;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class UnityExtensionsComprehensiveTests : CommonTestBase
     {
         private static List<FastVector3Int> GenerateRandomPointsSquare(

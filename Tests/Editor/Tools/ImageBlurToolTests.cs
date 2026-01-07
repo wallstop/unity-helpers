@@ -8,6 +8,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Tools
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Editor.Tools;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class ImageBlurToolTests
     {
         [TestCase(1)]

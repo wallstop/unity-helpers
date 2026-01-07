@@ -13,13 +13,16 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.VContainer
     using WallstopStudios.UnityHelpers.Tags;
     using WallstopStudios.UnityHelpers.Tests.Core;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class VContainerRelationalEntryPointTests : CommonTestBase
     {
         private sealed class Consumer : MonoBehaviour
         {
             [SiblingComponent]
 #pragma warning disable CS0649 // Field is never assigned to, and will always have its default value
-            private SpriteRenderer _spriteRenderer;
+            internal SpriteRenderer _spriteRenderer;
 #pragma warning restore CS0649 // Field is never assigned to, and will always have its default value
 
             public SpriteRenderer SR => _spriteRenderer;
@@ -44,7 +47,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.VContainer
                 new[]
                 {
                     new AttributeMetadataCache.RelationalFieldMetadata(
-                        "_spriteRenderer",
+                        nameof(Consumer._spriteRenderer),
                         AttributeMetadataCache.RelationalAttributeKind.Sibling,
                         AttributeMetadataCache.FieldKind.Single,
                         typeof(SpriteRenderer).AssemblyQualifiedName,

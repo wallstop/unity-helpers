@@ -54,7 +54,7 @@ Comprehensive documentation for all editor wizards, windows, and automation tool
 - Respond to asset changes → [Asset Change Detection](./asset-change-detection.md)
 - Cache attribute metadata → [Attribute Metadata Cache Generator](#attribute-metadata-cache-generator)
 - Track sprite labels → [Sprite Label Processor](#sprite-label-processor)
-- Manually trigger script recompilation → [Request Script Recompilation](#request-script-recompilation)
+- Manually trigger script recompilation → [Request Script Compilation](#request-script-recompilation)
 - Configure buffer settings → [Project Settings: Unity Helpers](#project-settings-unity-helpers)
 
 ### Enhance Inspector Workflows
@@ -601,7 +601,16 @@ Result: Max Size → 64 (matches source)
 - Auto‑parse name prefix/suffix and duplicate‑name resolution
 - Dry‑run and preview (see groups and final asset paths)
 - Per‑clip FPS and loop flag; bulk name append/remove
-- “Populate First Slot with X Matched Sprites” helper
+- "Populate First Slot with X Matched Sprites" helper
+- **Live preview**: Real-time animation playback in the editor before committing
+- **Variable framerate**: Constant FPS or curve-based frame timing per clip
+
+**Framerate Modes:**
+
+| Mode       | Description                                               |
+| ---------- | --------------------------------------------------------- |
+| `Constant` | Fixed frames per second (default)                         |
+| `Curve`    | AnimationCurve-based timing for per-frame speed variation |
 
 **Common Naming Patterns (auto‑detected):**
 
@@ -751,6 +760,94 @@ Mage/Attack (0).png, Mage/Attack (1).png        // base: Mage_Attack, index: 0..
 > ![Sprite Sheet Animation Creator showing drag-select across sprite thumbnails with live preview](../../images/editor-tools/sprite-sheet-creator-select.gif)
 >
 > _Drag-select frame ranges on sprite sheet thumbnails with instant preview playback_
+
+---
+
+### Sprite Sheet Extractor
+
+**Menu:** `Tools > Wallstop Studios > Unity Helpers > Sprite Sheet Extractor`
+
+**Purpose:** Extract individual sprites from sprite sheet textures and save them as separate PNG files with batch processing, preview, and optional reference replacement.
+
+**Key Features:**
+
+- **Multiple extraction modes:** From existing metadata, grid-based, alpha detection, or padded grid
+- **Auto-detection algorithms:** Automatically detect optimal grid dimensions from transparency patterns
+- **Pivot preservation:** Maintain original pivot points or set custom pivots per sprite
+- **Preview interface:** Visual preview of all detected sprites before extraction
+- **Batch processing:** Process multiple sprite sheets at once
+- **Reference replacement:** Optionally update prefab/scene references to new sprites
+- **Per-sheet configuration:** Override global settings for individual sprite sheets
+- **Config persistence:** Save and load extraction settings per sprite sheet
+
+**Extraction Modes:**
+
+**FromMetadata:**
+
+- Uses existing Unity sprite metadata (SpriteImportMode.Multiple)
+- Preserves original names, rects, pivots, and borders
+- Best for already-sliced sprite sheets
+
+**GridBased:**
+
+- Divides texture into uniform grid cells
+- Auto or manual grid dimensions
+- Good for evenly-spaced sprite sheets
+
+**AlphaDetection:**
+
+- Analyzes transparency to find sprite boundaries
+- Works with irregular sprite layouts
+- Configurable alpha threshold
+
+**PaddedGrid:**
+
+- Grid-based with configurable padding/gutters
+- Handles sprite sheets with spacing between cells
+
+**Pivot Modes:**
+
+- **Center:** Pivot at sprite center (0.5, 0.5)
+- **BottomCenter:** Pivot at bottom center (0.5, 0)
+- **TopCenter:** Pivot at top center (0.5, 1)
+- **LeftCenter:** Pivot at left center (0, 0.5)
+- **RightCenter:** Pivot at right center (1, 0.5)
+- **BottomLeft:** Pivot at bottom left (0, 0)
+- **BottomRight:** Pivot at bottom right (1, 0)
+- **TopLeft:** Pivot at top left (0, 1)
+- **TopRight:** Pivot at top right (1, 1)
+- **Custom:** User-specified pivot coordinates
+
+**Workflow:**
+
+```text
+1. Open Sprite Sheet Extractor
+2. Add input directories containing sprite sheets
+3. (Optional) Set sprite name regex filter
+4. Configure extraction mode and settings
+5. Click "Discover Sprite Sheets" to scan
+6. Review detected sheets and sprites in preview
+7. Adjust per-sheet settings if needed
+8. Set output directory
+9. Click "Extract" to generate individual sprites
+10. (Optional) Use reference replacement for prefab updates
+```
+
+**Best For:**
+
+- Converting packed sprite sheets to individual assets
+- Preparing sprites for animation systems that expect separate files
+- Creating backup copies of individual sprites
+- Reorganizing sprite assets
+- Migrating from third-party sprite sheet formats
+
+**Tips:**
+
+- Use "Snap to Texture Divisor" for cleaner grid alignment
+- Preview sprites before extraction to verify detection
+- Save per-sheet configs for consistent re-extraction
+- Enable reference replacement only with VCS backup
+- Use alpha detection for irregularly-spaced sprite sheets
 
 ---
 
@@ -1995,9 +2092,9 @@ string[] labels = SpriteLabelCache.GetAllLabels();
 
 <a id="request-script-recompilation"></a>
 
-### Request Script Recompilation
+### Request Script Compilation
 
-**Menu:** `Tools > Wallstop Studios > Unity Helpers > Request Script Recompilation`
+**Menu:** `Tools > Wallstop Studios > Unity Helpers > Request Script Compilation`
 **Shortcut:** `Ctrl/Cmd + Alt + R` (configurable in Unity's Shortcut Manager)
 
 **Purpose:** Manually trigger Unity script recompilation without needing to modify files or restart the editor.
@@ -2300,6 +2397,7 @@ else
 - Sprite Pivot Adjuster
 - Sprite Settings Applier
 - Sprite Sheet Animation Creator
+- Sprite Sheet Extractor
 - Texture Resizer
 - Texture Settings Applier
 

@@ -12,6 +12,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
     /// <summary>
     /// Comprehensive tests for CI environment detection functionality.
     /// </summary>
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class CiEnvironmentDetectionTests : CommonTestBase
     {
         private Dictionary<string, string> _originalValues;

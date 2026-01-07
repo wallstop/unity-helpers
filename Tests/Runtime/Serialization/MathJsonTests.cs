@@ -9,6 +9,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
     using WallstopStudios.UnityHelpers.Core.Math;
     using WallstopStudios.UnityHelpers.Core.Serialization;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class MathJsonTests
     {
         [Test]

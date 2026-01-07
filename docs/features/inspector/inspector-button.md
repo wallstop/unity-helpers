@@ -662,6 +662,9 @@ private void NoHistory() => Debug.Log("No history stored");
 
 ---
 
+<a id="draw-order--positioning"></a>
+<a id="draw-order-positioning"></a>
+
 ## Draw Order & Positioning
 
 Control the sort order of buttons within their placement section:

@@ -8349,11 +8349,11 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             TryRegisterDualColorPaletteRenderer(
                 renderers,
                 settingsType,
-                "WButtonCustomColor",
+                nameof(UnityHelpersSettings.WButtonCustomColor),
                 "Button",
-                "buttonColor",
+                UnityHelpersSettings.SerializedPropertyNames.WButtonCustomColorButton,
                 "Text",
-                "textColor"
+                UnityHelpersSettings.SerializedPropertyNames.WButtonCustomColorText
             );
             TryRegisterWEnumPaletteRenderer(renderers, settingsType);
             return renderers;
@@ -8411,7 +8411,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         )
         {
             Type nestedType = containerType.GetNestedType(
-                "WEnumToggleButtonsCustomColor",
+                nameof(UnityHelpersSettings.WEnumToggleButtonsCustomColor),
                 BindingFlags.Instance | BindingFlags.NonPublic
             );
             if (nestedType == null)
@@ -8420,19 +8420,19 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
 
             FieldInfo selectedBackground = nestedType.GetField(
-                "selectedBackgroundColor",
+                UnityHelpersSettings.SerializedPropertyNames.WEnumToggleButtonsSelectedBackground,
                 BindingFlags.Instance | BindingFlags.NonPublic
             );
             FieldInfo selectedText = nestedType.GetField(
-                "selectedTextColor",
+                UnityHelpersSettings.SerializedPropertyNames.WEnumToggleButtonsSelectedText,
                 BindingFlags.Instance | BindingFlags.NonPublic
             );
             FieldInfo inactiveBackground = nestedType.GetField(
-                "inactiveBackgroundColor",
+                UnityHelpersSettings.SerializedPropertyNames.WEnumToggleButtonsInactiveBackground,
                 BindingFlags.Instance | BindingFlags.NonPublic
             );
             FieldInfo inactiveText = nestedType.GetField(
-                "inactiveTextColor",
+                UnityHelpersSettings.SerializedPropertyNames.WEnumToggleButtonsInactiveText,
                 BindingFlags.Instance | BindingFlags.NonPublic
             );
             if (
@@ -9915,8 +9915,14 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             Type valueType = genericArgs.Length >= 2 ? genericArgs[1] : null;
 
             // Get the _keys and _values fields
-            FieldInfo keysField = FindFieldInHierarchy(dictionaryType, "_keys");
-            FieldInfo valuesField = FindFieldInHierarchy(dictionaryType, "_values");
+            FieldInfo keysField = FindFieldInHierarchy(
+                dictionaryType,
+                SerializableDictionarySerializedPropertyNames.Keys
+            );
+            FieldInfo valuesField = FindFieldInHierarchy(
+                dictionaryType,
+                SerializableDictionarySerializedPropertyNames.Values
+            );
 
             if (keysField == null || valuesField == null)
             {

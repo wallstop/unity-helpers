@@ -10,6 +10,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
     using NUnit.Framework;
     using WallstopStudios.UnityHelpers.Core.Serialization;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class JsonSerializationCorrectnessTests
     {
         private sealed class SimpleMessage
@@ -89,8 +91,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
             SimpleMessage clone = Serializer.JsonDeserialize<SimpleMessage>(json);
 
             Assert.AreEqual(msg.Id, clone.Id);
-            Assert.IsNull(clone.Name);
-            Assert.IsNull(clone.Values);
+            Assert.IsNull(clone.Name, "Name should be null after round-trip of null value");
+            Assert.IsNull(
+                clone.Values,
+                "Values should be null after round-trip of null collection"
+            );
         }
 
         [Test]
@@ -448,7 +453,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
                 Assert.AreEqual(msg.Name, clone.Name);
                 if (msg.Values == null)
                 {
-                    Assert.IsNull(clone.Values);
+                    Assert.IsNull(
+                        clone.Values,
+                        "Null collection should remain null after round-trip"
+                    );
                 }
                 else
                 {

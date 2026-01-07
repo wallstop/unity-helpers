@@ -9,6 +9,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
     using WallstopStudios.UnityHelpers.Core.Math;
 
     [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class SphereTests
     {
         // Contains(point) tests
@@ -437,7 +438,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             Sphere sphere = new(new Vector3(5f, 10f, 15f), 3f);
             string str = sphere.ToString();
 
-            Assert.IsNotNull(str);
+            Assert.IsNotNull(str, "Sphere.ToString should not return null");
             Assert.IsTrue(str.Contains("Sphere"));
             Assert.IsTrue(
                 str.Contains("5") || str.Contains("10") || str.Contains("15") || str.Contains("3")

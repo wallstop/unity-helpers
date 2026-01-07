@@ -9,6 +9,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Tags
     using WallstopStudios.UnityHelpers.Tags;
 
     [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class EffectHandleTests : AttributeTagsTestBase
     {
         [SetUp]

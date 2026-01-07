@@ -8,6 +8,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.Zenject
     using NUnit.Framework;
     using WallstopStudios.UnityHelpers.Integrations.Zenject;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class ZenjectIntegrationCompilationTests
     {
         [Test]

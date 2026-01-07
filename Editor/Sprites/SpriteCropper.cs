@@ -14,6 +14,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
     using UnityEngine;
     using CustomEditors;
     using WallstopStudios.UnityHelpers.Core.Extension;
+    using WallstopStudios.UnityHelpers.Editor.Utils;
     using WallstopStudios.UnityHelpers.Utils;
     using Object = UnityEngine.Object;
 
@@ -402,88 +403,91 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 };
                 int modifiedAssets = 0;
 
-                AssetDatabase.StartAssetEditing();
-                try
+                using (AssetDatabaseBatchHelper.BeginBatch(refreshOnDispose: true))
                 {
-                    for (int i = 0; i < allAssets.Length; ++i)
+                    try
                     {
-                        string path = allAssets[i];
-                        if (!path.StartsWith("Assets/", StringComparison.OrdinalIgnoreCase))
+                        for (int i = 0; i < allAssets.Length; ++i)
                         {
-                            continue;
-                        }
-                        if (
-                            !candidateExts.Any(ext =>
-                                path.EndsWith(ext, StringComparison.OrdinalIgnoreCase)
-                            )
-                        )
-                        {
-                            continue;
-                        }
-
-                        if (
-                            Utils.EditorUi.CancelableProgress(
-                                "Replacing Sprite References",
-                                $"Scanning {i + 1}/{allAssets.Length}: {Path.GetFileName(path)}",
-                                i / (float)allAssets.Length
-                            )
-                        )
-                        {
-                            this.LogWarn($"Reference replacement cancelled by user.");
-                            break;
-                        }
-
-                        bool assetModified = false;
-                        Object[] objs = AssetDatabase.LoadAllAssetsAtPath(path);
-                        foreach (Object o in objs)
-                        {
-                            if (o == null)
+                            string path = allAssets[i];
+                            if (!path.StartsWith("Assets/", StringComparison.OrdinalIgnoreCase))
                             {
                                 continue;
                             }
-                            SerializedObject so = new(o);
-                            SerializedProperty it = so.GetIterator();
-                            bool enter = true;
-                            while (it.NextVisible(enter))
+                            if (
+                                !candidateExts.Any(ext =>
+                                    path.EndsWith(ext, StringComparison.OrdinalIgnoreCase)
+                                )
+                            )
                             {
-                                enter = false;
-                                if (it.propertyType == SerializedPropertyType.ObjectReference)
+                                continue;
+                            }
+
+                            if (
+                                Utils.EditorUi.CancelableProgress(
+                                    "Replacing Sprite References",
+                                    $"Scanning {i + 1}/{allAssets.Length}: {Path.GetFileName(path)}",
+                                    i / (float)allAssets.Length
+                                )
+                            )
+                            {
+                                this.LogWarn($"Reference replacement cancelled by user.");
+                                break;
+                            }
+
+                            bool assetModified = false;
+                            Object[] objs = AssetDatabase.LoadAllAssetsAtPath(path);
+                            foreach (Object o in objs)
+                            {
+                                if (o == null)
                                 {
-                                    Sprite s = it.objectReferenceValue as Sprite;
-                                    if (s != null && mapping.TryGetValue(s, out Sprite replacement))
+                                    continue;
+                                }
+                                SerializedObject so = new(o);
+                                SerializedProperty it = so.GetIterator();
+                                bool enter = true;
+                                while (it.NextVisible(enter))
+                                {
+                                    enter = false;
+                                    if (it.propertyType == SerializedPropertyType.ObjectReference)
                                     {
-                                        it.objectReferenceValue = replacement;
-                                        assetModified = true;
+                                        Sprite s = it.objectReferenceValue as Sprite;
+                                        if (
+                                            s != null
+                                            && mapping.TryGetValue(s, out Sprite replacement)
+                                        )
+                                        {
+                                            it.objectReferenceValue = replacement;
+                                            assetModified = true;
+                                        }
                                     }
+                                }
+                                if (assetModified)
+                                {
+                                    so.ApplyModifiedPropertiesWithoutUndo();
+                                    EditorUtility.SetDirty(o);
                                 }
                             }
                             if (assetModified)
                             {
-                                so.ApplyModifiedPropertiesWithoutUndo();
-                                EditorUtility.SetDirty(o);
+                                modifiedAssets++;
                             }
                         }
-                        if (assetModified)
-                        {
-                            modifiedAssets++;
-                        }
                     }
-                }
-                finally
-                {
-                    AssetDatabase.StopAssetEditing();
-                    AssetDatabase.SaveAssets();
-                    AssetDatabase.Refresh();
-                    Utils.EditorUi.ClearProgress();
+                    finally
+                    {
+                        AssetDatabase.SaveAssets();
+                        Utils.EditorUi.ClearProgress();
+                    }
                 }
 
                 this.Log(
                     $"Reference replacement complete. Modified assets: {modifiedAssets}. Mapped pairs: {mapping.Count}."
                 );
             }
-            catch (Exception ex)
+            catch (Exception e)
             {
-                this.LogError($"Error during reference replacement.", ex);
+                this.LogError($"Error during reference replacement.", e);
             }
         }
 
@@ -517,8 +521,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 try
                 {
                     int total = _filesToProcess.Count;
-                    AssetDatabase.StartAssetEditing();
-                    try
+                    using (AssetDatabaseBatchHelper.BeginBatch(refreshOnDispose: true))
                     {
                         for (int i = 0; i < _filesToProcess.Count; ++i)
                         {
@@ -537,20 +540,14 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                             }
                             CheckPreProcessNeeded(file, originalReadable);
                         }
-                    }
-                    finally
-                    {
-                        AssetDatabase.StopAssetEditing();
                         AssetDatabase.SaveAssets();
-                        AssetDatabase.Refresh();
                     }
 
                     int totalSuccessfullyProcessed = 0;
 
                     if (!canceled)
                     {
-                        AssetDatabase.StartAssetEditing();
-                        try
+                        using (AssetDatabaseBatchHelper.BeginBatch(refreshOnDispose: true))
                         {
                             for (int i = 0; i < _filesToProcess.Count; ++i)
                             {
@@ -597,24 +594,18 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                                         break;
                                 }
                             }
-                        }
-                        finally
-                        {
-                            AssetDatabase.StopAssetEditing();
                             foreach (TextureImporter newImporter in newImporters)
                             {
                                 newImporter.SaveAndReimport();
                             }
                             AssetDatabase.SaveAssets();
-                            AssetDatabase.Refresh();
                         }
                     }
 
                     if (!canceled && needReprocessing.Any())
                     {
                         newImporters.Clear();
-                        AssetDatabase.StartAssetEditing();
-                        try
+                        using (AssetDatabaseBatchHelper.BeginBatch(refreshOnDispose: true))
                         {
                             foreach (string file in needReprocessing)
                             {
@@ -629,24 +620,18 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                                     newImporters.Add(newImporter);
                                 }
                             }
-                        }
-                        finally
-                        {
-                            AssetDatabase.StopAssetEditing();
                             foreach (TextureImporter newImporter in newImporters)
                             {
                                 newImporter.SaveAndReimport();
                             }
                             AssetDatabase.SaveAssets();
-                            AssetDatabase.Refresh();
                         }
                     }
 
                     // Restore readability to originals that we changed
                     if (originalReadable.Count > 0 && !_overwriteOriginals)
                     {
-                        AssetDatabase.StartAssetEditing();
-                        try
+                        using (AssetDatabaseBatchHelper.BeginBatch(refreshOnDispose: true))
                         {
                             foreach ((string path, bool wasReadable) in originalReadable)
                             {
@@ -666,20 +651,15 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                                         }
                                     }
                                 }
-                                catch (Exception ex)
+                                catch (Exception e)
                                 {
                                     this.LogError(
                                         $"Failed to restore readability for '{path}'.",
-                                        ex
+                                        e
                                     );
                                 }
                             }
-                        }
-                        finally
-                        {
-                            AssetDatabase.StopAssetEditing();
                             AssetDatabase.SaveAssets();
-                            AssetDatabase.Refresh();
                         }
                     }
 
@@ -995,12 +975,9 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                         newImporter.SetPlatformTextureSettings(srcDefault);
                     }
                 }
-                catch (Exception ex)
+                catch (Exception e)
                 {
-                    this.LogWarn(
-                        $"Failed to copy default platform settings for '{assetPath}'.",
-                        ex
-                    );
+                    this.LogWarn($"Failed to copy default platform settings for '{assetPath}'.", e);
                 }
             }
 

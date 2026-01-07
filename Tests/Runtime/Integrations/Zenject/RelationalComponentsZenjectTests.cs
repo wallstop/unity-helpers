@@ -17,6 +17,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.Zenject.Runtime
     using WallstopStudios.UnityHelpers.Tests.Core;
     using WallstopStudios.UnityHelpers.Tests.TestUtils;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class RelationalComponentsZenjectTests : CommonTestBase
     {
         private DiContainer Container;

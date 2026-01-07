@@ -13,6 +13,9 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
     /// <summary>
     /// Tests for WButtonEditorHelper API used to integrate WButton with custom editors.
     /// </summary>
+    [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class WButtonEditorHelperTests : CommonTestBase
     {
         private sealed class TestComponent : ScriptableObject

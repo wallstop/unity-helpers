@@ -16,6 +16,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.Reflex.Runtime
     using WallstopStudios.UnityHelpers.Tags;
     using WallstopStudios.UnityHelpers.Tests.Core;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class RelationalComponentsReflexTests : CommonTestBase
     {
         [Test]

@@ -90,11 +90,11 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                     int warmed = WarmType(type, cache, report);
                     report.AddTypeResult(type, warmed);
                 }
-                catch (Exception ex)
+                catch (Exception e)
                 {
                     report.Errors++;
                     Debug.LogError(
-                        $"RelationalComponents.Initialize: Error pre-warming type '{type.FullName}': {ex.Message}\n{ex}"
+                        $"RelationalComponents.Initialize: Error pre-warming type '{type.FullName}': {e.Message}\n{e}"
                     );
                 }
             }
@@ -167,11 +167,11 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
 
                     warmed++;
                 }
-                catch (Exception ex)
+                catch (Exception e)
                 {
                     report.Errors++;
                     Debug.LogError(
-                        $"RelationalComponents.Initialize: Error warming field '{componentType.FullName}.{fieldMeta.FieldName}': {ex.Message}\n{ex}"
+                        $"RelationalComponents.Initialize: Error warming field '{componentType.FullName}.{fieldMeta.FieldName}': {e.Message}\n{e}"
                     );
                 }
             }

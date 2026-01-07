@@ -14,6 +14,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Tools
     using WallstopStudios.UnityHelpers.Utils;
 
     [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class AnimationEventEditorViewModelTests : CommonTestBase
     {
         [Test]
@@ -222,7 +224,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Tools
 
             viewModel.LoadClip(null);
 
-            Assert.IsNull(viewModel.CurrentClip);
+            Assert.IsNull(
+                viewModel.CurrentClip,
+                "CurrentClip should be null after loading null clip"
+            );
             Assert.AreEqual(0f, viewModel.FrameRate);
             Assert.AreEqual(0, viewModel.Count);
             Assert.AreEqual(0, viewModel.ReferenceCurve.Count);
@@ -452,7 +457,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Tools
 
             AnimationEvent[] arr = viewModel.BuildEventArray();
 
-            Assert.IsNotNull(arr);
+            Assert.IsNotNull(
+                arr,
+                "BuildEventArray should return non-null array even for null clip"
+            );
             Assert.AreEqual(0, arr.Length);
         }
 

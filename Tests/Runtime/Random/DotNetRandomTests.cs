@@ -6,6 +6,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Random
     using NUnit.Framework;
     using WallstopStudios.UnityHelpers.Core.Random;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class DotNetRandomTests : RandomTestBase
     {
         protected override IRandom NewRandom() => new DotNetRandom(DeterministicGuid);
@@ -20,7 +22,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Random
             }
 
             RandomState snapshot = original.InternalState;
-            Assert.IsNotNull(snapshot.PayloadBytes);
+            Assert.IsNotNull(
+                snapshot.PayloadBytes,
+                "PayloadBytes should not be null for DotNetRandom snapshot"
+            );
             Assert.GreaterOrEqual(snapshot.PayloadBytes.Count, 12);
 
             DotNetRandom restored = new(snapshot);

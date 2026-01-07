@@ -15,6 +15,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
     using CustomEditors;
     using UnityEditor;
     using UnityEngine;
+    using Utils;
     using WallstopStudios.UnityHelpers.Core.Extension;
     using WallstopStudios.UnityHelpers.Utils;
     using Object = UnityEngine.Object;
@@ -166,9 +167,9 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                         _ = new Regex(_spriteNameRegex, RegexOptions.CultureInvariant);
                         _regexError = null;
                     }
-                    catch (ArgumentException ex)
+                    catch (ArgumentException e)
                     {
-                        _regexError = ex.Message;
+                        _regexError = e.Message;
                     }
                 }
             }
@@ -242,9 +243,9 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                             RegexOptions.Compiled | RegexOptions.CultureInvariant
                         );
                     }
-                    catch (ArgumentException ex)
+                    catch (ArgumentException e)
                     {
-                        this.LogWarn($"Invalid regex '{_spriteNameRegex}': {ex.Message}");
+                        this.LogWarn($"Invalid regex '{_spriteNameRegex}'", e);
                         ShowNotification(new GUIContent("Invalid regex. Fix it before searching."));
                         return;
                     }
@@ -372,10 +373,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             int skippedNullSprite = 0;
             int skippedNotSingle = 0;
             bool canceled = false;
-            if (!dryRun)
-            {
-                AssetDatabase.StartAssetEditing();
-            }
+
+            AssetDatabaseBatchScope? batchScope = dryRun
+                ? null
+                : AssetDatabaseBatchHelper.BeginBatch(refreshOnDispose: false);
             try
             {
                 if (_filesToProcess == null)
@@ -464,9 +465,9 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             finally
             {
                 ClearProgress();
+                batchScope?.Dispose();
                 if (!dryRun)
                 {
-                    AssetDatabase.StopAssetEditing();
                     foreach (TextureImporter importer in importers)
                     {
                         importer.SaveAndReimport();

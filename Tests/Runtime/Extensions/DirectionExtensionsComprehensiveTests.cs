@@ -12,6 +12,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
     using WallstopStudios.UnityHelpers.Core.Model;
     using WallstopStudios.UnityHelpers.Tests.Core;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class DirectionExtensionsComprehensiveTests : CommonTestBase
     {
         private const int KnownDirectionMask = (1 << 8) - 1;

@@ -20,6 +20,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
     /// - Interface support
     /// </summary>
     [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class RelationalComponentAdvancedTests : CommonTestBase
     {
         [UnityTest]

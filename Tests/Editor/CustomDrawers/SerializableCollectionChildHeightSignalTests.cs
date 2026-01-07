@@ -18,6 +18,8 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
     /// state changes (e.g., "Collection Styling (Advanced)" foldout in nested properties).
     /// </remarks>
     [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class SerializableCollectionChildHeightSignalTests : CommonTestBase
     {
         [SetUp]

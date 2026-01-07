@@ -1353,7 +1353,7 @@ namespace WallstopStudios.UnityHelpers.Editor
             }
             catch (Exception e)
             {
-                this.LogError($"Failed to save report: {e.Message}");
+                this.LogError($"Failed to save report", e);
             }
         }
 
@@ -1400,7 +1400,7 @@ namespace WallstopStudios.UnityHelpers.Editor
             }
             catch (Exception e)
             {
-                this.LogError($"Failed to save CSV: {e.Message}");
+                this.LogError($"Failed to save CSV", e);
             }
         }
     }

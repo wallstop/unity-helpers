@@ -15,6 +15,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
     /// and frequency-influenced purge decisions.
     /// </summary>
     [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class PoolAccessFrequencyTests
     {
         private sealed class TestPoolItem
@@ -44,7 +45,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
         [SetUp]
         public void SetUp()
         {
-            _currentTime = 0f;
+            // Start at t=1 to avoid time=0 initialization issues
+            // (time 0 is treated as uninitialized in the tracker)
+            _currentTime = 1f;
             TestPoolItem.ResetIdCounter();
         }
 
@@ -60,12 +63,15 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
                 }
             );
 
+            // Start at t=1 to ensure window tracking works properly
+            // (time 0 is treated as uninitialized in the tracker)
+            _currentTime = 1f;
             for (int i = 0; i < 10; i++)
             {
                 using PooledResource<TestPoolItem> resource = pool.Get();
             }
 
-            _currentTime = 6f;
+            _currentTime = 7f;
 
             PoolStatistics stats = pool.GetStatistics();
             Assert.Greater(stats.RentalsPerMinute, 0f);
@@ -103,11 +109,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
                 }
             );
 
-            _currentTime = 0f;
+            // Start at t=1 to ensure first rental sets a valid previous time
+            // (time 0 is treated as uninitialized in the tracker)
+            _currentTime = 1f;
             using (PooledResource<TestPoolItem> resource1 = pool.Get()) { }
-            _currentTime = 2f;
+            _currentTime = 3f;
             using (PooledResource<TestPoolItem> resource2 = pool.Get()) { }
-            _currentTime = 5f;
+            _currentTime = 6f;
             using (PooledResource<TestPoolItem> resource3 = pool.Get()) { }
 
             PoolStatistics stats = pool.GetStatistics();
@@ -136,12 +144,15 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
                 }
             );
 
+            // Start at t=1 to ensure window tracking works properly
+            // (time 0 is treated as uninitialized in the tracker)
+            _currentTime = 1f;
             for (int i = 0; i < 20; i++)
             {
                 using PooledResource<TestPoolItem> resource = pool.Get();
             }
 
-            _currentTime = 10f;
+            _currentTime = 11f;
 
             PoolStatistics stats = pool.GetStatistics();
             Assert.GreaterOrEqual(
@@ -186,9 +197,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
                 }
             );
 
+            // Start at t=1 to ensure lastAccess > 0 check works
+            // (time 0 is treated as uninitialized in the tracker)
+            _currentTime = 1f;
             using (PooledResource<TestPoolItem> resource = pool.Get()) { }
 
-            _currentTime = 400f;
+            // UnusedPoolThresholdMinutes = 5 minutes = 300 seconds
+            _currentTime = 401f;
 
             PoolStatistics stats = pool.GetStatistics();
             Assert.IsTrue(stats.IsUnused);
@@ -274,9 +289,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
                 }
             );
 
+            // Start at t=1 to ensure lastAccess > 0 check works
+            // (time 0 is treated as uninitialized in the tracker)
+            _currentTime = 1f;
             using (PooledResource<TestPoolItem> resource = pool.Get()) { }
 
-            _currentTime = 400f;
+            // UnusedPoolThresholdMinutes = 5 minutes = 300 seconds
+            _currentTime = 401f;
 
             using PooledResource<TestPoolItem> resource2 = pool.Get();
 
@@ -579,18 +598,26 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
                 }
             );
 
+            // Pre-warm doesn't count as rentals - it just adds items to the pool.
+            // Verify the pool has 10 items ready
+            Assert.AreEqual(10, pool.Count);
+
             PoolStatistics stats = pool.GetStatistics();
 
-            Assert.AreEqual(10, stats.RentCount);
+            // Pre-warm uses ReturnToPool, not Get, so RentCount should be 0
+            Assert.AreEqual(0, stats.RentCount);
 
+            // Start at t=1 to ensure window tracking works properly
+            // (time 0 is treated as uninitialized in the tracker)
+            _currentTime = 1f;
             for (int i = 0; i < 5; i++)
             {
                 using PooledResource<TestPoolItem> resource = pool.Get();
             }
 
-            _currentTime = 5f;
+            _currentTime = 6f;
             PoolStatistics afterStats = pool.GetStatistics();
-            Assert.AreEqual(15, afterStats.RentCount);
+            Assert.AreEqual(5, afterStats.RentCount);
             Assert.Greater(afterStats.RentalsPerMinute, 0f);
         }
 
@@ -779,9 +806,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
                 bufferMultiplier: 1.5f
             );
 
-            tracker.RecordRent(0f);
-            tracker.RecordRent(10f);
-            tracker.RecordRent(5f);
+            // Start at t=1 to ensure first rental sets a valid previous time
+            // (time 0 is treated as uninitialized in the tracker)
+            tracker.RecordRent(1f);
+            tracker.RecordRent(11f);
+            tracker.RecordRent(6f);
 
             float averageInterRentalTime = tracker.AverageInterRentalTimeSeconds;
             Assert.AreEqual(
@@ -925,6 +954,386 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
                 0L,
                 tracker.TotalRentalCount,
                 "TotalRentalCount should be 0 after clear"
+            );
+        }
+    }
+
+    /// <summary>
+    /// Tests to verify that GetStatistics calls do not incorrectly inflate rental counts.
+    /// These tests ensure statistics queries are read-only operations.
+    /// </summary>
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
+    public sealed class PoolStatisticsInvariantTests
+    {
+        private sealed class TestPoolItem
+        {
+            public int Id { get; }
+
+            private static int _nextId;
+
+            public TestPoolItem()
+            {
+                Id = ++_nextId;
+            }
+
+            public static void ResetIdCounter()
+            {
+                _nextId = 0;
+            }
+        }
+
+        private float _currentTime;
+
+        private float TestTimeProvider()
+        {
+            return _currentTime;
+        }
+
+        [SetUp]
+        public void SetUp()
+        {
+            _currentTime = 1f;
+            TestPoolItem.ResetIdCounter();
+        }
+
+        [Test]
+        public void MultipleGetStatisticsCallsDoNotInflateRentalCount()
+        {
+            using WallstopGenericPool<TestPoolItem> pool = new WallstopGenericPool<TestPoolItem>(
+                () => new TestPoolItem(),
+                options: new PoolOptions<TestPoolItem>
+                {
+                    Triggers = PurgeTrigger.Explicit,
+                    TimeProvider = TestTimeProvider,
+                }
+            );
+
+            using (PooledResource<TestPoolItem> resource = pool.Get()) { }
+
+            PoolStatistics initialStats = pool.GetStatistics();
+            long initialRentCount = initialStats.RentCount;
+
+            Assert.That(
+                initialRentCount,
+                Is.EqualTo(1),
+                "Initial rent count should be 1 after single rental"
+            );
+
+            for (int i = 0; i < 100; i++)
+            {
+                PoolStatistics stats = pool.GetStatistics();
+                Assert.That(
+                    stats.RentCount,
+                    Is.EqualTo(initialRentCount),
+                    $"Rent count should remain {initialRentCount} after GetStatistics call {i + 1}"
+                );
+            }
+
+            PoolStatistics finalStats = pool.GetStatistics();
+            Assert.That(
+                finalStats.RentCount,
+                Is.EqualTo(initialRentCount),
+                "Rent count should not change after multiple GetStatistics calls"
+            );
+        }
+
+        [Test]
+        public void GetStatisticsDoesNotAffectRentalsPerMinute()
+        {
+            using WallstopGenericPool<TestPoolItem> pool = new WallstopGenericPool<TestPoolItem>(
+                () => new TestPoolItem(),
+                options: new PoolOptions<TestPoolItem>
+                {
+                    Triggers = PurgeTrigger.Explicit,
+                    TimeProvider = TestTimeProvider,
+                }
+            );
+
+            for (int i = 0; i < 5; i++)
+            {
+                using PooledResource<TestPoolItem> resource = pool.Get();
+            }
+
+            _currentTime = 10f;
+
+            PoolStatistics initialStats = pool.GetStatistics();
+            float initialRentalsPerMin = initialStats.RentalsPerMinute;
+            long initialRentCount = initialStats.RentCount;
+
+            for (int i = 0; i < 50; i++)
+            {
+                _currentTime += 0.1f;
+                PoolStatistics stats = pool.GetStatistics();
+            }
+
+            PoolStatistics finalStats = pool.GetStatistics();
+
+            Assert.That(
+                finalStats.RentCount,
+                Is.EqualTo(initialRentCount),
+                "Rent count should not change from GetStatistics calls"
+            );
+            Assert.That(
+                finalStats.RentalsPerMinute,
+                Is.LessThanOrEqualTo(initialRentalsPerMin),
+                "RentalsPerMinute should decrease or stay same as time passes without rentals, never increase from GetStatistics calls"
+            );
+        }
+
+        [Test]
+        public void GetStatisticsDuringWindowTransitionDoesNotCountAsRental()
+        {
+            const float windowDuration = 60f;
+            using WallstopGenericPool<TestPoolItem> pool = new WallstopGenericPool<TestPoolItem>(
+                () => new TestPoolItem(),
+                options: new PoolOptions<TestPoolItem>
+                {
+                    Triggers = PurgeTrigger.Explicit,
+                    TimeProvider = TestTimeProvider,
+                }
+            );
+
+            for (int i = 0; i < 10; i++)
+            {
+                using PooledResource<TestPoolItem> resource = pool.Get();
+            }
+
+            _currentTime = 30f;
+            PoolStatistics midWindowStats = pool.GetStatistics();
+            long midWindowRentCount = midWindowStats.RentCount;
+
+            Assert.That(
+                midWindowRentCount,
+                Is.EqualTo(10),
+                "Rent count should be 10 at mid-window"
+            );
+
+            _currentTime = windowDuration + 10f;
+
+            PoolStatistics afterTransitionStats = pool.GetStatistics();
+
+            Assert.That(
+                afterTransitionStats.RentCount,
+                Is.EqualTo(midWindowRentCount),
+                "Rent count should not change during window transition from GetStatistics"
+            );
+        }
+
+        [Test]
+        public void ActualRentalDuringWindowTransitionIsCountedInNewWindow()
+        {
+            const float windowDuration = 60f;
+            using WallstopGenericPool<TestPoolItem> pool = new WallstopGenericPool<TestPoolItem>(
+                () => new TestPoolItem(),
+                options: new PoolOptions<TestPoolItem>
+                {
+                    Triggers = PurgeTrigger.Explicit,
+                    TimeProvider = TestTimeProvider,
+                }
+            );
+
+            for (int i = 0; i < 5; i++)
+            {
+                using PooledResource<TestPoolItem> resource = pool.Get();
+            }
+
+            _currentTime = 30f;
+            PoolStatistics midWindowStats = pool.GetStatistics();
+
+            Assert.That(
+                midWindowStats.RentCount,
+                Is.EqualTo(5),
+                "Should have 5 rentals at mid-window"
+            );
+
+            _currentTime = windowDuration + 10f;
+
+            using (PooledResource<TestPoolItem> resource = pool.Get()) { }
+
+            PoolStatistics afterTransitionStats = pool.GetStatistics();
+
+            Assert.That(
+                afterTransitionStats.RentCount,
+                Is.EqualTo(6),
+                "Actual rental during window transition should be counted"
+            );
+
+            Assert.That(
+                afterTransitionStats.RentalsPerMinute,
+                Is.GreaterThan(0f),
+                "RentalsPerMinute should be positive after rental in new window"
+            );
+        }
+
+        [Test]
+        [TestCase(1, TestName = "SingleStatisticsCall")]
+        [TestCase(10, TestName = "TenStatisticsCalls")]
+        [TestCase(100, TestName = "HundredStatisticsCalls")]
+        public void GetStatisticsIsIdempotentForRentCount(int statisticsCallCount)
+        {
+            using WallstopGenericPool<TestPoolItem> pool = new WallstopGenericPool<TestPoolItem>(
+                () => new TestPoolItem(),
+                options: new PoolOptions<TestPoolItem>
+                {
+                    Triggers = PurgeTrigger.Explicit,
+                    TimeProvider = TestTimeProvider,
+                }
+            );
+
+            const int actualRentals = 3;
+            for (int i = 0; i < actualRentals; i++)
+            {
+                using PooledResource<TestPoolItem> resource = pool.Get();
+            }
+
+            PoolStatistics initialStats = pool.GetStatistics();
+
+            Assert.That(
+                initialStats.RentCount,
+                Is.EqualTo(actualRentals),
+                $"Initial rent count should be {actualRentals}"
+            );
+
+            for (int i = 0; i < statisticsCallCount; i++)
+            {
+                pool.GetStatistics();
+            }
+
+            PoolStatistics finalStats = pool.GetStatistics();
+
+            Assert.That(
+                finalStats.RentCount,
+                Is.EqualTo(actualRentals),
+                $"Rent count should remain {actualRentals} after {statisticsCallCount} GetStatistics calls"
+            );
+        }
+
+        [Test]
+        public void GetStatisticsDoesNotAffectLastAccessTime()
+        {
+            using WallstopGenericPool<TestPoolItem> pool = new WallstopGenericPool<TestPoolItem>(
+                () => new TestPoolItem(),
+                options: new PoolOptions<TestPoolItem>
+                {
+                    Triggers = PurgeTrigger.Explicit,
+                    TimeProvider = TestTimeProvider,
+                }
+            );
+
+            _currentTime = 10f;
+            using (PooledResource<TestPoolItem> resource = pool.Get()) { }
+
+            PoolStatistics statsAfterRental = pool.GetStatistics();
+            float lastAccessAfterRental = statsAfterRental.LastAccessTime;
+
+            Assert.That(
+                lastAccessAfterRental,
+                Is.EqualTo(10f),
+                "LastAccessTime should be 10f after rental at t=10"
+            );
+
+            _currentTime = 50f;
+
+            for (int i = 0; i < 10; i++)
+            {
+                _currentTime += 1f;
+                pool.GetStatistics();
+            }
+
+            PoolStatistics statsAfterQueries = pool.GetStatistics();
+
+            Assert.That(
+                statsAfterQueries.LastAccessTime,
+                Is.EqualTo(lastAccessAfterRental),
+                "LastAccessTime should not change from GetStatistics calls"
+            );
+        }
+
+        [Test]
+        public void GetStatisticsDoesNotAffectAverageInterRentalTime()
+        {
+            using WallstopGenericPool<TestPoolItem> pool = new WallstopGenericPool<TestPoolItem>(
+                () => new TestPoolItem(),
+                options: new PoolOptions<TestPoolItem>
+                {
+                    Triggers = PurgeTrigger.Explicit,
+                    TimeProvider = TestTimeProvider,
+                }
+            );
+
+            _currentTime = 1f;
+            using (PooledResource<TestPoolItem> resource1 = pool.Get()) { }
+            _currentTime = 3f;
+            using (PooledResource<TestPoolItem> resource2 = pool.Get()) { }
+            _currentTime = 6f;
+            using (PooledResource<TestPoolItem> resource3 = pool.Get()) { }
+
+            PoolStatistics statsAfterRentals = pool.GetStatistics();
+            float avgTimeAfterRentals = statsAfterRentals.AverageInterRentalTimeSeconds;
+
+            Assert.That(
+                avgTimeAfterRentals,
+                Is.EqualTo(2.5f).Within(0.01f),
+                "Average inter-rental time should be (2 + 3) / 2 = 2.5"
+            );
+
+            for (int i = 0; i < 50; i++)
+            {
+                _currentTime += 1f;
+                pool.GetStatistics();
+            }
+
+            PoolStatistics statsAfterQueries = pool.GetStatistics();
+
+            Assert.That(
+                statsAfterQueries.AverageInterRentalTimeSeconds,
+                Is.EqualTo(avgTimeAfterRentals).Within(0.01f),
+                "AverageInterRentalTimeSeconds should not change from GetStatistics calls"
+            );
+        }
+
+        [Test]
+        public void InterleavedGetStatisticsAndRentalsTrackCorrectly()
+        {
+            using WallstopGenericPool<TestPoolItem> pool = new WallstopGenericPool<TestPoolItem>(
+                () => new TestPoolItem(),
+                options: new PoolOptions<TestPoolItem>
+                {
+                    Triggers = PurgeTrigger.Explicit,
+                    TimeProvider = TestTimeProvider,
+                }
+            );
+
+            for (int i = 0; i < 10; i++)
+            {
+                _currentTime = i + 1f;
+                using PooledResource<TestPoolItem> resource = pool.Get();
+
+                PoolStatistics stats = pool.GetStatistics();
+
+                Assert.That(
+                    stats.RentCount,
+                    Is.EqualTo(i + 1),
+                    $"Rent count should be {i + 1} after rental {i + 1}"
+                );
+
+                for (int j = 0; j < 5; j++)
+                {
+                    PoolStatistics extraStats = pool.GetStatistics();
+                    Assert.That(
+                        extraStats.RentCount,
+                        Is.EqualTo(i + 1),
+                        $"Rent count should remain {i + 1} after extra GetStatistics call {j + 1}"
+                    );
+                }
+            }
+
+            PoolStatistics finalStats = pool.GetStatistics();
+            Assert.That(
+                finalStats.RentCount,
+                Is.EqualTo(10),
+                "Final rent count should be exactly 10"
             );
         }
     }

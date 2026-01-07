@@ -10,6 +10,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Core.Threading
     using UnityEngine.TestTools;
     using WallstopStudios.UnityHelpers.Core.Threading;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class SingleThreadedThreadPoolTests
     {
         [Test]

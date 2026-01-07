@@ -33,17 +33,17 @@ namespace WallstopStudios.UnityHelpers.Tests.WGroup
 
         [HideInInspector]
         [SerializeField]
-#pragma warning disable CS0169 // Field is never used
-        private int _hiddenField1;
-#pragma warning restore CS0169 // Field is never used
+#pragma warning disable CS0649 // Field is never assigned to
+        internal int _hiddenField1;
+#pragma warning restore CS0649 // Field is never assigned to
 
         public int visibleField1;
 
         [HideInInspector]
         [SerializeField]
-#pragma warning disable CS0169 // Field is never used
-        private int _hiddenField2;
-#pragma warning restore CS0169 // Field is never used
+#pragma warning disable CS0649 // Field is never assigned to
+        internal int _hiddenField2;
+#pragma warning restore CS0649 // Field is never assigned to
 
         public int visibleField2;
         public int visibleField3;

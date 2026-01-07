@@ -22,6 +22,8 @@ namespace WallstopStudios.UnityHelpers.Tests.WGroup
     /// - Various nesting depths
     /// </summary>
     [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class WGroupIndentBehaviorTests : CommonTestBase
     {
         private UnityHelpersSettings.WGroupAutoIncludeConfiguration _previousConfiguration;

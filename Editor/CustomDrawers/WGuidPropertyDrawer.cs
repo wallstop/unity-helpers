@@ -287,10 +287,10 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 state.hasPendingInvalid = false;
                 state.warningMessage = string.Empty;
             }
-            catch (FormatException exception)
+            catch (FormatException e)
             {
                 state.hasPendingInvalid = true;
-                state.warningMessage = exception.Message;
+                state.warningMessage = e.Message;
             }
         }
 

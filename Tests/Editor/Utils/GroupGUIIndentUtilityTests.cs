@@ -9,6 +9,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
     using WallstopStudios.UnityHelpers.Editor.Utils;
 
     [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class GroupGUIIndentUtilityTests
     {
         [Test]

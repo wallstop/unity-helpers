@@ -111,6 +111,7 @@ Invoke these skills for specific tasks.
 | [linter-reference](./skills/linter-reference.md)                         | Detailed linter commands, configurations                         |
 | [manage-skills](./skills/manage-skills.md)                               | Creating, updating, splitting, consolidating, or removing skills |
 | [markdown-reference](./skills/markdown-reference.md)                     | Link formatting, escaping, linting rules                         |
+| [prefer-logging-extensions](./skills/prefer-logging-extensions.md)       | Unity logging in UnityEngine.Object classes                      |
 | [search-codebase](./skills/search-codebase.md)                           | Finding code, files, or patterns                                 |
 | [test-odin-drawers](./skills/test-odin-drawers.md)                       | Odin Inspector drawer testing patterns                           |
 | [test-unity-lifecycle](./skills/test-unity-lifecycle.md)                 | Track(), DestroyImmediate, object cleanup                        |
@@ -187,13 +188,13 @@ Invoke these skills for specific tasks.
 
 ### Documentation Locations
 
-| Content                   | Location                                              |
-| ------------------------- | ----------------------------------------------------- |
-| User-facing changes       | [CHANGELOG](../CHANGELOG.md)                          |
-| Feature documentation     | `docs/features/<category>/`                           |
-| API reference             | XML comments (`///`) on public members                |
-| Package overview          | [llms.txt](../llms.txt), [README](../README.md)       |
-| Agent/skill documentation | `.llm/skills/`                                        |
+| Content                   | Location                                        |
+| ------------------------- | ----------------------------------------------- |
+| User-facing changes       | [CHANGELOG](../CHANGELOG.md)                    |
+| Feature documentation     | `docs/features/<category>/`                     |
+| API reference             | XML comments (`///`) on public members          |
+| Package overview          | [llms.txt](../llms.txt), [README](../README.md) |
+| Agent/skill documentation | `.llm/skills/`                                  |
 
 ### Enforcement
 

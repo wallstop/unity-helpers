@@ -52,10 +52,34 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
         public const float DefaultThrashThreshold = 100f;
 
         /// <summary>
+        /// Default initial capacity used as a fallback when an invalid value (zero or negative)
+        /// is explicitly passed to <see cref="CacheBuilder{TKey,TValue}.InitialCapacity"/>.
+        /// Note: When <see cref="InitialCapacity"/> is not specified, <see cref="Cache{TKey,TValue}"/>
+        /// defaults to using <see cref="MaximumSize"/> as the initial capacity.
+        /// </summary>
+        public const int DefaultInitialCapacity = 16;
+
+        /// <summary>
+        /// Maximum allowed initial capacity to prevent accidental large allocations.
+        /// </summary>
+        internal const int MaxReasonableInitialCapacity = 65536;
+
+        /// <summary>
         /// The maximum number of entries the cache can hold before eviction occurs.
         /// If zero, <see cref="DefaultMaximumSize"/> is used.
         /// </summary>
         public int MaximumSize;
+
+        /// <summary>
+        /// The initial capacity of the cache's internal data structures.
+        /// If zero or negative, <see cref="Cache{TKey,TValue}"/> defaults to using <see cref="MaximumSize"/>.
+        /// The cache grows dynamically as needed up to <see cref="MaximumSize"/>.
+        /// This can be set smaller than <see cref="MaximumSize"/> to reduce upfront allocations
+        /// when the cache is expected to start with fewer entries.
+        /// Values larger than <see cref="MaxReasonableInitialCapacity"/> are clamped to prevent
+        /// accidental memory issues.
+        /// </summary>
+        public int InitialCapacity;
 
         /// <summary>
         /// The maximum total weight of all cache entries.

@@ -15,6 +15,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
     /// Verifies that memory pressure is tracked and purge aggressiveness scales accordingly.
     /// </summary>
     [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class MemoryPressureTests
     {
         private sealed class TestPoolItem

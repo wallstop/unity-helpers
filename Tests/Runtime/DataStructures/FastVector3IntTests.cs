@@ -8,6 +8,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class FastVector3IntTests
     {
         [Test]

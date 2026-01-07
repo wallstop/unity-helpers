@@ -9,6 +9,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Tools
     using WallstopStudios.UnityHelpers.Tests.Core;
 
     [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class AnimationEventEditorSmokeTests : CommonTestBase
     {
         [Test]

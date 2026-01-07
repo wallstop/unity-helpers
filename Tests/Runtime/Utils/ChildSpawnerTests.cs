@@ -13,6 +13,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
     using WallstopStudios.UnityHelpers.Utils;
     using Object = UnityEngine.Object;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class ChildSpawnerTests : CommonTestBase
     {
         // Tracking handled by CommonTestBase

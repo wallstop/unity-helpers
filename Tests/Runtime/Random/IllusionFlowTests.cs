@@ -8,6 +8,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Random
     using NUnit.Framework;
     using WallstopStudios.UnityHelpers.Core.Random;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class IllusionFlowTests : RandomTestBase
     {
         protected override IRandom NewRandom()
@@ -22,7 +24,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Random
             IllusionFlow random = new(DeterministicGuid, extraSeed);
 
             RandomState state = random.InternalState;
-            Assert.IsNotNull(state.PayloadBytes);
+            Assert.IsNotNull(
+                state.PayloadBytes,
+                "PayloadBytes should not be null for IllusionFlow state"
+            );
             Assert.GreaterOrEqual(state.PayloadBytes.Count, sizeof(uint));
 
             Span<byte> buffer = stackalloc byte[sizeof(uint)];

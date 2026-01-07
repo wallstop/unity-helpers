@@ -10,6 +10,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
     using WallstopStudios.UnityHelpers.Core.Extension;
     using WallstopStudios.UnityHelpers.Tests.Core;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class StringExtensionTests : CommonTestBase
     {
         private static IEnumerable<TestCaseData> LevenshteinDistanceTestCases()

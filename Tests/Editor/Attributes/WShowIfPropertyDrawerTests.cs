@@ -16,6 +16,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
     using Object = UnityEngine.Object;
 
     [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class WShowIfPropertyDrawerTests : CommonTestBase
     {
         [Test]

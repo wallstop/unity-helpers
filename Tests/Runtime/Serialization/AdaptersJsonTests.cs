@@ -10,6 +10,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
     using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
     using WallstopStudios.UnityHelpers.Core.Serialization;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class AdaptersJsonTests
     {
         [Test]

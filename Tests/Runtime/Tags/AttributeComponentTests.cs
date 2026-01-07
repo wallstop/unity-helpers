@@ -11,6 +11,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Tags
     using WallstopStudios.UnityHelpers.Tests.Tags.Helpers;
 
     [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class AttributesComponentTests : TagsTestBase
     {
         [SetUp]

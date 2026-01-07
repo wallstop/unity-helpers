@@ -17,6 +17,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
     /// These tests validate that user-defined element ordering in the Unity inspector is maintained
     /// and not reordered by the underlying data structure's natural ordering.
     /// </summary>
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class SerializationOrderPreservationTests : CommonTestBase
     {
         [Test]

@@ -20,6 +20,7 @@ namespace WallstopStudios.UnityHelpers.Tests
     /// - Other API surface misunderstandings
     /// </summary>
     [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class CacheApiContractTests
     {
         private float _currentTime;
@@ -83,10 +84,23 @@ namespace WallstopStudios.UnityHelpers.Tests
         public void CacheHasTryGetMethodWithCorrectSignature()
         {
             Type cacheType = typeof(Cache<string, int>);
-            MethodInfo tryGetMethod = cacheType.GetMethod(
-                "TryGet",
+            MethodInfo[] allMethods = cacheType.GetMethods(
                 BindingFlags.Public | BindingFlags.Instance
             );
+
+            // Find TryGet method with 2 parameters (key, out value) - filter to avoid ambiguity with overloads
+            MethodInfo tryGetMethod = null;
+            foreach (MethodInfo method in allMethods)
+            {
+                if (
+                    method.Name == nameof(Cache<object, object>.TryGet)
+                    && method.GetParameters().Length == 2
+                )
+                {
+                    tryGetMethod = method;
+                    break;
+                }
+            }
 
             Assert.IsNotNull(tryGetMethod, "Cache must have a TryGet method for value retrieval");
 
@@ -233,6 +247,7 @@ namespace WallstopStudios.UnityHelpers.Tests
     /// Tests that verify correct Serializer API usage patterns.
     /// </summary>
     [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class SerializerApiContractTests
     {
         [Serializable]
@@ -322,7 +337,7 @@ namespace WallstopStudios.UnityHelpers.Tests
             List<MethodInfo> jsonStringifyMethodsList = new();
             foreach (MethodInfo method in allMethods)
             {
-                if (method.Name == "JsonStringify")
+                if (method.Name == nameof(Serializer.JsonStringify))
                 {
                     jsonStringifyMethodsList.Add(method);
                 }
@@ -395,7 +410,7 @@ namespace WallstopStudios.UnityHelpers.Tests
             List<MethodInfo> jsonSerializeMethodsList = new();
             foreach (MethodInfo method in allMethods)
             {
-                if (method.Name == "JsonSerialize")
+                if (method.Name == nameof(Serializer.JsonSerialize))
                 {
                     jsonSerializeMethodsList.Add(method);
                 }
@@ -543,6 +558,7 @@ namespace WallstopStudios.UnityHelpers.Tests
     /// Tests that verify common API patterns across multiple types.
     /// </summary>
     [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class CommonApiPatternTests
     {
         /// <summary>
@@ -593,43 +609,30 @@ namespace WallstopStudios.UnityHelpers.Tests
         }
 
         /// <summary>
-        /// Verifies that the CacheBuilder fluent API returns the builder for chaining.
+        /// Verifies that the CacheBuilder fluent API can be chained correctly.
+        /// Note: CacheBuilder is a struct, so methods return a copy. We verify the fluent API
+        /// works by checking that configurations are properly applied when chained.
         /// </summary>
         [Test]
         public void CacheBuilderFluentApiReturnsBuilderForChaining()
         {
-            CacheBuilder<string, int> builder = CacheBuilder<string, int>.NewBuilder();
+            // CacheBuilder is a struct, so we can't use AreSame (reference equality).
+            // Instead, verify that the fluent API works by chaining calls and building successfully.
+            using Cache<string, int> cache = CacheBuilder<string, int>
+                .NewBuilder()
+                .MaximumSize(100)
+                .ExpireAfterWrite(1.0f)
+                .ExpireAfterAccess(1.0f)
+                .EvictionPolicy(EvictionPolicy.Lru)
+                .RecordStatistics()
+                .Build();
 
-            // Verify each method returns the builder for chaining
-            Assert.AreSame(builder, builder.MaximumSize(100), "MaximumSize should return builder");
-            Assert.AreSame(
-                builder,
-                builder.ExpireAfterWrite(1.0f),
-                "ExpireAfterWrite should return builder"
-            );
-            Assert.AreSame(
-                builder,
-                builder.ExpireAfterAccess(1.0f),
-                "ExpireAfterAccess should return builder"
-            );
-            Assert.AreSame(
-                builder,
-                builder.EvictionPolicy(EvictionPolicy.Lru),
-                "EvictionPolicy should return builder"
-            );
-            Assert.AreSame(
-                builder,
-                builder.RecordStatistics(),
-                "RecordStatistics should return builder"
-            );
-
-            // Verify Build returns a Cache, not the builder
-            using Cache<string, int> cache = builder.Build();
             Assert.IsNotNull(cache, "Build should return a Cache instance");
             Assert.IsInstanceOf<Cache<string, int>>(
                 cache,
                 "Build should return correct Cache type"
             );
+            Assert.AreEqual(100, cache.Capacity, "MaximumSize should be applied");
         }
     }
 
@@ -638,6 +641,7 @@ namespace WallstopStudios.UnityHelpers.Tests
     /// These tests serve as executable documentation that will break if API changes.
     /// </summary>
     [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class ApiDocumentationTests
     {
         /// <summary>
@@ -701,11 +705,11 @@ namespace WallstopStudios.UnityHelpers.Tests
             // Check for expected methods
             string[] expectedMethodNames = new[]
             {
-                "JsonStringify",
-                "JsonSerialize",
-                "JsonDeserialize",
-                "JsonSerializeFast",
-                "JsonDeserializeFast",
+                nameof(Serializer.JsonStringify),
+                nameof(Serializer.JsonSerialize),
+                nameof(Serializer.JsonDeserialize),
+                nameof(Serializer.JsonSerializeFast),
+                nameof(Serializer.JsonDeserializeFast),
             };
 
             MethodInfo[] allSerializerMethods = serializerType.GetMethods(
@@ -734,26 +738,34 @@ namespace WallstopStudios.UnityHelpers.Tests
         public void CacheHasExpectedMethodsAndNoConfusingAliases()
         {
             Type cacheType = typeof(Cache<string, int>);
+            MethodInfo[] allMethods = cacheType.GetMethods(
+                BindingFlags.Public | BindingFlags.Instance
+            );
 
             // Methods that SHOULD exist
             string[] expectedMethods = new[]
             {
-                "TryGet",
-                "Set",
-                "TryRemove",
-                "ContainsKey",
-                "Clear",
-                "GetOrAdd",
+                nameof(Cache<object, object>.TryGet),
+                nameof(Cache<object, object>.Set),
+                nameof(Cache<object, object>.TryRemove),
+                nameof(Cache<object, object>.ContainsKey),
+                nameof(Cache<object, object>.Clear),
+                nameof(Cache<object, object>.GetOrAdd),
             };
 
             foreach (string methodName in expectedMethods)
             {
-                MethodInfo method = cacheType.GetMethod(
-                    methodName,
-                    BindingFlags.Public | BindingFlags.Instance
-                );
+                bool hasMethod = false;
+                foreach (MethodInfo method in allMethods)
+                {
+                    if (method.Name == methodName)
+                    {
+                        hasMethod = true;
+                        break;
+                    }
+                }
 
-                Assert.IsNotNull(method, $"Cache should have {methodName} method");
+                Assert.IsTrue(hasMethod, $"Cache should have {methodName} method");
             }
 
             // Methods that SHOULD NOT exist (common misuse patterns)
@@ -767,13 +779,18 @@ namespace WallstopStudios.UnityHelpers.Tests
 
             foreach (string methodName in forbiddenMethods)
             {
-                MethodInfo method = cacheType.GetMethod(
-                    methodName,
-                    BindingFlags.Public | BindingFlags.Instance
-                );
+                bool hasMethod = false;
+                foreach (MethodInfo method in allMethods)
+                {
+                    if (method.Name == methodName)
+                    {
+                        hasMethod = true;
+                        break;
+                    }
+                }
 
-                Assert.IsNull(
-                    method,
+                Assert.IsFalse(
+                    hasMethod,
                     $"Cache should NOT have {methodName} method to avoid confusion with Dictionary API. "
                         + GetMethodAlternativeMessage(methodName)
                 );

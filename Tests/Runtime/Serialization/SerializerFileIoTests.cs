@@ -11,6 +11,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
     using WallstopStudios.UnityHelpers.Core.Serialization;
     using WallstopStudios.UnityHelpers.Tests.Core;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class SerializerFileIoTests : CommonTestBase
     {
         private string _dir;
@@ -70,7 +73,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
             string path = Path.Combine(_dir, "does_not_exist.json");
             bool read = Serializer.TryReadFromJsonFile(path, out Sample loaded);
             Assert.IsFalse(read);
-            Assert.IsNull(loaded);
+            Assert.IsNull(loaded, "Loaded object should be null when file is missing");
         }
 
         [Test]

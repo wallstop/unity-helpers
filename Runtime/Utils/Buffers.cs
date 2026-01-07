@@ -1275,7 +1275,7 @@ namespace WallstopStudios.UnityHelpers.Utils
             bool useIntelligent = options?.UseIntelligentPurging ?? effectiveOptions.Enabled;
             UseIntelligentPurging = useIntelligent;
             WarmRetainCount = options?.WarmRetainCount ?? effectiveOptions.WarmRetainCount;
-            _maxPurgesPerOperation =
+            MaxPurgesPerOperation =
                 options?.MaxPurgesPerOperation ?? effectiveOptions.MaxPurgesPerOperation;
 
             float rollingWindow =
@@ -1299,11 +1299,17 @@ namespace WallstopStudios.UnityHelpers.Utils
 
             _lastPeriodicPurge = _timeProvider();
 
+            float warmTime = _timeProvider();
             for (int i = 0; i < preWarmCount; ++i)
             {
                 T value = _producer();
                 _onGet?.Invoke(value);
-                ReturnToPool(value);
+                _pool.Add(new PooledEntry { Value = value, ReturnTime = warmTime });
+            }
+            int warmCount = _pool.Count;
+            if (warmCount > _peakSize)
+            {
+                _peakSize = warmCount;
             }
 
             GlobalPoolRegistry.Register(this);
@@ -1371,6 +1377,12 @@ namespace WallstopStudios.UnityHelpers.Utils
             else
             {
                 value = _producer();
+                // Update peak size when creating a new item (tracks total items in circulation)
+                int totalInCirculation = _pool.Count + _usageTracker.CurrentlyRented;
+                if (totalInCirculation > _peakSize)
+                {
+                    _peakSize = totalInCirculation;
+                }
             }
 
             _onGet?.Invoke(value);
@@ -1465,13 +1477,9 @@ namespace WallstopStudios.UnityHelpers.Utils
                 return 0;
             }
 
-            // Calculate effective minimum retain count based on pool activity
-            int effectiveMinRetain = _usageTracker.GetEffectiveMinRetainCount(
-                currentTime,
-                IdleTimeoutSeconds,
-                MinRetainCount,
-                WarmRetainCount
-            );
+            // For explicit purge with reason, respect only MinRetainCount (absolute floor)
+            // not WarmRetainCount, since this is an explicit cleanup operation
+            int effectiveMinRetain = MinRetainCount;
 
             int purged = 0;
 
@@ -1543,13 +1551,9 @@ namespace WallstopStudios.UnityHelpers.Utils
                 return 0;
             }
 
-            // Calculate effective minimum retain count based on pool activity
-            int effectiveMinRetain = _usageTracker.GetEffectiveMinRetainCount(
-                currentTime,
-                IdleTimeoutSeconds,
-                MinRetainCount,
-                WarmRetainCount
-            );
+            // For explicit full purge with reason, respect only MinRetainCount (absolute floor)
+            // not WarmRetainCount, since this is an explicit cleanup operation
+            int effectiveMinRetain = MinRetainCount;
 
             int purged = 0;
 
@@ -2113,8 +2117,10 @@ namespace WallstopStudios.UnityHelpers.Utils
             bool useIntelligent = options?.UseIntelligentPurging ?? effectiveOptions.Enabled;
             _useIntelligentPurging = useIntelligent ? 1 : 0;
             _warmRetainCount = options?.WarmRetainCount ?? effectiveOptions.WarmRetainCount;
-            _maxPurgesPerOperation =
-                options?.MaxPurgesPerOperation ?? effectiveOptions.MaxPurgesPerOperation;
+            _maxPurgesPerOperation = Math.Max(
+                0,
+                options?.MaxPurgesPerOperation ?? effectiveOptions.MaxPurgesPerOperation
+            );
 
             float rollingWindow =
                 options?.RollingWindowSeconds ?? effectiveOptions.RollingWindowSeconds;
@@ -2137,11 +2143,17 @@ namespace WallstopStudios.UnityHelpers.Utils
 
             _lastPeriodicPurge = _timeProvider();
 
+            float warmTime = _timeProvider();
             for (int i = 0; i < preWarmCount; ++i)
             {
                 T value = _producer();
                 _onGet?.Invoke(value);
-                ReturnToPool(value);
+                _pool.Add(new PooledEntry { Value = value, ReturnTime = warmTime });
+            }
+            int warmCount = _pool.Count;
+            if (warmCount > _peakSize)
+            {
+                _peakSize = warmCount;
             }
 
             GlobalPoolRegistry.Register(this);
@@ -2216,6 +2228,18 @@ namespace WallstopStudios.UnityHelpers.Utils
             }
 
             value = _producer();
+            // Update peak size when creating a new item (tracks total items in circulation)
+            int totalInCirculation = _pool.Count + _usageTracker.CurrentlyRented;
+            int peak = _peakSize;
+            while (totalInCirculation > peak)
+            {
+                int original = Interlocked.CompareExchange(ref _peakSize, totalInCirculation, peak);
+                if (original == peak)
+                {
+                    break;
+                }
+                peak = original;
+            }
             _onGet?.Invoke(value);
             return new PooledResource<T>(value, _returnAction);
         }
@@ -2332,13 +2356,9 @@ namespace WallstopStudios.UnityHelpers.Utils
                 return 0;
             }
 
-            // Calculate effective minimum retain count based on pool activity
-            int effectiveMinRetain = _usageTracker.GetEffectiveMinRetainCount(
-                currentTime,
-                IdleTimeoutSeconds,
-                MinRetainCount,
-                WarmRetainCount
-            );
+            // For explicit purge with reason, respect only MinRetainCount (absolute floor)
+            // not WarmRetainCount, since this is an explicit cleanup operation
+            int effectiveMinRetain = MinRetainCount;
 
             // CRITICAL: Do NOT use pooled lists here - that would cause infinite recursion!
             // When Get() is called with PurgeTrigger.OnRent, it calls PurgeInternal(),
@@ -2419,13 +2439,9 @@ namespace WallstopStudios.UnityHelpers.Utils
                 return 0;
             }
 
-            // Calculate effective minimum retain count based on pool activity
-            int effectiveMinRetain = _usageTracker.GetEffectiveMinRetainCount(
-                currentTime,
-                IdleTimeoutSeconds,
-                MinRetainCount,
-                WarmRetainCount
-            );
+            // For explicit full purge with reason, respect only MinRetainCount (absolute floor)
+            // not WarmRetainCount, since this is an explicit cleanup operation
+            int effectiveMinRetain = MinRetainCount;
 
             // CRITICAL: Do NOT use pooled lists here - that would cause infinite recursion!
             List<PooledEntry> toPurge = new();

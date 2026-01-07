@@ -25,6 +25,8 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
     /// - All buttons are always displayed (the original bug was that nothing was rendered)
     /// </summary>
     [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class WButtonConflictingDrawOrderTests : CommonTestBase
     {
         [SetUp]

@@ -20,6 +20,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
     using WallstopStudios.UnityHelpers.Tests.Core.TestUtils;
     using Object = UnityEngine.Object;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class ScriptableObjectSingletonCreatorTests : CommonTestBase
     {
         private const string TestRoot = "Assets/Resources/CreatorTests";

@@ -15,6 +15,9 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
     using WallstopStudios.UnityHelpers.Tests.Core;
     using WallstopStudios.UnityHelpers.Tests.Editor.TestTypes;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class WButtonDisabledStateTests : CommonTestBase
     {
         [Test]

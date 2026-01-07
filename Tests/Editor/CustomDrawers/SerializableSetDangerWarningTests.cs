@@ -17,6 +17,9 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
     /// Validates detection and UI warnings for potentially problematic values like
     /// null Unity objects, empty strings, and whitespace-only strings.
     /// </summary>
+    [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class SerializableSetDangerWarningTests : CommonTestBase
     {
         [Test]

@@ -9,8 +9,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
     using UnityEditor;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Extension;
+    using WallstopStudios.UnityHelpers.Editor.Utils;
     using Object = UnityEngine.Object;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class ColorExtensionsEditorTests
     {
         private const string TempFolder = "Assets/TempColorExtensionTests";
@@ -84,7 +88,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
 
             if (refreshed)
             {
-                AssetDatabase.Refresh();
+                AssetDatabaseBatchHelper.RefreshIfNotBatching();
             }
         }
     }

@@ -82,7 +82,10 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             }
             if (items.Count != weights.Count)
             {
-                throw new ArgumentException("Items and weights length must match.");
+                throw new ArgumentException(
+                    "Items and weights length must match.",
+                    nameof(weights)
+                );
             }
             int idx = random.NextWeightedIndex(weights);
             return items[idx];
@@ -328,7 +331,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         {
             if (source.Count == 0)
             {
-                throw new ArgumentException("Collection cannot be empty", "values");
+                throw new ArgumentException("Collection cannot be empty", nameof(source));
             }
 
             EqualityComparer<T> comparer = EqualityComparer<T>.Default;
@@ -345,7 +348,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
 
             if (n == 0)
             {
-                throw new ArgumentException("All values are excluded", "exceptions");
+                throw new ArgumentException("All values are excluded", nameof(exception1));
             }
 
             return n == 1 ? buffer[0] : buffer[random.Next(n)];
@@ -360,7 +363,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         {
             if (source.Count == 0)
             {
-                throw new ArgumentException("Collection cannot be empty", "values");
+                throw new ArgumentException("Collection cannot be empty", nameof(source));
             }
 
             EqualityComparer<T> comparer = EqualityComparer<T>.Default;
@@ -377,7 +380,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
 
             if (n == 0)
             {
-                throw new ArgumentException("All values are excluded", "exceptions");
+                throw new ArgumentException("All values are excluded", nameof(exception1));
             }
 
             return n == 1 ? buffer[0] : buffer[random.Next(n)];
@@ -393,7 +396,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         {
             if (source.Count == 0)
             {
-                throw new ArgumentException("Collection cannot be empty", "values");
+                throw new ArgumentException("Collection cannot be empty", nameof(source));
             }
 
             EqualityComparer<T> comparer = EqualityComparer<T>.Default;
@@ -414,7 +417,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
 
             if (n == 0)
             {
-                throw new ArgumentException("All values are excluded", "exceptions");
+                throw new ArgumentException("All values are excluded", nameof(exception1));
             }
 
             return n == 1 ? buffer[0] : buffer[random.Next(n)];
@@ -428,7 +431,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         {
             if (source.Count == 0)
             {
-                throw new ArgumentException("Collection cannot be empty", "values");
+                throw new ArgumentException("Collection cannot be empty", nameof(source));
             }
 
             if (exceptions == null)
@@ -473,7 +476,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
 
             if (n == 0)
             {
-                throw new ArgumentException("All values are excluded", "exceptions");
+                throw new ArgumentException("All values are excluded", nameof(exceptions));
             }
 
             return n == 1 ? buffer[0] : buffer[random.Next(n)];
@@ -487,7 +490,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         {
             if (source.Count == 0)
             {
-                throw new ArgumentException("Collection cannot be empty", "values");
+                throw new ArgumentException("Collection cannot be empty", nameof(source));
             }
 
             if (exceptions == null || exceptions.Length == 0)
@@ -516,7 +519,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
 
             if (n == 0)
             {
-                throw new ArgumentException("All values are excluded", "exceptions");
+                throw new ArgumentException("All values are excluded", nameof(exceptions));
             }
 
             return n == 1 ? buffer[0] : buffer[random.Next(n)];
@@ -1178,7 +1181,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         {
             if (items.Count == 0)
             {
-                throw new ArgumentException("Weighted collection cannot be empty", "weighted");
+                throw new ArgumentException("Weighted collection cannot be empty", nameof(items));
             }
 
             float totalWeight = 0f;
@@ -1187,7 +1190,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 float weight = items[i].Item2;
                 if (weight < 0f)
                 {
-                    throw new ArgumentException("Weights cannot be negative", "weighted");
+                    throw new ArgumentException("Weights cannot be negative", nameof(items));
                 }
 
                 totalWeight += weight;
@@ -1195,7 +1198,10 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
 
             if (totalWeight <= 0f)
             {
-                throw new ArgumentException("Total weight must be greater than zero", "weighted");
+                throw new ArgumentException(
+                    "Total weight must be greater than zero",
+                    nameof(items)
+                );
             }
 
             float randomValue = random.NextFloat(0f, totalWeight);

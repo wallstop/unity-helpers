@@ -12,6 +12,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Visuals
     using UnityEditor.SceneManagement;
     using UnityEngine;
     using UnityEngine.SceneManagement;
+    using WallstopStudios.UnityHelpers.Core.Extension;
     using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Visuals.UGUI;
     using Object = UnityEngine.Object;
@@ -82,7 +83,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Visuals
                 }
                 else
                 {
-                    Debug.LogError($"Failed to load material at path '{materialRelativePath}'.");
+                    this.LogError($"Failed to load material at path '{materialRelativePath}'");
                 }
             }
 

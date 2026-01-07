@@ -11,6 +11,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Editor.Sprites;
+    using WallstopStudios.UnityHelpers.Editor.Utils;
     using WallstopStudios.UnityHelpers.Tests.Core;
     using Object = UnityEngine.Object;
 
@@ -23,6 +24,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
     /// passing directory arrays to AssetDatabase.FindAssets.
     /// </remarks>
     [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class SpriteSettingsApplierWindowTests : CommonTestBase
     {
         private const string Root = "Assets/Temp/SpriteSettingsApplierWindowTests";
@@ -48,7 +51,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
             EnsureFolder(dir);
             string texPath = (dir + "/sprite.png").SanitizePath();
             CreatePng(texPath, 8, 8, Color.white);
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             // Mark as sprite
             TextureImporter imp = AssetImporter.GetAtPath(texPath) as TextureImporter;
@@ -88,7 +91,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
                 CreatePng(textures[i], 4, 4, Color.white);
             }
 
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             // Mark all as sprites
             for (int i = 0; i < textures.Length; i++)
@@ -134,7 +137,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
         {
             string texPath = (Root + "/solo.png").SanitizePath();
             CreatePng(texPath, 8, 8, Color.white);
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             TextureImporter imp = AssetImporter.GetAtPath(texPath) as TextureImporter;
             Assert.IsTrue(imp != null, $"Expected importer at path '{texPath}' to not be null");
@@ -165,7 +168,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
             EnsureFolder(dir);
             string texPath = (dir + "/valid.png").SanitizePath();
             CreatePng(texPath, 8, 8, Color.white);
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             TextureImporter imp = AssetImporter.GetAtPath(texPath) as TextureImporter;
             Assert.IsTrue(imp != null, $"Expected importer at path '{texPath}' to not be null");
@@ -198,7 +201,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
             // Tests a directory that contains no textures
             string emptyDir = (Root + "/EmptyDir").SanitizePath();
             EnsureFolder(emptyDir);
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             SpriteSettingsApplierWindow window = Track(
                 ScriptableObject.CreateInstance<SpriteSettingsApplierWindow>()

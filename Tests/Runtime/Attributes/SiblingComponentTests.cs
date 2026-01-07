@@ -15,6 +15,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
     using WallstopStudios.UnityHelpers.Tests.Core.TestTypes;
 
     [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class SiblingComponentTests : CommonTestBase
     {
         [UnityTest]

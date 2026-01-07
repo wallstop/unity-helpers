@@ -19,6 +19,9 @@ Unity Helpers provides powerful grouping attributes that create boxed sections a
 
 ---
 
+<a id="wgroup--wgroupend"></a>
+<a id="wgroup-wgroupend"></a>
+
 ## WGroup & WGroupEnd
 
 Creates boxed inspector sections with optional collapsible headers and automatic field inclusion.

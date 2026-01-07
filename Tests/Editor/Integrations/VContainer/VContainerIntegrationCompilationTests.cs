@@ -8,6 +8,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.VContainer
     using NUnit.Framework;
     using WallstopStudios.UnityHelpers.Integrations.VContainer;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class VContainerIntegrationCompilationTests
     {
         [Test]

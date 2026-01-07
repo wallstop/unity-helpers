@@ -107,10 +107,10 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                     Action loader = GetOrCreateLoader(entry);
                     loader?.Invoke();
                 }
-                catch (Exception ex)
+                catch (Exception e)
                 {
                     Debug.LogError(
-                        $"SingletonAutoLoader: Failed to auto-load '{entry.typeName}'. {ex}"
+                        $"SingletonAutoLoader: Failed to auto-load '{entry.typeName}'. {e}"
                     );
                 }
             }
@@ -249,7 +249,10 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             try
             {
                 Type closed = openGenericBase.MakeGenericType(singletonType);
-                return closed.GetProperty("Instance", BindingFlags.Public | BindingFlags.Static);
+                return closed.GetProperty(
+                    nameof(RuntimeSingleton<CoroutineHandler>.Instance),
+                    BindingFlags.Public | BindingFlags.Static
+                );
             }
             catch
             {

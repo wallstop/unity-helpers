@@ -15,6 +15,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
     using WallstopStudios.UnityHelpers.Tests.Core;
 
     [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class EditorUiSuppressionTests : CommonTestBase
     {
         private const string TestRoot = "Assets/Temp/EditorUiSuppressionTests";

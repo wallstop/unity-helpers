@@ -17,6 +17,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomEditors
     using WallstopStudios.UnityHelpers.Tests.EditorFramework;
 
     [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class PersistentDirectoryGUITests : CommonTestBase
     {
         private const string TestToolName = "PersistentDirectoryGUITests";

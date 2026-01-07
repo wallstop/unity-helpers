@@ -14,6 +14,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Utils
     /// Tests for <see cref="WGroupAnimationState"/> to validate animation state management,
     /// caching behavior, and integration with settings.
     /// </summary>
+    [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class WGroupAnimationStateTests
     {
         private bool _originalTweenEnabled;

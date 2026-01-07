@@ -52,7 +52,7 @@ namespace WallstopStudios.UnityHelpers.Utils
         [Tooltip(
             "Type name. Supports: List<int>, List<>, Dictionary<string, int>, Dictionary<,>, List<List<int>>, System.Collections.Generic.List`1"
         )]
-        private string _typeName = string.Empty;
+        internal string _typeName = string.Empty;
 
         /// <summary>
         /// Whether intelligent pool purging is enabled for this type.
@@ -60,7 +60,7 @@ namespace WallstopStudios.UnityHelpers.Utils
         [FormerlySerializedAs("enabled")]
         [SerializeField]
         [Tooltip("Whether intelligent pool purging is enabled for this type.")]
-        private bool _enabled = true;
+        internal bool _enabled = true;
 
         /// <summary>
         /// Idle timeout in seconds before items become eligible for purging.
@@ -72,7 +72,7 @@ namespace WallstopStudios.UnityHelpers.Utils
             "Idle timeout in seconds before items become eligible for purging. 0 disables idle-based purging."
         )]
         [Min(0f)]
-        private float _idleTimeoutSeconds = PoolPurgeSettings.DefaultIdleTimeoutSeconds;
+        internal float _idleTimeoutSeconds = PoolPurgeSettings.DefaultIdleTimeoutSeconds;
 
         /// <summary>
         /// Minimum number of items to always retain in the pool during purge operations.
@@ -84,7 +84,7 @@ namespace WallstopStudios.UnityHelpers.Utils
             "Minimum number of items to always retain during purge operations. Absolute floor."
         )]
         [Min(0)]
-        private int _minRetainCount = PoolPurgeSettings.DefaultMinRetainCount;
+        internal int _minRetainCount = PoolPurgeSettings.DefaultMinRetainCount;
 
         /// <summary>
         /// Warm retain count for active pools.
@@ -96,7 +96,7 @@ namespace WallstopStudios.UnityHelpers.Utils
             "Warm retain count for active pools. Active pools keep this many items warm to avoid cold-start allocations."
         )]
         [Min(0)]
-        private int _warmRetainCount = PoolPurgeSettings.DefaultWarmRetainCount;
+        internal int _warmRetainCount = PoolPurgeSettings.DefaultWarmRetainCount;
 
         /// <summary>
         /// Maximum pool size. Items exceeding this limit will be purged.
@@ -106,7 +106,7 @@ namespace WallstopStudios.UnityHelpers.Utils
         [SerializeField]
         [Tooltip("Maximum pool size. 0 means unbounded.")]
         [Min(0)]
-        private int _maxPoolSize;
+        internal int _maxPoolSize;
 
         /// <summary>
         /// Buffer multiplier for comfortable pool size calculation.
@@ -118,7 +118,7 @@ namespace WallstopStudios.UnityHelpers.Utils
             "Buffer multiplier for comfortable pool size calculation. Higher values retain more items."
         )]
         [Min(1f)]
-        private float _bufferMultiplier = PoolPurgeSettings.DefaultBufferMultiplier;
+        internal float _bufferMultiplier = PoolPurgeSettings.DefaultBufferMultiplier;
 
         /// <summary>
         /// Rolling window duration in seconds for high water mark tracking.
@@ -127,7 +127,7 @@ namespace WallstopStudios.UnityHelpers.Utils
         [SerializeField]
         [Tooltip("Rolling window duration in seconds for high water mark tracking.")]
         [Min(1f)]
-        private float _rollingWindowSeconds = PoolPurgeSettings.DefaultRollingWindowSeconds;
+        internal float _rollingWindowSeconds = PoolPurgeSettings.DefaultRollingWindowSeconds;
 
         /// <summary>
         /// Hysteresis duration in seconds. Purging is suppressed for this duration after a usage spike.
@@ -136,7 +136,7 @@ namespace WallstopStudios.UnityHelpers.Utils
         [SerializeField]
         [Tooltip("Hysteresis duration in seconds. Purging is suppressed after a usage spike.")]
         [Min(0f)]
-        private float _hysteresisSeconds = PoolPurgeSettings.DefaultHysteresisSeconds;
+        internal float _hysteresisSeconds = PoolPurgeSettings.DefaultHysteresisSeconds;
 
         /// <summary>
         /// Spike threshold multiplier. A spike is detected when concurrent rentals exceed
@@ -148,7 +148,8 @@ namespace WallstopStudios.UnityHelpers.Utils
             "Spike threshold multiplier. A spike is detected when concurrent rentals exceed the rolling average by this factor."
         )]
         [Min(1f)]
-        private float _spikeThresholdMultiplier = PoolPurgeSettings.DefaultSpikeThresholdMultiplier;
+        internal float _spikeThresholdMultiplier =
+            PoolPurgeSettings.DefaultSpikeThresholdMultiplier;
 
         /// <summary>
         /// Gets or sets the full type name including assembly.
@@ -421,6 +422,7 @@ namespace WallstopStudios.UnityHelpers.Utils
                 RollingWindowSeconds = _rollingWindowSeconds,
                 HysteresisSeconds = _hysteresisSeconds,
                 SpikeThresholdMultiplier = _spikeThresholdMultiplier,
+                MaxPoolSize = _maxPoolSize,
             };
         }
 

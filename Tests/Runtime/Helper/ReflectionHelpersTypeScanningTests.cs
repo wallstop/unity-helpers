@@ -13,6 +13,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
     using WallstopStudios.UnityHelpers.Tests.Core.TestTypes;
 
     [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class ReflectionHelpersTypeScanningTests : CommonTestBase
     {
         [Test]
@@ -55,7 +56,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         public void GetTypesFromAssemblyNullReturnsEmpty()
         {
             Type[] types = ReflectionHelpers.GetTypesFromAssembly(null);
-            Assert.IsNotNull(types);
+            Assert.IsNotNull(
+                types,
+                "GetTypesFromAssembly should return non-null array for null input"
+            );
             Assert.AreEqual(0, types.Length, "Expected empty array for null assembly.");
         }
     }

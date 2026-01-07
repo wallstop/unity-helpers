@@ -41,6 +41,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
     public sealed class RuntimeScriptableObjectTarget : ScriptableObject { }
 
     [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class ReflectionHelpersMemberLookupTests : CommonTestBase
     {
         [Test]

@@ -18,6 +18,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
     using WallstopStudios.UnityHelpers.Core.Extension;
     using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Core.Serialization;
+    using WallstopStudios.UnityHelpers.Editor.Utils;
     using WallstopStudios.UnityHelpers.Utils;
     using Object = UnityEngine.Object;
 
@@ -61,7 +62,11 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
         /// Controls whether diagnostic logging is enabled.
         /// Set to true for debugging sprite regeneration and cache issues.
         /// </summary>
-        private const bool DiagnosticsEnabled = false;
+        /// <remarks>
+        /// Using static readonly instead of const to avoid CS0162 unreachable code warnings
+        /// when the value is false, while still allowing JIT optimization.
+        /// </remarks>
+        private static readonly bool DiagnosticsEnabled = false;
 
         /// <summary>
         /// Minimum score threshold for boundary transparency detection.
@@ -648,9 +653,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             {
                 if (DiagnosticsEnabled)
                 {
-                    Debug.Log(
-                        "[SpriteSheetExtractor] OnEditorUpdate: _regenerationInProgress=true, calling Repaint()"
-                    );
+                    this.Log($"OnEditorUpdate: _regenerationInProgress=true, calling Repaint()");
                 }
                 Repaint();
             }
@@ -1127,8 +1130,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             {
                 if (DiagnosticsEnabled)
                 {
-                    Debug.Log(
-                        $"[SpriteSheetExtractor] DrawAutoDetectionAlgorithmUI: settings changed (algorithmChanged={algorithmChanged}, expectedCountChanged={expectedCountChanged}, snapChanged={snapChanged}), calling RegenerateEntriesUsingGlobalSettings"
+                    this.Log(
+                        $"DrawAutoDetectionAlgorithmUI: settings changed (algorithmChanged={algorithmChanged}, expectedCountChanged={expectedCountChanged}, snapChanged={snapChanged}), calling RegenerateEntriesUsingGlobalSettings"
                     );
                 }
                 RegenerateEntriesUsingGlobalSettings();
@@ -1154,9 +1157,9 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 _ = new Regex(_spriteNameRegex, RegexOptions.CultureInvariant);
                 _regexError = null;
             }
-            catch (ArgumentException ex)
+            catch (ArgumentException e)
             {
-                _regexError = ex.Message;
+                _regexError = e.Message;
             }
         }
 
@@ -2176,8 +2179,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             {
                 if (DiagnosticsEnabled)
                 {
-                    Debug.Log(
-                        "[SpriteSheetExtractor] SchedulePreviewRegenerationForEntry: entry is null, returning early"
+                    this.Log(
+                        $"SchedulePreviewRegenerationForEntry: entry is null, returning early"
                     );
                 }
                 return;
@@ -2185,8 +2188,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
 
             if (DiagnosticsEnabled)
             {
-                Debug.Log(
-                    $"[SpriteSheetExtractor] SchedulePreviewRegenerationForEntry: START for '{entry._assetPath}', setting _regenerationInProgress=true"
+                this.Log(
+                    $"SchedulePreviewRegenerationForEntry: START for '{entry._assetPath}', setting _regenerationInProgress=true"
                 );
             }
             _regenerationInProgress = true;
@@ -2303,8 +2306,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 entry._lastAccessTime = DateTime.UtcNow.Ticks;
                 if (DiagnosticsEnabled)
                 {
-                    Debug.Log(
-                        $"[SpriteSheetExtractor] SchedulePreviewRegenerationForEntry: updated cache for '{entry._assetPath}', newCacheKey={entry._lastCacheKey}"
+                    this.Log(
+                        $"SchedulePreviewRegenerationForEntry: updated cache for '{entry._assetPath}', newCacheKey={entry._lastCacheKey}"
                     );
                 }
 
@@ -2347,8 +2350,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 }
                 if (DiagnosticsEnabled)
                 {
-                    Debug.Log(
-                        "[SpriteSheetExtractor] SchedulePreviewRegenerationForEntry: END, setting _regenerationInProgress=false"
+                    this.Log(
+                        $"SchedulePreviewRegenerationForEntry: END, setting _regenerationInProgress=false"
                     );
                 }
                 _regenerationInProgress = false;
@@ -2430,18 +2433,14 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             {
                 if (DiagnosticsEnabled)
                 {
-                    Debug.Log(
-                        "[SpriteSheetExtractor] RegenerateSpritesForEntry: entry is null, returning early"
-                    );
+                    this.Log($"RegenerateSpritesForEntry: entry is null, returning early");
                 }
                 return;
             }
 
             if (DiagnosticsEnabled)
             {
-                Debug.Log(
-                    $"[SpriteSheetExtractor] RegenerateSpritesForEntry: START for '{entry._assetPath}'"
-                );
+                this.Log($"RegenerateSpritesForEntry: START for '{entry._assetPath}'");
             }
             RepopulateSpritesForEntry(entry);
             entry._needsRegeneration = false;
@@ -2449,8 +2448,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             entry._lastAccessTime = DateTime.UtcNow.Ticks;
             if (DiagnosticsEnabled)
             {
-                Debug.Log(
-                    $"[SpriteSheetExtractor] RegenerateSpritesForEntry: END for '{entry._assetPath}', spriteCount={entry._sprites?.Count ?? 0}, newCacheKey={entry._lastCacheKey}"
+                this.Log(
+                    $"RegenerateSpritesForEntry: END for '{entry._assetPath}', spriteCount={entry._sprites?.Count ?? 0}, newCacheKey={entry._lastCacheKey}"
                 );
             }
             Repaint();
@@ -2470,9 +2469,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
 
             if (DiagnosticsEnabled)
             {
-                Debug.Log(
-                    $"[SpriteSheetExtractor] InvalidateEntry: marking '{entry._assetPath}' for regeneration"
-                );
+                this.Log($"InvalidateEntry: marking '{entry._assetPath}' for regeneration");
             }
 
             entry._needsRegeneration = true;
@@ -2496,8 +2493,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             {
                 if (DiagnosticsEnabled)
                 {
-                    Debug.Log(
-                        $"[SpriteSheetExtractor] IsEntryStale: '{entry._assetPath}' is stale because _needsRegeneration=true"
+                    this.Log(
+                        $"IsEntryStale: '{entry._assetPath}' is stale because _needsRegeneration=true"
                     );
                 }
                 return true;
@@ -2507,8 +2504,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             bool isStale = entry._lastCacheKey != currentCacheKey;
             if (isStale && DiagnosticsEnabled)
             {
-                Debug.Log(
-                    $"[SpriteSheetExtractor] IsEntryStale: '{entry._assetPath}' is stale because cacheKey mismatch (stored={entry._lastCacheKey}, current={currentCacheKey})"
+                this.Log(
+                    $"IsEntryStale: '{entry._assetPath}' is stale because cacheKey mismatch (stored={entry._lastCacheKey}, current={currentCacheKey})"
                 );
             }
             return isStale;
@@ -2531,8 +2528,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             {
                 if (DiagnosticsEnabled)
                 {
-                    Debug.Log(
-                        $"[SpriteSheetExtractor] CheckAndRegenerateIfNeeded: regenerating '{entry._assetPath}' (needsRegeneration={entry._needsRegeneration}, cacheKeyMismatch={entry._lastCacheKey != currentCacheKey})"
+                    this.Log(
+                        $"CheckAndRegenerateIfNeeded: regenerating '{entry._assetPath}' (needsRegeneration={entry._needsRegeneration}, cacheKeyMismatch={entry._lastCacheKey != currentCacheKey})"
                     );
                 }
                 RegenerateSpritesForEntry(entry);
@@ -2575,14 +2572,14 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
         {
             if (DiagnosticsEnabled)
             {
-                Debug.Log("[SpriteSheetExtractor] RegenerateEntriesUsingGlobalSettings: START");
+                this.Log($"RegenerateEntriesUsingGlobalSettings: START");
             }
             if (_discoveredSheets == null)
             {
                 if (DiagnosticsEnabled)
                 {
-                    Debug.Log(
-                        "[SpriteSheetExtractor] RegenerateEntriesUsingGlobalSettings: _discoveredSheets is null, returning early"
+                    this.Log(
+                        $"RegenerateEntriesUsingGlobalSettings: _discoveredSheets is null, returning early"
                     );
                 }
                 return;
@@ -2596,8 +2593,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 {
                     if (DiagnosticsEnabled)
                     {
-                        Debug.Log(
-                            $"[SpriteSheetExtractor] RegenerateEntriesUsingGlobalSettings: regenerating entry '{entry._assetPath}'"
+                        this.Log(
+                            $"RegenerateEntriesUsingGlobalSettings: regenerating entry '{entry._assetPath}'"
                         );
                     }
                     regeneratedCount++;
@@ -2609,8 +2606,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             }
             if (DiagnosticsEnabled)
             {
-                Debug.Log(
-                    $"[SpriteSheetExtractor] RegenerateEntriesUsingGlobalSettings: END, regenerated {regeneratedCount} entries"
+                this.Log(
+                    $"RegenerateEntriesUsingGlobalSettings: END, regenerated {regeneratedCount} entries"
                 );
             }
         }
@@ -3220,8 +3217,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
 
                     if (DiagnosticsEnabled && entry != null)
                     {
-                        Debug.Log(
-                            $"[SpriteSheetExtractor] Algorithm detection for '{Path.GetFileName(entry._assetPath)}': algorithm={algorithm}, expectedSpriteCount={expectedSpriteCount}, textureSize={textureWidth}x{textureHeight}, isValid={result.IsValid}, cellSize={result.CellWidth}x{result.CellHeight}, confidence={result.Confidence:P0}"
+                        this.Log(
+                            $"Algorithm detection for '{Path.GetFileName(entry._assetPath)}': algorithm={algorithm}, expectedSpriteCount={expectedSpriteCount}, textureSize={textureWidth}x{textureHeight}, isValid={result.IsValid}, cellSize={result.CellWidth}x{result.CellHeight}, confidence={result.Confidence:P0}"
                         );
                     }
 
@@ -3265,8 +3262,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
 
                             if (DiagnosticsEnabled && entry != null)
                             {
-                                Debug.Log(
-                                    $"[SpriteSheetExtractor] VerifyGridDoesNotCutSprites FAILED for '{Path.GetFileName(entry._assetPath)}': original cellSize={cellWidth}x{cellHeight}, region detection returned {regionCellWidth}x{regionCellHeight}"
+                                this.Log(
+                                    $"VerifyGridDoesNotCutSprites FAILED for '{Path.GetFileName(entry._assetPath)}': original cellSize={cellWidth}x{cellHeight}, region detection returned {regionCellWidth}x{regionCellHeight}"
                                 );
                             }
 
@@ -3351,8 +3348,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
 
                 if (DiagnosticsEnabled && entry != null)
                 {
-                    Debug.Log(
-                        $"[SpriteSheetExtractor] CalculateGridDimensions FINAL for '{Path.GetFileName(entry._assetPath)}': columns={columns}, rows={rows}, cellWidth={cellWidth}, cellHeight={cellHeight}, detectedFromAlgorithm={detectedFromAlgorithm}"
+                    this.Log(
+                        $"CalculateGridDimensions FINAL for '{Path.GetFileName(entry._assetPath)}': columns={columns}, rows={rows}, cellWidth={cellWidth}, cellHeight={cellHeight}, detectedFromAlgorithm={detectedFromAlgorithm}"
                     );
                 }
             }
@@ -4791,9 +4788,9 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 AssetDatabase.Refresh();
                 return true;
             }
-            catch (Exception ex)
+            catch (Exception e)
             {
-                this.LogError($"Failed to save config for '{entry._assetPath}'.", ex);
+                this.LogError($"Failed to save config for '{entry._assetPath}'", e);
                 return false;
             }
         }
@@ -4864,9 +4861,9 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
 
                 return true;
             }
-            catch (Exception ex)
+            catch (Exception e)
             {
-                this.LogError($"Failed to load config for '{entry._assetPath}'.", ex);
+                this.LogError($"Failed to load config for '{entry._assetPath}'", e);
                 entry._configLoaded = false;
                 entry._configStale = false;
                 entry._loadedConfig = null;
@@ -4951,8 +4948,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             {
                 if (DiagnosticsEnabled)
                 {
-                    Debug.Log(
-                        $"[SpriteSheetExtractor] DrawSpriteBoundsOverlay: no sprites for '{entry._assetPath}', sprites={entry._sprites?.Count ?? 0}"
+                    this.Log(
+                        $"DrawSpriteBoundsOverlay: no sprites for '{entry._assetPath}', sprites={entry._sprites?.Count ?? 0}"
                     );
                 }
                 return;
@@ -4961,8 +4958,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             if (DiagnosticsEnabled && entry._sprites.Count > 0)
             {
                 SpriteEntryData firstSprite = entry._sprites[0];
-                Debug.Log(
-                    $"[SpriteSheetExtractor] DrawSpriteBoundsOverlay: drawing {entry._sprites.Count} sprites for '{Path.GetFileName(entry._assetPath)}', firstRect={firstSprite._rect}, algorithm={entry._lastAlgorithmDisplayText}"
+                this.Log(
+                    $"DrawSpriteBoundsOverlay: drawing {entry._sprites.Count} sprites for '{Path.GetFileName(entry._assetPath)}', firstRect={firstSprite._rect}, algorithm={entry._lastAlgorithmDisplayText}"
                 );
             }
 
@@ -5082,8 +5079,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                     // Don't draw anything rather than show inaccurate heuristic-based overlay
                     if (DiagnosticsEnabled)
                     {
-                        Debug.Log(
-                            $"[SpriteSheetExtractor] DrawGridOverlayFromSettings: No cached algorithm result and texture not readable for '{entry._assetPath}'"
+                        this.Log(
+                            $"DrawGridOverlayFromSettings: No cached algorithm result and texture not readable for '{entry._assetPath}'"
                         );
                     }
                     return;
@@ -5745,10 +5742,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                         RegexOptions.Compiled | RegexOptions.CultureInvariant
                     );
                 }
-                catch (ArgumentException ex)
+                catch (ArgumentException e)
                 {
-                    this.LogWarn($"Invalid regex '{_spriteNameRegex}': {ex.Message}");
-                    _regexError = ex.Message;
+                    this.LogWarn($"Invalid regex '{_spriteNameRegex}'", e);
+                    _regexError = e.Message;
                     Repaint();
                     return;
                 }
@@ -5841,16 +5838,14 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
 
             if (DiagnosticsEnabled)
             {
-                Debug.Log(
-                    $"[SpriteSheetExtractor] DiscoverSpriteSheets: About to call GenerateAllPreviewTexturesInBatch with {_discoveredSheets?.Count ?? 0} entries"
+                this.Log(
+                    $"DiscoverSpriteSheets: About to call GenerateAllPreviewTexturesInBatch with {_discoveredSheets?.Count ?? 0} entries"
                 );
             }
             GenerateAllPreviewTexturesInBatch(_discoveredSheets);
             if (DiagnosticsEnabled)
             {
-                Debug.Log(
-                    "[SpriteSheetExtractor] DiscoverSpriteSheets: GenerateAllPreviewTexturesInBatch completed"
-                );
+                this.Log($"DiscoverSpriteSheets: GenerateAllPreviewTexturesInBatch completed");
             }
 
             this.Log($"Discovered {_discoveredSheets.Count} sprite sheet(s).");
@@ -5898,8 +5893,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             entry._lastAccessTime = DateTime.UtcNow.Ticks;
             if (DiagnosticsEnabled)
             {
-                Debug.Log(
-                    $"[SpriteSheetExtractor] CreateSpriteSheetEntry: created entry for '{assetPath}', spriteCount={entry._sprites.Count}, initialCacheKey={entry._lastCacheKey}"
+                this.Log(
+                    $"CreateSpriteSheetEntry: created entry for '{assetPath}', spriteCount={entry._sprites.Count}, initialCacheKey={entry._lastCacheKey}"
                 );
             }
 
@@ -5981,9 +5976,9 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                     }
                 }
             }
-            catch (Exception ex)
+            catch (Exception e)
             {
-                this.LogWarn($"Failed to generate preview textures for {entry._assetPath}.", ex);
+                this.LogWarn($"Failed to generate preview textures for {entry._assetPath}", e);
             }
             finally
             {
@@ -6002,8 +5997,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
         /// <param name="entries">The list of sprite sheet entries to generate previews for.</param>
         /// <remarks>
         /// This method batches texture readability changes to minimize reimport operations.
-        /// It uses <see cref="AssetDatabase.StartAssetEditing"/> and <see cref="AssetDatabase.StopAssetEditing"/>
-        /// to batch all import changes together, improving performance when processing multiple textures.
+        /// It uses <see cref="AssetDatabaseBatchHelper.BeginBatch"/> to batch all import changes together,
+        /// improving performance when processing multiple textures.
         /// </remarks>
         internal void GenerateAllPreviewTexturesInBatch(List<SpriteSheetEntry> entries)
         {
@@ -6011,8 +6006,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             {
                 if (DiagnosticsEnabled)
                 {
-                    Debug.Log(
-                        "[SpriteSheetExtractor] GenerateAllPreviewTexturesInBatch: entries null or empty, returning early"
+                    this.Log(
+                        $"GenerateAllPreviewTexturesInBatch: entries null or empty, returning early"
                     );
                 }
                 return;
@@ -6020,9 +6015,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
 
             if (DiagnosticsEnabled)
             {
-                Debug.Log(
-                    $"[SpriteSheetExtractor] GenerateAllPreviewTexturesInBatch: START with {entries.Count} entries"
-                );
+                this.Log($"GenerateAllPreviewTexturesInBatch: START with {entries.Count} entries");
             }
             WallstopGenericPool<Dictionary<string, bool>> originalReadablePool = DictionaryBuffer<
                 string,
@@ -6058,8 +6051,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
 
             if (needsReadable.Count > 0)
             {
-                AssetDatabase.StartAssetEditing();
-                try
+                using (AssetDatabaseBatchHelper.BeginBatch())
                 {
                     for (int i = 0; i < needsReadable.Count; ++i)
                     {
@@ -6068,12 +6060,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                         entry._importer.SaveAndReimport();
                     }
                 }
-                finally
-                {
-                    AssetDatabase.StopAssetEditing();
-                    AssetDatabase.SaveAssets();
-                    AssetDatabase.Refresh();
-                }
+
+                AssetDatabase.SaveAssets();
 
                 for (int i = 0; i < needsReadable.Count; ++i)
                 {
@@ -6135,8 +6123,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                         sprite._previewTexture = preview;
                         if (DiagnosticsEnabled)
                         {
-                            Debug.Log(
-                                $"[SpriteSheetExtractor] GenerateAllPreviewTexturesInBatch: Generated preview for sprite '{sprite._originalName}' in '{entry._assetPath}', preview={preview != null}"
+                            this.Log(
+                                $"GenerateAllPreviewTexturesInBatch: Generated preview for sprite '{sprite._originalName}' in '{entry._assetPath}', preview={preview != null}"
                             );
                         }
 
@@ -6147,12 +6135,9 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                         }
                     }
                 }
-                catch (Exception ex)
+                catch (Exception e)
                 {
-                    this.LogWarn(
-                        $"Failed to generate preview textures for {entry._assetPath}.",
-                        ex
-                    );
+                    this.LogWarn($"Failed to generate preview textures for {entry._assetPath}", e);
                 }
             }
 
@@ -6178,8 +6163,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
 
             if (needsRestore.Count > 0)
             {
-                AssetDatabase.StartAssetEditing();
-                try
+                using (AssetDatabaseBatchHelper.BeginBatch())
                 {
                     for (int i = 0; i < needsRestore.Count; ++i)
                     {
@@ -6188,12 +6172,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                         entry._importer.SaveAndReimport();
                     }
                 }
-                finally
-                {
-                    AssetDatabase.StopAssetEditing();
-                    AssetDatabase.SaveAssets();
-                    AssetDatabase.Refresh();
-                }
+
+                AssetDatabase.SaveAssets();
 
                 for (int i = 0; i < needsRestore.Count; ++i)
                 {
@@ -6214,7 +6194,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             }
             if (DiagnosticsEnabled)
             {
-                Debug.Log("[SpriteSheetExtractor] GenerateAllPreviewTexturesInBatch: END");
+                this.Log($"GenerateAllPreviewTexturesInBatch: END");
             }
         }
 
@@ -6351,7 +6331,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
         {
             if (DiagnosticsEnabled)
             {
-                Debug.Log("[SpriteSheetExtractor] RegenerateAllPreviewTextures: START");
+                this.Log($"RegenerateAllPreviewTextures: START");
             }
             _previewRegenerationScheduled = false;
 
@@ -6359,8 +6339,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             {
                 if (DiagnosticsEnabled)
                 {
-                    Debug.Log(
-                        "[SpriteSheetExtractor] RegenerateAllPreviewTextures: no sheets discovered, returning early"
+                    this.Log(
+                        $"RegenerateAllPreviewTextures: no sheets discovered, returning early"
                     );
                 }
                 return;
@@ -6368,8 +6348,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
 
             if (DiagnosticsEnabled)
             {
-                Debug.Log(
-                    $"[SpriteSheetExtractor] RegenerateAllPreviewTextures: setting _regenerationInProgress=true, sheetCount={_discoveredSheets.Count}"
+                this.Log(
+                    $"RegenerateAllPreviewTextures: setting _regenerationInProgress=true, sheetCount={_discoveredSheets.Count}"
                 );
             }
             _regenerationInProgress = true;
@@ -6421,8 +6401,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
 
             if (DiagnosticsEnabled)
             {
-                Debug.Log(
-                    "[SpriteSheetExtractor] RegenerateAllPreviewTextures: END, setting _regenerationInProgress=false"
+                this.Log(
+                    $"RegenerateAllPreviewTextures: END, setting _regenerationInProgress=false"
                 );
             }
             _regenerationInProgress = false;
@@ -6441,7 +6421,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
         {
             if (DiagnosticsEnabled)
             {
-                Debug.Log("[SpriteSheetExtractor] RegeneratePreviewTexturesOnly: START");
+                this.Log($"RegeneratePreviewTexturesOnly: START");
             }
             _previewRegenerationScheduled = false;
 
@@ -6449,8 +6429,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             {
                 if (DiagnosticsEnabled)
                 {
-                    Debug.Log(
-                        "[SpriteSheetExtractor] RegeneratePreviewTexturesOnly: no sheets discovered, returning early"
+                    this.Log(
+                        $"RegeneratePreviewTexturesOnly: no sheets discovered, returning early"
                     );
                 }
                 return;
@@ -6458,8 +6438,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
 
             if (DiagnosticsEnabled)
             {
-                Debug.Log(
-                    $"[SpriteSheetExtractor] RegeneratePreviewTexturesOnly: setting _regenerationInProgress=true, sheetCount={_discoveredSheets.Count}"
+                this.Log(
+                    $"RegeneratePreviewTexturesOnly: setting _regenerationInProgress=true, sheetCount={_discoveredSheets.Count}"
                 );
             }
             _regenerationInProgress = true;
@@ -6470,8 +6450,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
 
             if (DiagnosticsEnabled)
             {
-                Debug.Log(
-                    "[SpriteSheetExtractor] RegeneratePreviewTexturesOnly: END, setting _regenerationInProgress=false"
+                this.Log(
+                    $"RegeneratePreviewTexturesOnly: END, setting _regenerationInProgress=false"
                 );
             }
             _regenerationInProgress = false;
@@ -6839,8 +6819,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
 
             if (DiagnosticsEnabled && entry != null)
             {
-                Debug.Log(
-                    $"[SpriteSheetExtractor] PopulateSpritesFromGridIntoList for '{Path.GetFileName(entry._assetPath)}': columns={columns}, rows={rows}, cellWidth={cellWidth}, cellHeight={cellHeight}, totalSprites={columns * rows}"
+                this.Log(
+                    $"PopulateSpritesFromGridIntoList for '{Path.GetFileName(entry._assetPath)}': columns={columns}, rows={rows}, cellWidth={cellWidth}, cellHeight={cellHeight}, totalSprites={columns * rows}"
                 );
             }
 
@@ -7228,8 +7208,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
 
             try
             {
-                AssetDatabase.StartAssetEditing();
-                try
+                using (AssetDatabaseBatchHelper.BeginBatch())
                 {
                     for (int i = 0; i < _discoveredSheets.Count && !canceled; ++i)
                     {
@@ -7263,12 +7242,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                         }
                     }
                 }
-                finally
-                {
-                    AssetDatabase.StopAssetEditing();
-                    AssetDatabase.SaveAssets();
-                    AssetDatabase.Refresh();
-                }
+
+                AssetDatabase.SaveAssets();
 
                 if (!canceled)
                 {
@@ -7329,8 +7304,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                         keys.Add(kvp.Key);
                     }
 
-                    AssetDatabase.StartAssetEditing();
-                    try
+                    using (AssetDatabaseBatchHelper.BeginBatch())
                     {
                         for (int keyIndex = 0; keyIndex < keys.Count; ++keyIndex)
                         {
@@ -7352,12 +7326,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                             }
                         }
                     }
-                    finally
-                    {
-                        AssetDatabase.StopAssetEditing();
-                        AssetDatabase.SaveAssets();
-                        AssetDatabase.Refresh();
-                    }
+
+                    AssetDatabase.SaveAssets();
                 }
 
                 if (canceled)
@@ -7372,9 +7342,9 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                     );
                 }
             }
-            catch (Exception ex)
+            catch (Exception e)
             {
-                this.LogError($"Error during extraction.", ex);
+                this.LogError($"Error during extraction", e);
             }
             finally
             {
@@ -7492,9 +7462,9 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
 
                 return true;
             }
-            catch (Exception ex)
+            catch (Exception e)
             {
-                this.LogError($"Failed to extract sprite '{sprite._originalName}'.", ex);
+                this.LogError($"Failed to extract sprite '{sprite._originalName}'", e);
                 ++_lastErrorCount;
                 return false;
             }
@@ -7540,9 +7510,9 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                     newImporter.SetPlatformTextureSettings(srcDefault);
                 }
             }
-            catch (Exception ex)
+            catch (Exception e)
             {
-                this.LogWarn($"Failed to copy platform settings for '{outputPath}'.", ex);
+                this.LogWarn($"Failed to copy platform settings for '{outputPath}'", e);
             }
 
             newImporter.SaveAndReimport();
@@ -7644,8 +7614,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 };
                 int modifiedAssets = 0;
 
-                AssetDatabase.StartAssetEditing();
-                try
+                using (AssetDatabaseBatchHelper.BeginBatch())
                 {
                     for (int i = 0; i < allAssets.Length; ++i)
                     {
@@ -7730,21 +7699,17 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                         }
                     }
                 }
-                finally
-                {
-                    AssetDatabase.StopAssetEditing();
-                    AssetDatabase.SaveAssets();
-                    AssetDatabase.Refresh();
-                    Utils.EditorUi.ClearProgress();
-                }
+
+                AssetDatabase.SaveAssets();
+                Utils.EditorUi.ClearProgress();
 
                 this.Log(
                     $"Reference replacement complete. Modified assets: {modifiedAssets}. Mapped pairs: {mapping.Count}."
                 );
             }
-            catch (Exception ex)
+            catch (Exception e)
             {
-                this.LogError($"Error during reference replacement.", ex);
+                this.LogError($"Error during reference replacement", e);
             }
         }
     }

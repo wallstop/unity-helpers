@@ -22,6 +22,9 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
     /// Comprehensive tests for ScriptableSingleton detection and serialization behavior
     /// in SerializableDictionary and SerializableSet property drawers.
     /// </summary>
+    [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class ScriptableSingletonSerializationTests : CommonTestBase
     {
         [Test]

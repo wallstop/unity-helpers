@@ -66,10 +66,10 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                         Directory.CreateDirectory(absoluteDirectory);
                     }
                 }
-                catch (Exception ex)
+                catch (Exception e)
                 {
                     Debug.LogWarning(
-                        $"DirectoryHelper: Failed to create directory on disk '{absoluteDirectory}': {ex.Message}"
+                        $"DirectoryHelper: Failed to create directory on disk '{absoluteDirectory}': {e.Message}"
                     );
                 }
             }

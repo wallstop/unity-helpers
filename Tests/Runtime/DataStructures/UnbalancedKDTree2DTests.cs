@@ -11,6 +11,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
     using WallstopStudios.UnityHelpers.Core.DataStructure;
     using WallstopStudios.UnityHelpers.Core.Random;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class UnbalancedKdTree2DTests : SpatialTree2DTests<KdTree2D<Vector2>>
     {
         private IRandom Random => PRNG.Instance;
@@ -44,7 +46,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         {
             List<Vector2> points = new();
             KdTree2D<Vector2> tree = CreateTree(points);
-            Assert.IsNotNull(tree);
+            Assert.IsNotNull(tree, "KdTree should be created successfully for empty collection");
 
             List<Vector2> results = new();
             tree.GetElementsInRange(Vector2.zero, 10000f, results);
@@ -58,7 +60,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             List<Vector2> points = new() { point };
             KdTree2D<Vector2> tree = CreateTree(points);
 
-            Assert.IsNotNull(tree);
+            Assert.IsNotNull(tree, "KdTree should be created successfully for single element");
 
             List<Vector2> results = new();
             tree.GetElementsInRange(point, 10000f, results);

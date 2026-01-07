@@ -8,6 +8,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.Reflex
     using NUnit.Framework;
     using WallstopStudios.UnityHelpers.Integrations.Reflex;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class ReflexIntegrationCompilationTests
     {
         [Test]

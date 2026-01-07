@@ -23,6 +23,8 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
     /// 3. Foldout states correctly affect height calculations
     /// </summary>
     [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class SourceFolderEntryDrawerTests : CommonTestBase
     {
         private const string TestRoot = "Assets/Temp/SourceFolderEntryDrawerTests";

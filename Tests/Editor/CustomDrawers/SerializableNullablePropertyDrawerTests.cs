@@ -11,6 +11,8 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
     using WallstopStudios.UnityHelpers.Tests.Editor.TestTypes;
 
     [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class SerializableNullablePropertyDrawerTests : CommonTestBase
     {
         [Test]

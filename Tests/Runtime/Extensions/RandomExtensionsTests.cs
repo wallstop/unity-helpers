@@ -12,6 +12,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
     using WallstopStudios.UnityHelpers.Core.Random;
     using WallstopStudios.UnityHelpers.Tests.Core;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class RandomExtensionsTests : CommonTestBase
     {
         private static readonly SystemRandom DeterministicRandom = new(1234);

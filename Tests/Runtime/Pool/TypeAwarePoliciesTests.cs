@@ -15,6 +15,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
     /// Verifies that common types receive sensible built-in defaults that can be overridden.
     /// </summary>
     [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class TypeAwarePoliciesTests
     {
         [SetUp]

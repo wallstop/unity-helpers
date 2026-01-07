@@ -9,6 +9,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Random
     using NUnit.Framework;
     using WallstopStudios.UnityHelpers.Core.Random;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class AbstractRandomEdgeCaseTests
     {
         private static readonly Guid DeterministicGuid = Guid.Parse(
@@ -144,7 +146,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Random
             IllusionFlow flow = new(DeterministicGuid, extraSeed);
 
             RandomState state = flow.InternalState;
-            Assert.IsNotNull(state.PayloadBytes);
+            Assert.IsNotNull(
+                state.PayloadBytes,
+                "PayloadBytes should not be null for IllusionFlow state"
+            );
             Assert.GreaterOrEqual(state.PayloadBytes.Count, sizeof(uint));
 
             Span<byte> buffer = stackalloc byte[sizeof(uint)];

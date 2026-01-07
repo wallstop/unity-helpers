@@ -11,8 +11,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
     using UnityEditor;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Editor.Sprites;
+    using WallstopStudios.UnityHelpers.Editor.Utils;
     using WallstopStudios.UnityHelpers.Tests.Core;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class SpriteSettingsApplierAdditionalTests : CommonTestBase
     {
         private const string TestFolder = "Assets/TempSpriteApplierAdditional";
@@ -49,7 +53,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             {
                 AssetDatabase.DeleteAsset(TestFolder);
             }
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
         }
 
         private string CreatePng(string name, bool asSprite)

@@ -12,6 +12,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
     using WallstopStudios.UnityHelpers.Core.Attributes;
 
     [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class DropDownAttributeTests
     {
         [TearDown]

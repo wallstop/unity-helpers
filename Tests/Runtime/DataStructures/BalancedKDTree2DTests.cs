@@ -11,6 +11,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
     using WallstopStudios.UnityHelpers.Core.DataStructure;
     using WallstopStudios.UnityHelpers.Core.Random;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class BalancedKDTree2DTests : SpatialTree2DTests<KdTree2D<Vector2>>
     {
         private IRandom Random => PRNG.Instance;

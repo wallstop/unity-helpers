@@ -10,6 +10,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Core.Helper
     using WallstopStudios.UnityHelpers.Editor.Core.Helper;
 
     [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class EditorCacheHelperBoundedCacheTests
     {
         [Test]

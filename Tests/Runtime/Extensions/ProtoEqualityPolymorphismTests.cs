@@ -10,6 +10,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
     using WallstopStudios.UnityHelpers.Tests.Core;
 
     [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class ProtoEqualityPolymorphismTests : CommonTestBase
     {
         public interface IAnimal

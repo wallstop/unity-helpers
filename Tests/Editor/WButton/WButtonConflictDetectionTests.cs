@@ -26,6 +26,8 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
     /// - A group with all identical explicit values does NOT generate a conflict
     /// </summary>
     [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class WButtonConflictDetectionTests : CommonTestBase
     {
         [SetUp]

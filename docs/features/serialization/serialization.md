@@ -131,9 +131,12 @@ var data = new SaveData
 // Serialize to UTF-8 JSON bytes (Unity types supported)
 byte[] jsonBytes = Serializer.JsonSerialize(data);
 
-// Pretty stringify and parse from string
+// Pretty stringify for human readability
 string jsonText = Serializer.JsonStringify(data, pretty: true);
-SaveData fromText = Serializer.JsonDeserialize<SaveData>(jsonText);
+
+// Parse from string (convert to bytes first)
+byte[] textBytes = System.Text.Encoding.UTF8.GetBytes(jsonText);
+SaveData fromText = Serializer.JsonDeserialize<SaveData>(textBytes);
 
 // File helpers
 Serializer.WriteToJsonFile(data, path: "save.json", pretty: true);

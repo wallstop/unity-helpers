@@ -433,10 +433,10 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
             {
                 result = provider.Invoke(context);
             }
-            catch (Exception exception)
+            catch (Exception e)
             {
                 Debug.LogError(
-                    $"{AttributeName}: Invocation of '{lookupType.FullName}.{provider.Method.Name}' threw {exception.GetType().Name}."
+                    $"{AttributeName}: Invocation of '{lookupType.FullName}.{provider.Method.Name}' threw {e.GetType().Name}."
                 );
                 return Empty;
             }

@@ -19,16 +19,22 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
     /// Tests for foldout tween animation behavior in SerializableDictionary, SerializableSet,
     /// and WGroup contexts, ensuring animations trigger properly in all contexts including SettingsProvider.
     /// </summary>
+    [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class SerializableCollectionTweenAnimationTests : CommonTestBase
     {
-        private const string SerializableDictionaryFoldoutSpeedPropertyPath =
-            "_serializableDictionaryFoldoutSpeed";
+        private const string SerializableDictionaryFoldoutSpeedPropertyPath = UnityHelpersSettings
+            .SerializedPropertyNames
+            .SerializableDictionaryFoldoutSpeed;
         private const string SerializableSortedDictionaryFoldoutSpeedPropertyPath =
-            "_serializableSortedDictionaryFoldoutSpeed";
-        private const string SerializableSetFoldoutSpeedPropertyPath =
-            "_serializableSetFoldoutSpeed";
-        private const string SerializableSortedSetFoldoutSpeedPropertyPath =
-            "_serializableSortedSetFoldoutSpeed";
+            UnityHelpersSettings.SerializedPropertyNames.SerializableSortedDictionaryFoldoutSpeed;
+        private const string SerializableSetFoldoutSpeedPropertyPath = UnityHelpersSettings
+            .SerializedPropertyNames
+            .SerializableSetFoldoutSpeed;
+        private const string SerializableSortedSetFoldoutSpeedPropertyPath = UnityHelpersSettings
+            .SerializedPropertyNames
+            .SerializableSortedSetFoldoutSpeed;
 
         private bool _originalDictionaryTweenEnabled;
         private bool _originalSortedDictionaryTweenEnabled;

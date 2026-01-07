@@ -19,6 +19,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
     using UnityEditor.SceneManagement;
 #endif
 
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class SceneHelperTests : CommonTestBase
     {
         // Async disposals queued via TrackAsyncDisposal in base

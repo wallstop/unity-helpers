@@ -8,6 +8,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Math
     using WallstopStudios.UnityHelpers.Core.Math;
 
     [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class LineTests
     {
         private const float Epsilon = 0.0001f;

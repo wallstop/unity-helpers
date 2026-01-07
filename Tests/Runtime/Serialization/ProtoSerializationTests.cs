@@ -12,6 +12,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
     using WallstopStudios.UnityHelpers.Core.Serialization;
     using Serializer = WallstopStudios.UnityHelpers.Core.Serialization.Serializer;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class ProtoSerializationTests
     {
         [ProtoContract]
@@ -98,7 +100,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
         public void ProtoDeserializeHandlesEmpty()
         {
             SampleMessage message = Serializer.ProtoDeserialize<SampleMessage>(Array.Empty<byte>());
-            Assert.IsNotNull(message);
+            Assert.IsNotNull(
+                message,
+                "ProtoDeserialize should return non-null for empty byte array"
+            );
             SampleMessage expected = new();
             Assert.AreEqual(expected.Id, message.Id);
             Assert.AreEqual(expected.Name, message.Name);
@@ -137,7 +142,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
                 Array.Empty<byte>(),
                 typeof(SampleMessage)
             );
-            Assert.IsNotNull(message);
+            Assert.IsNotNull(
+                message,
+                "ProtoDeserialize should return non-null for empty byte array with explicit type"
+            );
             Assert.IsInstanceOf<SampleMessage>(message);
             SampleMessage sample = (SampleMessage)message;
             SampleMessage expected = new();

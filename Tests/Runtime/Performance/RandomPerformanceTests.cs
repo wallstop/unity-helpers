@@ -9,6 +9,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Performance
     using NUnit.Framework;
     using WallstopStudios.UnityHelpers.Core.Random;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class RandomPerformanceTests
     {
         private const int NumInvocationsPerIteration = 100_000;

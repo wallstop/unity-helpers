@@ -942,12 +942,24 @@ namespace WallstopStudios.UnityHelpers.Utils
 
         private void UpdateFrequencyTracking(float currentTime)
         {
-            UpdateFrequencyTrackingLocked(currentTime);
+            UpdateFrequencyTrackingLocked(currentTime, incrementRental: true);
         }
 
-        private void UpdateFrequencyTrackingLocked(float currentTime)
+        /// <summary>
+        /// Updates frequency tracking metrics. Must be called while holding the lock.
+        /// </summary>
+        /// <param name="currentTime">The current time.</param>
+        /// <param name="incrementRental">
+        /// When <c>true</c>, increments the rental count for this window (used by actual rental operations).
+        /// When <c>false</c>, only updates time-based calculations without counting a rental
+        /// (used by read-only statistics queries like <see cref="GetFrequencyStatistics"/>).
+        /// </param>
+        private void UpdateFrequencyTrackingLocked(float currentTime, bool incrementRental = false)
         {
-            _rentalCountThisWindow++;
+            if (incrementRental)
+            {
+                _rentalCountThisWindow++;
+            }
 
             if (_windowStartTime <= 0f)
             {
@@ -964,7 +976,7 @@ namespace WallstopStudios.UnityHelpers.Utils
                         _rentalCountThisWindow * (SecondsPerMinute / DefaultFrequencyWindowSeconds);
                 }
 
-                _rentalCountThisWindow = 0;
+                _rentalCountThisWindow = incrementRental ? 1 : 0;
                 _windowStartTime = currentTime;
             }
             else if (windowElapsed > 0f)

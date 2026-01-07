@@ -8,9 +8,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
     using UnityEditor;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Helper;
+    using WallstopStudios.UnityHelpers.Editor.Utils;
     using WallstopStudios.UnityHelpers.Tests.Core;
 
     [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class SpriteHelpersTests : CommonTestBase
     {
         private const string TestFolder = "Assets/TempSpriteHelpersTests";
@@ -53,7 +56,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
                 AssetDatabase.DeleteAsset(TestFolder);
             }
 
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
         }
 
         [Test]
@@ -106,7 +109,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
 
             _testTexture.MakeReadable();
 
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
             _testTexture = AssetDatabase.LoadAssetAtPath<Texture2D>(_testTexturePath);
 
             Assert.IsTrue(
@@ -162,7 +165,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
                 _testTexture.MakeReadable();
             });
 
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
             _testTexture = AssetDatabase.LoadAssetAtPath<Texture2D>(_testTexturePath);
             Assert.IsTrue(
                 _testTexture.isReadable,
@@ -185,7 +188,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
 
             _testTexture.MakeReadable();
 
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
             _testTexture = AssetDatabase.LoadAssetAtPath<Texture2D>(_testTexturePath);
 
             Assert.AreEqual(originalWidth, _testTexture.width, "Width should be preserved");
@@ -205,7 +208,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
 
             _testTexture.MakeReadable();
 
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
             _testTexture = AssetDatabase.LoadAssetAtPath<Texture2D>(_testTexturePath);
 
             Assert.IsTrue(
@@ -230,7 +233,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
 
             _testTexture.MakeReadable();
 
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
             _testTexture = AssetDatabase.LoadAssetAtPath<Texture2D>(_testTexturePath);
 
             Assert.IsTrue(_testTexture.isReadable, "Non-square texture should be readable");
@@ -250,7 +253,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
 
             _testTexture.MakeReadable();
 
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
             _testTexture = AssetDatabase.LoadAssetAtPath<Texture2D>(_testTexturePath);
 
             Assert.IsTrue(_testTexture.isReadable, "1x1 texture should be readable");
@@ -327,7 +330,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
                 importer.SaveAndReimport();
             }
 
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
             _testTexture = AssetDatabase.LoadAssetAtPath<Texture2D>(_testTexturePath);
         }
     }

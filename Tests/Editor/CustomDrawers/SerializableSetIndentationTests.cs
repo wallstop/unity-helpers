@@ -23,6 +23,9 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
     /// context behavior is tested using mock scenarios and dictionary tests serve as the
     /// canonical reference for settings provider behavior.
     /// </summary>
+    [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class SerializableSetIndentationTests : CommonTestBase
     {
         [SetUp]

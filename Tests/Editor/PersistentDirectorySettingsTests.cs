@@ -9,6 +9,9 @@ namespace WallstopStudios.UnityHelpers.Tests
     using WallstopStudios.UnityHelpers.Editor;
     using WallstopStudios.UnityHelpers.Tests.Core;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class PersistentDirectorySettingsTests : CommonTestBase
     {
         [Test]

@@ -212,8 +212,17 @@ fi
 if [ ${#SPELL_FILES_ARRAY[@]} -gt 0 ]; then
   if npx --no-install cspell --version >/dev/null 2>&1; then
     echo "Running spell check on staged files..."
+    # Use a temp file to avoid Windows command length limits with large staged sets
+    SPELL_FILE_LIST="$(mktemp 2>/dev/null || true)"
+    if [ -z "$SPELL_FILE_LIST" ]; then
+      echo "Error: Failed to create temporary file for spell check file list." >&2
+      exit 1
+    fi
+
+    trap 'rm -f "$SPELL_FILE_LIST"' EXIT
+    printf '%s\n' "${SPELL_FILES_ARRAY[@]}" > "$SPELL_FILE_LIST"
     # Use --no-must-find-files to avoid errors when files are filtered by cspell config
-    npx --no-install cspell lint --no-must-find-files --no-progress "${SPELL_FILES_ARRAY[@]}" || {
+    npx --no-install cspell lint --no-must-find-files --no-progress --file-list "$SPELL_FILE_LIST" || {
       echo "Spell check failed. Fix spelling errors or add words to cspell.json." >&2
       exit 1
     }
@@ -276,3 +285,42 @@ if [ ${#LLM_SKILLS_ARRAY[@]} -gt 0 ]; then
   fi
 fi
 
+# 11) Run test linter on staged test files
+# Checks for Unity object lifecycle issues (UNH001-UNH003) and naming conventions (UNH004)
+TEST_FILES_ARRAY=()
+for file in "${STAGED_FILES_ARRAY[@]}"; do
+    case "$file" in
+        Tests/*.cs)
+            TEST_FILES_ARRAY+=("$file")
+            ;;
+    esac
+done
+
+if [ ${#TEST_FILES_ARRAY[@]} -gt 0 ]; then
+  echo "Running test linter on staged test files..."
+  if command -v pwsh >/dev/null 2>&1; then
+    pwsh -NoProfile -File scripts/lint-tests.ps1 || {
+      echo "" >&2
+      echo "=== Test lint failed ===" >&2
+      echo "Fix the issues above or add // UNH-SUPPRESS comments for valid exceptions." >&2
+      echo "For naming convention errors (UNH004):" >&2
+      echo "  - Use PascalCase or dot notation in TestName/SetName (e.g., 'Input.Null.ReturnsFalse')" >&2
+      echo "  - Use PascalCase for TestCaseSource method names (e.g., 'EdgeCaseTestData')" >&2
+      echo "" >&2
+      exit 1
+    }
+  elif command -v powershell >/dev/null 2>&1; then
+    powershell -NoProfile -ExecutionPolicy Bypass -File scripts/lint-tests.ps1 || {
+      echo "" >&2
+      echo "=== Test lint failed ===" >&2
+      echo "Fix the issues above or add // UNH-SUPPRESS comments for valid exceptions." >&2
+      echo "For naming convention errors (UNH004):" >&2
+      echo "  - Use PascalCase or dot notation in TestName/SetName (e.g., 'Input.Null.ReturnsFalse')" >&2
+      echo "  - Use PascalCase for TestCaseSource method names (e.g., 'EdgeCaseTestData')" >&2
+      echo "" >&2
+      exit 1
+    }
+  else
+    echo "PowerShell not found. Skipping test linter." >&2
+  fi
+fi

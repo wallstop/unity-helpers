@@ -8,8 +8,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
     using UnityEditor;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Helper;
+    using WallstopStudios.UnityHelpers.Editor.Utils;
     using WallstopStudios.UnityHelpers.Tests.Core;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class ObjectHelpersEditorTests : CommonTestBase
     {
         private const string TempFolder = "Assets/TempObjectHelpersEditorTests";
@@ -36,7 +40,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
                 AssetDatabase.DeleteAsset(_assetPath);
                 AssetDatabase.DeleteAsset(TempFolder);
                 AssetDatabase.SaveAssets();
-                AssetDatabase.Refresh();
+                AssetDatabaseBatchHelper.RefreshIfNotBatching();
             }
         }
 
@@ -51,7 +55,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             Material mat = new(shader);
             AssetDatabase.CreateAsset(mat, _assetPath);
             AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             Material loaded = AssetDatabase.LoadAssetAtPath<Material>(_assetPath);
             Assert.IsTrue(loaded != null, "Expected asset to be created and loadable");

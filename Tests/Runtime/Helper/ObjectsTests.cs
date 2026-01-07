@@ -14,6 +14,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
     using Object = UnityEngine.Object;
 
     [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class ObjectsTests : CommonTestBase
     {
         private sealed class CustomClass

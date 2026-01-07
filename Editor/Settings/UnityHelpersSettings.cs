@@ -945,48 +945,48 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             collapsible: true,
             startCollapsed: true
         )]
-        private bool _poolPurgingEnabled = DefaultPoolIntelligentPurgingEnabled;
+        internal bool _poolPurgingEnabled = DefaultPoolIntelligentPurgingEnabled;
 
         [SerializeField]
         [Tooltip(
             "Default idle timeout in seconds. Items idle longer than this are eligible for purging."
         )]
         [Min(0f)]
-        private float _poolIdleTimeoutSeconds = DefaultPoolIntelligentIdleTimeoutSeconds;
+        internal float _poolIdleTimeoutSeconds = DefaultPoolIntelligentIdleTimeoutSeconds;
 
         [SerializeField]
         [Tooltip("Minimum number of items to always retain in pools during purge operations.")]
         [Min(0)]
-        private int _poolMinRetainCount = DefaultPoolMinRetainCount;
+        internal int _poolMinRetainCount = DefaultPoolMinRetainCount;
 
         [SerializeField]
         [Tooltip("Number of items to keep warm in active pools to avoid cold-start allocations.")]
         [Min(0)]
-        private int _poolWarmRetainCount = DefaultPoolWarmRetainCount;
+        internal int _poolWarmRetainCount = DefaultPoolWarmRetainCount;
 
         [SerializeField]
         [Tooltip("Maximum pool size (0 = unbounded). Items exceeding this limit will be purged.")]
         [Min(0)]
-        private int _poolMaxSize = DefaultPoolMaxSize;
+        internal int _poolMaxSize = DefaultPoolMaxSize;
 
         [SerializeField]
         [Tooltip(
             "Buffer multiplier for comfortable pool size calculation. Comfortable size = max(MinRetainCount, rollingHighWaterMark * BufferMultiplier)."
         )]
         [Min(1f)]
-        private float _poolBufferMultiplier = DefaultPoolBufferMultiplier;
+        internal float _poolBufferMultiplier = DefaultPoolBufferMultiplier;
 
         [SerializeField]
         [Tooltip("Rolling window duration in seconds for high water mark tracking.")]
         [Min(1f)]
-        private float _poolRollingWindowSeconds = DefaultPoolRollingWindowSeconds;
+        internal float _poolRollingWindowSeconds = DefaultPoolRollingWindowSeconds;
 
         [SerializeField]
         [Tooltip(
             "Hysteresis duration in seconds. Purging is suppressed for this duration after a usage spike."
         )]
         [Min(0f)]
-        private float _poolHysteresisSeconds = DefaultPoolHysteresisSeconds;
+        internal float _poolHysteresisSeconds = DefaultPoolHysteresisSeconds;
 
         [SerializeField]
         [Tooltip(
@@ -994,7 +994,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         )]
         [Min(1f)]
         [WGroupEnd(PoolPurgingFoldoutKey)]
-        private float _poolSpikeThresholdMultiplier = DefaultPoolSpikeThresholdMultiplier;
+        internal float _poolSpikeThresholdMultiplier = DefaultPoolSpikeThresholdMultiplier;
 
         [SerializeField]
         [Tooltip("Per-type pool purging configurations.")]
@@ -1004,7 +1004,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             collapsible: true,
             startCollapsed: true
         )]
-        private List<PoolTypeConfiguration> _poolTypeConfigurations = new();
+        internal List<PoolTypeConfiguration> _poolTypeConfigurations = new();
 
         [SerializeField]
         [HideInInspector]
@@ -1250,7 +1250,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
 #endif
 
         [Serializable]
-        private sealed class WEnumToggleButtonsCustomColor
+        internal sealed class WEnumToggleButtonsCustomColor
         {
             [FormerlySerializedAs("selectedBackgroundColor")]
             [SerializeField]
@@ -2187,6 +2187,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                 0,
                 settings._poolWarmRetainCount
             );
+            PoolPurgeSettings.DefaultGlobalMaxPoolSize = Mathf.Max(0, settings._poolMaxSize);
             PoolPurgeSettings.DefaultGlobalBufferMultiplier = Mathf.Max(
                 1f,
                 settings._poolBufferMultiplier
@@ -2351,6 +2352,18 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             internal const string FoldoutTweenSettingsInitialized = nameof(
                 _foldoutTweenSettingsInitialized
             );
+            internal const string SerializableDictionaryFoldoutSpeed = nameof(
+                _serializableDictionaryFoldoutSpeed
+            );
+            internal const string SerializableSortedDictionaryFoldoutSpeed = nameof(
+                _serializableSortedDictionaryFoldoutSpeed
+            );
+            internal const string SerializableSetFoldoutSpeed = nameof(
+                _serializableSetFoldoutSpeed
+            );
+            internal const string SerializableSortedSetFoldoutSpeed = nameof(
+                _serializableSortedSetFoldoutSpeed
+            );
             internal const string DetectAssetChangeLoopWindowSeconds = nameof(
                 _detectAssetChangeLoopWindowSeconds
             );
@@ -2405,6 +2418,12 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                     nameof(SerializableSortedSetFoldoutTweenEnabled) =>
                         SerializableSortedSetFoldoutTweenEnabled,
                     nameof(FoldoutTweenSettingsInitialized) => FoldoutTweenSettingsInitialized,
+                    nameof(SerializableDictionaryFoldoutSpeed) =>
+                        SerializableDictionaryFoldoutSpeed,
+                    nameof(SerializableSortedDictionaryFoldoutSpeed) =>
+                        SerializableSortedDictionaryFoldoutSpeed,
+                    nameof(SerializableSetFoldoutSpeed) => SerializableSetFoldoutSpeed,
+                    nameof(SerializableSortedSetFoldoutSpeed) => SerializableSortedSetFoldoutSpeed,
                     nameof(DetectAssetChangeLoopWindowSeconds) =>
                         DetectAssetChangeLoopWindowSeconds,
                     nameof(WButtonPriority) => WButtonPriority,

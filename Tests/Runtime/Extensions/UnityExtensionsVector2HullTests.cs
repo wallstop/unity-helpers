@@ -17,6 +17,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
     using WallstopStudios.UnityHelpers.Tests.Core;
     using WallstopStudios.UnityHelpers.Tests.TestUtils;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class UnityExtensionsVector2HullTests : CommonTestBase
     {
         [Test]

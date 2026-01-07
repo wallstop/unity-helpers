@@ -24,6 +24,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
     /// with Odin Inspector for SerializedMonoBehaviour and SerializedScriptableObject types.
     /// </summary>
     [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class WNotNullOdinDrawerTests : CommonTestBase
     {
         [Test]

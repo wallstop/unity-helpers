@@ -490,9 +490,9 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
                 int count = CountTypesMatchingRegex(regex);
                 stats = new PatternStats(trimmed, true, count, null);
             }
-            catch (ArgumentException exception)
+            catch (ArgumentException e)
             {
-                stats = new PatternStats(trimmed, false, 0, exception.Message);
+                stats = new PatternStats(trimmed, false, 0, e.Message);
             }
 
             lock (SyncRoot)
@@ -579,10 +579,10 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure.Adapters
                             )
                         );
                     }
-                    catch (ArgumentException exception)
+                    catch (ArgumentException e)
                     {
                         Debug.LogWarning(
-                            $"SerializableTypeCatalog ignore pattern '{trimmed}' is invalid: {exception.Message}"
+                            $"SerializableTypeCatalog ignore pattern '{trimmed}' is invalid: {e.Message}"
                         );
                     }
                 }

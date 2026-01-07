@@ -20,6 +20,8 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
     /// Tests for WValueDropDown support with SerializableType and arbitrary generic types.
     /// </summary>
     [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class WValueDropDownSerializableTypeTests : CommonTestBase
     {
         [Test]
@@ -337,6 +339,8 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
     /// Tests for WValueDropDown support with custom equatable struct types.
     /// </summary>
     [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class WValueDropDownCustomStructTests : CommonTestBase
     {
         [Test]
@@ -573,6 +577,8 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
     /// Edge case tests for WValueDropDown with arbitrary types.
     /// </summary>
     [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class WValueDropDownArbitraryTypeEdgeCaseTests : CommonTestBase
     {
         [Test]

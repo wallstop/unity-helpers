@@ -21,6 +21,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Utils.WButton
     using Object = UnityEngine.Object;
 
     [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class WButtonRenderingTests : CommonTestBase
     {
         [SetUp]

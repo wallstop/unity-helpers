@@ -24,6 +24,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
     public struct CacheBuilder<TKey, TValue>
     {
         private int _maximumSize;
+        private int _initialCapacity;
         private long _maximumWeight;
         private Func<TKey, TValue, long> _weigher;
         private float _expireAfterWriteSeconds;
@@ -85,6 +86,31 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 size = 1;
             }
             _maximumSize = size;
+            return this;
+        }
+
+        /// <summary>
+        /// Sets the initial capacity of the cache's internal data structures.
+        /// The cache will grow dynamically as needed up to <see cref="MaximumSize"/>.
+        /// </summary>
+        /// <remarks>
+        /// This is useful when you know the approximate number of entries the cache will hold
+        /// initially. Setting this appropriately can reduce memory allocations during growth.
+        /// If not specified, the cache defaults to using <see cref="MaximumSize"/> as initial capacity.
+        /// If an invalid value (zero or negative) is passed, falls back to
+        /// <see cref="CacheOptions{TKey,TValue}.DefaultInitialCapacity"/>.
+        /// Values are clamped to prevent excessive initial allocations.
+        /// </remarks>
+        /// <param name="capacity">The initial capacity. Must be positive.</param>
+        /// <returns>This builder for chaining.</returns>
+        public CacheBuilder<TKey, TValue> InitialCapacity(int capacity)
+        {
+            EnsureInitialized();
+            if (capacity <= 0)
+            {
+                capacity = CacheOptions<TKey, TValue>.DefaultInitialCapacity;
+            }
+            _initialCapacity = capacity;
             return this;
         }
 
@@ -228,13 +254,20 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
 
         /// <summary>
         /// Enables dynamic cache growth when thrashing is detected.
+        /// Pass factor <= 1 and maxSize = 0 to disable growth.
         /// </summary>
-        /// <param name="factor">Growth factor. Default is 1.5x.</param>
-        /// <param name="maxSize">Maximum size after growth. Null for unbounded.</param>
+        /// <param name="factor">Growth factor. Default is 1.5x. Values <= 1 disable growth.</param>
+        /// <param name="maxSize">Maximum size after growth. 0 means unbounded (if enabled).</param>
         /// <returns>This builder for chaining.</returns>
         public CacheBuilder<TKey, TValue> AllowGrowth(float factor = 1.5f, int maxSize = 0)
         {
             EnsureInitialized();
+            // If factor <= 1 and maxSize is 0, disable growth
+            if (factor <= 1f && maxSize == 0)
+            {
+                _allowGrowth = false;
+                return this;
+            }
             _allowGrowth = true;
             if (factor > 1f)
             {
@@ -365,6 +398,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             return new CacheOptions<TKey, TValue>
             {
                 MaximumSize = _maximumSize,
+                InitialCapacity = _initialCapacity,
                 MaximumWeight = _maximumWeight,
                 Weigher = _weigher,
                 ExpireAfterWriteSeconds = _expireAfterWriteSeconds,

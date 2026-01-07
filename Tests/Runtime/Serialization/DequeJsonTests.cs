@@ -10,6 +10,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
     using WallstopStudios.UnityHelpers.Core.DataStructure;
     using WallstopStudios.UnityHelpers.Core.Serialization;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class DequeJsonTests
     {
         [Test]

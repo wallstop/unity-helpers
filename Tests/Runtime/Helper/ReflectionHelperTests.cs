@@ -355,6 +355,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         }
     }
 
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class ReflectionHelperTests : CommonTestBase
     {
         private const int NumTries = 1_000;
@@ -878,13 +880,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         public void GetArrayCreator()
         {
             Func<int, Array> arrayCreator = ReflectionHelpers.GetArrayCreator(typeof(int));
-            Assert.IsNotNull(arrayCreator);
+            Assert.IsNotNull(arrayCreator, "Array creator should not be null");
 
             for (int i = 0; i < 10; ++i)
             {
                 int size = PRNG.Instance.Next(1, 100);
                 Array created = arrayCreator(size);
-                Assert.IsNotNull(created);
+                Assert.IsNotNull(created, "Created array should not be null");
                 Assert.AreEqual(size, created.Length);
                 Assert.IsTrue(created is int[]);
             }
@@ -894,12 +896,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         public void GetListCreator()
         {
             Func<IList> listCreator = ReflectionHelpers.GetListCreator(typeof(string));
-            Assert.IsNotNull(listCreator);
+            Assert.IsNotNull(listCreator, "List creator should not be null");
 
             for (int i = 0; i < 10; ++i)
             {
                 IList created = listCreator();
-                Assert.IsNotNull(created);
+                Assert.IsNotNull(created, "Created list should not be null");
                 Assert.AreEqual(0, created.Count);
                 Assert.IsTrue(created is List<string>);
             }

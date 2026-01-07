@@ -24,8 +24,9 @@ namespace WallstopStudios.UnityHelpers.Utils
     /// </list>
     /// </para>
     /// <para>
-    /// By default, intelligent purging is <strong>enabled</strong> with conservative settings that prioritize
-    /// avoiding GC churn over aggressive memory savings. Use <see cref="DisableGlobally"/> for easy opt-out.
+    /// By default, intelligent purging is <strong>disabled</strong>. Enable it by setting
+    /// <see cref="GlobalEnabled"/> to <c>true</c> or by configuring pool settings in the Unity Editor
+    /// (Edit > Project Settings > Unity Helpers > Pool Purging).
     /// </para>
     /// <para>
     /// The retention model uses two settings:
@@ -109,6 +110,12 @@ namespace WallstopStudios.UnityHelpers.Utils
         public const int DefaultMaxPurgesPerOperation = 10;
 
         /// <summary>
+        /// Default maximum pool size (0 = unbounded).
+        /// Pools exceeding this limit will have items purged.
+        /// </summary>
+        public const int DefaultMaxPoolSize = 0;
+
+        /// <summary>
         /// Default Large Object Heap (LOH) threshold in bytes.
         /// Objects of this size or larger are allocated on the LOH and receive stricter purge policies.
         /// The .NET runtime uses 85,000 bytes as the LOH threshold.
@@ -136,7 +143,7 @@ namespace WallstopStudios.UnityHelpers.Utils
         /// </summary>
         public const int DefaultLargeObjectWarmRetainCount = 1;
 
-        private static int _globalEnabled = 1;
+        private static int _globalEnabled = 0;
         private static int _purgeOnLowMemory = 1;
         private static int _purgeOnAppBackground = 1;
         private static int _purgeOnSceneUnload = 1;
@@ -149,6 +156,7 @@ namespace WallstopStudios.UnityHelpers.Utils
         private static float _defaultHysteresisSeconds = DefaultHysteresisSeconds;
         private static float _defaultSpikeThresholdMultiplier = DefaultSpikeThresholdMultiplier;
         private static int _defaultMaxPurgesPerOperation = DefaultMaxPurgesPerOperation;
+        private static int _defaultMaxPoolSize = DefaultMaxPoolSize;
         private static int _largeObjectThresholdBytes = DefaultLargeObjectThresholdBytes;
         private static float _largeObjectBufferMultiplier = DefaultLargeObjectBufferMultiplier;
         private static float _largeObjectIdleTimeoutMultiplier =
@@ -190,8 +198,7 @@ namespace WallstopStudios.UnityHelpers.Utils
 
         /// <summary>
         /// Gets or sets whether intelligent pool purging is globally enabled.
-        /// Default is <c>true</c> (enabled) with conservative settings to prevent memory bloat.
-        /// Use <see cref="DisableGlobally"/> for easy opt-out.
+        /// Default is <c>false</c> (disabled). Enable via Unity Editor settings or by setting this property.
         /// </summary>
         public static bool GlobalEnabled
         {
@@ -292,6 +299,18 @@ namespace WallstopStudios.UnityHelpers.Utils
         {
             get => Volatile.Read(ref _defaultMaxPurgesPerOperation);
             set => Volatile.Write(ref _defaultMaxPurgesPerOperation, Math.Max(0, value));
+        }
+
+        /// <summary>
+        /// Gets or sets the default maximum pool size.
+        /// Pools exceeding this limit will have items purged.
+        /// A value of 0 means unbounded (no size limit).
+        /// Negative values are normalized to 0 (unbounded).
+        /// </summary>
+        public static int DefaultGlobalMaxPoolSize
+        {
+            get => Volatile.Read(ref _defaultMaxPoolSize);
+            set => Volatile.Write(ref _defaultMaxPoolSize, Math.Max(0, value));
         }
 
         /// <summary>
@@ -842,10 +861,11 @@ namespace WallstopStudios.UnityHelpers.Utils
         /// </summary>
         public static void ResetToDefaults()
         {
-            GlobalEnabled = true;
+            GlobalEnabled = false;
             DefaultGlobalIdleTimeoutSeconds = DefaultIdleTimeoutSeconds;
             DefaultGlobalMinRetainCount = DefaultMinRetainCount;
             DefaultGlobalWarmRetainCount = DefaultWarmRetainCount;
+            DefaultGlobalMaxPoolSize = DefaultMaxPoolSize;
             DefaultGlobalBufferMultiplier = DefaultBufferMultiplier;
             DefaultGlobalRollingWindowSeconds = DefaultRollingWindowSeconds;
             DefaultGlobalHysteresisSeconds = DefaultHysteresisSeconds;
@@ -943,6 +963,7 @@ namespace WallstopStudios.UnityHelpers.Utils
                     hysteresisSeconds: DefaultGlobalHysteresisSeconds,
                     spikeThresholdMultiplier: DefaultGlobalSpikeThresholdMultiplier,
                     maxPurgesPerOperation: DefaultGlobalMaxPurgesPerOperation,
+                    maxPoolSize: DefaultGlobalMaxPoolSize,
                     source: PoolPurgeConfigurationSource.GlobalDefaults
                 );
             }
@@ -1066,6 +1087,7 @@ namespace WallstopStudios.UnityHelpers.Utils
                     hysteresisSeconds: DefaultHysteresisSeconds,
                     spikeThresholdMultiplier: DefaultSpikeThresholdMultiplier,
                     maxPurgesPerOperation: DefaultMaxPurgesPerOperation,
+                    maxPoolSize: DefaultMaxPoolSize,
                     source: PoolPurgeConfigurationSource.TypeDisabled
                 );
             }
@@ -1101,6 +1123,7 @@ namespace WallstopStudios.UnityHelpers.Utils
                     hysteresisSeconds: DefaultHysteresisSeconds,
                     spikeThresholdMultiplier: DefaultSpikeThresholdMultiplier,
                     maxPurgesPerOperation: DefaultMaxPurgesPerOperation,
+                    maxPoolSize: DefaultMaxPoolSize,
                     source: PoolPurgeConfigurationSource.UnityHelpersSettingsPerType
                 );
             }
@@ -1125,6 +1148,7 @@ namespace WallstopStudios.UnityHelpers.Utils
                         hysteresisSeconds: DefaultHysteresisSeconds,
                         spikeThresholdMultiplier: DefaultSpikeThresholdMultiplier,
                         maxPurgesPerOperation: DefaultMaxPurgesPerOperation,
+                        maxPoolSize: DefaultMaxPoolSize,
                         source: PoolPurgeConfigurationSource.Attribute
                     );
                 }
@@ -1191,6 +1215,7 @@ namespace WallstopStudios.UnityHelpers.Utils
                 hysteresisSeconds: DefaultGlobalHysteresisSeconds,
                 spikeThresholdMultiplier: DefaultGlobalSpikeThresholdMultiplier,
                 maxPurgesPerOperation: DefaultGlobalMaxPurgesPerOperation,
+                maxPoolSize: DefaultGlobalMaxPoolSize,
                 source: PoolPurgeConfigurationSource.GlobalDefaults
             );
         }
@@ -1309,6 +1334,7 @@ namespace WallstopStudios.UnityHelpers.Utils
                 hysteresisSeconds: baseOptions.HysteresisSeconds,
                 spikeThresholdMultiplier: baseOptions.SpikeThresholdMultiplier,
                 maxPurgesPerOperation: baseOptions.MaxPurgesPerOperation,
+                maxPoolSize: baseOptions.MaxPoolSize,
                 source: baseOptions.Source
             );
         }
@@ -1356,6 +1382,7 @@ namespace WallstopStudios.UnityHelpers.Utils
             float hysteresis = options.HysteresisSeconds ?? DefaultGlobalHysteresisSeconds;
             float spike = options.SpikeThresholdMultiplier ?? DefaultGlobalSpikeThresholdMultiplier;
             int maxPurges = options.MaxPurgesPerOperation ?? DefaultGlobalMaxPurgesPerOperation;
+            int maxPoolSize = options.MaxPoolSize ?? DefaultGlobalMaxPoolSize;
 
             return new PoolPurgeEffectiveOptions(
                 enabled,
@@ -1367,6 +1394,7 @@ namespace WallstopStudios.UnityHelpers.Utils
                 hysteresis,
                 spike,
                 maxPurges,
+                maxPoolSize,
                 source
             );
         }
@@ -1833,13 +1861,13 @@ namespace WallstopStudios.UnityHelpers.Utils
                 {
                     totalPurged += poolsToPurge[i].Purge(reason, ignoreHysteresis);
                 }
-                catch (Exception ex)
+                catch (Exception e)
                 {
                     // Swallow exceptions from individual pools to ensure all pools are attempted
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
-                    Debug.LogWarning($"[PoolPurgeSettings] Failed to purge pool: {ex.Message}");
+                    Debug.LogWarning($"[PoolPurgeSettings] Failed to purge pool: {e.Message}");
 #endif
-                    _ = ex;
+                    _ = e;
                 }
             }
 
@@ -1892,15 +1920,15 @@ namespace WallstopStudios.UnityHelpers.Utils
                 {
                     totalPurged += poolsToPurge[i].ForceFullPurge(reason, ignoreHysteresis);
                 }
-                catch (Exception ex)
+                catch (Exception e)
                 {
                     // Swallow exceptions from individual pools to ensure all pools are attempted
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
                     Debug.LogWarning(
-                        $"[PoolPurgeSettings] Failed to force-purge pool: {ex.Message}"
+                        $"[PoolPurgeSettings] Failed to force-purge pool: {e.Message}"
                     );
 #endif
-                    _ = ex;
+                    _ = e;
                 }
             }
 
@@ -1986,15 +2014,15 @@ namespace WallstopStudios.UnityHelpers.Utils
                         totalPurged += purged;
                         remaining -= purged;
                     }
-                    catch (Exception ex)
+                    catch (Exception e)
                     {
                         // Swallow exceptions to continue with other pools
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
                         Debug.LogWarning(
-                            $"[PoolPurgeSettings] Failed to purge pool for budget: {ex.Message}"
+                            $"[PoolPurgeSettings] Failed to purge pool for budget: {e.Message}"
                         );
 #endif
-                        _ = ex;
+                        _ = e;
                     }
                 }
 
@@ -2289,6 +2317,14 @@ namespace WallstopStudios.UnityHelpers.Utils
         /// If null, uses the global default.
         /// </summary>
         public int? MaxPurgesPerOperation { get; set; }
+
+        /// <summary>
+        /// Gets or sets the maximum pool size.
+        /// Pools exceeding this limit will have items purged.
+        /// A value of 0 means unbounded (no size limit).
+        /// If null, uses the global default.
+        /// </summary>
+        public int? MaxPoolSize { get; set; }
     }
 
     /// <summary>
@@ -2345,6 +2381,12 @@ namespace WallstopStudios.UnityHelpers.Utils
         public int MaxPurgesPerOperation { get; }
 
         /// <summary>
+        /// Gets the maximum pool size.
+        /// A value of 0 means unbounded (no size limit).
+        /// </summary>
+        public int MaxPoolSize { get; }
+
+        /// <summary>
         /// Gets the source of this configuration.
         /// </summary>
         public PoolPurgeConfigurationSource Source { get; }
@@ -2362,6 +2404,7 @@ namespace WallstopStudios.UnityHelpers.Utils
             float hysteresisSeconds,
             float spikeThresholdMultiplier,
             int maxPurgesPerOperation,
+            int maxPoolSize,
             PoolPurgeConfigurationSource source
         )
         {
@@ -2374,6 +2417,7 @@ namespace WallstopStudios.UnityHelpers.Utils
             HysteresisSeconds = hysteresisSeconds;
             SpikeThresholdMultiplier = spikeThresholdMultiplier;
             MaxPurgesPerOperation = maxPurgesPerOperation;
+            MaxPoolSize = maxPoolSize;
             Source = source;
         }
 
@@ -2384,7 +2428,7 @@ namespace WallstopStudios.UnityHelpers.Utils
                 + $"MinRetain={MinRetainCount}, WarmRetain={WarmRetainCount}, Buffer={BufferMultiplier}, "
                 + $"Window={RollingWindowSeconds}s, Hysteresis={HysteresisSeconds}s, "
                 + $"SpikeThreshold={SpikeThresholdMultiplier}, MaxPurgesPerOp={MaxPurgesPerOperation}, "
-                + $"Source={Source})";
+                + $"MaxPoolSize={MaxPoolSize}, Source={Source})";
         }
     }
 

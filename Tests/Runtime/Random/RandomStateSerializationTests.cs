@@ -10,6 +10,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Random
     using WallstopStudios.UnityHelpers.Core.Random;
     using Serializer = WallstopStudios.UnityHelpers.Core.Serialization.Serializer;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class RandomStateSerializationTests
     {
         private static void AssertStateEqual(

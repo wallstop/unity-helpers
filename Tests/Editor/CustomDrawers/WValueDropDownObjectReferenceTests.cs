@@ -19,6 +19,8 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
     /// Comprehensive tests for WValueDropDown ObjectReference (UnityEngine.Object) support.
     /// </summary>
     [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class WValueDropDownObjectReferenceTests : CommonTestBase
     {
         private WValueDropDownTestScriptableObject _testObject1;

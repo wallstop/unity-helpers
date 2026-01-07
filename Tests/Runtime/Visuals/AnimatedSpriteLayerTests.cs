@@ -10,6 +10,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Visuals
     using WallstopStudios.UnityHelpers.Tests.Core;
     using WallstopStudios.UnityHelpers.Visuals;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class AnimatedSpriteLayerTests : CommonTestBase
     {
         // Tracking handled by CommonTestBase

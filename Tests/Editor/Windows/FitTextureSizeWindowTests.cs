@@ -1,7 +1,7 @@
-// MIT License - Copyright (c) 2025 wallstop
+// MIT License - Copyright (c) 2026 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
-namespace WallstopStudios.UnityHelpers.Tests.Windows
+namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
 {
 #if UNITY_EDITOR
     using System.Collections.Generic;
@@ -12,12 +12,28 @@ namespace WallstopStudios.UnityHelpers.Tests.Windows
     using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Editor;
     using WallstopStudios.UnityHelpers.Editor.AssetProcessors;
+    using WallstopStudios.UnityHelpers.Editor.Utils;
     using WallstopStudios.UnityHelpers.Tests.Core;
     using WallstopStudios.UnityHelpers.Tests.Core.TestUtils;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class FitTextureSizeWindowTests : CommonTestBase
     {
         private const string Root = "Assets/Temp/FitTextureSizeTests";
+        private const string SharedDir = "Assets/Temp/FitTextureSizeTests/Shared";
+
+        // Shared fixture paths - created once in OneTimeSetUp, cleaned up in OneTimeTearDown
+        // These are used by read-only tests that only inspect (not modify) textures
+        // Note: These are safe as static fields because Unity Test Runner runs tests sequentially,
+        // not in parallel. If parallel test execution is ever enabled, these would need locking.
+        private static string _shared300x100Path;
+        private static string _shared128x128Path;
+        private static string _shared256x256Path;
+        private static string _shared64x64Path;
+        private static string _shared384x10Path;
+        private static bool _sharedFixturesCreated;
 
         [SetUp]
         public override void BaseSetUp()
@@ -37,11 +53,169 @@ namespace WallstopStudios.UnityHelpers.Tests.Windows
             CleanupTrackedFoldersAndAssets();
         }
 
+        public override void CommonOneTimeSetUp()
+        {
+            if (Application.isPlaying)
+            {
+                return;
+            }
+            base.CommonOneTimeSetUp();
+            using (AssetDatabaseBatchHelper.BeginBatch())
+            {
+                EnsureFolderStatic(Root);
+                EnsureFolderStatic(SharedDir);
+
+                // If flag is set but fixtures don't exist (e.g., previous run failed), reset and recreate
+                if (_sharedFixturesCreated)
+                {
+                    if (
+                        string.IsNullOrEmpty(_shared300x100Path)
+                        || AssetDatabase.LoadAssetAtPath<Texture2D>(_shared300x100Path) == null
+                    )
+                    {
+                        _sharedFixturesCreated = false;
+                    }
+                }
+
+                // Create shared fixtures for read-only tests
+                // These avoid recreating identical textures for each test
+                if (!_sharedFixturesCreated)
+                {
+                    _shared300x100Path = CreateSharedTexture(
+                        "shared_300x100",
+                        300,
+                        100,
+                        Color.magenta
+                    );
+                    _shared128x128Path = CreateSharedTexture(
+                        "shared_128x128",
+                        128,
+                        128,
+                        Color.white
+                    );
+                    _shared256x256Path = CreateSharedTexture(
+                        "shared_256x256",
+                        256,
+                        256,
+                        Color.cyan
+                    );
+                    _shared64x64Path = CreateSharedTexture("shared_64x64", 64, 64, Color.red);
+                    _shared384x10Path = CreateSharedTexture("shared_384x10", 384, 10, Color.blue);
+                    _sharedFixturesCreated = true;
+                }
+            }
+        }
+
+        [OneTimeTearDown]
+        public override void OneTimeTearDown()
+        {
+            // Clean up shared fixtures
+            using (AssetDatabaseBatchHelper.BeginBatch())
+            {
+                if (!string.IsNullOrEmpty(_shared300x100Path))
+                {
+                    AssetDatabase.DeleteAsset(_shared300x100Path);
+                    _shared300x100Path = null;
+                }
+                if (!string.IsNullOrEmpty(_shared128x128Path))
+                {
+                    AssetDatabase.DeleteAsset(_shared128x128Path);
+                    _shared128x128Path = null;
+                }
+                if (!string.IsNullOrEmpty(_shared256x256Path))
+                {
+                    AssetDatabase.DeleteAsset(_shared256x256Path);
+                    _shared256x256Path = null;
+                }
+                if (!string.IsNullOrEmpty(_shared64x64Path))
+                {
+                    AssetDatabase.DeleteAsset(_shared64x64Path);
+                    _shared64x64Path = null;
+                }
+                if (!string.IsNullOrEmpty(_shared384x10Path))
+                {
+                    AssetDatabase.DeleteAsset(_shared384x10Path);
+                    _shared384x10Path = null;
+                }
+                _sharedFixturesCreated = false;
+
+                // Clean up shared directory
+                if (AssetDatabase.IsValidFolder(SharedDir))
+                {
+                    AssetDatabase.DeleteAsset(SharedDir);
+                }
+            }
+
+            base.OneTimeTearDown();
+        }
+
+        /// <summary>
+        /// Creates a shared texture that is not tracked for per-test cleanup.
+        /// These are created in OneTimeSetUp and cleaned up in OneTimeTearDown.
+        /// </summary>
+        private string CreateSharedTexture(string name, int width, int height, Color color)
+        {
+            Texture2D texture = new Texture2D(width, height, TextureFormat.RGBA32, false); // UNH-SUPPRESS: Temporary texture for PNG creation, destroyed immediately
+            try
+            {
+                Color[] pixels = new Color[width * height];
+                for (int i = 0; i < pixels.Length; i++)
+                {
+                    pixels[i] = color;
+                }
+
+                texture.SetPixels(pixels);
+                texture.Apply();
+
+                string path = Path.Combine(SharedDir, name + ".png").SanitizePath();
+                string fullPath = RelToFull(path);
+                string directory = Path.GetDirectoryName(fullPath);
+                if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
+                {
+                    Directory.CreateDirectory(directory);
+                }
+                File.WriteAllBytes(fullPath, texture.EncodeToPNG());
+            }
+            finally
+            {
+                Object.DestroyImmediate(texture); // UNH-SUPPRESS: Cleanup temporary texture after PNG creation
+            }
+
+            string resultPath = Path.Combine(SharedDir, name + ".png").SanitizePath();
+            AssetDatabase.ImportAsset(resultPath);
+
+            return resultPath;
+        }
+
+        /// <summary>
+        /// Clones a shared texture to a per-test path for tests that need to modify importer settings.
+        /// </summary>
+        private string CloneSharedTexture(string sharedPath, string testName)
+        {
+            string fileName = Path.GetFileNameWithoutExtension(sharedPath);
+            string destPath = Path.Combine(Root, testName + "_" + fileName + ".png").SanitizePath();
+
+            if (TryCopyAssetSilent(sharedPath, destPath))
+            {
+                TrackAssetPath(destPath);
+                return destPath;
+            }
+
+            // Fallback: create a new texture if copy fails
+            Texture2D source = AssetDatabase.LoadAssetAtPath<Texture2D>(sharedPath);
+            if (source != null)
+            {
+                CreatePng(destPath, source.width, source.height, Color.white);
+                return destPath;
+            }
+
+            return null;
+        }
+
         [Test]
         public void GrowOnlyRaisesToNextPowerOfTwo()
         {
-            string path = Path.Combine(Root, "grow.png").SanitizePath();
-            CreatePng(path, 300, 100, Color.magenta);
+            string path = CloneSharedTexture(_shared300x100Path, "grow");
             AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             TextureImporter imp = AssetImporter.GetAtPath(path) as TextureImporter;
@@ -73,8 +247,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Windows
         [Test]
         public void ShrinkOnlyReducesToTightPowerOfTwo()
         {
-            string path = Path.Combine(Root, "shrink.png").SanitizePath();
-            CreatePng(path, 300, 100, Color.cyan);
+            string path = CloneSharedTexture(_shared300x100Path, "shrink");
             AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             TextureImporter imp = AssetImporter.GetAtPath(path) as TextureImporter;
@@ -107,8 +280,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Windows
         [Test]
         public void ShrinkOnlyKeepsExactPowerOfTwo()
         {
-            string path = Path.Combine(Root, "shrinkExact.png").SanitizePath();
-            CreatePng(path, 256, 128, Color.yellow);
+            string path = CloneSharedTexture(_shared256x256Path, "shrinkExact");
             AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             TextureImporter imp = AssetImporter.GetAtPath(path) as TextureImporter;
@@ -168,8 +340,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Windows
         [Test]
         public void GrowOnlyDoesNotShrinkWhenAlreadyLarge()
         {
-            string path = Path.Combine(Root, "growNoChange.png").SanitizePath();
-            CreatePng(path, 300, 100, Color.white);
+            string path = CloneSharedTexture(_shared300x100Path, "growNoChange");
             AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             TextureImporter imp = AssetImporter.GetAtPath(path) as TextureImporter;
@@ -197,8 +368,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Windows
         [Test]
         public void ClampMinRaisesToMinimum()
         {
-            string path = Path.Combine(Root, "clampMin.png").SanitizePath();
-            CreatePng(path, 64, 64, Color.red);
+            string path = CloneSharedTexture(_shared64x64Path, "clampMin");
             AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             TextureImporter imp = AssetImporter.GetAtPath(path) as TextureImporter;
@@ -260,8 +430,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Windows
         [Test]
         public void PlatformOverrideAndroidApplied()
         {
-            string path = Path.Combine(Root, "android.png").SanitizePath();
-            CreatePng(path, 300, 100, Color.magenta);
+            string path = CloneSharedTexture(_shared300x100Path, "android");
             AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             TextureImporter imp = AssetImporter.GetAtPath(path) as TextureImporter;
@@ -291,10 +460,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Windows
         [Test]
         public void OnlySpritesFiltersNonSprites()
         {
-            string spritePath = Path.Combine(Root, "sprite.png").SanitizePath();
-            string texPath = Path.Combine(Root, "tex.png").SanitizePath();
-            CreatePng(spritePath, 300, 100, Color.yellow);
-            CreatePng(texPath, 300, 100, Color.cyan);
+            string spritePath = CloneSharedTexture(_shared300x100Path, "sprite");
+            string texPath = CloneSharedTexture(_shared300x100Path, "tex");
             AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             TextureImporter spriteImp = AssetImporter.GetAtPath(spritePath) as TextureImporter;
@@ -330,10 +497,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Windows
         [Test]
         public void NameFilterContainsOnlyMatches()
         {
-            string heroPath = Path.Combine(Root, "hero_idle.png").SanitizePath();
-            string villPath = Path.Combine(Root, "villain_idle.png").SanitizePath();
-            CreatePng(heroPath, 300, 100, Color.white);
-            CreatePng(villPath, 300, 100, Color.white);
+            string heroPath = CloneSharedTexture(_shared300x100Path, "hero_idle");
+            string villPath = CloneSharedTexture(_shared300x100Path, "villain_idle");
             AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             TextureImporter heroImp = AssetImporter.GetAtPath(heroPath) as TextureImporter;
@@ -400,10 +565,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Windows
         [Test]
         public void LabelFilterMatchesOnlyLabeled()
         {
-            string labeledPath = Path.Combine(Root, "labeled.png").SanitizePath();
-            string unlabeledPath = Path.Combine(Root, "unlabeled.png").SanitizePath();
-            CreatePng(labeledPath, 300, 100, Color.gray);
-            CreatePng(unlabeledPath, 300, 100, Color.gray);
+            string labeledPath = CloneSharedTexture(_shared300x100Path, "labeled");
+            string unlabeledPath = CloneSharedTexture(_shared300x100Path, "unlabeled");
             AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             Object labeledObj = AssetDatabase.LoadAssetAtPath<Object>(labeledPath);
@@ -438,10 +601,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Windows
         [Test]
         public void SelectionOnlyProcessesOnlySelectedAsset()
         {
-            string aPath = Path.Combine(Root, "sel_a.png").SanitizePath();
-            string bPath = Path.Combine(Root, "sel_b.png").SanitizePath();
-            CreatePng(aPath, 300, 100, Color.white);
-            CreatePng(bPath, 300, 100, Color.white);
+            string aPath = CloneSharedTexture(_shared300x100Path, "sel_a");
+            string bPath = CloneSharedTexture(_shared300x100Path, "sel_b");
             AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             TextureImporter aImp = AssetImporter.GetAtPath(aPath) as TextureImporter;
@@ -506,8 +667,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Windows
         [Test]
         public void LabelFilterCaseSensitivityHonored()
         {
-            string path = Path.Combine(Root, "labelCase.png").SanitizePath();
-            CreatePng(path, 300, 100, Color.gray);
+            string path = CloneSharedTexture(_shared300x100Path, "labelCase");
             AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             Object obj = AssetDatabase.LoadAssetAtPath<Object>(path);
@@ -544,8 +704,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Windows
         [Test]
         public void PlatformOverrideStandaloneApplied()
         {
-            string path = Path.Combine(Root, "standalone.png").SanitizePath();
-            CreatePng(path, 300, 100, Color.magenta);
+            string path = CloneSharedTexture(_shared300x100Path, "standalone");
             AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             TextureImporter imp = AssetImporter.GetAtPath(path) as TextureImporter;
@@ -573,8 +732,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Windows
         [Test]
         public void PlatformOverrideIOSApplied()
         {
-            string path = Path.Combine(Root, "ios.png").SanitizePath();
-            CreatePng(path, 300, 100, Color.magenta);
+            string path = CloneSharedTexture(_shared300x100Path, "ios");
             AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             TextureImporter imp = AssetImporter.GetAtPath(path) as TextureImporter;
@@ -605,11 +763,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Windows
             // Prepare: one labeled texture under a folder, one unlabeled file selected directly
             string folder = Path.Combine(Root, "Sub").SanitizePath();
             EnsureFolder(folder);
-            string labeledUnderFolder = Path.Combine(folder, "inFolder.png").SanitizePath();
-            string directFile = Path.Combine(Root, "direct.png").SanitizePath();
-
-            CreatePng(labeledUnderFolder, 300, 100, Color.gray);
-            CreatePng(directFile, 300, 100, Color.gray);
+            string labeledUnderFolder = CloneSharedTexture(_shared300x100Path, "Sub/inFolder");
+            string directFile = CloneSharedTexture(_shared300x100Path, "direct");
             AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             Object labeledObj = AssetDatabase.LoadAssetAtPath<Object>(labeledUnderFolder);
@@ -649,12 +804,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Windows
         [Test]
         public void LastRunSummaryReflectsCounts()
         {
-            string aPath = Path.Combine(Root, "sumA.png").SanitizePath();
-            string bPath = Path.Combine(Root, "sumB.png").SanitizePath();
-            // a: 300x100 -> will grow to 512 (change)
-            // b: 128x128 with max=128 -> unchanged
-            CreatePng(aPath, 300, 100, Color.white);
-            CreatePng(bPath, 128, 128, Color.white);
+            string aPath = CloneSharedTexture(_shared300x100Path, "sumA");
+            string bPath = CloneSharedTexture(_shared128x128Path, "sumB");
             AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             TextureImporter aImp = AssetImporter.GetAtPath(aPath) as TextureImporter;
@@ -686,9 +837,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Windows
         [Test]
         public void RoundToNearestChoosesLowerWhenCloser()
         {
-            string path = Path.Combine(Root, "roundLower.png").SanitizePath();
-            // Largest dimension 300 -> nearest POT is 256 (diff 44 vs 212)
-            CreatePng(path, 300, 100, Color.green);
+            string path = CloneSharedTexture(_shared300x100Path, "roundLower");
             AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             TextureImporter imp = AssetImporter.GetAtPath(path) as TextureImporter;
@@ -716,9 +865,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Windows
         [Test]
         public void RoundToNearestRoundsUpOnTie()
         {
-            string path = Path.Combine(Root, "roundUpTie.png").SanitizePath();
-            // Largest dimension 384 is exactly halfway between 256 and 512; ties round up to 512
-            CreatePng(path, 384, 10, Color.blue);
+            string path = CloneSharedTexture(_shared384x10Path, "roundUpTie");
             AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             TextureImporter imp = AssetImporter.GetAtPath(path) as TextureImporter;

@@ -13,6 +13,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
     using ProtoBuf;
     using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class SerializableTypeTests
     {
         private const string MissingTypeName = "Missing.Type, MissingAssembly";
@@ -23,8 +25,11 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             SerializableType serializable = default;
 
             Assert.IsTrue(serializable.IsEmpty);
-            Assert.IsNull(serializable.Value);
-            Assert.IsNull((Type)serializable);
+            Assert.IsNull(serializable.Value, "Value should be null for default SerializableType");
+            Assert.IsNull(
+                (Type)serializable,
+                "Implicit cast to Type should be null for default SerializableType"
+            );
             Assert.IsTrue(serializable == null);
             Assert.IsTrue(null == serializable);
             Assert.IsFalse(serializable != null);
@@ -93,10 +98,13 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             SerializableType implicitNone = SerializableType.FromType(null);
 
             Assert.IsTrue(none.IsEmpty);
-            Assert.IsNull(none.Value);
+            Assert.IsNull(none.Value, "Value should be null for SerializableType from null");
             Assert.AreEqual(string.Empty, none.AssemblyQualifiedName);
             Assert.IsTrue(implicitNone.IsEmpty);
-            Assert.IsNull(implicitNone.Value);
+            Assert.IsNull(
+                implicitNone.Value,
+                "Value should be null for implicit SerializableType from null"
+            );
             Assert.AreEqual(string.Empty, implicitNone.AssemblyQualifiedName);
             Assert.IsTrue(none == null);
             Assert.IsTrue(null == none);
@@ -105,8 +113,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             Assert.IsTrue(implicitNone.Equals(null));
             Assert.IsTrue(implicitNone.EqualsType(null));
             Assert.IsTrue(none.EqualsType(null));
-            Assert.IsNull((Type)none);
-            Assert.IsNull((Type)implicitNone);
+            Assert.IsNull((Type)none, "Implicit cast to Type should be null");
+            Assert.IsNull((Type)implicitNone, "Implicit cast to Type should be null");
         }
 
         [Test]
@@ -130,7 +138,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
                 unresolved.IsEmpty,
                 "Serialized name should be preserved even when unresolved."
             );
-            Assert.IsNull(unresolved.Value);
+            Assert.IsNull(unresolved.Value, "Value should be null for unresolved type");
             Assert.IsFalse(string.IsNullOrEmpty(unresolved.AssemblyQualifiedName));
             StringAssert.Contains("MissingAssembly", unresolved.DisplayName);
         }
@@ -141,7 +149,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             SerializableType unresolved = SerializableType.FromSerializedName(MissingTypeName);
 
             Assert.AreEqual(MissingTypeName, unresolved.AssemblyQualifiedName);
-            Assert.IsNull(unresolved.Value);
+            Assert.IsNull(unresolved.Value, "Value should be null for unresolved type");
             Assert.IsFalse(unresolved.EqualsType(typeof(int)));
         }
 
@@ -168,7 +176,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             string json = JsonSerializer.Serialize(serializable);
 
             SerializableType roundTripped = JsonSerializer.Deserialize<SerializableType>(json);
-            Assert.IsNotNull(roundTripped.Value);
+            Assert.IsNotNull(roundTripped.Value, "Deserialized type should not be null");
             Assert.AreEqual(typeof(Dictionary<string, int>), roundTripped.Value);
 
             string nullJson = JsonSerializer.Serialize(default(SerializableType));
@@ -176,7 +184,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
 
             SerializableType nullRoundTrip = JsonSerializer.Deserialize<SerializableType>("null");
             Assert.IsTrue(nullRoundTrip.IsEmpty);
-            Assert.IsNull(nullRoundTrip.Value);
+            Assert.IsNull(nullRoundTrip.Value, "Null SerializableType should have null Value");
         }
 
         [Test]
@@ -198,7 +206,10 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
 
             SerializableType roundTrippedEmpty = Serializer.Deserialize<SerializableType>(stream);
             Assert.IsTrue(roundTrippedEmpty.IsEmpty);
-            Assert.IsNull(roundTrippedEmpty.Value);
+            Assert.IsNull(
+                roundTrippedEmpty.Value,
+                "Empty SerializableType should have null Value after Proto round-trip"
+            );
         }
 
         [Test]
@@ -401,8 +412,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
 
             bool resolved = unresolved.TryGetValue(out Type resolvedType);
             Assert.IsFalse(resolved);
-            Assert.IsNull(resolvedType);
-            Assert.IsNull(unresolved.Value);
+            Assert.IsNull(resolvedType, "Resolved type should be null for unknown type");
+            Assert.IsNull(unresolved.Value, "Value should be null for unknown type");
             Assert.IsFalse(unresolved.IsEmpty);
         }
 
@@ -430,7 +441,10 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
 
             SerializableType roundTripped = Serializer.Deserialize<SerializableType>(stream);
             Assert.IsFalse(roundTripped.IsEmpty);
-            Assert.IsNull(roundTripped.Value);
+            Assert.IsNull(
+                roundTripped.Value,
+                "Value should be null for missing type after Proto round-trip"
+            );
             Assert.AreEqual(MissingTypeName, roundTripped.AssemblyQualifiedName);
         }
 

@@ -24,6 +24,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
     /// Tests for WShowIfOdinDrawer ensuring WShowIf attributes work correctly with Odin Inspector.
     /// </summary>
     [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class WShowIfOdinDrawerTests : CommonTestBase
     {
         [Test]

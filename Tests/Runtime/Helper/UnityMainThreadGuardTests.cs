@@ -11,6 +11,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
     using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Tests.Core;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class UnityMainThreadGuardTests : CommonTestBase
     {
         [UnityTest]
@@ -46,7 +48,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
                 }
             }
 
-            Assert.IsNotNull(captured);
+            Assert.IsNotNull(
+                captured,
+                "Exception should have been captured from background thread"
+            );
             StringAssert.Contains(nameof(EnsureMainThreadThrowsWhenOffThread), captured.Message);
         }
 

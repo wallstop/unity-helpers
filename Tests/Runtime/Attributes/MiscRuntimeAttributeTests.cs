@@ -8,6 +8,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
     using PropertyAttribute = UnityEngine.PropertyAttribute;
 
     [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class MiscRuntimeAttributeTests
     {
         [Test]

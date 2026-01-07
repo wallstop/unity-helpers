@@ -10,6 +10,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
     using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Core.Serialization.JsonConverters;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class TypeConverterTests
     {
         private sealed class TypeHolder
@@ -30,7 +32,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
 
             string json = JsonSerializer.Serialize(holder, options);
             TypeHolder roundtrip = JsonSerializer.Deserialize<TypeHolder>(json, options);
-            Assert.IsNotNull(roundtrip);
+            Assert.IsNotNull(roundtrip, "Deserialized TypeHolder should not be null");
             Assert.AreEqual(typeof(ReflectionHelpers), roundtrip.T);
         }
     }

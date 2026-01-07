@@ -19,6 +19,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomEditors
     using WallstopStudios.UnityHelpers.Tests.EditorFramework;
 
     [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class WButtonInspectorTests : CommonTestBase
     {
         [Test]

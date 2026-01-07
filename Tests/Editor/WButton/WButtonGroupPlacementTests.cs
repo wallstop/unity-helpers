@@ -25,6 +25,8 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
     /// - Ungrouped buttons ignore groupPlacement and groupPriority
     /// </summary>
     [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class WButtonGroupPlacementTests : CommonTestBase
     {
         [SetUp]

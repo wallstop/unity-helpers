@@ -9,6 +9,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Editor.Sprites;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class AnimationViewerWindowTests
     {
         [Test]

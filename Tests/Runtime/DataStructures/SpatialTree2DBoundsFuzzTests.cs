@@ -11,6 +11,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
     using WallstopStudios.UnityHelpers.Tests.TestUtils;
     using Vector2 = UnityEngine.Vector2;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class SpatialTree2DBoundsFuzzTests
     {
         private static Vector2[] CreateGridPoints(Vector2Int gridSize)

@@ -232,7 +232,7 @@ namespace WallstopStudios.UnityHelpers.Utils
         /// <inheritdoc />
         public override string ToString()
         {
-            return $"PoolStatistics(Size={CurrentSize}, Peak={PeakSize}, Rents={RentCount}, "
+            return $"PoolStatistics(CurrentSize={CurrentSize}, Peak={PeakSize}, Rents={RentCount}, "
                 + $"Returns={ReturnCount}, Purges={PurgeCount}, IdleTimeout={IdleTimeoutPurges}, "
                 + $"Capacity={CapacityPurges}, FullPurgeOps={FullPurgeOperations}, PartialPurgeOps={PartialPurgeOperations}, "
                 + $"RentalsPerMin={RentalsPerMinute:F2}, AvgInterRentalTime={AverageInterRentalTimeSeconds:F3}s, "

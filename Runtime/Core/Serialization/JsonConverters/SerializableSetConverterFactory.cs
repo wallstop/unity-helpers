@@ -58,7 +58,8 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization.JsonConverters
 
         private sealed class SerializableHashSetConverter<T> : JsonConverter<SerializableHashSet<T>>
         {
-            private const string ItemsPropertyName = "_items";
+            private const string ItemsPropertyName =
+                SerializableHashSetSerializedPropertyNames.Items;
 
             public override SerializableHashSet<T> Read(
                 ref Utf8JsonReader reader,
@@ -161,7 +162,7 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization.JsonConverters
                 // Use reflection to set the internal _items field
                 Type type = typeof(SerializableSetBase<T, HashSet<T>>);
                 FieldInfo field = type.GetField(
-                    "_items",
+                    ItemsPropertyName,
                     BindingFlags.Instance | BindingFlags.NonPublic
                 );
                 field?.SetValue(set, items);
@@ -172,7 +173,8 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization.JsonConverters
             : JsonConverter<SerializableSortedSet<T>>
             where T : IComparable<T>
         {
-            private const string ItemsPropertyName = "_items";
+            private const string ItemsPropertyName =
+                SerializableHashSetSerializedPropertyNames.Items;
 
             public override SerializableSortedSet<T> Read(
                 ref Utf8JsonReader reader,
@@ -275,7 +277,7 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization.JsonConverters
                 // Use reflection to set the internal _items field
                 Type type = typeof(SerializableSetBase<T, SortedSet<T>>);
                 FieldInfo field = type.GetField(
-                    "_items",
+                    ItemsPropertyName,
                     BindingFlags.Instance | BindingFlags.NonPublic
                 );
                 field?.SetValue(set, items);

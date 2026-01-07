@@ -11,9 +11,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
     using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Editor.AssetProcessors;
     using WallstopStudios.UnityHelpers.Editor.Sprites;
+    using WallstopStudios.UnityHelpers.Editor.Utils;
     using WallstopStudios.UnityHelpers.Tests.Core;
     using Object = UnityEngine.Object;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class TextureSettingsApplierWizardAdditionalTests : CommonTestBase
     {
         private const string Root = "Assets/Temp/TextureSettingsApplierWizardAdditionalTests";
@@ -43,7 +47,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
             string other = (dir + "/other.png").SanitizePath();
             CreatePng(included, 16, 16, Color.white);
             CreatePng(other, 16, 16, Color.white);
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             // Set initial different values so we can detect changes
             TextureImporter impIncluded = AssetImporter.GetAtPath(included) as TextureImporter;
@@ -79,7 +83,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
             window.maxTextureSize = 64;
 
             window.ApplySettings();
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             impIncluded = AssetImporter.GetAtPath(included) as TextureImporter;
             impOther = AssetImporter.GetAtPath(other) as TextureImporter;
@@ -110,7 +114,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
             string jpg = (dirB + "/tex.jpg").SanitizePath();
             CreatePng(png, 8, 8, Color.white);
             CreateJpg(jpg, 8, 8, Color.white);
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             TextureImporter impPng = AssetImporter.GetAtPath(png) as TextureImporter;
             impPng.isReadable = true;
@@ -146,7 +150,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
             window2.maxTextureSize = 32;
 
             window2.ApplySettings();
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             impPng = AssetImporter.GetAtPath(png) as TextureImporter;
             impJpg = AssetImporter.GetAtPath(jpg) as TextureImporter;
@@ -183,7 +187,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
                 CreatePng(textures[i], 4, 4, Color.white);
             }
 
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             TextureSettingsApplierWindow window = Track(
                 ScriptableObject.CreateInstance<TextureSettingsApplierWindow>()
@@ -211,7 +215,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
                 "ApplySettings with multiple directories should not throw NullReferenceException"
             );
 
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             for (int i = 0; i < textures.Length; i++)
             {
@@ -236,7 +240,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
             EnsureFolder(dir);
             string tex = (dir + "/calcstats.png").SanitizePath();
             CreatePng(tex, 8, 8, Color.white);
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             TextureSettingsApplierWindow window = Track(
                 ScriptableObject.CreateInstance<TextureSettingsApplierWindow>()
@@ -260,7 +264,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
             string dir = Root.SanitizePath();
             string path = (dir + "/plat.png").SanitizePath();
             CreatePng(path, 16, 16, Color.white);
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             TextureSettingsApplierWindow window3 = Track(
                 ScriptableObject.CreateInstance<TextureSettingsApplierWindow>()
@@ -281,7 +285,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
                 };
 
             window3.ApplySettings();
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             TextureImporter imp = AssetImporter.GetAtPath(path) as TextureImporter;
             Assert.IsTrue(imp != null);
@@ -296,7 +300,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
             string dir = Root.SanitizePath();
             string path = (dir + "/dryrun.png").SanitizePath();
             CreatePng(path, 16, 16, Color.white);
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             // Set importer to desired state first
             TextureImporter imp = AssetImporter.GetAtPath(path) as TextureImporter;

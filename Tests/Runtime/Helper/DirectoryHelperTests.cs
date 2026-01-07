@@ -12,8 +12,27 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
     using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Tests.Core;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class DirectoryHelperTests : CommonTestBase
     {
+#if UNITY_EDITOR
+        [OneTimeSetUp]
+        public override void CommonOneTimeSetUp()
+        {
+            base.CommonOneTimeSetUp();
+            CleanupAllKnownTestFolders();
+        }
+
+        [OneTimeTearDown]
+        public override void OneTimeTearDown()
+        {
+            CleanupAllKnownTestFolders();
+            base.OneTimeTearDown();
+        }
+#endif
+
         [Test]
         public void EnsureDirectoryExistsWithNullDoesNothing()
         {

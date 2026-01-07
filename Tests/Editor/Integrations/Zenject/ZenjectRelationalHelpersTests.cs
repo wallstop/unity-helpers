@@ -11,6 +11,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.Zenject
     using WallstopStudios.UnityHelpers.Integrations.Zenject;
     using WallstopStudios.UnityHelpers.Tests.Core;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class ZenjectRelationalHelpersTests : CommonTestBase
     {
         private sealed class TestComponent : MonoBehaviour

@@ -22,6 +22,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Utils.WButton
     /// Verifies that users can integrate WButton functionality in their custom inspectors.
     /// </summary>
     [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class WButtonEditorHelperTests : CommonTestBase
     {
         [SetUp]

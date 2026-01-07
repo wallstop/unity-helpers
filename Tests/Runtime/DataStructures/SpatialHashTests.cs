@@ -10,6 +10,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.DataStructure;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class SpatialHashTests
     {
         private readonly List<IDisposable> _trackedResources = new();
@@ -121,7 +123,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             hash.Query(new Vector2(0, 0), 1.0f, results);
 
             Assert.AreEqual(1, results.Count);
-            Assert.IsNull(results[0]);
+            Assert.IsNull(results[0], "Queried item should be null as inserted");
         }
 
         [Test]

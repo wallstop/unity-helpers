@@ -14,6 +14,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
     using UnityEngine.Serialization;
     using WallstopStudios.UnityHelpers.Core.Extension;
     using WallstopStudios.UnityHelpers.Core.Helper;
+    using WallstopStudios.UnityHelpers.Editor.Utils;
     using WallstopStudios.UnityHelpers.Utils;
     using Object = UnityEngine.Object;
 
@@ -167,8 +168,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 outputFolder != null ? AssetDatabase.GetAssetPath(outputFolder) : null;
 
             // Batch edits for performance
-            AssetDatabase.StartAssetEditing();
-            try
+            using (AssetDatabaseBatchHelper.BeginBatch(refreshOnDispose: false))
             {
                 for (int idx = 0; idx < textures.Count; ++idx)
                 {
@@ -218,14 +218,17 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                     {
                         if (!originalReadable)
                         {
-                            // Temporarily end batch to guarantee reimport applies immediately
-                            AssetDatabase.StopAssetEditing();
-                            tImporter.isReadable = true;
-                            tImporter.SaveAndReimport();
-                            // Reload to ensure readability state reflects on the instance
-                            working = AssetDatabase.LoadAssetAtPath<Texture2D>(assetPath);
-                            // Resume batch edits
-                            AssetDatabase.StartAssetEditing();
+                            // Temporarily exit batch scope to guarantee reimport applies immediately.
+                            // We need to pause the batch since SaveAndReimport requires the AssetDatabase
+                            // to not be in editing mode to process the import.
+                            // Use a nested batch scope to properly track the exit and re-entry.
+                            using (AssetDatabaseBatchHelper.PauseBatch())
+                            {
+                                tImporter.isReadable = true;
+                                tImporter.SaveAndReimport();
+                                // Reload to ensure readability state reflects on the instance
+                                working = AssetDatabase.LoadAssetAtPath<Texture2D>(assetPath);
+                            }
                         }
 
                         int origW = working.width;
@@ -356,29 +359,25 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                         // Restore importer readability to original state
                         if (tImporter.isReadable != originalReadable)
                         {
-                            // Exit batch to restore importer reliably
-                            AssetDatabase.StopAssetEditing();
-                            tImporter.isReadable = originalReadable;
-                            try
+                            // Exit batch temporarily to restore importer reliably.
+                            // Use PauseBatch to properly track the exit and re-entry.
+                            using (AssetDatabaseBatchHelper.PauseBatch())
                             {
-                                tImporter.SaveAndReimport();
-                            }
-                            catch
-                            { /* ignore restore errors */
-                            }
-                            finally
-                            {
-                                AssetDatabase.StartAssetEditing();
+                                try
+                                {
+                                    tImporter.isReadable = originalReadable;
+                                    tImporter.SaveAndReimport();
+                                }
+                                catch
+                                { /* ignore restore errors */
+                                }
                             }
                         }
                     }
                 }
             }
-            finally
-            {
-                AssetDatabase.StopAssetEditing();
-                Utils.EditorUi.ClearProgress();
-            }
+
+            Utils.EditorUi.ClearProgress();
 
             if (anyChanges)
             {

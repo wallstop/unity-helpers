@@ -11,8 +11,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
     using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Editor.AssetProcessors;
     using WallstopStudios.UnityHelpers.Editor.Sprites;
+    using WallstopStudios.UnityHelpers.Editor.Utils;
     using WallstopStudios.UnityHelpers.Tests.Core;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class TextureResizerWizardTests : CommonTestBase
     {
         private const string Root = "Assets/Temp/TextureResizerWizardTests";
@@ -41,7 +45,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
         {
             string path = Path.Combine(Root, "tex.png").SanitizePath();
             CreatePng(path, 16, 10, Color.green);
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             TextureResizerWizard wizard = Track(
                 ScriptableObject.CreateInstance<TextureResizerWizard>()
@@ -57,7 +61,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
             wizard.scalingResizeAlgorithm = TextureResizerWizard.ResizeAlgorithm.Point;
             wizard.OnWizardCreate();
 
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
             Texture2D tex = AssetDatabase.LoadAssetAtPath<Texture2D>(path);
             Assert.IsTrue(tex != null, "Texture should exist after resize");
             Assert.That(tex.width, Is.EqualTo(32), "Width should double");
@@ -69,7 +73,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
         {
             string path = Path.Combine(Root, "nochange.png").SanitizePath();
             CreatePng(path, 12, 7, Color.blue);
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
             int w0 = AssetDatabase.LoadAssetAtPath<Texture2D>(path).width;
             int h0 = AssetDatabase.LoadAssetAtPath<Texture2D>(path).height;
 
@@ -79,7 +83,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
             wizard.numResizes = 0;
             wizard.OnWizardCreate();
 
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
             Texture2D tex = AssetDatabase.LoadAssetAtPath<Texture2D>(path);
             Assert.That(tex.width, Is.EqualTo(w0), "Width should remain unchanged");
             Assert.That(tex.height, Is.EqualTo(h0), "Height should remain unchanged");
@@ -90,7 +94,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
         {
             string path = Path.Combine(Root, "dry.png").SanitizePath();
             CreatePng(path, 10, 6, Color.white);
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             TextureResizerWizard wizard = Track(
                 ScriptableObject.CreateInstance<TextureResizerWizard>()
@@ -107,7 +111,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
             wizard.scalingResizeAlgorithm = TextureResizerWizard.ResizeAlgorithm.Point;
             wizard.OnWizardCreate();
 
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
             Texture2D tex = AssetDatabase.LoadAssetAtPath<Texture2D>(path);
             Assert.That(tex.width, Is.EqualTo(10));
             Assert.That(tex.height, Is.EqualTo(6));
@@ -118,7 +122,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
         {
             string path = Path.Combine(Root, "out.png").SanitizePath();
             CreatePng(path, 8, 4, Color.black);
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             TextureResizerWizard wizard = Track(
                 ScriptableObject.CreateInstance<TextureResizerWizard>()
@@ -137,7 +141,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
             wizard.outputFolder = outAsset;
             wizard.OnWizardCreate();
 
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
             Texture2D orig = AssetDatabase.LoadAssetAtPath<Texture2D>(path);
             Assert.That(orig.width, Is.EqualTo(8));
             Assert.That(orig.height, Is.EqualTo(4));
@@ -154,7 +158,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
         {
             string path = Path.Combine(Root, "multi.png").SanitizePath();
             CreatePng(path, 16, 10, Color.gray);
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             TextureResizerWizard wizard = Track(
                 ScriptableObject.CreateInstance<TextureResizerWizard>()
@@ -170,7 +174,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
             wizard.scalingResizeAlgorithm = TextureResizerWizard.ResizeAlgorithm.Point;
             wizard.OnWizardCreate();
 
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
             Texture2D tex = AssetDatabase.LoadAssetAtPath<Texture2D>(path);
             Assert.That(tex.width, Is.EqualTo(64));
             Assert.That(tex.height, Is.EqualTo(40));
@@ -181,7 +185,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
         {
             string path = Path.Combine(Root, "restore.png").SanitizePath();
             CreatePng(path, 8, 8, Color.red);
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             TextureImporter importer = AssetImporter.GetAtPath(path) as TextureImporter;
             Assert.IsTrue(importer != null);
@@ -202,7 +206,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
             wizard.scalingResizeAlgorithm = TextureResizerWizard.ResizeAlgorithm.Point;
             wizard.OnWizardCreate();
 
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
             importer = AssetImporter.GetAtPath(path) as TextureImporter;
             Assert.IsTrue(importer != null);
             Assert.IsFalse(importer.isReadable, "Importer readability should be restored");

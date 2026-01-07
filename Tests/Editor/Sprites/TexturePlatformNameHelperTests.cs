@@ -7,6 +7,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
     using NUnit.Framework;
     using WallstopStudios.UnityHelpers.Editor.Sprites;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class TexturePlatformNameHelperTests
     {
         [Test]

@@ -14,6 +14,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
     using WallstopStudios.UnityHelpers.Core.Helper.Logging;
     using WallstopStudios.UnityHelpers.Tests.Core;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     [SuppressMessage("ReSharper", "AccessToModifiedClosure")]
     public sealed class UnityLogTagFormatterEdgeTests : CommonTestBase
     {

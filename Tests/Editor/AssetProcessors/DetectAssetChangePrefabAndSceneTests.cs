@@ -11,12 +11,16 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
     using UnityEngine.SceneManagement;
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Editor.AssetProcessors;
+    using WallstopStudios.UnityHelpers.Editor.Utils;
     using WallstopStudios.UnityHelpers.Tests.Core;
     using Object = UnityEngine.Object;
 
     /// <summary>
     /// Tests for prefab and scene object search functionality in DetectAssetChangeProcessor.
     /// </summary>
+    [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class DetectAssetChangePrefabAndSceneTests : CommonTestBase
     {
         private const string Root = "Assets/__DetectAssetChangedTests__";
@@ -33,7 +37,7 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
         public void OneTimeSetUp()
         {
             CleanupTestFolders();
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
         }
 
         [SetUp]
@@ -65,7 +69,7 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
             DeleteAssetIfExists(TestScenePath);
 
             CleanupTestFolders();
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
             ClearTestState();
 
             base.TearDown();
@@ -975,7 +979,7 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
             );
             AssetDatabase.CreateAsset(payload, PayloadAssetPath);
             AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
         }
 
         private static GameObject CreatePrefabWithComponent<T>(string path)
@@ -986,7 +990,7 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
             go.AddComponent<T>();
             GameObject prefab = PrefabUtility.SaveAsPrefabAsset(go, path);
             Object.DestroyImmediate(go); // UNH-SUPPRESS: Intentional cleanup after saving prefab
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
             return prefab;
         }
 
@@ -1000,7 +1004,7 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
 
             GameObject prefab = PrefabUtility.SaveAsPrefabAsset(root, path);
             Object.DestroyImmediate(root); // UNH-SUPPRESS: Intentional cleanup after saving prefab
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
             return prefab;
         }
 
@@ -1013,7 +1017,7 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
 
             GameObject prefab = PrefabUtility.SaveAsPrefabAsset(go, path);
             Object.DestroyImmediate(go); // UNH-SUPPRESS: Intentional cleanup after saving prefab
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
             return prefab;
         }
 

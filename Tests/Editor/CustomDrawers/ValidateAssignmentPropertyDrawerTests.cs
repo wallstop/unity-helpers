@@ -19,6 +19,8 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
     using WallstopStudios.UnityHelpers.Tests.TestUtils;
 
     [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class ValidateAssignmentPropertyDrawerTests : CommonTestBase
     {
         [SetUp]

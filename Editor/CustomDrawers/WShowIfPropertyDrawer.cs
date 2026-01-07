@@ -24,6 +24,11 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         private const string ArrayDataMarker = ".Array.data[";
 
         /// <summary>
+        /// The standard property name for C# indexers ("Item").
+        /// </summary>
+        private const string IndexerPropertyName = "Item";
+
+        /// <summary>
         /// Maximum number of types to cache accessor dictionaries for.
         /// This prevents unbounded memory growth in large projects with many types.
         /// </summary>
@@ -650,7 +655,9 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                             return null;
                         }
 
-                        PropertyInfo indexer = readOnlyListInterface.GetProperty("Item");
+                        PropertyInfo indexer = readOnlyListInterface.GetProperty(
+                            IndexerPropertyName
+                        );
                         if (indexer == null)
                         {
                             return null;

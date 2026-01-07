@@ -14,8 +14,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Windows
     using UnityEngine.TestTools;
     using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Editor;
+    using WallstopStudios.UnityHelpers.Editor.Utils;
     using WallstopStudios.UnityHelpers.Tests.Core;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class PrefabCheckerTests : CommonTestBase
     {
         private const string Root = "Assets/Temp/PrefabCheckerTests";
@@ -72,7 +76,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Windows
         {
             string dataPath = Application.dataPath;
             string rel = DirectoryHelper.AbsoluteToUnityRelativePath(dataPath);
-            Assert.IsNotNull(rel);
+            Assert.IsNotNull(rel, "Relative path should not be null for valid data path");
             Assert.IsNotEmpty(rel);
             Assert.AreEqual("Assets", rel, "Root Assets conversion should be exactly 'Assets'.");
         }
@@ -86,7 +90,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Windows
             GameObject go = Track(new GameObject("DummyPrefab"));
             PrefabUtility.SaveAsPrefabAsset(go, prefabPath);
             TrackAssetPath(prefabPath);
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             PrefabChecker checker = Track(ScriptableObject.CreateInstance<PrefabChecker>());
 
@@ -103,7 +107,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Windows
         {
             string emptySubFolder = Path.Combine(Root, "EmptyFolder").SanitizePath();
             EnsureFolder(emptySubFolder);
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             PrefabChecker checker = Track(ScriptableObject.CreateInstance<PrefabChecker>());
             checker._assetPaths = new List<string> { emptySubFolder };
@@ -167,7 +171,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Windows
             go.AddComponent<BoxCollider>();
             PrefabUtility.SaveAsPrefabAsset(go, prefabPath);
             TrackAssetPath(prefabPath);
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             PrefabChecker checker = Track(ScriptableObject.CreateInstance<PrefabChecker>());
             checker._assetPaths = new List<string> { Root };
@@ -220,7 +224,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Windows
             GameObject go = Track(new GameObject("MixedTestPrefab"));
             PrefabUtility.SaveAsPrefabAsset(go, prefabPath);
             TrackAssetPath(prefabPath);
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             PrefabChecker checker = Track(ScriptableObject.CreateInstance<PrefabChecker>());
             // Mix of valid and invalid paths
@@ -359,7 +363,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Windows
             TrackAssetPath(prefabPath2);
             TrackAssetPath(prefabPath3);
 
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             PrefabChecker checker = Track(ScriptableObject.CreateInstance<PrefabChecker>());
             checker._assetPaths = new List<string> { subFolder1, subFolder2, subFolder3 };
@@ -394,7 +398,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Windows
                 TrackAssetPath(prefabPath);
             }
 
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             PrefabChecker checker = Track(ScriptableObject.CreateInstance<PrefabChecker>());
             checker._assetPaths = folders;
@@ -415,7 +419,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Windows
             GameObject go = Track(new GameObject("DuplicateTestPrefab"));
             PrefabUtility.SaveAsPrefabAsset(go, prefabPath);
             TrackAssetPath(prefabPath);
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             PrefabChecker checker = Track(ScriptableObject.CreateInstance<PrefabChecker>());
             // Same folder listed multiple times
@@ -450,7 +454,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Windows
             TrackAssetPath(parentPrefabPath);
             TrackAssetPath(childPrefabPath);
 
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             PrefabChecker checker = Track(ScriptableObject.CreateInstance<PrefabChecker>());
             // Both parent and child folder in the list

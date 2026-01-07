@@ -12,9 +12,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
     using UnityEditorInternal;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Helper;
+    using WallstopStudios.UnityHelpers.Editor.Utils;
     using WallstopStudios.UnityHelpers.Tests.Core;
     using WallstopStudios.UnityHelpers.Utils;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class HelpersTests : CommonTestBase
     {
         [Test]
@@ -48,7 +52,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             {
                 AssetDatabase.DeleteAsset(assetPath);
                 AssetDatabase.DeleteAsset(folder);
-                AssetDatabase.Refresh();
+                AssetDatabaseBatchHelper.RefreshIfNotBatching();
             }
         }
 
@@ -73,7 +77,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             {
                 AssetDatabase.CreateAsset(asset, assetPath);
                 AssetDatabase.SaveAssets();
-                AssetDatabase.Refresh();
+                AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
                 HashSet<string> guids = Helpers
                     .EnumerateScriptableObjects<DummyScriptableObject>(new[] { folder })
@@ -85,7 +89,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             {
                 AssetDatabase.DeleteAsset(assetPath);
                 AssetDatabase.DeleteAsset(folder);
-                AssetDatabase.Refresh();
+                AssetDatabaseBatchHelper.RefreshIfNotBatching();
             }
         }
 

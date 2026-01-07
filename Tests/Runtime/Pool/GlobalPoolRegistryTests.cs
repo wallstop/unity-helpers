@@ -13,6 +13,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
 #endif
 
     [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class GlobalPoolRegistryTests
     {
         private sealed class TestPoolItem
@@ -43,7 +44,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
         [SetUp]
         public void SetUp()
         {
-            _currentTime = 0f;
+            // Start at t=1 to avoid time=0 initialization issues
+            // (time 0 is treated as uninitialized in the tracker)
+            _currentTime = 1f;
             TestPoolItem.ResetIdCounter();
             GlobalPoolRegistry.Clear();
             GlobalPoolRegistry.ResetBudgetSettings();
@@ -59,7 +62,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
         }
 
         [Test]
-        public void Register_AddsPoolToRegistry()
+        public void RegisterAddsPoolToRegistry()
         {
             using WallstopGenericPool<TestPoolItem> pool = CreateTestPool();
 
@@ -67,7 +70,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
         }
 
         [Test]
-        public void Unregister_RemovesPoolFromRegistry()
+        public void UnregisterRemovesPoolFromRegistry()
         {
             WallstopGenericPool<TestPoolItem> pool = CreateTestPool();
 
@@ -79,7 +82,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
         }
 
         [Test]
-        public void CurrentTotalPooledItems_ReturnsCorrectTotal()
+        public void CurrentTotalPooledItemsReturnsCorrectTotal()
         {
             using WallstopGenericPool<TestPoolItem> pool1 = CreateTestPool(preWarmCount: 5);
             using WallstopGenericPool<TestPoolItem> pool2 = CreateTestPool(preWarmCount: 10);
@@ -88,7 +91,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
         }
 
         [Test]
-        public void CurrentTotalPooledItems_ExcludesDisposedPools()
+        public void CurrentTotalPooledItemsExcludesDisposedPools()
         {
             using WallstopGenericPool<TestPoolItem> pool1 = CreateTestPool(preWarmCount: 5);
             WallstopGenericPool<TestPoolItem> pool2 = CreateTestPool(preWarmCount: 10);
@@ -101,7 +104,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
         }
 
         [Test]
-        public void GlobalMaxPooledItems_DefaultsToExpectedValue()
+        public void GlobalMaxPooledItemsDefaultsToExpectedValue()
         {
             Assert.AreEqual(
                 GlobalPoolRegistry.DefaultGlobalMaxPooledItems,
@@ -110,7 +113,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
         }
 
         [Test]
-        public void GlobalMaxPooledItems_CanBeSet()
+        public void GlobalMaxPooledItemsCanBeSet()
         {
             GlobalPoolRegistry.GlobalMaxPooledItems = 1000;
 
@@ -118,23 +121,32 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
         }
 
         [Test]
-        public void BudgetEnforcementEnabled_DefaultsToTrue()
+        public void BudgetEnforcementEnabledDefaultsToTrue()
         {
-            Assert.IsTrue(GlobalPoolRegistry.BudgetEnforcementEnabled);
+            Assert.IsTrue(
+                GlobalPoolRegistry.BudgetEnforcementEnabled,
+                "Budget enforcement should be enabled by default"
+            );
         }
 
         [Test]
-        public void BudgetEnforcementEnabled_CanBeToggled()
+        public void BudgetEnforcementEnabledCanBeToggled()
         {
             GlobalPoolRegistry.BudgetEnforcementEnabled = false;
-            Assert.IsFalse(GlobalPoolRegistry.BudgetEnforcementEnabled);
+            Assert.IsFalse(
+                GlobalPoolRegistry.BudgetEnforcementEnabled,
+                "Budget enforcement should be disabled after setting to false"
+            );
 
             GlobalPoolRegistry.BudgetEnforcementEnabled = true;
-            Assert.IsTrue(GlobalPoolRegistry.BudgetEnforcementEnabled);
+            Assert.IsTrue(
+                GlobalPoolRegistry.BudgetEnforcementEnabled,
+                "Budget enforcement should be enabled after setting to true"
+            );
         }
 
         [Test]
-        public void EnforceBudget_ReturnsZero_WhenUnderBudget()
+        public void EnforceBudgetReturnsZeroWhenUnderBudget()
         {
             GlobalPoolRegistry.GlobalMaxPooledItems = 100;
             using WallstopGenericPool<TestPoolItem> pool = CreateTestPool(preWarmCount: 50);
@@ -146,7 +158,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
         }
 
         [Test]
-        public void EnforceBudget_PurgesExcessItems_WhenOverBudget()
+        public void EnforceBudgetPurgesExcessItemsWhenOverBudget()
         {
             GlobalPoolRegistry.GlobalMaxPooledItems = 30;
             using WallstopGenericPool<TestPoolItem> pool = CreateTestPool(preWarmCount: 50);
@@ -158,7 +170,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
         }
 
         [Test]
-        public void EnforceBudget_RespectsMinRetainCount()
+        public void EnforceBudgetRespectsMinRetainCount()
         {
             GlobalPoolRegistry.GlobalMaxPooledItems = 5;
             using WallstopGenericPool<TestPoolItem> pool = CreateTestPool(
@@ -173,7 +185,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
         }
 
         [Test]
-        public void EnforceBudget_ReturnsZero_WhenBudgetIsZeroOrNegative()
+        public void EnforceBudgetReturnsZeroWhenBudgetIsZeroOrNegative()
         {
             GlobalPoolRegistry.GlobalMaxPooledItems = 0;
             using WallstopGenericPool<TestPoolItem> pool = CreateTestPool(preWarmCount: 50);
@@ -190,7 +202,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
         }
 
         [Test]
-        public void EnforceBudget_PurgesLRU_WhenMultiplePools()
+        public void EnforceBudgetPurgesLRUWhenMultiplePools()
         {
             GlobalPoolRegistry.GlobalMaxPooledItems = 15;
 
@@ -220,7 +232,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
         }
 
         [Test]
-        public void EnforceBudget_PurgesAcrossMultiplePools_WhenSinglePoolInsufficient()
+        public void EnforceBudgetPurgesAcrossMultiplePoolsWhenSinglePoolInsufficient()
         {
             GlobalPoolRegistry.GlobalMaxPooledItems = 5;
 
@@ -249,7 +261,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
         }
 
         [Test]
-        public void TryEnforceBudgetIfNeeded_ReturnsZero_WhenDisabled()
+        public void TryEnforceBudgetIfNeededReturnsZeroWhenDisabled()
         {
             GlobalPoolRegistry.GlobalMaxPooledItems = 10;
             GlobalPoolRegistry.BudgetEnforcementEnabled = false;
@@ -262,7 +274,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
         }
 
         [Test]
-        public void TryEnforceBudgetIfNeeded_EnforcesInterval()
+        public void TryEnforceBudgetIfNeededEnforcesInterval()
         {
             GlobalPoolRegistry.GlobalMaxPooledItems = 10;
             GlobalPoolRegistry.BudgetEnforcementIntervalSeconds = 10f;
@@ -284,7 +296,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
         }
 
         [Test]
-        public void GetStatistics_ReturnsCorrectSnapshot()
+        public void GetStatisticsReturnsCorrectSnapshot()
         {
             GlobalPoolRegistry.GlobalMaxPooledItems = 100;
 
@@ -303,25 +315,31 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
             Assert.AreEqual(30, stats.TotalPooledItems);
             Assert.AreEqual(100, stats.GlobalMaxPooledItems);
             Assert.AreEqual(0.3f, stats.BudgetUtilization, 0.01f);
-            Assert.IsFalse(stats.IsBudgetExceeded);
+            Assert.IsFalse(
+                stats.IsBudgetExceeded,
+                "Budget should not be exceeded at 30% utilization"
+            );
             Assert.AreEqual(5f, stats.OldestPoolAccessTime);
             Assert.AreEqual(15f, stats.NewestPoolAccessTime);
         }
 
         [Test]
-        public void GetStatistics_IndicatesBudgetExceeded()
+        public void GetStatisticsIndicatesBudgetExceeded()
         {
             GlobalPoolRegistry.GlobalMaxPooledItems = 10;
             using WallstopGenericPool<TestPoolItem> pool = CreateTestPool(preWarmCount: 20);
 
             GlobalPoolStatistics stats = GlobalPoolRegistry.GetStatistics();
 
-            Assert.IsTrue(stats.IsBudgetExceeded);
+            Assert.IsTrue(
+                stats.IsBudgetExceeded,
+                "Budget should be exceeded when items exceed max"
+            );
             Assert.AreEqual(2.0f, stats.BudgetUtilization, 0.01f);
         }
 
         [Test]
-        public void ResetBudgetSettings_RestoresDefaults()
+        public void ResetBudgetSettingsRestoresDefaults()
         {
             GlobalPoolRegistry.GlobalMaxPooledItems = 100;
             GlobalPoolRegistry.BudgetEnforcementEnabled = false;
@@ -333,7 +351,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
                 GlobalPoolRegistry.DefaultGlobalMaxPooledItems,
                 GlobalPoolRegistry.GlobalMaxPooledItems
             );
-            Assert.IsTrue(GlobalPoolRegistry.BudgetEnforcementEnabled);
+            Assert.IsTrue(
+                GlobalPoolRegistry.BudgetEnforcementEnabled,
+                "Budget enforcement should be re-enabled after reset"
+            );
             Assert.AreEqual(
                 GlobalPoolRegistry.DefaultBudgetEnforcementIntervalSeconds,
                 GlobalPoolRegistry.BudgetEnforcementIntervalSeconds
@@ -341,7 +362,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
         }
 
         [Test]
-        public void PurgeForBudget_InvokesOnPurgeCallback()
+        public void PurgeForBudgetInvokesOnPurgeCallback()
         {
             int purgeCallbackCount = 0;
             PurgeReason capturedReason = PurgeReason.Explicit;
@@ -371,7 +392,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
         }
 
         [Test]
-        public void PurgeForBudget_InvokesOnDisposalCallback()
+        public void PurgeForBudgetInvokesOnDisposalCallback()
         {
             List<TestPoolItem> disposedItems = new();
 
@@ -396,12 +417,15 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
             Assert.AreEqual(5, disposedItems.Count);
             foreach (TestPoolItem item in disposedItems)
             {
-                Assert.IsTrue(item.WasDisposed);
+                Assert.IsTrue(
+                    item.WasDisposed,
+                    "Each disposed item should have WasDisposed set to true"
+                );
             }
         }
 
         [Test]
-        public void LastAccessTime_UpdatesOnGet()
+        public void LastAccessTimeUpdatesOnGet()
         {
             _currentTime = 0f;
             using WallstopGenericPool<TestPoolItem> pool = CreateTestPool(preWarmCount: 1);
@@ -413,7 +437,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
         }
 
         [Test]
-        public void CurrentPooledCount_ReturnsCorrectValue()
+        public void CurrentPooledCountReturnsCorrectValue()
         {
             using WallstopGenericPool<TestPoolItem> pool = CreateTestPool(preWarmCount: 5);
 
@@ -428,7 +452,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
         }
 
         [Test]
-        public void Clear_RemovesAllPools()
+        public void ClearRemovesAllPools()
         {
             using WallstopGenericPool<TestPoolItem> pool1 = CreateTestPool();
             using WallstopGenericPool<TestPoolItem> pool2 = CreateTestPool();
@@ -442,9 +466,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
 
         [TestCase(10, 5, 5)]
         [TestCase(100, 50, 50)]
-        [TestCase(20, 0, 20)]
+        [TestCase(20, 0, 0)] // Budget of 0 is treated as "no budget enforcement" per EnforceBudget_ReturnsZero_WhenBudgetIsZeroOrNegative
         [TestCase(10, 10, 0)]
-        public void EnforceBudget_VariousBudgetScenarios(
+        public void EnforceBudgetVariousBudgetScenarios(
             int poolSize,
             int budget,
             int expectedPurged
@@ -565,7 +589,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
 
 #if !SINGLE_THREADED
         [Test]
-        public void EnforceBudget_ThreadSafe()
+        public void EnforceBudgetThreadSafe()
         {
             GlobalPoolRegistry.GlobalMaxPooledItems = 100;
 
@@ -606,7 +630,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
         }
 
         [Test]
-        public void Registration_ThreadSafe()
+        public void RegistrationThreadSafe()
         {
             List<WallstopGenericPool<TestPoolItem>> pools = new();
             object poolsLock = new();

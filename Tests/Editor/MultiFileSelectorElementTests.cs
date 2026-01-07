@@ -12,6 +12,9 @@ namespace WallstopStudios.UnityHelpers.Tests
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Visuals.UIToolkit;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class MultiFileSelectorElementTests
     {
         private string _baseRel;

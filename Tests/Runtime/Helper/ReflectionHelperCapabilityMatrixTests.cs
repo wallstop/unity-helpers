@@ -12,6 +12,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
     using WallstopStudios.UnityHelpers.Tests.Core;
 
     [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class ReflectionHelperCapabilityMatrixTests : CommonTestBase
     {
         public enum CapabilityMode

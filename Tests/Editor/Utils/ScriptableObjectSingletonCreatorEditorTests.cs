@@ -18,6 +18,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
     using WallstopStudios.UnityHelpers.Tests.Core;
     using Object = UnityEngine.Object;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class ScriptableObjectSingletonCreatorEditorTests : CommonTestBase
     {
         private const string ResourcesRoot = "Assets/Resources";
@@ -137,7 +140,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             ScriptableObjectSingletonCreator.EnsureSingletonAssets();
             yield return null;
             AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
             yield return null;
 
             CreatorPathSingleton asset = AssetDatabase.LoadAssetAtPath<CreatorPathSingleton>(
@@ -160,7 +163,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
 
             ScriptableObjectSingletonCreator.EnsureSingletonAssets();
             AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
             yield return null;
             CreatorPathSingleton relocated = AssetDatabase.LoadAssetAtPath<CreatorPathSingleton>(
                 TargetAssetPath
@@ -168,7 +171,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             Assert.IsTrue(relocated != null);
             yield return null;
             AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
             yield return null;
             Assert.IsTrue(
                 AssetDatabase.LoadAssetAtPath<CreatorPathSingleton>(WrongAssetPath) == null
@@ -320,7 +323,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             yield return null;
             ScriptableObjectSingletonCreator.EnsureSingletonAssets();
             AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
             yield return null;
 
             CreatorPathSingleton relocated = AssetDatabase.LoadAssetAtPath<CreatorPathSingleton>(
@@ -329,7 +332,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             Assert.IsTrue(relocated != null);
             yield return null;
             AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
             yield return null;
             Assert.IsTrue(
                 AssetDatabase.LoadAssetAtPath<CreatorPathSingleton>(WrongAssetPathCaseVariant)
@@ -394,7 +397,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             {
                 ScriptableObjectSingletonCreator.EnsureSingletonAssets();
                 AssetDatabase.SaveAssets();
-                AssetDatabase.Refresh();
+                AssetDatabaseBatchHelper.RefreshIfNotBatching();
                 yield return null;
             }
             finally
@@ -442,7 +445,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             EnsureFolder(TargetFolder);
             DeleteFileIfExists(TargetAssetPath);
             DeleteFileIfExists(TargetAssetPath + ".meta");
-            AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
+            AssetDatabaseBatchHelper.RefreshIfNotBatching(
+                ImportAssetOptions.ForceSynchronousImport
+            );
             yield return null;
 
             string absolutePath = GetAbsolutePath(TargetAssetPath);
@@ -497,13 +502,17 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             // Clean up the invalid file and its meta
             File.Delete(absolutePath);
             DeleteFileIfExists(TargetAssetPath + ".meta");
-            AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
+            AssetDatabaseBatchHelper.RefreshIfNotBatching(
+                ImportAssetOptions.ForceSynchronousImport
+            );
             yield return null;
 
             // Now EnsureSingletonAssets should create the real asset
             ScriptableObjectSingletonCreator.EnsureSingletonAssets();
             AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
+            AssetDatabaseBatchHelper.RefreshIfNotBatching(
+                ImportAssetOptions.ForceSynchronousImport
+            );
             yield return null;
 
             Assert.IsTrue(
@@ -528,7 +537,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                 File.Delete(absoluteAsset);
             }
 
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
             yield return null;
 
             Assert.IsTrue(
@@ -552,7 +561,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             yield return null;
 
             AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
             yield return null;
 
             Assert.IsFalse(
@@ -564,7 +573,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             yield return null;
 
             AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
             yield return null;
 
             Assert.IsTrue(
@@ -586,7 +595,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             yield return null;
 
             AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
             yield return null;
 
             Assert.IsTrue(

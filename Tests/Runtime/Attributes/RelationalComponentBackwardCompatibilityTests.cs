@@ -16,6 +16,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
     /// These tests verify that all existing functionality still works exactly as before.
     /// </summary>
     [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class RelationalComponentBackwardCompatibilityTests : CommonTestBase
     {
         [UnityTest]

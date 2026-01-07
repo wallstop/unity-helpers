@@ -17,6 +17,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         internal sealed class Duplicate { }
     }
 
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class TypeNameSorterAdditionalTests
     {
         [Test]

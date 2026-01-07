@@ -24,6 +24,9 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
     using WallstopStudios.UnityHelpers.Utils;
     using Object = UnityEngine.Object;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class SerializableDictionaryPropertyDrawerTests : CommonTestBase
     {
         [SetUp]
@@ -1537,8 +1540,12 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializedProperty valueElement = valuesProperty.GetArrayElementAtIndex(0);
             Assert.IsNotNull(valueElement, "Expected value element to exist after commit.");
 
-            SerializedProperty primaryProperty = valueElement.FindPropertyRelative("_primary");
-            SerializedProperty secondaryProperty = valueElement.FindPropertyRelative("_secondary");
+            SerializedProperty primaryProperty = valueElement.FindPropertyRelative(
+                nameof(PrivateComplexValue._primary)
+            );
+            SerializedProperty secondaryProperty = valueElement.FindPropertyRelative(
+                nameof(PrivateComplexValue._secondary)
+            );
 
             Assert.IsNotNull(
                 primaryProperty,
@@ -1595,8 +1602,12 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializedProperty valueElement = valuesProperty.GetArrayElementAtIndex(0);
             Assert.IsNotNull(valueElement, "Expected value element to exist after commit.");
 
-            SerializedProperty primaryProperty = valueElement.FindPropertyRelative("_primary");
-            SerializedProperty secondaryProperty = valueElement.FindPropertyRelative("_secondary");
+            SerializedProperty primaryProperty = valueElement.FindPropertyRelative(
+                nameof(PrivateComplexValue._primary)
+            );
+            SerializedProperty secondaryProperty = valueElement.FindPropertyRelative(
+                nameof(PrivateComplexValue._secondary)
+            );
 
             Assert.IsNotNull(primaryProperty, "Expected '_primary' property for default value.");
             Assert.IsNotNull(
@@ -5181,7 +5192,9 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializedProperty valueElement = valuesProperty.GetArrayElementAtIndex(0);
 
             Assert.That(keyElement.stringValue, Is.EqualTo("Inline"));
-            SerializedProperty buttonColorProperty = valueElement.FindPropertyRelative("button");
+            SerializedProperty buttonColorProperty = valueElement.FindPropertyRelative(
+                nameof(ComplexValue.button)
+            );
             Assert.IsNotNull(buttonColorProperty);
             Assert.That(buttonColorProperty.colorValue, Is.EqualTo(Color.cyan));
         }

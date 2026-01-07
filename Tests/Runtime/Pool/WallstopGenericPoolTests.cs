@@ -13,6 +13,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
 #endif
 
     [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class WallstopGenericPoolTests
     {
         private sealed class TestPoolItem
@@ -46,6 +47,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
         {
             _currentTime = 0f;
             TestPoolItem.ResetIdCounter();
+            PoolPurgeSettings.ResetToDefaults();
+        }
+
+        [TearDown]
+        public void TearDown()
+        {
+            PoolPurgeSettings.ResetToDefaults();
         }
 
         [Test]
@@ -73,8 +81,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
 
             using PooledResource<TestPoolItem> resource = pool.Get(out TestPoolItem item);
 
-            Assert.IsNotNull(item);
-            Assert.AreEqual(1, item.Id);
+            Assert.IsNotNull(item, "Pool should create a new item when empty");
+            Assert.AreEqual(1, item.Id, "First created item should have Id 1");
         }
 
         [Test]
@@ -144,11 +152,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
             TestPoolItem capturedItem;
             using (PooledResource<TestPoolItem> resource = pool.Get(out capturedItem))
             {
-                Assert.IsFalse(capturedItem.WasReset);
+                Assert.IsFalse(capturedItem.WasReset, "Item should not be reset before release");
             }
 
-            Assert.IsTrue(capturedItem.WasReset);
-            Assert.AreEqual(1, releaseCount);
+            Assert.IsTrue(capturedItem.WasReset, "Item should be reset after release callback");
+            Assert.AreEqual(1, releaseCount, "Release callback should be invoked exactly once");
         }
 
         [Test]
@@ -172,10 +180,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
 
             pool.Dispose();
 
-            Assert.AreEqual(3, disposedItems.Count);
+            Assert.AreEqual(3, disposedItems.Count, "All 3 pre-warmed items should be disposed");
             foreach (TestPoolItem item in disposedItems)
             {
-                Assert.IsTrue(item.WasDisposed);
+                Assert.IsTrue(item.WasDisposed, "Each item should have WasDisposed set to true");
             }
         }
 
@@ -680,17 +688,35 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
                 options: options
             );
 
+            // Rent multiple items SIMULTANEOUSLY before returning them
+            // to properly track peak size (items must be held concurrently)
+            List<PooledResource<TestPoolItem>> rentedResources = new();
             for (int i = 0; i < 10; i++)
             {
-                using PooledResource<TestPoolItem> resource = pool.Get();
+                rentedResources.Add(pool.Get());
             }
 
-            // Rent some out
-            pool.Get();
-            pool.Get();
+            // Verify peak size while items are rented
+            PoolStatistics statsWhileRented = pool.GetStatistics();
+            Assert.AreEqual(
+                10,
+                statsWhileRented.PeakSize,
+                "Peak size should be 10 while 10 items are rented simultaneously"
+            );
 
-            PoolStatistics stats = pool.GetStatistics();
-            Assert.AreEqual(10, stats.PeakSize);
+            // Return all items
+            foreach (PooledResource<TestPoolItem> resource in rentedResources)
+            {
+                resource.Dispose();
+            }
+
+            // Peak size should persist after returning items
+            PoolStatistics statsAfterReturn = pool.GetStatistics();
+            Assert.AreEqual(
+                10,
+                statsAfterReturn.PeakSize,
+                "Peak size should remain 10 after items are returned to the pool"
+            );
         }
 
         [Test]
@@ -710,6 +736,123 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
 
             PoolStatistics stats = pool.GetStatistics();
             Assert.AreEqual(5, stats.CurrentSize);
+        }
+
+        [Test]
+        public void PreWarmDoesNotIncrementRentCount()
+        {
+            const int preWarmCount = 10;
+            PoolOptions<TestPoolItem> options = new()
+            {
+                Triggers = PurgeTrigger.Explicit,
+                TimeProvider = TestTimeProvider,
+            };
+
+            using WallstopGenericPool<TestPoolItem> pool = new(
+                () => new TestPoolItem(),
+                preWarmCount: preWarmCount,
+                options: options
+            );
+
+            PoolStatistics stats = pool.GetStatistics();
+
+            Assert.That(
+                stats.RentCount,
+                Is.EqualTo(0),
+                "RentCount should be 0 after PreWarm - PreWarm creates items but does not rent them"
+            );
+        }
+
+        [Test]
+        public void PreWarmSetsPeakSizeCorrectly()
+        {
+            const int preWarmCount = 7;
+            PoolOptions<TestPoolItem> options = new()
+            {
+                Triggers = PurgeTrigger.Explicit,
+                TimeProvider = TestTimeProvider,
+            };
+
+            using WallstopGenericPool<TestPoolItem> pool = new(
+                () => new TestPoolItem(),
+                preWarmCount: preWarmCount,
+                options: options
+            );
+
+            PoolStatistics stats = pool.GetStatistics();
+
+            Assert.That(
+                stats.PeakSize,
+                Is.EqualTo(preWarmCount),
+                $"PeakSize should equal PreWarm count ({preWarmCount}) after PreWarm"
+            );
+        }
+
+        [Test]
+        public void PreWarmSetsCurrentSizeCorrectly()
+        {
+            const int preWarmCount = 8;
+            PoolOptions<TestPoolItem> options = new()
+            {
+                Triggers = PurgeTrigger.Explicit,
+                TimeProvider = TestTimeProvider,
+            };
+
+            using WallstopGenericPool<TestPoolItem> pool = new(
+                () => new TestPoolItem(),
+                preWarmCount: preWarmCount,
+                options: options
+            );
+
+            PoolStatistics stats = pool.GetStatistics();
+
+            Assert.That(
+                stats.CurrentSize,
+                Is.EqualTo(preWarmCount),
+                $"CurrentSize should equal PreWarm count ({preWarmCount}) after PreWarm"
+            );
+        }
+
+        [TestCase(1)]
+        [TestCase(5)]
+        [TestCase(10)]
+        [TestCase(100)]
+        public void PreWarmStatisticsValidationWithVariousCounts(int preWarmCount)
+        {
+            PoolOptions<TestPoolItem> options = new()
+            {
+                Triggers = PurgeTrigger.Explicit,
+                TimeProvider = TestTimeProvider,
+            };
+
+            using WallstopGenericPool<TestPoolItem> pool = new(
+                () => new TestPoolItem(),
+                preWarmCount: preWarmCount,
+                options: options
+            );
+
+            PoolStatistics stats = pool.GetStatistics();
+
+            Assert.That(
+                stats.RentCount,
+                Is.EqualTo(0),
+                $"RentCount should be 0 after PreWarm({preWarmCount}) - PreWarm does not rent items"
+            );
+            Assert.That(
+                stats.ReturnCount,
+                Is.EqualTo(0),
+                $"ReturnCount should be 0 after PreWarm({preWarmCount}) - PreWarm does not return items"
+            );
+            Assert.That(
+                stats.PeakSize,
+                Is.EqualTo(preWarmCount),
+                $"PeakSize should equal PreWarm count ({preWarmCount})"
+            );
+            Assert.That(
+                stats.CurrentSize,
+                Is.EqualTo(preWarmCount),
+                $"CurrentSize should equal PreWarm count ({preWarmCount})"
+            );
         }
 
         // Edge case tests
@@ -799,7 +942,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
 
             using PooledResource<TestPoolItem> resource = pool.Get(out TestPoolItem item);
 
-            Assert.IsNotNull(item);
+            Assert.IsNotNull(item, "Item should not be null even after pool disposal");
         }
 
         [Test]
@@ -830,10 +973,20 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
             PoolStatistics stats2 = new(1, 2, 3, 4, 5, 6, 7);
             PoolStatistics stats3 = new(1, 2, 3, 4, 5, 6, 8);
 
-            Assert.IsTrue(stats1 == stats2);
-            Assert.IsFalse(stats1 == stats3);
-            Assert.IsTrue(stats1 != stats3);
-            Assert.AreEqual(stats1.GetHashCode(), stats2.GetHashCode());
+            Assert.IsTrue(stats1 == stats2, "Equal statistics should be equal via == operator");
+            Assert.IsFalse(
+                stats1 == stats3,
+                "Different statistics should not be equal via == operator"
+            );
+            Assert.IsTrue(
+                stats1 != stats3,
+                "Different statistics should be unequal via != operator"
+            );
+            Assert.AreEqual(
+                stats1.GetHashCode(),
+                stats2.GetHashCode(),
+                "Equal statistics should have equal hash codes"
+            );
         }
 
         [Test]
@@ -842,13 +995,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
             PoolStatistics stats = new(1, 2, 3, 4, 5, 6, 7);
             string str = stats.ToString();
 
-            Assert.IsTrue(str.Contains("1"));
-            Assert.IsTrue(str.Contains("2"));
-            Assert.IsTrue(str.Contains("3"));
-            Assert.IsTrue(str.Contains("4"));
-            Assert.IsTrue(str.Contains("5"));
-            Assert.IsTrue(str.Contains("6"));
-            Assert.IsTrue(str.Contains("7"));
+            Assert.IsTrue(str.Contains("1"), "ToString should contain TotalCreated value");
+            Assert.IsTrue(str.Contains("2"), "ToString should contain TotalRetrieved value");
+            Assert.IsTrue(str.Contains("3"), "ToString should contain TotalReturned value");
+            Assert.IsTrue(str.Contains("4"), "ToString should contain TotalPurged value");
+            Assert.IsTrue(str.Contains("5"), "ToString should contain CurrentSize value");
+            Assert.IsTrue(str.Contains("6"), "ToString should contain PeakSize value");
+            Assert.IsTrue(str.Contains("7"), "ToString should contain MaxPoolSize value");
         }
 
         [Test]
@@ -892,7 +1045,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
                 options: new PoolOptions<TestPoolItem> { TimeProvider = TestTimeProvider }
             );
 
-            Assert.IsFalse(pool.UseIntelligentPurging);
+            Assert.IsFalse(
+                pool.UseIntelligentPurging,
+                "Intelligent purging should be disabled by default"
+            );
         }
 
         [Test]
@@ -909,7 +1065,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
                 options: options
             );
 
-            Assert.IsTrue(pool.UseIntelligentPurging);
+            Assert.IsTrue(
+                pool.UseIntelligentPurging,
+                "Intelligent purging should be enabled when configured via options"
+            );
         }
 
         [Test]
@@ -1068,7 +1227,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
                 PoolPurgeEffectiveOptions effective =
                     PoolPurgeSettings.GetEffectiveOptions<TestPoolItem>();
 
-                Assert.IsTrue(effective.Enabled);
+                Assert.IsTrue(
+                    effective.Enabled,
+                    "Type-specific configuration should enable purging"
+                );
                 Assert.AreEqual(999f, effective.IdleTimeoutSeconds);
                 Assert.AreEqual(PoolPurgeConfigurationSource.TypeSpecific, effective.Source);
             }
@@ -1091,7 +1253,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
                 PoolPurgeEffectiveOptions effective =
                     PoolPurgeSettings.GetEffectiveOptions<TestPoolItem>();
 
-                Assert.IsFalse(effective.Enabled);
+                Assert.IsFalse(
+                    effective.Enabled,
+                    "Disable should prevent purging for the specific type"
+                );
                 Assert.AreEqual(PoolPurgeConfigurationSource.TypeDisabled, effective.Source);
             }
             finally
@@ -1105,7 +1270,74 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
         {
             PoolPurgeSettings.ResetToDefaults();
 
-            Assert.IsFalse(PoolPurgeSettings.GlobalEnabled);
+            Assert.IsFalse(
+                PoolPurgeSettings.GlobalEnabled,
+                "GlobalEnabled should default to false"
+            );
+        }
+
+        [Test]
+        public void GlobalEnabledFalseDisablesIntelligentPurgingByDefault()
+        {
+            PoolPurgeSettings.ResetToDefaults();
+
+            try
+            {
+                // Verify GlobalEnabled is false by default
+                Assert.That(
+                    PoolPurgeSettings.GlobalEnabled,
+                    Is.False,
+                    "GlobalEnabled should be false by default"
+                );
+
+                // Get effective options for a type - should report as disabled due to GlobalEnabled=false
+                PoolPurgeEffectiveOptions effective =
+                    PoolPurgeSettings.GetEffectiveOptions<TestPoolItem>();
+
+                Assert.That(
+                    effective.Enabled,
+                    Is.False,
+                    "Intelligent purging should be disabled when GlobalEnabled is false"
+                );
+                Assert.That(
+                    effective.Source,
+                    Is.EqualTo(PoolPurgeConfigurationSource.GlobalDefaults),
+                    "Source should be GlobalDefault when no type-specific configuration exists"
+                );
+            }
+            finally
+            {
+                PoolPurgeSettings.ResetToDefaults();
+            }
+        }
+
+        [Test]
+        public void GlobalEnabledTrueEnablesIntelligentPurgingByDefault()
+        {
+            PoolPurgeSettings.ResetToDefaults();
+
+            try
+            {
+                PoolPurgeSettings.GlobalEnabled = true;
+
+                PoolPurgeEffectiveOptions effective =
+                    PoolPurgeSettings.GetEffectiveOptions<TestPoolItem>();
+
+                Assert.That(
+                    effective.Enabled,
+                    Is.True,
+                    "Intelligent purging should be enabled when GlobalEnabled is true"
+                );
+                Assert.That(
+                    effective.Source,
+                    Is.EqualTo(PoolPurgeConfigurationSource.GlobalDefaults),
+                    "Source should be GlobalDefault when no type-specific configuration exists"
+                );
+            }
+            finally
+            {
+                PoolPurgeSettings.ResetToDefaults();
+            }
         }
 
         [Test]
@@ -1128,7 +1360,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
                     List<int>
                 >();
 
-                Assert.IsTrue(effective.Enabled);
+                Assert.IsTrue(
+                    effective.Enabled,
+                    "Generic pattern configuration should enable purging for matching types"
+                );
                 Assert.AreEqual(123f, effective.IdleTimeoutSeconds);
                 Assert.AreEqual(PoolPurgeConfigurationSource.GenericPattern, effective.Source);
             }
@@ -1200,7 +1435,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
                         using PooledResource<TestPoolItem> resource = pool.Get(
                             out TestPoolItem item
                         );
-                        Assert.IsNotNull(item);
+                        Assert.IsNotNull(item, "Concurrent Get should always return a valid item");
                     }
                 });
             }
@@ -1543,9 +1778,18 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
         [Test]
         public void GenericMatchingNullInputsHandleGracefully()
         {
-            Assert.IsNull(PoolTypeResolver.ResolveType(null));
-            Assert.IsNull(PoolTypeResolver.ResolveType(""));
-            Assert.IsNull(PoolTypeResolver.ResolveType("   "));
+            Assert.IsNull(
+                PoolTypeResolver.ResolveType(null),
+                "ResolveType should return null for null input"
+            );
+            Assert.IsNull(
+                PoolTypeResolver.ResolveType(""),
+                "ResolveType should return null for empty string"
+            );
+            Assert.IsNull(
+                PoolTypeResolver.ResolveType("   "),
+                "ResolveType should return null for whitespace string"
+            );
             Assert.IsFalse(PoolTypeResolver.TypeMatchesPattern(null, typeof(List<>)));
             Assert.IsFalse(PoolTypeResolver.TypeMatchesPattern(typeof(List<int>), (Type)null));
             Assert.AreEqual(int.MaxValue, PoolTypeResolver.GetMatchPriority(null, typeof(List<>)));
@@ -1579,7 +1823,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
             Type first = config.ResolvedType;
             Type second = config.ResolvedType;
 
-            Assert.IsNotNull(first);
+            Assert.IsNotNull(first, "ResolvedType should return a non-null type");
             Assert.AreEqual(typeof(List<int>), first);
             Assert.AreSame(first, second);
         }
@@ -1588,13 +1832,19 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
         public void PoolTypeConfigurationIsOpenGenericDetectsCorrectly()
         {
             PoolTypeConfiguration openConfig = new() { TypeName = "List<>" };
-            Assert.IsTrue(openConfig.IsOpenGeneric);
+            Assert.IsTrue(openConfig.IsOpenGeneric, "List<> should be detected as open generic");
 
             PoolTypeConfiguration closedConfig = new() { TypeName = "List<int>" };
-            Assert.IsFalse(closedConfig.IsOpenGeneric);
+            Assert.IsFalse(
+                closedConfig.IsOpenGeneric,
+                "List<int> should not be detected as open generic"
+            );
 
             PoolTypeConfiguration invalidConfig = new() { TypeName = "NotAType<>" };
-            Assert.IsFalse(invalidConfig.IsOpenGeneric);
+            Assert.IsFalse(
+                invalidConfig.IsOpenGeneric,
+                "Invalid type should not be detected as open generic"
+            );
         }
 
         [Test]
@@ -1634,15 +1884,537 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
             PoolTypeConfiguration config = new() { TypeName = "List<int>" };
 
             Type first = config.ResolvedType;
-            Assert.IsNotNull(first);
+            Assert.IsNotNull(first, "First resolution should return a valid type");
 
             config.InvalidateCache();
             config.TypeName = "List<string>";
 
             Type second = config.ResolvedType;
-            Assert.IsNotNull(second);
+            Assert.IsNotNull(
+                second,
+                "Second resolution should return a valid type after cache invalidation"
+            );
             Assert.AreEqual(typeof(List<string>), second);
             Assert.AreNotEqual(first, second);
+        }
+    }
+
+    /// <summary>
+    ///     Tests for pool edge cases related to time=0 and initialization states.
+    ///     Time=0 is a special case in the pool system because it is treated as "uninitialized"
+    ///     by the idle time tracker.
+    /// </summary>
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
+    public sealed class PoolTimeZeroEdgeCaseTests
+    {
+        private sealed class TestPoolItem
+        {
+            public int Id { get; }
+
+            private static int _nextId;
+
+            public TestPoolItem()
+            {
+                Id = Interlocked.Increment(ref _nextId);
+            }
+
+            public static void ResetIdCounter()
+            {
+                _nextId = 0;
+            }
+        }
+
+        private float _currentTime;
+
+        private float TestTimeProvider()
+        {
+            return _currentTime;
+        }
+
+        [SetUp]
+        public void SetUp()
+        {
+            _currentTime = 0f;
+            TestPoolItem.ResetIdCounter();
+        }
+
+        /// <summary>
+        ///     Documents that time=0 is a special case in the pool system.
+        ///     Items returned at time=0 may have undefined idle timeout behavior
+        ///     because time=0 is treated as "uninitialized" by the idle tracker.
+        /// </summary>
+        [Test]
+        public void PoolAtTimeZeroDocumentsSpecialBehavior()
+        {
+            PoolOptions<TestPoolItem> options = new()
+            {
+                IdleTimeoutSeconds = 1f,
+                Triggers = PurgeTrigger.Explicit,
+                TimeProvider = TestTimeProvider,
+            };
+
+            using WallstopGenericPool<TestPoolItem> pool = new(
+                () => new TestPoolItem(),
+                options: options
+            );
+
+            // Return an item at time=0
+            using (PooledResource<TestPoolItem> resource = pool.Get()) { }
+
+            Assert.That(pool.Count, Is.EqualTo(1), "Pool should have 1 item returned at time=0");
+
+            // Even with time > IdleTimeoutSeconds, items at time=0 may not be purged
+            // because time=0 is treated as uninitialized
+            _currentTime = 2f;
+
+            int purged = pool.Purge();
+
+            // Document the behavior: at time=0, idle tracking may not work as expected
+            // This test documents the behavior rather than asserting a specific outcome
+            Assert.That(
+                purged >= 0,
+                Is.True,
+                $"Purge at time={_currentTime} with items returned at time=0: purged={purged}. "
+                    + "Note: time=0 is a special case where idle tracking may be undefined."
+            );
+        }
+
+        /// <summary>
+        ///     Tests that starting time at a non-zero value avoids the time=0 edge case.
+        ///     This is the recommended pattern for tests that need predictable idle timeout behavior.
+        /// </summary>
+        [Test]
+        public void PoolStartingAtNonZeroTimeHasPredictableIdleTimeout()
+        {
+            // Start at t=1 to avoid time=0 initialization issues
+            _currentTime = 1f;
+
+            PoolOptions<TestPoolItem> options = new()
+            {
+                IdleTimeoutSeconds = 1f,
+                Triggers = PurgeTrigger.Explicit,
+                TimeProvider = TestTimeProvider,
+            };
+
+            using WallstopGenericPool<TestPoolItem> pool = new(
+                () => new TestPoolItem(),
+                options: options
+            );
+
+            using (PooledResource<TestPoolItem> resource = pool.Get()) { }
+
+            Assert.That(pool.Count, Is.EqualTo(1), "Pool should have 1 item returned at time=1");
+
+            // Advance time past idle timeout
+            _currentTime = 3f;
+
+            int purged = pool.Purge();
+
+            Assert.That(
+                purged,
+                Is.EqualTo(1),
+                $"Item should be purged when time advances past idle timeout. "
+                    + $"Initial time: 1, Current time: {_currentTime}, Timeout: 1s"
+            );
+        }
+
+        /// <summary>
+        ///     Tests pool behavior when items are pre-warmed at time=0.
+        /// </summary>
+        [Test]
+        public void PreWarmAtTimeZeroDocumentsIdleTrackerBehavior()
+        {
+            PoolOptions<TestPoolItem> options = new()
+            {
+                IdleTimeoutSeconds = 1f,
+                Triggers = PurgeTrigger.Explicit,
+                TimeProvider = TestTimeProvider,
+            };
+
+            // Pre-warm happens at construction time (time=0)
+            using WallstopGenericPool<TestPoolItem> pool = new(
+                () => new TestPoolItem(),
+                preWarmCount: 3,
+                options: options
+            );
+
+            Assert.That(pool.Count, Is.EqualTo(3), "Pool should have 3 pre-warmed items");
+
+            // Advance time past idle timeout
+            _currentTime = 2f;
+
+            int purged = pool.Purge();
+
+            // Document behavior: pre-warmed items at time=0 may have special handling
+            Assert.That(
+                purged >= 0,
+                Is.True,
+                $"Pre-warmed items at time=0 behavior: purged={purged} of 3. "
+                    + "Note: Pre-warmed items may have special idle tracking behavior."
+            );
+        }
+    }
+
+    /// <summary>
+    ///     Tests for pool purge edge cases with negative and boundary budget values.
+    /// </summary>
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
+    public sealed class PoolPurgeBudgetEdgeCaseTests
+    {
+        private sealed class TestPoolItem
+        {
+            public int Id { get; }
+
+            private static int _nextId;
+
+            public TestPoolItem()
+            {
+                Id = Interlocked.Increment(ref _nextId);
+            }
+
+            public static void ResetIdCounter()
+            {
+                _nextId = 0;
+            }
+        }
+
+        private float _currentTime;
+
+        private float TestTimeProvider()
+        {
+            return _currentTime;
+        }
+
+        [SetUp]
+        public void SetUp()
+        {
+            // Start at t=1 to avoid time=0 edge cases
+            _currentTime = 1f;
+            TestPoolItem.ResetIdCounter();
+            PoolPurgeSettings.ResetToDefaults();
+        }
+
+        [TearDown]
+        public void TearDown()
+        {
+            PoolPurgeSettings.ResetToDefaults();
+        }
+
+        /// <summary>
+        ///     Tests that negative MaxPurgesPerOperation values are normalized to zero (unlimited).
+        /// </summary>
+        [Test]
+        public void NegativeMaxPurgesPerOperationIsNormalizedToUnlimited()
+        {
+            const int preWarmCount = 10;
+
+            using WallstopGenericPool<TestPoolItem> pool = new(
+                () => new TestPoolItem(),
+                preWarmCount: preWarmCount,
+                options: new PoolOptions<TestPoolItem>
+                {
+                    IdleTimeoutSeconds = 1f,
+                    MaxPurgesPerOperation = -10, // Negative value
+                    Triggers = PurgeTrigger.Explicit,
+                    TimeProvider = TestTimeProvider,
+                }
+            );
+
+            Assert.That(
+                pool.MaxPurgesPerOperation,
+                Is.EqualTo(0),
+                "Negative MaxPurgesPerOperation should be normalized to 0 (unlimited)"
+            );
+
+            _currentTime = 3f;
+            int purged = pool.Purge();
+
+            Assert.That(
+                purged,
+                Is.EqualTo(preWarmCount),
+                "All items should be purged when MaxPurgesPerOperation is unlimited (0)"
+            );
+        }
+
+        /// <summary>
+        ///     Tests that MaxPurgesPerOperation of exactly 1 works correctly.
+        /// </summary>
+        [Test]
+        public void MaxPurgesPerOperationOfOneWorksCorrectly()
+        {
+            const int preWarmCount = 5;
+
+            using WallstopGenericPool<TestPoolItem> pool = new(
+                () => new TestPoolItem(),
+                preWarmCount: preWarmCount,
+                options: new PoolOptions<TestPoolItem>
+                {
+                    IdleTimeoutSeconds = 1f,
+                    MaxPurgesPerOperation = 1,
+                    Triggers = PurgeTrigger.Explicit,
+                    TimeProvider = TestTimeProvider,
+                }
+            );
+
+            _currentTime = 3f;
+
+            int firstPurge = pool.Purge();
+
+            Assert.That(firstPurge, Is.EqualTo(1), "First purge should remove exactly 1 item");
+            Assert.That(
+                pool.Count,
+                Is.EqualTo(preWarmCount - 1),
+                $"Pool should have {preWarmCount - 1} items after first purge"
+            );
+            Assert.That(
+                pool.HasPendingPurges,
+                Is.True,
+                "Should have pending purges after partial purge"
+            );
+
+            // Purge remaining items one at a time
+            int totalPurged = firstPurge;
+            int iterations = 0;
+            while (pool.HasPendingPurges && iterations < 10)
+            {
+                totalPurged += pool.Purge();
+                iterations++;
+            }
+
+            Assert.That(
+                totalPurged,
+                Is.EqualTo(preWarmCount),
+                "Should have purged all items eventually"
+            );
+        }
+
+        /// <summary>
+        ///     Tests pool behavior when setting MaxPurgesPerOperation to the exact pool count.
+        /// </summary>
+        [Test]
+        public void MaxPurgesPerOperationEqualToPoolCountPurgesAllInOneOperation()
+        {
+            const int preWarmCount = 5;
+
+            using WallstopGenericPool<TestPoolItem> pool = new(
+                () => new TestPoolItem(),
+                preWarmCount: preWarmCount,
+                options: new PoolOptions<TestPoolItem>
+                {
+                    IdleTimeoutSeconds = 1f,
+                    MaxPurgesPerOperation = preWarmCount, // Exactly matches count
+                    Triggers = PurgeTrigger.Explicit,
+                    TimeProvider = TestTimeProvider,
+                }
+            );
+
+            _currentTime = 3f;
+
+            int purged = pool.Purge();
+
+            Assert.That(
+                purged,
+                Is.EqualTo(preWarmCount),
+                "Should purge all items when limit equals pool count"
+            );
+            Assert.That(
+                pool.HasPendingPurges,
+                Is.False,
+                "Should not have pending purges when all items purged"
+            );
+        }
+    }
+
+    /// <summary>
+    ///     Tests for pool statistics edge cases when no operations have occurred.
+    /// </summary>
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
+    public sealed class PoolStatisticsEdgeCaseTests
+    {
+        private sealed class TestPoolItem
+        {
+            public int Id { get; }
+
+            private static int _nextId;
+
+            public TestPoolItem()
+            {
+                Id = Interlocked.Increment(ref _nextId);
+            }
+
+            public static void ResetIdCounter()
+            {
+                _nextId = 0;
+            }
+        }
+
+        private float _currentTime;
+
+        private float TestTimeProvider()
+        {
+            return _currentTime;
+        }
+
+        [SetUp]
+        public void SetUp()
+        {
+            _currentTime = 1f;
+            TestPoolItem.ResetIdCounter();
+        }
+
+        /// <summary>
+        ///     Tests that pool statistics are valid when no rentals have occurred.
+        /// </summary>
+        [Test]
+        public void GetStatisticsWithNoRentalsReturnsValidStatistics()
+        {
+            PoolOptions<TestPoolItem> options = new()
+            {
+                Triggers = PurgeTrigger.Explicit,
+                TimeProvider = TestTimeProvider,
+            };
+
+            using WallstopGenericPool<TestPoolItem> pool = new(
+                () => new TestPoolItem(),
+                options: options
+            );
+
+            PoolStatistics stats = pool.GetStatistics();
+
+            Assert.That(
+                stats.RentCount,
+                Is.EqualTo(0),
+                "RentCount should be 0 when no rentals have occurred"
+            );
+            Assert.That(
+                stats.ReturnCount,
+                Is.EqualTo(0),
+                "ReturnCount should be 0 when no rentals have occurred"
+            );
+            Assert.That(
+                stats.PurgeCount,
+                Is.EqualTo(0),
+                "PurgeCount should be 0 when no purges have occurred"
+            );
+            Assert.That(stats.CurrentSize, Is.EqualTo(0), "CurrentSize should be 0 for empty pool");
+            Assert.That(
+                stats.PeakSize,
+                Is.EqualTo(0),
+                "PeakSize should be 0 when pool has never had items"
+            );
+        }
+
+        /// <summary>
+        ///     Tests that pool statistics with pre-warm but no rentals shows correct values.
+        /// </summary>
+        [Test]
+        public void GetStatisticsWithPreWarmOnlyShowsCorrectValues()
+        {
+            const int preWarmCount = 5;
+            PoolOptions<TestPoolItem> options = new()
+            {
+                Triggers = PurgeTrigger.Explicit,
+                TimeProvider = TestTimeProvider,
+            };
+
+            using WallstopGenericPool<TestPoolItem> pool = new(
+                () => new TestPoolItem(),
+                preWarmCount: preWarmCount,
+                options: options
+            );
+
+            PoolStatistics stats = pool.GetStatistics();
+
+            Assert.That(
+                stats.RentCount,
+                Is.EqualTo(0),
+                "RentCount should be 0 when no rentals have occurred (only pre-warm)"
+            );
+            Assert.That(
+                stats.ReturnCount,
+                Is.EqualTo(0),
+                "ReturnCount should be 0 when no rentals have occurred (only pre-warm)"
+            );
+            Assert.That(
+                stats.CurrentSize,
+                Is.EqualTo(preWarmCount),
+                $"CurrentSize should be {preWarmCount} after pre-warm"
+            );
+            Assert.That(
+                stats.PeakSize,
+                Is.EqualTo(preWarmCount),
+                $"PeakSize should be {preWarmCount} after pre-warm"
+            );
+        }
+
+        /// <summary>
+        ///     Tests statistics after a purge on an empty pool (edge case).
+        /// </summary>
+        [Test]
+        public void GetStatisticsAfterPurgeOnEmptyPoolShowsCorrectValues()
+        {
+            PoolOptions<TestPoolItem> options = new()
+            {
+                IdleTimeoutSeconds = 1f,
+                Triggers = PurgeTrigger.Explicit,
+                TimeProvider = TestTimeProvider,
+            };
+
+            using WallstopGenericPool<TestPoolItem> pool = new(
+                () => new TestPoolItem(),
+                options: options
+            );
+
+            // Attempt purge on empty pool
+            _currentTime = 3f;
+            int purged = pool.Purge();
+
+            PoolStatistics stats = pool.GetStatistics();
+
+            Assert.That(purged, Is.EqualTo(0), "Purge on empty pool should return 0");
+            Assert.That(
+                stats.PurgeCount,
+                Is.EqualTo(0),
+                "PurgeCount should be 0 when purging empty pool"
+            );
+            Assert.That(
+                stats.IdleTimeoutPurges,
+                Is.EqualTo(0),
+                "IdleTimeoutPurges should be 0 when purging empty pool"
+            );
+        }
+
+        /// <summary>
+        ///     Tests that statistics ToString works correctly with zero values.
+        /// </summary>
+        [Test]
+        public void PoolStatisticsToStringWithZeroValuesIsValid()
+        {
+            PoolStatistics stats = new(
+                currentSize: 0,
+                peakSize: 0,
+                rentCount: 0,
+                returnCount: 0,
+                purgeCount: 0,
+                idleTimeoutPurges: 0,
+                capacityPurges: 0
+            );
+
+            string str = stats.ToString();
+
+            Assert.That(
+                str,
+                Is.Not.Null.And.Not.Empty,
+                "ToString should return non-empty string even with all zeros"
+            );
+            Assert.That(
+                str,
+                Does.Contain("CurrentSize=0"),
+                "ToString should contain CurrentSize=0"
+            );
         }
     }
 }

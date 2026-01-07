@@ -9,6 +9,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
     using WallstopStudios.UnityHelpers.Core.DataStructure;
 
     [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class PriorityQueueTests
     {
         [Test]

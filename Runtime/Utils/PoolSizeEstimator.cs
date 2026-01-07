@@ -293,15 +293,15 @@ namespace WallstopStudios.UnityHelpers.Utils
             {
                 return Marshal.SizeOf(type);
             }
-            catch (Exception ex)
+            catch (Exception e)
             {
                 // Non-blittable types - estimate based on fields
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
                 Debug.LogWarning(
-                    $"[PoolSizeEstimator] Failed to get Marshal.SizeOf for {type.Name}, using field-based estimate: {ex.Message}"
+                    $"[PoolSizeEstimator] Failed to get Marshal.SizeOf for {type.Name}, using field-based estimate: {e.Message}"
                 );
 #endif
-                _ = ex;
+                _ = e;
                 return EstimateFieldBasedSize(type);
             }
         }
@@ -358,14 +358,14 @@ namespace WallstopStudios.UnityHelpers.Utils
                     }
                 }
             }
-            catch (Exception ex)
+            catch (Exception e)
             {
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
                 Debug.LogWarning(
-                    $"[PoolSizeEstimator] Failed to estimate field-based size for {type.Name}: {ex.Message}"
+                    $"[PoolSizeEstimator] Failed to estimate field-based size for {type.Name}: {e.Message}"
                 );
 #endif
-                _ = ex;
+                _ = e;
                 // If reflection fails, use a conservative estimate
                 size = PointerSize * 4;
             }
@@ -504,14 +504,14 @@ namespace WallstopStudios.UnityHelpers.Utils
             {
                 return Marshal.SizeOf(type);
             }
-            catch (Exception ex)
+            catch (Exception e)
             {
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
                 Debug.LogWarning(
-                    $"[PoolSizeEstimator] Failed to get element size for {type.Name}, using field-based estimate: {ex.Message}"
+                    $"[PoolSizeEstimator] Failed to get element size for {type.Name}, using field-based estimate: {e.Message}"
                 );
 #endif
-                _ = ex;
+                _ = e;
                 // Non-blittable struct - estimate based on fields
                 return EstimateFieldBasedSize(type);
             }

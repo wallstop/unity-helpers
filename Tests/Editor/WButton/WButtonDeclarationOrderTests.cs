@@ -17,6 +17,8 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
     /// within the same draw order, NOT by alphabetical order of display names or method names.
     /// </summary>
     [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class WButtonDeclarationOrderTests : CommonTestBase
     {
         [Test]

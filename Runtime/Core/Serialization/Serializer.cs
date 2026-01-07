@@ -1418,11 +1418,11 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
             {
                 throw;
             }
-            catch (Exception ex)
+            catch (Exception e)
             {
                 throw new ProtoException(
                     "Protobuf deserialization failed: invalid or corrupted data.",
-                    ex
+                    e
                 );
             }
         }
@@ -1578,11 +1578,11 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization
             {
                 throw;
             }
-            catch (Exception ex)
+            catch (Exception e)
             {
                 throw new ProtoException(
                     "Protobuf deserialization failed: invalid or corrupted data.",
-                    ex
+                    e
                 );
             }
         }

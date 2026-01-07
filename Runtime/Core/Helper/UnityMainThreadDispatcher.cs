@@ -544,10 +544,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 }
                 catch (Exception e)
                 {
-                    this.LogError(
-                        $"UnityMainThreadDispatcher action threw {e.GetType().Name}: {e.Message}",
-                        e
-                    );
+                    this.LogError($"UnityMainThreadDispatcher action threw an exception", e);
                 }
                 finally
                 {
@@ -590,9 +587,9 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                         action();
                         taskCompletionSource.TrySetResult(true);
                     }
-                    catch (Exception ex)
+                    catch (Exception e)
                     {
-                        taskCompletionSource.TrySetException(ex);
+                        taskCompletionSource.TrySetException(e);
                     }
                 },
                 logOverflow: true
@@ -665,10 +662,10 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                     {
                         runTask = action(cancellationToken);
                     }
-                    catch (Exception ex)
+                    catch (Exception e)
                     {
                         registration.Dispose();
-                        taskCompletionSource.TrySetException(ex);
+                        taskCompletionSource.TrySetException(e);
                         return;
                     }
 
@@ -787,9 +784,9 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                         T result = func();
                         taskCompletionSource.TrySetResult(result);
                     }
-                    catch (Exception ex)
+                    catch (Exception e)
                     {
-                        taskCompletionSource.TrySetException(ex);
+                        taskCompletionSource.TrySetException(e);
                     }
                 },
                 logOverflow: true

@@ -15,6 +15,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
     /// Tests for HashSet support in relational component attributes
     /// </summary>
     [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class RelationalComponentHashSetTests : CommonTestBase
     {
         [UnityTest]

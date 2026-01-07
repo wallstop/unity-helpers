@@ -13,6 +13,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.VContainer.Runtime
     using WallstopStudios.UnityHelpers.Tests.Core;
     using WallstopStudios.UnityHelpers.Tests.TestUtils;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class RelationalObjectPoolsVContainerTests : CommonTestBase
     {
         [SetUp]

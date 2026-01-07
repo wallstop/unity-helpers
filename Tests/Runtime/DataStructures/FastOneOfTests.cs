@@ -9,6 +9,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
     using WallstopStudios.UnityHelpers.Core.OneOf;
 
     [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class FastOneOf3Tests
     {
         [Test]
@@ -439,6 +440,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
     }
 
     [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class FastOneOf2Tests
     {
         [Test]
@@ -646,6 +648,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
     }
 
     [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class FastOneOf4Tests
     {
         [Test]
@@ -811,6 +814,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
     }
 
     [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class NoneTests
     {
         [Test]

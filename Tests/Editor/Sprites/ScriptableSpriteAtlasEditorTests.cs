@@ -11,8 +11,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
     using UnityEngine.U2D;
     using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Editor.Sprites;
+    using WallstopStudios.UnityHelpers.Editor.Utils;
     using WallstopStudios.UnityHelpers.Tests.Core;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class ScriptableSpriteAtlasEditorTests : CommonTestBase
     {
         private const string Root = "Assets/Temp/ScriptableSpriteAtlasEditorTests";
@@ -38,7 +42,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
             // Create a source sprite
             string spritePath = Path.Combine(Root, "icon.png").SanitizePath();
             CreatePng(spritePath, 8, 8, Color.red);
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             // Create config asset
             ScriptableSpriteAtlas config = ScriptableObject.CreateInstance<ScriptableSpriteAtlas>(); // UNH-SUPPRESS: Asset becomes persistent via CreateAsset below
@@ -50,7 +54,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
             AssetDatabase.CreateAsset(config, configPath);
             TrackAssetPath(configPath);
             AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             // Open window and generate all atlases
             ScriptableSpriteAtlasEditor window = Track(
@@ -59,7 +63,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
             window.LoadAtlasConfigs();
             window.GenerateAllAtlases();
 
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             string atlasPath = Path.Combine(Root, "TestAtlas.spriteatlas").SanitizePath();
             TrackAssetPath(atlasPath);

@@ -11,6 +11,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Performance
     using SerializerAlias = WallstopStudios.UnityHelpers.Core.Serialization.Serializer;
 
     [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class ProtoSerializationPerformanceTests
     {
         [ProtoContract]

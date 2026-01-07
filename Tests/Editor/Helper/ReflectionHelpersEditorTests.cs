@@ -40,6 +40,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
     }
 
     [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class ReflectionHelpersEditorTests
     {
         [Test]

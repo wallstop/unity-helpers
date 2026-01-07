@@ -11,8 +11,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
     using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Editor.AssetProcessors;
     using WallstopStudios.UnityHelpers.Editor.Sprites;
+    using WallstopStudios.UnityHelpers.Editor.Utils;
     using WallstopStudios.UnityHelpers.Tests.Core;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class SpritePivotAdjusterTests : CommonTestBase
     {
         private const string Root = "Assets/Temp/SpritePivotAdjusterTests";
@@ -40,7 +44,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
             string path = Path.Combine(Root, "pivot.png").SanitizePath();
             // 10x10 image, opaque L-shape to bias center toward bottom-left
             CreateAsymmetricAlpha(path, 10, 10);
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             TextureImporter imp = AssetImporter.GetAtPath(path) as TextureImporter;
             Assert.IsTrue(imp != null);
@@ -63,7 +67,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
             window.FindFilesToProcess();
             window.AdjustPivotsInDirectory(false);
 
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             // Expect pivot biased toward bottom-left (< 0.5)
             imp = AssetImporter.GetAtPath(path) as TextureImporter;

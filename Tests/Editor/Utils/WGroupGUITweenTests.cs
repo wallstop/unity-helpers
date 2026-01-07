@@ -15,6 +15,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Utils
     /// Validates fade group animation integration, tween enable/disable behavior,
     /// and edge cases for collapsible group animations.
     /// </summary>
+    [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class WGroupGUITweenTests
     {
         private bool _originalTweenEnabled;

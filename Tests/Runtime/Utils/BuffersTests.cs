@@ -20,6 +20,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
     using System.Threading.Tasks;
 #endif
 
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class BuffersTests
     {
         private IDisposable _waitInstructionScope;

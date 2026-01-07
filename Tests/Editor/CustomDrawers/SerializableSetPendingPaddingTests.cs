@@ -22,6 +22,9 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
     /// Note: UnityHelpersSettings does not contain SerializableHashSet properties, so settings
     /// context behavior for sets is tested via mock detection and property attribute inference.
     /// </summary>
+    [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class SerializableSetPendingPaddingTests : CommonTestBase
     {
         [SetUp]

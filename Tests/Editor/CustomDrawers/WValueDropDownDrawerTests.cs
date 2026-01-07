@@ -17,6 +17,8 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
     using PropertyAttribute = UnityEngine.PropertyAttribute;
 
     [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class WValueDropDownDrawerTests : CommonTestBase
     {
         [Test]
