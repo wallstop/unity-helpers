@@ -2,13 +2,13 @@
 
 <!-- trigger: heap, priority queue, scheduling | Priority ordering or task scheduling | Feature -->
 
-**Trigger**: When implementing priority-based element access, A* pathfinding open sets, task scheduling, or event systems.
+**Trigger**: When implementing priority-based element access, A\* pathfinding open sets, task scheduling, or event systems.
 
 ---
 
 ## When to Use This Skill
 
-- Implementing A* or Dijkstra pathfinding algorithms
+- Implementing A\* or Dijkstra pathfinding algorithms
 - Building event schedulers that process events by time
 - Creating AI decision systems with weighted priorities
 - Managing task queues where order matters
@@ -18,10 +18,10 @@
 
 ## Available Structures
 
-| Structure          | Best For                       |
-| ------------------ | ------------------------------ |
-| `Heap<T>`          | Priority ordering, A* open sets |
-| `PriorityQueue<T>` | Task scheduling, event systems |
+| Structure          | Best For                         |
+| ------------------ | -------------------------------- |
+| `Heap<T>`          | Priority ordering, A\* open sets |
+| `PriorityQueue<T>` | Task scheduling, event systems   |
 
 ### When to Use Each
 
@@ -59,7 +59,7 @@ heap.Count;                 // Number of items
 heap.Clear();               // Remove all items
 ```
 
-### Example: A* Pathfinding Open Set
+### Example: A\* Pathfinding Open Set
 
 ```csharp
 public class PathFinder

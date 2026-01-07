@@ -343,14 +343,14 @@ public override int GetHashCode()
 
 **Why Objects.HashCode is required:**
 
-| Feature                    | Hand-Rolled | System.HashCode    | Objects.HashCode |
-| -------------------------- | ----------- | ------------------ | ---------------- |
-| Deterministic              | Sometimes   | No (randomized)    | Yes              |
-| Unity null-aware           | No          | No                 | Yes              |
-| Handles destroyed objects  | No          | No                 | Yes              |
-| Consistent across sessions | Maybe       | No                 | Yes              |
-| Up to 20 parameters        | Manual      | 8 max              | Yes              |
-| Span/collection support    | Manual      | Limited            | Yes              |
+| Feature                    | Hand-Rolled | System.HashCode | Objects.HashCode |
+| -------------------------- | ----------- | --------------- | ---------------- |
+| Deterministic              | Sometimes   | No (randomized) | Yes              |
+| Unity null-aware           | No          | No              | Yes              |
+| Handles destroyed objects  | No          | No              | Yes              |
+| Consistent across sessions | Maybe       | No              | Yes              |
+| Up to 20 parameters        | Manual      | 8 max           | Yes              |
+| Span/collection support    | Manual      | Limited         | Yes              |
 
 **Key benefits of Objects.HashCode:**
 

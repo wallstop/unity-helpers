@@ -92,13 +92,13 @@ private static readonly Dictionary<int, string> IntToStringCache = new();
 
 ### Available EditorCacheHelper Methods
 
-| Method                                              | Purpose                                     |
-| --------------------------------------------------- | ------------------------------------------- |
-| `GetCachedIntString(int)`                           | Cached integer-to-string conversion         |
-| `GetPaginationLabel(int page, int total)`           | Cached "Page X / Y" strings                 |
-| `GetSolidTexture(Color)`                            | Cached 1x1 solid color textures             |
-| `AddToBoundedCache<K,V>(cache, key, value, max)`    | Add to bounded LRU cache with eviction      |
-| `TryGetFromBoundedLRUCache<K,V>(cache, key, out v)` | Get from LRU cache (updates access order)   |
+| Method                                              | Purpose                                   |
+| --------------------------------------------------- | ----------------------------------------- |
+| `GetCachedIntString(int)`                           | Cached integer-to-string conversion       |
+| `GetPaginationLabel(int page, int total)`           | Cached "Page X / Y" strings               |
+| `GetSolidTexture(Color)`                            | Cached 1x1 solid color textures           |
+| `AddToBoundedCache<K,V>(cache, key, value, max)`    | Add to bounded LRU cache with eviction    |
+| `TryGetFromBoundedLRUCache<K,V>(cache, key, out v)` | Get from LRU cache (updates access order) |
 
 ---
 
@@ -133,13 +133,13 @@ public static MyValue GetOrCreate(string key)
 
 ### When to Use Bounded Caches
 
-| Use Case                  | Recommendation                         |
-| ------------------------- | -------------------------------------- |
-| Integer-to-string         | Unbounded (limited key space)          |
-| Path-to-asset lookups     | Bounded - paths can grow unboundedly   |
-| Type-to-metadata          | Unbounded (limited types in project)   |
-| User input caching        | Bounded - unpredictable input space    |
-| Color-to-texture          | Bounded (many possible colors)         |
+| Use Case              | Recommendation                       |
+| --------------------- | ------------------------------------ |
+| Integer-to-string     | Unbounded (limited key space)        |
+| Path-to-asset lookups | Bounded - paths can grow unboundedly |
+| Type-to-metadata      | Unbounded (limited types in project) |
+| User input caching    | Bounded - unpredictable input space  |
+| Color-to-texture      | Bounded (many possible colors)       |
 
 ---
 

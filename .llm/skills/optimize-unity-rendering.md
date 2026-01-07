@@ -343,13 +343,13 @@ Modern render pipelines use SRP Batcher:
 
 ### Texture Import Settings
 
-| Setting          | Recommendation                       |
-| ---------------- | ------------------------------------ |
-| Read/Write       | OFF (unless runtime access needed)   |
-| Generate Mipmaps | ON for 3D, OFF for UI                |
-| Max Size         | Smallest acceptable quality          |
-| Compression      | Platform default (ASTC for mobile)   |
-| Sprite Atlas     | Group related sprites                |
+| Setting          | Recommendation                     |
+| ---------------- | ---------------------------------- |
+| Read/Write       | OFF (unless runtime access needed) |
+| Generate Mipmaps | ON for 3D, OFF for UI              |
+| Max Size         | Smallest acceptable quality        |
+| Compression      | Platform default (ASTC for mobile) |
+| Sprite Atlas     | Group related sprites              |
 
 ### Runtime Texture Access
 
@@ -368,16 +368,16 @@ RenderTexture.ReleaseTemporary(rt);
 
 ## Quick Reference: Rendering Anti-Patterns
 
-| ❌ Anti-Pattern                    | ✅ Solution                        |
-| ---------------------------------- | ---------------------------------- |
-| `renderer.material.color = x`      | `MaterialPropertyBlock`            |
-| `renderer.material` in Update      | Cache material instance in Awake   |
-| `material.SetFloat("_Name", x)`    | Cache property ID with `PropertyToID` |
-| `renderer.sharedMaterials` access  | `GetSharedMaterials(list)`         |
-| Modifying `sharedMaterial`         | Use `MaterialPropertyBlock` or clone |
-| No GPU Instancing on repeated objects | Enable GPU Instancing           |
-| Static objects without batching    | Mark as Static or manual batch     |
-| Large uncompressed textures        | Use platform compression           |
+| ❌ Anti-Pattern                       | ✅ Solution                           |
+| ------------------------------------- | ------------------------------------- |
+| `renderer.material.color = x`         | `MaterialPropertyBlock`               |
+| `renderer.material` in Update         | Cache material instance in Awake      |
+| `material.SetFloat("_Name", x)`       | Cache property ID with `PropertyToID` |
+| `renderer.sharedMaterials` access     | `GetSharedMaterials(list)`            |
+| Modifying `sharedMaterial`            | Use `MaterialPropertyBlock` or clone  |
+| No GPU Instancing on repeated objects | Enable GPU Instancing                 |
+| Static objects without batching       | Mark as Static or manual batch        |
+| Large uncompressed textures           | Use platform compression              |
 
 ---
 

@@ -349,27 +349,25 @@ When optional dependencies affect assembly definitions, use Version Defines:
 
 ```json
 {
-    "name": "WallstopStudios.UnityHelpers.Editor",
-    "references": [
-        "WallstopStudios.UnityHelpers.Runtime"
-    ],
-    "versionDefines": [
-        {
-            "name": "com.unity.odin-inspector",
-            "expression": "",
-            "define": "ODIN_INSPECTOR"
-        },
-        {
-            "name": "jp.hadashikick.vcontainer",
-            "expression": "",
-            "define": "VCONTAINER"
-        },
-        {
-            "name": "com.svermeulen.extenject",
-            "expression": "",
-            "define": "ZENJECT"
-        }
-    ]
+  "name": "WallstopStudios.UnityHelpers.Editor",
+  "references": ["WallstopStudios.UnityHelpers.Runtime"],
+  "versionDefines": [
+    {
+      "name": "com.unity.odin-inspector",
+      "expression": "",
+      "define": "ODIN_INSPECTOR"
+    },
+    {
+      "name": "jp.hadashikick.vcontainer",
+      "expression": "",
+      "define": "VCONTAINER"
+    },
+    {
+      "name": "com.svermeulen.extenject",
+      "expression": "",
+      "define": "ZENJECT"
+    }
+  ]
 }
 ```
 

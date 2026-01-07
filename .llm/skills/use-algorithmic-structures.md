@@ -17,13 +17,13 @@
 
 ## Available Structures
 
-| Structure             | Best For                                      |
-| --------------------- | --------------------------------------------- |
-| `DisjointSet`         | Union-find, connectivity, clustering          |
-| `Trie`                | Prefix search, autocomplete, command matching |
-| `TimedCache<T>`       | Expiring cached computations                  |
-| `BitSet`              | Dense boolean flags, state masks, layer flags |
-| `ImmutableBitSet`     | Read-only bit operations                      |
+| Structure         | Best For                                      |
+| ----------------- | --------------------------------------------- |
+| `DisjointSet`     | Union-find, connectivity, clustering          |
+| `Trie`            | Prefix search, autocomplete, command matching |
+| `TimedCache<T>`   | Expiring cached computations                  |
+| `BitSet`          | Dense boolean flags, state masks, layer flags |
+| `ImmutableBitSet` | Read-only bit operations                      |
 
 ---
 
@@ -408,15 +408,14 @@ public class VisibilityCuller
 
 ## Complexity Comparison
 
-| Structure   | Insert   | Remove | Search  | Memory         |
-| ----------- | -------- | ------ | ------- | -------------- |
-| DisjointSet | -        | -      | O(alpha(n)) | O(n)           |
-| Trie        | O(k)     | -      | O(k)    | O(total chars) |
-| TimedCache  | -        | -      | O(1)*   | O(1)           |
-| BitSet      | O(1)     | O(1)   | O(1)    | O(n/64)        |
+| Structure   | Insert | Remove | Search      | Memory         |
+| ----------- | ------ | ------ | ----------- | -------------- |
+| DisjointSet | -      | -      | O(alpha(n)) | O(n)           |
+| Trie        | O(k)   | -      | O(k)        | O(total chars) |
+| TimedCache  | -      | -      | O(1)\*      | O(1)           |
+| BitSet      | O(1)   | O(1)   | O(1)        | O(n/64)        |
 
-k = string length, alpha = inverse Ackermann function (effectively constant)
-\* May trigger recomputation if TTL expired
+k = string length, alpha = inverse Ackermann function (effectively constant) \* May trigger recomputation if TTL expired
 
 ---
 

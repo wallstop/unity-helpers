@@ -190,16 +190,16 @@ Heap<int> heap = new Heap<int>(items);
 
 ## Complexity Comparison
 
-| Structure     | Insert   | Remove   | Peek     | Search      | Memory         |
-| ------------- | -------- | -------- | -------- | ----------- | -------------- |
-| CyclicBuffer  | O(1)     | O(n)     | O(1)     | O(n)        | O(capacity)    |
-| Heap          | O(log n) | O(log n) | O(1)     | O(n)        | O(n)           |
-| PriorityQueue | O(log n) | O(log n) | O(1)     | O(n)        | O(n)           |
-| Deque         | O(1)\*   | O(1)\*   | O(1)     | O(n)        | O(n)           |
-| DisjointSet   | -        | -        | -        | O(a(n))     | O(n)           |
-| Trie          | O(k)     | -        | -        | O(k)        | O(total chars) |
-| TimedCache    | -        | -        | O(1)\*\* | -           | O(1)           |
-| BitSet        | O(1)     | O(1)     | O(1)     | O(1)        | O(n/64)        |
+| Structure     | Insert   | Remove   | Peek     | Search  | Memory         |
+| ------------- | -------- | -------- | -------- | ------- | -------------- |
+| CyclicBuffer  | O(1)     | O(n)     | O(1)     | O(n)    | O(capacity)    |
+| Heap          | O(log n) | O(log n) | O(1)     | O(n)    | O(n)           |
+| PriorityQueue | O(log n) | O(log n) | O(1)     | O(n)    | O(n)           |
+| Deque         | O(1)\*   | O(1)\*   | O(1)     | O(n)    | O(n)           |
+| DisjointSet   | -        | -        | -        | O(a(n)) | O(n)           |
+| Trie          | O(k)     | -        | -        | O(k)    | O(total chars) |
+| TimedCache    | -        | -        | O(1)\*\* | -       | O(1)           |
+| BitSet        | O(1)     | O(1)     | O(1)     | O(1)    | O(n/64)        |
 
 \* Amortized, front/back only
 \*\* May trigger recomputation if TTL expired

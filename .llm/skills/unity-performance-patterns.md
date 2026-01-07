@@ -131,17 +131,17 @@ void Update()
 
 ### Non-Allocating Unity API Alternatives
 
-| Allocating API               | Non-Allocating Alternative                             |
-| ---------------------------- | ------------------------------------------------------ |
-| `mesh.vertices`              | `mesh.GetVertices(list)`                               |
-| `mesh.normals`               | `mesh.GetNormals(list)`                                |
-| `mesh.uv`                    | `mesh.GetUVs(channel, list)`                           |
-| `mesh.triangles`             | `mesh.GetTriangles(list, submesh)`                     |
-| `Input.touches`              | `Input.touchCount` + `Input.GetTouch(i)`               |
-| `Animator.parameters`        | `Animator.parameterCount` + `Animator.GetParameter(i)` |
-| `Renderer.sharedMaterials`   | `Renderer.GetSharedMaterials(list)`                    |
-| `gameObject.tag`             | `gameObject.CompareTag("Tag")`                         |
-| `gameObject.name`            | Cache in Awake if needed repeatedly                    |
+| Allocating API             | Non-Allocating Alternative                             |
+| -------------------------- | ------------------------------------------------------ |
+| `mesh.vertices`            | `mesh.GetVertices(list)`                               |
+| `mesh.normals`             | `mesh.GetNormals(list)`                                |
+| `mesh.uv`                  | `mesh.GetUVs(channel, list)`                           |
+| `mesh.triangles`           | `mesh.GetTriangles(list, submesh)`                     |
+| `Input.touches`            | `Input.touchCount` + `Input.GetTouch(i)`               |
+| `Animator.parameters`      | `Animator.parameterCount` + `Animator.GetParameter(i)` |
+| `Renderer.sharedMaterials` | `Renderer.GetSharedMaterials(list)`                    |
+| `gameObject.tag`           | `gameObject.CompareTag("Tag")`                         |
+| `gameObject.name`          | Cache in Awake if needed repeatedly                    |
 
 For physics-specific non-alloc APIs, see [optimize-unity-physics](./optimize-unity-physics.md).
 

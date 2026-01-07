@@ -60,27 +60,27 @@ void FindTargets()
 
 ### Physics (3D)
 
-| Allocating API              | Non-Allocating Alternative      |
-| --------------------------- | ------------------------------- |
-| `Physics.RaycastAll`        | `Physics.RaycastNonAlloc`       |
-| `Physics.OverlapSphere`     | `Physics.OverlapSphereNonAlloc` |
-| `Physics.OverlapBox`        | `Physics.OverlapBoxNonAlloc`    |
-| `Physics.OverlapCapsule`    | `Physics.OverlapCapsuleNonAlloc`|
-| `Physics.SphereCastAll`     | `Physics.SphereCastNonAlloc`    |
-| `Physics.BoxCastAll`        | `Physics.BoxCastNonAlloc`       |
-| `Physics.CapsuleCastAll`    | `Physics.CapsuleCastNonAlloc`   |
+| Allocating API           | Non-Allocating Alternative       |
+| ------------------------ | -------------------------------- |
+| `Physics.RaycastAll`     | `Physics.RaycastNonAlloc`        |
+| `Physics.OverlapSphere`  | `Physics.OverlapSphereNonAlloc`  |
+| `Physics.OverlapBox`     | `Physics.OverlapBoxNonAlloc`     |
+| `Physics.OverlapCapsule` | `Physics.OverlapCapsuleNonAlloc` |
+| `Physics.SphereCastAll`  | `Physics.SphereCastNonAlloc`     |
+| `Physics.BoxCastAll`     | `Physics.BoxCastNonAlloc`        |
+| `Physics.CapsuleCastAll` | `Physics.CapsuleCastNonAlloc`    |
 
 ### Physics2D
 
-| Allocating API                 | Non-Allocating Alternative         |
-| ------------------------------ | ---------------------------------- |
-| `Physics2D.RaycastAll`         | `Physics2D.RaycastNonAlloc`        |
-| `Physics2D.OverlapCircleAll`   | `Physics2D.OverlapCircleNonAlloc`  |
-| `Physics2D.OverlapBoxAll`      | `Physics2D.OverlapBoxNonAlloc`     |
-| `Physics2D.OverlapCapsuleAll`  | `Physics2D.OverlapCapsuleNonAlloc` |
-| `Physics2D.OverlapAreaAll`     | `Physics2D.OverlapAreaNonAlloc`    |
-| `Physics2D.CircleCastAll`      | `Physics2D.CircleCastNonAlloc`     |
-| `Physics2D.BoxCastAll`         | `Physics2D.BoxCastNonAlloc`        |
+| Allocating API                 | Non-Allocating Alternative             |
+| ------------------------------ | -------------------------------------- |
+| `Physics2D.RaycastAll`         | `Physics2D.RaycastNonAlloc`            |
+| `Physics2D.OverlapCircleAll`   | `Physics2D.OverlapCircleNonAlloc`      |
+| `Physics2D.OverlapBoxAll`      | `Physics2D.OverlapBoxNonAlloc`         |
+| `Physics2D.OverlapCapsuleAll`  | `Physics2D.OverlapCapsuleNonAlloc`     |
+| `Physics2D.OverlapAreaAll`     | `Physics2D.OverlapAreaNonAlloc`        |
+| `Physics2D.CircleCastAll`      | `Physics2D.CircleCastNonAlloc`         |
+| `Physics2D.BoxCastAll`         | `Physics2D.BoxCastNonAlloc`            |
 | `Physics2D.GetRayIntersection` | `Physics2D.GetRayIntersectionNonAlloc` |
 
 ---
@@ -179,13 +179,13 @@ void CheckZone(Vector3 center, Vector3 halfExtents, Quaternion rotation)
 
 ### Performance Hierarchy (Best to Worst)
 
-| Collider Type     | Performance     | Use Case                    |
-| ----------------- | --------------- | --------------------------- |
-| Sphere            | ★★★★★ (fastest) | Radial proximity detection  |
-| Capsule           | ★★★★☆           | Character controllers       |
-| Box               | ★★★☆☆           | Rectangular objects         |
-| Mesh (Convex)     | ★★☆☆☆           | Complex but limited shapes  |
-| Mesh (Non-Convex) | ★☆☆☆☆ (slowest) | AVOID - use compound        |
+| Collider Type     | Performance     | Use Case                   |
+| ----------------- | --------------- | -------------------------- |
+| Sphere            | ★★★★★ (fastest) | Radial proximity detection |
+| Capsule           | ★★★★☆           | Character controllers      |
+| Box               | ★★★☆☆           | Rectangular objects        |
+| Mesh (Convex)     | ★★☆☆☆           | Complex but limited shapes |
+| Mesh (Non-Convex) | ★☆☆☆☆ (slowest) | AVOID - use compound       |
 
 ### Critical Rules
 
@@ -252,6 +252,7 @@ Physics.IgnoreLayerCollision(enemyBulletLayer, enemyLayer);
 ### Static Colliders
 
 Objects that never move should have:
+
 - Collider component
 - **No Rigidbody** (Unity optimizes these as static)
 - Do not move via Transform (causes physics recalculation)
@@ -399,16 +400,16 @@ public class PhysicsQueryService : MonoBehaviour
 
 ## Quick Reference: Physics Anti-Patterns
 
-| ❌ Anti-Pattern                     | ✅ Solution                     |
-| ----------------------------------- | ------------------------------- |
-| `Physics.OverlapSphere` in loop     | `OverlapSphereNonAlloc`         |
-| `Physics.RaycastAll` every frame    | `RaycastNonAlloc` + cache       |
-| Non-convex mesh colliders           | Compound primitive colliders    |
-| Moving static colliders             | Use kinematic Rigidbody         |
-| Physics in `Update()`               | Use `FixedUpdate()`             |
-| All layers colliding                | Configure Layer Collision Matrix|
-| High solver iterations on mobile    | Reduce to 2-4                   |
-| Physics queries in multiple scripts | Centralized query service       |
+| ❌ Anti-Pattern                     | ✅ Solution                      |
+| ----------------------------------- | -------------------------------- |
+| `Physics.OverlapSphere` in loop     | `OverlapSphereNonAlloc`          |
+| `Physics.RaycastAll` every frame    | `RaycastNonAlloc` + cache        |
+| Non-convex mesh colliders           | Compound primitive colliders     |
+| Moving static colliders             | Use kinematic Rigidbody          |
+| Physics in `Update()`               | Use `FixedUpdate()`              |
+| All layers colliding                | Configure Layer Collision Matrix |
+| High solver iterations on mobile    | Reduce to 2-4                    |
+| Physics queries in multiple scripts | Centralized query service        |
 
 ---
 

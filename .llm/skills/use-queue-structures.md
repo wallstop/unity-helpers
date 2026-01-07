@@ -373,8 +373,8 @@ foreach (T item in deque) { }
 
 | Operation     | CyclicBuffer | Deque  |
 | ------------- | ------------ | ------ |
-| Add/Push Back | O(1)         | O(1)*  |
-| Push Front    | N/A          | O(1)*  |
+| Add/Push Back | O(1)         | O(1)\* |
+| Push Front    | N/A          | O(1)\* |
 | Pop Back      | N/A          | O(1)   |
 | Pop Front     | N/A          | O(1)   |
 | Remove        | O(n)         | O(n)   |
@@ -384,6 +384,7 @@ foreach (T item in deque) { }
 \* Amortized - occasional resize may occur
 
 Memory:
+
 - CyclicBuffer: O(capacity) - fixed
 - Deque: O(n) - grows as needed
 
