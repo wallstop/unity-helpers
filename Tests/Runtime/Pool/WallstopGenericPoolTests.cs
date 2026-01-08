@@ -36,24 +36,42 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
         }
 
         private float _currentTime;
+        private bool _wasMemoryPressureEnabled;
 
         private float TestTimeProvider()
         {
             return _currentTime;
         }
 
+        private void LogPoolDiagnostics(WallstopGenericPool<TestPoolItem> pool, string context)
+        {
+            PoolStatistics stats = pool.GetStatistics();
+            TestContext.WriteLine($"[{context}] Pool Diagnostics:");
+            TestContext.WriteLine($"  Time: {_currentTime}");
+            TestContext.WriteLine($"  Pool.Count: {pool.Count}");
+            TestContext.WriteLine($"  RentCount: {stats.RentCount}");
+            TestContext.WriteLine($"  PurgeCount: {stats.PurgeCount}");
+            TestContext.WriteLine($"  IdleTimeoutPurges: {stats.IdleTimeoutPurges}");
+            TestContext.WriteLine($"  IsLowFrequency: {stats.IsLowFrequency}");
+            TestContext.WriteLine($"  RentalsPerMinute: {stats.RentalsPerMinute}");
+        }
+
         [SetUp]
         public void SetUp()
         {
-            _currentTime = 0f;
+            _currentTime = 1f; // Start at t=1 since time 0 is treated as uninitialized in the tracker
             TestPoolItem.ResetIdCounter();
             PoolPurgeSettings.ResetToDefaults();
+            // Disable memory pressure monitoring to ensure deterministic test behavior
+            _wasMemoryPressureEnabled = MemoryPressureMonitor.Enabled;
+            MemoryPressureMonitor.Enabled = false;
         }
 
         [TearDown]
         public void TearDown()
         {
             PoolPurgeSettings.ResetToDefaults();
+            MemoryPressureMonitor.Enabled = _wasMemoryPressureEnabled;
         }
 
         [Test]
@@ -268,10 +286,24 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
                 options: options
             );
 
+            // Hold 10 items simultaneously before disposing to create 10 distinct items
+            // (sequential Get/Dispose would reuse the same item)
+            List<PooledResource<TestPoolItem>> resources = new();
             for (int i = 0; i < 10; i++)
             {
-                using PooledResource<TestPoolItem> resource = pool.Get();
+                resources.Add(pool.Get());
             }
+
+            TestContext.WriteLine(
+                $"Created {resources.Count} items, pool count while rented: {pool.Count}"
+            );
+
+            foreach (PooledResource<TestPoolItem> r in resources)
+            {
+                r.Dispose();
+            }
+
+            TestContext.WriteLine($"After disposing all items, pool count: {pool.Count}");
 
             Assert.AreEqual(10, pool.Count);
         }
@@ -403,13 +435,34 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
                 options: options
             );
 
-            // Get and return two items, second return should trigger purge
-            using (PooledResource<TestPoolItem> resource = pool.Get()) { }
-            using (PooledResource<TestPoolItem> resource = pool.Get()) { }
+            // Hold 2 items simultaneously before disposing to exceed MaxPoolSize
+            // (sequential Get/Dispose would reuse the same item and never exceed capacity)
+            List<PooledResource<TestPoolItem>> resources = new();
+            resources.Add(pool.Get());
+            resources.Add(pool.Get());
+
+            TestContext.WriteLine(
+                $"Holding {resources.Count} items, pool count while rented: {pool.Count}"
+            );
+
+            // Return all items - should trigger purge since MaxPoolSize=1
+            foreach (PooledResource<TestPoolItem> r in resources)
+            {
+                r.Dispose();
+            }
+
+            TestContext.WriteLine(
+                $"After disposing, pool count: {pool.Count}, purgeCount: {purgeCount}"
+            );
 
             Assert.GreaterOrEqual(purgeCount, 1);
         }
 
+        /// <summary>
+        /// Tests that PurgeTrigger.Explicit only purges when Purge() is called explicitly.
+        /// Note: WarmRetainCount=0 is set to disable warm retention, allowing the test to verify
+        /// explicit purge trigger behavior in isolation without interference from active pool protections.
+        /// </summary>
         [Test]
         public void PurgeTriggerExplicitOnlyPurgesWhenCalledExplicitly()
         {
@@ -420,6 +473,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
                 Triggers = PurgeTrigger.Explicit,
                 OnPurge = (_, _) => purgeCount++,
                 TimeProvider = TestTimeProvider,
+                WarmRetainCount = 0,
             };
 
             using WallstopGenericPool<TestPoolItem> pool = new(
@@ -428,15 +482,215 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
             );
 
             using (PooledResource<TestPoolItem> resource = pool.Get()) { }
+
+            TestContext.WriteLine(
+                $"After first Get/Return at t={_currentTime}: pool.Count={pool.Count}, purgeCount={purgeCount}"
+            );
+
             _currentTime = 2f;
             using (PooledResource<TestPoolItem> resource = pool.Get()) { }
 
-            // No purge yet
-            Assert.AreEqual(0, purgeCount);
+            TestContext.WriteLine(
+                $"After second Get/Return at t={_currentTime}: pool.Count={pool.Count}, purgeCount={purgeCount}"
+            );
+
+            // No purge yet - trigger is explicit only
+            Assert.AreEqual(0, purgeCount, "No purge should occur before explicit Purge() call");
 
             // Explicit purge
             pool.Purge();
-            Assert.AreEqual(1, purgeCount);
+
+            TestContext.WriteLine(
+                $"After explicit Purge() at t={_currentTime}: pool.Count={pool.Count}, purgeCount={purgeCount}"
+            );
+
+            Assert.AreEqual(
+                1,
+                purgeCount,
+                "Exactly one item should be purged after explicit Purge() call"
+            );
+        }
+
+        /// <summary>
+        /// Tests that explicit purge works correctly regardless of pool size relative to comfortable size.
+        /// This is a data-driven test that verifies explicit purges bypass comfortable size protection.
+        /// </summary>
+        [Test]
+        [TestCase(1, 1, TestName = "ExplicitPurgeWithSingleItem")]
+        [TestCase(5, 5, TestName = "ExplicitPurgeWithMultipleItems")]
+        public void ExplicitPurgeBehaviorAtVariousPoolSizes(int itemCount, int expectedPurges)
+        {
+            int purgeCount = 0;
+            PoolOptions<TestPoolItem> options = new()
+            {
+                IdleTimeoutSeconds = 1f,
+                Triggers = PurgeTrigger.Explicit,
+                OnPurge = (_, _) => purgeCount++,
+                TimeProvider = TestTimeProvider,
+                WarmRetainCount = 0,
+                MinRetainCount = 0,
+            };
+
+            using WallstopGenericPool<TestPoolItem> pool = new(
+                () => new TestPoolItem(),
+                options: options
+            );
+
+            // Create items and return them to the pool
+            List<PooledResource<TestPoolItem>> resources = new();
+            for (int i = 0; i < itemCount; i++)
+            {
+                resources.Add(pool.Get());
+            }
+            foreach (PooledResource<TestPoolItem> r in resources)
+            {
+                r.Dispose();
+            }
+
+            TestContext.WriteLine($"After creating {itemCount} items: pool.Count={pool.Count}");
+
+            // Advance time past idle timeout
+            _currentTime = 3f;
+
+            // Explicit purge should work regardless of comfortable size
+            pool.Purge();
+
+            TestContext.WriteLine(
+                $"After Purge(): pool.Count={pool.Count}, purgeCount={purgeCount}"
+            );
+
+            Assert.AreEqual(
+                expectedPurges,
+                purgeCount,
+                $"Expected {expectedPurges} items to be purged with explicit trigger"
+            );
+        }
+
+        /// <summary>
+        /// Tests that idle timeout purges happen even when pool is at or below comfortable size.
+        /// This validates the fix where idle timeout was incorrectly blocked by comfortable size check.
+        /// </summary>
+        [Test]
+        [TestCase(0f, true, TestName = "IdleTimeoutPurgeWithZeroBufferMultiplier")]
+        [TestCase(1f, true, TestName = "IdleTimeoutPurgeWithNormalBufferMultiplier")]
+        public void IdleTimeoutPurgeIgnoresComfortableSize(float bufferMultiplier, bool expectPurge)
+        {
+            int purgeCount = 0;
+            PoolOptions<TestPoolItem> options = new()
+            {
+                IdleTimeoutSeconds = 1f,
+                Triggers = PurgeTrigger.OnRent,
+                UseIntelligentPurging = true,
+                BufferMultiplier = bufferMultiplier,
+                OnPurge = (_, _) => purgeCount++,
+                TimeProvider = TestTimeProvider,
+                WarmRetainCount = 0,
+                MinRetainCount = 0,
+            };
+
+            using WallstopGenericPool<TestPoolItem> pool = new(
+                () => new TestPoolItem(),
+                options: options
+            );
+
+            // Get and return one item
+            using (PooledResource<TestPoolItem> resource = pool.Get()) { }
+
+            TestContext.WriteLine(
+                $"After first Get/Return at t={_currentTime}: pool.Count={pool.Count}"
+            );
+
+            // Advance time past idle timeout
+            _currentTime = 3f;
+
+            // Second rental should trigger idle timeout purge of the first item
+            using (PooledResource<TestPoolItem> resource = pool.Get()) { }
+
+            TestContext.WriteLine(
+                $"After second Get at t={_currentTime}: pool.Count={pool.Count}, purgeCount={purgeCount}"
+            );
+
+            if (expectPurge)
+            {
+                Assert.GreaterOrEqual(
+                    purgeCount,
+                    1,
+                    "Idle timeout purge should occur even when pool is at comfortable size"
+                );
+            }
+        }
+
+        /// <summary>
+        /// Tests various combinations of PurgeTrigger.Explicit with other triggers.
+        /// Verifies that explicit trigger only purges when Purge() is called, while combined triggers
+        /// purge at multiple opportunities.
+        /// Note: WarmRetainCount=0 is set to disable warm retention, allowing the test to verify
+        /// explicit purge trigger behavior in isolation without interference from active pool protections.
+        /// </summary>
+        [Test]
+        [TestCase(PurgeTrigger.Explicit, 0, 1, TestName = "ExplicitOnlyNoPurgeOnRent")]
+        [TestCase(
+            PurgeTrigger.Explicit | PurgeTrigger.OnRent,
+            1,
+            2,
+            TestName = "ExplicitAndOnRentPurgesBothTimes"
+        )]
+        public void ExplicitPurgeTriggerCombinations(
+            PurgeTrigger trigger,
+            int expectedPurgesAfterRent,
+            int expectedPurgesAfterExplicit
+        )
+        {
+            int purgeCount = 0;
+            PoolOptions<TestPoolItem> options = new()
+            {
+                IdleTimeoutSeconds = 1f,
+                Triggers = trigger,
+                OnPurge = (_, _) => purgeCount++,
+                TimeProvider = TestTimeProvider,
+                WarmRetainCount = 0,
+            };
+
+            using WallstopGenericPool<TestPoolItem> pool = new(
+                () => new TestPoolItem(),
+                options: options
+            );
+
+            // First rental at t=1
+            using (PooledResource<TestPoolItem> resource = pool.Get()) { }
+
+            TestContext.WriteLine(
+                $"After first Get/Return at t={_currentTime}: pool.Count={pool.Count}, purgeCount={purgeCount}"
+            );
+
+            // Advance past idle timeout
+            _currentTime = 3f;
+
+            // Second rental should trigger OnRent purge if enabled
+            using (PooledResource<TestPoolItem> resource = pool.Get()) { }
+
+            TestContext.WriteLine(
+                $"After second Get/Return at t={_currentTime}: pool.Count={pool.Count}, purgeCount={purgeCount}"
+            );
+
+            Assert.AreEqual(
+                expectedPurgesAfterRent,
+                purgeCount,
+                $"After rent with trigger={trigger}: expected {expectedPurgesAfterRent} purges, got {purgeCount}"
+            );
+
+            // Explicit purge should always work
+            pool.Purge();
+
+            TestContext.WriteLine(
+                $"After explicit Purge() at t={_currentTime}: pool.Count={pool.Count}, purgeCount={purgeCount}"
+            );
+
+            Assert.AreEqual(
+                expectedPurgesAfterExplicit,
+                purgeCount,
+                $"After explicit Purge() with trigger={trigger}: expected {expectedPurgesAfterExplicit} purges, got {purgeCount}"
+            );
         }
 
         [Test]
@@ -538,8 +792,22 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
                 options: options
             );
 
-            using (PooledResource<TestPoolItem> resource = pool.Get()) { }
-            using (PooledResource<TestPoolItem> resource = pool.Get()) { }
+            // Hold 2 items simultaneously to exceed MaxPoolSize=1
+            // (sequential Get/Dispose would reuse the same item)
+            List<PooledResource<TestPoolItem>> resources = new();
+            resources.Add(pool.Get());
+            resources.Add(pool.Get());
+
+            TestContext.WriteLine($"Holding {resources.Count} items with MaxPoolSize=1");
+
+            foreach (PooledResource<TestPoolItem> r in resources)
+            {
+                r.Dispose();
+            }
+
+            TestContext.WriteLine(
+                $"After disposing, reasons collected: {string.Join(", ", reasons)}"
+            );
 
             Assert.Contains(PurgeReason.CapacityExceeded, reasons);
         }
@@ -589,8 +857,22 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
 
             Assert.DoesNotThrow(() =>
             {
-                using (PooledResource<TestPoolItem> resource = pool.Get()) { }
-                using (PooledResource<TestPoolItem> resource = pool.Get()) { }
+                // Hold 2 items simultaneously to exceed MaxPoolSize=1
+                // (sequential Get/Dispose would reuse the same item)
+                List<PooledResource<TestPoolItem>> resources = new();
+                resources.Add(pool.Get());
+                resources.Add(pool.Get());
+
+                TestContext.WriteLine($"Holding {resources.Count} items with MaxPoolSize=1");
+
+                foreach (PooledResource<TestPoolItem> r in resources)
+                {
+                    r.Dispose();
+                }
+
+                TestContext.WriteLine(
+                    $"After disposing, pool count: {pool.Count}, purgeCount: {purgeCount}"
+                );
             });
 
             Assert.GreaterOrEqual(purgeCount, 1);
@@ -659,18 +941,36 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
                 options: options
             );
 
-            // Add 3 items
+            // Hold 3 items simultaneously before disposing to create 3 distinct items
+            // (sequential Get/Dispose would reuse the same item)
+            List<PooledResource<TestPoolItem>> resources = new();
             for (int i = 0; i < 3; i++)
             {
-                using PooledResource<TestPoolItem> resource = pool.Get();
+                resources.Add(pool.Get());
             }
 
+            TestContext.WriteLine(
+                $"Created {resources.Count} items, pool count while rented: {pool.Count}"
+            );
+
+            // Return all items to the pool
+            foreach (PooledResource<TestPoolItem> r in resources)
+            {
+                r.Dispose();
+            }
+
+            TestContext.WriteLine($"After disposing, pool count: {pool.Count}");
+
+            // Advance time past idle timeout
             _currentTime = 2f;
 
             // Trigger purge by renting
             using (PooledResource<TestPoolItem> resource = pool.Get()) { }
 
             PoolStatistics stats = pool.GetStatistics();
+            TestContext.WriteLine(
+                $"After purge, IdleTimeoutPurges: {stats.IdleTimeoutPurges}, pool count: {pool.Count}"
+            );
             Assert.AreEqual(3, stats.IdleTimeoutPurges);
         }
 
@@ -739,84 +1039,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
         }
 
         [Test]
-        public void PreWarmDoesNotIncrementRentCount()
-        {
-            const int preWarmCount = 10;
-            PoolOptions<TestPoolItem> options = new()
-            {
-                Triggers = PurgeTrigger.Explicit,
-                TimeProvider = TestTimeProvider,
-            };
-
-            using WallstopGenericPool<TestPoolItem> pool = new(
-                () => new TestPoolItem(),
-                preWarmCount: preWarmCount,
-                options: options
-            );
-
-            PoolStatistics stats = pool.GetStatistics();
-
-            Assert.That(
-                stats.RentCount,
-                Is.EqualTo(0),
-                "RentCount should be 0 after PreWarm - PreWarm creates items but does not rent them"
-            );
-        }
-
-        [Test]
-        public void PreWarmSetsPeakSizeCorrectly()
-        {
-            const int preWarmCount = 7;
-            PoolOptions<TestPoolItem> options = new()
-            {
-                Triggers = PurgeTrigger.Explicit,
-                TimeProvider = TestTimeProvider,
-            };
-
-            using WallstopGenericPool<TestPoolItem> pool = new(
-                () => new TestPoolItem(),
-                preWarmCount: preWarmCount,
-                options: options
-            );
-
-            PoolStatistics stats = pool.GetStatistics();
-
-            Assert.That(
-                stats.PeakSize,
-                Is.EqualTo(preWarmCount),
-                $"PeakSize should equal PreWarm count ({preWarmCount}) after PreWarm"
-            );
-        }
-
-        [Test]
-        public void PreWarmSetsCurrentSizeCorrectly()
-        {
-            const int preWarmCount = 8;
-            PoolOptions<TestPoolItem> options = new()
-            {
-                Triggers = PurgeTrigger.Explicit,
-                TimeProvider = TestTimeProvider,
-            };
-
-            using WallstopGenericPool<TestPoolItem> pool = new(
-                () => new TestPoolItem(),
-                preWarmCount: preWarmCount,
-                options: options
-            );
-
-            PoolStatistics stats = pool.GetStatistics();
-
-            Assert.That(
-                stats.CurrentSize,
-                Is.EqualTo(preWarmCount),
-                $"CurrentSize should equal PreWarm count ({preWarmCount}) after PreWarm"
-            );
-        }
-
-        [TestCase(1)]
-        [TestCase(5)]
-        [TestCase(10)]
-        [TestCase(100)]
+        [TestCase(1, TestName = "PreWarmCount.One")]
+        [TestCase(5, TestName = "PreWarmCount.Five")]
+        [TestCase(7, TestName = "PreWarmCount.Seven")]
+        [TestCase(8, TestName = "PreWarmCount.Eight")]
+        [TestCase(10, TestName = "PreWarmCount.Ten")]
+        [TestCase(100, TestName = "PreWarmCount.OneHundred")]
         public void PreWarmStatisticsValidationWithVariousCounts(int preWarmCount)
         {
             PoolOptions<TestPoolItem> options = new()
@@ -1019,19 +1247,36 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
                 options: options
             );
 
-            // Add items
+            // Hold 5 items simultaneously before disposing to create 5 distinct items
+            // (sequential Get/Dispose would reuse the same item)
+            List<PooledResource<TestPoolItem>> resources = new();
             for (int i = 0; i < 5; i++)
             {
-                using PooledResource<TestPoolItem> resource = pool.Get();
+                resources.Add(pool.Get());
             }
+
+            TestContext.WriteLine(
+                $"Created {resources.Count} items, pool count while rented: {pool.Count}"
+            );
+
+            foreach (PooledResource<TestPoolItem> r in resources)
+            {
+                r.Dispose();
+            }
+
+            TestContext.WriteLine($"After disposing, pool count: {pool.Count}");
 
             Assert.AreEqual(5, pool.Count);
 
             // Change max size
             pool.MaxPoolSize = 2;
 
+            TestContext.WriteLine($"Changed MaxPoolSize to 2");
+
             // Add more items to trigger purge
             using (PooledResource<TestPoolItem> resource = pool.Get()) { }
+
+            TestContext.WriteLine($"After another Get/Dispose, pool count: {pool.Count}");
 
             Assert.LessOrEqual(pool.Count, 2);
         }
@@ -1138,15 +1383,36 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
         [Test]
         public void IntelligentPurgingHysteresisPreventsPurgeAfterSpike()
         {
+            const float hysteresisSeconds = 30f;
+
+            // Diagnostic output for debugging non-deterministic failures
+            TestContext.WriteLine($"=== Test Configuration ===");
+            TestContext.WriteLine(
+                $"  MemoryPressureMonitor.Enabled: {MemoryPressureMonitor.Enabled}"
+            );
+            TestContext.WriteLine(
+                $"  MemoryPressureMonitor.CurrentPressure: {MemoryPressureMonitor.CurrentPressure}"
+            );
+            TestContext.WriteLine($"  HysteresisSeconds: {hysteresisSeconds}");
+            TestContext.WriteLine($"  IdleTimeoutSeconds: 0 (disabled)");
+            TestContext.WriteLine($"  SpikeThresholdMultiplier: 1.5");
+
             int purgeCount = 0;
+            List<PurgeReason> purgeReasons = new();
             PoolOptions<TestPoolItem> options = new()
             {
                 UseIntelligentPurging = true,
-                IdleTimeoutSeconds = 1f,
-                HysteresisSeconds = 30f,
+                // Use 0f to disable idle timeout purges, which are intentionally allowed
+                // during hysteresis - this test verifies hysteresis blocks other purge types
+                IdleTimeoutSeconds = 0f,
+                HysteresisSeconds = hysteresisSeconds,
                 SpikeThresholdMultiplier = 1.5f,
                 Triggers = PurgeTrigger.OnRent,
-                OnPurge = (_, _) => purgeCount++,
+                OnPurge = (_, reason) =>
+                {
+                    purgeCount++;
+                    purgeReasons.Add(reason);
+                },
                 TimeProvider = TestTimeProvider,
             };
 
@@ -1162,6 +1428,14 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
                 resources.Add(pool.Get());
             }
 
+            float spikeTime = _currentTime;
+            float hysteresisEndTime = spikeTime + hysteresisSeconds;
+
+            TestContext.WriteLine($"=== After Creating Spike ===");
+            TestContext.WriteLine($"  Items created: {resources.Count}");
+            TestContext.WriteLine($"  Spike time: {spikeTime}");
+            TestContext.WriteLine($"  Hysteresis end time: {hysteresisEndTime}");
+
             // Return them all
             foreach (PooledResource<TestPoolItem> r in resources)
             {
@@ -1169,11 +1443,28 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
             }
             resources.Clear();
 
-            // Advance past idle timeout but within hysteresis
-            _currentTime = 2f;
+            TestContext.WriteLine($"=== After Returning Items ===");
+            TestContext.WriteLine($"  Pool.Count: {pool.Count}");
+
+            // Advance time within hysteresis period (hysteresis ends at 1 + 30 = 31)
+            _currentTime = 3f;
+
+            TestContext.WriteLine($"=== Before Get (Within Hysteresis) ===");
+            TestContext.WriteLine($"  Current time: {_currentTime}");
+            TestContext.WriteLine($"  Hysteresis end time: {hysteresisEndTime}");
+            TestContext.WriteLine(
+                $"  Is within hysteresis: {_currentTime < hysteresisEndTime} (should be true)"
+            );
+            TestContext.WriteLine($"  Idle timeout status: disabled (0f)");
 
             // Get should not trigger purge due to hysteresis
             using (PooledResource<TestPoolItem> resource = pool.Get()) { }
+
+            TestContext.WriteLine($"=== After Get ===");
+            TestContext.WriteLine($"  PurgeCount: {purgeCount}");
+            TestContext.WriteLine($"  Pool.Count: {pool.Count}");
+            TestContext.WriteLine($"  Purge reasons: [{string.Join(", ", purgeReasons)}]");
+            TestContext.WriteLine($"  Purge blocked due to: hysteresis (idle timeout disabled)");
 
             Assert.AreEqual(0, purgeCount);
         }
@@ -1409,7 +1700,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
 #if !SINGLE_THREADED
         // Thread safety tests
         [Test]
-        public void ConcurrentGetAndReturnMaintainsIntegrity()
+        [TestCase(4, 100, TestName = "ThreadCount.Four.Iterations.OneHundred")]
+        [TestCase(8, 50, TestName = "ThreadCount.Eight.Iterations.Fifty")]
+        public void ConcurrentGetAndReturnMaintainsIntegrity(int threadCount, int iterations)
         {
             PoolOptions<TestPoolItem> options = new()
             {
@@ -1421,9 +1714,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
                 () => new TestPoolItem(),
                 options: options
             );
-
-            const int iterations = 100;
-            const int threadCount = 4;
 
             Task[] tasks = new Task[threadCount];
             for (int t = 0; t < threadCount; t++)
@@ -1448,7 +1738,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
         }
 
         [Test]
-        public void ConcurrentPurgeDoesNotCorruptPool()
+        [TestCase(4, 50, TestName = "ThreadCount.Four.Iterations.Fifty")]
+        [TestCase(8, 25, TestName = "ThreadCount.Eight.Iterations.TwentyFive")]
+        public void ConcurrentPurgeDoesNotCorruptPool(int threadCount, int iterations)
         {
             PoolOptions<TestPoolItem> options = new()
             {
@@ -1461,9 +1753,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
                 () => new TestPoolItem(),
                 options: options
             );
-
-            const int iterations = 50;
-            const int threadCount = 4;
 
             Task[] tasks = new Task[threadCount];
             for (int t = 0; t < threadCount; t++)
@@ -1485,7 +1774,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
         }
 
         [Test]
-        public void ConcurrentGetStatisticsIsThreadSafe()
+        [TestCase(4, 100, TestName = "ThreadCount.Four.Iterations.OneHundred")]
+        [TestCase(8, 50, TestName = "ThreadCount.Eight.Iterations.Fifty")]
+        public void ConcurrentGetStatisticsIsThreadSafe(int threadCount, int iterations)
         {
             PoolOptions<TestPoolItem> options = new()
             {
@@ -1498,9 +1789,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
                 preWarmCount: 10,
                 options: options
             );
-
-            const int iterations = 100;
-            const int threadCount = 4;
 
             Task[] tasks = new Task[threadCount];
             for (int t = 0; t < threadCount; t++)
@@ -1587,98 +1875,113 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
 
         // PoolTypeResolver tests
         [Test]
-        public void GenericMatchingExactClosedGenericMatches()
+        [TestCaseSource(nameof(TypeMatchingTestCases))]
+        public void GenericMatchingTypeMatchesPattern(
+            Type concreteType,
+            Type patternType,
+            bool expectedMatch,
+            int expectedPriority
+        )
         {
-            Type concreteType = typeof(List<int>);
-            Type patternType = typeof(List<int>);
+            bool matchResult = PoolTypeResolver.TypeMatchesPattern(concreteType, patternType);
+            int priorityResult = PoolTypeResolver.GetMatchPriority(concreteType, patternType);
 
-            Assert.IsTrue(PoolTypeResolver.TypeMatchesPattern(concreteType, patternType));
-            Assert.AreEqual(0, PoolTypeResolver.GetMatchPriority(concreteType, patternType));
+            Assert.AreEqual(
+                expectedMatch,
+                matchResult,
+                $"TypeMatchesPattern({concreteType}, {patternType}) should return {expectedMatch}"
+            );
+            Assert.AreEqual(
+                expectedPriority,
+                priorityResult,
+                $"GetMatchPriority({concreteType}, {patternType}) should return {expectedPriority}"
+            );
+        }
+
+        private static IEnumerable<TestCaseData> TypeMatchingTestCases()
+        {
+            yield return new TestCaseData(typeof(List<int>), typeof(List<int>), true, 0).SetName(
+                "Match.ExactClosedGeneric.ListInt"
+            );
+            yield return new TestCaseData(typeof(List<int>), typeof(List<>), true, 2).SetName(
+                "Match.OpenGenericToClosedGeneric.ListInt"
+            );
+            yield return new TestCaseData(typeof(List<string>), typeof(List<>), true, 2).SetName(
+                "Match.OpenGenericToClosedGeneric.ListString"
+            );
+            yield return new TestCaseData(
+                typeof(List<List<int>>),
+                typeof(List<List<int>>),
+                true,
+                0
+            ).SetName("Match.ExactNestedGeneric.ListListInt");
+            yield return new TestCaseData(typeof(List<List<int>>), typeof(List<>), true, 2).SetName(
+                "Match.OpenGenericToNestedGeneric.ListListInt"
+            );
+            yield return new TestCaseData(
+                typeof(Dictionary<string, int>),
+                typeof(Dictionary<,>),
+                true,
+                2
+            ).SetName("Match.OpenGenericMultipleTypeArgs.DictionaryStringInt");
+            yield return new TestCaseData(
+                typeof(Dictionary<string, int>),
+                typeof(Dictionary<string, int>),
+                true,
+                0
+            ).SetName("Match.ExactDictionary.DictionaryStringInt");
+            yield return new TestCaseData(typeof(HashSet<int>), typeof(HashSet<>), true, 2).SetName(
+                "Match.OpenGenericHashSet.HashSetInt"
+            );
+            yield return new TestCaseData(
+                typeof(string),
+                typeof(List<>),
+                false,
+                int.MaxValue
+            ).SetName("NoMatch.NonGenericToOpenGeneric");
+            yield return new TestCaseData(
+                typeof(List<int>),
+                typeof(HashSet<>),
+                false,
+                int.MaxValue
+            ).SetName("NoMatch.DifferentGenericDefinition");
+            yield return new TestCaseData(
+                typeof(List<int>),
+                typeof(List<string>),
+                false,
+                int.MaxValue
+            ).SetName("NoMatch.DifferentTypeArgs");
         }
 
         [Test]
-        public void GenericMatchingOpenGenericMatchesAnyClosed()
+        [TestCase("List<int>", typeof(List<int>), TestName = "Resolve.ListInt")]
+        [TestCase(
+            "Dictionary<string, int>",
+            typeof(Dictionary<string, int>),
+            TestName = "Resolve.DictionaryStringInt"
+        )]
+        [TestCase("HashSet<string>", typeof(HashSet<string>), TestName = "Resolve.HashSetString")]
+        [TestCase("List<>", typeof(List<>), TestName = "Resolve.ListOpen")]
+        [TestCase("Dictionary<,>", typeof(Dictionary<,>), TestName = "Resolve.DictionaryOpen")]
+        [TestCase(
+            "List<List<int>>",
+            typeof(List<List<int>>),
+            TestName = "Resolve.NestedListListInt"
+        )]
+        [TestCase(
+            "Dictionary<string, List<int>>",
+            typeof(Dictionary<string, List<int>>),
+            TestName = "Resolve.DictionaryStringListInt"
+        )]
+        [TestCase(
+            "System.Collections.Generic.List`1",
+            typeof(List<>),
+            TestName = "Resolve.FullyQualifiedListOpen"
+        )]
+        public void GenericMatchingResolveTypeResolvesCorrectly(string typeName, Type expectedType)
         {
-            Type concreteType = typeof(List<int>);
-            Type patternType = typeof(List<>);
-
-            Assert.IsTrue(PoolTypeResolver.TypeMatchesPattern(concreteType, patternType));
-
-            Type concreteType2 = typeof(List<string>);
-            Assert.IsTrue(PoolTypeResolver.TypeMatchesPattern(concreteType2, patternType));
-
-            Type concreteType3 = typeof(List<TestPoolItem>);
-            Assert.IsTrue(PoolTypeResolver.TypeMatchesPattern(concreteType3, patternType));
-        }
-
-        [Test]
-        public void GenericMatchingNestedGenericExactMatch()
-        {
-            Type concreteType = typeof(List<List<int>>);
-            Type patternType = typeof(List<List<int>>);
-
-            Assert.IsTrue(PoolTypeResolver.TypeMatchesPattern(concreteType, patternType));
-            Assert.AreEqual(0, PoolTypeResolver.GetMatchPriority(concreteType, patternType));
-        }
-
-        [Test]
-        public void GenericMatchingNestedGenericOuterOpenMatch()
-        {
-            Type concreteType = typeof(List<List<int>>);
-            Type patternType = typeof(List<>);
-
-            Assert.IsTrue(PoolTypeResolver.TypeMatchesPattern(concreteType, patternType));
-            Assert.AreEqual(2, PoolTypeResolver.GetMatchPriority(concreteType, patternType));
-        }
-
-        [Test]
-        public void GenericMatchingMultipleTypeArgsMatches()
-        {
-            Type concreteType = typeof(Dictionary<string, int>);
-            Type patternType = typeof(Dictionary<,>);
-
-            Assert.IsTrue(PoolTypeResolver.TypeMatchesPattern(concreteType, patternType));
-        }
-
-        [Test]
-        public void GenericMatchingSimplifiedSyntaxResolvesCorrectly()
-        {
-            Type resolved = PoolTypeResolver.ResolveType("List<int>");
-            Assert.AreEqual(typeof(List<int>), resolved);
-
-            resolved = PoolTypeResolver.ResolveType("Dictionary<string, int>");
-            Assert.AreEqual(typeof(Dictionary<string, int>), resolved);
-
-            resolved = PoolTypeResolver.ResolveType("HashSet<string>");
-            Assert.AreEqual(typeof(HashSet<string>), resolved);
-        }
-
-        [Test]
-        public void GenericMatchingOpenGenericSimplifiedSyntaxResolvesCorrectly()
-        {
-            Type resolved = PoolTypeResolver.ResolveType("List<>");
-            Assert.AreEqual(typeof(List<>), resolved);
-
-            resolved = PoolTypeResolver.ResolveType("Dictionary<,>");
-            Assert.AreEqual(typeof(Dictionary<,>), resolved);
-        }
-
-        [Test]
-        public void GenericMatchingNestedGenericSimplifiedSyntaxResolvesCorrectly()
-        {
-            Type resolved = PoolTypeResolver.ResolveType("List<List<int>>");
-            Assert.AreEqual(typeof(List<List<int>>), resolved);
-
-            resolved = PoolTypeResolver.ResolveType("Dictionary<string, List<int>>");
-            Assert.AreEqual(typeof(Dictionary<string, List<int>>), resolved);
-        }
-
-        [Test]
-        public void GenericMatchingFullAssemblyQualifiedNameResolves()
-        {
-            Type expected = typeof(List<>);
-            Type resolved = PoolTypeResolver.ResolveType("System.Collections.Generic.List`1");
-            Assert.AreEqual(expected, resolved);
+            Type resolved = PoolTypeResolver.ResolveType(typeName);
+            Assert.AreEqual(expectedType, resolved);
         }
 
         [Test]
@@ -1739,79 +2042,73 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
         }
 
         [Test]
-        public void GenericMatchingNonGenericTypeDoesNotMatchGenericPattern()
+        [TestCaseSource(nameof(GetDisplayNameTestCases))]
+        public void GenericMatchingGetDisplayNameFormatsCorrectly(
+            Type inputType,
+            string expectedDisplayName
+        )
         {
-            Type concreteType = typeof(string);
-            Type patternType = typeof(List<>);
+            Assert.AreEqual(expectedDisplayName, PoolTypeResolver.GetDisplayName(inputType));
+        }
 
-            Assert.IsFalse(PoolTypeResolver.TypeMatchesPattern(concreteType, patternType));
+        private static IEnumerable<TestCaseData> GetDisplayNameTestCases()
+        {
+            yield return new TestCaseData(typeof(List<int>), "List<int>").SetName(
+                "DisplayName.ListOfInt"
+            );
+            yield return new TestCaseData(typeof(List<>), "List<>").SetName("DisplayName.ListOpen");
+            yield return new TestCaseData(
+                typeof(Dictionary<string, int>),
+                "Dictionary<string, int>"
+            ).SetName("DisplayName.DictionaryStringInt");
+            yield return new TestCaseData(typeof(Dictionary<,>), "Dictionary<,>").SetName(
+                "DisplayName.DictionaryOpen"
+            );
+            yield return new TestCaseData(typeof(List<List<int>>), "List<List<int>>").SetName(
+                "DisplayName.NestedList"
+            );
+            yield return new TestCaseData(typeof(HashSet<string>), "HashSet<string>").SetName(
+                "DisplayName.HashSetString"
+            );
+            yield return new TestCaseData(typeof(HashSet<>), "HashSet<>").SetName(
+                "DisplayName.HashSetOpen"
+            );
         }
 
         [Test]
-        public void GenericMatchingDifferentGenericDefinitionDoesNotMatch()
+        [TestCase(null, TestName = "ResolveType.Null.ReturnsNull")]
+        [TestCase("", TestName = "ResolveType.Empty.ReturnsNull")]
+        [TestCase("   ", TestName = "ResolveType.Whitespace.ReturnsNull")]
+        public void GenericMatchingResolveTypeNullInputsReturnNull(string typeName)
         {
-            Type concreteType = typeof(List<int>);
-            Type patternType = typeof(HashSet<>);
-
-            Assert.IsFalse(PoolTypeResolver.TypeMatchesPattern(concreteType, patternType));
+            Assert.IsNull(PoolTypeResolver.ResolveType(typeName));
         }
 
         [Test]
-        public void GenericMatchingGetDisplayNameFormatsCorrectly()
+        public void GenericMatchingNullTypeInputsHandleGracefully()
         {
-            Assert.AreEqual("List<int>", PoolTypeResolver.GetDisplayName(typeof(List<int>)));
-            Assert.AreEqual("List<>", PoolTypeResolver.GetDisplayName(typeof(List<>)));
-            Assert.AreEqual(
-                "Dictionary<string, int>",
-                PoolTypeResolver.GetDisplayName(typeof(Dictionary<string, int>))
-            );
-            Assert.AreEqual(
-                "Dictionary<,>",
-                PoolTypeResolver.GetDisplayName(typeof(Dictionary<,>))
-            );
-            Assert.AreEqual(
-                "List<List<int>>",
-                PoolTypeResolver.GetDisplayName(typeof(List<List<int>>))
-            );
-        }
-
-        [Test]
-        public void GenericMatchingNullInputsHandleGracefully()
-        {
-            Assert.IsNull(
-                PoolTypeResolver.ResolveType(null),
-                "ResolveType should return null for null input"
-            );
-            Assert.IsNull(
-                PoolTypeResolver.ResolveType(""),
-                "ResolveType should return null for empty string"
-            );
-            Assert.IsNull(
-                PoolTypeResolver.ResolveType("   "),
-                "ResolveType should return null for whitespace string"
-            );
             Assert.IsFalse(PoolTypeResolver.TypeMatchesPattern(null, typeof(List<>)));
             Assert.IsFalse(PoolTypeResolver.TypeMatchesPattern(typeof(List<int>), (Type)null));
             Assert.AreEqual(int.MaxValue, PoolTypeResolver.GetMatchPriority(null, typeof(List<>)));
         }
 
         [Test]
-        public void GenericMatchingBuiltInTypeAliasesResolveCorrectly()
+        [TestCase("int", typeof(int), TestName = "Alias.Int")]
+        [TestCase("string", typeof(string), TestName = "Alias.String")]
+        [TestCase("bool", typeof(bool), TestName = "Alias.Bool")]
+        [TestCase("float", typeof(float), TestName = "Alias.Float")]
+        [TestCase("double", typeof(double), TestName = "Alias.Double")]
+        [TestCase("long", typeof(long), TestName = "Alias.Long")]
+        [TestCase("short", typeof(short), TestName = "Alias.Short")]
+        [TestCase("byte", typeof(byte), TestName = "Alias.Byte")]
+        [TestCase("char", typeof(char), TestName = "Alias.Char")]
+        [TestCase("object", typeof(object), TestName = "Alias.Object")]
+        public void GenericMatchingBuiltInTypeAliasesResolveCorrectly(
+            string typeName,
+            Type expectedType
+        )
         {
-            Assert.AreEqual(typeof(int), PoolTypeResolver.ResolveType("int"));
-            Assert.AreEqual(typeof(string), PoolTypeResolver.ResolveType("string"));
-            Assert.AreEqual(typeof(bool), PoolTypeResolver.ResolveType("bool"));
-            Assert.AreEqual(typeof(float), PoolTypeResolver.ResolveType("float"));
-            Assert.AreEqual(typeof(double), PoolTypeResolver.ResolveType("double"));
-        }
-
-        [Test]
-        public void GenericMatchingHashSetOpenGenericMatchesCustomClass()
-        {
-            Type concreteType = typeof(HashSet<TestPoolItem>);
-            Type patternType = typeof(HashSet<>);
-
-            Assert.IsTrue(PoolTypeResolver.TypeMatchesPattern(concreteType, patternType));
+            Assert.AreEqual(expectedType, PoolTypeResolver.ResolveType(typeName));
         }
 
         // PoolTypeConfiguration tests
@@ -1896,6 +2193,202 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
             );
             Assert.AreEqual(typeof(List<string>), second);
             Assert.AreNotEqual(first, second);
+        }
+
+        /// <summary>
+        /// Tests that hysteresis is respected when MemoryPressureMonitor is disabled.
+        /// After a usage spike, purging should be suppressed during the hysteresis period.
+        /// This test explicitly disables memory pressure monitoring to ensure deterministic behavior.
+        /// </summary>
+        [Test]
+        public void HysteresisIsRespectedWhenMemoryPressureDisabled()
+        {
+            const float hysteresisSeconds = 60f;
+
+            // Ensure memory pressure is disabled (SetUp already does this)
+            TestContext.WriteLine($"=== Test Configuration ===");
+            TestContext.WriteLine(
+                $"  MemoryPressureMonitor.Enabled: {MemoryPressureMonitor.Enabled}"
+            );
+            TestContext.WriteLine(
+                $"  MemoryPressureMonitor.CurrentPressure: {MemoryPressureMonitor.CurrentPressure}"
+            );
+            TestContext.WriteLine($"  HysteresisSeconds: {hysteresisSeconds}");
+            TestContext.WriteLine($"  IdleTimeoutSeconds: 0 (disabled)");
+            TestContext.WriteLine($"  SpikeThresholdMultiplier: 1.5");
+            Assert.IsFalse(
+                MemoryPressureMonitor.Enabled,
+                "Memory pressure should be disabled for this test"
+            );
+
+            int purgeCount = 0;
+            List<PurgeReason> purgeReasons = new();
+            PoolOptions<TestPoolItem> options = new()
+            {
+                UseIntelligentPurging = true,
+                // Use 0f to disable idle timeout purges, which are intentionally allowed
+                // during hysteresis - this test verifies hysteresis blocks other purge types
+                IdleTimeoutSeconds = 0f,
+                HysteresisSeconds = hysteresisSeconds, // Long hysteresis to ensure we stay within it
+                SpikeThresholdMultiplier = 1.5f,
+                Triggers = PurgeTrigger.OnRent,
+                OnPurge = (_, reason) =>
+                {
+                    purgeCount++;
+                    purgeReasons.Add(reason);
+                },
+                TimeProvider = TestTimeProvider,
+            };
+
+            using WallstopGenericPool<TestPoolItem> pool = new(
+                () => new TestPoolItem(),
+                options: options
+            );
+
+            // Create a spike - get many items at once
+            List<PooledResource<TestPoolItem>> resources = new();
+            for (int i = 0; i < 10; i++)
+            {
+                resources.Add(pool.Get());
+            }
+
+            float spikeTime = _currentTime;
+            float hysteresisEndTime = spikeTime + hysteresisSeconds;
+
+            TestContext.WriteLine($"=== After Creating Spike ===");
+            TestContext.WriteLine($"  Items created: {resources.Count}");
+            TestContext.WriteLine($"  Spike time: {spikeTime}");
+            TestContext.WriteLine($"  Hysteresis end time: {hysteresisEndTime}");
+
+            // Return them all to create pool items that could be purged
+            foreach (PooledResource<TestPoolItem> r in resources)
+            {
+                r.Dispose();
+            }
+            resources.Clear();
+
+            int poolCountAfterReturns = pool.Count;
+            TestContext.WriteLine($"=== After Returning Items ===");
+            TestContext.WriteLine($"  Pool.Count: {poolCountAfterReturns}");
+
+            // Advance time within hysteresis period (hysteresis expires at ~61s)
+            _currentTime = 10f;
+
+            TestContext.WriteLine($"=== Before Get (Within Hysteresis) ===");
+            TestContext.WriteLine($"  Current time: {_currentTime}");
+            TestContext.WriteLine($"  Hysteresis end time: {hysteresisEndTime}");
+            TestContext.WriteLine(
+                $"  Is within hysteresis: {_currentTime < hysteresisEndTime} (should be true)"
+            );
+            TestContext.WriteLine($"  Idle timeout status: disabled (0f)");
+
+            // Get should NOT trigger purge due to hysteresis protection
+            using (PooledResource<TestPoolItem> resource = pool.Get()) { }
+
+            TestContext.WriteLine($"=== After Get ===");
+            TestContext.WriteLine($"  PurgeCount: {purgeCount}");
+            TestContext.WriteLine($"  Pool.Count: {pool.Count}");
+            TestContext.WriteLine($"  Purge reasons: [{string.Join(", ", purgeReasons)}]");
+            TestContext.WriteLine($"  Purge blocked due to: hysteresis (idle timeout disabled)");
+
+            Assert.AreEqual(
+                0,
+                purgeCount,
+                "Hysteresis should prevent purging (idle timeout is disabled to test hysteresis blocking)"
+            );
+
+            // Verify items are still in pool (minus the one we just rented)
+            Assert.GreaterOrEqual(
+                pool.Count,
+                poolCountAfterReturns - 1,
+                "Pool should retain items during hysteresis period"
+            );
+        }
+
+        /// <summary>
+        /// Tests that hysteresis IS bypassed when memory pressure is high.
+        /// Under high memory pressure, the system should purge items regardless of hysteresis status.
+        /// This test temporarily re-enables MemoryPressureMonitor to verify bypass behavior.
+        /// </summary>
+        [Test]
+        public void HysteresisIsBypassedUnderHighMemoryPressure()
+        {
+            // Re-enable memory pressure monitoring for this test
+            MemoryPressureMonitor.Enabled = true;
+
+            try
+            {
+                TestContext.WriteLine(
+                    $"MemoryPressureMonitor.Enabled: {MemoryPressureMonitor.Enabled}"
+                );
+
+                int purgeCount = 0;
+                PoolOptions<TestPoolItem> options = new()
+                {
+                    UseIntelligentPurging = true,
+                    IdleTimeoutSeconds = 1f,
+                    HysteresisSeconds = 120f, // Very long hysteresis
+                    SpikeThresholdMultiplier = 1.5f,
+                    Triggers = PurgeTrigger.Explicit, // We'll trigger manually
+                    OnPurge = (_, _) => purgeCount++,
+                    TimeProvider = TestTimeProvider,
+                };
+
+                using WallstopGenericPool<TestPoolItem> pool = new(
+                    () => new TestPoolItem(),
+                    preWarmCount: 10,
+                    options: options
+                );
+
+                // Create a spike to activate hysteresis
+                List<PooledResource<TestPoolItem>> resources = new();
+                for (int i = 0; i < 5; i++)
+                {
+                    resources.Add(pool.Get());
+                }
+
+                TestContext.WriteLine($"Created spike with {resources.Count} concurrent rentals");
+
+                foreach (PooledResource<TestPoolItem> r in resources)
+                {
+                    r.Dispose();
+                }
+                resources.Clear();
+
+                int poolCountBeforePurge = pool.Count;
+                TestContext.WriteLine($"Pool count before purge: {poolCountBeforePurge}");
+
+                // Advance past idle timeout but still well within hysteresis period
+                _currentTime = 10f;
+
+                // Now simulate high memory pressure by calling ForceFullPurge with ignoreHysteresis=true
+                // This simulates what happens when MemoryPressureLevel is High or Critical
+                int purged = pool.ForceFullPurge(
+                    PurgeReason.MemoryPressure,
+                    ignoreHysteresis: true
+                );
+
+                TestContext.WriteLine(
+                    $"After ForceFullPurge with ignoreHysteresis=true: purged={purged}, purgeCount={purgeCount}, pool count={pool.Count}"
+                );
+
+                // Under memory pressure, hysteresis should be bypassed and items should be purged
+                Assert.Greater(
+                    purgeCount,
+                    0,
+                    "High memory pressure should bypass hysteresis and trigger purging"
+                );
+                Assert.Greater(
+                    purged,
+                    0,
+                    "ForceFullPurge with ignoreHysteresis should purge items"
+                );
+            }
+            finally
+            {
+                // Restore original state (will be properly reset by TearDown)
+                MemoryPressureMonitor.Enabled = false;
+            }
         }
     }
 

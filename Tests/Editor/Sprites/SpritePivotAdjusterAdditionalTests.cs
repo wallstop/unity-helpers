@@ -41,6 +41,19 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
             SpritePivotAdjuster.SuppressUserPrompts = false;
         }
 
+        public override void CommonOneTimeSetUp()
+        {
+            base.CommonOneTimeSetUp();
+            DeferAssetCleanupToOneTimeTearDown = true;
+        }
+
+        [OneTimeTearDown]
+        public override void OneTimeTearDown()
+        {
+            CleanupDeferredAssetsAndFolders();
+            base.OneTimeTearDown();
+        }
+
         [Test]
         public void RespectsAlphaCutoffWhenComputingPivot()
         {

@@ -70,6 +70,7 @@ This single command runs ALL CI/CD checks locally, ensuring your changes will pa
 1. Edit markdown -> `npx prettier --write <file>` -> `npm run lint:markdown`
 2. Edit C# -> `dotnet tool run csharpier format .`
 3. Edit YAML -> `npx prettier --write <file>` -> `npm run lint:yaml`
+4. Edit test file -> `pwsh -NoProfile -File scripts/lint-tests.ps1` -> `dotnet tool run csharpier format .`
 
 For detailed workflow patterns and more examples, see [formatting](./formatting.md).
 
@@ -109,9 +110,38 @@ actionlint
 ### Test File Changes
 
 ```bash
-# After EVERY test file modification:
+# 🚨 MANDATORY: After EVERY test file modification:
 pwsh -NoProfile -File scripts/lint-tests.ps1
+
+# Also run standard C# formatting:
+dotnet tool run csharpier format .
+npm run lint:csharp-naming
 ```
+
+**CRITICAL**: The test linter is **MANDATORY** for any test file changes (files in `Tests/` directory). You **MUST** run it **IMMEDIATELY** after each test file modification — do NOT batch these checks at the end of your task.
+
+**Why this matters**: Test lifecycle lint failures will cause the pre-push hook to fail. Catching and fixing these issues early (after each file change) prevents frustrating failures when you try to push your commits.
+
+### Skill File Changes (`.llm/skills/*.md`)
+
+```bash
+# 🚨 MANDATORY: After EVERY skill file modification:
+pwsh -NoProfile -File scripts/lint-skill-sizes.ps1
+
+# Also run standard markdown formatting:
+npx prettier --write <file>
+npm run lint:markdown
+```
+
+**CRITICAL**: Skill files have a **500-line hard limit** enforced by the pre-commit hook. Files exceeding this limit **CANNOT be committed** and require human judgment to split.
+
+| Lines   | Action Required                                          |
+| ------- | -------------------------------------------------------- |
+| <300    | No action needed                                         |
+| 300-500 | Consider splitting preemptively to avoid future blockers |
+| >500    | **MUST split before commit** — hook will reject the file |
+
+**Why this matters**: Splitting large skill files requires human judgment (deciding topic boundaries, updating cross-references). Catching size issues early prevents blocking commits when you've completed all other work.
 
 ---
 
@@ -197,4 +227,6 @@ If `validate:content` and `lint:csharp-naming` pass, your changes are ready.
 - [formatting](./formatting.md) — CSharpier, Prettier, markdownlint workflow
 - [markdown-reference](./markdown-reference.md) — Link formatting, structural rules
 - [create-test](./create-test.md) — Test file requirements
+- [test-data-driven](./test-data-driven.md) — Data-driven testing patterns
+- [test-naming-conventions](./test-naming-conventions.md) — Naming rules and legacy test migration
 - [manage-skills](./manage-skills.md) — Skill file maintenance and index regeneration

@@ -38,8 +38,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Tags
             ScriptableObjectSingletonCreator.AllowAssetCreationDuringSuppression = true;
 
             // Force a refresh to ensure we have the latest state
-            AssetDatabase.SaveAssets();
-            AssetDatabaseBatchHelper.RefreshIfNotBatching();
+            AssetDatabaseBatchHelper.SaveAndRefreshIfNotBatching();
             yield return null;
 
             _assetExistedBefore =
@@ -255,8 +254,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Tags
             if (AssetDatabase.LoadAssetAtPath<AttributeMetadataCache>(CacheAssetPath) != null)
             {
                 AssetDatabase.DeleteAsset(CacheAssetPath);
-                AssetDatabase.SaveAssets();
-                AssetDatabaseBatchHelper.RefreshIfNotBatching();
+                AssetDatabaseBatchHelper.SaveAndRefreshIfNotBatching();
                 yield return null;
             }
 
@@ -305,8 +303,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Tags
             if (AssetDatabase.LoadAssetAtPath<AttributeMetadataCache>(CacheAssetPath) != null)
             {
                 AssetDatabase.DeleteAsset(CacheAssetPath);
-                AssetDatabase.SaveAssets();
-                AssetDatabaseBatchHelper.RefreshIfNotBatching();
+                AssetDatabaseBatchHelper.SaveAndRefreshIfNotBatching();
                 yield return null;
             }
 

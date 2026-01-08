@@ -46,6 +46,34 @@ This linter is also run by the pre-push git hook. Failing to run it locally will
 
 ---
 
+## Preventative Measures: Always Run Linters
+
+> **CRITICAL REMINDER**: Agents MUST run linters after EVERY change to test files. This is non-negotiable.
+
+### After EVERY Test File Change
+
+1. **Immediately** run `pwsh -NoProfile -File scripts/lint-tests.ps1` after modifying ANY test file
+2. Do NOT batch multiple changes before running the linter
+3. Do NOT assume your change is correct — verify with the linter
+
+### Registering Helper Classes
+
+**Helper classes** (like `TextureTestHelper.cs`) that manage their own Unity object lifecycle need special handling:
+
+- These files create Unity objects but intentionally manage cleanup themselves
+- Add the file path to the `$allowedHelperFiles` array in `scripts/lint-tests.ps1`
+- Example: `"Tests/Core/TextureTestHelper.cs"`
+
+### Registering Custom Test Base Classes
+
+**Custom test base classes** that inherit from `CommonTestBase` need to be registered:
+
+- The linter checks if test classes inherit from recognized base classes
+- Update the inheritance regex in `scripts/lint-tests.ps1` (around line ~199) to include your new base class
+- Add your base class name to the `$usesBase` regex pattern
+
+---
+
 ## Required Pattern: Track All Unity Objects
 
 **ALWAYS** wrap Unity object creation with `Track()`:
@@ -209,11 +237,12 @@ public IEnumerator OnInspectorGuiDoesNotThrowForTarget()
 
 ### Common Fixes
 
-| Error    | Fix                                                                                           |
-| -------- | --------------------------------------------------------------------------------------------- |
-| `UNH001` | Remove `DestroyImmediate`; use `Track()` OR add `// UNH-SUPPRESS` if testing destroy behavior |
-| `UNH002` | Wrap object creation with `Track()`: `Track(new GameObject())`                                |
-| `UNH003` | Add `: CommonTestBase` or `: EditorCommonTestBase` to test class                              |
+| Error          | Fix                                                                                           |
+| -------------- | --------------------------------------------------------------------------------------------- |
+| `UNH001`       | Remove `DestroyImmediate`; use `Track()` OR add `// UNH-SUPPRESS` if testing destroy behavior |
+| `UNH002`       | Wrap object creation with `Track()`: `Track(new GameObject())`                                |
+| `UNH003`       | Add `: CommonTestBase` or `: EditorCommonTestBase` to test class                              |
+| Helper classes | Add file path to `$allowedHelperFiles` in `scripts/lint-tests.ps1`                            |
 
 ---
 
@@ -246,8 +275,41 @@ public sealed class MyTests
 
 ---
 
+## Adding New Test Base Classes
+
+If you create a new abstract test base class that inherits from `CommonTestBase`, you need to update the lint script to recognize it:
+
+### Steps to Register a New Base Class
+
+1. **Locate the `$usesBase` regex** in `scripts/lint-tests.ps1` (around line ~199)
+2. **Add your new base class name** to the regex pattern
+3. **Test the linter** to ensure tests inheriting from your new base class pass
+
+### Example
+
+If you create a new base class called `SpriteSheetExtractorTestBase`:
+
+```powershell
+# Before (in scripts/lint-tests.ps1)
+$usesBase = $classContent -match ':\s*(CommonTestBase|EditorCommonTestBase)'
+
+# After
+$usesBase = $classContent -match ':\s*(CommonTestBase|EditorCommonTestBase|SpriteSheetExtractorTestBase)'
+```
+
+### Why This Is Needed
+
+The linter checks if test classes that create Unity objects inherit from a recognized base class. Without registering your custom base class:
+
+- Tests inheriting from your base class will trigger `UNH003` errors
+- The linter won't recognize that your base class already provides the `Track()` infrastructure
+
+---
+
 ## Related Skills
 
 - [create-test](./create-test.md) — General test creation guidelines
+- [test-data-driven](./test-data-driven.md) — Data-driven testing with TestCase and TestCaseSource
+- [test-naming-conventions](./test-naming-conventions.md) — Naming rules and legacy test migration
 - [test-odin-drawers](./test-odin-drawers.md) — Odin Inspector drawer testing
 - [validate-before-commit](./validate-before-commit.md) — Pre-commit validation workflow

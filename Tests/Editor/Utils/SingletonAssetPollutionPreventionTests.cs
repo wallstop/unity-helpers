@@ -95,8 +95,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             ScriptableObjectSingletonCreator.DisableAutomaticRetries = false;
             ScriptableObjectSingletonCreator.AllowAssetCreationDuringSuppression = false;
             EditorUi.Suppress = _previousEditorUiSuppress;
-            AssetDatabase.SaveAssets();
-            AssetDatabaseBatchHelper.RefreshIfNotBatching();
+            AssetDatabaseBatchHelper.SaveAndRefreshIfNotBatching();
 
             // Clean up all known test folders including duplicates
             CleanupAllKnownTestFolders();
@@ -385,8 +384,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
 
             ScriptableObjectSingletonCreator.EnsureSingletonAssets();
             yield return null;
-            AssetDatabase.SaveAssets();
-            AssetDatabaseBatchHelper.RefreshIfNotBatching();
+            AssetDatabaseBatchHelper.SaveAndRefreshIfNotBatching();
             yield return null;
 
             List<string> unexpectedlyCreated = new();
@@ -429,8 +427,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
 
             ScriptableObjectSingletonCreator.EnsureSingletonAssets();
             yield return null;
-            AssetDatabase.SaveAssets();
-            AssetDatabaseBatchHelper.RefreshIfNotBatching();
+            AssetDatabaseBatchHelper.SaveAndRefreshIfNotBatching();
             yield return null;
 
             List<string> createdAssets = new();
@@ -468,8 +465,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
 
             ScriptableObjectSingletonCreator.EnsureSingletonAssets();
             yield return null;
-            AssetDatabase.SaveAssets();
-            AssetDatabaseBatchHelper.RefreshIfNotBatching();
+            AssetDatabaseBatchHelper.SaveAndRefreshIfNotBatching();
             yield return null;
 
             List<string> createdAssets = new();
@@ -513,8 +509,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                 ScriptableObjectSingletonCreator.AllowAssetCreationDuringSuppression = true;
                 ScriptableObjectSingletonCreator.EnsureSingletonAssets();
                 yield return null;
-                AssetDatabase.SaveAssets();
-                AssetDatabaseBatchHelper.RefreshIfNotBatching();
+                AssetDatabaseBatchHelper.SaveAndRefreshIfNotBatching();
                 yield return null;
             }
 
@@ -588,8 +583,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
 
             ScriptableObjectSingletonCreator.EnsureSingletonAssets();
             yield return null;
-            AssetDatabase.SaveAssets();
-            AssetDatabaseBatchHelper.RefreshIfNotBatching();
+            AssetDatabaseBatchHelper.SaveAndRefreshIfNotBatching();
             yield return null;
 
             List<string> createdAssets = new();
@@ -786,8 +780,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                 }
             }
 
-            AssetDatabase.SaveAssets();
-            AssetDatabaseBatchHelper.RefreshIfNotBatching();
+            AssetDatabaseBatchHelper.SaveAndRefreshIfNotBatching();
             yield return null;
         }
 

@@ -162,8 +162,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Windows
                 }
             }
 
-            UnityEditor.AssetDatabase.SaveAssets();
-            AssetDatabaseBatchHelper.RefreshIfNotBatching();
+            AssetDatabaseBatchHelper.SaveAndRefreshIfNotBatching();
         }
 
         /// <summary>

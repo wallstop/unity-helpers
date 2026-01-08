@@ -47,6 +47,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
         }
 
         private float _currentTime;
+        private bool _wasMemoryPressureEnabled;
 
         private float TestTimeProvider()
         {
@@ -62,6 +63,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
             TestPoolItem.ResetIdCounter();
             PoolPurgeSettings.ResetToDefaults();
             GlobalPoolRegistry.Clear();
+            // Disable memory pressure monitoring to ensure deterministic test behavior
+            _wasMemoryPressureEnabled = MemoryPressureMonitor.Enabled;
+            MemoryPressureMonitor.Enabled = false;
         }
 
         [TearDown]
@@ -69,6 +73,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
         {
             PoolPurgeSettings.ResetToDefaults();
             GlobalPoolRegistry.Clear();
+            MemoryPressureMonitor.Enabled = _wasMemoryPressureEnabled;
         }
 
         [Test]
@@ -501,9 +506,14 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
                 reason: PurgeReason.SceneUnloaded
             );
 
-            // With warm retain count of 5 for an active pool
-            Assert.AreEqual(15, purged);
-            Assert.AreEqual(5, pool.Count);
+            // Explicit purges (like SceneUnloaded) intentionally ignore WarmRetainCount
+            // and only respect MinRetainCount. With MinRetainCount=1, we should purge
+            // 19 items and retain 1.
+            TestContext.WriteLine(
+                $"After SceneUnloaded purge: purged={purged}, pool count={pool.Count}"
+            );
+            Assert.AreEqual(19, purged);
+            Assert.AreEqual(1, pool.Count);
         }
 
         [Test]
@@ -653,18 +663,47 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
 
             // Purge with different reasons
             pool.Purge(PurgeReason.SceneUnloaded);
-            // Pre-warm by renting and returning (creates new items if pool is empty)
+            TestContext.WriteLine(
+                $"After SceneUnloaded purge: pool count={pool.Count}, reasons collected so far={reasons.Count}"
+            );
+
+            // Hold 10 items simultaneously before disposing to create 10 distinct items
+            // (sequential Get/Dispose would reuse the same item)
+            List<PooledResource<TestPoolItem>> resources = new();
             for (int i = 0; i < 10; i++)
             {
-                pool.Get().Dispose();
+                resources.Add(pool.Get());
             }
+            foreach (PooledResource<TestPoolItem> r in resources)
+            {
+                r.Dispose();
+            }
+            resources.Clear();
+
+            TestContext.WriteLine($"After adding 10 items: pool count={pool.Count}");
+
             pool.Purge(PurgeReason.AppBackgrounded);
-            // Pre-warm again
+            TestContext.WriteLine(
+                $"After AppBackgrounded purge: pool count={pool.Count}, reasons collected so far={reasons.Count}"
+            );
+
+            // Hold 5 items simultaneously before disposing
             for (int i = 0; i < 5; i++)
             {
-                pool.Get().Dispose();
+                resources.Add(pool.Get());
             }
+            foreach (PooledResource<TestPoolItem> r in resources)
+            {
+                r.Dispose();
+            }
+            resources.Clear();
+
+            TestContext.WriteLine($"After adding 5 items: pool count={pool.Count}");
+
             pool.Purge(PurgeReason.Explicit);
+            TestContext.WriteLine(
+                $"After Explicit purge: pool count={pool.Count}, total reasons={reasons.Count}"
+            );
 
             int sceneUnloadedCount = 0;
             int appBackgroundedCount = 0;

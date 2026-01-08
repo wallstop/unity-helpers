@@ -145,7 +145,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
         /// <summary>
         /// Represents a discovered sprite sheet with its metadata.
         /// </summary>
-        internal sealed class SpriteSheetEntry
+        public sealed class SpriteSheetEntry
         {
             internal string _assetPath;
             internal Texture2D _texture;
@@ -1422,6 +1422,38 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             Repaint();
         }
 
+        /// <summary>
+        /// Selects all sprites in the specified entry.
+        /// </summary>
+        internal void SelectAll(SpriteSheetEntry entry)
+        {
+            if (entry?._sprites == null)
+            {
+                return;
+            }
+
+            for (int i = 0; i < entry._sprites.Count; ++i)
+            {
+                entry._sprites[i]._isSelected = true;
+            }
+        }
+
+        /// <summary>
+        /// Deselects all sprites in the specified entry.
+        /// </summary>
+        internal void SelectNone(SpriteSheetEntry entry)
+        {
+            if (entry?._sprites == null)
+            {
+                return;
+            }
+
+            for (int i = 0; i < entry._sprites.Count; ++i)
+            {
+                entry._sprites[i]._isSelected = false;
+            }
+        }
+
         private void DrawSpriteSheetEntry(SpriteSheetEntry entry)
         {
             using (new EditorGUILayout.VerticalScope("box"))
@@ -2636,6 +2668,114 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
         }
 
         /// <summary>
+        /// Enables pivot overrides for all sprites in the given entry.
+        /// </summary>
+        /// <param name="entry">The sprite sheet entry to modify.</param>
+        internal void EnableAllPivotOverrides(SpriteSheetEntry entry)
+        {
+            if (entry == null || entry._sprites == null)
+            {
+                return;
+            }
+
+            for (int i = 0; i < entry._sprites.Count; ++i)
+            {
+                SpriteEntryData sprite = entry._sprites[i];
+                if (sprite != null)
+                {
+                    sprite._usePivotOverride = true;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Disables pivot overrides for all sprites in the given entry.
+        /// </summary>
+        /// <param name="entry">The sprite sheet entry to modify.</param>
+        internal void DisableAllPivotOverrides(SpriteSheetEntry entry)
+        {
+            if (entry == null || entry._sprites == null)
+            {
+                return;
+            }
+
+            for (int i = 0; i < entry._sprites.Count; ++i)
+            {
+                SpriteEntryData sprite = entry._sprites[i];
+                if (sprite != null)
+                {
+                    sprite._usePivotOverride = false;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Schedules preview regeneration for a sprite sheet entry.
+        /// This is a public wrapper around the internal regeneration method.
+        /// </summary>
+        /// <param name="entry">The sprite sheet entry to regenerate previews for.</param>
+        internal void SchedulePreviewRegeneration(SpriteSheetEntry entry)
+        {
+            SchedulePreviewRegenerationForEntry(entry);
+        }
+
+        /// <summary>
+        /// Computes a bounds cache key for an entry.
+        /// This is an instance method wrapper that delegates to the entry's cache key computation.
+        /// </summary>
+        /// <param name="entry">The sprite sheet entry to compute a cache key for. Can be null.</param>
+        /// <returns>A hash code representing the current configuration state.</returns>
+        internal int GetBoundsCacheKey(SpriteSheetEntry entry)
+        {
+            if (entry == null)
+            {
+                return GetBoundsCacheKeyStatic(this, null);
+            }
+
+            return entry.GetBoundsCacheKey(this);
+        }
+
+        /// <summary>
+        /// Computes a bounds cache key using static parameters.
+        /// Used for null-safe cache key computation when either extractor or entry may be null.
+        /// </summary>
+        /// <param name="extractor">The extractor to read global settings from. Can be null.</param>
+        /// <param name="entry">The sprite sheet entry to compute a cache key for. Can be null.</param>
+        /// <returns>A hash code representing the current configuration state, or 0 if extractor is null.</returns>
+        internal static int GetBoundsCacheKeyStatic(
+            SpriteSheetExtractor extractor,
+            SpriteSheetEntry entry
+        )
+        {
+            if (extractor == null)
+            {
+                return 0;
+            }
+
+            if (entry == null)
+            {
+                return Objects.HashCode(
+                    extractor._extractionMode,
+                    extractor._gridSizeMode,
+                    extractor._gridColumns,
+                    extractor._gridRows,
+                    extractor._cellWidth,
+                    extractor._cellHeight,
+                    extractor._paddingLeft,
+                    extractor._paddingRight,
+                    extractor._paddingTop,
+                    extractor._paddingBottom,
+                    extractor._alphaThreshold,
+                    extractor._autoDetectionAlgorithm,
+                    extractor._expectedSpriteCountHint,
+                    extractor._snapToTextureDivisor
+                );
+            }
+
+            return entry.GetBoundsCacheKey(extractor);
+        }
+
+        /// <summary>
         /// Checks cache size and evicts least recently used entries if limit is exceeded.
         /// Entries are evicted by clearing their sprite lists and preview textures.
         /// </summary>
@@ -3463,6 +3603,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             Array.Clear(columnTransparencyCount, 0, textureWidth);
             Array.Clear(rowTransparencyCount, 0, textureHeight);
 
+            int totalTransparent = 0;
             for (int y = 0; y < textureHeight; ++y)
             {
                 int rowOffset = y * textureWidth;
@@ -3472,8 +3613,16 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                     {
                         ++columnTransparencyCount[x];
                         ++rowTransparencyCount[y];
+                        ++totalTransparent;
                     }
                 }
+            }
+
+            // Fully opaque or fully transparent textures have no meaningful grid
+            int totalPixels = textureWidth * textureHeight;
+            if (totalTransparent == 0 || totalTransparent == totalPixels)
+            {
+                return false;
             }
 
             using PooledResource<List<int>> widthCandidatesLease = Buffers<int>.List.Get(
@@ -3707,7 +3856,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
 
             if (cellCount == 1)
             {
-                return 0.6f;
+                return 0f;
             }
 
             int boundaryCount = cellCount - 1;
@@ -7412,6 +7561,15 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 width = Mathf.Clamp(width, 1, sheet._texture.width - x);
                 height = Mathf.Clamp(height, 1, sheet._texture.height - y);
 
+                if (!IsTextureFormatSupportedForGetPixels(sheet._texture.format))
+                {
+                    this.LogError(
+                        $"Texture format '{sheet._texture.format}' does not support GetPixels32 for {sheet._assetPath}. Extraction skipped."
+                    );
+                    ++_lastErrorCount;
+                    return false;
+                }
+
                 Color32[] pixels = sheet._texture.GetPixels32();
                 int srcWidth = sheet._texture.width;
                 int pixelCount = width * height;
@@ -7491,7 +7649,13 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             newImporter.mipmapEnabled = sourceImporter.mipmapEnabled;
             newImporter.isReadable = sourceImporter.isReadable;
 
-            Vector2 pivot = GetEffectivePivot(entry, sprite);
+            // When preserving import settings, use the original sprite pivot from metadata
+            // unless a per-sprite override is explicitly set. This preserves the original
+            // artist-defined pivot values. Global and sheet-level pivot modes affect preview
+            // generation and UI display, but do not override metadata pivots during extraction.
+            Vector2 pivot = sprite._usePivotOverride
+                ? PivotModeToVector2(sprite._pivotModeOverride, sprite._customPivotOverride)
+                : sprite._pivot;
 
             TextureImporterSettings settings = new();
             newImporter.ReadTextureSettings(settings);

@@ -92,7 +92,7 @@ namespace WallstopStudios.UnityHelpers.Utils
         public bool IsHighFrequency { get; }
 
         /// <summary>
-        /// Whether this pool is considered low-frequency (less than 1 rental/minute).
+        /// Whether this pool is considered low-frequency (at most 1 rental/minute).
         /// Low-frequency pools can be purged more aggressively.
         /// </summary>
         public bool IsLowFrequency { get; }

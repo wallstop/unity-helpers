@@ -31,24 +31,30 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
 
         public override void CommonOneTimeSetUp()
         {
+            if (Application.isPlaying)
+            {
+                return;
+            }
             base.CommonOneTimeSetUp();
 
-            // Clean up any leftover test folders from previous test runs
-            CleanupAllKnownTestFolders();
+            // Batch all cleanup operations to minimize AssetDatabase.Refresh calls
+            // This improves test startup time by consolidating multiple delete operations
+            using (AssetDatabaseBatchHelper.BeginBatch())
+            {
+                // Clean up any leftover test folders from previous test runs
+                CleanupAllKnownTestFolders();
 
-            // Also clean up duplicate folders that may have been created during previous runs
-            // This is especially important for case-mismatch tests on case-insensitive file systems
-            TryDeleteFolderAndDuplicates("Assets/Resources", "CreatorTests");
-            TryDeleteFolderAndDuplicates("Assets/Resources", "CaseTest");
-            TryDeleteFolderAndDuplicates("Assets/Resources", "casetest");
-            TryDeleteFolderAndDuplicates("Assets/Resources", "CASETEST");
-            TryDeleteFolderAndDuplicates("Assets/Resources", "cASEtest");
-            TryDeleteFolderAndDuplicates("Assets/Resources", "CaseTEST");
+                // Also clean up duplicate folders that may have been created during previous runs
+                // This is especially important for case-mismatch tests on case-insensitive file systems
+                TryDeleteFolderAndDuplicates("Assets/Resources", "CreatorTests");
+                TryDeleteFolderAndDuplicates("Assets/Resources", "CaseTest");
+                TryDeleteFolderAndDuplicates("Assets/Resources", "casetest");
+                TryDeleteFolderAndDuplicates("Assets/Resources", "CASETEST");
+                TryDeleteFolderAndDuplicates("Assets/Resources", "cASEtest");
+                TryDeleteFolderAndDuplicates("Assets/Resources", "CaseTEST");
 
-            AssetDatabase.SaveAssets();
-            AssetDatabaseBatchHelper.RefreshIfNotBatching(
-                ImportAssetOptions.ForceSynchronousImport
-            );
+                AssetDatabase.SaveAssets();
+            }
         }
 
         [UnitySetUp]
@@ -57,17 +63,19 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             _previousEditorUiSuppress = EditorUi.Suppress;
             EditorUi.Suppress = true;
 
-            // CRITICAL: Clean up all case-variant folders BEFORE each test
-            // This prevents pollution from previous test cases in data-driven tests
-            TryDeleteFolderAndDuplicates("Assets/Resources", "CaseTest");
-            TryDeleteFolderAndDuplicates("Assets/Resources", "casetest");
-            TryDeleteFolderAndDuplicates("Assets/Resources", "CASETEST");
-            TryDeleteFolderAndDuplicates("Assets/Resources", "cASEtest");
-            TryDeleteFolderAndDuplicates("Assets/Resources", "CaseTEST");
-            AssetDatabase.SaveAssets();
-            AssetDatabaseBatchHelper.RefreshIfNotBatching(
-                ImportAssetOptions.ForceSynchronousImport
-            );
+            // Batch all per-test cleanup operations to minimize AssetDatabase.Refresh calls
+            // This reduces the number of individual Refresh calls from 5+ to 1
+            using (AssetDatabaseBatchHelper.BeginBatch())
+            {
+                // CRITICAL: Clean up all case-variant folders BEFORE each test
+                // This prevents pollution from previous test cases in data-driven tests
+                TryDeleteFolderAndDuplicates("Assets/Resources", "CaseTest");
+                TryDeleteFolderAndDuplicates("Assets/Resources", "casetest");
+                TryDeleteFolderAndDuplicates("Assets/Resources", "CASETEST");
+                TryDeleteFolderAndDuplicates("Assets/Resources", "cASEtest");
+                TryDeleteFolderAndDuplicates("Assets/Resources", "CaseTEST");
+                AssetDatabase.SaveAssets();
+            }
             yield return null;
 
             ScriptableObjectSingletonCreator.IncludeTestAssemblies = true;
@@ -87,13 +95,18 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                 || type == typeof(RetrySingleton)
                 || type == typeof(FileBlockSingleton)
                 || type == typeof(NoRetrySingleton);
-            EnsureFolder("Assets/Resources");
-            EnsureFolder(TestRoot);
-            // Ensure the metadata folder exists to prevent modal dialogs
-            EnsureFolder("Assets/Resources/Wallstop Studios/Unity Helpers");
+
+            // Batch folder creation operations
+            using (AssetDatabaseBatchHelper.BeginBatch())
+            {
+                EnsureFolder("Assets/Resources");
+                EnsureFolder(TestRoot);
+                // Ensure the metadata folder exists to prevent modal dialogs
+                EnsureFolder("Assets/Resources/Wallstop Studios/Unity Helpers");
+            }
+
             ScriptableObjectSingletonCreator.DisableAutomaticRetries = false;
             ScriptableObjectSingletonCreator.ResetRetryStateForTests();
-            yield break;
         }
 
         [UnityTearDown]
@@ -105,51 +118,49 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                 yield return baseEnumerator.Current;
             }
 
-            // Clean up any assets created under our test root
-            string[] guids = AssetDatabase.FindAssets("t:Object", new[] { TestRoot });
-            foreach (string guid in guids)
+            // Batch all cleanup operations to minimize AssetDatabase.Refresh calls
+            // This consolidates 20+ individual delete/cleanup operations into a single batch
+            using (AssetDatabaseBatchHelper.BeginBatch())
             {
-                string path = AssetDatabase.GUIDToAssetPath(guid);
-                AssetDatabase.DeleteAsset(path);
+                // Clean up any assets created under our test root
+                string[] guids = AssetDatabase.FindAssets("t:Object", new[] { TestRoot });
+                foreach (string guid in guids)
+                {
+                    string path = AssetDatabase.GUIDToAssetPath(guid);
+                    AssetDatabase.DeleteAsset(path);
+                }
+
+                // Delete files that may be blocking folder creation (these are actual files, not folders)
+                DeleteFileIfExists(TestRoot + "/FileBlock");
+                DeleteFileIfExists(TestRoot + "/NoRetry");
+                DeleteFileIfExists(TestRoot + "/Retry");
+
+                // Try to delete empty folders bottom-up (subfolders first, then parent)
+                TryDeleteFolder(TestRoot + "/Collision");
+                TryDeleteFolder(TestRoot + "/Retry");
+                TryDeleteFolder(TestRoot + "/Retry 1");
+                TryDeleteFolder(TestRoot + "/FileBlock");
+                TryDeleteFolder(TestRoot + "/FileBlock 1");
+                TryDeleteFolder(TestRoot + "/NoRetry");
+                TryDeleteFolder(TestRoot + "/NoRetry 1");
+                TryDeleteFolder(TestRoot);
+                // Clean up CreatorTests folder and any duplicates (e.g., "CreatorTests 1")
+                TryDeleteFolderAndDuplicates("Assets/Resources", "CreatorTests");
+
+                // Clean up all case variants of CaseTest and their duplicates
+                // This handles: CaseTest, cASEtest, CASETEST, casetest, CaseTEST
+                // AND their duplicates: CaseTest 1, cASEtest 1, etc.
+                TryDeleteFolderAndDuplicates("Assets/Resources", "CaseTest");
+                TryDeleteFolderAndDuplicates("Assets/Resources", "casetest");
+                TryDeleteFolderAndDuplicates("Assets/Resources", "CASETEST");
+                TryDeleteFolderAndDuplicates("Assets/Resources", "cASEtest");
+                TryDeleteFolderAndDuplicates("Assets/Resources", "CaseTEST");
+
+                TryDeleteFolder("Assets/Resources");
+
+                AssetDatabase.SaveAssets();
             }
 
-            // Delete files that may be blocking folder creation (these are actual files, not folders)
-            DeleteFileIfExists(TestRoot + "/FileBlock");
-            DeleteFileIfExists(TestRoot + "/NoRetry");
-            DeleteFileIfExists(TestRoot + "/Retry");
-
-            // Try to delete empty folders bottom-up (subfolders first, then parent)
-            TryDeleteFolder(TestRoot + "/Collision");
-            TryDeleteFolder(TestRoot + "/Retry");
-            TryDeleteFolder(TestRoot + "/Retry 1");
-            TryDeleteFolder(TestRoot + "/FileBlock");
-            TryDeleteFolder(TestRoot + "/FileBlock 1");
-            TryDeleteFolder(TestRoot + "/NoRetry");
-            TryDeleteFolder(TestRoot + "/NoRetry 1");
-            TryDeleteFolder(TestRoot);
-            // Clean up CreatorTests folder and any duplicates (e.g., "CreatorTests 1")
-            TryDeleteFolderAndDuplicates("Assets/Resources", "CreatorTests");
-
-            // Clean up all case variants of CaseTest and their duplicates
-            // This handles: CaseTest, cASEtest, CASETEST, casetest, CaseTEST
-            // AND their duplicates: CaseTest 1, cASEtest 1, etc.
-            TryDeleteFolderAndDuplicates("Assets/Resources", "CaseTest");
-            TryDeleteFolderAndDuplicates("Assets/Resources", "casetest");
-            TryDeleteFolderAndDuplicates("Assets/Resources", "CASETEST");
-            TryDeleteFolderAndDuplicates("Assets/Resources", "cASEtest");
-            TryDeleteFolderAndDuplicates("Assets/Resources", "CaseTEST");
-
-            // Legacy cleanup (may still be needed for folders without duplicates)
-            TryDeleteFolder("Assets/Resources/CaseTest");
-            TryDeleteFolderCaseInsensitive("Assets/Resources/CaseTest");
-            TryDeleteFolderCaseInsensitive("Assets/Resources/casetest");
-            TryDeleteFolderCaseInsensitive("Assets/Resources/CASETEST");
-            TryDeleteFolderCaseInsensitive("Assets/Resources/cASEtest");
-            TryDeleteFolderCaseInsensitive("Assets/Resources/CaseTEST");
-            TryDeleteFolder("Assets/Resources");
-
-            AssetDatabase.SaveAssets();
-            AssetDatabaseBatchHelper.RefreshIfNotBatching();
             ScriptableObjectSingletonCreator.TypeFilter = null;
             ScriptableObjectSingletonCreator.IncludeTestAssemblies = false;
             ScriptableObjectSingletonCreator.DisableAutomaticRetries = false;
@@ -160,6 +171,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             EditorUi.Suppress = _previousEditorUiSuppress;
 
             // Clean up all known test folders including duplicates
+            // Note: CleanupAllKnownTestFolders already batches its operations internally
             CleanupAllKnownTestFolders();
         }
 
@@ -178,10 +190,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
 
             // IMPORTANT: Refresh AssetDatabase to ensure the folder is visible to GetSubFolders
             // Without this, the singleton creator may not find the case-mismatched folder
-            AssetDatabase.SaveAssets();
-            AssetDatabaseBatchHelper.RefreshIfNotBatching(
-                ImportAssetOptions.ForceSynchronousImport
-            );
+            AssetDatabaseBatchHelper.SaveAndRefreshIfNotBatching();
             yield return null;
 
             string assetPath = "Assets/Resources/cASEtest/CaseMismatch.asset";
@@ -440,10 +449,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             AssetDatabase.DeleteAsset(retryFolder);
             AssetDatabase.DeleteAsset(retryFolderVariant);
             CleanupRetryTestState(retryFolder, retryAsset, blockerMeta, retryFolderVariant);
-            AssetDatabase.SaveAssets();
-            AssetDatabaseBatchHelper.RefreshIfNotBatching(
-                ImportAssetOptions.ForceSynchronousImport
-            );
+            AssetDatabaseBatchHelper.SaveAndRefreshIfNotBatching();
             yield return null;
 
             EnsureFolder(TestRoot);
@@ -495,16 +501,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             ScriptableObjectSingletonCreator.ResetRetryStateForTests();
 
             // Force multiple refreshes to ensure Unity's internal state is fully cleared
-            AssetDatabase.SaveAssets();
-            AssetDatabaseBatchHelper.RefreshIfNotBatching(
-                ImportAssetOptions.ForceSynchronousImport
-            );
+            AssetDatabaseBatchHelper.SaveAndRefreshIfNotBatching();
             yield return null;
 
             // Second refresh pass - sometimes Unity needs this to fully clear internal GUID mappings
-            AssetDatabaseBatchHelper.RefreshIfNotBatching(
-                ImportAssetOptions.ForceSynchronousImport
-            );
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
             yield return null;
 
             // Verify blocker is gone
@@ -537,10 +538,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
 
             // Manually trigger ensure now that the blocker is gone - should succeed immediately
             ScriptableObjectSingletonCreator.EnsureSingletonAssets();
-            AssetDatabase.SaveAssets();
-            AssetDatabaseBatchHelper.RefreshIfNotBatching(
-                ImportAssetOptions.ForceSynchronousImport
-            );
+            AssetDatabaseBatchHelper.SaveAndRefreshIfNotBatching();
             yield return null;
 
             bool folderExists = AssetDatabase.IsValidFolder(retryFolder);
@@ -745,10 +743,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             {
                 File.Delete(absoluteBlockerMeta);
             }
-            AssetDatabase.SaveAssets();
-            AssetDatabaseBatchHelper.RefreshIfNotBatching(
-                ImportAssetOptions.ForceSynchronousImport
-            );
+            AssetDatabaseBatchHelper.SaveAndRefreshIfNotBatching();
 
             EnsureFolder(TestRoot);
             yield return null;
@@ -801,10 +796,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             {
                 File.Delete(absoluteBlockerMeta);
             }
-            AssetDatabase.SaveAssets();
-            AssetDatabaseBatchHelper.RefreshIfNotBatching(
-                ImportAssetOptions.ForceSynchronousImport
-            );
+            AssetDatabaseBatchHelper.SaveAndRefreshIfNotBatching();
             yield return null;
 
             // Automatic retries are still disabled, so nothing should be created until we run ensure manually.
@@ -818,10 +810,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             ScriptableObjectSingletonCreator.DisableAutomaticRetries = false;
 
             ScriptableObjectSingletonCreator.EnsureSingletonAssets();
-            AssetDatabase.SaveAssets();
-            AssetDatabaseBatchHelper.RefreshIfNotBatching(
-                ImportAssetOptions.ForceSynchronousImport
-            );
+            AssetDatabaseBatchHelper.SaveAndRefreshIfNotBatching();
             yield return null;
 
             bool folderExists = AssetDatabase.IsValidFolder(noRetryFolder);
@@ -885,8 +874,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             string existingFolder = "Assets/Resources/" + existingFolderName;
             EnsureFolder(existingFolder);
 
-            AssetDatabase.SaveAssets();
-            AssetDatabaseBatchHelper.RefreshIfNotBatching(
+            AssetDatabaseBatchHelper.SaveAndRefreshIfNotBatching(
                 ImportAssetOptions.ForceSynchronousImport
             );
             yield return null;
@@ -903,9 +891,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             ScriptableObjectSingletonCreator.EnsureSingletonAssets();
             yield return null;
             yield return null;
-            AssetDatabaseBatchHelper.RefreshIfNotBatching(
-                ImportAssetOptions.ForceSynchronousImport
-            );
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             // Assert: no duplicate folder created
             // Check for any case variant of "CaseTest 1" or "existingFolderName 1"
@@ -974,10 +960,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             EnsureFolder(dup1Path);
             EnsureFolder(dup2Path);
             EnsureFolder(notDupPath);
-            AssetDatabase.SaveAssets();
-            AssetDatabaseBatchHelper.RefreshIfNotBatching(
-                ImportAssetOptions.ForceSynchronousImport
-            );
+            AssetDatabaseBatchHelper.SaveAndRefreshIfNotBatching();
 
             // Verify all folders exist
             Assert.IsTrue(AssetDatabase.IsValidFolder(basePath), "Base folder should exist");
@@ -987,10 +970,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
 
             // Act: delete the base folder and its duplicates
             TryDeleteFolderAndDuplicates("Assets/Resources", baseName);
-            AssetDatabase.SaveAssets();
-            AssetDatabaseBatchHelper.RefreshIfNotBatching(
-                ImportAssetOptions.ForceSynchronousImport
-            );
+            AssetDatabaseBatchHelper.SaveAndRefreshIfNotBatching();
 
             // Assert: base and duplicates should be gone, non-duplicate should remain
             Assert.IsFalse(AssetDatabase.IsValidFolder(basePath), "Base folder should be deleted");
@@ -1019,10 +999,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             TryDeleteFolderAndDuplicates("Assets/Resources", "CASETEST");
             TryDeleteFolderAndDuplicates("Assets/Resources", "cASEtest");
             TryDeleteFolderAndDuplicates("Assets/Resources", "CaseTEST");
-            AssetDatabase.SaveAssets();
-            AssetDatabaseBatchHelper.RefreshIfNotBatching(
-                ImportAssetOptions.ForceSynchronousImport
-            );
+            AssetDatabaseBatchHelper.SaveAndRefreshIfNotBatching();
             yield return null;
 
             // Verify no case-variant folders exist
@@ -1059,8 +1036,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             // Create a folder with non-standard casing
             string existingFolder = "Assets/Resources/cAsEtEsT";
             EnsureFolder(existingFolder);
-            AssetDatabase.SaveAssets();
-            AssetDatabaseBatchHelper.RefreshIfNotBatching(
+            AssetDatabaseBatchHelper.SaveAndRefreshIfNotBatching(
                 ImportAssetOptions.ForceSynchronousImport
             );
             yield return null;
@@ -1070,9 +1046,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             // Run singleton creation
             ScriptableObjectSingletonCreator.EnsureSingletonAssets();
             yield return null;
-            AssetDatabaseBatchHelper.RefreshIfNotBatching(
-                ImportAssetOptions.ForceSynchronousImport
-            );
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             // Collect diagnostic info
             string[] subFolders = AssetDatabase.GetSubFolders("Assets/Resources");

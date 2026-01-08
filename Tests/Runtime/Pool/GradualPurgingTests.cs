@@ -523,5 +523,372 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
             Assert.AreEqual(stats1, stats2);
             Assert.AreNotEqual(stats1, stats3);
         }
+
+        /// <summary>
+        /// Tests that minRetainCount is respected after multiple successive gradual purge operations.
+        /// This validates the bug fix where minRetainCount was only checked at the beginning of
+        /// purge operations, not enforced as items were being purged.
+        /// </summary>
+        [Test]
+        [TestCase(0, 5, 20, TestName = "MinRetain.Zero.MaxPurge.5.Items.20")]
+        [TestCase(1, 5, 20, TestName = "MinRetain.1.MaxPurge.5.Items.20")]
+        [TestCase(3, 5, 20, TestName = "MinRetain.3.MaxPurge.5.Items.20")]
+        [TestCase(5, 5, 20, TestName = "MinRetain.5.MaxPurge.5.Items.20")]
+        [TestCase(3, 1, 15, TestName = "MinRetain.3.MaxPurge.1.Items.15")]
+        [TestCase(3, 3, 15, TestName = "MinRetain.3.MaxPurge.3.Items.15")]
+        [TestCase(5, 3, 12, TestName = "MinRetain.5.MaxPurge.3.Items.12")]
+        public void MinRetainCountRespectedAfterMultipleGradualPurges(
+            int minRetainCount,
+            int maxPurgesPerOp,
+            int preWarmCount
+        )
+        {
+            int purgeCount = 0;
+            using WallstopGenericPool<TestPoolItem> pool = new(
+                () => new TestPoolItem(),
+                preWarmCount: preWarmCount,
+                options: new PoolOptions<TestPoolItem>
+                {
+                    IdleTimeoutSeconds = 1f,
+                    MaxPurgesPerOperation = maxPurgesPerOp,
+                    MinRetainCount = minRetainCount,
+                    Triggers = PurgeTrigger.Explicit,
+                    TimeProvider = TestTimeProvider,
+                    OnPurge = (_, _) => purgeCount++,
+                }
+            );
+
+            TestContext.WriteLine(
+                $"Initial state: pool.Count={pool.Count}, minRetain={minRetainCount}, maxPurgesPerOp={maxPurgesPerOp}"
+            );
+
+            _currentTime = 2f;
+
+            int iterations = 0;
+            int previousCount = pool.Count;
+            while (pool.Count > minRetainCount && iterations < 50)
+            {
+                int purgedThisRound = pool.Purge();
+                iterations++;
+
+                TestContext.WriteLine(
+                    $"Iteration {iterations}: purged={purgedThisRound}, pool.Count={pool.Count}, total purged={purgeCount}"
+                );
+
+                Assert.GreaterOrEqual(
+                    pool.Count,
+                    minRetainCount,
+                    $"Pool count should never go below minRetainCount ({minRetainCount}) during gradual purging. "
+                        + $"Iteration={iterations}, purged this round={purgedThisRound}"
+                );
+
+                if (pool.Count == previousCount && purgedThisRound == 0)
+                {
+                    break;
+                }
+                previousCount = pool.Count;
+            }
+
+            Assert.AreEqual(
+                minRetainCount,
+                pool.Count,
+                $"Final pool count should equal minRetainCount after all purges complete"
+            );
+            Assert.IsFalse(
+                pool.HasPendingPurges,
+                "Should have no pending purges when at minRetainCount"
+            );
+
+            int expectedPurged = preWarmCount - minRetainCount;
+            Assert.AreEqual(
+                expectedPurged,
+                purgeCount,
+                $"Total purged items should be {expectedPurged} (preWarm={preWarmCount} - minRetain={minRetainCount})"
+            );
+        }
+
+        /// <summary>
+        /// Tests minRetainCount with both explicit and implicit (OnRent) purge triggers.
+        /// Verifies the fix works consistently regardless of purge trigger type.
+        /// </summary>
+        [Test]
+        [TestCase(PurgeTrigger.Explicit, TestName = "PurgeTrigger.Explicit")]
+        [TestCase(PurgeTrigger.OnRent, TestName = "PurgeTrigger.OnRent")]
+        [TestCase(PurgeTrigger.OnReturn, TestName = "PurgeTrigger.OnReturn")]
+        public void MinRetainCountRespectedWithDifferentPurgeTriggers(PurgeTrigger trigger)
+        {
+            const int preWarmCount = 15;
+            const int maxPurgesPerOp = 3;
+            const int minRetainCount = 4;
+            int purgeCount = 0;
+
+            using WallstopGenericPool<TestPoolItem> pool = new(
+                () => new TestPoolItem(),
+                preWarmCount: preWarmCount,
+                options: new PoolOptions<TestPoolItem>
+                {
+                    IdleTimeoutSeconds = 1f,
+                    MaxPurgesPerOperation = maxPurgesPerOp,
+                    MinRetainCount = minRetainCount,
+                    Triggers = trigger,
+                    TimeProvider = TestTimeProvider,
+                    OnPurge = (_, _) => purgeCount++,
+                }
+            );
+
+            TestContext.WriteLine(
+                $"Testing trigger={trigger}, preWarm={preWarmCount}, maxPurge={maxPurgesPerOp}, minRetain={minRetainCount}"
+            );
+
+            _currentTime = 2f;
+
+            int iterations = 0;
+            while (pool.Count > minRetainCount && iterations < 50)
+            {
+                iterations++;
+
+                if (trigger == PurgeTrigger.Explicit)
+                {
+                    pool.Purge();
+                }
+                else if (trigger == PurgeTrigger.OnRent)
+                {
+                    using PooledResource<TestPoolItem> resource = pool.Get();
+                }
+                else if (trigger == PurgeTrigger.OnReturn)
+                {
+                    using (PooledResource<TestPoolItem> resource = pool.Get()) { }
+                }
+
+                TestContext.WriteLine(
+                    $"Iteration {iterations}: pool.Count={pool.Count}, totalPurged={purgeCount}"
+                );
+
+                Assert.GreaterOrEqual(
+                    pool.Count,
+                    minRetainCount,
+                    $"Pool count should never go below minRetainCount ({minRetainCount})"
+                );
+            }
+
+            Assert.AreEqual(
+                minRetainCount,
+                pool.Count,
+                $"Final pool count should equal minRetainCount"
+            );
+        }
+
+        /// <summary>
+        /// Tests that MaxPurgesPerOperation of 1 correctly respects minRetainCount,
+        /// which is an important edge case where each purge operation removes exactly one item.
+        /// </summary>
+        [Test]
+        [TestCase(0, 10, TestName = "MinRetain.Zero.Items.10")]
+        [TestCase(1, 10, TestName = "MinRetain.1.Items.10")]
+        [TestCase(5, 10, TestName = "MinRetain.5.Items.10")]
+        [TestCase(9, 10, TestName = "MinRetain.9.Items.10")]
+        public void MinRetainCountRespectedWithMaxPurgeOfOne(int minRetainCount, int preWarmCount)
+        {
+            const int maxPurgesPerOp = 1;
+            List<int> purgedItemIds = new();
+
+            using WallstopGenericPool<TestPoolItem> pool = new(
+                () => new TestPoolItem(),
+                preWarmCount: preWarmCount,
+                options: new PoolOptions<TestPoolItem>
+                {
+                    IdleTimeoutSeconds = 1f,
+                    MaxPurgesPerOperation = maxPurgesPerOp,
+                    MinRetainCount = minRetainCount,
+                    Triggers = PurgeTrigger.Explicit,
+                    TimeProvider = TestTimeProvider,
+                    OnPurge = (item, _) => purgedItemIds.Add(item.Id),
+                }
+            );
+
+            _currentTime = 2f;
+
+            int iterations = 0;
+            while (pool.Count > minRetainCount && iterations < preWarmCount + 5)
+            {
+                int purged = pool.Purge();
+                iterations++;
+
+                TestContext.WriteLine(
+                    $"Iteration {iterations}: purged={purged}, pool.Count={pool.Count}"
+                );
+
+                if (purged == 0)
+                {
+                    break;
+                }
+
+                Assert.GreaterOrEqual(
+                    pool.Count,
+                    minRetainCount,
+                    $"Pool count must never go below minRetainCount"
+                );
+            }
+
+            Assert.AreEqual(
+                minRetainCount,
+                pool.Count,
+                "Final pool count should equal minRetainCount"
+            );
+
+            int expectedPurged = preWarmCount - minRetainCount;
+            Assert.AreEqual(
+                expectedPurged,
+                purgedItemIds.Count,
+                $"Should have purged exactly {expectedPurged} items"
+            );
+        }
+
+        /// <summary>
+        /// Tests gradual purging behavior when minRetainCount equals pool size.
+        /// No items should be purged in this case.
+        /// </summary>
+        [Test]
+        public void MinRetainCountEqualToPoolSizePreventsAllPurges()
+        {
+            const int preWarmCount = 10;
+            const int maxPurgesPerOp = 5;
+            const int minRetainCount = 10;
+            int purgeCount = 0;
+
+            using WallstopGenericPool<TestPoolItem> pool = new(
+                () => new TestPoolItem(),
+                preWarmCount: preWarmCount,
+                options: new PoolOptions<TestPoolItem>
+                {
+                    IdleTimeoutSeconds = 1f,
+                    MaxPurgesPerOperation = maxPurgesPerOp,
+                    MinRetainCount = minRetainCount,
+                    Triggers = PurgeTrigger.Explicit,
+                    TimeProvider = TestTimeProvider,
+                    OnPurge = (_, _) => purgeCount++,
+                }
+            );
+
+            _currentTime = 2f;
+
+            int purged = pool.Purge();
+
+            TestContext.WriteLine($"Purge result: purged={purged}, pool.Count={pool.Count}");
+
+            Assert.AreEqual(
+                0,
+                purged,
+                "No items should be purged when minRetainCount equals pool size"
+            );
+            Assert.AreEqual(preWarmCount, pool.Count, "Pool count should remain unchanged");
+            Assert.AreEqual(0, purgeCount, "OnPurge callback should not be invoked");
+            Assert.IsFalse(pool.HasPendingPurges, "Should have no pending purges");
+        }
+
+        /// <summary>
+        /// Tests gradual purging behavior when minRetainCount exceeds pool size.
+        /// No items should be purged in this case.
+        /// </summary>
+        [Test]
+        public void MinRetainCountExceedingPoolSizePreventsAllPurges()
+        {
+            const int preWarmCount = 5;
+            const int maxPurgesPerOp = 3;
+            const int minRetainCount = 10;
+            int purgeCount = 0;
+
+            using WallstopGenericPool<TestPoolItem> pool = new(
+                () => new TestPoolItem(),
+                preWarmCount: preWarmCount,
+                options: new PoolOptions<TestPoolItem>
+                {
+                    IdleTimeoutSeconds = 1f,
+                    MaxPurgesPerOperation = maxPurgesPerOp,
+                    MinRetainCount = minRetainCount,
+                    Triggers = PurgeTrigger.Explicit,
+                    TimeProvider = TestTimeProvider,
+                    OnPurge = (_, _) => purgeCount++,
+                }
+            );
+
+            _currentTime = 2f;
+
+            int purged = pool.Purge();
+
+            TestContext.WriteLine($"Purge result: purged={purged}, pool.Count={pool.Count}");
+
+            Assert.AreEqual(
+                0,
+                purged,
+                "No items should be purged when minRetainCount exceeds pool size"
+            );
+            Assert.AreEqual(preWarmCount, pool.Count, "Pool count should remain unchanged");
+            Assert.AreEqual(0, purgeCount, "OnPurge callback should not be invoked");
+        }
+
+        /// <summary>
+        /// Tests data-driven combinations of minRetainCount, maxPurgesPerOperation, and bufferMultiplier.
+        /// This comprehensive test validates the interaction of multiple pool parameters.
+        /// </summary>
+        [Test]
+        [TestCase(0, 1, 0f, 10, TestName = "Combo.MinRetain.0.MaxPurge.1.Buffer.0")]
+        [TestCase(1, 3, 0.5f, 10, TestName = "Combo.MinRetain.1.MaxPurge.3.Buffer.0.5")]
+        [TestCase(3, 5, 1.0f, 15, TestName = "Combo.MinRetain.3.MaxPurge.5.Buffer.1.0")]
+        [TestCase(5, 0, 2.0f, 20, TestName = "Combo.MinRetain.5.MaxPurge.Unlimited.Buffer.2.0")]
+        public void MinRetainCountRespectedWithVariousBufferMultipliers(
+            int minRetainCount,
+            int maxPurgesPerOp,
+            float bufferMultiplier,
+            int preWarmCount
+        )
+        {
+            int purgeCount = 0;
+
+            using WallstopGenericPool<TestPoolItem> pool = new(
+                () => new TestPoolItem(),
+                preWarmCount: preWarmCount,
+                options: new PoolOptions<TestPoolItem>
+                {
+                    IdleTimeoutSeconds = 1f,
+                    MaxPurgesPerOperation = maxPurgesPerOp,
+                    MinRetainCount = minRetainCount,
+                    BufferMultiplier = bufferMultiplier,
+                    UseIntelligentPurging = true,
+                    Triggers = PurgeTrigger.Explicit,
+                    TimeProvider = TestTimeProvider,
+                    OnPurge = (_, _) => purgeCount++,
+                }
+            );
+
+            TestContext.WriteLine(
+                $"Testing: minRetain={minRetainCount}, maxPurge={maxPurgesPerOp}, buffer={bufferMultiplier}, preWarm={preWarmCount}"
+            );
+
+            _currentTime = 2f;
+
+            int iterations = 0;
+            while (pool.Count > minRetainCount && iterations < 50)
+            {
+                pool.Purge();
+                iterations++;
+
+                Assert.GreaterOrEqual(
+                    pool.Count,
+                    minRetainCount,
+                    $"Pool count should never go below minRetainCount ({minRetainCount})"
+                );
+            }
+
+            TestContext.WriteLine(
+                $"Final state: pool.Count={pool.Count}, iterations={iterations}, totalPurged={purgeCount}"
+            );
+
+            Assert.GreaterOrEqual(
+                pool.Count,
+                minRetainCount,
+                "Final pool count should be at least minRetainCount"
+            );
+        }
     }
 }

@@ -13,7 +13,24 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
     [NUnit.Framework.Category("Fast")]
     public sealed class TextureScaleTests : CommonTestBase
     {
-        // Tracking handled by CommonTestBase
+        private TextureTestHelper _textureHelper;
+
+        [SetUp]
+        public void SetUp()
+        {
+            _textureHelper = new TextureTestHelper();
+        }
+
+        [TearDown]
+        public override void TearDown()
+        {
+            if (_textureHelper != null)
+            {
+                _textureHelper.Dispose();
+            }
+
+            base.TearDown();
+        }
 
         [TestCase(true)]
         [TestCase(false)]
@@ -28,7 +45,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         [TestCase(false, -3)]
         public void ScaleThrowsWhenWidthIsNotPositive(bool useBilinear, int newWidth)
         {
-            Texture2D texture = CreateTexture(2, 2, (x, y) => new Color(x, y, 0f, 1f));
+            Texture2D texture = _textureHelper.CreateTextureWithFactory(
+                2,
+                2,
+                (x, y) => new Color(x, y, 0f, 1f)
+            );
             Assert.Throws<ArgumentOutOfRangeException>(() =>
                 InvokeScale(texture, newWidth, 2, useBilinear)
             );
@@ -40,7 +61,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         [TestCase(false, -5)]
         public void ScaleThrowsWhenHeightIsNotPositive(bool useBilinear, int newHeight)
         {
-            Texture2D texture = CreateTexture(2, 2, (x, y) => new Color(x, y, 0f, 1f));
+            Texture2D texture = _textureHelper.CreateTextureWithFactory(
+                2,
+                2,
+                (x, y) => new Color(x, y, 0f, 1f)
+            );
             Assert.Throws<ArgumentOutOfRangeException>(() =>
                 InvokeScale(texture, 2, newHeight, useBilinear)
             );
@@ -50,7 +75,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         [TestCase(false)]
         public void ScaleThrowsWhenTextureIsNotReadable(bool useBilinear)
         {
-            Texture2D texture = CreateTexture(2, 2, (x, y) => new Color(x, y, 0f, 1f));
+            Texture2D texture = _textureHelper.CreateTextureWithFactory(
+                2,
+                2,
+                (x, y) => new Color(x, y, 0f, 1f)
+            );
             texture.Apply(updateMipmaps: false, makeNoLongerReadable: true);
             Assert.Throws<UnityException>(() => InvokeScale(texture, 1, 1, useBilinear));
         }
@@ -58,7 +87,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         [Test]
         public void PointDownscaleProducesNearestNeighborSamples()
         {
-            Texture2D texture = CreateTexture(
+            Texture2D texture = _textureHelper.CreateTextureWithFactory(
                 5,
                 4,
                 (x, y) => new Color(x / 10f, y / 10f, (x + y) / 20f, (x + 1) / 5f)
@@ -77,7 +106,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         [Test]
         public void PointUpscaleDuplicatesSourcePixels()
         {
-            Texture2D texture = CreateTexture(
+            Texture2D texture = _textureHelper.CreateTextureWithFactory(
                 2,
                 3,
                 (x, y) => new Color(x * 0.25f, y * 0.2f, (x + y) * 0.1f, 1f - 0.1f * x)
@@ -96,7 +125,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         [Test]
         public void PointScalingKeepsTextureReadable()
         {
-            Texture2D texture = CreateTexture(3, 3, (x, y) => new Color(x, y, 0f, 1f));
+            Texture2D texture = _textureHelper.CreateTextureWithFactory(
+                3,
+                3,
+                (x, y) => new Color(x, y, 0f, 1f)
+            );
             TextureScale.Point(texture, 3, 3);
             Assert.IsTrue(texture.isReadable);
         }
@@ -104,7 +137,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         [Test]
         public void BilinearDownscaleInterpolatesBetweenSourcePixels()
         {
-            Texture2D texture = CreateTexture(
+            Texture2D texture = _textureHelper.CreateTextureWithFactory(
                 4,
                 3,
                 (x, y) => new Color(x / 5f, y / 4f, (x * y) / 20f, ((x + y) % 4) / 4f)
@@ -123,7 +156,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         [Test]
         public void BilinearUpscaleInterpolatesSmoothly()
         {
-            Texture2D texture = CreateTexture(
+            Texture2D texture = _textureHelper.CreateTextureWithFactory(
                 3,
                 2,
                 (x, y) => new Color(x / 3f, y / 2f, (x + y) / 6f, 1f)
@@ -142,7 +175,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         [Test]
         public void BilinearClampsSamplingAtTextureEdges()
         {
-            Texture2D texture = CreateTexture(
+            Texture2D texture = _textureHelper.CreateTextureWithFactory(
                 2,
                 2,
                 (x, y) => new Color(x == 0 ? 0f : 1f, y == 0 ? 0f : 1f, (x + y) / 3f, 1f)
@@ -157,35 +190,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
 
             int lastIndex = Index(4, 4, 5);
             AssertColor(actual[lastIndex], expected[lastIndex], 5e-5f);
-        }
-
-        private Texture2D CreateTexture(int width, int height, Func<int, int, Color> pixelFactory)
-        {
-            Texture2D texture = new(
-                width,
-                height,
-                TextureFormat.RGBA32,
-                mipChain: false,
-                linear: false
-            )
-            {
-                filterMode = FilterMode.Point,
-                wrapMode = TextureWrapMode.Clamp,
-            };
-
-            Color[] pixels = new Color[width * height];
-            for (int y = 0; y < height; ++y)
-            {
-                int rowOffset = y * width;
-                for (int x = 0; x < width; ++x)
-                {
-                    pixels[rowOffset + x] = pixelFactory(x, y);
-                }
-            }
-
-            texture.SetPixels(pixels);
-            texture.Apply(updateMipmaps: false, makeNoLongerReadable: false);
-            return Track(texture);
         }
 
         private static void InvokeScale(Texture2D texture, int width, int height, bool useBilinear)

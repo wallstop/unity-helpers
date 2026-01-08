@@ -277,10 +277,23 @@ The repository's `.editorconfig` defines all formatting rules. CSharpier reads t
 
 ---
 
+## Skill File Additional Requirements
+
+Skill files (`.llm/skills/*.md`) have additional size constraints beyond formatting:
+
+```bash
+# After editing ANY skill file, also run:
+pwsh -NoProfile -File scripts/lint-skill-sizes.ps1
+```
+
+Files exceeding 500 lines will be rejected by the pre-commit hook. See [manage-skills](./manage-skills.md) for the complete skill editing workflow.
+
+---
+
 ## Related Skills
 
 - [markdown-reference](./markdown-reference.md) - Link formatting, structural rules
 - [linter-reference](./linter-reference.md) - Detailed linter commands
 - [validate-before-commit](./validate-before-commit.md) - Pre-commit validation workflow
 - [validation-troubleshooting](./validation-troubleshooting.md) - Common errors and fixes
-- [manage-skills](./manage-skills.md) - Skill file maintenance
+- [manage-skills](./manage-skills.md) - Skill file maintenance and size limits

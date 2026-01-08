@@ -891,8 +891,7 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
                 ScriptableObject.CreateInstance<TestDetectableAsset>()
             );
             AssetDatabase.CreateAsset(payload, PayloadAssetPath);
-            AssetDatabase.SaveAssets();
-            AssetDatabaseBatchHelper.RefreshIfNotBatching();
+            AssetDatabaseBatchHelper.SaveAndRefreshIfNotBatching();
         }
 
         private void CreateAlternatePayloadAsset()
@@ -901,8 +900,7 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
                 ScriptableObject.CreateInstance<TestAlternateDetectableAsset>()
             );
             AssetDatabase.CreateAsset(payload, AlternatePayloadAssetPath);
-            AssetDatabase.SaveAssets();
-            AssetDatabaseBatchHelper.RefreshIfNotBatching();
+            AssetDatabaseBatchHelper.SaveAndRefreshIfNotBatching();
         }
 
         private void EnsureHandlerAsset<T>(string assetPath)
@@ -915,8 +913,7 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
 
             T handler = Track(ScriptableObject.CreateInstance<T>());
             AssetDatabase.CreateAsset(handler, assetPath);
-            AssetDatabase.SaveAssets();
-            AssetDatabaseBatchHelper.RefreshIfNotBatching();
+            AssetDatabaseBatchHelper.SaveAndRefreshIfNotBatching();
         }
 
         private static void EnsureFolder()

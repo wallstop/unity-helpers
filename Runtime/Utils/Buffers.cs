@@ -1304,6 +1304,7 @@ namespace WallstopStudios.UnityHelpers.Utils
             {
                 T value = _producer();
                 _onGet?.Invoke(value);
+                _onRelease?.Invoke(value);
                 _pool.Add(new PooledEntry { Value = value, ReturnTime = warmTime });
             }
             int warmCount = _pool.Count;
@@ -1467,9 +1468,11 @@ namespace WallstopStudios.UnityHelpers.Utils
 
             float currentTime = _timeProvider();
 
-            // Check hysteresis unless explicitly bypassed
+            // Check hysteresis unless explicitly bypassed OR this is an idle timeout purge
+            // (idle timeout purges are essential hygiene and should proceed during hysteresis)
+            bool shouldBypassHysteresis = ignoreHysteresis || reason == PurgeReason.IdleTimeout;
             if (
-                !ignoreHysteresis
+                !shouldBypassHysteresis
                 && UseIntelligentPurging
                 && _usageTracker.IsInHysteresisPeriod(currentTime)
             )
@@ -1624,33 +1627,41 @@ namespace WallstopStudios.UnityHelpers.Utils
                 return PurgeCritical(currentTime);
             }
 
-            int purged = 0;
-            int maxPurgesLimit = forceFullPurge ? 0 : _maxPurgesPerOperation;
-
             float baseIdleTimeout = IdleTimeoutSeconds;
             float effectiveIdleTimeout = _usageTracker.GetFrequencyAdjustedIdleTimeout(
                 baseIdleTimeout
             );
+            int maxSize = MaxPoolSize;
+            int minRetain = MinRetainCount;
+            int warmRetain = WarmRetainCount;
+            int maxPurgesLimit = forceFullPurge ? 0 : _maxPurgesPerOperation;
+
             bool hasIdleTimeout = effectiveIdleTimeout > 0f;
-            bool hasMaxSize = MaxPoolSize > 0;
+            bool hasMaxSize = maxSize > 0;
             bool useIntelligent = UseIntelligentPurging;
             bool hasMaxPurgesLimit = maxPurgesLimit > 0;
 
             bool ignoreHysteresisForPressure = pressureLevel >= MemoryPressureLevel.High;
-            if (
+            bool inHysteresis =
                 useIntelligent
                 && !ignoreHysteresisForPressure
-                && _usageTracker.IsInHysteresisPeriod(currentTime)
-            )
+                && _usageTracker.IsInHysteresisPeriod(currentTime);
+
+            // Hysteresis protects against thrashing (repeatedly purging and reallocating during usage spikes).
+            // Idle timeout purges represent essential pool hygiene and should proceed regardless of hysteresis,
+            // as they only remove items that have been unused for an extended period.
+            // Capacity and explicit purges are deferred during hysteresis since they're triggered by size
+            // rather than item age, and could cause unnecessary churn during active usage periods.
+            if (inHysteresis && !hasIdleTimeout)
             {
                 return 0;
             }
 
             int effectiveMinRetain = _usageTracker.GetEffectiveMinRetainCount(
                 currentTime,
-                IdleTimeoutSeconds,
-                MinRetainCount,
-                WarmRetainCount,
+                baseIdleTimeout,
+                minRetain,
+                warmRetain,
                 pressureLevel
             );
 
@@ -1658,10 +1669,17 @@ namespace WallstopStudios.UnityHelpers.Utils
                 ? _usageTracker.GetComfortableSize(currentTime, effectiveMinRetain, pressureLevel)
                 : effectiveMinRetain;
 
+            int purged = 0;
             bool hitPurgeLimit = false;
             bool moreEligibleItems = false;
 
-            for (int i = _pool.Count - 1; i >= 0 && _pool.Count > comfortableSize; i--)
+            for (
+                int i = _pool.Count - 1;
+                i >= 0
+                    && (isExplicit || hasIdleTimeout || _pool.Count > comfortableSize)
+                    && _pool.Count > effectiveMinRetain;
+                i--
+            )
             {
                 // Check if we've hit the per-operation limit
                 if (hasMaxPurgesLimit && purged >= maxPurgesLimit)
@@ -1677,21 +1695,20 @@ namespace WallstopStudios.UnityHelpers.Utils
 
                 if (hasIdleTimeout && (currentTime - entry.ReturnTime) >= effectiveIdleTimeout)
                 {
-                    if (!useIntelligent || _pool.Count > comfortableSize)
-                    {
-                        reason = PurgeReason.IdleTimeout;
-                        shouldPurge = true;
-                        _idleTimeoutPurges++;
-                    }
+                    reason = PurgeReason.IdleTimeout;
+                    shouldPurge = true;
+                    _idleTimeoutPurges++;
                 }
-                else if (hasMaxSize && _pool.Count > MaxPoolSize)
+                else if (!inHysteresis && hasMaxSize && _pool.Count > maxSize)
                 {
+                    // Capacity purges are blocked during hysteresis
                     reason = PurgeReason.CapacityExceeded;
                     shouldPurge = true;
                     _capacityPurges++;
                 }
-                else if (isExplicit)
+                else if (!inHysteresis && isExplicit)
                 {
+                    // Explicit purges are blocked during hysteresis (except for idle timeout)
                     shouldPurge = true;
                 }
 
@@ -1707,15 +1724,25 @@ namespace WallstopStudios.UnityHelpers.Utils
             }
 
             // Check if there are more items that could be purged
-            if (!moreEligibleItems && _pool.Count > comfortableSize)
+            if (
+                !moreEligibleItems
+                && (isExplicit || hasIdleTimeout || _pool.Count > comfortableSize)
+                && _pool.Count > effectiveMinRetain
+            )
             {
-                for (int i = _pool.Count - 1; i >= 0 && _pool.Count > comfortableSize; i--)
+                for (
+                    int i = _pool.Count - 1;
+                    i >= 0
+                        && (isExplicit || hasIdleTimeout || _pool.Count > comfortableSize)
+                        && _pool.Count > effectiveMinRetain;
+                    i--
+                )
                 {
                     PooledEntry entry = _pool[i];
                     bool wouldPurge =
                         (hasIdleTimeout && (currentTime - entry.ReturnTime) >= effectiveIdleTimeout)
-                        || (hasMaxSize && _pool.Count > MaxPoolSize)
-                        || isExplicit;
+                        || (!inHysteresis && hasMaxSize && _pool.Count > maxSize)
+                        || (!inHysteresis && isExplicit);
                     if (wouldPurge)
                     {
                         moreEligibleItems = true;
@@ -2148,6 +2175,7 @@ namespace WallstopStudios.UnityHelpers.Utils
             {
                 T value = _producer();
                 _onGet?.Invoke(value);
+                _onRelease?.Invoke(value);
                 _pool.Add(new PooledEntry { Value = value, ReturnTime = warmTime });
             }
             int warmCount = _pool.Count;
@@ -2346,9 +2374,11 @@ namespace WallstopStudios.UnityHelpers.Utils
 
             float currentTime = _timeProvider();
 
-            // Check hysteresis unless explicitly bypassed
+            // Check hysteresis unless explicitly bypassed OR this is an idle timeout purge
+            // (idle timeout purges are essential hygiene and should proceed during hysteresis)
+            bool shouldBypassHysteresis = ignoreHysteresis || reason == PurgeReason.IdleTimeout;
             if (
-                !ignoreHysteresis
+                !shouldBypassHysteresis
                 && UseIntelligentPurging
                 && _usageTracker.IsInHysteresisPeriod(currentTime)
             )
@@ -2550,11 +2580,17 @@ namespace WallstopStudios.UnityHelpers.Utils
             bool hasMaxPurgesLimit = maxPurgesLimit > 0;
 
             bool ignoreHysteresisForPressure = pressureLevel >= MemoryPressureLevel.High;
-            if (
+            bool inHysteresis =
                 useIntelligent
                 && !ignoreHysteresisForPressure
-                && _usageTracker.IsInHysteresisPeriod(currentTime)
-            )
+                && _usageTracker.IsInHysteresisPeriod(currentTime);
+
+            // Hysteresis protects against thrashing (repeatedly purging and reallocating during usage spikes).
+            // Idle timeout purges represent essential pool hygiene and should proceed regardless of hysteresis,
+            // as they only remove items that have been unused for an extended period.
+            // Capacity and explicit purges are deferred during hysteresis since they're triggered by size
+            // rather than item age, and could cause unnecessary churn during active usage periods.
+            if (inHysteresis && !hasIdleTimeout)
             {
                 return 0;
             }
@@ -2581,7 +2617,13 @@ namespace WallstopStudios.UnityHelpers.Utils
 
             lock (_lock)
             {
-                for (int i = _pool.Count - 1; i >= 0 && _pool.Count > comfortableSize; i--)
+                for (
+                    int i = _pool.Count - 1;
+                    i >= 0
+                        && (isExplicit || hasIdleTimeout || _pool.Count > comfortableSize)
+                        && _pool.Count > effectiveMinRetain;
+                    i--
+                )
                 {
                     // Check if we've hit the per-operation limit
                     if (hasMaxPurgesLimit && entriesToPurge.Count >= maxPurgesLimit)
@@ -2597,21 +2639,20 @@ namespace WallstopStudios.UnityHelpers.Utils
 
                     if (hasIdleTimeout && (currentTime - entry.ReturnTime) >= effectiveIdleTimeout)
                     {
-                        if (!useIntelligent || _pool.Count > comfortableSize)
-                        {
-                            reason = PurgeReason.IdleTimeout;
-                            shouldPurge = true;
-                            Interlocked.Increment(ref _idleTimeoutPurges);
-                        }
+                        reason = PurgeReason.IdleTimeout;
+                        shouldPurge = true;
+                        Interlocked.Increment(ref _idleTimeoutPurges);
                     }
-                    else if (hasMaxSize && _pool.Count > maxSize)
+                    else if (!inHysteresis && hasMaxSize && _pool.Count > maxSize)
                     {
+                        // Capacity purges are blocked during hysteresis
                         reason = PurgeReason.CapacityExceeded;
                         shouldPurge = true;
                         Interlocked.Increment(ref _capacityPurges);
                     }
-                    else if (isExplicit)
+                    else if (!inHysteresis && isExplicit)
                     {
+                        // Explicit purges are blocked during hysteresis (except for idle timeout)
                         shouldPurge = true;
                     }
 
@@ -2624,10 +2665,20 @@ namespace WallstopStudios.UnityHelpers.Utils
                 }
 
                 // Check if there are more items that could be purged
-                if (!moreEligibleItems && _pool.Count > comfortableSize)
+                if (
+                    !moreEligibleItems
+                    && (isExplicit || hasIdleTimeout || _pool.Count > comfortableSize)
+                    && _pool.Count > effectiveMinRetain
+                )
                 {
                     // There might still be items eligible, check one more
-                    for (int i = _pool.Count - 1; i >= 0 && _pool.Count > comfortableSize; i--)
+                    for (
+                        int i = _pool.Count - 1;
+                        i >= 0
+                            && (isExplicit || hasIdleTimeout || _pool.Count > comfortableSize)
+                            && _pool.Count > effectiveMinRetain;
+                        i--
+                    )
                     {
                         PooledEntry entry = _pool[i];
                         bool wouldPurge =
@@ -2635,8 +2686,8 @@ namespace WallstopStudios.UnityHelpers.Utils
                                 hasIdleTimeout
                                 && (currentTime - entry.ReturnTime) >= effectiveIdleTimeout
                             )
-                            || (hasMaxSize && _pool.Count > maxSize)
-                            || isExplicit;
+                            || (!inHysteresis && hasMaxSize && _pool.Count > maxSize)
+                            || (!inHysteresis && isExplicit);
                         if (wouldPurge)
                         {
                             moreEligibleItems = true;

@@ -207,6 +207,13 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 >.DefaultThrashThreshold;
             }
 
+#pragma warning disable CS0618 // Type or member is obsolete
+            if (options.Policy == EvictionPolicy.None)
+            {
+                options.Policy = CacheOptions<TKey, TValue>.DefaultEvictionPolicy;
+            }
+#pragma warning restore CS0618
+
             _options = options;
             _timeProvider = options.TimeProvider ?? DefaultTimeProvider;
             // Note: _random is now lazy-initialized via the Random property to avoid
@@ -859,8 +866,6 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 case EvictionPolicy.Random:
                     break;
             }
-
-            EnsureCapacity();
         }
 
         private void EnsureCapacity()

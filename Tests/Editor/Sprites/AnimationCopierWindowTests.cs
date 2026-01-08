@@ -45,6 +45,19 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
             EditorUi.Suppress = _previousEditorUiSuppress;
         }
 
+        public override void CommonOneTimeSetUp()
+        {
+            base.CommonOneTimeSetUp();
+            DeferAssetCleanupToOneTimeTearDown = true;
+        }
+
+        [OneTimeTearDown]
+        public override void OneTimeTearDown()
+        {
+            CleanupDeferredAssetsAndFolders();
+            base.OneTimeTearDown();
+        }
+
         private static void ImportAssetIfExists(string assetPath)
         {
             if (string.IsNullOrEmpty(assetPath))

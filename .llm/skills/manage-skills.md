@@ -262,13 +262,38 @@ Example split:
 
 ---
 
+## Skill Editing Workflow (MANDATORY)
+
+**CRITICAL**: Always follow this workflow when editing skill files. Size issues discovered at commit time require human judgment to fix and cannot be auto-resolved.
+
+```text
+1. Edit the skill file
+2. Run size linter IMMEDIATELY: pwsh -NoProfile -File scripts/lint-skill-sizes.ps1
+3. If >300 lines: Consider splitting now (easier than at commit time)
+4. If >500 lines: STOP — must split before any other work
+5. Format: npx prettier --write <file>
+6. Lint: npm run lint:markdown && npm run lint:docs
+7. Regenerate index: pwsh -NoProfile -File scripts/generate-skills-index.ps1
+8. Move to next file
+```
+
+**Why check size immediately?** Unlike formatting issues (auto-fixable), oversized skill files require human decisions about:
+
+- How to split content into logical topics
+- Which cross-references need updating
+- What the new skill files should be named
+
+Discovering this at commit time blocks your entire commit with no quick fix.
+
+---
+
 ## Validation Checklist
 
 After creating or modifying any skill file:
 
-1. Run `pwsh -NoProfile -File scripts/lint-skill-sizes.ps1 -VerboseOutput`
-2. If >500 lines, MUST split before committing
-3. If >300 lines, consider splitting for readability
+1. **MANDATORY**: Run `pwsh -NoProfile -File scripts/lint-skill-sizes.ps1 -VerboseOutput`
+2. If >500 lines, **MUST split before committing** — pre-commit hook will reject
+3. If >300 lines, consider splitting for readability and future-proofing
 
 ---
 

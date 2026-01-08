@@ -334,3 +334,13 @@ For significant fixes, update relevant documentation or add code comments explai
 4. Verification that the fix is correct and complete
 
 Tests are production code. Treat them with the same rigor.
+
+---
+
+## Related Skills
+
+- [create-test](./create-test.md) — General test creation guidelines
+- [test-data-driven](./test-data-driven.md) — Data-driven testing with TestCase and TestCaseSource
+- [test-naming-conventions](./test-naming-conventions.md) — Naming rules and legacy test migration
+- [test-unity-lifecycle](./test-unity-lifecycle.md) — Track(), DestroyImmediate, object management
+- [validate-before-commit](./validate-before-commit.md) — Pre-commit validation workflow

@@ -44,7 +44,7 @@ flowchart TB
         Access[Pool Access] --> Track[Track Usage]
         Track --> Check{Purge Trigger?}
         Check -->|Yes| Eligible{Items Eligible?}
-        Eligible -->|Idle + Above Comfortable Size| Purge[Purge Items]
+        Eligible -->|Idle Timeout Exceeded| Purge[Purge Items]
         Eligible -->|No| Skip[Skip Purge]
         Purge --> Limit{Max Purges/Op?}
         Limit -->|Reached| Pending[Mark Pending]
@@ -226,7 +226,7 @@ The "comfortable size" determines when purging is needed:
 ComfortableSize = max(EffectiveMinRetain, RollingHighWaterMark * BufferMultiplier)
 ```
 
-Only items that would leave the pool above comfortable size AND have been idle longer than `IdleTimeoutSeconds` are purged.
+Items that have been idle longer than `IdleTimeoutSeconds` are purged regardless of comfortable size. The comfortable size primarily influences the target retention during non-idle purges and memory pressure events.
 
 ### Hysteresis Protection
 
@@ -366,7 +366,7 @@ float lastAccess = stats.LastAccessTime;
 
 // Helper properties
 bool isHighFrequency = stats.IsHighFrequency;  // > 60 rentals/min
-bool isLowFrequency = stats.IsLowFrequency;    // < 1 rental/min
+bool isLowFrequency = stats.IsLowFrequency;    // <= 1 rental/min
 bool isUnused = stats.IsUnused;                // No recent access
 ```
 

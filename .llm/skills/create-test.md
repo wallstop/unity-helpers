@@ -15,8 +15,14 @@
 - When refactoring production code
 - When fixing a flaky test
 
-For Odin Inspector drawer testing, see [test-odin-drawers](./test-odin-drawers.md).
-For Unity object lifecycle management in tests, see [test-unity-lifecycle](./test-unity-lifecycle.md).
+---
+
+## When NOT to Use
+
+- For Odin Inspector drawer testing, see [test-odin-drawers](./test-odin-drawers.md)
+- For Unity object lifecycle management in tests, see [test-unity-lifecycle](./test-unity-lifecycle.md)
+- For data-driven test patterns, see [test-data-driven](./test-data-driven.md)
+- For naming conventions and migration, see [test-naming-conventions](./test-naming-conventions.md)
 
 ---
 
@@ -41,15 +47,15 @@ See [investigate-test-failures](./investigate-test-failures.md) for detailed inv
 
 ### Test Coverage Categories (ALL Required)
 
-| Category                  | Requirement                                                                             |
-| ------------------------- | --------------------------------------------------------------------------------------- |
-| **Normal Cases**          | Cover typical/expected usage scenarios (5-20 elements, common inputs)                   |
-| **Negative Cases**        | Invalid inputs, error conditions, exceptions, invalid state transitions                 |
-| **Edge Cases**            | Empty collections, single elements, boundary values (0, -1, int.MaxValue)               |
-| **Extreme Cases**         | Very large inputs (10K+ elements), maximum values, near-overflow                        |
-| **Unexpected Situations** | Null inputs, disposed objects, concurrent access, missing dependencies                  |
-| **"The Impossible"**      | Cases that "should never happen" but might (corrupted state, invalid enum values)       |
-| **Data-Driven**           | PREFER `[TestCase]` / `[TestCaseSource]` for comprehensive variations with minimal code |
+| Category                  | Requirement                                                                              |
+| ------------------------- | ---------------------------------------------------------------------------------------- |
+| **Normal Cases**          | Cover typical/expected usage scenarios (5-20 elements, common inputs)                    |
+| **Negative Cases**        | Invalid inputs, error conditions, exceptions, invalid state transitions                  |
+| **Edge Cases**            | Empty collections, single elements, boundary values (0, -1, int.MaxValue)                |
+| **Extreme Cases**         | Very large inputs (10K+ elements), maximum values, near-overflow                         |
+| **Unexpected Situations** | Null inputs, disposed objects, concurrent access, missing dependencies                   |
+| **"The Impossible"**      | Cases that "should never happen" but might (corrupted state, invalid enum values)        |
+| **Data-Driven**           | PREFER `[TestCase]` / `[TestCaseSource]` — see [test-data-driven](./test-data-driven.md) |
 
 ---
 
@@ -98,168 +104,41 @@ namespace WallstopStudios.UnityHelpers.Tests.{Subsystem}
 
 ---
 
-## Critical Rules
+## Critical Rules Summary
 
-### 1. NO Underscores in Test Method Names
+For complete naming rules, see [test-naming-conventions](./test-naming-conventions.md).
 
-- `AsyncTaskInvocationCompletesAndRecordsHistory`
-- `WhenInputIsEmptyReturnsDefaultValue`
-- ~~`AsyncTask_Invocation_Completes_And_Records_History`~~
-- ~~`When_Input_Is_Empty_Returns_Default_Value`~~
+### Naming
 
-**Pre-commit Hook Enforcement:** The pre-commit hook runs `scripts/lint-tests.ps1` and will **reject commits** that contain underscores in test method names, `TestName` values, or `SetName()` calls. Commits will fail with specific error messages indicating which files and lines violate the naming convention.
+1. **NO underscores in test method names** — Use PascalCase only
+2. **Data-driven test names use dot notation** — `TestName = "Input.Null.ReturnsFalse"`
 
-### 2. NEVER Use `#region`
+### Code Structure
 
-### 3. One File Per MonoBehaviour/ScriptableObject
+1. **NEVER use `#region`**
+2. **One file per MonoBehaviour/ScriptableObject** — Even in tests
+3. **No `async Task` test methods** — Use `IEnumerator` with `[UnityTest]`
+4. **No `Assert.ThrowsAsync`** — Not available in Unity's NUnit
 
-Any class deriving from `MonoBehaviour` or `ScriptableObject` MUST be in its own dedicated `.cs` file—even in tests. Place test helper types in `Tests/Editor/TestTypes/`.
+### Unity-Specific
 
-### 4. No `async Task` Test Methods
-
-Unity Test Runner doesn't support them. Use `IEnumerator` with `[UnityTest]` attribute.
-
-### 5. No `Assert.ThrowsAsync`
-
-It doesn't exist in Unity's NUnit version.
-
-### 6. Unity Object Null Checks
+1. **Unity object null checks** — Use `== null` / `!= null`, never `Assert.IsNull`
 
 ```csharp
-// ✅ CORRECT
+// CORRECT
 Assert.IsTrue(gameObject != null);
 Assert.IsFalse(component == null);
 
-// ❌ NEVER USE - bypasses Unity's null check
+// NEVER USE - bypasses Unity's null check
 Assert.IsNull(gameObject);
 Assert.IsNotNull(component);
-Assert.That(obj, Is.Null);
 ```
 
-### 7. Self-Documenting Tests (No Comments)
+### Documentation
 
-Tests should be self-documenting through descriptive names:
-
-- ~~`// Arrange`, `// Act`, `// Assert`~~
-- ~~`// Create the object`~~
-- Let test method names describe the scenario
-- Use descriptive variable names
-
-### 8. No `[Description]` Annotations
-
-### 9. No File Paths in Docstrings
-
-```csharp
-// ❌ BAD
-/// Tests serialization (Tests/Runtime/Utils/SerializerTests.cs)
-
-// ✅ GOOD
-/// Verifies that SerializableDictionary serializes correctly
-```
-
-### 10. Data-Driven Test Naming (CRITICAL)
-
-All data-driven test names must use `.` (dot) separator or PascalCase—**NEVER underscores**:
-
-```csharp
-// ✅ CORRECT - Dot-separated hierarchy
-[TestCase(null, false, TestName = "Input.Null.ReturnsFalse")]
-[TestCase("", false, TestName = "Input.Empty.ReturnsFalse")]
-
-// ✅ CORRECT - PascalCase descriptive
-[TestCase(1, TestName = "SingleFolder")]
-
-// ❌ WRONG - Underscores
-[TestCase(null, TestName = "Input_Null")]
-```
-
-#### Anti-Patterns to Avoid
-
-```csharp
-// ❌ WRONG - Underscores in TestName
-[TestCase(null, TestName = "Input_Null_Returns_False")]
-[TestCase("", TestName = "Empty_String")]
-
-// ❌ WRONG - Underscores in SetName()
-yield return new TestCaseData(null).SetName("Null_Input_Throws");
-yield return new TestCaseData(Array.Empty<int>()).SetName("Empty_Array");
-
-// ❌ WRONG - Underscore-separated TestCaseSource method names
-private static IEnumerable<TestCaseData> Edge_Case_Test_Data() { }
-private static IEnumerable<TestCaseData> null_input_cases() { }
-
-// ✅ CORRECT - PascalCase method names, dot notation in SetName
-private static IEnumerable<TestCaseData> EdgeCaseTestData()
-{
-    yield return new TestCaseData(null).SetName("Input.Null.Throws");
-    yield return new TestCaseData(Array.Empty<int>()).SetName("Input.Empty.ReturnsZero");
-}
-```
-
----
-
-## Data-Driven Testing (PREFERRED)
-
-Data-driven tests using `[TestCase]` and `[TestCaseSource]` are **strongly preferred**.
-
-### When to Use `[TestCase]`
-
-Use for simple inline test cases with primitive values:
-
-```csharp
-[Test]
-[TestCase(null, false, TestName = "Input.Null.ReturnsFalse")]
-[TestCase("", false, TestName = "Input.Empty.ReturnsFalse")]
-[TestCase("valid", true, TestName = "Input.Valid.ReturnsTrue")]
-public void IsValidReturnsExpectedResult(string input, bool expected)
-{
-    bool result = MyValidator.IsValid(input);
-
-    Assert.AreEqual(expected, result);
-}
-```
-
-### When to Use `[TestCaseSource]`
-
-Use for complex test data, computed values, or many test cases:
-
-```csharp
-[Test]
-[TestCaseSource(nameof(EdgeCaseTestData))]
-public void ProcessHandlesEdgeCases(int[] input, int expected)
-{
-    int result = MyProcessor.Process(input);
-
-    Assert.AreEqual(expected, result);
-}
-
-private static IEnumerable<TestCaseData> EdgeCaseTestData()
-{
-    yield return new TestCaseData(Array.Empty<int>(), 0)
-        .SetName("Input.Empty.ReturnsZero");
-    yield return new TestCaseData(new[] { 42 }, 42)
-        .SetName("Input.SingleElement.ReturnsElement");
-    yield return new TestCaseData(new[] { int.MaxValue }, int.MaxValue)
-        .SetName("Input.MaxValue.HandlesCorrectly");
-}
-```
-
-### Automated Enforcement
-
-**ALWAYS run linters after every change** to catch naming violations early:
-
-```bash
-pwsh -NoProfile -File scripts/lint-tests.ps1
-```
-
-This linter detects:
-
-- Underscores in test method names
-- Underscores in `TestName` values
-- Underscores in `SetName()` calls
-- Non-PascalCase `TestCaseSource` method names
-
-**Note:** Pre-commit hooks enforce these rules automatically, but running the linter manually during development catches issues before commit.
+1. **Self-documenting tests** — No `// Arrange`, `// Act`, `// Assert` comments
+2. **No `[Description]` annotations**
+3. **No file paths in docstrings**
 
 ---
 
@@ -289,19 +168,19 @@ This linter detects:
 ### Prefer Specific Assertions
 
 ```csharp
-// ✅ GOOD - Specific, clear failure message
+// GOOD - Specific, clear failure message
 Assert.AreEqual(42, result);
 Assert.IsTrue(collection.Contains("key"));
 Assert.Throws<ArgumentNullException>(() => Method(null));
 
-// ❌ AVOID - Generic, unclear failure
+// AVOID - Generic, unclear failure
 Assert.That(result == 42);
 ```
 
 ### Collection Assertions
 
 ```csharp
-// ✅ GOOD - Collection-specific assertions
+// GOOD - Collection-specific assertions
 Assert.AreEqual(5, list.Count);
 CollectionAssert.AreEqual(expected, actual);
 CollectionAssert.AreEquivalent(expected, actual); // Order-independent
@@ -312,7 +191,7 @@ CollectionAssert.IsEmpty(collection);
 
 ## Concurrent Test Patterns
 
-When testing thread-safety, use controlled parallelism to verify concurrent access behavior. These patterns help identify race conditions and ensure data structures handle parallel operations correctly.
+When testing thread-safety, use controlled parallelism:
 
 ```csharp
 [Test]
@@ -325,7 +204,7 @@ public void ConcurrentInsertIsThreadSafe(int threadCount)
 
     for (int i = 0; i < threadCount; i++)
     {
-        int captured = i; // Capture loop variable to avoid closure issues
+        int captured = i; // Capture loop variable
         tasks[i] = Task.Run(() =>
         {
             for (int j = 0; j < 100; j++)
@@ -340,19 +219,17 @@ public void ConcurrentInsertIsThreadSafe(int threadCount)
 }
 ```
 
-Key points for concurrent tests:
+Key points:
 
-- **Capture loop variables** — Always capture `i` to a local variable (`int captured = i`) before using in `Task.Run`
-- **Use `Task.WaitAll`** — Ensures all parallel operations complete before assertions
-- **Parameterize thread counts** — Use `[TestCase]` to test with different parallelism levels
-- **Verify final state** — Assert on aggregate results after all tasks complete
-- **Consider contention** — Test scenarios where multiple threads access the same keys
+- **Capture loop variables** — Always capture `i` to a local variable before using in `Task.Run`
+- **Use `Task.WaitAll`** — Ensures all operations complete before assertions
+- **Parameterize thread counts** — Use `[TestCase]` for different parallelism levels
 
 ---
 
 ## Diagnostic Output for Debugging
 
-Use `TestContext.WriteLine` to capture diagnostic information without modifying assertions. This output appears in test results, helping diagnose failures without changing test behavior.
+Use `TestContext.WriteLine` to capture diagnostic information:
 
 ```csharp
 [Test]
@@ -361,24 +238,14 @@ public void CacheEvictionWorks()
     var cache = new Cache<int, string>(2);
     cache.Set(1, "a");
     cache.Set(2, "b");
-    cache.Set(3, "c"); // Should evict oldest
+    cache.Set(3, "c");
 
-    // Capture state for diagnostics before assertion
     TestContext.WriteLine($"Cache count: {cache.Count}");
     TestContext.WriteLine($"Contains key 1: {cache.TryGet(1, out _)}");
-    TestContext.WriteLine($"Contains key 2: {cache.TryGet(2, out _)}");
-    TestContext.WriteLine($"Contains key 3: {cache.TryGet(3, out _)}");
 
     Assert.IsFalse(cache.TryGet(1, out _), "Key 1 should have been evicted");
 }
 ```
-
-Guidelines for diagnostic output:
-
-- **Never modify assertions** — Diagnostics are for observation only
-- **Capture state before assertions** — Log values that will help understand failures
-- **Output appears on failure** — In Unity Test Framework, diagnostic output is shown when tests fail
-- **Remove after debugging** — Once the issue is resolved, consider removing verbose diagnostics
 
 ---
 
@@ -405,12 +272,9 @@ Every test MUST be completely independent:
 
 ### Structure
 
-- [ ] Data-driven tests used where appropriate
+- [ ] Data-driven tests used where appropriate — see [test-data-driven](./test-data-driven.md)
 - [ ] Tests are completely independent
-- [ ] Test method names follow convention (PascalCase, no underscores)
-- [ ] Data-driven test names use dot notation (e.g., "Input.Null.ReturnsFalse")
-- [ ] No underscores in TestName values
-- [ ] No underscores in TestCaseSource method names
+- [ ] Naming follows conventions — see [test-naming-conventions](./test-naming-conventions.md)
 - [ ] No comments in test code (self-documenting)
 
 ### Quality
@@ -467,32 +331,10 @@ Every test MUST be completely independent:
 
 ---
 
-## Migrating Legacy Tests
-
-If you encounter existing tests with underscores in method names or test names, follow this migration process:
-
-1. **Run the linter** to identify all violations:
-
-   ```bash
-   pwsh -NoProfile -File scripts/lint-tests.ps1
-   ```
-
-2. **Rename test methods** from `Snake_Case` to `PascalCase`:
-   - `Process_Null_Input_Throws` → `ProcessNullInputThrows`
-   - `Calculate_Returns_Sum_When_Valid` → `CalculateReturnsSumWhenValid`
-3. **Update TestName values** to use dot notation:
-   - `TestName = "Null_Input_Throws"` → `TestName = "Input.Null.Throws"`
-4. **Update SetName() calls** similarly:
-   - `.SetName("Empty_Array")` → `.SetName("Input.Empty.Array")`
-5. **Re-run the linter** to verify all violations are fixed
-6. **Run affected tests** to ensure they still pass after renaming
-
-**Note:** When migrating a large number of tests, consider making incremental commits by file or test fixture to keep changes reviewable.
-
----
-
 ## Related Skills
 
+- [test-data-driven](./test-data-driven.md) — Data-driven testing with TestCase and TestCaseSource
+- [test-naming-conventions](./test-naming-conventions.md) — Naming rules and legacy test migration
 - [test-odin-drawers](./test-odin-drawers.md) — Odin Inspector drawer testing patterns
 - [test-unity-lifecycle](./test-unity-lifecycle.md) — Track(), DestroyImmediate, object management
 - [investigate-test-failures](./investigate-test-failures.md) — Root cause analysis for test failures

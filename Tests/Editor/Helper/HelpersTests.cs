@@ -76,8 +76,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             try
             {
                 AssetDatabase.CreateAsset(asset, assetPath);
-                AssetDatabase.SaveAssets();
-                AssetDatabaseBatchHelper.RefreshIfNotBatching();
+                AssetDatabaseBatchHelper.SaveAndRefreshIfNotBatching();
 
                 HashSet<string> guids = Helpers
                     .EnumerateScriptableObjects<DummyScriptableObject>(new[] { folder })

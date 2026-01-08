@@ -39,8 +39,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             {
                 AssetDatabase.DeleteAsset(_assetPath);
                 AssetDatabase.DeleteAsset(TempFolder);
-                AssetDatabase.SaveAssets();
-                AssetDatabaseBatchHelper.RefreshIfNotBatching();
+                AssetDatabaseBatchHelper.SaveAndRefreshIfNotBatching();
             }
         }
 
@@ -54,8 +53,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             }
             Material mat = new(shader);
             AssetDatabase.CreateAsset(mat, _assetPath);
-            AssetDatabase.SaveAssets();
-            AssetDatabaseBatchHelper.RefreshIfNotBatching();
+            AssetDatabaseBatchHelper.SaveAndRefreshIfNotBatching();
 
             Material loaded = AssetDatabase.LoadAssetAtPath<Material>(_assetPath);
             Assert.IsTrue(loaded != null, "Expected asset to be created and loadable");

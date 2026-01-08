@@ -24,17 +24,37 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
     [NUnit.Framework.Category("Integration")]
     public sealed class ScriptableObjectSingletonTests : CommonTestBase
     {
+        /// <summary>
+        /// Tracks asset paths created during tests for cleanup in TearDown.
+        /// Thread-safe in practice because NUnit runs tests sequentially within a fixture,
+        /// and the list is cleared at the start of each test in SetUp.
+        /// </summary>
         private static readonly System.Collections.Generic.List<string> CreatedAssetPaths = new();
+
+        /// <summary>
+        /// Tracks in-memory ScriptableObject instances created during tests for cleanup in TearDown.
+        /// Thread-safe in practice because NUnit runs tests sequentially within a fixture,
+        /// and the list is cleared at the start of each test in SetUp.
+        /// </summary>
         private static readonly System.Collections.Generic.List<ScriptableObject> InMemoryInstances =
             new();
         private const string ResourcesRoot = "Assets/Resources";
         private bool _previousEditorUiSuppress;
 
-        [OneTimeSetUp]
-        public void OneTimeSetUp()
+        public override void CommonOneTimeSetUp()
         {
-            // Clean up any leftover test folders from previous test runs
-            CleanupAllKnownTestFolders();
+            if (Application.isPlaying)
+            {
+                return;
+            }
+            base.CommonOneTimeSetUp();
+
+            // Batch all cleanup operations to minimize AssetDatabase.Refresh calls
+            using (AssetDatabaseBatchHelper.BeginBatch())
+            {
+                // Clean up any leftover test folders from previous test runs
+                CleanupAllKnownTestFolders();
+            }
         }
 
         [UnitySetUp]
@@ -42,78 +62,65 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         {
             _previousEditorUiSuppress = EditorUi.Suppress;
             EditorUi.Suppress = true;
+
+            // Clear all singleton instances (these are in-memory operations, no batching needed)
             TestSingleton.ClearInstance();
-            yield return null;
             EmptyPathSingleton.ClearInstance();
-            yield return null;
             CustomPathSingleton.ClearInstance();
-            yield return null;
             MultipleInstancesSingleton.ClearInstance();
-            yield return null;
             ResourceBackedSingleton.ClearInstance();
-            yield return null;
             DeepPathResourceSingleton.ClearInstance();
-            yield return null;
             WrongPathFallbackSingleton.ClearInstance();
-            yield return null;
             MultiAssetScriptableSingleton.ClearInstance();
-            yield return null;
             LifecycleScriptableSingleton.ClearInstance();
-            yield return null;
             MissingResourceSingleton.ClearInstance();
-            yield return null;
             SingleLevelPathSingleton.ClearInstance();
-            yield return null;
-            // Clean up any leftover assets from previous runs to avoid broken nested-class assets
-            EnsureFolder(ResourcesRoot);
-            yield return null;
-            DeleteAssetIfExists("Assets/Resources/TestSingleton.asset");
-            yield return null;
-            DeleteAssetIfExists("Assets/Resources/EmptyPathSingleton.asset");
-            yield return null;
-            DeleteAssetIfExists("Assets/Resources/CustomPath/CustomPathSingleton.asset");
-            yield return null;
-            DeleteAssetIfExists(ToFullResourcePath("ResourceBackedSingleton.asset"));
-            yield return null;
-            DeleteAssetIfExists(
-                ToFullResourcePath("Deep/Nested/Singletons/DeepPathResourceSingleton.asset")
-            );
-            yield return null;
-            DeleteAssetIfExists(ToFullResourcePath("Loose/WrongPathInstance.asset"));
-            yield return null;
-            DeleteAssetIfExists(ToFullResourcePath("Multi/Primary.asset"));
-            yield return null;
-            DeleteAssetIfExists(ToFullResourcePath("Multi/Secondary.asset"));
-            yield return null;
-            DeleteAssetIfExists(ToFullResourcePath("Lifecycle/LifecycleScriptableSingleton.asset"));
-            yield return null;
-            DeleteAssetIfExists(ToFullResourcePath("MultiNatural/Entry2.asset"));
-            yield return null;
-            DeleteAssetIfExists(ToFullResourcePath("MultiNatural/Entry10.asset"));
-            yield return null;
-            DeleteAssetIfExists(ToFullResourcePath("MultiNatural/Entry11.asset"));
-            yield return null;
-            DeleteAssetIfExists(ScriptableObjectSingletonMetadata.AssetPath);
-            yield return null;
-            DeleteAssetIfExists(ToFullResourcePath("SingleLevel/EmptyPathSingleton.asset"));
-            yield return null;
-            DeleteAssetIfExists(ToFullResourcePath("SingleLevel/SingleLevelPathSingleton.asset"));
-            yield return null;
-            DeleteFolderIfEmpty("Assets/Resources/CustomPath");
-            yield return null;
-            DeleteFolderIfEmpty("Assets/Resources/SingleLevel");
+
+            // Batch all asset cleanup operations to minimize AssetDatabase.Refresh calls
+            // This reduces 20+ individual Refresh calls down to 1 at the end of the batch
+            using (AssetDatabaseBatchHelper.BeginBatch())
+            {
+                // Clean up any leftover assets from previous runs to avoid broken nested-class assets
+                EnsureFolder(ResourcesRoot);
+                DeleteAssetIfExists("Assets/Resources/TestSingleton.asset");
+                DeleteAssetIfExists("Assets/Resources/EmptyPathSingleton.asset");
+                DeleteAssetIfExists("Assets/Resources/CustomPath/CustomPathSingleton.asset");
+                DeleteAssetIfExists(ToFullResourcePath("ResourceBackedSingleton.asset"));
+                DeleteAssetIfExists(
+                    ToFullResourcePath("Deep/Nested/Singletons/DeepPathResourceSingleton.asset")
+                );
+                DeleteAssetIfExists(ToFullResourcePath("Loose/WrongPathInstance.asset"));
+                DeleteAssetIfExists(ToFullResourcePath("Multi/Primary.asset"));
+                DeleteAssetIfExists(ToFullResourcePath("Multi/Secondary.asset"));
+                DeleteAssetIfExists(
+                    ToFullResourcePath("Lifecycle/LifecycleScriptableSingleton.asset")
+                );
+                DeleteAssetIfExists(ToFullResourcePath("MultiNatural/Entry2.asset"));
+                DeleteAssetIfExists(ToFullResourcePath("MultiNatural/Entry10.asset"));
+                DeleteAssetIfExists(ToFullResourcePath("MultiNatural/Entry11.asset"));
+                DeleteAssetIfExists(ScriptableObjectSingletonMetadata.AssetPath);
+                DeleteAssetIfExists(ToFullResourcePath("SingleLevel/EmptyPathSingleton.asset"));
+                DeleteAssetIfExists(
+                    ToFullResourcePath("SingleLevel/SingleLevelPathSingleton.asset")
+                );
+                DeleteFolderIfEmpty("Assets/Resources/CustomPath");
+                DeleteFolderIfEmpty("Assets/Resources/SingleLevel");
+            }
+
             yield return null;
 
             // For nested test types, Unity cannot create valid .asset files (no script file).
             // Instead, create in-memory instances so the singleton loader can discover them via FindObjectsOfTypeAll.
             CreateInMemoryInstance<TestSingleton>();
-            yield return null;
             CreateInMemoryInstance<EmptyPathSingleton>();
-            yield return null;
             CreateInMemoryInstance<CustomPathSingleton>();
             yield return null;
         }
 
+        /// <summary>
+        /// Deletes an asset if it exists. When called inside a batch scope,
+        /// defers Refresh() until the batch completes.
+        /// </summary>
         private static void DeleteAssetIfExists(string assetPath)
         {
             if (string.IsNullOrWhiteSpace(assetPath))
@@ -125,7 +132,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             if (existing != null || !string.IsNullOrEmpty(AssetDatabase.AssetPathToGUID(assetPath)))
             {
                 AssetDatabase.DeleteAsset(assetPath);
-                AssetDatabase.SaveAssets();
+                // Only refresh if not batching - batched operations defer refresh until batch completes
                 AssetDatabaseBatchHelper.RefreshIfNotBatching();
                 PruneResourceFoldersForPath(assetPath);
             }
@@ -186,7 +193,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             }
 
             AssetDatabase.DeleteAsset(folderPath);
-            AssetDatabase.SaveAssets();
+            // Only refresh if not batching - batched operations defer refresh until batch completes
             AssetDatabaseBatchHelper.RefreshIfNotBatching();
         }
 
@@ -231,8 +238,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             configure?.Invoke(instance);
 
             AssetDatabase.CreateAsset(instance, fullPath);
-            AssetDatabase.SaveAssets();
-            AssetDatabaseBatchHelper.RefreshIfNotBatching();
+            AssetDatabaseBatchHelper.SaveAndRefreshIfNotBatching();
 
             CreatedAssetPaths.Add(fullPath);
             return instance;
@@ -278,33 +284,36 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         {
             yield return base.UnityTearDown();
 
-            // Delete any assets created during SetUp
-            foreach (string path in CreatedAssetPaths)
+            // Batch all asset cleanup operations to minimize AssetDatabase.Refresh calls
+            using (AssetDatabaseBatchHelper.BeginBatch())
             {
-                if (!string.IsNullOrWhiteSpace(path))
+                // Delete any assets created during SetUp
+                foreach (string path in CreatedAssetPaths)
                 {
-                    DeleteAssetIfExists(path);
+                    if (!string.IsNullOrWhiteSpace(path))
+                    {
+                        DeleteAssetIfExists(path);
+                    }
                 }
-                yield return null;
+                CreatedAssetPaths.Clear();
+
+                DeleteFolderIfEmpty("Assets/Resources/CustomPath");
+                AssetDatabase.SaveAssets();
             }
 
-            CreatedAssetPaths.Clear();
+            yield return null;
+
             // Destroy any in-memory instances created as a fallback
+            // These are in-memory operations, no batching needed
             foreach (ScriptableObject obj in InMemoryInstances)
             {
                 if (obj != null)
                 {
                     Object.DestroyImmediate(obj); // UNH-SUPPRESS: UNH001 - Test cleanup for in-memory instances
                 }
-                yield return null;
             }
             InMemoryInstances.Clear();
-            yield return null;
-            AssetDatabase.SaveAssets();
-            AssetDatabaseBatchHelper.RefreshIfNotBatching();
-            yield return null;
-            DeleteFolderIfEmpty("Assets/Resources/CustomPath");
-            yield return null;
+
             // Prefer public API surface over reflection to clean up the cached instance
             if (TestSingleton.HasInstance)
             {
@@ -350,11 +359,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
 
             yield return null;
 
+            // Destroy all singleton instances found via FindObjectsOfTypeAll
+            // These are in-memory operations, no batching needed
             TestSingleton[] allTestSingletons = Resources.FindObjectsOfTypeAll<TestSingleton>();
             foreach (TestSingleton singleton in allTestSingletons)
             {
                 singleton.Destroy();
-                yield return null;
             }
 
             CustomPathSingleton[] allCustomPathSingletons =
@@ -362,7 +372,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             foreach (CustomPathSingleton singleton in allCustomPathSingletons)
             {
                 singleton.Destroy();
-                yield return null;
             }
 
             EmptyPathSingleton[] allEmptyPathSingletons =
@@ -370,7 +379,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             foreach (EmptyPathSingleton singleton in allEmptyPathSingletons)
             {
                 singleton.Destroy();
-                yield return null;
             }
 
             MultipleInstancesSingleton[] allMultipleSingletons =
@@ -378,7 +386,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             foreach (MultipleInstancesSingleton singleton in allMultipleSingletons)
             {
                 singleton.Destroy();
-                yield return null;
             }
 
             ResourceBackedSingleton[] resourceBacked =
@@ -386,7 +393,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             foreach (ResourceBackedSingleton singleton in resourceBacked)
             {
                 singleton.Destroy();
-                yield return null;
             }
 
             DeepPathResourceSingleton[] deepPath =
@@ -394,7 +400,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             foreach (DeepPathResourceSingleton singleton in deepPath)
             {
                 singleton.Destroy();
-                yield return null;
             }
 
             WrongPathFallbackSingleton[] wrongPath =
@@ -402,7 +407,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             foreach (WrongPathFallbackSingleton singleton in wrongPath)
             {
                 singleton.Destroy();
-                yield return null;
             }
 
             MultiAssetScriptableSingleton[] multiAsset =
@@ -410,7 +414,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             foreach (MultiAssetScriptableSingleton singleton in multiAsset)
             {
                 singleton.Destroy();
-                yield return null;
             }
 
             LifecycleScriptableSingleton[] lifecycle =
@@ -418,23 +421,23 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             foreach (LifecycleScriptableSingleton singleton in lifecycle)
             {
                 singleton.Destroy();
-                yield return null;
             }
             LifecycleScriptableSingleton.DisableCount = 0;
+
             MissingResourceSingleton[] missing =
                 Resources.FindObjectsOfTypeAll<MissingResourceSingleton>();
             foreach (MissingResourceSingleton singleton in missing)
             {
                 singleton.Destroy();
-                yield return null;
             }
+
             SingleLevelPathSingleton[] singleLevel =
                 Resources.FindObjectsOfTypeAll<SingleLevelPathSingleton>();
             foreach (SingleLevelPathSingleton singleton in singleLevel)
             {
                 singleton.Destroy();
-                yield return null;
             }
+
             yield return null;
             yield return CleanupTestFolders();
             EditorUi.Suppress = _previousEditorUiSuppress;
@@ -442,30 +445,35 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
 
         private IEnumerator CleanupTestFolders()
         {
-            string[] testFolders = new[]
+            // Batch all folder cleanup operations to minimize AssetDatabase.Refresh calls
+            using (AssetDatabaseBatchHelper.BeginBatch())
             {
-                ResourcesRoot + "/Deep/Nested/Singletons",
-                ResourcesRoot + "/Deep/Nested",
-                ResourcesRoot + "/Deep",
-                ResourcesRoot + "/Missing/Subfolder",
-                ResourcesRoot + "/Missing",
-                ResourcesRoot + "/Loose",
-                ResourcesRoot + "/Multi",
-                ResourcesRoot + "/Lifecycle",
-                ResourcesRoot + "/MultiNatural",
-                ResourcesRoot + "/SingleLevel",
-            };
+                string[] testFolders = new[]
+                {
+                    ResourcesRoot + "/Deep/Nested/Singletons",
+                    ResourcesRoot + "/Deep/Nested",
+                    ResourcesRoot + "/Deep",
+                    ResourcesRoot + "/Missing/Subfolder",
+                    ResourcesRoot + "/Missing",
+                    ResourcesRoot + "/Loose",
+                    ResourcesRoot + "/Multi",
+                    ResourcesRoot + "/Lifecycle",
+                    ResourcesRoot + "/MultiNatural",
+                    ResourcesRoot + "/SingleLevel",
+                };
 
-            foreach (string folder in testFolders)
-            {
-                DeleteFolderIfEmpty(folder);
-                yield return null;
+                foreach (string folder in testFolders)
+                {
+                    DeleteFolderIfEmpty(folder);
+                }
+
+                // Also clean up duplicates that may have been created
+                // Note: CleanupAllKnownTestFolders already batches internally when not in a batch
+                CleanupAllKnownTestFolders();
+
+                DeleteFolderIfEmpty(ResourcesRoot);
             }
 
-            // Also clean up duplicates that may have been created
-            CleanupAllKnownTestFolders();
-
-            DeleteFolderIfEmpty(ResourcesRoot);
             yield return null;
         }
 
@@ -826,8 +834,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             scenario.CreateAsset();
             yield return null;
 
-            AssetDatabase.SaveAssets();
-            AssetDatabaseBatchHelper.RefreshIfNotBatching();
+            AssetDatabaseBatchHelper.SaveAndRefreshIfNotBatching();
             yield return null;
 
             using (
@@ -840,8 +847,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             }
             yield return null;
 
-            AssetDatabase.SaveAssets();
-            AssetDatabaseBatchHelper.RefreshIfNotBatching();
+            AssetDatabaseBatchHelper.SaveAndRefreshIfNotBatching();
             yield return null;
 
             ScriptableObjectSingletonMetadata metadata =
@@ -1263,8 +1269,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             if (existing != null)
             {
                 AssetDatabase.DeleteAsset(path);
-                AssetDatabase.SaveAssets();
-                AssetDatabaseBatchHelper.RefreshIfNotBatching();
+                AssetDatabaseBatchHelper.SaveAndRefreshIfNotBatching();
             }
 
             TestSingleton.ClearInstance();

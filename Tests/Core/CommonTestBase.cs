@@ -47,6 +47,22 @@ namespace WallstopStudios.UnityHelpers.Tests.Core
         /// </summary>
         protected readonly List<string> _trackedAssetPaths = new();
 
+        /// <summary>
+        /// When true, CleanupTrackedFoldersAndAssets() accumulates assets for batch cleanup
+        /// in OneTimeTearDown instead of cleaning per-test. Set in subclass constructor or OneTimeSetUp.
+        /// </summary>
+        protected bool DeferAssetCleanupToOneTimeTearDown { get; set; }
+
+        /// <summary>
+        /// Accumulated asset paths when deferred cleanup is enabled.
+        /// </summary>
+        private readonly List<string> _deferredAssetPaths = new();
+
+        /// <summary>
+        /// Accumulated folder paths when deferred cleanup is enabled.
+        /// </summary>
+        private readonly List<string> _deferredFolderPaths = new();
+
         private bool _previousEditorUiSuppress;
 #endif
 
@@ -205,28 +221,33 @@ namespace WallstopStudios.UnityHelpers.Tests.Core
 
             if (!Application.isPlaying && _trackedObjects.Count > 0)
             {
-                Object[] snapshot = _trackedObjects.ToArray();
-                foreach (Object obj in snapshot)
-                {
-                    if (obj != null)
-                    {
 #if UNITY_EDITOR
-                        // If the object is a persisted asset, use AssetDatabase.DeleteAsset
-                        // DestroyImmediate without allowDestroyingAssets=true will fail for assets
-                        if (UnityEditor.EditorUtility.IsPersistent(obj))
-                        {
-                            string assetPath = UnityEditor.AssetDatabase.GetAssetPath(obj);
-                            if (!string.IsNullOrEmpty(assetPath))
-                            {
-                                UnityEditor.AssetDatabase.DeleteAsset(assetPath);
-                                continue;
-                            }
-                        }
+                using (AssetDatabaseBatchHelper.BeginBatch(refreshOnDispose: false))
 #endif
-                        Object.DestroyImmediate(obj); // UNH-SUPPRESS: Required for EditMode test cleanup
+                {
+                    Object[] snapshot = _trackedObjects.ToArray();
+                    foreach (Object obj in snapshot)
+                    {
+                        if (obj != null)
+                        {
+#if UNITY_EDITOR
+                            // If the object is a persisted asset, use AssetDatabase.DeleteAsset
+                            // DestroyImmediate without allowDestroyingAssets=true will fail for assets
+                            if (UnityEditor.EditorUtility.IsPersistent(obj))
+                            {
+                                string assetPath = UnityEditor.AssetDatabase.GetAssetPath(obj);
+                                if (!string.IsNullOrEmpty(assetPath))
+                                {
+                                    UnityEditor.AssetDatabase.DeleteAsset(assetPath);
+                                    continue;
+                                }
+                            }
+#endif
+                            Object.DestroyImmediate(obj); // UNH-SUPPRESS: Required for EditMode test cleanup
+                        }
                     }
+                    _trackedObjects.Clear();
                 }
-                _trackedObjects.Clear();
             }
 
             DisposeDispatcherScope();
@@ -344,28 +365,33 @@ namespace WallstopStudios.UnityHelpers.Tests.Core
 
             if (_trackedObjects.Count > 0)
             {
-                Object[] snapshot = _trackedObjects.ToArray();
-                foreach (Object obj in snapshot)
-                {
-                    if (obj != null)
-                    {
 #if UNITY_EDITOR
-                        // If the object is a persisted asset, use AssetDatabase.DeleteAsset
-                        // DestroyImmediate without allowDestroyingAssets=true will fail for assets
-                        if (UnityEditor.EditorUtility.IsPersistent(obj))
-                        {
-                            string assetPath = UnityEditor.AssetDatabase.GetAssetPath(obj);
-                            if (!string.IsNullOrEmpty(assetPath))
-                            {
-                                UnityEditor.AssetDatabase.DeleteAsset(assetPath);
-                                continue;
-                            }
-                        }
+                using (AssetDatabaseBatchHelper.BeginBatch(refreshOnDispose: false))
 #endif
-                        Object.DestroyImmediate(obj); // UNH-SUPPRESS: Required for final test cleanup
+                {
+                    Object[] snapshot = _trackedObjects.ToArray();
+                    foreach (Object obj in snapshot)
+                    {
+                        if (obj != null)
+                        {
+#if UNITY_EDITOR
+                            // If the object is a persisted asset, use AssetDatabase.DeleteAsset
+                            // DestroyImmediate without allowDestroyingAssets=true will fail for assets
+                            if (UnityEditor.EditorUtility.IsPersistent(obj))
+                            {
+                                string assetPath = UnityEditor.AssetDatabase.GetAssetPath(obj);
+                                if (!string.IsNullOrEmpty(assetPath))
+                                {
+                                    UnityEditor.AssetDatabase.DeleteAsset(assetPath);
+                                    continue;
+                                }
+                            }
+#endif
+                            Object.DestroyImmediate(obj); // UNH-SUPPRESS: Required for final test cleanup
+                        }
                     }
+                    _trackedObjects.Clear();
                 }
-                _trackedObjects.Clear();
             }
 
             if (_trackedDisposables.Count > 0)
@@ -839,10 +865,22 @@ namespace WallstopStudios.UnityHelpers.Tests.Core
         /// Cleans up all tracked folders and assets that were created by this test.
         /// Only deletes folders/assets that were explicitly tracked - user data is safe.
         /// Folders are deleted in reverse order (deepest first) to handle nested structures.
+        /// When <see cref="DeferAssetCleanupToOneTimeTearDown"/> is true, assets are accumulated
+        /// for batch cleanup in OneTimeTearDown instead of being deleted immediately.
         /// </summary>
         protected void CleanupTrackedFoldersAndAssets()
         {
 #if UNITY_EDITOR
+            if (DeferAssetCleanupToOneTimeTearDown)
+            {
+                // Accumulate for batch cleanup later - don't delete or refresh yet
+                _deferredAssetPaths.AddRange(_trackedAssetPaths);
+                _deferredFolderPaths.AddRange(_trackedFolders);
+                _trackedAssetPaths.Clear();
+                _trackedFolders.Clear();
+                return;
+            }
+
             using (AssetDatabaseBatchHelper.BeginBatch(refreshOnDispose: false))
             {
                 // First, delete tracked assets
@@ -878,6 +916,55 @@ namespace WallstopStudios.UnityHelpers.Tests.Core
                 _trackedFolders.Clear();
             }
 
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
+#endif
+        }
+
+        /// <summary>
+        /// Performs batch cleanup of all deferred assets and folders.
+        /// Call this in OneTimeTearDown when <see cref="DeferAssetCleanupToOneTimeTearDown"/> is true.
+        /// </summary>
+        protected void CleanupDeferredAssetsAndFolders()
+        {
+#if UNITY_EDITOR
+            if (_deferredAssetPaths.Count == 0 && _deferredFolderPaths.Count == 0)
+            {
+                return;
+            }
+
+            using (AssetDatabaseBatchHelper.BeginBatch(refreshOnDispose: false))
+            {
+                // Delete all accumulated assets
+                foreach (string assetPath in _deferredAssetPaths)
+                {
+                    if (
+                        !string.IsNullOrEmpty(assetPath)
+                        && UnityEditor.AssetDatabase.LoadAssetAtPath<Object>(assetPath) != null
+                    )
+                    {
+                        UnityEditor.AssetDatabase.DeleteAsset(assetPath);
+                    }
+                }
+                _deferredAssetPaths.Clear();
+
+                // Sort folders by depth (deepest first) and delete
+                List<string> sortedFolders = new(_deferredFolderPaths);
+                sortedFolders.Sort((a, b) => b.Split('/').Length.CompareTo(a.Split('/').Length));
+
+                foreach (string folderPath in sortedFolders)
+                {
+                    if (
+                        !string.IsNullOrEmpty(folderPath)
+                        && UnityEditor.AssetDatabase.IsValidFolder(folderPath)
+                    )
+                    {
+                        UnityEditor.AssetDatabase.DeleteAsset(folderPath);
+                    }
+                }
+                _deferredFolderPaths.Clear();
+            }
+
+            // Single refresh at end of all cleanup
             AssetDatabaseBatchHelper.RefreshIfNotBatching();
 #endif
         }

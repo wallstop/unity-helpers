@@ -302,7 +302,7 @@ namespace WallstopStudios.UnityHelpers.Utils
 
         /// <summary>
         /// Threshold for rentals-per-minute to be considered low frequency.
-        /// Pools with less than 1 rental per minute are low-frequency.
+        /// Pools with at most 1 rental per minute are low-frequency.
         /// </summary>
         private const float LowFrequencyThreshold = 1f;
 
@@ -818,7 +818,7 @@ namespace WallstopStudios.UnityHelpers.Utils
         {
             lock (_lock)
             {
-                return _cachedRentalsPerMinute < LowFrequencyThreshold && _totalRentalCount > 0;
+                return _cachedRentalsPerMinute <= LowFrequencyThreshold && _totalRentalCount > 0;
             }
         }
 
@@ -872,7 +872,7 @@ namespace WallstopStudios.UnityHelpers.Utils
             lock (_lock)
             {
                 if (
-                    _cachedRentalsPerMinute < LowFrequencyThreshold
+                    _cachedRentalsPerMinute <= LowFrequencyThreshold
                     && _cachedRentalsPerMinute > 0f
                     && _totalRentalCount > 0
                 )
@@ -908,7 +908,7 @@ namespace WallstopStudios.UnityHelpers.Utils
                     lastAccessTime: lastAccess,
                     totalRentalCount: _totalRentalCount,
                     isHighFrequency: _cachedRentalsPerMinute >= HighFrequencyThreshold,
-                    isLowFrequency: _cachedRentalsPerMinute < LowFrequencyThreshold
+                    isLowFrequency: _cachedRentalsPerMinute <= LowFrequencyThreshold
                         && _totalRentalCount > 0,
                     isUnused: lastAccess > 0f
                         && (currentTime - lastAccess)

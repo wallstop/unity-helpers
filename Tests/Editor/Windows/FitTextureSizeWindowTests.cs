@@ -34,6 +34,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
         private static string _shared64x64Path;
         private static string _shared384x10Path;
         private static bool _sharedFixturesCreated;
+        private static TextureTestHelper _textureHelper;
 
         [SetUp]
         public override void BaseSetUp()
@@ -60,6 +61,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
                 return;
             }
             base.CommonOneTimeSetUp();
+            DeferAssetCleanupToOneTimeTearDown = true;
+            _textureHelper = new TextureTestHelper();
             using (AssetDatabaseBatchHelper.BeginBatch())
             {
                 EnsureFolderStatic(Root);
@@ -146,6 +149,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
                 }
             }
 
+            if (_textureHelper != null)
+            {
+                _textureHelper.Dispose();
+                _textureHelper = null;
+            }
+
+            CleanupDeferredAssetsAndFolders();
             base.OneTimeTearDown();
         }
 
@@ -155,31 +165,16 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
         /// </summary>
         private string CreateSharedTexture(string name, int width, int height, Color color)
         {
-            Texture2D texture = new Texture2D(width, height, TextureFormat.RGBA32, false); // UNH-SUPPRESS: Temporary texture for PNG creation, destroyed immediately
-            try
-            {
-                Color[] pixels = new Color[width * height];
-                for (int i = 0; i < pixels.Length; i++)
-                {
-                    pixels[i] = color;
-                }
+            Texture2D texture = _textureHelper.CreateSolidTexture(width, height, color);
 
-                texture.SetPixels(pixels);
-                texture.Apply();
-
-                string path = Path.Combine(SharedDir, name + ".png").SanitizePath();
-                string fullPath = RelToFull(path);
-                string directory = Path.GetDirectoryName(fullPath);
-                if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
-                {
-                    Directory.CreateDirectory(directory);
-                }
-                File.WriteAllBytes(fullPath, texture.EncodeToPNG());
-            }
-            finally
+            string path = Path.Combine(SharedDir, name + ".png").SanitizePath();
+            string fullPath = RelToFull(path);
+            string directory = Path.GetDirectoryName(fullPath);
+            if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
             {
-                Object.DestroyImmediate(texture); // UNH-SUPPRESS: Cleanup temporary texture after PNG creation
+                Directory.CreateDirectory(directory);
             }
+            File.WriteAllBytes(fullPath, texture.EncodeToPNG());
 
             string resultPath = Path.Combine(SharedDir, name + ".png").SanitizePath();
             AssetDatabase.ImportAsset(resultPath);

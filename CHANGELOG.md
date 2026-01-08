@@ -16,7 +16,7 @@ See [the roadmap](./docs/overview/roadmap.md) for details
   - `AverageInterRentalTimeSeconds` tracks the average time between consecutive rentals (inter-arrival time)
   - `LastAccessTime` tracks time of most recent rent or return operation
   - `IsHighFrequency` (10+ rentals/minute): Pools get 50% larger buffer to avoid GC churn
-  - `IsLowFrequency` (less than 1 rental/minute): Pools use 50% shorter idle timeout for faster purging
+  - `IsLowFrequency` (1 or fewer rentals/minute): Pools use 50% shorter idle timeout for faster purging
   - `IsUnused` (no access in 5+ minutes): Pools purge to minimum retain count immediately
   - `PoolFrequencyStatistics` struct provides a snapshot of all frequency metrics with `IEquatable<T>` support
   - All frequency metrics exposed via `PoolStatistics` struct and `GetStatistics()` method
@@ -232,6 +232,15 @@ See [the roadmap](./docs/overview/roadmap.md) for details
   - `CacheBuilder<TKey, TValue>.InitialCapacity(int)` method for fluent configuration
   - `Cache<TKey, TValue>.MaximumSize` property added to expose configured maximum (distinct from `Capacity`)
   - Large `InitialCapacity` values are clamped to `MaxReasonableInitialCapacity` (65536) to prevent excessive allocations
+- **Pool MinRetainCount not respected during gradual explicit purges**: Fixed `MinRetainCount` being ignored when using `MaxPurgesPerOperation` with explicit purges
+  - Gradual purges now correctly stop when pool size reaches `MinRetainCount`
+  - Added `_pool.Count > effectiveMinRetain` check to the purge loop condition in both thread-safe and non-thread-safe pool implementations
+- **Pool idle timeout purges blocked by comfortable size**: Fixed idle timeout purges not occurring when pool size was at or below comfortable size
+  - Idle timeout purges now proceed regardless of comfortable size, as they represent essential pool hygiene
+  - Added `hasIdleTimeout` to loop entry condition to allow idle timeout evaluation independent of size
+- **Pool hysteresis incorrectly blocking idle timeout purges**: Fixed hysteresis protection blocking all purge types including idle timeout
+  - Idle timeout purges now proceed during hysteresis since they only remove items unused for extended periods
+  - Capacity and explicit purges remain blocked during hysteresis to prevent thrashing
 
 ## [3.0.5]
 

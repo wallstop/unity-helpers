@@ -365,6 +365,57 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
         }
 
         /// <summary>
+        ///     Calls <see cref="AssetDatabase.SaveAssets"/> followed by <see cref="AssetDatabase.Refresh"/>
+        ///     only if no batch scope is currently active.
+        ///     Use this for the common pattern of saving and refreshing assets together.
+        /// </summary>
+        /// <remarks>
+        ///     <para>
+        ///     This method combines the common <c>SaveAssets() + Refresh()</c> pattern into a single call
+        ///     that respects batch scopes. When inside a batch scope, both operations are skipped
+        ///     (and handled by the scope disposal).
+        ///     </para>
+        ///     <para>
+        ///     When outside a batch scope, this method calls <see cref="AssetDatabase.SaveAssets"/>
+        ///     followed by <see cref="AssetDatabase.Refresh"/> with <see cref="ImportAssetOptions.ForceSynchronousImport"/>.
+        ///     </para>
+        /// </remarks>
+        public static void SaveAndRefreshIfNotBatching()
+        {
+            if (!IsCurrentlyBatching)
+            {
+                AssetDatabase.SaveAssets();
+                AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
+            }
+        }
+
+        /// <summary>
+        ///     Calls <see cref="AssetDatabase.SaveAssets"/> followed by <see cref="AssetDatabase.Refresh"/>
+        ///     only if no batch scope is currently active.
+        ///     Use this for the common pattern of saving and refreshing assets together.
+        /// </summary>
+        /// <param name="options">The import options to use if refresh is performed.</param>
+        /// <remarks>
+        ///     <para>
+        ///     This method combines the common <c>SaveAssets() + Refresh()</c> pattern into a single call
+        ///     that respects batch scopes. When inside a batch scope, both operations are skipped
+        ///     (and handled by the scope disposal).
+        ///     </para>
+        ///     <para>
+        ///     When outside a batch scope, this method calls <see cref="AssetDatabase.SaveAssets"/>
+        ///     followed by <see cref="AssetDatabase.Refresh"/> with the specified options.
+        ///     </para>
+        /// </remarks>
+        public static void SaveAndRefreshIfNotBatching(ImportAssetOptions options)
+        {
+            if (!IsCurrentlyBatching)
+            {
+                AssetDatabase.SaveAssets();
+                AssetDatabase.Refresh(options);
+            }
+        }
+
+        /// <summary>
         ///     Increments the batch depth counter and returns whether this is the outermost scope.
         ///     This method ONLY increments the counter - it does NOT call Unity's AssetDatabase APIs.
         /// </summary>

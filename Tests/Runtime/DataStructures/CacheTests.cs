@@ -3515,6 +3515,31 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             Assert.IsTrue(cache.TryGet("withNull", out int? value2));
             Assert.IsNull(value2, "Should successfully retrieve null value");
         }
+
+        [Test]
+        public void TryGetOnFullCacheDoesNotEvict()
+        {
+            using Cache<int, int> cache = CacheBuilder<int, int>
+                .NewBuilder()
+                .MaximumSize(3)
+                .RecordStatistics()
+                .Build();
+
+            cache.Set(1, 1);
+            cache.Set(2, 2);
+            cache.Set(3, 3);
+
+            CacheStatistics before = cache.GetStatistics();
+            cache.TryGet(1, out _);
+            cache.TryGet(2, out _);
+            CacheStatistics after = cache.GetStatistics();
+
+            Assert.AreEqual(
+                before.EvictionCount,
+                after.EvictionCount,
+                "TryGet should not cause eviction"
+            );
+        }
     }
 
     /// <summary>
@@ -3570,6 +3595,9 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             CacheOptions<string, int> options = new() { MaximumSize = 1 };
             using Cache<string, int> cache = new(options);
 
+            TestContext.WriteLine($"Eviction policy: {options.Policy}");
+            TestContext.WriteLine($"MaximumSize: {cache.MaximumSize}, Capacity: {cache.Capacity}");
+
             Assert.That(cache.MaximumSize, Is.EqualTo(1), "MaximumSize should be exactly 1");
             Assert.That(
                 cache.Capacity,
@@ -3578,9 +3606,15 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             );
 
             cache.Set("first", 1);
+            TestContext.WriteLine(
+                $"After Set('first', 1): Count={cache.Count}, ContainsKey('first')={cache.ContainsKey("first")}"
+            );
             Assert.That(cache.Count, Is.EqualTo(1), "Should hold exactly one item");
 
             cache.Set("second", 2);
+            TestContext.WriteLine(
+                $"After Set('second', 2): Count={cache.Count}, ContainsKey('first')={cache.ContainsKey("first")}, ContainsKey('second')={cache.ContainsKey("second")}"
+            );
             Assert.That(
                 cache.Count,
                 Is.EqualTo(1),
@@ -3588,6 +3622,49 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             );
             Assert.That(cache.ContainsKey("second"), Is.True, "Should contain newly added item");
             Assert.That(cache.ContainsKey("first"), Is.False, "Should have evicted first item");
+        }
+
+        [Test]
+        public void DefaultCacheOptionsEvictionPolicyNoneDefaultsToLru()
+        {
+            CacheOptions<string, int> options = new() { MaximumSize = 10 };
+            using Cache<string, int> cache = new(options);
+
+            // The cache should behave as LRU
+            for (int i = 0; i < 10; i++)
+            {
+                cache.Set($"key{i}", i);
+            }
+
+            // Access key0 to make it recently used
+            cache.TryGet("key0", out _);
+
+            // Add new entry, should evict key1 (least recently used)
+            cache.Set("key10", 10);
+
+            Assert.That(cache.ContainsKey("key0"), Is.True, "Recently accessed should survive");
+            Assert.That(cache.ContainsKey("key1"), Is.False, "LRU victim should be evicted");
+        }
+
+        [TestCase(EvictionPolicy.Lru)]
+        [TestCase(EvictionPolicy.Fifo)]
+        [TestCase(EvictionPolicy.Lfu)]
+        [TestCase(EvictionPolicy.Slru)]
+        [TestCase(EvictionPolicy.Random)]
+        public void MaximumSizeOneEvictsCorrectlyForAllPolicies(EvictionPolicy policy)
+        {
+            using Cache<string, int> cache = CacheBuilder<string, int>
+                .NewBuilder()
+                .MaximumSize(1)
+                .EvictionPolicy(policy)
+                .Build();
+
+            cache.Set("first", 1);
+            cache.Set("second", 2);
+
+            Assert.That(cache.Count, Is.EqualTo(1));
+            Assert.That(cache.ContainsKey("second"), Is.True);
+            Assert.That(cache.ContainsKey("first"), Is.False);
         }
 
         [Test]

@@ -12,7 +12,8 @@ function Write-Info($msg) {
 # Heuristics and allowlists
 $testRoots = @('Tests')
 $allowedHelperFiles = @(
-  'Tests/Runtime/Visuals/VisualsTestHelpers.cs'
+  'Tests/Runtime/Visuals/VisualsTestHelpers.cs',
+  'Tests/Core/TextureTestHelper.cs'
 )
 
 $destroyPattern = [regex]'\b(?:UnityEngine\.)?Object\.(?:DestroyImmediate|Destroy)\s*\((?<arg>[^)]*)\)'
@@ -196,7 +197,7 @@ foreach ($root in $testRoots) {
     $createsUnity = ($assignMatches.Count -gt 0) -or ($text -match '\bnew\s+(GameObject|Texture2D|Material|Mesh|Camera)\s*\(') -or ($soMatches.Count -gt 0)
     if ($createsUnity) {
       # Check for direct or indirect inheritance (CommonTestBase or any base that inherits it)
-      $usesBase = ($text -match ':\s*(CommonTestBase|AttributeTagsTestBase|TagsTestBase|EditorCommonTestBase)')
+      $usesBase = ($text -match ':\s*(CommonTestBase|AttributeTagsTestBase|TagsTestBase|EditorCommonTestBase|SpriteSheetExtractorTestBase)')
       # Check for file-level UNH-SUPPRESS UNH003 comment
       $hasSuppress = ($text -match 'UNH-SUPPRESS.*UNH003|UNH-SUPPRESS:\s*Complex|UNH-SUPPRESS:\s*This IS the CommonTestBase')
       if (-not $usesBase -and -not $hasSuppress) {

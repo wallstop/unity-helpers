@@ -978,8 +978,7 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
                 ScriptableObject.CreateInstance<TestDetectableAsset>()
             );
             AssetDatabase.CreateAsset(payload, PayloadAssetPath);
-            AssetDatabase.SaveAssets();
-            AssetDatabaseBatchHelper.RefreshIfNotBatching();
+            AssetDatabaseBatchHelper.SaveAndRefreshIfNotBatching();
         }
 
         private static GameObject CreatePrefabWithComponent<T>(string path)

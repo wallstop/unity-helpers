@@ -83,7 +83,7 @@ Invoke these skills for specific tasks.
 **Regenerate with**: `pwsh -NoProfile -File scripts/generate-skills-index.ps1`
 
 <!-- BEGIN GENERATED SKILLS INDEX -->
-<!-- Generated: 2026-01-02 21:46:09 UTC -->
+<!-- Generated: 2026-01-08 04:39:20 UTC -->
 <!-- Command: pwsh -NoProfile -File scripts/generate-skills-index.ps1 -->
 
 ### Core Skills (Always Consider)
@@ -113,6 +113,8 @@ Invoke these skills for specific tasks.
 | [markdown-reference](./skills/markdown-reference.md)                     | Link formatting, escaping, linting rules                         |
 | [prefer-logging-extensions](./skills/prefer-logging-extensions.md)       | Unity logging in UnityEngine.Object classes                      |
 | [search-codebase](./skills/search-codebase.md)                           | Finding code, files, or patterns                                 |
+| [test-data-driven](./skills/test-data-driven.md)                         | Data-driven testing with TestCase and TestCaseSource             |
+| [test-naming-conventions](./skills/test-naming-conventions.md)           | Test method and TestName naming rules                            |
 | [test-odin-drawers](./skills/test-odin-drawers.md)                       | Odin Inspector drawer testing patterns                           |
 | [test-unity-lifecycle](./skills/test-unity-lifecycle.md)                 | Track(), DestroyImmediate, object cleanup                        |
 | [update-documentation](./skills/update-documentation.md)                 | After ANY feature/bug fix/API change                             |
@@ -285,6 +287,7 @@ Run formatters and linters **immediately after each file change**, not batched a
 - **YAML**: `npm run lint:yaml` (then `actionlint` for workflows)
 - **Spelling**: `npm run lint:spelling` (add valid terms to `cspell.json`)
 - **Tests**: `pwsh -NoProfile -File scripts/lint-tests.ps1`
+- **Skill files** (`.llm/skills/*.md`): `pwsh -NoProfile -File scripts/lint-skill-sizes.ps1` (500-line limit, no auto-fix)
 
 See [formatting](./skills/formatting.md) and [validate-before-commit](./skills/validate-before-commit.md) for details.
 

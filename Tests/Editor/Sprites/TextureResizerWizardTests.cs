@@ -40,6 +40,19 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
             CleanupTrackedFoldersAndAssets();
         }
 
+        public override void CommonOneTimeSetUp()
+        {
+            base.CommonOneTimeSetUp();
+            DeferAssetCleanupToOneTimeTearDown = true;
+        }
+
+        [OneTimeTearDown]
+        public override void OneTimeTearDown()
+        {
+            CleanupDeferredAssetsAndFolders();
+            base.OneTimeTearDown();
+        }
+
         [Test]
         public void ResizesTextureAccordingToMultipliers()
         {

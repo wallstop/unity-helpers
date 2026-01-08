@@ -36,6 +36,19 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
             CleanupTrackedFoldersAndAssets();
         }
 
+        public override void CommonOneTimeSetUp()
+        {
+            base.CommonOneTimeSetUp();
+            DeferAssetCleanupToOneTimeTearDown = true;
+        }
+
+        [OneTimeTearDown]
+        public override void OneTimeTearDown()
+        {
+            CleanupDeferredAssetsAndFolders();
+            base.OneTimeTearDown();
+        }
+
         [Test]
         public void GeneratesSpriteAtlasAssetFromConfig()
         {
@@ -53,8 +66,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
             string configPath = Path.Combine(Root, "TestAtlasConfig.asset").SanitizePath();
             AssetDatabase.CreateAsset(config, configPath);
             TrackAssetPath(configPath);
-            AssetDatabase.SaveAssets();
-            AssetDatabaseBatchHelper.RefreshIfNotBatching();
+            AssetDatabaseBatchHelper.SaveAndRefreshIfNotBatching();
 
             // Open window and generate all atlases
             ScriptableSpriteAtlasEditor window = Track(
