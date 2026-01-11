@@ -100,8 +100,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
         public void ProtoDeserializeHandlesEmpty()
         {
             SampleMessage message = Serializer.ProtoDeserialize<SampleMessage>(Array.Empty<byte>());
-            Assert.IsNotNull(
-                message,
+            Assert.IsTrue(
+                message != null,
                 "ProtoDeserialize should return non-null for empty byte array"
             );
             SampleMessage expected = new();
@@ -142,8 +142,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
                 Array.Empty<byte>(),
                 typeof(SampleMessage)
             );
-            Assert.IsNotNull(
-                message,
+            Assert.IsTrue(
+                message != null,
                 "ProtoDeserialize should return non-null for empty byte array with explicit type"
             );
             Assert.IsInstanceOf<SampleMessage>(message);

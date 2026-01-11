@@ -4,8 +4,10 @@
 namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
 {
 #if UNITY_EDITOR
+    using System;
     using System.Collections.Generic;
     using System.IO;
+    using System.Threading.Tasks;
     using UnityEditor;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Helper;
@@ -13,6 +15,83 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
     using WallstopStudios.UnityHelpers.Editor.Utils;
     using WallstopStudios.UnityHelpers.Tests.Core;
     using Object = UnityEngine.Object;
+
+    /// <summary>
+    /// Helper methods for parallel pixel array operations in tests.
+    /// Uses threshold-based parallelization to avoid overhead on small arrays.
+    /// </summary>
+    internal static class ParallelPixelHelpers
+    {
+        /// <summary>
+        /// Minimum pixel count for parallelization (128x128 = 16,384).
+        /// Below this threshold, sequential processing is faster.
+        /// </summary>
+        internal const int ParallelThreshold = 16384;
+
+        /// <summary>
+        /// Fills a pixel array with grid-based colors.
+        /// Uses parallel processing for arrays >= threshold.
+        /// </summary>
+        internal static void FillGridPixels(
+            Color[] pixels,
+            int width,
+            int height,
+            int gridColumns,
+            int gridRows
+        )
+        {
+            int cellWidth = width / gridColumns;
+            int cellHeight = height / gridRows;
+            int totalCells = gridColumns * gridRows;
+
+            if (pixels.Length >= ParallelThreshold)
+            {
+                // Parallelize by row for cache-friendly access
+                Parallel.For(
+                    0,
+                    height,
+                    y =>
+                    {
+                        int row = y / cellHeight;
+                        int rowStart = y * width;
+                        for (int x = 0; x < width; x++)
+                        {
+                            int col = x / cellWidth;
+                            int spriteIndex = row * gridColumns + col;
+                            float hue = (float)spriteIndex / totalCells;
+                            pixels[rowStart + x] = Color.HSVToRGB(hue, 0.8f, 0.9f);
+                        }
+                    }
+                );
+            }
+            else
+            {
+                // Sequential for small arrays
+                for (int row = 0; row < gridRows; row++)
+                {
+                    for (int col = 0; col < gridColumns; col++)
+                    {
+                        int spriteIndex = row * gridColumns + col;
+                        float hue = (float)spriteIndex / totalCells;
+                        Color cellColor = Color.HSVToRGB(hue, 0.8f, 0.9f);
+                        int startX = col * cellWidth;
+                        int startY = row * cellHeight;
+                        for (int y = startY; y < startY + cellHeight; y++)
+                        {
+                            int rowStart = y * width;
+                            for (int x = startX; x < startX + cellWidth; x++)
+                            {
+                                pixels[rowStart + x] = cellColor;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // NOTE: For solid color fills, ALWAYS use Array.Fill() directly.
+        // Array.Fill is highly optimized by the runtime and faster than any loop.
+    }
 
     /// <summary>
     /// Shared base class for <see cref="SpriteSheetExtractor"/> integration tests that require
@@ -85,9 +164,58 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
         protected string SharedOddPath { get; set; }
 
         /// <summary>
+        /// Path to the shared large 512x512 sprite sheet fixture (16x16 grid, 256 sprites).
+        /// </summary>
+        protected string SharedLarge512Path { get; set; }
+
+        /// <summary>
+        /// Path to the shared NPOT 100x200 sprite sheet fixture (2x4 grid).
+        /// </summary>
+        protected string SharedNpot100x200Path { get; set; }
+
+        /// <summary>
+        /// Path to the shared asymmetric NPOT 150x75 sprite sheet fixture (3x1 grid).
+        /// </summary>
+        protected string SharedNpot150x75Path { get; set; }
+
+        /// <summary>
+        /// Path to the shared prime 127x127 sprite fixture (single mode).
+        /// </summary>
+        protected string SharedPrime127Path { get; set; }
+
+        /// <summary>
+        /// Path to the shared small 16x16 sprite sheet fixture (4x4 grid).
+        /// </summary>
+        protected string SharedSmall16x16Path { get; set; }
+
+        /// <summary>
+        /// Path to the shared boundary 256x256 sprite sheet fixture (4x4 grid).
+        /// </summary>
+        protected string SharedBoundary256Path { get; set; }
+
+        /// <summary>
         /// Indicates whether shared fixtures have been created.
         /// </summary>
         protected bool SharedFixturesCreated { get; set; }
+
+        // Cached output directory object to avoid repeated LoadAssetAtPath calls
+        private Object _cachedOutputDirectory;
+        private string _cachedOutputDirectoryPath;
+
+        /// <summary>
+        /// Gets or sets the cached output directory object. Automatically invalidates when OutputDir changes.
+        /// </summary>
+        protected Object GetCachedOutputDirectory()
+        {
+            // Invalidate cache if the output directory path has changed
+            if (_cachedOutputDirectoryPath != OutputDir)
+            {
+                _cachedOutputDirectory = null;
+                _cachedOutputDirectoryPath = OutputDir;
+            }
+
+            return _cachedOutputDirectory ??= AssetDatabase.LoadAssetAtPath<Object>(OutputDir);
+        }
 
         /// <summary>
         /// Converts a Unity relative path to an absolute file system path.
@@ -135,26 +263,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             };
 
             Color[] pixels = new Color[width * height];
-            for (int row = 0; row < gridRows; row++)
-            {
-                for (int col = 0; col < gridColumns; col++)
-                {
-                    int spriteIndex = row * gridColumns + col;
-                    float hue = (float)spriteIndex / (gridRows * gridColumns);
-                    Color cellColor = Color.HSVToRGB(hue, 0.8f, 0.9f);
-
-                    int startX = col * cellWidth;
-                    int startY = row * cellHeight;
-
-                    for (int y = startY; y < startY + cellHeight; y++)
-                    {
-                        for (int x = startX; x < startX + cellWidth; x++)
-                        {
-                            pixels[y * width + x] = cellColor;
-                        }
-                    }
-                }
-            }
+            ParallelPixelHelpers.FillGridPixels(pixels, width, height, gridColumns, gridRows);
 
             texture.SetPixels(pixels);
             texture.Apply();
@@ -209,7 +318,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
                 SetSpriteSheet(importer, spritesheet);
             }
 
-            importer.SaveAndReimport();
+            // Note: SetSpriteSheet already calls SaveAndReimport internally
             return path;
         }
 
@@ -230,10 +339,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
         {
             Texture2D texture = new Texture2D(width, height, TextureFormat.RGBA32, false); // UNH-SUPPRESS: Temporary texture for file writing, destroyed immediately after
             Color[] pixels = new Color[width * height];
-            for (int i = 0; i < pixels.Length; i++)
-            {
-                pixels[i] = color;
-            }
+            Array.Fill(pixels, color);
+
             texture.SetPixels(pixels);
             texture.Apply();
 
@@ -321,6 +428,27 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
         }
 
         /// <summary>
+        /// Deselects all entries and their sprites in the extractor.
+        /// Use this before <see cref="SpriteSheetExtractor.SelectAll"/> to ensure test isolation
+        /// when working with shared fixtures that contain multiple sprite sheets.
+        /// </summary>
+        /// <param name="extractor">The extractor containing discovered sheets.</param>
+        protected static void DeselectAllEntries(SpriteSheetExtractor extractor)
+        {
+            if (extractor == null || extractor._discoveredSheets == null)
+            {
+                return;
+            }
+
+            for (int i = 0; i < extractor._discoveredSheets.Count; i++)
+            {
+                SpriteSheetExtractor.SpriteSheetEntry entry = extractor._discoveredSheets[i];
+                entry._isSelected = false;
+                extractor.SelectNone(entry);
+            }
+        }
+
+        /// <summary>
         /// Creates an extractor configured to use the Root directory for input.
         /// </summary>
         /// <returns>A tracked SpriteSheetExtractor instance.</returns>
@@ -333,7 +461,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             {
                 AssetDatabase.LoadAssetAtPath<Object>(Root),
             };
-            extractor._outputDirectory = AssetDatabase.LoadAssetAtPath<Object>(OutputDir);
+            extractor._outputDirectory = GetCachedOutputDirectory();
             extractor._overwriteExisting = true;
             return extractor;
         }
@@ -349,9 +477,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             );
             extractor._inputDirectories = new List<Object>
             {
-                AssetDatabase.LoadAssetAtPath<Object>(SharedDir),
+                // Use cached directory object to avoid repeated LoadAssetAtPath calls
+                SharedSpriteTestFixtures.SharedDirectoryObject,
             };
-            extractor._outputDirectory = AssetDatabase.LoadAssetAtPath<Object>(OutputDir);
+            extractor._outputDirectory = GetCachedOutputDirectory();
             extractor._overwriteExisting = true;
             return extractor;
         }
@@ -386,26 +515,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             };
 
             Color[] pixels = new Color[width * height];
-            for (int row = 0; row < gridRows; row++)
-            {
-                for (int col = 0; col < gridColumns; col++)
-                {
-                    int spriteIndex = row * gridColumns + col;
-                    float hue = (float)spriteIndex / (gridRows * gridColumns);
-                    Color cellColor = Color.HSVToRGB(hue, 0.8f, 0.9f);
-
-                    int startX = col * cellWidth;
-                    int startY = row * cellHeight;
-
-                    for (int y = startY; y < startY + cellHeight; y++)
-                    {
-                        for (int x = startX; x < startX + cellWidth; x++)
-                        {
-                            pixels[y * width + x] = cellColor;
-                        }
-                    }
-                }
-            }
+            ParallelPixelHelpers.FillGridPixels(pixels, width, height, gridColumns, gridRows);
 
             texture.SetPixels(pixels);
             texture.Apply();
@@ -452,7 +562,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
                 }
             }
             SetSpriteSheet(importer, spritesheet);
-            importer.SaveAndReimport();
+            // Note: SetSpriteSheet already calls SaveAndReimport internally
+
+            // Force synchronous refresh to ensure the texture is fully loaded with the correct
+            // format after reimport. Without this, subsequent texture reads may get stale data
+            // or incorrect format information (e.g., DXT1 instead of the configured format).
+            AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
 
             return path;
         }
@@ -470,10 +585,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             }
 
             Color[] pixels = new Color[texture.width * texture.height];
-            for (int i = 0; i < pixels.Length; i++)
-            {
-                pixels[i] = color;
-            }
+            Array.Fill(pixels, color);
             texture.SetPixels(pixels);
             texture.Apply();
         }
@@ -568,6 +680,84 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             return uniqueOutputDir;
         }
 
+        // Fixture-level shared output directory (created once per fixture)
+        private string _fixtureOutputDir;
+        private int _fixtureOutputSubdirCounter;
+
+        /// <summary>
+        /// Gets or creates a shared output directory for the entire test fixture.
+        /// This avoids the overhead of creating and tracking many individual directories.
+        /// </summary>
+        /// <returns>The Unity relative path to the fixture's shared output directory.</returns>
+        /// <remarks>
+        /// <para>
+        /// This directory is created once per fixture and reused across all tests.
+        /// Tests that need unique output should use <see cref="GetFixtureSubdirectory"/> instead.
+        /// </para>
+        /// </remarks>
+        protected string GetFixtureOutputDirectory()
+        {
+            if (string.IsNullOrEmpty(_fixtureOutputDir))
+            {
+                _fixtureOutputDir = $"{Root}/Output";
+                EnsureFolder(_fixtureOutputDir);
+                TrackFolder(_fixtureOutputDir);
+            }
+            return _fixtureOutputDir;
+        }
+
+        /// <summary>
+        /// Gets a unique subdirectory within the fixture's shared output directory.
+        /// This is more efficient than <see cref="CreateUniqueOutputDirectory"/> because
+        /// it doesn't create separate folder hierarchies for each test.
+        /// </summary>
+        /// <param name="suffix">Optional suffix for the subdirectory name.</param>
+        /// <returns>The Unity relative path to the subdirectory.</returns>
+        protected string GetFixtureSubdirectory(string suffix = null)
+        {
+            string basePath = GetFixtureOutputDirectory();
+            string subdir = string.IsNullOrEmpty(suffix)
+                ? $"{basePath}/sub_{_fixtureOutputSubdirCounter++}"
+                : $"{basePath}/{suffix}_{_fixtureOutputSubdirCounter++}";
+            EnsureFolder(subdir);
+            // Note: We don't need to track subdirectories separately because
+            // they will be deleted when the parent directory is deleted
+            return subdir;
+        }
+
+        /// <summary>
+        /// Clears the fixture output directory, removing all extracted sprites.
+        /// Call this between tests if you need a clean output directory.
+        /// </summary>
+        protected void ClearFixtureOutputDirectory()
+        {
+            if (
+                string.IsNullOrEmpty(_fixtureOutputDir)
+                || !AssetDatabase.IsValidFolder(_fixtureOutputDir)
+            )
+            {
+                return;
+            }
+
+            string fullPath = RelToFull(_fixtureOutputDir);
+            if (Directory.Exists(fullPath))
+            {
+                string[] files = Directory.GetFiles(fullPath, "*", SearchOption.AllDirectories);
+                using (AssetDatabaseBatchHelper.BeginBatch())
+                {
+                    foreach (string file in files)
+                    {
+                        // Convert to Unity path format
+                        string relativePath = file.Substring(
+                            Application.dataPath.Length - "Assets".Length
+                        );
+                        relativePath = relativePath.Replace('\\', '/');
+                        AssetDatabase.DeleteAsset(relativePath);
+                    }
+                }
+            }
+        }
+
         /// <summary>
         /// Sets up a texture as a sprite sheet with the specified grid.
         /// </summary>
@@ -585,6 +775,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             importer.textureType = TextureImporterType.Sprite;
             importer.spriteImportMode = SpriteImportMode.Multiple;
             importer.isReadable = true;
+            importer.textureCompression = TextureImporterCompression.Uncompressed;
 
             Texture2D texture = AssetDatabase.LoadAssetAtPath<Texture2D>(path);
             if (texture == null)
@@ -617,7 +808,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
                 }
             }
             SetSpriteSheet(importer, spritesheet);
-            importer.SaveAndReimport();
+            // Note: SetSpriteSheet already calls SaveAndReimport internally
+
+            // Force synchronous refresh to ensure the texture is fully loaded with the correct
+            // format after reimport. Without this, subsequent texture reads may get stale data
+            // or incorrect format information (e.g., DXT1 instead of the configured format).
+            AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
         }
 
         /// <summary>
@@ -665,6 +861,181 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
                 }
             }
             SetSpriteSheet(importer, spritesheet);
+        }
+
+        /// <summary>
+        /// Represents the configuration for a sprite sheet to be created in a batch operation.
+        /// </summary>
+        public readonly struct SpriteSheetConfig
+        {
+            /// <summary>
+            /// The name of the sprite sheet file (without extension).
+            /// </summary>
+            public readonly string Name;
+
+            /// <summary>
+            /// The width of the texture in pixels.
+            /// </summary>
+            public readonly int Width;
+
+            /// <summary>
+            /// The height of the texture in pixels.
+            /// </summary>
+            public readonly int Height;
+
+            /// <summary>
+            /// The number of columns in the sprite grid.
+            /// </summary>
+            public readonly int GridColumns;
+
+            /// <summary>
+            /// The number of rows in the sprite grid.
+            /// </summary>
+            public readonly int GridRows;
+
+            /// <summary>
+            /// Creates a new sprite sheet configuration.
+            /// </summary>
+            public SpriteSheetConfig(
+                string name,
+                int width,
+                int height,
+                int gridColumns,
+                int gridRows
+            )
+            {
+                Name = name;
+                Width = width;
+                Height = height;
+                GridColumns = gridColumns;
+                GridRows = gridRows;
+            }
+        }
+
+        /// <summary>
+        /// Creates multiple sprite sheets in a single batch operation, significantly reducing
+        /// AssetDatabase overhead compared to creating them one at a time.
+        /// </summary>
+        /// <param name="configs">The configurations for the sprite sheets to create.</param>
+        /// <param name="directory">Optional directory path. If null, uses Root.</param>
+        /// <returns>An array of Unity relative paths to the created assets.</returns>
+        /// <remarks>
+        /// <para>
+        /// This method batches all AssetDatabase operations together, which dramatically improves
+        /// performance when creating multiple sprite sheets. It follows a three-phase approach:
+        /// </para>
+        /// <list type="bullet">
+        /// <item><description>Phase 1: Write all PNG files to disk (no imports).</description></item>
+        /// <item><description>Phase 2: Batch import all files.</description></item>
+        /// <item><description>Phase 3: Batch configure all importers.</description></item>
+        /// </list>
+        /// </remarks>
+        protected string[] CreateSpriteSheetsBatched(
+            SpriteSheetConfig[] configs,
+            string directory = null
+        )
+        {
+            if (configs == null || configs.Length == 0)
+            {
+                return System.Array.Empty<string>();
+            }
+
+            string targetDir = directory ?? Root;
+            string[] paths = new string[configs.Length];
+
+            // Phase 1: Write all PNG files (no imports)
+            for (int i = 0; i < configs.Length; i++)
+            {
+                SpriteSheetConfig config = configs[i];
+
+                Texture2D texture = Track(
+                    new Texture2D(config.Width, config.Height, TextureFormat.RGBA32, false)
+                    {
+                        alphaIsTransparency = true,
+                    }
+                );
+
+                Color[] pixels = new Color[config.Width * config.Height];
+                ParallelPixelHelpers.FillGridPixels(
+                    pixels,
+                    config.Width,
+                    config.Height,
+                    config.GridColumns,
+                    config.GridRows
+                );
+
+                texture.SetPixels(pixels);
+                texture.Apply();
+
+                string path = Path.Combine(targetDir, config.Name + ".png").SanitizePath();
+                string fullPath = RelToFull(path);
+                string pathDirectory = Path.GetDirectoryName(fullPath);
+                if (!string.IsNullOrEmpty(pathDirectory) && !Directory.Exists(pathDirectory))
+                {
+                    Directory.CreateDirectory(pathDirectory);
+                }
+                File.WriteAllBytes(fullPath, texture.EncodeToPNG());
+                TrackAssetPath(path);
+                paths[i] = path;
+            }
+
+            // Phase 2: Batch import all files
+            using (AssetDatabaseBatchHelper.BeginBatch())
+            {
+                for (int i = 0; i < paths.Length; i++)
+                {
+                    AssetDatabase.ImportAsset(paths[i]);
+                }
+            }
+
+            // Phase 3: Batch configure all importers
+            using (AssetDatabaseBatchHelper.BeginBatch())
+            {
+                for (int i = 0; i < paths.Length; i++)
+                {
+                    SpriteSheetConfig config = configs[i];
+                    int cellWidth = config.Width / config.GridColumns;
+                    int cellHeight = config.Height / config.GridRows;
+
+                    TextureImporter importer = AssetImporter.GetAtPath(paths[i]) as TextureImporter;
+                    if (importer == null)
+                    {
+                        continue;
+                    }
+
+                    importer.textureType = TextureImporterType.Sprite;
+                    importer.spriteImportMode = SpriteImportMode.Multiple;
+                    importer.isReadable = true;
+                    importer.textureCompression = TextureImporterCompression.Uncompressed;
+
+                    SpriteMetaData[] spritesheet = new SpriteMetaData[
+                        config.GridColumns * config.GridRows
+                    ];
+                    for (int row = 0; row < config.GridRows; row++)
+                    {
+                        for (int col = 0; col < config.GridColumns; col++)
+                        {
+                            int index = row * config.GridColumns + col;
+                            spritesheet[index] = new SpriteMetaData
+                            {
+                                name = $"{config.Name}_sprite_{index}",
+                                rect = new Rect(
+                                    col * cellWidth,
+                                    row * cellHeight,
+                                    cellWidth,
+                                    cellHeight
+                                ),
+                                alignment = (int)SpriteAlignment.Center,
+                                pivot = new Vector2(0.5f, 0.5f),
+                                border = Vector4.zero,
+                            };
+                        }
+                    }
+                    SetSpriteSheet(importer, spritesheet);
+                }
+            }
+
+            return paths;
         }
 
         /// <summary>

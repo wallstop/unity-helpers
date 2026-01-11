@@ -1726,8 +1726,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Core.Helper
             Assert.That(lru, Is.EqualTo(1), "1 should be the only remaining key and thus LRU");
         }
 
-        #region GetCachedIntString and GetPaginationLabel Tests (Cache<TKey, TValue> Migration)
-
         [Test]
         public void GetCachedIntStringReturnsCorrectStringForPositiveInt()
         {
@@ -1927,8 +1925,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Core.Helper
                 "Calling GetCachedIntString with same value should not add duplicate entry"
             );
         }
-
-        #endregion
     }
 
 #endif

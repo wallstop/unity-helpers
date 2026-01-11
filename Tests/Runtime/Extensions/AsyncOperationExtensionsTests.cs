@@ -126,7 +126,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         {
             AsyncOperation operation = CreateAsyncOperation();
             AsyncOperationExtensions.AsyncOperationAwaiter awaiter = operation.GetAwaiter();
-            Assert.IsNotNull(awaiter);
 
             // Wait for completion
             while (!operation.isDone)

@@ -83,7 +83,7 @@ Invoke these skills for specific tasks.
 **Regenerate with**: `pwsh -NoProfile -File scripts/generate-skills-index.ps1`
 
 <!-- BEGIN GENERATED SKILLS INDEX -->
-<!-- Generated: 2026-01-08 04:39:20 UTC -->
+<!-- Generated: 2026-01-09 18:37:57 UTC -->
 <!-- Command: pwsh -NoProfile -File scripts/generate-skills-index.ps1 -->
 
 ### Core Skills (Always Consider)
@@ -111,11 +111,13 @@ Invoke these skills for specific tasks.
 | [linter-reference](./skills/linter-reference.md)                         | Detailed linter commands, configurations                         |
 | [manage-skills](./skills/manage-skills.md)                               | Creating, updating, splitting, consolidating, or removing skills |
 | [markdown-reference](./skills/markdown-reference.md)                     | Link formatting, escaping, linting rules                         |
+| [no-regions](./skills/no-regions.md)                                     | ALL C# code - never use #region/#endregion                       |
 | [prefer-logging-extensions](./skills/prefer-logging-extensions.md)       | Unity logging in UnityEngine.Object classes                      |
 | [search-codebase](./skills/search-codebase.md)                           | Finding code, files, or patterns                                 |
 | [test-data-driven](./skills/test-data-driven.md)                         | Data-driven testing with TestCase and TestCaseSource             |
 | [test-naming-conventions](./skills/test-naming-conventions.md)           | Test method and TestName naming rules                            |
 | [test-odin-drawers](./skills/test-odin-drawers.md)                       | Odin Inspector drawer testing patterns                           |
+| [test-parallelization-rules](./skills/test-parallelization-rules.md)     | Unity Editor test threading constraints                          |
 | [test-unity-lifecycle](./skills/test-unity-lifecycle.md)                 | Track(), DestroyImmediate, object cleanup                        |
 | [update-documentation](./skills/update-documentation.md)                 | After ANY feature/bug fix/API change                             |
 | [validate-before-commit](./skills/validate-before-commit.md)             | Before completing any task (run linters!)                        |
@@ -167,6 +169,8 @@ Invoke these skills for specific tasks.
 | [wiki-generation](./skills/wiki-generation.md)                                 | GitHub Wiki deployment, sidebar links                  |
 
 <!-- END GENERATED SKILLS INDEX -->
+
+<!-- [skills-index] Generated skills index -->
 
 ---
 
@@ -261,7 +265,7 @@ See [create-csharp-file](./skills/create-csharp-file.md) for detailed rules. Key
 1. `using` directives INSIDE namespace
 2. NO underscores in method names (including tests)
 3. Explicit types over `var`
-4. NEVER use `#region`
+4. **NEVER use `#region` or `#endregion`** (see [no-regions](./skills/no-regions.md))
 5. NEVER use nullable reference types (`string?`)
 6. One file per MonoBehaviour/ScriptableObject (production AND tests)
 7. NEVER use `?.`, `??`, `??=` on UnityEngine.Object types
@@ -286,7 +290,7 @@ Run formatters and linters **immediately after each file change**, not batched a
 - **Markdown**: `npm run lint:docs` + `npm run lint:markdown`
 - **YAML**: `npm run lint:yaml` (then `actionlint` for workflows)
 - **Spelling**: `npm run lint:spelling` (add valid terms to `cspell.json`)
-- **Tests**: `pwsh -NoProfile -File scripts/lint-tests.ps1`
+- **Tests**: `pwsh -NoProfile -File scripts/lint-tests.ps1 -FixNullChecks -Paths <changed test files>` (auto-fixes Unity null asserts; run after every test edit)
 - **Skill files** (`.llm/skills/*.md`): `pwsh -NoProfile -File scripts/lint-skill-sizes.ps1` (500-line limit, no auto-fix)
 
 See [formatting](./skills/formatting.md) and [validate-before-commit](./skills/validate-before-commit.md) for details.

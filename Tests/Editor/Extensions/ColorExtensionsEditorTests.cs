@@ -30,7 +30,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         public void GetAverageColorSpriteForcesTextureReadableViaMakeReadable()
         {
             Sprite sprite = CreateNonReadableSprite(new Color(0.1f, 0.8f, 0.2f, 1f));
-            Assert.IsNotNull(sprite, "Sprite asset failed to load.");
+            Assert.IsTrue(sprite != null, "Sprite asset failed to load.");
             Assert.IsFalse(
                 sprite.texture.isReadable,
                 "Test setup requires a non-readable texture."
@@ -53,10 +53,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             byte[] png = texture.EncodeToPNG();
             Object.DestroyImmediate(texture); // UNH-SUPPRESS: Intentional cleanup of temp texture
             File.WriteAllBytes(TempTexturePath, png);
-            AssetDatabase.ImportAsset(TempTexturePath, ImportAssetOptions.ForceUpdate);
+            AssetDatabase.ImportAsset(TempTexturePath, ImportAssetOptions.ForceSynchronousImport);
 
             TextureImporter importer = AssetImporter.GetAtPath(TempTexturePath) as TextureImporter;
-            Assert.IsNotNull(importer, "TextureImporter not found for temp texture.");
+            Assert.IsTrue(importer != null, "TextureImporter not found for temp texture.");
 
             importer.textureType = TextureImporterType.Sprite;
             importer.spriteImportMode = SpriteImportMode.Single;

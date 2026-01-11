@@ -129,7 +129,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             {
                 AssetDatabase.ImportAsset(
                     folderPath,
-                    ImportAssetOptions.ForceUpdate | ImportAssetOptions.ImportRecursive
+                    ImportAssetOptions.ForceSynchronousImport | ImportAssetOptions.ImportRecursive
                 );
             }
         }

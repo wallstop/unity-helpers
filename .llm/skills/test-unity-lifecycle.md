@@ -26,11 +26,12 @@ For Odin-specific testing, see [test-odin-drawers](./test-odin-drawers.md).
 
 ### Lint Rules Enforced
 
-| Rule     | Description                                                                                |
-| -------- | ------------------------------------------------------------------------------------------ |
-| `UNH001` | Avoid direct `DestroyImmediate`/`Destroy` in tests; track object and let teardown clean up |
-| `UNH002` | Unity object allocation must be tracked: wrap with `Track()`                               |
-| `UNH003` | Test class creates Unity objects but doesn't inherit from `CommonTestBase`                 |
+| Rule     | Description                                                                                         |
+| -------- | --------------------------------------------------------------------------------------------------- |
+| `UNH001` | Avoid direct `DestroyImmediate`/`Destroy` in tests; track object and let teardown clean up          |
+| `UNH002` | Unity object allocation must be tracked: wrap with `Track()`                                        |
+| `UNH003` | Test class creates Unity objects but doesn't inherit from `CommonTestBase`                          |
+| `UNH005` | Unity null checks must use `Assert.IsTrue(x != null/ == null)` instead of `Assert.IsNotNull/IsNull` |
 
 ---
 
@@ -41,6 +42,14 @@ For Odin-specific testing, see [test-odin-drawers](./test-odin-drawers.md).
 ```bash
 pwsh -NoProfile -File scripts/lint-tests.ps1
 ```
+
+For Unity null assertion fixes, prefer the auto-fix mode on changed tests:
+
+```bash
+pwsh -NoProfile -File scripts/lint-tests.ps1 -FixNullChecks -Paths <changed test files>
+```
+
+The pre-commit hook runs the auto-fix for staged test files automatically.
 
 This linter is also run by the pre-push git hook. Failing to run it locally will result in rejected pushes.
 

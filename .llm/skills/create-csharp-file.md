@@ -121,6 +121,7 @@ if (condition)
 - ❌ `#region Helper Methods`
 - ❌ `#endregion`
 - Organize code through class structure and file organization instead
+- See [no-regions](./no-regions.md) for alternatives
 
 ### 6. NEVER Use Nullable Reference Types
 

@@ -102,7 +102,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
                 Helpers.ResetSpriteLabelCache();
 
                 string[] labels = Helpers.GetAllSpriteLabelNames();
-                Assert.IsNotNull(labels);
+                Assert.IsTrue(labels != null);
                 Assert.IsEmpty(labels);
 
                 List<string> buffer = new();
@@ -242,7 +242,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         {
             ScriptableObject asset = Track(ScriptableObject.CreateInstance<ScriptableObject>());
             Component[] result = asset.GetComponents<Component>();
-            Assert.IsNotNull(result);
+            Assert.IsTrue(result != null);
             Assert.IsEmpty(result);
             Assert.AreSame(Array.Empty<Component>(), result);
             yield break;

@@ -141,7 +141,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         {
             Dictionary<string, List<int>> dictionary = new();
             List<int> value = dictionary.GetOrAdd("test");
-            Assert.IsNotNull(value);
+            Assert.IsTrue(value != null);
             Assert.AreEqual(value, dictionary["test"]);
             value.Add(1);
 
@@ -697,7 +697,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             ConcurrentDictionary<string, List<int>> dict = new();
 
             List<int> value = dict.GetOrAdd("test");
-            Assert.IsNotNull(value);
+            Assert.IsTrue(value != null);
             Assert.AreEqual(0, value.Count);
             value.Add(42);
 

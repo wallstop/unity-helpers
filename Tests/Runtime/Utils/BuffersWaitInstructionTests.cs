@@ -200,7 +200,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             WaitForSeconds shouldBeNull = Buffers.TryGetWaitForSecondsPooled(0.5f);
 
             Assert.NotNull(cached);
-            Assert.IsNull(shouldBeNull, "TryGet should return null when limit exceeded");
+            Assert.IsTrue(shouldBeNull == null, "TryGet should return null when limit exceeded");
         }
 
         [Test]
@@ -212,7 +212,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             WaitForSecondsRealtime shouldBeNull = Buffers.TryGetWaitForSecondsRealtimePooled(0.5f);
 
             Assert.NotNull(cached);
-            Assert.IsNull(shouldBeNull, "TryGet should return null when limit exceeded");
+            Assert.IsTrue(shouldBeNull == null, "TryGet should return null when limit exceeded");
         }
 
         [Test]
@@ -230,7 +230,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             Assert.NotNull(third);
 
             WaitForSeconds shouldBeNull = Buffers.TryGetWaitForSecondsPooled(0.1f);
-            Assert.IsNull(shouldBeNull, "Least recently used entry should have been evicted.");
+            Assert.IsTrue(
+                shouldBeNull == null,
+                "Least recently used entry should have been evicted."
+            );
 
             WaitInstructionCacheDiagnostics diagnostics = Buffers.WaitForSecondsCacheDiagnostics;
             Assert.AreEqual(1, diagnostics.Evictions);
@@ -252,7 +255,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                 WaitForSecondsRealtime shouldBeNull = Buffers.TryGetWaitForSecondsRealtimePooled(
                     0.2f
                 );
-                Assert.IsNull(shouldBeNull, "TryGet should return null for non-cached duration");
+                Assert.IsTrue(
+                    shouldBeNull == null,
+                    "TryGet should return null for non-cached duration"
+                );
 
                 WaitForSecondsRealtime shouldStillExist =
                     Buffers.TryGetWaitForSecondsRealtimePooled(0.1f);
@@ -268,7 +274,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                 Assert.NotNull(cached);
 
                 WaitForSeconds shouldBeNull = Buffers.TryGetWaitForSecondsPooled(0.2f);
-                Assert.IsNull(shouldBeNull, "TryGet should return null for non-cached duration");
+                Assert.IsTrue(
+                    shouldBeNull == null,
+                    "TryGet should return null for non-cached duration"
+                );
 
                 WaitForSeconds shouldStillExist = Buffers.TryGetWaitForSecondsPooled(0.1f);
                 Assert.NotNull(shouldStillExist);
@@ -342,7 +351,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                 WaitForSecondsRealtime shouldBeEvicted = Buffers.TryGetWaitForSecondsRealtimePooled(
                     0.2f
                 );
-                Assert.IsNull(shouldBeEvicted, "Entry should have been evicted from cache");
+                Assert.IsTrue(shouldBeEvicted == null, "Entry should have been evicted from cache");
 
                 WaitInstructionCacheDiagnostics diagnostics =
                     Buffers.WaitForSecondsRealtimeCacheDiagnostics;
@@ -363,7 +372,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                 Assert.NotNull(shouldRemain);
 
                 WaitForSeconds shouldBeEvicted = Buffers.TryGetWaitForSecondsPooled(0.2f);
-                Assert.IsNull(shouldBeEvicted, "Entry should have been evicted from cache");
+                Assert.IsTrue(shouldBeEvicted == null, "Entry should have been evicted from cache");
 
                 WaitInstructionCacheDiagnostics diagnostics =
                     Buffers.WaitForSecondsCacheDiagnostics;
@@ -394,8 +403,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                 Assert.AreEqual(3, Buffers.WaitForSecondsRealtimeCacheDiagnostics.DistinctEntries);
                 Assert.AreEqual(1, Buffers.WaitForSecondsRealtimeCacheDiagnostics.Evictions);
 
-                Assert.IsNull(
-                    Buffers.TryGetWaitForSecondsRealtimePooled(0.1f),
+                Assert.IsTrue(
+                    Buffers.TryGetWaitForSecondsRealtimePooled(0.1f) == null,
                     "Entry 0.1f should have been evicted"
                 );
                 Assert.NotNull(Buffers.TryGetWaitForSecondsRealtimePooled(0.2f));
@@ -404,8 +413,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                 Assert.NotNull(fifth);
                 Assert.AreEqual(2, Buffers.WaitForSecondsRealtimeCacheDiagnostics.Evictions);
 
-                Assert.IsNull(
-                    Buffers.TryGetWaitForSecondsRealtimePooled(0.3f),
+                Assert.IsTrue(
+                    Buffers.TryGetWaitForSecondsRealtimePooled(0.3f) == null,
                     "Entry 0.3f should have been evicted"
                 );
             }
@@ -425,8 +434,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                 Assert.AreEqual(3, Buffers.WaitForSecondsCacheDiagnostics.DistinctEntries);
                 Assert.AreEqual(1, Buffers.WaitForSecondsCacheDiagnostics.Evictions);
 
-                Assert.IsNull(
-                    Buffers.TryGetWaitForSecondsPooled(0.1f),
+                Assert.IsTrue(
+                    Buffers.TryGetWaitForSecondsPooled(0.1f) == null,
                     "Entry 0.1f should have been evicted"
                 );
                 Assert.NotNull(Buffers.TryGetWaitForSecondsPooled(0.2f));
@@ -435,8 +444,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                 Assert.NotNull(fifth);
                 Assert.AreEqual(2, Buffers.WaitForSecondsCacheDiagnostics.Evictions);
 
-                Assert.IsNull(
-                    Buffers.TryGetWaitForSecondsPooled(0.3f),
+                Assert.IsTrue(
+                    Buffers.TryGetWaitForSecondsPooled(0.3f) == null,
                     "Entry 0.3f should have been evicted"
                 );
             }
@@ -461,8 +470,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                 Assert.NotNull(third);
 
                 Assert.NotNull(Buffers.TryGetWaitForSecondsRealtimePooled(0.1f));
-                Assert.IsNull(
-                    Buffers.TryGetWaitForSecondsRealtimePooled(0.2f),
+                Assert.IsTrue(
+                    Buffers.TryGetWaitForSecondsRealtimePooled(0.2f) == null,
                     "Entry 0.2f should have been evicted as least recently used"
                 );
             }
@@ -478,8 +487,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                 Assert.NotNull(third);
 
                 Assert.NotNull(Buffers.TryGetWaitForSecondsPooled(0.1f));
-                Assert.IsNull(
-                    Buffers.TryGetWaitForSecondsPooled(0.2f),
+                Assert.IsTrue(
+                    Buffers.TryGetWaitForSecondsPooled(0.2f) == null,
                     "Entry 0.2f should have been evicted as least recently used"
                 );
             }
@@ -610,8 +619,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                     "Inserting 0.34f should have triggered exactly 1 eviction of the LRU entry (0.1f)"
                 );
 
-                Assert.IsNull(
-                    Buffers.TryGetWaitForSecondsRealtimePooled(0.1f),
+                Assert.IsTrue(
+                    Buffers.TryGetWaitForSecondsRealtimePooled(0.1f) == null,
                     "0.1f should have been evicted as the LRU entry"
                 );
                 Assert.NotNull(
@@ -646,8 +655,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                     "Inserting 0.34f should have triggered exactly 1 eviction of the LRU entry (0.1f)"
                 );
 
-                Assert.IsNull(
-                    Buffers.TryGetWaitForSecondsPooled(0.1f),
+                Assert.IsTrue(
+                    Buffers.TryGetWaitForSecondsPooled(0.1f) == null,
                     "0.1f should have been evicted as the LRU entry"
                 );
                 Assert.NotNull(
@@ -1031,8 +1040,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
 
                 Buffers.GetWaitForSecondsRealTime(0.4f);
 
-                Assert.IsNull(
-                    Buffers.TryGetWaitForSecondsRealtimePooled(0.3f),
+                Assert.IsTrue(
+                    Buffers.TryGetWaitForSecondsRealtimePooled(0.3f) == null,
                     "Entry 0.3f should have been evicted"
                 );
                 Assert.NotNull(Buffers.TryGetWaitForSecondsRealtimePooled(0.1f));
@@ -1043,8 +1052,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
 
                 Buffers.GetWaitForSecondsRealTime(0.5f);
 
-                Assert.IsNull(
-                    Buffers.TryGetWaitForSecondsRealtimePooled(0.2f),
+                Assert.IsTrue(
+                    Buffers.TryGetWaitForSecondsRealtimePooled(0.2f) == null,
                     "Entry 0.2f should have been evicted"
                 );
                 Assert.NotNull(Buffers.TryGetWaitForSecondsRealtimePooled(0.4f));
@@ -1062,8 +1071,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
 
                 Buffers.GetWaitForSeconds(0.4f);
 
-                Assert.IsNull(
-                    Buffers.TryGetWaitForSecondsPooled(0.3f),
+                Assert.IsTrue(
+                    Buffers.TryGetWaitForSecondsPooled(0.3f) == null,
                     "Entry 0.3f should have been evicted"
                 );
                 Assert.NotNull(Buffers.TryGetWaitForSecondsPooled(0.1f));
@@ -1074,8 +1083,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
 
                 Buffers.GetWaitForSeconds(0.5f);
 
-                Assert.IsNull(
-                    Buffers.TryGetWaitForSecondsPooled(0.2f),
+                Assert.IsTrue(
+                    Buffers.TryGetWaitForSecondsPooled(0.2f) == null,
                     "Entry 0.2f should have been evicted"
                 );
                 Assert.NotNull(Buffers.TryGetWaitForSecondsPooled(0.4f));
@@ -1106,8 +1115,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                 Assert.NotNull(another);
                 Assert.AreEqual(1, Buffers.WaitForSecondsRealtimeCacheDiagnostics.Evictions);
 
-                Assert.IsNull(
-                    Buffers.TryGetWaitForSecondsRealtimePooled(0f),
+                Assert.IsTrue(
+                    Buffers.TryGetWaitForSecondsRealtimePooled(0f) == null,
                     "Entry 0f should have been evicted"
                 );
             }
@@ -1126,8 +1135,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                 Assert.NotNull(another);
                 Assert.AreEqual(1, Buffers.WaitForSecondsCacheDiagnostics.Evictions);
 
-                Assert.IsNull(
-                    Buffers.TryGetWaitForSecondsPooled(0f),
+                Assert.IsTrue(
+                    Buffers.TryGetWaitForSecondsPooled(0f) == null,
                     "Entry 0f should have been evicted"
                 );
             }
@@ -1290,7 +1299,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
 
             WaitForSeconds nanResult = Buffers.GetWaitForSeconds(float.NaN);
 
-            Assert.IsNotNull(nanResult, "GetWaitForSeconds should return non-null for NaN input");
+            Assert.IsTrue(
+                nanResult != null,
+                "GetWaitForSeconds should return non-null for NaN input"
+            );
             Assert.AreEqual(1, Buffers.WaitForSecondsCacheDiagnostics.DistinctEntries);
         }
 
@@ -1301,8 +1313,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
 
             WaitForSeconds infResult = Buffers.GetWaitForSeconds(float.PositiveInfinity);
 
-            Assert.IsNotNull(
-                infResult,
+            Assert.IsTrue(
+                infResult != null,
                 "GetWaitForSeconds should return non-null for PositiveInfinity input"
             );
             Assert.AreEqual(1, Buffers.WaitForSecondsCacheDiagnostics.DistinctEntries);
@@ -1315,8 +1327,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
 
             WaitForSeconds negInfResult = Buffers.GetWaitForSeconds(float.NegativeInfinity);
 
-            Assert.IsNotNull(
-                negInfResult,
+            Assert.IsTrue(
+                negInfResult != null,
                 "GetWaitForSeconds should return non-null for NegativeInfinity input"
             );
             Assert.AreEqual(1, Buffers.WaitForSecondsCacheDiagnostics.DistinctEntries);

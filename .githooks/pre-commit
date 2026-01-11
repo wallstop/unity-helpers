@@ -286,7 +286,7 @@ if [ ${#LLM_SKILLS_ARRAY[@]} -gt 0 ]; then
 fi
 
 # 11) Run test linter on staged test files
-# Checks for Unity object lifecycle issues (UNH001-UNH003) and naming conventions (UNH004)
+# Checks for Unity object lifecycle issues (UNH001-UNH003), naming conventions (UNH004), null checks (UNH005)
 TEST_FILES_ARRAY=()
 for file in "${STAGED_FILES_ARRAY[@]}"; do
     case "$file" in
@@ -296,31 +296,88 @@ for file in "${STAGED_FILES_ARRAY[@]}"; do
     esac
 done
 
+# Auto-fix Unity null assertions (Assert.IsNotNull/IsNull) in staged test files before linting
+if [ ${#TEST_FILES_ARRAY[@]} -gt 0 ]; then
+  echo "Auto-fixing Unity null assertions in staged tests..."
+  if command -v pwsh >/dev/null 2>&1; then
+    pwsh -NoProfile -File scripts/lint-tests.ps1 -FixNullChecks -Paths "${TEST_FILES_ARRAY[@]}"
+  elif command -v powershell >/dev/null 2>&1; then
+    powershell -NoProfile -ExecutionPolicy Bypass -File scripts/lint-tests.ps1 -FixNullChecks -Paths "${TEST_FILES_ARRAY[@]}"
+  else
+    echo "PowerShell not found. Skipping test auto-fixes." >&2
+  fi
+
+  # Reformat and re-stage test files after auto-fixes
+  if command -v pwsh >/dev/null 2>&1; then
+    pwsh -NoProfile -File scripts/format-staged-csharp.ps1 "${TEST_FILES_ARRAY[@]}"
+  elif command -v powershell >/dev/null 2>&1; then
+    powershell -NoProfile -ExecutionPolicy Bypass -File scripts/format-staged-csharp.ps1 "${TEST_FILES_ARRAY[@]}"
+  fi
+fi
+
 if [ ${#TEST_FILES_ARRAY[@]} -gt 0 ]; then
   echo "Running test linter on staged test files..."
   if command -v pwsh >/dev/null 2>&1; then
-    pwsh -NoProfile -File scripts/lint-tests.ps1 || {
+    pwsh -NoProfile -File scripts/lint-tests.ps1 -Paths "${TEST_FILES_ARRAY[@]}" || {
       echo "" >&2
       echo "=== Test lint failed ===" >&2
       echo "Fix the issues above or add // UNH-SUPPRESS comments for valid exceptions." >&2
       echo "For naming convention errors (UNH004):" >&2
       echo "  - Use PascalCase or dot notation in TestName/SetName (e.g., 'Input.Null.ReturnsFalse')" >&2
       echo "  - Use PascalCase for TestCaseSource method names (e.g., 'EdgeCaseTestData')" >&2
+      echo "For null check errors (UNH005):" >&2
+      echo "  - Use Assert.IsTrue(x != null) instead of Assert.IsNotNull(x)" >&2
+      echo "  - Use Assert.IsTrue(x == null) instead of Assert.IsNull(x)" >&2
+      echo "  - Why: Unity's == operator performs special 'fake null' checking" >&2
+      echo "Auto-fix null asserts: pwsh -NoProfile -File scripts/lint-tests.ps1 -FixNullChecks -Paths <test files>" >&2
       echo "" >&2
       exit 1
     }
   elif command -v powershell >/dev/null 2>&1; then
-    powershell -NoProfile -ExecutionPolicy Bypass -File scripts/lint-tests.ps1 || {
+    powershell -NoProfile -ExecutionPolicy Bypass -File scripts/lint-tests.ps1 -Paths "${TEST_FILES_ARRAY[@]}" || {
       echo "" >&2
       echo "=== Test lint failed ===" >&2
       echo "Fix the issues above or add // UNH-SUPPRESS comments for valid exceptions." >&2
       echo "For naming convention errors (UNH004):" >&2
       echo "  - Use PascalCase or dot notation in TestName/SetName (e.g., 'Input.Null.ReturnsFalse')" >&2
       echo "  - Use PascalCase for TestCaseSource method names (e.g., 'EdgeCaseTestData')" >&2
+      echo "For null check errors (UNH005):" >&2
+      echo "  - Use Assert.IsTrue(x != null) instead of Assert.IsNotNull(x)" >&2
+      echo "  - Use Assert.IsTrue(x == null) instead of Assert.IsNull(x)" >&2
+      echo "  - Why: Unity's == operator performs special 'fake null' checking" >&2
+      echo "Auto-fix null asserts: powershell -NoProfile -ExecutionPolicy Bypass -File scripts/lint-tests.ps1 -FixNullChecks -Paths <test files>" >&2
       echo "" >&2
       exit 1
     }
   else
     echo "PowerShell not found. Skipping test linter." >&2
+  fi
+fi
+
+# 12) Check for forbidden #region/#endregion directives in C# files
+# Regions are forbidden in this codebase - see .llm/skills/no-regions.md
+if [ ${#CS_FILES_ARRAY[@]} -gt 0 ]; then
+  echo "Checking for forbidden #region directives..."
+  REGION_VIOLATIONS=""
+  for file in "${CS_FILES_ARRAY[@]}"; do
+    # Use grep to find #region or #endregion (case-insensitive for robustness)
+    # Match lines that have #region or #endregion as preprocessor directives
+    MATCHES=$(grep -n -i '^\s*#\s*region\|^\s*#\s*endregion' "$file" 2>/dev/null || true)
+    if [ -n "$MATCHES" ]; then
+      while IFS= read -r match; do
+        REGION_VIOLATIONS="${REGION_VIOLATIONS}  ${file}:${match}"$'\n'
+      done <<< "$MATCHES"
+    fi
+  done
+
+  if [ -n "$REGION_VIOLATIONS" ]; then
+    echo "" >&2
+    echo "=== Error: C# regions (#region/#endregion) are forbidden ===" >&2
+    echo "The following files contain regions:" >&2
+    echo "$REGION_VIOLATIONS" >&2
+    echo "Remove all #region and #endregion directives before committing." >&2
+    echo "See .llm/skills/no-regions.md for guidance on code organization alternatives." >&2
+    echo "" >&2
+    exit 1
   fi
 fi

@@ -724,7 +724,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
                 "Repair must stay within the original point budget for multi-cavity datasets."
             );
 #else
-            Assert.IsNotNull(hull);
+            Assert.IsTrue(hull != null);
 #endif
         }
 

@@ -46,7 +46,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
 
             IAnimal round = Serializer.ProtoDeserialize<IAnimal>(data);
 
-            Assert.IsNotNull(round, "Deserialized instance should not be null");
+            Assert.IsTrue(round != null, "Deserialized instance should not be null");
             Assert.IsInstanceOf<Dog>(round, "Expected registered root type to be used");
             Dog dog = (Dog)round;
             Assert.AreEqual(5, dog.Age, "Age should match");

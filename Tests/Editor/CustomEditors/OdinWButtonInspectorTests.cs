@@ -26,7 +26,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomEditors
     [TestFixture]
     [NUnit.Framework.Category("Slow")]
     [NUnit.Framework.Category("Integration")]
-    public sealed class OdinWButtonInspectorTests : CommonTestBase
+    public sealed class OdinWButtonInspectorTests : BatchedEditorTestBase
     {
         [Test]
         public void WButtonOdinMonoBehaviourInspectorCanBeInstantiated()

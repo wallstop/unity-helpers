@@ -34,7 +34,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializedProperty property = serializedObject.FindProperty(
                 nameof(WValueDropDownBoolAsset.selection)
             );
-            Assert.IsNotNull(property, "Failed to locate bool selection property.");
+            Assert.IsTrue(property != null, "Failed to locate bool selection property.");
 
             WValueDropDownDrawer.ApplyOption(property, false);
             serializedObject.ApplyModifiedProperties();
@@ -54,7 +54,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializedProperty property = serializedObject.FindProperty(
                 nameof(WValueDropDownCharAsset.selection)
             );
-            Assert.IsNotNull(property, "Failed to locate char selection property.");
+            Assert.IsTrue(property != null, "Failed to locate char selection property.");
 
             WValueDropDownDrawer.ApplyOption(property, 'C');
             serializedObject.ApplyModifiedProperties();
@@ -73,7 +73,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializedProperty property = serializedObject.FindProperty(
                 nameof(WValueDropDownBoolAsset.selection)
             );
-            Assert.IsNotNull(property, "Failed to locate bool selection property.");
+            Assert.IsTrue(property != null, "Failed to locate bool selection property.");
             Assert.That(property.propertyType, Is.EqualTo(SerializedPropertyType.Boolean));
         }
 
@@ -88,7 +88,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializedProperty property = serializedObject.FindProperty(
                 nameof(WValueDropDownCharAsset.selection)
             );
-            Assert.IsNotNull(property, "Failed to locate char selection property.");
+            Assert.IsTrue(property != null, "Failed to locate char selection property.");
             Assert.That(property.propertyType, Is.EqualTo(SerializedPropertyType.Character));
         }
 
@@ -104,7 +104,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializedProperty property = serializedObject.FindProperty(
                 nameof(WValueDropDownBoolAsset.selection)
             );
-            Assert.IsNotNull(property, "Failed to locate bool selection property.");
+            Assert.IsTrue(property != null, "Failed to locate bool selection property.");
 
             WValueDropDownDrawer drawer = new();
             PropertyDrawerTestHelper.AssignAttribute(
@@ -116,13 +116,13 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 
             BaseField<string> selector = (BaseField<string>)element;
             DropdownField dropdown = selector.Q<DropdownField>();
-            Assert.IsNotNull(dropdown, "Dropdown field was not created.");
+            Assert.IsTrue(dropdown != null, "Dropdown field was not created.");
             Assert.That(dropdown.value, Is.EqualTo("True"));
 
             WDropDownSelectorBase<string> dropDownSelector =
                 selector as WDropDownSelectorBase<string>;
-            Assert.IsNotNull(
-                dropDownSelector,
+            Assert.IsTrue(
+                dropDownSelector != null,
                 "Expected selector to derive from WDropDownSelectorBase<string>."
             );
             dropDownSelector.ApplySelection(1);
@@ -142,7 +142,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializedProperty property = serializedObject.FindProperty(
                 nameof(WValueDropDownCharAsset.selection)
             );
-            Assert.IsNotNull(property, "Failed to locate char selection property.");
+            Assert.IsTrue(property != null, "Failed to locate char selection property.");
 
             WValueDropDownDrawer drawer = new();
             PropertyDrawerTestHelper.AssignAttribute(
@@ -154,13 +154,13 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 
             BaseField<string> selector = (BaseField<string>)element;
             DropdownField dropdown = selector.Q<DropdownField>();
-            Assert.IsNotNull(dropdown, "Dropdown field was not created.");
+            Assert.IsTrue(dropdown != null, "Dropdown field was not created.");
             Assert.That(dropdown.value, Is.EqualTo("A"));
 
             WDropDownSelectorBase<string> dropDownSelector =
                 selector as WDropDownSelectorBase<string>;
-            Assert.IsNotNull(
-                dropDownSelector,
+            Assert.IsTrue(
+                dropDownSelector != null,
                 "Expected selector to derive from WDropDownSelectorBase<string>."
             );
             dropDownSelector.ApplySelection(2);
@@ -180,7 +180,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializedProperty property = serializedObject.FindProperty(
                 nameof(WValueDropDownBoolAsset.selection)
             );
-            Assert.IsNotNull(property, "Failed to locate bool selection property.");
+            Assert.IsTrue(property != null, "Failed to locate bool selection property.");
 
             WValueDropDownDrawer drawer = new();
             PropertyDrawerTestHelper.AssignAttribute(
@@ -192,7 +192,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 
             BaseField<string> selector = (BaseField<string>)element;
             DropdownField dropdown = selector.Q<DropdownField>();
-            Assert.IsNotNull(dropdown, "Dropdown field was not created.");
+            Assert.IsTrue(dropdown != null, "Dropdown field was not created.");
             Assert.That(dropdown.value, Is.EqualTo("False"));
         }
 
@@ -208,7 +208,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializedProperty property = serializedObject.FindProperty(
                 nameof(WValueDropDownCharAsset.selection)
             );
-            Assert.IsNotNull(property, "Failed to locate char selection property.");
+            Assert.IsTrue(property != null, "Failed to locate char selection property.");
 
             WValueDropDownDrawer drawer = new();
             PropertyDrawerTestHelper.AssignAttribute(
@@ -220,7 +220,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 
             BaseField<string> selector = (BaseField<string>)element;
             DropdownField dropdown = selector.Q<DropdownField>();
-            Assert.IsNotNull(dropdown, "Dropdown field was not created.");
+            Assert.IsTrue(dropdown != null, "Dropdown field was not created.");
             Assert.That(dropdown.value, Is.EqualTo("B"));
         }
 
@@ -325,7 +325,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializedProperty property = serializedObject.FindProperty(
                 nameof(WValueDropDownBoolAsset.selection)
             );
-            Assert.IsNotNull(property, "Failed to locate bool selection property.");
+            Assert.IsTrue(property != null, "Failed to locate bool selection property.");
 
             WValueDropDownDrawer.ApplyOption(property, "not a bool");
             serializedObject.ApplyModifiedProperties();
@@ -345,7 +345,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializedProperty property = serializedObject.FindProperty(
                 nameof(WValueDropDownCharAsset.selection)
             );
-            Assert.IsNotNull(property, "Failed to locate char selection property.");
+            Assert.IsTrue(property != null, "Failed to locate char selection property.");
 
             WValueDropDownDrawer.ApplyOption(property, "not a char");
             serializedObject.ApplyModifiedProperties();

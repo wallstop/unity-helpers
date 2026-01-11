@@ -353,7 +353,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             List<int> results = new();
             List<int> set = ds.TryGetSet(0, results);
 
-            Assert.IsNotNull(set);
+            Assert.IsTrue(set != null);
             Assert.AreEqual(3, set.Count);
             CollectionAssert.Contains(set, 0);
             CollectionAssert.Contains(set, 1);

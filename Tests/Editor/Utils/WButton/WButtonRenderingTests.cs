@@ -23,7 +23,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Utils.WButton
     [TestFixture]
     [NUnit.Framework.Category("Slow")]
     [NUnit.Framework.Category("Integration")]
-    public sealed class WButtonRenderingTests : CommonTestBase
+    public sealed class WButtonRenderingTests : BatchedEditorTestBase
     {
         [SetUp]
         public override void BaseSetUp()

@@ -14,6 +14,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
     using UnityEngine;
     using UnityEngine.TestTools;
     using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
+    using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Editor.CustomDrawers;
     using WallstopStudios.UnityHelpers.Editor.Settings;
     using WallstopStudios.UnityHelpers.Editor.Utils;
@@ -27,29 +28,73 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
     [TestFixture]
     [NUnit.Framework.Category("Slow")]
     [NUnit.Framework.Category("Integration")]
-    public sealed class SerializableDictionaryPropertyDrawerTests : CommonTestBase
+    public sealed class SerializableDictionaryPropertyDrawerTests : BatchedEditorTestBase
     {
+        private TestDictionaryHost _sharedHost;
+        private SerializedObject _sharedSerializedObject;
+
         [SetUp]
         public override void BaseSetUp()
         {
-            base.BaseSetUp();
+            _sharedHost = CreateScriptableObject<TestDictionaryHost>();
+            _sharedSerializedObject = new SerializedObject(_sharedHost);
             GroupGUIWidthUtility.ResetForTests();
             SerializableDictionaryPropertyDrawer.ResetLayoutTrackingForTests();
             SerializableDictionaryPropertyDrawer.ClearMainFoldoutAnimCacheForTests();
+            ResetHostState();
+            base.BaseSetUp();
+        }
+
+        [TearDown]
+        public override void TearDown()
+        {
+            base.TearDown();
+            if (_sharedSerializedObject != null)
+            {
+                _sharedSerializedObject.Dispose();
+                _sharedSerializedObject = null;
+            }
+
+            _sharedHost.Destroy();
+        }
+
+        /// <summary>
+        /// Resets the shared host state between tests to ensure test isolation.
+        /// </summary>
+        private void ResetHostState()
+        {
+            // Diagnostic: Verify SerializedObject is still valid
+            Assert.IsNotNull(
+                _sharedSerializedObject,
+                "SerializedObject was disposed or null - check OneTimeTearDown ordering"
+            );
+            Assert.IsTrue(
+                _sharedSerializedObject.targetObject != null,
+                "SerializedObject's target was destroyed - check disposal order"
+            );
+
+            _sharedHost.dictionary.Clear();
+            _sharedSerializedObject.Update();
+            SerializedProperty dictionaryProperty = _sharedSerializedObject.FindProperty(
+                nameof(TestDictionaryHost.dictionary)
+            );
+            if (dictionaryProperty != null)
+            {
+                dictionaryProperty.isExpanded = false;
+                _sharedSerializedObject.ApplyModifiedPropertiesWithoutUndo();
+            }
         }
 
         [Test]
         public void PageSizeClampPreventsExcessiveCacheGrowth()
         {
-            TestDictionaryHost host = CreateScriptableObject<TestDictionaryHost>();
             for (int i = 0; i < 512; i++)
             {
-                host.dictionary.Add(i, $"Value {i}");
+                _sharedHost.dictionary.Add(i, $"Value {i}");
             }
 
-            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
-            serializedObject.Update();
-            SerializedProperty dictionaryProperty = serializedObject.FindProperty(
+            _sharedSerializedObject.Update();
+            SerializedProperty dictionaryProperty = _sharedSerializedObject.FindProperty(
                 nameof(TestDictionaryHost.dictionary)
             );
             SerializedProperty keysProperty = dictionaryProperty.FindPropertyRelative(
@@ -97,15 +142,13 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         [Test]
         public void PaginationStateUsesSerializableDictionaryPageSizeSetting()
         {
-            TestDictionaryHost host = CreateScriptableObject<TestDictionaryHost>();
             for (int i = 0; i < 64; i++)
             {
-                host.dictionary.Add(i, $"Value {i}");
+                _sharedHost.dictionary.Add(i, $"Value {i}");
             }
 
-            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
-            serializedObject.Update();
-            SerializedProperty dictionaryProperty = serializedObject.FindProperty(
+            _sharedSerializedObject.Update();
+            SerializedProperty dictionaryProperty = _sharedSerializedObject.FindProperty(
                 nameof(TestDictionaryHost.dictionary)
             );
 
@@ -136,15 +179,13 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         [Test]
         public void PaginationStateResetsIndexWhenPageSizeChanges()
         {
-            TestDictionaryHost host = CreateScriptableObject<TestDictionaryHost>();
             for (int i = 0; i < 120; i++)
             {
-                host.dictionary.Add(i, $"Value {i}");
+                _sharedHost.dictionary.Add(i, $"Value {i}");
             }
 
-            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
-            serializedObject.Update();
-            SerializedProperty dictionaryProperty = serializedObject.FindProperty(
+            _sharedSerializedObject.Update();
+            SerializedProperty dictionaryProperty = _sharedSerializedObject.FindProperty(
                 nameof(TestDictionaryHost.dictionary)
             );
 
@@ -201,8 +242,8 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializableDictionaryPropertyDrawer drawer = new();
             ReorderableList list = drawer.GetOrCreateList(dictionaryProperty);
 
-            Assert.IsNotNull(
-                list.elementHeightCallback,
+            Assert.IsTrue(
+                list.elementHeightCallback != null,
                 "Expected dynamic element height callback."
             );
             float resolvedHeight = list.elementHeightCallback.Invoke(0);
@@ -271,7 +312,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             );
 
             ComplexValue roundTripValue = roundTrip as ComplexValue;
-            Assert.IsNotNull(roundTripValue);
+            Assert.IsTrue(roundTripValue != null);
             Assert.That(roundTripValue.button, Is.EqualTo(complexValue.button));
             Assert.That(roundTripValue.text, Is.EqualTo(complexValue.text));
         }
@@ -290,15 +331,13 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         [Test]
         public void SyncSelectionKeepsIndexWithinVisiblePage()
         {
-            TestDictionaryHost host = CreateScriptableObject<TestDictionaryHost>();
             for (int i = 0; i < 30; i++)
             {
-                host.dictionary.Add(i, $"Item {i}");
+                _sharedHost.dictionary.Add(i, $"Item {i}");
             }
 
-            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
-            serializedObject.Update();
-            SerializedProperty dictionaryProperty = serializedObject.FindProperty(
+            _sharedSerializedObject.Update();
+            SerializedProperty dictionaryProperty = _sharedSerializedObject.FindProperty(
                 nameof(TestDictionaryHost.dictionary)
             );
             SerializedProperty keysProperty = dictionaryProperty.FindPropertyRelative(
@@ -361,15 +400,13 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         [Test]
         public void MarkListCacheDirtyClearsCachedEntries()
         {
-            TestDictionaryHost host = CreateScriptableObject<TestDictionaryHost>();
             for (int i = 0; i < 20; i++)
             {
-                host.dictionary.Add(i, $"Entry {i}");
+                _sharedHost.dictionary.Add(i, $"Entry {i}");
             }
 
-            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
-            serializedObject.Update();
-            SerializedProperty dictionaryProperty = serializedObject.FindProperty(
+            _sharedSerializedObject.Update();
+            SerializedProperty dictionaryProperty = _sharedSerializedObject.FindProperty(
                 nameof(TestDictionaryHost.dictionary)
             );
             SerializedProperty keysProperty = dictionaryProperty.FindPropertyRelative(
@@ -404,15 +441,13 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         [Test]
         public void RemoveEntryAdjustsSelectionWithinPage()
         {
-            TestDictionaryHost host = CreateScriptableObject<TestDictionaryHost>();
             for (int i = 0; i < 30; i++)
             {
-                host.dictionary.Add(i, $"Item {i}");
+                _sharedHost.dictionary.Add(i, $"Item {i}");
             }
 
-            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
-            serializedObject.Update();
-            SerializedProperty dictionaryProperty = serializedObject.FindProperty(
+            _sharedSerializedObject.Update();
+            SerializedProperty dictionaryProperty = _sharedSerializedObject.FindProperty(
                 nameof(TestDictionaryHost.dictionary)
             );
             SerializedProperty keysProperty = dictionaryProperty.FindPropertyRelative(
@@ -479,15 +514,13 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         [Test]
         public void PageCacheRebuildsWhenGlobalPageSizeChanges()
         {
-            TestDictionaryHost host = CreateScriptableObject<TestDictionaryHost>();
             for (int i = 0; i < 40; i++)
             {
-                host.dictionary.Add(i, $"Item {i}");
+                _sharedHost.dictionary.Add(i, $"Item {i}");
             }
 
-            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
-            serializedObject.Update();
-            SerializedProperty dictionaryProperty = serializedObject.FindProperty(
+            _sharedSerializedObject.Update();
+            SerializedProperty dictionaryProperty = _sharedSerializedObject.FindProperty(
                 nameof(TestDictionaryHost.dictionary)
             );
             SerializedProperty keysProperty = dictionaryProperty.FindPropertyRelative(
@@ -546,15 +579,13 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         [Test]
         public void RemoveEntryBacktracksToPreviousPageWhenLastPageIsRemoved()
         {
-            TestDictionaryHost host = CreateScriptableObject<TestDictionaryHost>();
             for (int i = 0; i < 21; i++)
             {
-                host.dictionary.Add(i, $"Item {i}");
+                _sharedHost.dictionary.Add(i, $"Item {i}");
             }
 
-            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
-            serializedObject.Update();
-            SerializedProperty dictionaryProperty = serializedObject.FindProperty(
+            _sharedSerializedObject.Update();
+            SerializedProperty dictionaryProperty = _sharedSerializedObject.FindProperty(
                 nameof(TestDictionaryHost.dictionary)
             );
             SerializedProperty keysProperty = dictionaryProperty.FindPropertyRelative(
@@ -821,13 +852,11 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         [Test]
         public void DictionarySortButtonVisibilityReflectsOrdering()
         {
-            TestDictionaryHost host = CreateScriptableObject<TestDictionaryHost>();
-            host.dictionary.Add(2, "two");
-            host.dictionary.Add(1, "one");
+            _sharedHost.dictionary.Add(2, "two");
+            _sharedHost.dictionary.Add(1, "one");
 
-            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
-            serializedObject.Update();
-            SerializedProperty dictionaryProperty = serializedObject.FindProperty(
+            _sharedSerializedObject.Update();
+            SerializedProperty dictionaryProperty = _sharedSerializedObject.FindProperty(
                 nameof(TestDictionaryHost.dictionary)
             );
             SerializedProperty keysProperty = dictionaryProperty.FindPropertyRelative(
@@ -851,8 +880,8 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 
             keysProperty.GetArrayElementAtIndex(0).intValue = 1;
             keysProperty.GetArrayElementAtIndex(1).intValue = 2;
-            serializedObject.ApplyModifiedProperties();
-            serializedObject.Update();
+            _sharedSerializedObject.ApplyModifiedProperties();
+            _sharedSerializedObject.Update();
             keysProperty = dictionaryProperty.FindPropertyRelative(
                 SerializableDictionarySerializedPropertyNames.Keys
             );
@@ -1076,15 +1105,13 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         public void PageEntriesNeedSortingOnlyFlagsCurrentPage()
         {
             SerializableDictionaryPropertyDrawer drawer = new();
-            TestDictionaryHost host = CreateScriptableObject<TestDictionaryHost>();
-            host.dictionary.Add(1, "one");
-            host.dictionary.Add(2, "two");
-            host.dictionary.Add(4, "four");
-            host.dictionary.Add(3, "three");
+            _sharedHost.dictionary.Add(1, "one");
+            _sharedHost.dictionary.Add(2, "two");
+            _sharedHost.dictionary.Add(4, "four");
+            _sharedHost.dictionary.Add(3, "three");
 
-            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
-            serializedObject.Update();
-            SerializedProperty dictionaryProperty = serializedObject.FindProperty(
+            _sharedSerializedObject.Update();
+            SerializedProperty dictionaryProperty = _sharedSerializedObject.FindProperty(
                 nameof(TestDictionaryHost.dictionary)
             );
             SerializedProperty keysProperty = dictionaryProperty.FindPropertyRelative(
@@ -1193,8 +1220,8 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializedProperty otherColorsProperty = storedValue.FindPropertyRelative(
                 nameof(ColorData.otherColors)
             );
-            Assert.IsNotNull(
-                otherColorsProperty,
+            Assert.IsTrue(
+                otherColorsProperty != null,
                 "Serialized ColorData should expose otherColors."
             );
             Assert.That(otherColorsProperty.arraySize, Is.EqualTo(2));
@@ -1249,7 +1276,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 
             Assert.That(host.dictionary.ContainsKey("Palette"), Is.True);
             ColorListData stored = host.dictionary["Palette"];
-            Assert.IsNotNull(stored.colors);
+            Assert.IsTrue(stored.colors != null);
             Assert.That(stored.colors.Count, Is.EqualTo(2));
             AssertColorsApproximately(Color.red, stored.colors[0]);
             AssertColorsApproximately(Color.blue, stored.colors[1]);
@@ -1368,8 +1395,8 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                     typeof(ColorData),
                     isValueField: true
                 );
-                Assert.IsNotNull(
-                    pending.valueWrapperProperty,
+                Assert.IsTrue(
+                    pending.valueWrapperProperty != null,
                     "Pending wrapper should initialize when requested."
                 );
                 pending.valueWrapperSerialized?.Update();
@@ -1473,7 +1500,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 typeof(PrivateComplexValue)
             );
 
-            Assert.IsNotNull(value);
+            Assert.IsTrue(value != null);
             Assert.IsInstanceOf<PrivateComplexValue>(value);
         }
 
@@ -1487,8 +1514,8 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 typeof(SampleScriptableObject)
             );
 
-            Assert.IsNull(gameObjectDefault);
-            Assert.IsNull(scriptableDefault);
+            Assert.IsTrue(gameObjectDefault == null);
+            Assert.IsTrue(scriptableDefault == null);
         }
 
         [Test]
@@ -1502,8 +1529,8 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializedProperty dictionaryProperty = serializedObject.FindProperty(
                 nameof(PrivateComplexDictionaryHost.dictionary)
             );
-            Assert.IsNotNull(
-                dictionaryProperty,
+            Assert.IsTrue(
+                dictionaryProperty != null,
                 $"Expected to find dictionary property at '{nameof(PrivateComplexDictionaryHost.dictionary)}'"
             );
 
@@ -1513,8 +1540,8 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializedProperty valuesProperty = dictionaryProperty.FindPropertyRelative(
                 SerializableDictionarySerializedPropertyNames.Values
             );
-            Assert.IsNotNull(keysProperty, "Expected to find keys property.");
-            Assert.IsNotNull(valuesProperty, "Expected to find values property.");
+            Assert.IsTrue(keysProperty != null, "Expected to find keys property.");
+            Assert.IsTrue(valuesProperty != null, "Expected to find values property.");
 
             SerializableDictionaryPropertyDrawer drawer = new();
             PrivateComplexValue valueInstance = new()
@@ -1538,7 +1565,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             serializedObject.Update();
 
             SerializedProperty valueElement = valuesProperty.GetArrayElementAtIndex(0);
-            Assert.IsNotNull(valueElement, "Expected value element to exist after commit.");
+            Assert.IsTrue(valueElement != null, "Expected value element to exist after commit.");
 
             SerializedProperty primaryProperty = valueElement.FindPropertyRelative(
                 nameof(PrivateComplexValue._primary)
@@ -1547,12 +1574,12 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 nameof(PrivateComplexValue._secondary)
             );
 
-            Assert.IsNotNull(
-                primaryProperty,
+            Assert.IsTrue(
+                primaryProperty != null,
                 $"Expected '_primary' color property to exist on committed value. ValueElement type: {valueElement.type}"
             );
-            Assert.IsNotNull(
-                secondaryProperty,
+            Assert.IsTrue(
+                secondaryProperty != null,
                 $"Expected '_secondary' color property to exist on committed value. ValueElement type: {valueElement.type}"
             );
 
@@ -1600,7 +1627,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             serializedObject.Update();
 
             SerializedProperty valueElement = valuesProperty.GetArrayElementAtIndex(0);
-            Assert.IsNotNull(valueElement, "Expected value element to exist after commit.");
+            Assert.IsTrue(valueElement != null, "Expected value element to exist after commit.");
 
             SerializedProperty primaryProperty = valueElement.FindPropertyRelative(
                 nameof(PrivateComplexValue._primary)
@@ -1609,9 +1636,12 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 nameof(PrivateComplexValue._secondary)
             );
 
-            Assert.IsNotNull(primaryProperty, "Expected '_primary' property for default value.");
-            Assert.IsNotNull(
-                secondaryProperty,
+            Assert.IsTrue(
+                primaryProperty != null,
+                "Expected '_primary' property for default value."
+            );
+            Assert.IsTrue(
+                secondaryProperty != null,
                 "Expected '_secondary' property for default value."
             );
 
@@ -1692,8 +1722,8 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 isSortedDictionary: false
             );
 
-            Assert.IsNull(
-                pending.value,
+            Assert.IsTrue(
+                pending.value == null,
                 "UnityEngine.Object values should remain null so the object picker can be used."
             );
         }
@@ -1716,8 +1746,8 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 );
             });
 
-            Assert.IsNull(
-                pending.keyWrapper,
+            Assert.IsTrue(
+                pending.keyWrapper == null,
                 "ScriptableObject keys should not allocate PendingValueWrappers."
             );
         }
@@ -1751,12 +1781,12 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             Assert.AreEqual(initial.label, result.label);
             Assert.AreEqual(initial.tint, result.tint);
 
-            Assert.IsNotNull(
-                pending.valueWrapper,
+            Assert.IsTrue(
+                pending.valueWrapper != null,
                 "Struct editing should allocate a PendingValueWrapper instance."
             );
-            Assert.IsNotNull(pending.valueWrapperSerialized);
-            Assert.IsNotNull(pending.valueWrapperProperty);
+            Assert.IsTrue(pending.valueWrapperSerialized != null);
+            Assert.IsTrue(pending.valueWrapperProperty != null);
             Assert.AreEqual(
                 SerializedPropertyType.ManagedReference,
                 pending.valueWrapperProperty.propertyType,
@@ -1791,8 +1821,8 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 );
             });
 
-            Assert.IsNotNull(
-                pending.valueWrapperProperty,
+            Assert.IsTrue(
+                pending.valueWrapperProperty != null,
                 "Managed reference property should exist for struct value wrappers."
             );
             Assert.IsTrue(
@@ -1803,7 +1833,10 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializedProperty color1Property = pending.valueWrapperProperty.FindPropertyRelative(
                 nameof(ColorData.color1)
             );
-            Assert.IsNotNull(color1Property, "Color fields should be reachable for struct values.");
+            Assert.IsTrue(
+                color1Property != null,
+                "Color fields should be reachable for struct values."
+            );
 
             color1Property.colorValue = Color.magenta;
             pending.valueWrapperSerialized.ApplyModifiedPropertiesWithoutUndo();
@@ -1833,15 +1866,15 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 );
             });
 
-            Assert.IsNotNull(
-                pending.valueWrapperProperty,
+            Assert.IsTrue(
+                pending.valueWrapperProperty != null,
                 "List-backed pending values should allocate wrapper properties."
             );
 
             SerializedProperty colorsProperty = pending.valueWrapperProperty.FindPropertyRelative(
                 nameof(ColorListData.colors)
             );
-            Assert.IsNotNull(colorsProperty, "ColorListData should expose the colors list.");
+            Assert.IsTrue(colorsProperty != null, "ColorListData should expose the colors list.");
             Assert.IsTrue(colorsProperty.isArray, "List fields should be serialized as arrays.");
 
             colorsProperty.arraySize = 2;
@@ -1851,7 +1884,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             pending.valueWrapperSerialized.Update();
 
             ColorListData updated = (ColorListData)pending.valueWrapper.GetValue();
-            Assert.IsNotNull(updated.colors);
+            Assert.IsTrue(updated.colors != null);
             Assert.That(updated.colors.Count, Is.EqualTo(2));
             AssertColorsApproximately(Color.magenta, updated.colors[0]);
             AssertColorsApproximately(Color.yellow, updated.colors[1]);
@@ -1912,7 +1945,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 
             Assert.That(host.dictionary.ContainsKey("Palette"));
             ColorListData stored = host.dictionary["Palette"];
-            Assert.IsNotNull(stored.colors);
+            Assert.IsTrue(stored.colors != null);
             Assert.That(stored.colors.Count, Is.EqualTo(2));
             AssertColorsApproximately(Color.red, stored.colors[0]);
             AssertColorsApproximately(Color.cyan, stored.colors[1]);
@@ -2001,13 +2034,16 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             });
 
             Assert.IsInstanceOf<int>(pending.value, "Primitive value should remain an int.");
-            Assert.IsNull(pending.valueWrapper, "Primitive values should not allocate wrappers.");
-            Assert.IsNull(
-                pending.valueWrapperSerialized,
+            Assert.IsTrue(
+                pending.valueWrapper == null,
+                "Primitive values should not allocate wrappers."
+            );
+            Assert.IsTrue(
+                pending.valueWrapperSerialized == null,
                 "Primitive values should not allocate serialized wrappers."
             );
-            Assert.IsNull(
-                pending.valueWrapperProperty,
+            Assert.IsTrue(
+                pending.valueWrapperProperty == null,
                 "Primitive values should not allocate wrapper properties."
             );
         }
@@ -2334,7 +2370,10 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializedProperty dictionaryProperty = serializedSettings.FindProperty(
                 UnityHelpersSettings.SerializedPropertyNames.WButtonCustomColors
             );
-            Assert.IsNotNull(dictionaryProperty, "Expected to find wbuttonCustomColors property.");
+            Assert.IsTrue(
+                dictionaryProperty != null,
+                "Expected to find wbuttonCustomColors property."
+            );
 
             SerializedProperty keysProperty = dictionaryProperty.FindPropertyRelative(
                 SerializableDictionarySerializedPropertyNames.Keys
@@ -2342,8 +2381,8 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializedProperty valuesProperty = dictionaryProperty.FindPropertyRelative(
                 SerializableDictionarySerializedPropertyNames.Values
             );
-            Assert.IsNotNull(keysProperty);
-            Assert.IsNotNull(valuesProperty);
+            Assert.IsTrue(keysProperty != null);
+            Assert.IsTrue(valuesProperty != null);
 
             const string TestKey = "__TestPaletteProjectSettings";
             RemoveStringDictionaryEntry(keysProperty, valuesProperty, TestKey);
@@ -2471,14 +2510,12 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         {
             const int IndentDepth = 3;
 
-            TestDictionaryHost host = CreateScriptableObject<TestDictionaryHost>();
-            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
-            serializedObject.Update();
-            SerializedProperty dictionaryProperty = serializedObject.FindProperty(
+            _sharedSerializedObject.Update();
+            SerializedProperty dictionaryProperty = _sharedSerializedObject.FindProperty(
                 nameof(TestDictionaryHost.dictionary)
             );
             dictionaryProperty.isExpanded = true;
-            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            _sharedSerializedObject.ApplyModifiedPropertiesWithoutUndo();
 
             SerializableDictionaryPropertyDrawer drawer = new();
             AssignDictionaryFieldInfo(
@@ -2531,10 +2568,8 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         [UnityTest]
         public IEnumerator PendingEntryToggleOffsetAdjustsForSettingsContext()
         {
-            TestDictionaryHost host = CreateScriptableObject<TestDictionaryHost>();
-            SerializedObject hostSerialized = TrackDisposable(new SerializedObject(host));
-            hostSerialized.Update();
-            SerializedProperty hostDictionary = hostSerialized.FindProperty(
+            _sharedSerializedObject.Update();
+            SerializedProperty hostDictionary = _sharedSerializedObject.FindProperty(
                 nameof(TestDictionaryHost.dictionary)
             );
             SerializableDictionaryPropertyDrawer drawer = new();
@@ -2547,7 +2582,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             Rect controlRect = new(0f, 0f, 360f, 420f);
             GUIContent label = new("Dictionary");
             hostDictionary.isExpanded = true;
-            hostSerialized.ApplyModifiedPropertiesWithoutUndo();
+            _sharedSerializedObject.ApplyModifiedPropertiesWithoutUndo();
 
             float hostOffset = 0f;
             yield return TestIMGUIExecutor.Run(() =>
@@ -2604,14 +2639,12 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         [UnityTest]
         public IEnumerator PendingEntryFoldoutToggleRespectsOffset()
         {
-            TestDictionaryHost host = CreateScriptableObject<TestDictionaryHost>();
-            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
-            serializedObject.Update();
-            SerializedProperty dictionaryProperty = serializedObject.FindProperty(
+            _sharedSerializedObject.Update();
+            SerializedProperty dictionaryProperty = _sharedSerializedObject.FindProperty(
                 nameof(TestDictionaryHost.dictionary)
             );
             dictionaryProperty.isExpanded = true;
-            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            _sharedSerializedObject.ApplyModifiedPropertiesWithoutUndo();
 
             SerializableDictionaryPropertyDrawer drawer = new();
             AssignDictionaryFieldInfo(
@@ -2651,16 +2684,14 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         [UnityTest]
         public IEnumerator DictionaryRowFieldsApplyPadding()
         {
-            TestDictionaryHost host = CreateScriptableObject<TestDictionaryHost>();
-            host.dictionary.Add(1, "One");
-            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
-            serializedObject.Update();
-            SerializedProperty dictionaryProperty = serializedObject.FindProperty(
+            _sharedHost.dictionary.Add(1, "One");
+            _sharedSerializedObject.Update();
+            SerializedProperty dictionaryProperty = _sharedSerializedObject.FindProperty(
                 nameof(TestDictionaryHost.dictionary)
             );
-            ForcePopulateTestDictionarySerializedData(host, dictionaryProperty);
+            ForcePopulateTestDictionarySerializedData(_sharedHost, dictionaryProperty);
             dictionaryProperty.isExpanded = true;
-            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            _sharedSerializedObject.ApplyModifiedPropertiesWithoutUndo();
 
             SerializableDictionaryPropertyDrawer drawer = new();
             AssignDictionaryFieldInfo(
@@ -2709,14 +2740,12 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         [UnityTest]
         public IEnumerator PendingEntryHeaderHonorsGroupPadding()
         {
-            TestDictionaryHost host = CreateScriptableObject<TestDictionaryHost>();
-            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
-            serializedObject.Update();
-            SerializedProperty dictionaryProperty = serializedObject.FindProperty(
+            _sharedSerializedObject.Update();
+            SerializedProperty dictionaryProperty = _sharedSerializedObject.FindProperty(
                 nameof(TestDictionaryHost.dictionary)
             );
             dictionaryProperty.isExpanded = true;
-            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            _sharedSerializedObject.ApplyModifiedPropertiesWithoutUndo();
 
             SerializableDictionaryPropertyDrawer drawer = new();
             AssignDictionaryFieldInfo(
@@ -2888,14 +2917,12 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         [UnityTest]
         public IEnumerator PendingEntryFieldsHonorGroupPadding()
         {
-            TestDictionaryHost host = CreateScriptableObject<TestDictionaryHost>();
-            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
-            serializedObject.Update();
-            SerializedProperty dictionaryProperty = serializedObject.FindProperty(
+            _sharedSerializedObject.Update();
+            SerializedProperty dictionaryProperty = _sharedSerializedObject.FindProperty(
                 nameof(TestDictionaryHost.dictionary)
             );
             dictionaryProperty.isExpanded = true;
-            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            _sharedSerializedObject.ApplyModifiedPropertiesWithoutUndo();
 
             SerializableDictionaryPropertyDrawer drawer = new();
             AssignDictionaryFieldInfo(
@@ -3105,14 +3132,12 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         [UnityTest]
         public IEnumerator PendingEntryKeyAndValueFieldsAreAligned()
         {
-            TestDictionaryHost host = CreateScriptableObject<TestDictionaryHost>();
-            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
-            serializedObject.Update();
-            SerializedProperty dictionaryProperty = serializedObject.FindProperty(
+            _sharedSerializedObject.Update();
+            SerializedProperty dictionaryProperty = _sharedSerializedObject.FindProperty(
                 nameof(TestDictionaryHost.dictionary)
             );
             dictionaryProperty.isExpanded = true;
-            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            _sharedSerializedObject.ApplyModifiedPropertiesWithoutUndo();
 
             SerializableDictionaryPropertyDrawer drawer = new();
             AssignDictionaryFieldInfo(
@@ -3176,14 +3201,12 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             // This test verifies that when pending.isExpanded is set programmatically,
             // the AnimBool target synchronizes correctly so the animation starts toward
             // the new state. We then force the animation to complete to verify content renders.
-            TestDictionaryHost host = CreateScriptableObject<TestDictionaryHost>();
-            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
-            serializedObject.Update();
-            SerializedProperty dictionaryProperty = serializedObject.FindProperty(
+            _sharedSerializedObject.Update();
+            SerializedProperty dictionaryProperty = _sharedSerializedObject.FindProperty(
                 nameof(TestDictionaryHost.dictionary)
             );
             dictionaryProperty.isExpanded = true;
-            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            _sharedSerializedObject.ApplyModifiedPropertiesWithoutUndo();
 
             SerializableDictionaryPropertyDrawer drawer = new();
             AssignDictionaryFieldInfo(
@@ -3339,14 +3362,12 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         {
             using (new DictionaryTweenDisabledScope())
             {
-                TestDictionaryHost host = CreateScriptableObject<TestDictionaryHost>();
-                SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
-                serializedObject.Update();
-                SerializedProperty dictionaryProperty = serializedObject.FindProperty(
+                _sharedSerializedObject.Update();
+                SerializedProperty dictionaryProperty = _sharedSerializedObject.FindProperty(
                     nameof(TestDictionaryHost.dictionary)
                 );
                 dictionaryProperty.isExpanded = true;
-                serializedObject.ApplyModifiedPropertiesWithoutUndo();
+                _sharedSerializedObject.ApplyModifiedPropertiesWithoutUndo();
 
                 SerializableDictionaryPropertyDrawer drawer = new();
                 AssignDictionaryFieldInfo(
@@ -3427,14 +3448,12 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             // with detailed diagnostics to help debug any failures
             using (new DictionaryTweenDisabledScope())
             {
-                TestDictionaryHost host = CreateScriptableObject<TestDictionaryHost>();
-                SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
-                serializedObject.Update();
-                SerializedProperty dictionaryProperty = serializedObject.FindProperty(
+                _sharedSerializedObject.Update();
+                SerializedProperty dictionaryProperty = _sharedSerializedObject.FindProperty(
                     nameof(TestDictionaryHost.dictionary)
                 );
                 dictionaryProperty.isExpanded = true;
-                serializedObject.ApplyModifiedPropertiesWithoutUndo();
+                _sharedSerializedObject.ApplyModifiedPropertiesWithoutUndo();
 
                 SerializableDictionaryPropertyDrawer drawer = new();
                 AssignDictionaryFieldInfo(
@@ -3628,14 +3647,12 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         [UnityTest]
         public IEnumerator PendingEntryKeyAndValueAlignedWithWGroupPaddingAndIndent()
         {
-            TestDictionaryHost host = CreateScriptableObject<TestDictionaryHost>();
-            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
-            serializedObject.Update();
-            SerializedProperty dictionaryProperty = serializedObject.FindProperty(
+            _sharedSerializedObject.Update();
+            SerializedProperty dictionaryProperty = _sharedSerializedObject.FindProperty(
                 nameof(TestDictionaryHost.dictionary)
             );
             dictionaryProperty.isExpanded = true;
-            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            _sharedSerializedObject.ApplyModifiedPropertiesWithoutUndo();
 
             SerializableDictionaryPropertyDrawer drawer = new();
             AssignDictionaryFieldInfo(
@@ -3827,14 +3844,12 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         [UnityTest]
         public IEnumerator PendingEntryKeyIndentIncreasesWithHigherIndentLevel()
         {
-            TestDictionaryHost host = CreateScriptableObject<TestDictionaryHost>();
-            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
-            serializedObject.Update();
-            SerializedProperty dictionaryProperty = serializedObject.FindProperty(
+            _sharedSerializedObject.Update();
+            SerializedProperty dictionaryProperty = _sharedSerializedObject.FindProperty(
                 nameof(TestDictionaryHost.dictionary)
             );
             dictionaryProperty.isExpanded = true;
-            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            _sharedSerializedObject.ApplyModifiedPropertiesWithoutUndo();
 
             SerializableDictionaryPropertyDrawer drawer = new();
             AssignDictionaryFieldInfo(
@@ -4112,16 +4127,14 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         [UnityTest]
         public IEnumerator DictionaryRowsHonorGroupPadding()
         {
-            TestDictionaryHost host = CreateScriptableObject<TestDictionaryHost>();
-            host.dictionary.Add(1, "One");
-            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
-            serializedObject.Update();
-            SerializedProperty dictionaryProperty = serializedObject.FindProperty(
+            _sharedHost.dictionary.Add(1, "One");
+            _sharedSerializedObject.Update();
+            SerializedProperty dictionaryProperty = _sharedSerializedObject.FindProperty(
                 nameof(TestDictionaryHost.dictionary)
             );
-            ForcePopulateTestDictionarySerializedData(host, dictionaryProperty);
+            ForcePopulateTestDictionarySerializedData(_sharedHost, dictionaryProperty);
             dictionaryProperty.isExpanded = true;
-            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            _sharedSerializedObject.ApplyModifiedPropertiesWithoutUndo();
 
             SerializableDictionaryPropertyDrawer drawer = new();
             AssignDictionaryFieldInfo(
@@ -4363,16 +4376,14 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             float rightPadding
         )
         {
-            TestDictionaryHost host = CreateScriptableObject<TestDictionaryHost>();
-            host.dictionary.Add(1, "One");
-            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
-            serializedObject.Update();
-            SerializedProperty dictionaryProperty = serializedObject.FindProperty(
+            _sharedHost.dictionary.Add(1, "One");
+            _sharedSerializedObject.Update();
+            SerializedProperty dictionaryProperty = _sharedSerializedObject.FindProperty(
                 nameof(TestDictionaryHost.dictionary)
             );
-            ForcePopulateTestDictionarySerializedData(host, dictionaryProperty);
+            ForcePopulateTestDictionarySerializedData(_sharedHost, dictionaryProperty);
             dictionaryProperty.isExpanded = true;
-            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            _sharedSerializedObject.ApplyModifiedPropertiesWithoutUndo();
 
             SerializableDictionaryPropertyDrawer drawer = new();
             AssignDictionaryFieldInfo(
@@ -4610,16 +4621,14 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         public IEnumerator DictionaryRowSimpleValueReservesCorrectGap()
         {
             // Test that simple (non-foldout) value rows reserve the correct gap between key and value
-            TestDictionaryHost host = CreateScriptableObject<TestDictionaryHost>();
-            host.dictionary.Add(1, "TestValue");
+            _sharedHost.dictionary.Add(1, "TestValue");
 
-            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
-            serializedObject.Update();
-            SerializedProperty dictionaryProperty = serializedObject.FindProperty(
+            _sharedSerializedObject.Update();
+            SerializedProperty dictionaryProperty = _sharedSerializedObject.FindProperty(
                 nameof(TestDictionaryHost.dictionary)
             );
             dictionaryProperty.isExpanded = true;
-            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            _sharedSerializedObject.ApplyModifiedPropertiesWithoutUndo();
 
             SerializableDictionaryPropertyDrawer drawer = new();
             AssignDictionaryFieldInfo(
@@ -5144,7 +5153,10 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 
             SerializableDictionaryPropertyDrawer drawer = new();
             ReorderableList initialList = drawer.GetOrCreateList(dictionaryProperty);
-            Assert.IsNotNull(initialList, "Initial call should create a ReorderableList instance.");
+            Assert.IsTrue(
+                initialList != null,
+                "Initial call should create a ReorderableList instance."
+            );
             Assert.That(initialList.count, Is.EqualTo(0));
 
             SerializableDictionaryPropertyDrawer.CommitResult result = drawer.CommitEntry(
@@ -5172,7 +5184,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             );
 
             ReorderableList refreshedList = drawer.GetOrCreateList(dictionaryProperty);
-            Assert.IsNotNull(refreshedList);
+            Assert.IsTrue(refreshedList != null);
             Assert.AreNotSame(
                 initialList,
                 refreshedList,
@@ -5195,25 +5207,23 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializedProperty buttonColorProperty = valueElement.FindPropertyRelative(
                 nameof(ComplexValue.button)
             );
-            Assert.IsNotNull(buttonColorProperty);
+            Assert.IsTrue(buttonColorProperty != null);
             Assert.That(buttonColorProperty.colorValue, Is.EqualTo(Color.cyan));
         }
 
         [UnityTest]
         public IEnumerator HonorsGroupPaddingWithinGroups()
         {
-            TestDictionaryHost host = CreateScriptableObject<TestDictionaryHost>();
-            host.dictionary.Add(1, "One");
-            host.dictionary.Add(2, "Two");
+            _sharedHost.dictionary.Add(1, "One");
+            _sharedHost.dictionary.Add(2, "Two");
 
-            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
-            serializedObject.Update();
-            SerializedProperty dictionaryProperty = serializedObject.FindProperty(
+            _sharedSerializedObject.Update();
+            SerializedProperty dictionaryProperty = _sharedSerializedObject.FindProperty(
                 nameof(TestDictionaryHost.dictionary)
             );
-            ForcePopulateTestDictionarySerializedData(host, dictionaryProperty);
+            ForcePopulateTestDictionarySerializedData(_sharedHost, dictionaryProperty);
             dictionaryProperty.isExpanded = true;
-            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            _sharedSerializedObject.ApplyModifiedPropertiesWithoutUndo();
 
             SerializableDictionaryPropertyDrawer drawer = new();
             AssignDictionaryFieldInfo(
@@ -5550,7 +5560,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                     valueType,
                     isSortedDictionary
                 );
-            Assert.IsNotNull(pending, "Pending entry instance should not be null.");
+            Assert.IsTrue(pending != null, "Pending entry instance should not be null.");
             return pending;
         }
 
@@ -5601,14 +5611,12 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                     "Tween should be disabled by DictionaryTweenDisabledScope for accurate height tests."
                 );
 
-                TestDictionaryHost host = CreateScriptableObject<TestDictionaryHost>();
-                SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
-                serializedObject.Update();
-                SerializedProperty dictionaryProperty = serializedObject.FindProperty(
+                _sharedSerializedObject.Update();
+                SerializedProperty dictionaryProperty = _sharedSerializedObject.FindProperty(
                     nameof(TestDictionaryHost.dictionary)
                 );
                 dictionaryProperty.isExpanded = true;
-                serializedObject.ApplyModifiedPropertiesWithoutUndo();
+                _sharedSerializedObject.ApplyModifiedPropertiesWithoutUndo();
 
                 SerializableDictionaryPropertyDrawer drawer = new();
                 AssignDictionaryFieldInfo(
@@ -5662,14 +5670,12 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                     "Tween should be disabled by DictionaryTweenDisabledScope for accurate height tests."
                 );
 
-                TestDictionaryHost host = CreateScriptableObject<TestDictionaryHost>();
-                SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
-                serializedObject.Update();
-                SerializedProperty dictionaryProperty = serializedObject.FindProperty(
+                _sharedSerializedObject.Update();
+                SerializedProperty dictionaryProperty = _sharedSerializedObject.FindProperty(
                     nameof(TestDictionaryHost.dictionary)
                 );
                 dictionaryProperty.isExpanded = true;
-                serializedObject.ApplyModifiedPropertiesWithoutUndo();
+                _sharedSerializedObject.ApplyModifiedPropertiesWithoutUndo();
 
                 SerializableDictionaryPropertyDrawer drawer = new();
                 AssignDictionaryFieldInfo(
@@ -5723,14 +5729,12 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                     "Tween should be disabled by DictionaryTweenDisabledScope for accurate height tests."
                 );
 
-                TestDictionaryHost host = CreateScriptableObject<TestDictionaryHost>();
-                SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
-                serializedObject.Update();
-                SerializedProperty dictionaryProperty = serializedObject.FindProperty(
+                _sharedSerializedObject.Update();
+                SerializedProperty dictionaryProperty = _sharedSerializedObject.FindProperty(
                     nameof(TestDictionaryHost.dictionary)
                 );
                 dictionaryProperty.isExpanded = true;
-                serializedObject.ApplyModifiedPropertiesWithoutUndo();
+                _sharedSerializedObject.ApplyModifiedPropertiesWithoutUndo();
 
                 SerializableDictionaryPropertyDrawer drawer = new();
                 AssignDictionaryFieldInfo(
@@ -5783,14 +5787,12 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         [Test]
         public void GetPropertyHeightReturnsConsistentHeightsForEmptyDictionaryWithPendingExpanded()
         {
-            TestDictionaryHost host = CreateScriptableObject<TestDictionaryHost>();
-            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
-            serializedObject.Update();
-            SerializedProperty dictionaryProperty = serializedObject.FindProperty(
+            _sharedSerializedObject.Update();
+            SerializedProperty dictionaryProperty = _sharedSerializedObject.FindProperty(
                 nameof(TestDictionaryHost.dictionary)
             );
             dictionaryProperty.isExpanded = true;
-            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            _sharedSerializedObject.ApplyModifiedPropertiesWithoutUndo();
 
             SerializableDictionaryPropertyDrawer drawer = new();
             AssignDictionaryFieldInfo(
@@ -5839,14 +5841,12 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                     "Tween should be disabled by DictionaryTweenDisabledScope for accurate height tests."
                 );
 
-                TestDictionaryHost host = CreateScriptableObject<TestDictionaryHost>();
-                SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
-                serializedObject.Update();
-                SerializedProperty dictionaryProperty = serializedObject.FindProperty(
+                _sharedSerializedObject.Update();
+                SerializedProperty dictionaryProperty = _sharedSerializedObject.FindProperty(
                     nameof(TestDictionaryHost.dictionary)
                 );
                 dictionaryProperty.isExpanded = true;
-                serializedObject.ApplyModifiedPropertiesWithoutUndo();
+                _sharedSerializedObject.ApplyModifiedPropertiesWithoutUndo();
 
                 SerializableDictionaryPropertyDrawer drawer = new();
                 AssignDictionaryFieldInfo(
@@ -5902,18 +5902,16 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                     "Tween should be disabled by DictionaryTweenDisabledScope for accurate height tests."
                 );
 
-                TestDictionaryHost host = CreateScriptableObject<TestDictionaryHost>();
-                host.dictionary.Add(1, "one");
-                host.dictionary.Add(2, "two");
-                host.dictionary.Add(3, "three");
+                _sharedHost.dictionary.Add(1, "one");
+                _sharedHost.dictionary.Add(2, "two");
+                _sharedHost.dictionary.Add(3, "three");
 
-                SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
-                serializedObject.Update();
-                SerializedProperty dictionaryProperty = serializedObject.FindProperty(
+                _sharedSerializedObject.Update();
+                SerializedProperty dictionaryProperty = _sharedSerializedObject.FindProperty(
                     nameof(TestDictionaryHost.dictionary)
                 );
                 dictionaryProperty.isExpanded = true;
-                serializedObject.ApplyModifiedPropertiesWithoutUndo();
+                _sharedSerializedObject.ApplyModifiedPropertiesWithoutUndo();
 
                 SerializableDictionaryPropertyDrawer drawer = new();
                 AssignDictionaryFieldInfo(
@@ -5967,14 +5965,12 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                     "Tween should be disabled by DictionaryTweenDisabledScope for accurate height tests."
                 );
 
-                TestDictionaryHost host = CreateScriptableObject<TestDictionaryHost>();
-                SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
-                serializedObject.Update();
-                SerializedProperty dictionaryProperty = serializedObject.FindProperty(
+                _sharedSerializedObject.Update();
+                SerializedProperty dictionaryProperty = _sharedSerializedObject.FindProperty(
                     nameof(TestDictionaryHost.dictionary)
                 );
                 dictionaryProperty.isExpanded = true;
-                serializedObject.ApplyModifiedPropertiesWithoutUndo();
+                _sharedSerializedObject.ApplyModifiedPropertiesWithoutUndo();
 
                 SerializableDictionaryPropertyDrawer drawer = new();
                 AssignDictionaryFieldInfo(
@@ -6154,14 +6150,12 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         [Test]
         public void GetPropertyHeightMainFoldoutCollapsedIgnoresPendingState()
         {
-            TestDictionaryHost host = CreateScriptableObject<TestDictionaryHost>();
-            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
-            serializedObject.Update();
-            SerializedProperty dictionaryProperty = serializedObject.FindProperty(
+            _sharedSerializedObject.Update();
+            SerializedProperty dictionaryProperty = _sharedSerializedObject.FindProperty(
                 nameof(TestDictionaryHost.dictionary)
             );
             dictionaryProperty.isExpanded = false;
-            serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            _sharedSerializedObject.ApplyModifiedPropertiesWithoutUndo();
 
             SerializableDictionaryPropertyDrawer drawer = new();
             AssignDictionaryFieldInfo(
@@ -6256,7 +6250,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializedProperty paletteProperty = serializedSettings.FindProperty(
                 UnityHelpersSettings.SerializedPropertyNames.WButtonCustomColors
             );
-            Assert.IsNotNull(paletteProperty, "Should find WButtonCustomColors property.");
+            Assert.IsTrue(paletteProperty != null, "Should find WButtonCustomColors property.");
 
             SerializedProperty keysProperty = paletteProperty.FindPropertyRelative(
                 SerializableDictionarySerializedPropertyNames.Keys
@@ -6264,8 +6258,8 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializedProperty valuesProperty = paletteProperty.FindPropertyRelative(
                 SerializableDictionarySerializedPropertyNames.Values
             );
-            Assert.IsNotNull(keysProperty, "Should find keys property.");
-            Assert.IsNotNull(valuesProperty, "Should find values property.");
+            Assert.IsTrue(keysProperty != null, "Should find keys property.");
+            Assert.IsTrue(valuesProperty != null, "Should find values property.");
 
             // Generate a unique test key to avoid conflicts with existing settings
             string testKey = $"TestKey_{Guid.NewGuid():N}";
@@ -6475,12 +6469,10 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         [Test]
         public void RefreshDuplicateStateReturnsNullForEmptyCacheKey()
         {
-            TestDictionaryHost host = CreateScriptableObject<TestDictionaryHost>();
-            host.dictionary[1] = "One";
+            _sharedHost.dictionary[1] = "One";
 
-            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
-            serializedObject.Update();
-            SerializedProperty dictionaryProperty = serializedObject.FindProperty(
+            _sharedSerializedObject.Update();
+            SerializedProperty dictionaryProperty = _sharedSerializedObject.FindProperty(
                 nameof(TestDictionaryHost.dictionary)
             );
             SerializedProperty keysProperty = dictionaryProperty.FindPropertyRelative(
@@ -6491,15 +6483,15 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 
             SerializableDictionaryPropertyDrawer.DuplicateKeyState nullResult =
                 drawer.RefreshDuplicateState(null, keysProperty, typeof(int));
-            Assert.IsNull(
-                nullResult,
+            Assert.IsTrue(
+                nullResult == null,
                 "RefreshDuplicateState should return null for null cacheKey."
             );
 
             SerializableDictionaryPropertyDrawer.DuplicateKeyState emptyResult =
                 drawer.RefreshDuplicateState(string.Empty, keysProperty, typeof(int));
-            Assert.IsNull(
-                emptyResult,
+            Assert.IsTrue(
+                emptyResult == null,
                 "RefreshDuplicateState should return null for empty cacheKey."
             );
         }
@@ -6507,14 +6499,12 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         [Test]
         public void RefreshDuplicateStateReturnsStateWithNoDuplicatesForUniqueKeys()
         {
-            TestDictionaryHost host = CreateScriptableObject<TestDictionaryHost>();
-            host.dictionary[1] = "One";
-            host.dictionary[2] = "Two";
-            host.dictionary[3] = "Three";
+            _sharedHost.dictionary[1] = "One";
+            _sharedHost.dictionary[2] = "Two";
+            _sharedHost.dictionary[3] = "Three";
 
-            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
-            serializedObject.Update();
-            SerializedProperty dictionaryProperty = serializedObject.FindProperty(
+            _sharedSerializedObject.Update();
+            SerializedProperty dictionaryProperty = _sharedSerializedObject.FindProperty(
                 nameof(TestDictionaryHost.dictionary)
             );
             SerializedProperty keysProperty = dictionaryProperty.FindPropertyRelative(
@@ -6533,8 +6523,8 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializableDictionaryPropertyDrawer.DuplicateKeyState state =
                 drawer.RefreshDuplicateState(cacheKey, keysProperty, typeof(int));
             // Note: RefreshDuplicateState always returns state (unlike RefreshNullKeyState)
-            Assert.IsNotNull(
-                state,
+            Assert.IsTrue(
+                state != null,
                 "RefreshDuplicateState returns a state object even with no duplicates."
             );
             Assert.IsFalse(
@@ -6546,10 +6536,8 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         [Test]
         public void RefreshDuplicateStateDetectsMultipleDuplicateGroups()
         {
-            TestDictionaryHost host = CreateScriptableObject<TestDictionaryHost>();
-            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
-            serializedObject.Update();
-            SerializedProperty dictionaryProperty = serializedObject.FindProperty(
+            _sharedSerializedObject.Update();
+            SerializedProperty dictionaryProperty = _sharedSerializedObject.FindProperty(
                 nameof(TestDictionaryHost.dictionary)
             );
             SerializedProperty keysProperty = dictionaryProperty.FindPropertyRelative(
@@ -6570,8 +6558,8 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             valuesProperty.GetArrayElementAtIndex(1).stringValue = "Value2";
             valuesProperty.GetArrayElementAtIndex(2).stringValue = "Value3";
             valuesProperty.GetArrayElementAtIndex(3).stringValue = "Value4";
-            serializedObject.ApplyModifiedPropertiesWithoutUndo();
-            serializedObject.Update();
+            _sharedSerializedObject.ApplyModifiedPropertiesWithoutUndo();
+            _sharedSerializedObject.Update();
 
             SerializableDictionaryPropertyDrawer drawer = new();
             AssignDictionaryFieldInfo(
@@ -6584,7 +6572,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 
             SerializableDictionaryPropertyDrawer.DuplicateKeyState state =
                 drawer.RefreshDuplicateState(cacheKey, keysProperty, typeof(int));
-            Assert.IsNotNull(state, "State should be returned.");
+            Assert.IsTrue(state != null, "State should be returned.");
             Assert.IsTrue(
                 state.HasDuplicates,
                 "HasDuplicates should be true with multiple duplicate groups."
@@ -6594,10 +6582,8 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         [Test]
         public void RefreshDuplicateStateTransitionsFromDuplicatesToUniqueKeys()
         {
-            TestDictionaryHost host = CreateScriptableObject<TestDictionaryHost>();
-            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
-            serializedObject.Update();
-            SerializedProperty dictionaryProperty = serializedObject.FindProperty(
+            _sharedSerializedObject.Update();
+            SerializedProperty dictionaryProperty = _sharedSerializedObject.FindProperty(
                 nameof(TestDictionaryHost.dictionary)
             );
             SerializedProperty keysProperty = dictionaryProperty.FindPropertyRelative(
@@ -6614,8 +6600,8 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             keysProperty.GetArrayElementAtIndex(1).intValue = 1;
             valuesProperty.GetArrayElementAtIndex(0).stringValue = "Value1";
             valuesProperty.GetArrayElementAtIndex(1).stringValue = "Value2";
-            serializedObject.ApplyModifiedPropertiesWithoutUndo();
-            serializedObject.Update();
+            _sharedSerializedObject.ApplyModifiedPropertiesWithoutUndo();
+            _sharedSerializedObject.Update();
 
             SerializableDictionaryPropertyDrawer drawer = new();
             AssignDictionaryFieldInfo(
@@ -6629,20 +6615,20 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             // Verify duplicates are detected
             SerializableDictionaryPropertyDrawer.DuplicateKeyState initialState =
                 drawer.RefreshDuplicateState(cacheKey, keysProperty, typeof(int));
-            Assert.IsNotNull(initialState, "Initial state should be returned.");
+            Assert.IsTrue(initialState != null, "Initial state should be returned.");
             Assert.IsTrue(initialState.HasDuplicates, "HasDuplicates should be true initially.");
 
             // Fix the duplicate by changing one key
             keysProperty.GetArrayElementAtIndex(1).intValue = 2;
-            serializedObject.ApplyModifiedPropertiesWithoutUndo();
-            serializedObject.Update();
+            _sharedSerializedObject.ApplyModifiedPropertiesWithoutUndo();
+            _sharedSerializedObject.Update();
 
             // Invalidate and refresh
             drawer.InvalidateKeyCache(cacheKey);
 
             SerializableDictionaryPropertyDrawer.DuplicateKeyState afterFixState =
                 drawer.RefreshDuplicateState(cacheKey, keysProperty, typeof(int));
-            Assert.IsNotNull(afterFixState, "State should still be returned after fix.");
+            Assert.IsTrue(afterFixState != null, "State should still be returned after fix.");
             Assert.IsFalse(
                 afterFixState.HasDuplicates,
                 "HasDuplicates should be false after fixing duplicates."
@@ -6652,13 +6638,11 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         [Test]
         public void DuplicateKeyStateMarkDirtyForcesRefreshOnNextEvaluation()
         {
-            TestDictionaryHost host = CreateScriptableObject<TestDictionaryHost>();
-            host.dictionary[1] = "One";
-            host.dictionary[2] = "Two";
+            _sharedHost.dictionary[1] = "One";
+            _sharedHost.dictionary[2] = "Two";
 
-            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
-            serializedObject.Update();
-            SerializedProperty dictionaryProperty = serializedObject.FindProperty(
+            _sharedSerializedObject.Update();
+            SerializedProperty dictionaryProperty = _sharedSerializedObject.FindProperty(
                 nameof(TestDictionaryHost.dictionary)
             );
             SerializedProperty keysProperty = dictionaryProperty.FindPropertyRelative(
@@ -6676,18 +6660,18 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 
             SerializableDictionaryPropertyDrawer.DuplicateKeyState initialState =
                 drawer.RefreshDuplicateState(cacheKey, keysProperty, typeof(int));
-            Assert.IsNotNull(initialState, "Initial state should be created.");
+            Assert.IsTrue(initialState != null, "Initial state should be created.");
             Assert.IsFalse(initialState.HasDuplicates, "Initial state should not have duplicates.");
 
             keysProperty.GetArrayElementAtIndex(1).intValue = 1;
-            serializedObject.ApplyModifiedPropertiesWithoutUndo();
-            serializedObject.Update();
+            _sharedSerializedObject.ApplyModifiedPropertiesWithoutUndo();
+            _sharedSerializedObject.Update();
 
             drawer.InvalidateKeyCache(cacheKey);
 
             SerializableDictionaryPropertyDrawer.DuplicateKeyState refreshedState =
                 drawer.RefreshDuplicateState(cacheKey, keysProperty, typeof(int));
-            Assert.IsNotNull(refreshedState, "Refreshed state should be returned.");
+            Assert.IsTrue(refreshedState != null, "Refreshed state should be returned.");
             Assert.IsTrue(
                 refreshedState.HasDuplicates,
                 "After invalidation and edit, duplicates should be detected."
@@ -6725,8 +6709,8 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             // RefreshNullKeyState returns null when there are no null keys (this is correct behavior)
             SerializableDictionaryPropertyDrawer.NullKeyState initialState =
                 drawer.RefreshNullKeyState(cacheKey, keysProperty, typeof(GameObject));
-            Assert.IsNull(
-                initialState,
+            Assert.IsTrue(
+                initialState == null,
                 "Initial state should be null when no null keys exist (RefreshNullKeyState returns null for clean dictionaries)."
             );
 
@@ -6758,8 +6742,8 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             // After invalidation with null key present, state should be returned and show null keys
             SerializableDictionaryPropertyDrawer.NullKeyState refreshedState =
                 drawer.RefreshNullKeyState(cacheKey, keysProperty, typeof(GameObject));
-            Assert.IsNotNull(
-                refreshedState,
+            Assert.IsTrue(
+                refreshedState != null,
                 $"Refreshed state should be returned when null keys exist. "
                     + $"CacheKey: '{cacheKey}', KeysArraySize: {keysProperty.arraySize}, "
                     + $"Key0IsNull: {keysProperty.GetArrayElementAtIndex(0).objectReferenceValue == null}"
@@ -6802,7 +6786,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 keysProperty,
                 typeof(GameObject)
             );
-            Assert.IsNull(state1, "Initial state should be null (no null keys).");
+            Assert.IsTrue(state1 == null, "Initial state should be null (no null keys).");
 
             // Multiple consecutive invalidations without changes
             drawer.InvalidateKeyCache(cacheKey);
@@ -6815,8 +6799,8 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 keysProperty,
                 typeof(GameObject)
             );
-            Assert.IsNull(
-                state2,
+            Assert.IsTrue(
+                state2 == null,
                 "State should be null after multiple invalidations with no null keys."
             );
 
@@ -6834,7 +6818,10 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 keysProperty,
                 typeof(GameObject)
             );
-            Assert.IsNotNull(state3, "State should be returned after invalidations with null key.");
+            Assert.IsTrue(
+                state3 != null,
+                "State should be returned after invalidations with null key."
+            );
             Assert.IsTrue(state3.HasNullKeys, "Should detect null key.");
         }
 
@@ -6882,8 +6869,8 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 
                 SerializableDictionaryPropertyDrawer.NullKeyState nullState =
                     drawer.RefreshNullKeyState(cacheKey, keysProperty, typeof(GameObject));
-                Assert.IsNotNull(
-                    nullState,
+                Assert.IsTrue(
+                    nullState != null,
                     $"Cycle {cycle}: State should be returned when key is null."
                 );
                 Assert.IsTrue(nullState.HasNullKeys, $"Cycle {cycle}: HasNullKeys should be true.");
@@ -6897,8 +6884,8 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 
                 SerializableDictionaryPropertyDrawer.NullKeyState validState =
                     drawer.RefreshNullKeyState(cacheKey, keysProperty, typeof(GameObject));
-                Assert.IsNull(
-                    validState,
+                Assert.IsTrue(
+                    validState == null,
                     $"Cycle {cycle}: State should be null when key is valid."
                 );
             }
@@ -6941,7 +6928,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                     keysPropDuplicate,
                     typeof(int)
                 );
-            Assert.IsNotNull(dupState1, "DuplicateKeyState is always returned.");
+            Assert.IsTrue(dupState1 != null, "DuplicateKeyState is always returned.");
             Assert.IsFalse(dupState1.HasDuplicates, "Should not have duplicates initially.");
 
             // Introduce duplicate
@@ -6956,7 +6943,10 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                     keysPropDuplicate,
                     typeof(int)
                 );
-            Assert.IsNotNull(dupState2, "DuplicateKeyState should be returned after invalidation.");
+            Assert.IsTrue(
+                dupState2 != null,
+                "DuplicateKeyState should be returned after invalidation."
+            );
             Assert.IsTrue(dupState2.HasDuplicates, "Should detect duplicates after invalidation.");
 
             // Now test NullKeyState (should behave the same way after fix)
@@ -6988,7 +6978,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             // Initial state - no null keys (returns null, unlike DuplicateKeyState)
             SerializableDictionaryPropertyDrawer.NullKeyState nullState1 =
                 drawerNull.RefreshNullKeyState(cacheKeyNull, keysPropNull, typeof(GameObject));
-            Assert.IsNull(nullState1, "NullKeyState returns null when no null keys exist.");
+            Assert.IsTrue(nullState1 == null, "NullKeyState returns null when no null keys exist.");
 
             // Introduce null key
             keysPropNull.GetArrayElementAtIndex(0).objectReferenceValue = null;
@@ -6998,8 +6988,8 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 
             SerializableDictionaryPropertyDrawer.NullKeyState nullState2 =
                 drawerNull.RefreshNullKeyState(cacheKeyNull, keysPropNull, typeof(GameObject));
-            Assert.IsNotNull(
-                nullState2,
+            Assert.IsTrue(
+                nullState2 != null,
                 "NullKeyState should be returned after invalidation when null keys exist "
                     + "(parallel behavior to DuplicateKeyState)."
             );
@@ -7023,12 +7013,15 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 
             SerializableDictionaryPropertyDrawer.NullKeyState nullResult =
                 drawer.RefreshNullKeyState(null, keysProperty, typeof(GameObject));
-            Assert.IsNull(nullResult, "RefreshNullKeyState should return null for null cacheKey.");
+            Assert.IsTrue(
+                nullResult == null,
+                "RefreshNullKeyState should return null for null cacheKey."
+            );
 
             SerializableDictionaryPropertyDrawer.NullKeyState emptyResult =
                 drawer.RefreshNullKeyState(string.Empty, keysProperty, typeof(GameObject));
-            Assert.IsNull(
-                emptyResult,
+            Assert.IsTrue(
+                emptyResult == null,
                 "RefreshNullKeyState should return null for empty cacheKey."
             );
         }
@@ -7040,13 +7033,11 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         )
         {
             // Test that value types (which cannot be null) return null from RefreshNullKeyState
-            TestDictionaryHost host = CreateScriptableObject<TestDictionaryHost>();
-            host.dictionary[1] = "One";
-            host.dictionary[2] = "Two";
+            _sharedHost.dictionary[1] = "One";
+            _sharedHost.dictionary[2] = "Two";
 
-            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
-            serializedObject.Update();
-            SerializedProperty dictionaryProperty = serializedObject.FindProperty(
+            _sharedSerializedObject.Update();
+            SerializedProperty dictionaryProperty = _sharedSerializedObject.FindProperty(
                 nameof(TestDictionaryHost.dictionary)
             );
             SerializedProperty keysProperty = dictionaryProperty.FindPropertyRelative(
@@ -7068,8 +7059,8 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 keysProperty,
                 keyType
             );
-            Assert.IsNull(
-                result,
+            Assert.IsTrue(
+                result == null,
                 $"RefreshNullKeyState should return null for non-nullable key type {keyType.Name}."
             );
         }
@@ -7117,7 +7108,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 keysProperty,
                 typeof(GameObject)
             );
-            Assert.IsNotNull(result, "Should return state when null keys exist.");
+            Assert.IsTrue(result != null, "Should return state when null keys exist.");
             Assert.IsTrue(
                 result.HasNullKeys,
                 "HasNullKeys should be true with multiple null keys."
@@ -7160,8 +7151,8 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             // Verify null key is detected
             SerializableDictionaryPropertyDrawer.NullKeyState initialState =
                 drawer.RefreshNullKeyState(cacheKey, keysProperty, typeof(GameObject));
-            Assert.IsNotNull(
-                initialState,
+            Assert.IsTrue(
+                initialState != null,
                 "Initial state should be returned when null key exists."
             );
             Assert.IsTrue(initialState.HasNullKeys, "HasNullKeys should be true initially.");
@@ -7178,8 +7169,8 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializableDictionaryPropertyDrawer.NullKeyState afterFixState =
                 drawer.RefreshNullKeyState(cacheKey, keysProperty, typeof(GameObject));
             // When there are no null keys, the method returns null
-            Assert.IsNull(
-                afterFixState,
+            Assert.IsTrue(
+                afterFixState == null,
                 "State should be null when no null keys exist (clean state returns null)."
             );
         }
@@ -7310,14 +7301,12 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         [Test]
         public void MultipleKeyEditsInSuccessionMaintainCorrectDuplicateState()
         {
-            TestDictionaryHost host = CreateScriptableObject<TestDictionaryHost>();
-            host.dictionary[1] = "A";
-            host.dictionary[2] = "B";
-            host.dictionary[3] = "C";
+            _sharedHost.dictionary[1] = "A";
+            _sharedHost.dictionary[2] = "B";
+            _sharedHost.dictionary[3] = "C";
 
-            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
-            serializedObject.Update();
-            SerializedProperty dictionaryProperty = serializedObject.FindProperty(
+            _sharedSerializedObject.Update();
+            SerializedProperty dictionaryProperty = _sharedSerializedObject.FindProperty(
                 nameof(TestDictionaryHost.dictionary)
             );
             SerializedProperty keysProperty = dictionaryProperty.FindPropertyRelative(
@@ -7339,8 +7328,8 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             Assert.IsFalse(state1.HasDuplicates, "Cycle 1: No duplicates.");
 
             keysProperty.GetArrayElementAtIndex(0).intValue = 2;
-            serializedObject.ApplyModifiedPropertiesWithoutUndo();
-            serializedObject.Update();
+            _sharedSerializedObject.ApplyModifiedPropertiesWithoutUndo();
+            _sharedSerializedObject.Update();
             drawer.InvalidateKeyCache(cacheKey);
 
             SerializableDictionaryPropertyDrawer.DuplicateKeyState state2 =
@@ -7348,8 +7337,8 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             Assert.IsTrue(state2.HasDuplicates, "Cycle 2: Keys 0 and 1 should be duplicates.");
 
             keysProperty.GetArrayElementAtIndex(2).intValue = 2;
-            serializedObject.ApplyModifiedPropertiesWithoutUndo();
-            serializedObject.Update();
+            _sharedSerializedObject.ApplyModifiedPropertiesWithoutUndo();
+            _sharedSerializedObject.Update();
             drawer.InvalidateKeyCache(cacheKey);
 
             SerializableDictionaryPropertyDrawer.DuplicateKeyState state3 =
@@ -7359,8 +7348,8 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             keysProperty.GetArrayElementAtIndex(0).intValue = 10;
             keysProperty.GetArrayElementAtIndex(1).intValue = 20;
             keysProperty.GetArrayElementAtIndex(2).intValue = 30;
-            serializedObject.ApplyModifiedPropertiesWithoutUndo();
-            serializedObject.Update();
+            _sharedSerializedObject.ApplyModifiedPropertiesWithoutUndo();
+            _sharedSerializedObject.Update();
             drawer.InvalidateKeyCache(cacheKey);
 
             SerializableDictionaryPropertyDrawer.DuplicateKeyState state4 =
@@ -7432,7 +7421,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         public void DuplicateKeyStateIsDirtyPropertyIsTrueAfterMarkDirty()
         {
             SerializableDictionaryPropertyDrawer.DuplicateKeyState state = new();
-            Assert.IsNotNull(state, "Should be able to create DuplicateKeyState instance.");
+            Assert.IsTrue(state != null, "Should be able to create DuplicateKeyState instance.");
 
             bool initialDirty = state.IsDirty;
             Assert.IsTrue(initialDirty, "IsDirty should be true initially (lastArraySize == -1).");
@@ -7523,7 +7512,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         public void NullKeyStateIsDirtyPropertyIsTrueAfterMarkDirty()
         {
             SerializableDictionaryPropertyDrawer.NullKeyState state = new();
-            Assert.IsNotNull(state, "Should be able to create NullKeyState instance.");
+            Assert.IsTrue(state != null, "Should be able to create NullKeyState instance.");
 
             bool initialDirty = state.IsDirty;
             Assert.IsTrue(initialDirty, "IsDirty should be true initially (lastArraySize == -1).");

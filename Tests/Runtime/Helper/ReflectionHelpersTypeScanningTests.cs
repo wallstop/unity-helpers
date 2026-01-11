@@ -39,7 +39,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         {
             string aqn = typeof(PrewarmTesterComponent).AssemblyQualifiedName;
             Type t = ReflectionHelpers.TryResolveType(aqn);
-            Assert.IsNotNull(t, "Resolution by assembly qualified name returned null.");
+            Assert.IsTrue(t != null, "Resolution by assembly qualified name returned null.");
             Assert.AreEqual(typeof(PrewarmTesterComponent), t);
         }
 
@@ -48,7 +48,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         {
             string fullName = typeof(PrewarmTesterComponent).FullName;
             Type t = ReflectionHelpers.TryResolveType(fullName);
-            Assert.IsNotNull(t, "Resolution by full name returned null.");
+            Assert.IsTrue(t != null, "Resolution by full name returned null.");
             Assert.AreEqual(typeof(PrewarmTesterComponent), t);
         }
 
@@ -56,8 +56,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         public void GetTypesFromAssemblyNullReturnsEmpty()
         {
             Type[] types = ReflectionHelpers.GetTypesFromAssembly(null);
-            Assert.IsNotNull(
-                types,
+            Assert.IsTrue(
+                types != null,
                 "GetTypesFromAssembly should return non-null array for null input"
             );
             Assert.AreEqual(0, types.Length, "Expected empty array for null assembly.");

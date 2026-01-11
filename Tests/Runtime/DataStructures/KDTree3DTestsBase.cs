@@ -47,7 +47,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         {
             List<Vector3> points = new();
             KdTree3D<Vector3> tree = CreateTree(points);
-            Assert.IsNotNull(tree);
+            Assert.IsTrue(tree != null);
 
             List<Vector3> results = new();
             tree.GetElementsInRange(Vector3.zero, 100f, results);

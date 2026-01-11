@@ -32,7 +32,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
         private static T RoundTrip<T>(T value)
         {
             byte[] bytes = Serializer.ProtoSerialize(value);
-            Assert.IsNotNull(bytes, "Protobuf should produce bytes");
+            Assert.IsTrue(bytes != null, "Protobuf should produce bytes");
             Assert.Greater(bytes.Length, 0, "Protobuf should produce non-empty bytes");
             return Serializer.ProtoDeserialize<T>(bytes);
         }

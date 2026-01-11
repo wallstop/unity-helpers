@@ -27,11 +27,12 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
     [TestFixture]
     [NUnit.Framework.Category("Slow")]
     [NUnit.Framework.Category("Integration")]
-    public sealed class WButtonConflictingDrawOrderTests : CommonTestBase
+    public sealed class WButtonConflictingDrawOrderTests : BatchedEditorTestBase
     {
         [SetUp]
         public void SetUp()
         {
+            base.BaseSetUp();
             WButtonGUI.ClearGroupDataForTesting();
             WButtonGUI.ClearConflictingDrawOrderWarningsForTesting();
             WButtonGUI.ClearConflictWarningContentCacheForTesting();
@@ -41,11 +42,11 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
         [TearDown]
         public override void TearDown()
         {
-            base.TearDown();
             WButtonGUI.ClearGroupDataForTesting();
             WButtonGUI.ClearConflictingDrawOrderWarningsForTesting();
             WButtonGUI.ClearConflictWarningContentCacheForTesting();
             WButtonGUI.ClearContextCache();
+            base.TearDown();
         }
 
         [Test]
@@ -74,6 +75,11 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
                 .Keys.Where(k => k._groupName == "Setup")
                 .ToList();
 
+            Assert.That(
+                setupGroups,
+                Is.Not.Empty,
+                $"Expected to find 'Setup' group but found: [{string.Join(", ", groupCounts.Keys.Select(k => $"'{k._groupName}'"))}]"
+            );
             Assert.That(setupGroups, Has.Count.EqualTo(1), "Should have exactly one 'Setup' group");
             Assert.That(
                 groupCounts[setupGroups[0]],

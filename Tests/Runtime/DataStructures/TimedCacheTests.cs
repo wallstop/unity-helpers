@@ -85,7 +85,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             );
 
             string value = cache.Value;
-            Assert.IsNull(value, "Value should be null when producer returns null");
+            Assert.IsTrue(value == null, "Value should be null when producer returns null");
             Assert.AreEqual(1, producerCalls);
         }
 
@@ -845,17 +845,20 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
                 1f
             );
 
-            Assert.IsNull(nullCache.Value, "Null cache value should be null");
-            Assert.IsNull(
-                defaultCache.Value,
+            Assert.IsTrue(nullCache.Value == null, "Null cache value should be null");
+            Assert.IsTrue(
+                defaultCache.Value == null,
                 "Default cache value should be null for reference types"
             );
             Assert.AreEqual(1, nullProducerCalls);
             Assert.AreEqual(1, defaultProducerCalls);
 
             // Both should cache the null/default value
-            Assert.IsNull(nullCache.Value, "Null cache should return cached null value");
-            Assert.IsNull(defaultCache.Value, "Default cache should return cached null value");
+            Assert.IsTrue(nullCache.Value == null, "Null cache should return cached null value");
+            Assert.IsTrue(
+                defaultCache.Value == null,
+                "Default cache should return cached null value"
+            );
             Assert.AreEqual(1, nullProducerCalls);
             Assert.AreEqual(1, defaultProducerCalls);
         }

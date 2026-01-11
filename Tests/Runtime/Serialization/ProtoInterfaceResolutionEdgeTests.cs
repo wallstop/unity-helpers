@@ -37,7 +37,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
             // After registration, it should succeed
             Serializer.RegisterProtobufRoot<IWidget, Widget>();
             IWidget round = Serializer.ProtoDeserialize<IWidget>(data);
-            Assert.IsNotNull(round, "Deserialized instance should not be null");
+            Assert.IsTrue(round != null, "Deserialized instance should not be null");
             Assert.IsInstanceOf<Widget>(round);
             Widget w = (Widget)round;
             Assert.AreEqual(3, w.Id);

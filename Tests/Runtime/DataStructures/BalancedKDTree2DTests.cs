@@ -46,7 +46,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         {
             List<Vector2> points = new();
             KdTree2D<Vector2> tree = CreateTree(points);
-            Assert.IsNotNull(tree);
+            Assert.IsTrue(tree != null);
 
             List<Vector2> results = new();
             tree.GetElementsInRange(Vector2.zero, 10000f, results);
@@ -60,7 +60,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             List<Vector2> points = new() { point };
             KdTree2D<Vector2> tree = CreateTree(points);
 
-            Assert.IsNotNull(tree);
+            Assert.IsTrue(tree != null);
 
             List<Vector2> results = new();
             tree.GetElementsInRange(point, 10000f, results);
@@ -331,7 +331,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             KdTree2D<Vector2> tree = CreateTree(points);
 
             // Verify tree was created successfully
-            Assert.IsNotNull(tree);
+            Assert.IsTrue(tree != null);
 
             // Verify all points are stored in the tree
             Assert.AreEqual(100, tree.elements.Length);
@@ -381,7 +381,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             KdTree2D<Vector2> tree = CreateTree(points);
 
             // Verify tree was created successfully
-            Assert.IsNotNull(tree);
+            Assert.IsTrue(tree != null);
 
             // Verify all points are stored in the tree
             Assert.AreEqual(100, tree.elements.Length);

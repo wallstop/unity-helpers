@@ -22,8 +22,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Random
             }
 
             RandomState snapshot = original.InternalState;
-            Assert.IsNotNull(
-                snapshot.PayloadBytes,
+            Assert.IsTrue(
+                snapshot.PayloadBytes != null,
                 "PayloadBytes should not be null for DotNetRandom snapshot"
             );
             Assert.GreaterOrEqual(snapshot.PayloadBytes.Count, 12);

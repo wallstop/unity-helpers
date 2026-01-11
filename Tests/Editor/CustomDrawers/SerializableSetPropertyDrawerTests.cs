@@ -13,6 +13,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
     using UnityEngine;
     using UnityEngine.TestTools;
     using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
+    using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Editor.CustomDrawers;
     using WallstopStudios.UnityHelpers.Editor.Settings;
     using WallstopStudios.UnityHelpers.Editor.Utils;
@@ -21,11 +22,67 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
     using WallstopStudios.UnityHelpers.Tests.EditorFramework;
     using Object = UnityEngine.Object;
 
+    // TODO: Consolidate
     [TestFixture]
     [NUnit.Framework.Category("Slow")]
     [NUnit.Framework.Category("Integration")]
-    public sealed class SerializableSetPropertyDrawerTests : CommonTestBase
+    public sealed class SerializableSetPropertyDrawerTests : BatchedEditorTestBase
     {
+        private StringSetHost _sharedHost;
+        private SerializedObject _sharedSerializedObject;
+
+        [SetUp]
+        public override void BaseSetUp()
+        {
+            _sharedHost = CreateScriptableObject<StringSetHost>();
+            _sharedSerializedObject = new SerializedObject(_sharedHost);
+            GroupGUIWidthUtility.ResetForTests();
+            SerializableSetPropertyDrawer.ResetLayoutTrackingForTests();
+            SerializableSetPropertyDrawer.ClearMainFoldoutAnimCacheForTests();
+            ResetHostState();
+            base.BaseSetUp();
+        }
+
+        [TearDown]
+        public override void TearDown()
+        {
+            base.TearDown();
+            if (_sharedSerializedObject != null)
+            {
+                _sharedSerializedObject.Dispose();
+                _sharedSerializedObject = null;
+            }
+
+            _sharedHost.Destroy();
+        }
+
+        /// <summary>
+        /// Resets the shared host state between tests to ensure test isolation.
+        /// </summary>
+        private void ResetHostState()
+        {
+            // Diagnostic: Verify SerializedObject is still valid
+            Assert.IsNotNull(
+                _sharedSerializedObject,
+                "SerializedObject was disposed or null - check OneTimeTearDown ordering"
+            );
+            Assert.IsTrue(
+                _sharedSerializedObject.targetObject != null,
+                "SerializedObject's target was destroyed - check disposal order"
+            );
+
+            _sharedHost.set.Clear();
+            _sharedSerializedObject.Update();
+            SerializedProperty setProperty = _sharedSerializedObject.FindProperty(
+                nameof(StringSetHost.set)
+            );
+            if (setProperty != null)
+            {
+                setProperty.isExpanded = false;
+                _sharedSerializedObject.ApplyModifiedPropertiesWithoutUndo();
+            }
+        }
+
         [Serializable]
         private sealed class CloneableSample
         {
@@ -200,8 +257,8 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             pending.value = "ManualEntry";
 
             ISerializableSetInspector inspector = host.set;
-            Assert.IsNotNull(
-                inspector,
+            Assert.IsTrue(
+                inspector != null,
                 "Expected inspector implementation on SerializableHashSet."
             );
 
@@ -221,7 +278,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             );
             Assert.AreEqual(1, itemsProperty.arraySize);
             Assert.AreEqual("ManualEntry", itemsProperty.GetArrayElementAtIndex(0).stringValue);
-            Assert.IsNull(pending.errorMessage);
+            Assert.IsTrue(pending.errorMessage == null);
             Assert.IsFalse(pending.isExpanded);
         }
 
@@ -343,8 +400,8 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             );
 
             Assert.IsTrue(committed, "Commit should succeed.");
-            Assert.IsNotNull(
-                pending.value,
+            Assert.IsTrue(
+                pending.value != null,
                 "Pending value should be a new default instance, not null."
             );
             Assert.AreNotSame(
@@ -516,7 +573,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 pending.value,
                 "Pending value should NOT be reset when commit fails."
             );
-            Assert.IsNotNull(pending.errorMessage, "Error message should be set on failure.");
+            Assert.IsTrue(pending.errorMessage != null, "Error message should be set on failure.");
         }
 
         [Test]
@@ -555,8 +612,8 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             );
 
             Assert.IsFalse(committed, "Commit should fail for null value on non-nullable type.");
-            Assert.IsNull(
-                pending.value,
+            Assert.IsTrue(
+                pending.value == null,
                 "Pending value should remain null when commit fails due to null check."
             );
         }
@@ -597,8 +654,8 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             );
 
             Assert.IsTrue(committed, "Commit should succeed.");
-            Assert.IsNull(
-                pending.errorMessage,
+            Assert.IsTrue(
+                pending.errorMessage == null,
                 "Error message should be cleared after successful commit."
             );
         }
@@ -985,7 +1042,10 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 inspector
             );
             Assert.IsFalse(secondCommit, "Second zero commit should fail as duplicate.");
-            Assert.IsNotNull(pending.errorMessage, "Error message should be set for duplicate.");
+            Assert.IsTrue(
+                pending.errorMessage != null,
+                "Error message should be set for duplicate."
+            );
         }
 
         [Test]
@@ -1033,7 +1093,10 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 inspector
             );
             Assert.IsFalse(secondCommit, "Second empty string commit should fail as duplicate.");
-            Assert.IsNotNull(pending.errorMessage, "Error message should be set for duplicate.");
+            Assert.IsTrue(
+                pending.errorMessage != null,
+                "Error message should be set for duplicate."
+            );
         }
 
         [Test]
@@ -1190,7 +1253,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 isSortedSet: false
             );
 
-            Assert.IsNotNull(pending.value);
+            Assert.IsTrue(pending.value != null);
             Assert.IsInstanceOf<PrivateCtorElement>(pending.value);
         }
 
@@ -1212,8 +1275,8 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 isSortedSet: false
             );
 
-            Assert.IsNull(
-                pending.value,
+            Assert.IsTrue(
+                pending.value == null,
                 "UnityEngine.Object entries should start null so inspectors rely on object pickers."
             );
         }
@@ -1235,8 +1298,8 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 );
             });
 
-            Assert.IsNull(
-                pending.valueWrapper,
+            Assert.IsTrue(
+                pending.valueWrapper == null,
                 "ScriptableObject values should rely on object pickers rather than PendingValueWrappers."
             );
         }
@@ -1260,13 +1323,16 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             });
 
             Assert.IsInstanceOf<int>(pending.value, "Primitive values should remain ints.");
-            Assert.IsNull(pending.valueWrapper, "Primitive values should not allocate wrappers.");
-            Assert.IsNull(
-                pending.valueWrapperSerialized,
+            Assert.IsTrue(
+                pending.valueWrapper == null,
+                "Primitive values should not allocate wrappers."
+            );
+            Assert.IsTrue(
+                pending.valueWrapperSerialized == null,
                 "Primitive values should not allocate serialized wrappers."
             );
-            Assert.IsNull(
-                pending.valueWrapperProperty,
+            Assert.IsTrue(
+                pending.valueWrapperProperty == null,
                 "Primitive values should not allocate wrapper properties."
             );
         }
@@ -1295,7 +1361,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 SerializableSetPropertyDrawer.CloneComplexValue(sample, typeof(CloneableSample))
                 as CloneableSample;
 
-            Assert.IsNotNull(clone, "Deep clone should produce an instance of the same type.");
+            Assert.IsTrue(clone != null, "Deep clone should produce an instance of the same type.");
             Assert.AreNotSame(sample, clone, "Clone should not reference the original object.");
             Assert.AreEqual(sample.number, clone.number);
             Assert.AreEqual(sample.label, clone.label);
@@ -1384,8 +1450,8 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         {
             StringSetHost host = CreateScriptableObject<StringSetHost>();
             ISerializableSetInspector inspector = host.set;
-            Assert.IsNotNull(
-                inspector,
+            Assert.IsTrue(
+                inspector != null,
                 "Expected inspector implementation on SerializableHashSet."
             );
 
@@ -1914,7 +1980,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializableSetPropertyDrawer drawer = new();
             ReorderableList list = drawer.GetOrCreateList(setProperty);
 
-            Assert.IsNotNull(list.onReorderCallbackWithDetails, "Expected reorder callback.");
+            Assert.IsTrue(list.onReorderCallbackWithDetails != null, "Expected reorder callback.");
             SimulateReorderableListMove(list, 0, 2);
             list.onReorderCallbackWithDetails.Invoke(list, 0, 2);
 
@@ -1952,7 +2018,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializableSetPropertyDrawer drawer = new();
             ReorderableList list = drawer.GetOrCreateList(setProperty);
 
-            Assert.IsNotNull(list.onReorderCallbackWithDetails, "Expected reorder callback.");
+            Assert.IsTrue(list.onReorderCallbackWithDetails != null, "Expected reorder callback.");
             SimulateReorderableListMove(list, 2, 0);
             list.onReorderCallbackWithDetails.Invoke(list, 2, 0);
 
@@ -2422,7 +2488,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 SerializableHashSetSerializedPropertyNames.Items
             );
 
-            Assert.IsNotNull(itemsProperty);
+            Assert.IsTrue(itemsProperty != null);
             Assert.AreEqual(2, itemsProperty.arraySize);
             AssertPlaceholderIsNull(itemsProperty.GetArrayElementAtIndex(0));
             AssertPlaceholderIsNull(itemsProperty.GetArrayElementAtIndex(1));
@@ -2458,7 +2524,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 SerializableHashSetSerializedPropertyNames.Items
             );
 
-            Assert.IsNotNull(itemsProperty);
+            Assert.IsTrue(itemsProperty != null);
             Assert.AreEqual(1, itemsProperty.arraySize);
             Assert.AreEqual(1, host.set.Count);
         }
@@ -2481,7 +2547,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializedProperty itemsProperty = setProperty.FindPropertyRelative(
                 SerializableHashSetSerializedPropertyNames.Items
             );
-            Assert.IsNotNull(itemsProperty);
+            Assert.IsTrue(itemsProperty != null);
             Assert.AreEqual(3, itemsProperty.arraySize);
 
             SerializableSetPropertyDrawer drawer = new();
@@ -2535,7 +2601,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializedProperty itemsProperty = setProperty.FindPropertyRelative(
                 SerializableHashSetSerializedPropertyNames.Items
             );
-            Assert.IsNotNull(itemsProperty);
+            Assert.IsTrue(itemsProperty != null);
             Assert.AreEqual(3, itemsProperty.arraySize);
 
             SerializableSetPropertyDrawer drawer = new();
@@ -4389,7 +4455,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 
             SerializableSetPropertyDrawer.SetListRenderContext context =
                 drawer.GetOrCreateListContext(listKey);
-            Assert.IsNotNull(context, "Context should be created.");
+            Assert.IsTrue(context != null, "Context should be created.");
 
             context.needsDuplicateRefresh = true;
             Assert.IsTrue(context.needsDuplicateRefresh, "Flag should be set to true.");

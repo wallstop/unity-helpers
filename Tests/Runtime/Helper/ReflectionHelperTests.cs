@@ -880,13 +880,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         public void GetArrayCreator()
         {
             Func<int, Array> arrayCreator = ReflectionHelpers.GetArrayCreator(typeof(int));
-            Assert.IsNotNull(arrayCreator, "Array creator should not be null");
+            Assert.IsTrue(arrayCreator != null, "Array creator should not be null");
 
             for (int i = 0; i < 10; ++i)
             {
                 int size = PRNG.Instance.Next(1, 100);
                 Array created = arrayCreator(size);
-                Assert.IsNotNull(created, "Created array should not be null");
+                Assert.IsTrue(created != null, "Created array should not be null");
                 Assert.AreEqual(size, created.Length);
                 Assert.IsTrue(created is int[]);
             }
@@ -896,12 +896,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         public void GetListCreator()
         {
             Func<IList> listCreator = ReflectionHelpers.GetListCreator(typeof(string));
-            Assert.IsNotNull(listCreator, "List creator should not be null");
+            Assert.IsTrue(listCreator != null, "List creator should not be null");
 
             for (int i = 0; i < 10; ++i)
             {
                 IList created = listCreator();
-                Assert.IsNotNull(created, "Created list should not be null");
+                Assert.IsTrue(created != null, "Created list should not be null");
                 Assert.AreEqual(0, created.Count);
                 Assert.IsTrue(created is List<string>);
             }
@@ -913,13 +913,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             Func<int, IList> listCreator = ReflectionHelpers.GetListWithCapacityCreator(
                 typeof(bool)
             );
-            Assert.IsNotNull(listCreator);
+            Assert.IsTrue(listCreator != null);
 
             for (int i = 0; i < 10; ++i)
             {
                 int capacity = PRNG.Instance.Next(1, 100);
                 IList created = listCreator(capacity);
-                Assert.IsNotNull(created);
+                Assert.IsTrue(created != null);
                 Assert.AreEqual(0, created.Count);
                 Assert.IsTrue(created is List<bool>);
                 Assert.AreEqual(capacity, ((List<bool>)created).Capacity);
@@ -935,12 +935,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             MethodInfo method = typeof(TestMethodClass).GetMethod(
                 nameof(TestMethodClass.StaticVoidMethod)
             );
-            Assert.IsNotNull(method);
+            Assert.IsTrue(method != null);
 
             int initialCount = TestMethodClass.StaticMethodCallCount;
             object result = ReflectionHelpers.InvokeStaticMethod(method);
 
-            Assert.IsNull(result);
+            Assert.IsTrue(result == null);
             Assert.AreEqual(initialCount + 1, TestMethodClass.StaticMethodCallCount);
         }
 
@@ -1012,7 +1012,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
                 nameof(TestMethodClass.InstanceMethodWithParam)
             );
 
-            Assert.IsNull(ReflectionHelpers.InvokeMethod(voidMethod, testObj));
+            Assert.IsTrue(ReflectionHelpers.InvokeMethod(voidMethod, testObj) == null);
             Assert.AreEqual(1, testObj.instanceMethodCallCount);
 
             Assert.AreEqual(100, ReflectionHelpers.InvokeMethod(intMethod, testObj));
@@ -1047,7 +1047,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
                 paramMethod
             );
 
-            Assert.IsNull(voidInvoker(testObj, Array.Empty<object>()));
+            Assert.IsTrue(voidInvoker(testObj, Array.Empty<object>()) == null);
             Assert.AreEqual(1, testObj.instanceMethodCallCount);
 
             Assert.AreEqual(100, intInvoker(testObj, Array.Empty<object>()));
@@ -1081,7 +1081,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
                 paramMethod
             );
 
-            Assert.IsNull(voidInvoker(Array.Empty<object>()));
+            Assert.IsTrue(voidInvoker(Array.Empty<object>()) == null);
             Assert.AreEqual(1, TestMethodClass.StaticMethodCallCount);
 
             Assert.AreEqual(42, intInvoker(Array.Empty<object>()));
@@ -1096,7 +1096,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         {
             TestConstructorClass defaultInstance =
                 ReflectionHelpers.CreateInstance<TestConstructorClass>();
-            Assert.IsNotNull(defaultInstance);
+            Assert.IsTrue(defaultInstance != null);
             Assert.AreEqual(0, defaultInstance.Value1);
             Assert.AreEqual("default", defaultInstance.Value2);
             Assert.AreEqual(false, defaultInstance.Value3);
@@ -1107,7 +1107,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         {
             TestConstructorClass singleParam =
                 ReflectionHelpers.CreateInstance<TestConstructorClass>(42);
-            Assert.IsNotNull(singleParam);
+            Assert.IsTrue(singleParam != null);
             Assert.AreEqual(42, singleParam.Value1);
             Assert.AreEqual("single", singleParam.Value2);
             Assert.AreEqual(false, singleParam.Value3);
@@ -1116,14 +1116,14 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
                 10,
                 "test"
             );
-            Assert.IsNotNull(twoParam);
+            Assert.IsTrue(twoParam != null);
             Assert.AreEqual(10, twoParam.Value1);
             Assert.AreEqual("test", twoParam.Value2);
             Assert.AreEqual(false, twoParam.Value3);
 
             TestConstructorClass threeParam =
                 ReflectionHelpers.CreateInstance<TestConstructorClass>(5, "hello", true);
-            Assert.IsNotNull(threeParam);
+            Assert.IsTrue(threeParam != null);
             Assert.AreEqual(5, threeParam.Value1);
             Assert.AreEqual("hello", threeParam.Value2);
             Assert.AreEqual(true, threeParam.Value3);
@@ -1165,12 +1165,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         {
             Func<TestConstructorClass> constructor =
                 ReflectionHelpers.GetParameterlessConstructor<TestConstructorClass>();
-            Assert.IsNotNull(constructor);
+            Assert.IsTrue(constructor != null);
 
             for (int i = 0; i < 100; i++)
             {
                 TestConstructorClass instance = constructor();
-                Assert.IsNotNull(instance);
+                Assert.IsTrue(instance != null);
                 Assert.AreEqual(0, instance.Value1);
                 Assert.AreEqual("default", instance.Value2);
                 Assert.AreEqual(false, instance.Value3);
@@ -1186,7 +1186,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
                 42
             );
 
-            Assert.IsNotNull(intGeneric);
+            Assert.IsTrue(intGeneric != null);
             Assert.IsInstanceOf<GenericTestClass<int>>(intGeneric);
             Assert.AreEqual(42, ((GenericTestClass<int>)intGeneric).Value);
 
@@ -1196,7 +1196,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
                 "hello"
             );
 
-            Assert.IsNotNull(stringGeneric);
+            Assert.IsTrue(stringGeneric != null);
             Assert.IsInstanceOf<GenericTestClass<string>>(stringGeneric);
             Assert.AreEqual("hello", ((GenericTestClass<string>)stringGeneric).Value);
         }
@@ -1209,10 +1209,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
                 typeof(int)
             );
 
-            Assert.IsNotNull(constructor);
+            Assert.IsTrue(constructor != null);
 
             object instance = constructor();
-            Assert.IsNotNull(instance);
+            Assert.IsTrue(instance != null);
             Assert.IsInstanceOf<GenericTestClass<int>>(instance);
         }
 
@@ -1326,7 +1326,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         public void GetAllLoadedAssemblies()
         {
             Assembly[] assemblies = ReflectionHelpers.GetAllLoadedAssemblies().ToArray();
-            Assert.IsNotNull(assemblies);
+            Assert.IsTrue(assemblies != null);
             Assert.Greater(assemblies.Length, 0);
             Assert.IsTrue(assemblies.All(a => a != null));
             Assert.IsTrue(assemblies.All(a => !a.IsDynamic));
@@ -1336,7 +1336,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         public void GetAllLoadedTypes()
         {
             Type[] types = ReflectionHelpers.GetAllLoadedTypes().Take(100).ToArray();
-            Assert.IsNotNull(types);
+            Assert.IsTrue(types != null);
             Assert.Greater(types.Length, 0);
             Assert.IsTrue(types.All(t => t != null));
         }
@@ -1482,7 +1482,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
                 ReflectionHelpers.BuildParameterlessInstanceMethodIfExists<TestMethodClass>(
                     "Reset"
                 );
-            Assert.IsNotNull(action);
+            Assert.IsTrue(action != null);
             TestMethodClass obj = new();
             TestMethodClass.StaticMethodCallCount = 5;
             obj.instanceMethodCallCount = 4;
@@ -1494,7 +1494,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
                 ReflectionHelpers.BuildParameterlessInstanceMethodIfExists<TestMethodClass>(
                     "DoesNotExist"
                 );
-            Assert.IsNull(missing);
+            Assert.IsTrue(missing == null);
         }
 
         [Test]
@@ -1516,7 +1516,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             Assembly testAssembly = typeof(ReflectionHelperTests).Assembly;
             Type[] types = ReflectionHelpers.GetTypesFromAssembly(testAssembly).ToArray();
 
-            Assert.IsNotNull(types);
+            Assert.IsTrue(types != null);
             Assert.Greater(types.Length, 0);
             Assert.IsTrue(types.Contains(typeof(ReflectionHelperTests)));
             Assert.IsTrue(types.Contains(typeof(TestAttributeClass)));
@@ -1530,7 +1530,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
                 .GetTypesFromAssemblyName("System.Core")
                 .Take(10)
                 .ToArray();
-            Assert.IsNotNull(types);
+            Assert.IsTrue(types != null);
             // May be empty on some platforms, but should not throw
         }
 
@@ -1540,13 +1540,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             Type[] typesWithDescAttr = ReflectionHelpers
                 .GetTypesWithAttribute<DescriptionAttribute>()
                 .ToArray();
-            Assert.IsNotNull(typesWithDescAttr);
+            Assert.IsTrue(typesWithDescAttr != null);
             Assert.IsTrue(typesWithDescAttr.Contains(typeof(TestAttributeClass)));
 
             Type[] typesByType = ReflectionHelpers
                 .GetTypesWithAttribute(typeof(DescriptionAttribute))
                 .ToArray();
-            Assert.IsNotNull(typesByType);
+            Assert.IsTrue(typesByType != null);
             Assert.IsTrue(typesByType.Contains(typeof(TestAttributeClass)));
         }
 
@@ -1605,13 +1605,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
 
             ReflectionTestAttribute classAttr =
                 ReflectionHelpers.GetAttributeSafe<ReflectionTestAttribute>(testType);
-            Assert.IsNotNull(classAttr);
+            Assert.IsTrue(classAttr != null);
             Assert.AreEqual("ClassLevel", classAttr.Name);
             Assert.AreEqual(10, classAttr.Value);
 
             ReflectionTestAttribute fieldAttr =
                 ReflectionHelpers.GetAttributeSafe<ReflectionTestAttribute>(instanceField);
-            Assert.IsNotNull(fieldAttr);
+            Assert.IsTrue(fieldAttr != null);
             Assert.AreEqual("InstanceField", fieldAttr.Name);
             Assert.AreEqual(5, fieldAttr.Value);
 
@@ -1620,13 +1620,15 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
                 testType,
                 typeof(ReflectionTestAttribute)
             );
-            Assert.IsNotNull(classAttrObj);
+            Assert.IsTrue(classAttrObj != null);
             Assert.IsInstanceOf<ReflectionTestAttribute>(classAttrObj);
 
             // Test with null
-            Assert.IsNull(ReflectionHelpers.GetAttributeSafe<ReflectionTestAttribute>(null));
-            Assert.IsNull(
-                ReflectionHelpers.GetAttributeSafe(null, typeof(ReflectionTestAttribute))
+            Assert.IsTrue(
+                ReflectionHelpers.GetAttributeSafe<ReflectionTestAttribute>(null) == null
+            );
+            Assert.IsTrue(
+                ReflectionHelpers.GetAttributeSafe(null, typeof(ReflectionTestAttribute)) == null
             );
         }
 
@@ -1640,7 +1642,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
                 out ReflectionTestAttribute attribute
             );
             Assert.IsTrue(found);
-            Assert.IsNotNull(attribute);
+            Assert.IsTrue(attribute != null);
             Assert.AreEqual("ClassLevel", attribute.Name);
 
             bool missing = ReflectionHelpers.TryGetAttributeSafe(
@@ -1648,14 +1650,14 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
                 out ObsoleteAttribute missingAttribute
             );
             Assert.IsFalse(missing);
-            Assert.IsNull(missingAttribute);
+            Assert.IsTrue(missingAttribute == null);
 
             bool nullProvider = ReflectionHelpers.TryGetAttributeSafe(
                 null,
                 out ReflectionTestAttribute nullAttribute
             );
             Assert.IsFalse(nullProvider);
-            Assert.IsNull(nullAttribute);
+            Assert.IsTrue(nullAttribute == null);
         }
 
         [Test]
@@ -1669,7 +1671,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
                 out Attribute attribute
             );
             Assert.IsTrue(found);
-            Assert.IsNotNull(attribute);
+            Assert.IsTrue(attribute != null);
             Assert.IsInstanceOf<ReflectionTestAttribute>(attribute);
 
             bool missing = ReflectionHelpers.TryGetAttributeSafe(
@@ -1678,7 +1680,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
                 out Attribute missingAttribute
             );
             Assert.IsFalse(missing);
-            Assert.IsNull(missingAttribute);
+            Assert.IsTrue(missingAttribute == null);
 
             bool nullProvider = ReflectionHelpers.TryGetAttributeSafe(
                 null,
@@ -1686,7 +1688,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
                 out Attribute nullAttribute
             );
             Assert.IsFalse(nullProvider);
-            Assert.IsNull(nullAttribute);
+            Assert.IsTrue(nullAttribute == null);
 
             bool nullType = ReflectionHelpers.TryGetAttributeSafe(
                 testType,
@@ -1694,7 +1696,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
                 out Attribute nullTypeAttribute
             );
             Assert.IsFalse(nullType);
-            Assert.IsNull(nullTypeAttribute);
+            Assert.IsTrue(nullTypeAttribute == null);
         }
 
         [Test]
@@ -1708,26 +1710,26 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             ReflectionTestAttribute[] typeAttrs = testType
                 .GetAllAttributesSafe<ReflectionTestAttribute>()
                 .ToArray();
-            Assert.IsNotNull(typeAttrs);
+            Assert.IsTrue(typeAttrs != null);
             Assert.AreEqual(1, typeAttrs.Length);
             Assert.AreEqual("ClassLevel", typeAttrs[0].Name);
 
             ReflectionTestAttribute[] propAttrs = instanceProperty
                 .GetAllAttributesSafe<ReflectionTestAttribute>()
                 .ToArray();
-            Assert.IsNotNull(propAttrs);
+            Assert.IsTrue(propAttrs != null);
             Assert.AreEqual(1, propAttrs.Length);
             Assert.AreEqual("InstanceProperty", propAttrs[0].Name);
 
             // Test non-generic version
             Attribute[] allTypeAttrs = testType.GetAllAttributesSafe().ToArray();
-            Assert.IsNotNull(allTypeAttrs);
+            Assert.IsTrue(allTypeAttrs != null);
             Assert.Greater(allTypeAttrs.Length, 0);
 
             Attribute[] allPropAttrs = instanceProperty
                 .GetAllAttributesSafe(typeof(ReflectionTestAttribute))
                 .ToArray();
-            Assert.IsNotNull(allPropAttrs);
+            Assert.IsTrue(allPropAttrs != null);
             Assert.AreEqual(1, allPropAttrs.Length);
 
             // Test with null
@@ -1744,7 +1746,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             Type testType = typeof(TestAttributeClass);
             Dictionary<string, object> attrValues = testType.GetAllAttributeValuesSafe();
 
-            Assert.IsNotNull(attrValues);
+            Assert.IsTrue(attrValues != null);
             Assert.IsTrue(attrValues.ContainsKey("ReflectionTest"));
             Assert.IsInstanceOf<ReflectionTestAttribute>(attrValues["ReflectionTest"]);
 
@@ -1752,7 +1754,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             Dictionary<string, object> nullResult = ReflectionHelpers.GetAllAttributeValuesSafe(
                 null
             );
-            Assert.IsNotNull(nullResult);
+            Assert.IsTrue(nullResult != null);
             Assert.AreEqual(0, nullResult.Count);
         }
 
@@ -1764,7 +1766,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             MethodInfo[] methods = testType
                 .GetMethodsWithAttributeSafe<ReflectionTestAttribute>()
                 .ToArray();
-            Assert.IsNotNull(methods);
+            Assert.IsTrue(methods != null);
             Assert.Greater(methods.Length, 0);
             Assert.IsTrue(
                 methods.Any(m => m.Name == nameof(TestAttributeClass.StaticMethodWithAttribute))
@@ -1776,7 +1778,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             PropertyInfo[] properties = testType
                 .GetPropertiesWithAttributeSafe<ReflectionTestAttribute>()
                 .ToArray();
-            Assert.IsNotNull(properties);
+            Assert.IsTrue(properties != null);
             Assert.Greater(properties.Length, 0);
             Assert.IsTrue(
                 properties.Any(p =>
@@ -1787,7 +1789,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             FieldInfo[] fields = testType
                 .GetFieldsWithAttributeSafe<ReflectionTestAttribute>()
                 .ToArray();
-            Assert.IsNotNull(fields);
+            Assert.IsTrue(fields != null);
             Assert.Greater(fields.Length, 0);
             Assert.IsTrue(
                 fields.Any(f => f.Name == nameof(TestAttributeClass.StaticFieldWithAttribute))
@@ -1815,12 +1817,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         {
             Dictionary<string, PropertyInfo> staticProperties =
                 ReflectionHelpers.LoadStaticPropertiesForType<TestPropertyClass>();
-            Assert.IsNotNull(staticProperties);
+            Assert.IsTrue(staticProperties != null);
 
             // Note: This method looks for static properties that return the same type as the class
             // Our TestPropertyClass doesn't have static properties that return TestPropertyClass,
             // so the result should be empty, but the method should not throw
-            Assert.IsNotNull(staticProperties);
+            Assert.IsTrue(staticProperties != null);
         }
 
         [Test]
@@ -1828,12 +1830,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         {
             Dictionary<string, FieldInfo> staticFields =
                 ReflectionHelpers.LoadStaticFieldsForType<TestPropertyClass>();
-            Assert.IsNotNull(staticFields);
+            Assert.IsTrue(staticFields != null);
 
             // Note: This method looks for static fields that are of the same type as the class
             // Our TestPropertyClass doesn't have such fields, so the result should be empty,
             // but the method should not throw
-            Assert.IsNotNull(staticFields);
+            Assert.IsTrue(staticFields != null);
         }
 
         [Test]
@@ -1846,19 +1848,19 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
 
             // Test the extension method version
             Assert.IsTrue(testType.IsAttributeDefined(out ReflectionTestAttribute typeAttr));
-            Assert.IsNotNull(typeAttr);
+            Assert.IsTrue(typeAttr != null);
             Assert.AreEqual("ClassLevel", typeAttr.Name);
             Assert.AreEqual(10, typeAttr.Value);
 
             Assert.IsTrue(testField.IsAttributeDefined(out ReflectionTestAttribute fieldAttr));
-            Assert.IsNotNull(fieldAttr);
+            Assert.IsTrue(fieldAttr != null);
             Assert.AreEqual("InstanceField", fieldAttr.Name);
             Assert.AreEqual(5, fieldAttr.Value);
 
             // Test with type that doesn't have the attribute
             Type methodType = typeof(TestMethodClass);
             Assert.IsFalse(methodType.IsAttributeDefined(out ReflectionTestAttribute noAttr));
-            Assert.IsNull(noAttr);
+            Assert.IsTrue(noAttr == null);
         }
 
         [Test]
@@ -2174,7 +2176,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
                 Func<TestConstructorClass> ctor =
                     ReflectionHelpers.GetParameterlessConstructor<TestConstructorClass>();
                 TestConstructorClass instance = ctor();
-                Assert.IsNotNull(instance);
+                Assert.IsTrue(instance != null);
             });
         }
 
@@ -2273,7 +2275,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
                 Func<TestConstructorClass> creator =
                     ReflectionHelpers.GetParameterlessConstructor<TestConstructorClass>();
                 TestConstructorClass instance = creator();
-                Assert.IsNotNull(instance);
+                Assert.IsTrue(instance != null);
                 Assert.AreEqual(0, instance.Value1);
             }
         }
@@ -2784,7 +2786,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
                 string
             >();
             Dictionary<int, string> d2 = typed(capacity);
-            Assert.IsNotNull(d2);
+            Assert.IsTrue(d2 != null);
             Assert.AreEqual(0, d2.Count);
         }
 
@@ -2838,7 +2840,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
                 nameof(TestMethodClass.InstanceVoidMethod)
             );
             object result = ReflectionHelpers.InvokeMethod(m, obj);
-            Assert.IsNull(result);
+            Assert.IsTrue(result == null);
             Assert.AreEqual(1, obj.instanceMethodCallCount);
         }
 

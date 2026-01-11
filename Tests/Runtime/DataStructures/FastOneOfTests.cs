@@ -410,7 +410,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             FastOneOf<int?, string, bool> oneOf = (int?)null;
 
             Assert.IsTrue(oneOf.IsT0);
-            Assert.IsNull(oneOf.AsT0);
+            Assert.IsTrue(oneOf.AsT0 == null);
         }
 
         [Test]
@@ -821,14 +821,14 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         public void DefaultNoneIsValid()
         {
             None none = default;
-            Assert.IsNotNull(none);
+            Assert.IsTrue(none != null);
         }
 
         [Test]
         public void NoneDefaultSingletonIsValid()
         {
             None none = None.Default;
-            Assert.IsNotNull(none);
+            Assert.IsTrue(none != null);
         }
 
         [Test]

@@ -64,7 +64,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         {
             List<Bounds> bounds = new();
             RTree2D<Bounds> tree = CreateTree(bounds);
-            Assert.IsNotNull(tree);
+            Assert.IsTrue(tree != null);
 
             List<Bounds> results = QueryBounds(tree, new Bounds(Vector3.zero, Vector3.one * 1000));
             Assert.AreEqual(0, results.Count);
@@ -80,7 +80,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             List<Bounds> bounds = new() { bound };
             RTree2D<Bounds> tree = CreateTree(bounds);
 
-            Assert.IsNotNull(tree);
+            Assert.IsTrue(tree != null);
 
             List<Bounds> results = QueryBounds(tree, new Bounds(Vector3.zero, Vector3.one * 1000));
             Assert.AreEqual(1, results.Count);
@@ -609,7 +609,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
 
             // Should not throw
             RTree2D<Bounds> tree = CreateTree(bounds);
-            Assert.IsNotNull(tree);
+            Assert.IsTrue(tree != null);
         }
 
         [Test]
@@ -666,7 +666,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             RTree2D<Bounds> tree = CreateTree(bounds);
 
             // Verify tree was created successfully
-            Assert.IsNotNull(tree);
+            Assert.IsTrue(tree != null);
 
             // Verify all bounds are stored in the tree
             Assert.AreEqual(100, tree.elements.Length);
@@ -723,7 +723,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             RTree2D<Bounds> tree = CreateTree(bounds);
 
             // Verify tree was created successfully
-            Assert.IsNotNull(tree);
+            Assert.IsTrue(tree != null);
 
             // Verify all bounds are stored in the tree
             Assert.AreEqual(100, tree.elements.Length);

@@ -99,7 +99,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
 
                 go.Log($"Hello, world!", pretty: pretty);
                 Assert.AreEqual(++expectedLogCount, logCount);
-                Assert.IsNull(exception, exception?.ToString());
+                Assert.IsTrue(exception == null, exception?.ToString());
 
                 SpriteRenderer sr = go.GetComponent<SpriteRenderer>();
 
@@ -120,7 +120,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
                 sr.Log($"Hello, world!", pretty: pretty);
 
                 Assert.AreEqual(++expectedLogCount, logCount);
-                Assert.IsNull(exception, exception?.ToString());
+                Assert.IsTrue(exception == null, exception?.ToString());
             }
             finally
             {
@@ -176,7 +176,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
                 };
                 go.Log($"Hello {"world":#red}", pretty: pretty);
                 Assert.AreEqual(++expectedLogCount, logCount);
-                Assert.IsNull(exception, exception?.ToString());
+                Assert.IsTrue(exception == null, exception?.ToString());
 
                 assertion = message =>
                 {
@@ -196,7 +196,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
                 };
                 go.Log($"Hello {"world":#green}", pretty: pretty);
                 Assert.AreEqual(++expectedLogCount, logCount);
-                Assert.IsNull(exception, exception?.ToString());
+                Assert.IsTrue(exception == null, exception?.ToString());
 
                 assertion = message =>
                 {
@@ -216,7 +216,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
                 };
                 go.Log($"Hello {"world":#FFAABB}", pretty: pretty);
                 Assert.AreEqual(++expectedLogCount, logCount);
-                Assert.IsNull(exception, exception?.ToString());
+                Assert.IsTrue(exception == null, exception?.ToString());
             }
             finally
             {
@@ -269,15 +269,15 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
                 };
                 go.Log($"Hello {"world":b}", pretty: pretty);
                 Assert.AreEqual(++expectedLogCount, logCount);
-                Assert.IsNull(exception, exception?.ToString());
+                Assert.IsTrue(exception == null, exception?.ToString());
 
                 go.Log($"Hello {"world":bold}", pretty: pretty);
                 Assert.AreEqual(++expectedLogCount, logCount);
-                Assert.IsNull(exception, exception?.ToString());
+                Assert.IsTrue(exception == null, exception?.ToString());
 
                 go.Log($"Hello {"world":!}", pretty: pretty);
                 Assert.AreEqual(++expectedLogCount, logCount);
-                Assert.IsNull(exception, exception?.ToString());
+                Assert.IsTrue(exception == null, exception?.ToString());
             }
             finally
             {
@@ -331,7 +331,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
 
                 go.Log($"Hello {new List<string> { "a", "b", "c" }:json}", pretty: pretty);
                 Assert.AreEqual(++expectedLogCount, logCount);
-                Assert.IsNull(exception, exception?.ToString());
+                Assert.IsTrue(exception == null, exception?.ToString());
 
                 assertion = message =>
                 {
@@ -348,7 +348,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
                 };
                 go.Log($"Hello {null:json}", pretty: pretty);
                 Assert.AreEqual(++expectedLogCount, logCount);
-                Assert.IsNull(exception, exception?.ToString());
+                Assert.IsTrue(exception == null, exception?.ToString());
 
                 assertion = message =>
                 {
@@ -365,7 +365,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
                 };
                 go.Log($"Hello {new[] { 1, 2, 3, 4 }:json}", pretty: pretty);
                 Assert.AreEqual(++expectedLogCount, logCount);
-                Assert.IsNull(exception, exception?.ToString());
+                Assert.IsTrue(exception == null, exception?.ToString());
 
                 assertion = message =>
                 {
@@ -385,7 +385,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
                     pretty: pretty
                 );
                 Assert.AreEqual(++expectedLogCount, logCount);
-                Assert.IsNull(exception, exception?.ToString());
+                Assert.IsTrue(exception == null, exception?.ToString());
             }
             finally
             {
@@ -438,11 +438,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
                 };
                 go.Log($"Hello {"world":40}", pretty: pretty);
                 Assert.AreEqual(++expectedLogCount, logCount);
-                Assert.IsNull(exception, exception?.ToString());
+                Assert.IsTrue(exception == null, exception?.ToString());
 
                 go.Log($"Hello {"world":size=40}", pretty: pretty);
                 Assert.AreEqual(++expectedLogCount, logCount);
-                Assert.IsNull(exception, exception?.ToString());
+                Assert.IsTrue(exception == null, exception?.ToString());
             }
             finally
             {
@@ -497,7 +497,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
 
                 go.Log($"Hello {now:O}", pretty: pretty);
                 Assert.AreEqual(++expectedLogCount, logCount);
-                Assert.IsNull(exception, exception?.ToString());
+                Assert.IsTrue(exception == null, exception?.ToString());
 
                 assertion = message =>
                 {
@@ -515,7 +515,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
 
                 go.Log($"Hello {now:40}", pretty: pretty);
                 Assert.AreEqual(++expectedLogCount, logCount);
-                Assert.IsNull(exception, exception?.ToString());
+                Assert.IsTrue(exception == null, exception?.ToString());
             }
             finally
             {
@@ -568,7 +568,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
 
                 go.Log($"Hello {new List<int> { 1, 2, 3 }:json,b}", pretty: pretty);
                 Assert.AreEqual(++expectedLogCount, logCount);
-                Assert.IsNull(exception, exception?.ToString());
+                Assert.IsTrue(exception == null, exception?.ToString());
 
                 assertion = message =>
                 {
@@ -589,7 +589,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
 
                 go.Log($"Hello {new List<int> { 1, 2, 3 }:json,b,color=red}", pretty: pretty);
                 Assert.AreEqual(++expectedLogCount, logCount);
-                Assert.IsNull(exception, exception?.ToString());
+                Assert.IsTrue(exception == null, exception?.ToString());
             }
             finally
             {
@@ -645,7 +645,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
                     pretty: pretty
                 );
                 Assert.AreEqual(++expectedLogCount, logCount);
-                Assert.IsNull(exception, exception?.ToString());
+                Assert.IsTrue(exception == null, exception?.ToString());
 
                 assertion = message =>
                 {
@@ -669,7 +669,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
                     pretty: pretty
                 );
                 Assert.AreEqual(++expectedLogCount, logCount);
-                Assert.IsNull(exception, exception?.ToString());
+                Assert.IsTrue(exception == null, exception?.ToString());
             }
             finally
             {

@@ -313,6 +313,46 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             internal Color _pivotColorOverride;
         }
 
+        /// <summary>
+        /// Holds deferred import data for batch processing during sprite extraction.
+        /// This allows writing all PNG files first, then batching all import operations together.
+        /// </summary>
+        internal readonly struct PendingImportSettings
+        {
+            /// <summary>
+            /// The output path where the sprite was written.
+            /// </summary>
+            internal readonly string OutputPath;
+
+            /// <summary>
+            /// The source texture importer to copy settings from.
+            /// </summary>
+            internal readonly TextureImporter SourceImporter;
+
+            /// <summary>
+            /// The sprite entry data containing pivot, border, and other sprite-specific settings.
+            /// </summary>
+            internal readonly SpriteEntryData Sprite;
+
+            /// <summary>
+            /// The parent sheet entry for additional context.
+            /// </summary>
+            internal readonly SpriteSheetEntry Entry;
+
+            internal PendingImportSettings(
+                string outputPath,
+                TextureImporter sourceImporter,
+                SpriteEntryData sprite,
+                SpriteSheetEntry entry
+            )
+            {
+                OutputPath = outputPath;
+                SourceImporter = sourceImporter;
+                Sprite = sprite;
+                Entry = entry;
+            }
+        }
+
         public enum SortMode
         {
             [Obsolete("Use a specific SortMode value instead of None.")]
@@ -3701,7 +3741,18 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                         combinedScore += 0.03f;
                     }
 
-                    if (combinedScore > bestScore)
+                    // Prefer smaller cell sizes when scores are very close (within epsilon)
+                    // This ensures more granular sprites when both sizes are equally valid
+                    const float scoreEpsilon = 0.01f;
+                    bool significantlyBetter = combinedScore > bestScore + scoreEpsilon;
+                    bool essentiallyEqual =
+                        !significantlyBetter
+                        && combinedScore >= bestScore - scoreEpsilon
+                        && combinedScore <= bestScore + scoreEpsilon;
+                    bool smallerCellSize =
+                        candidateWidth < bestWidth || candidateHeight < bestHeight;
+
+                    if (significantlyBetter || (essentiallyEqual && smallerCellSize))
                     {
                         bestScore = combinedScore;
                         bestWidth = candidateWidth;
@@ -4440,24 +4491,50 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
 
         internal ExtractionMode GetEffectiveExtractionMode(SpriteSheetEntry entry)
         {
+            ExtractionMode mode;
             if (
                 entry == null
                 || entry._useGlobalSettings
                 || !entry._extractionModeOverride.HasValue
             )
             {
-                return _extractionMode;
+                mode = _extractionMode;
             }
-            return entry._extractionModeOverride.Value;
+            else
+            {
+                mode = entry._extractionModeOverride.Value;
+            }
+
+#pragma warning disable CS0618 // Type or member is obsolete
+            if (mode == ExtractionMode.None)
+            {
+                return ExtractionMode.FromMetadata;
+            }
+#pragma warning restore CS0618
+
+            return mode;
         }
 
         internal GridSizeMode GetEffectiveGridSizeMode(SpriteSheetEntry entry)
         {
+            GridSizeMode mode;
             if (entry == null || entry._useGlobalSettings || !entry._gridSizeModeOverride.HasValue)
             {
-                return _gridSizeMode;
+                mode = _gridSizeMode;
             }
-            return entry._gridSizeModeOverride.Value;
+            else
+            {
+                mode = entry._gridSizeModeOverride.Value;
+            }
+
+#pragma warning disable CS0618 // Type or member is obsolete
+            if (mode == GridSizeMode.None)
+            {
+                return GridSizeMode.Auto;
+            }
+#pragma warning restore CS0618
+
+            return mode;
         }
 
         internal int GetEffectiveGridColumns(SpriteSheetEntry entry)
@@ -5501,18 +5578,41 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 return _cachedSortedSprites;
             }
 
-            _cachedSortedSprites ??= new List<SpriteEntryData>();
-            _cachedSortedSprites.Clear();
+            _cachedSortedSprites = ApplySortMode(sprites, currentSortMode, _cachedSortedSprites);
+            _lastSpritesSource = sprites;
+            _lastSortMode = currentSortMode;
+            return _cachedSortedSprites;
+        }
+
+        /// <summary>
+        /// Applies the specified sort mode to a list of sprites, returning a new sorted list.
+        /// </summary>
+        /// <param name="sprites">The source sprites to sort.</param>
+        /// <param name="sortMode">The sort mode to apply.</param>
+        /// <param name="outputList">Optional pre-allocated list to reuse. If null, a new list is created.</param>
+        /// <returns>A sorted copy of the sprites list (does not modify the original).</returns>
+        /// <remarks>
+        /// This method is internal for testability. It creates a copy of the input list and sorts
+        /// the copy, leaving the original list unchanged.
+        /// </remarks>
+        internal static List<SpriteEntryData> ApplySortMode(
+            List<SpriteEntryData> sprites,
+            SortMode sortMode,
+            List<SpriteEntryData> outputList = null
+        )
+        {
+            outputList ??= new List<SpriteEntryData>();
+            outputList.Clear();
 
             for (int i = 0; i < sprites.Count; ++i)
             {
-                _cachedSortedSprites.Add(sprites[i]);
+                outputList.Add(sprites[i]);
             }
 
-            switch (currentSortMode)
+            switch (sortMode)
             {
                 case SortMode.ByName:
-                    _cachedSortedSprites.Sort(
+                    outputList.Sort(
                         (a, b) =>
                             string.Compare(
                                 a._originalName,
@@ -5522,7 +5622,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                     );
                     break;
                 case SortMode.ByPositionTopLeft:
-                    _cachedSortedSprites.Sort(
+                    outputList.Sort(
                         (a, b) =>
                         {
                             int yCompare = b._rect.y.CompareTo(a._rect.y);
@@ -5531,7 +5631,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                     );
                     break;
                 case SortMode.ByPositionBottomLeft:
-                    _cachedSortedSprites.Sort(
+                    outputList.Sort(
                         (a, b) =>
                         {
                             int yCompare = a._rect.y.CompareTo(b._rect.y);
@@ -5540,16 +5640,14 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                     );
                     break;
                 case SortMode.Reversed:
-                    _cachedSortedSprites.Reverse();
+                    outputList.Reverse();
                     break;
                 case SortMode.Original:
                 default:
                     break;
             }
 
-            _lastSpritesSource = sprites;
-            _lastSortMode = currentSortMode;
-            return _cachedSortedSprites;
+            return outputList;
         }
 
         private void DrawSpriteEntry(SpriteSheetEntry sheet, SpriteEntryData sprite, int index)
@@ -5873,7 +5971,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             }
         }
 
-        internal void DiscoverSpriteSheets()
+        internal void DiscoverSpriteSheets(bool generatePreviews = true)
         {
             CleanupPreviewTextures();
 
@@ -5985,16 +6083,19 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 }
             }
 
-            if (DiagnosticsEnabled)
+            if (generatePreviews)
             {
-                this.Log(
-                    $"DiscoverSpriteSheets: About to call GenerateAllPreviewTexturesInBatch with {_discoveredSheets?.Count ?? 0} entries"
-                );
-            }
-            GenerateAllPreviewTexturesInBatch(_discoveredSheets);
-            if (DiagnosticsEnabled)
-            {
-                this.Log($"DiscoverSpriteSheets: GenerateAllPreviewTexturesInBatch completed");
+                if (DiagnosticsEnabled)
+                {
+                    this.Log(
+                        $"DiscoverSpriteSheets: About to call GenerateAllPreviewTexturesInBatch with {_discoveredSheets?.Count ?? 0} entries"
+                    );
+                }
+                GenerateAllPreviewTexturesInBatch(_discoveredSheets);
+                if (DiagnosticsEnabled)
+                {
+                    this.Log($"DiscoverSpriteSheets: GenerateAllPreviewTexturesInBatch completed");
+                }
             }
 
             this.Log($"Discovered {_discoveredSheets.Count} sprite sheet(s).");
@@ -7355,8 +7456,20 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             using PooledResource<Dictionary<string, bool>> originalReadableLease =
                 originalReadablePool.Get(out Dictionary<string, bool> originalReadable);
 
+            // Use pooled list for pending imports to batch all import operations
+            using PooledResource<List<PendingImportSettings>> pendingImportsLease =
+                Buffers<PendingImportSettings>.List.Get(
+                    out List<PendingImportSettings> pendingImports
+                );
+
+            // Use pooled list for paths to batch import
+            using PooledResource<List<string>> pendingPathsLease = Buffers<string>.List.Get(
+                out List<string> pendingPaths
+            );
+
             try
             {
+                // Phase 1: Make source textures readable (batched)
                 using (AssetDatabaseBatchHelper.BeginBatch())
                 {
                     for (int i = 0; i < _discoveredSheets.Count && !canceled; ++i)
@@ -7371,7 +7484,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                             Utils.EditorUi.CancelableProgress(
                                 Name,
                                 $"Making readable: {Path.GetFileName(entry._assetPath)}",
-                                (float)i / _discoveredSheets.Count * 0.1f
+                                (float)i / _discoveredSheets.Count * 0.05f
                             )
                         )
                         {
@@ -7394,6 +7507,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
 
                 AssetDatabase.SaveAssets();
 
+                // Phase 2a: Write all PNG files (no imports yet)
                 if (!canceled)
                 {
                     for (int i = 0; i < _discoveredSheets.Count && !canceled; ++i)
@@ -7424,8 +7538,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                             if (
                                 Utils.EditorUi.CancelableProgress(
                                     Name,
-                                    $"Extracting: {sprite._originalName}",
-                                    0.1f + (float)processedSprites / totalSprites * 0.9f
+                                    $"Writing: {sprite._originalName}",
+                                    0.05f + (float)processedSprites / totalSprites * 0.35f
                                 )
                             )
                             {
@@ -7433,9 +7547,16 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                                 break;
                             }
 
-                            bool success = ExtractSprite(entry, sprite, outputPath, j);
-                            if (success)
+                            string extractedPath = ExtractSpriteDeferred(
+                                entry,
+                                sprite,
+                                outputPath,
+                                j,
+                                pendingImports
+                            );
+                            if (extractedPath != null)
                             {
+                                pendingPaths.Add(extractedPath);
                                 ++_lastExtractedCount;
                             }
                             ++processedSprites;
@@ -7443,6 +7564,62 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                     }
                 }
 
+                // Phase 2b: Batch import all extracted sprites
+                if (!canceled && pendingPaths.Count > 0)
+                {
+                    using (AssetDatabaseBatchHelper.BeginBatch())
+                    {
+                        for (int i = 0; i < pendingPaths.Count; ++i)
+                        {
+                            if (
+                                Utils.EditorUi.CancelableProgress(
+                                    Name,
+                                    $"Importing: {Path.GetFileName(pendingPaths[i])}",
+                                    0.4f + (float)i / pendingPaths.Count * 0.3f
+                                )
+                            )
+                            {
+                                canceled = true;
+                                break;
+                            }
+
+                            AssetDatabase.ImportAsset(pendingPaths[i]);
+                        }
+                    }
+                }
+
+                // Phase 2c: Batch apply import settings (no per-file SaveAndReimport)
+                if (!canceled && _preserveImportSettings && pendingImports.Count > 0)
+                {
+                    using (AssetDatabaseBatchHelper.BeginBatch())
+                    {
+                        for (int i = 0; i < pendingImports.Count; ++i)
+                        {
+                            PendingImportSettings pending = pendingImports[i];
+
+                            if (
+                                Utils.EditorUi.CancelableProgress(
+                                    Name,
+                                    $"Applying settings: {Path.GetFileName(pending.OutputPath)}",
+                                    0.7f + (float)i / pendingImports.Count * 0.2f
+                                )
+                            )
+                            {
+                                canceled = true;
+                                break;
+                            }
+
+                            ApplyImportSettingsDeferred(
+                                pending.OutputPath,
+                                pending.SourceImporter,
+                                pending.Sprite,
+                                pending.Entry
+                            );
+                        }
+                    }
+                }
+
+                // Phase 3: Restore original readable state (batched)
                 if (originalReadable.Count > 0)
                 {
                     using PooledResource<List<string>> keysLease = Buffers<string>.List.Get(
@@ -7475,9 +7652,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                             }
                         }
                     }
-
-                    AssetDatabase.SaveAssets();
                 }
+
+                // Single SaveAssets call at end
+                AssetDatabase.SaveAssets();
 
                 if (canceled)
                 {
@@ -7628,6 +7806,147 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             }
         }
 
+        /// <summary>
+        /// Extracts a sprite to a PNG file without importing it. This is the deferred variant
+        /// that writes the file to disk but does NOT call AssetDatabase.ImportAsset or ApplyImportSettings.
+        /// </summary>
+        /// <param name="sheet">The sprite sheet entry containing the source texture.</param>
+        /// <param name="sprite">The sprite data to extract.</param>
+        /// <param name="outputPath">The output directory path.</param>
+        /// <param name="index">The sprite index for naming.</param>
+        /// <param name="pendingImports">List to add pending import settings if _preserveImportSettings is true.</param>
+        /// <returns>The full output path if successful, null if skipped or failed.</returns>
+        private string ExtractSpriteDeferred(
+            SpriteSheetEntry sheet,
+            SpriteEntryData sprite,
+            string outputPath,
+            int index,
+            List<PendingImportSettings> pendingImports
+        )
+        {
+            if (sheet?._texture == null)
+            {
+                this.LogError($"Cannot extract sprite: texture is null.");
+                ++_lastErrorCount;
+                return null;
+            }
+
+            if (sprite == null)
+            {
+                ++_lastErrorCount;
+                return null;
+            }
+
+            try
+            {
+                string prefix = string.IsNullOrWhiteSpace(_namingPrefix)
+                    ? Path.GetFileNameWithoutExtension(sheet._assetPath)
+                    : _namingPrefix;
+
+                if (string.IsNullOrWhiteSpace(prefix))
+                {
+                    this.LogError(
+                        $"Cannot extract sprite '{sprite._originalName}': output filename prefix is empty."
+                    );
+                    ++_lastErrorCount;
+                    return null;
+                }
+
+                string outputFileName = $"{prefix}_{index:D3}.png";
+                string fullOutputPath = Path.Combine(outputPath, outputFileName);
+
+                if (!_overwriteExisting && File.Exists(fullOutputPath))
+                {
+                    ++_lastSkippedCount;
+                    return null;
+                }
+
+                if (_dryRun)
+                {
+                    this.Log($"Would extract: {sprite._originalName} -> {fullOutputPath}");
+                    // Return path for dry run to count as "success" but don't add to pending imports
+                    return fullOutputPath;
+                }
+
+                int x = Mathf.FloorToInt(sprite._rect.x);
+                int y = Mathf.FloorToInt(sprite._rect.y);
+                int width = Mathf.FloorToInt(sprite._rect.width);
+                int height = Mathf.FloorToInt(sprite._rect.height);
+
+                x = Mathf.Clamp(x, 0, sheet._texture.width - 1);
+                y = Mathf.Clamp(y, 0, sheet._texture.height - 1);
+                width = Mathf.Clamp(width, 1, sheet._texture.width - x);
+                height = Mathf.Clamp(height, 1, sheet._texture.height - y);
+
+                if (!IsTextureFormatSupportedForGetPixels(sheet._texture.format))
+                {
+                    this.LogError(
+                        $"Texture format '{sheet._texture.format}' does not support GetPixels32 for {sheet._assetPath}. Extraction skipped."
+                    );
+                    ++_lastErrorCount;
+                    return null;
+                }
+
+                Color32[] pixels = sheet._texture.GetPixels32();
+                int srcWidth = sheet._texture.width;
+                int pixelCount = width * height;
+                // Note: Cannot use pooled arrays here because SetPixels32 requires the array length
+                // to exactly match the texture dimensions, but ArrayPool returns arrays that may be
+                // larger than requested.
+                Color32[] destPixels = new Color32[pixelCount];
+
+                Parallel.For(
+                    0,
+                    height,
+                    destY =>
+                    {
+                        int srcY = y + destY;
+                        int destRowStart = destY * width;
+                        int srcRowStart = srcY * srcWidth + x;
+                        for (int destX = 0; destX < width; ++destX)
+                        {
+                            destPixels[destRowStart + destX] = pixels[srcRowStart + destX];
+                        }
+                    }
+                );
+
+                Texture2D extracted = null;
+                try
+                {
+                    extracted = new Texture2D(width, height, TextureFormat.RGBA32, false);
+                    extracted.SetPixels32(destPixels);
+                    extracted.Apply();
+
+                    byte[] pngBytes = extracted.EncodeToPNG();
+                    File.WriteAllBytes(fullOutputPath, pngBytes);
+                }
+                finally
+                {
+                    if (extracted != null)
+                    {
+                        DestroyImmediate(extracted);
+                    }
+                }
+
+                // Add to pending imports if _preserveImportSettings is true
+                // Note: We don't call ImportAsset or ApplyImportSettings here - that's done in batch later
+                if (_preserveImportSettings)
+                {
+                    pendingImports.Add(
+                        new PendingImportSettings(fullOutputPath, sheet._importer, sprite, sheet)
+                    );
+                }
+
+                return fullOutputPath;
+            }
+            catch (Exception e)
+            {
+                this.LogError($"Failed to extract sprite '{sprite._originalName}'", e);
+                ++_lastErrorCount;
+                return null;
+            }
+        }
+
         private void ApplyImportSettings(
             string outputPath,
             TextureImporter sourceImporter,
@@ -7649,13 +7968,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             newImporter.mipmapEnabled = sourceImporter.mipmapEnabled;
             newImporter.isReadable = sourceImporter.isReadable;
 
-            // When preserving import settings, use the original sprite pivot from metadata
-            // unless a per-sprite override is explicitly set. This preserves the original
-            // artist-defined pivot values. Global and sheet-level pivot modes affect preview
-            // generation and UI display, but do not override metadata pivots during extraction.
-            Vector2 pivot = sprite._usePivotOverride
-                ? PivotModeToVector2(sprite._pivotModeOverride, sprite._customPivotOverride)
-                : sprite._pivot;
+            // Resolve pivot using the cascade: per-sprite -> per-sheet -> global settings
+            Vector2 pivot = GetEffectivePivot(entry, sprite);
 
             TextureImporterSettings settings = new();
             newImporter.ReadTextureSettings(settings);
@@ -7679,6 +7993,75 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 this.LogWarn($"Failed to copy platform settings for '{outputPath}'", e);
             }
 
+            newImporter.SaveAndReimport();
+        }
+
+        /// <summary>
+        /// Applies import settings to an extracted sprite without calling SaveAndReimport.
+        /// This is the deferred variant that copies settings and marks the importer dirty,
+        /// allowing the batch scope to handle the reimport.
+        /// </summary>
+        /// <param name="outputPath">The asset path of the extracted sprite.</param>
+        /// <param name="sourceImporter">The source texture importer to copy settings from.</param>
+        /// <param name="sprite">The sprite entry data containing pivot, border, and other settings.</param>
+        /// <param name="entry">The parent sheet entry for additional context.</param>
+        private void ApplyImportSettingsDeferred(
+            string outputPath,
+            TextureImporter sourceImporter,
+            SpriteEntryData sprite,
+            SpriteSheetEntry entry
+        )
+        {
+            if (AssetImporter.GetAtPath(outputPath) is not TextureImporter newImporter)
+            {
+                return;
+            }
+
+            newImporter.textureType = TextureImporterType.Sprite;
+            newImporter.spriteImportMode = SpriteImportMode.Single;
+            newImporter.spritePixelsPerUnit = sourceImporter.spritePixelsPerUnit;
+            newImporter.filterMode = sourceImporter.filterMode;
+            newImporter.textureCompression = sourceImporter.textureCompression;
+            newImporter.wrapMode = sourceImporter.wrapMode;
+            newImporter.mipmapEnabled = sourceImporter.mipmapEnabled;
+            newImporter.isReadable = sourceImporter.isReadable;
+
+            // Resolve pivot using the cascade: per-sprite -> per-sheet -> global settings
+            Vector2 pivot = GetEffectivePivot(entry, sprite);
+
+            TextureImporterSettings settings = new();
+            newImporter.ReadTextureSettings(settings);
+            settings.spritePivot = pivot;
+            settings.spriteAlignment = (int)SpriteAlignment.Custom;
+            settings.spriteBorder = sprite._border;
+            newImporter.SetTextureSettings(settings);
+            newImporter.spritePivot = pivot;
+            /*
+                  TextureImporterSettings settings = new();
+                            importer.ReadTextureSettings(settings);
+                            settings.spritePivot = newPivot;
+                            settings.spriteAlignment = (int)SpriteAlignment.Custom;
+                            importer.SetTextureSettings(settings);
+                            importer.spritePivot = newPivot;
+                            importers.Add(importer);
+             */
+
+            try
+            {
+                TextureImporterPlatformSettings srcDefault =
+                    sourceImporter.GetDefaultPlatformTextureSettings();
+                if (!string.IsNullOrWhiteSpace(srcDefault.name))
+                {
+                    newImporter.SetPlatformTextureSettings(srcDefault);
+                }
+            }
+            catch (Exception e)
+            {
+                this.LogWarn($"Failed to copy platform settings for '{outputPath}'", e);
+            }
+
+            // SaveAndReimport is required to apply import settings - EditorUtility.SetDirty does NOT
+            // trigger an import. Even inside a batch scope, we need to call this to persist changes.
             newImporter.SaveAndReimport();
         }
 

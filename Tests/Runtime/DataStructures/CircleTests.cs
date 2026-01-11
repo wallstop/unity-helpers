@@ -702,7 +702,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             Circle circle = new(new Vector2(5f, 10f), 3f);
             string str = circle.ToString();
 
-            Assert.IsNotNull(str);
+            Assert.IsTrue(str != null);
             Assert.IsTrue(str.Contains("Circle"));
             Assert.IsTrue(str.Contains("5") || str.Contains("10") || str.Contains("3"));
         }

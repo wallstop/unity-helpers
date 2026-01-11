@@ -302,9 +302,9 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             state.InvalidateCache();
 
             // Assert
-            Assert.IsNull(state.cachedLowProperty);
-            Assert.IsNull(state.cachedHighProperty);
-            Assert.IsNull(state.cachedSerializedObject);
+            Assert.IsTrue(state.cachedLowProperty == null);
+            Assert.IsTrue(state.cachedHighProperty == null);
+            Assert.IsTrue(state.cachedSerializedObject == null);
             Assert.AreEqual(-1, state.lastCacheFrame);
         }
 

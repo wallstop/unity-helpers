@@ -23,19 +23,20 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
     [TestFixture]
     [NUnit.Framework.Category("Slow")]
     [NUnit.Framework.Category("Integration")]
-    public sealed class WButtonConflictWarningDisplayTests : CommonTestBase
+    public sealed class WButtonConflictWarningDisplayTests : BatchedEditorTestBase
     {
         [SetUp]
         public void SetUp()
         {
+            base.BaseSetUp();
             ClearAllCaches();
         }
 
         [TearDown]
         public override void TearDown()
         {
-            base.TearDown();
             ClearAllCaches();
+            base.TearDown();
         }
 
         private static void ClearAllCaches()
@@ -127,8 +128,8 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
                 shouldHaveConflict,
                 warnings.ContainsKey(groupName),
                 shouldHaveConflict
-                    ? $"Expected conflict warning for group '{groupName}'"
-                    : $"Expected no conflict warning for group '{groupName}'"
+                    ? $"Expected conflict warning for group '{groupName}'. Available groups: [{string.Join(", ", warnings.Keys)}]"
+                    : $"Expected no conflict warning for group '{groupName}'. Available groups: [{string.Join(", ", warnings.Keys)}]"
             );
 
             if (shouldHaveConflict && expectedConflictCount > 0)
@@ -136,7 +137,7 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
                 Assert.AreEqual(
                     expectedConflictCount,
                     warnings[groupName]._allGroupPlacements.Count,
-                    $"Expected {expectedConflictCount} conflicting placement values"
+                    $"Expected {expectedConflictCount} conflicting placement values, but got {warnings[groupName]._allGroupPlacements.Count}: [{string.Join(", ", warnings[groupName]._allGroupPlacements)}]"
                 );
             }
         }
@@ -245,8 +246,8 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
                 shouldHaveConflict,
                 warnings.ContainsKey(groupName),
                 shouldHaveConflict
-                    ? $"Expected conflict warning for group '{groupName}'"
-                    : $"Expected no conflict warning for group '{groupName}'"
+                    ? $"Expected conflict warning for group '{groupName}'. Available groups: [{string.Join(", ", warnings.Keys)}]"
+                    : $"Expected no conflict warning for group '{groupName}'. Available groups: [{string.Join(", ", warnings.Keys)}]"
             );
 
             if (shouldHaveConflict && expectedConflictCount > 0)
@@ -254,7 +255,7 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
                 Assert.AreEqual(
                     expectedConflictCount,
                     warnings[groupName]._allGroupPriorities.Count,
-                    $"Expected {expectedConflictCount} conflicting priority values"
+                    $"Expected {expectedConflictCount} conflicting priority values, but got {warnings[groupName]._allGroupPriorities.Count}: [{string.Join(", ", warnings[groupName]._allGroupPriorities)}]"
                 );
             }
         }
@@ -355,15 +356,15 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
                 shouldHaveConflict,
                 warnings.ContainsKey(groupName),
                 shouldHaveConflict
-                    ? $"Expected conflict warning for group '{groupName}'"
-                    : $"Expected no conflict warning for group '{groupName}'"
+                    ? $"Expected conflict warning for group '{groupName}'. Available groups: [{string.Join(", ", warnings.Keys)}]"
+                    : $"Expected no conflict warning for group '{groupName}'. Available groups: [{string.Join(", ", warnings.Keys)}]"
             );
 
             if (shouldHaveConflict && minExpectedConflictCount > 0)
             {
                 Assert.IsTrue(
                     warnings[groupName]._allDrawOrders.Count >= minExpectedConflictCount,
-                    $"Expected at least {minExpectedConflictCount} conflicting draw order values"
+                    $"Expected at least {minExpectedConflictCount} conflicting draw order values, but got {warnings[groupName]._allDrawOrders.Count}: [{string.Join(", ", warnings[groupName]._allDrawOrders)}]"
                 );
             }
         }
@@ -372,7 +373,7 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
         {
             yield return new TestCaseData(
                 typeof(WButtonConflictingDrawOrderTarget),
-                "ConflictGroup",
+                "Setup",
                 true,
                 2
             ).SetName("DrawOrder.ConflictingValues.GeneratesWarning");
@@ -402,11 +403,17 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
             DrawButtonsWithDefaults(editor, paginationStates, foldoutStates);
             IReadOnlyDictionary<string, WButtonGUI.DrawOrderConflictInfo> warnings =
                 GetDrawOrderWarnings();
-            WButtonGUI.DrawOrderConflictInfo conflict = warnings["ConflictGroup"];
+
+            Assert.IsTrue(
+                warnings.ContainsKey("Setup"),
+                $"Expected warnings to contain 'Setup' group. Available groups: [{string.Join(", ", warnings.Keys)}]"
+            );
+
+            WButtonGUI.DrawOrderConflictInfo conflict = warnings["Setup"];
 
             Assert.IsTrue(
                 conflict._allDrawOrders.Contains(conflict._canonicalDrawOrder),
-                "Canonical draw order should be one of the conflicting values"
+                $"Canonical draw order ({conflict._canonicalDrawOrder}) should be one of the conflicting values: [{string.Join(", ", conflict._allDrawOrders)}]"
             );
         }
 
@@ -426,29 +433,40 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
             {
                 WButtonGUI.ClearConflictingGroupPlacementWarningsForTesting();
                 WButtonGUI.ClearConflictWarningContentCacheForTesting();
-            }
 
-            DrawButtonsWithDefaults(editor, paginationStates, foldoutStates);
-            IReadOnlyDictionary<string, WButtonGUI.GroupPlacementConflictInfo> secondWarnings =
-                GetPlacementWarnings();
-
-            if (shouldClearCache)
-            {
+                IReadOnlyDictionary<
+                    string,
+                    WButtonGUI.GroupPlacementConflictInfo
+                > warningsAfterClear = GetPlacementWarnings();
                 Assert.AreEqual(
                     0,
-                    secondWarnings.Count,
-                    "Warnings should be cleared after cache clear"
+                    warningsAfterClear.Count,
+                    $"Warnings should be cleared immediately after cache clear. Found groups: [{string.Join(", ", warningsAfterClear.Keys)}]"
+                );
+
+                DrawButtonsWithDefaults(editor, paginationStates, foldoutStates);
+                IReadOnlyDictionary<
+                    string,
+                    WButtonGUI.GroupPlacementConflictInfo
+                > warningsAfterRedraw = GetPlacementWarnings();
+                Assert.IsTrue(
+                    warningsAfterRedraw.ContainsKey("ConflictGroup"),
+                    $"Warnings should be regenerated after redrawing. Available groups: [{string.Join(", ", warningsAfterRedraw.Keys)}]"
                 );
             }
             else
             {
+                DrawButtonsWithDefaults(editor, paginationStates, foldoutStates);
+                IReadOnlyDictionary<string, WButtonGUI.GroupPlacementConflictInfo> secondWarnings =
+                    GetPlacementWarnings();
+
                 Assert.IsTrue(
                     firstWarnings.ContainsKey("ConflictGroup"),
-                    "First draw should generate warnings"
+                    $"First draw should generate warnings. Available groups: [{string.Join(", ", firstWarnings.Keys)}]"
                 );
                 Assert.IsTrue(
                     secondWarnings.ContainsKey("ConflictGroup"),
-                    "Second draw should use cached warnings"
+                    $"Second draw should use cached warnings. Available groups: [{string.Join(", ", secondWarnings.Keys)}]"
                 );
             }
         }

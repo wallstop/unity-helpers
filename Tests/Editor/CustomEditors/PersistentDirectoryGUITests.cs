@@ -353,6 +353,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomEditors
 
             yield return TestIMGUIExecutor.Run(() =>
             {
+                LogAssert.Expect(
+                    LogType.Error,
+                    "PersistentDirectoryGUI.DrawFrequentPaths: onPathClickedFromHistory callback cannot be null."
+                );
+
                 try
                 {
                     PersistentDirectoryGUI.DrawFrequentPaths(
@@ -370,9 +375,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomEditors
 
             Assert.IsTrue(
                 caughtException == null,
-                $"DrawFrequentPaths should handle null callback gracefully (logs error). Exception: {caughtException}"
+                $"DrawFrequentPaths should handle null callback gracefully (logs error instead of throwing). "
+                    + $"Expected: no exception, error logged. Actual: Exception={caughtException}"
             );
-            Assert.IsTrue(testCompleted, "Test should complete successfully");
+            Assert.IsTrue(
+                testCompleted,
+                "Test should complete successfully. Expected: testCompleted=true. Actual: testCompleted=false"
+            );
         }
 
         [UnityTest]
@@ -383,6 +392,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomEditors
 
             yield return TestIMGUIExecutor.Run(() =>
             {
+                LogAssert.Expect(
+                    LogType.Error,
+                    "PersistentDirectoryGUI.DrawFrequentPathsWithEditorGUI: onPathClickedFromHistory callback cannot be null."
+                );
+
                 try
                 {
                     float currentY = 0f;
@@ -404,9 +418,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomEditors
 
             Assert.IsTrue(
                 caughtException == null,
-                $"DrawFrequentPathsWithEditorGUI should handle null callback gracefully. Exception: {caughtException}"
+                $"DrawFrequentPathsWithEditorGUI should handle null callback gracefully (logs error instead of throwing). "
+                    + $"Expected: no exception, error logged. Actual: Exception={caughtException}"
             );
-            Assert.IsTrue(testCompleted, "Test should complete successfully");
+            Assert.IsTrue(
+                testCompleted,
+                "Test should complete successfully. Expected: testCompleted=true. Actual: testCompleted=false"
+            );
         }
 
         [UnityTest]
@@ -450,6 +468,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomEditors
 
             yield return TestIMGUIExecutor.Run(() =>
             {
+                LogAssert.Expect(
+                    LogType.Error,
+                    "PersistentDirectoryGUI.PathSelector: onPathChosen callback cannot be null."
+                );
+
                 try
                 {
                     PersistentDirectoryGUI.PathSelector(
@@ -482,6 +505,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomEditors
 
             yield return TestIMGUIExecutor.Run(() =>
             {
+                LogAssert.Expect(
+                    LogType.Error,
+                    "PersistentDirectoryGUI.PathSelector: onPathChosen callback cannot be null."
+                );
+
                 returnedPath = PersistentDirectoryGUI.PathSelector(
                     new GUIContent("Test Path"),
                     currentPath,

@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2026 wallstop
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
@@ -15,26 +15,25 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
     using WallstopStudios.UnityHelpers.Editor.Utils;
     using WallstopStudios.UnityHelpers.Tests.Core;
     using WallstopStudios.UnityHelpers.Tests.Core.TestUtils;
+    using WallstopStudios.UnityHelpers.Tests.Editor.TestAssets;
 
     [TestFixture]
     [NUnit.Framework.Category("Slow")]
     [NUnit.Framework.Category("Integration")]
-    public sealed class FitTextureSizeWindowTests : CommonTestBase
+    public sealed class FitTextureSizeWindowTests : BatchedEditorTestBase
     {
         private const string Root = "Assets/Temp/FitTextureSizeTests";
-        private const string SharedDir = "Assets/Temp/FitTextureSizeTests/Shared";
 
-        // Shared fixture paths - created once in OneTimeSetUp, cleaned up in OneTimeTearDown
-        // These are used by read-only tests that only inspect (not modify) textures
-        // Note: These are safe as static fields because Unity Test Runner runs tests sequentially,
-        // not in parallel. If parallel test execution is ever enabled, these would need locking.
+        // Shared fixture paths - using pre-committed static assets from SharedTextureTestFixtures
+        // Note: These paths point to static assets that are shared across all tests
         private static string _shared300x100Path;
         private static string _shared128x128Path;
         private static string _shared256x256Path;
         private static string _shared64x64Path;
         private static string _shared384x10Path;
-        private static bool _sharedFixturesCreated;
-        private static TextureTestHelper _textureHelper;
+
+        // Shared window instance - reused across tests to reduce CreateInstance overhead
+        private static FitTextureSizeWindow _sharedWindow;
 
         [SetUp]
         public override void BaseSetUp()
@@ -61,168 +60,126 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
                 return;
             }
             base.CommonOneTimeSetUp();
-            DeferAssetCleanupToOneTimeTearDown = true;
-            _textureHelper = new TextureTestHelper();
-            using (AssetDatabaseBatchHelper.BeginBatch())
-            {
-                EnsureFolderStatic(Root);
-                EnsureFolderStatic(SharedDir);
 
-                // If flag is set but fixtures don't exist (e.g., previous run failed), reset and recreate
-                if (_sharedFixturesCreated)
-                {
-                    if (
-                        string.IsNullOrEmpty(_shared300x100Path)
-                        || AssetDatabase.LoadAssetAtPath<Texture2D>(_shared300x100Path) == null
-                    )
-                    {
-                        _sharedFixturesCreated = false;
-                    }
-                }
+            // Acquire shared texture fixtures from pre-committed static assets
+            SharedTextureTestFixtures.AcquireFixtures();
 
-                // Create shared fixtures for read-only tests
-                // These avoid recreating identical textures for each test
-                if (!_sharedFixturesCreated)
-                {
-                    _shared300x100Path = CreateSharedTexture(
-                        "shared_300x100",
-                        300,
-                        100,
-                        Color.magenta
-                    );
-                    _shared128x128Path = CreateSharedTexture(
-                        "shared_128x128",
-                        128,
-                        128,
-                        Color.white
-                    );
-                    _shared256x256Path = CreateSharedTexture(
-                        "shared_256x256",
-                        256,
-                        256,
-                        Color.cyan
-                    );
-                    _shared64x64Path = CreateSharedTexture("shared_64x64", 64, 64, Color.red);
-                    _shared384x10Path = CreateSharedTexture("shared_384x10", 384, 10, Color.blue);
-                    _sharedFixturesCreated = true;
-                }
-            }
+            // Map shared fixture paths for backward compatibility with existing tests
+            _shared300x100Path = SharedTextureTestFixtures.Solid300x100Path;
+            _shared128x128Path = SharedTextureTestFixtures.Solid128x128Path;
+            _shared256x256Path = SharedTextureTestFixtures.Solid256x256Path;
+            _shared64x64Path = SharedTextureTestFixtures.Solid64x64Path;
+            _shared384x10Path = SharedTextureTestFixtures.Solid384x10Path;
+
+            // Create shared window instance for reuse across tests
+            _sharedWindow = ScriptableObject.CreateInstance<FitTextureSizeWindow>();
+            Track(_sharedWindow);
+            _trackedObjects.Remove(_sharedWindow); // Managed manually in one-time teardown
+
+            EnsureFolderStatic(Root);
         }
 
         [OneTimeTearDown]
         public override void OneTimeTearDown()
         {
-            // Clean up shared fixtures
-            using (AssetDatabaseBatchHelper.BeginBatch())
-            {
-                if (!string.IsNullOrEmpty(_shared300x100Path))
-                {
-                    AssetDatabase.DeleteAsset(_shared300x100Path);
-                    _shared300x100Path = null;
-                }
-                if (!string.IsNullOrEmpty(_shared128x128Path))
-                {
-                    AssetDatabase.DeleteAsset(_shared128x128Path);
-                    _shared128x128Path = null;
-                }
-                if (!string.IsNullOrEmpty(_shared256x256Path))
-                {
-                    AssetDatabase.DeleteAsset(_shared256x256Path);
-                    _shared256x256Path = null;
-                }
-                if (!string.IsNullOrEmpty(_shared64x64Path))
-                {
-                    AssetDatabase.DeleteAsset(_shared64x64Path);
-                    _shared64x64Path = null;
-                }
-                if (!string.IsNullOrEmpty(_shared384x10Path))
-                {
-                    AssetDatabase.DeleteAsset(_shared384x10Path);
-                    _shared384x10Path = null;
-                }
-                _sharedFixturesCreated = false;
+            // Clear shared fixture path references (actual assets remain as static files)
+            _shared300x100Path = null;
+            _shared128x128Path = null;
+            _shared256x256Path = null;
+            _shared64x64Path = null;
+            _shared384x10Path = null;
 
-                // Clean up shared directory
-                if (AssetDatabase.IsValidFolder(SharedDir))
-                {
-                    AssetDatabase.DeleteAsset(SharedDir);
-                }
+            // Destroy the shared window instance
+            if (_sharedWindow != null)
+            {
+                _trackedObjects.Remove(_sharedWindow);
+                Object.DestroyImmediate(_sharedWindow); // UNH-SUPPRESS: Shared window cleanup
+                _sharedWindow = null;
             }
 
-            if (_textureHelper != null)
-            {
-                _textureHelper.Dispose();
-                _textureHelper = null;
-            }
+            // Release shared texture fixtures
+            SharedTextureTestFixtures.ReleaseFixtures();
 
-            CleanupDeferredAssetsAndFolders();
             base.OneTimeTearDown();
         }
 
         /// <summary>
-        /// Creates a shared texture that is not tracked for per-test cleanup.
-        /// These are created in OneTimeSetUp and cleaned up in OneTimeTearDown.
-        /// </summary>
-        private string CreateSharedTexture(string name, int width, int height, Color color)
-        {
-            Texture2D texture = _textureHelper.CreateSolidTexture(width, height, color);
-
-            string path = Path.Combine(SharedDir, name + ".png").SanitizePath();
-            string fullPath = RelToFull(path);
-            string directory = Path.GetDirectoryName(fullPath);
-            if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
-            {
-                Directory.CreateDirectory(directory);
-            }
-            File.WriteAllBytes(fullPath, texture.EncodeToPNG());
-
-            string resultPath = Path.Combine(SharedDir, name + ".png").SanitizePath();
-            AssetDatabase.ImportAsset(resultPath);
-
-            return resultPath;
-        }
-
-        /// <summary>
         /// Clones a shared texture to a per-test path for tests that need to modify importer settings.
+        /// Wraps copy and import in ExecuteWithImmediateImport to ensure asset is fully imported when batching.
         /// </summary>
         private string CloneSharedTexture(string sharedPath, string testName)
         {
             string fileName = Path.GetFileNameWithoutExtension(sharedPath);
             string destPath = Path.Combine(Root, testName + "_" + fileName + ".png").SanitizePath();
 
-            if (TryCopyAssetSilent(sharedPath, destPath))
+            bool success = false;
+            ExecuteWithImmediateImport(() =>
             {
-                TrackAssetPath(destPath);
-                return destPath;
-            }
+                if (TryCopyAssetSilent(sharedPath, destPath))
+                {
+                    TrackAssetPath(destPath);
+                    success = true;
+                    return;
+                }
 
-            // Fallback: create a new texture if copy fails
-            Texture2D source = AssetDatabase.LoadAssetAtPath<Texture2D>(sharedPath);
-            if (source != null)
+                // Fallback: create a new texture if copy fails
+                Texture2D source = AssetDatabase.LoadAssetAtPath<Texture2D>(sharedPath);
+                if (source != null)
+                {
+                    CreatePng(destPath, source.width, source.height, Color.white);
+                    AssetDatabase.ImportAsset(destPath, ImportAssetOptions.ForceSynchronousImport);
+                    success = true;
+                }
+            });
+
+            return success ? destPath : null;
+        }
+
+        /// <summary>
+        /// Resets the shared window to a clean state between tests.
+        /// </summary>
+        private FitTextureSizeWindow GetResetWindow()
+        {
+            if (_sharedWindow == null)
             {
-                CreatePng(destPath, source.width, source.height, Color.white);
-                return destPath;
+                _sharedWindow = ScriptableObject.CreateInstance<FitTextureSizeWindow>();
+                Track(_sharedWindow);
+                _trackedObjects.Remove(_sharedWindow); // Managed manually in one-time teardown
             }
-
-            return null;
+            _sharedWindow._fitMode = FitMode.GrowAndShrink;
+            _sharedWindow._textureSourcePaths = new List<Object>();
+            _sharedWindow._onlySprites = false;
+            _sharedWindow._nameFilter = string.Empty;
+            _sharedWindow._useRegexForName = false;
+            _sharedWindow._labelFilterCsv = string.Empty;
+            _sharedWindow._caseSensitiveNameFilter = false;
+            _sharedWindow._useSelectionOnly = false;
+            _sharedWindow._applyToAndroid = false;
+            _sharedWindow._applyToiOS = false;
+            _sharedWindow._applyToStandalone = false;
+            _sharedWindow._minAllowedTextureSize = 32;
+            _sharedWindow._maxAllowedTextureSize = 8192;
+            _sharedWindow._hasLastRunSummary = false;
+            return _sharedWindow;
         }
 
         [Test]
         public void GrowOnlyRaisesToNextPowerOfTwo()
         {
             string path = CloneSharedTexture(_shared300x100Path, "grow");
-            AssetDatabaseBatchHelper.RefreshIfNotBatching();
+            Assert.IsTrue(
+                path != null,
+                "CloneSharedTexture failed - source fixture may be missing"
+            );
 
             TextureImporter imp = AssetImporter.GetAtPath(path) as TextureImporter;
             Assert.IsTrue(imp != null, "Importer should exist");
             imp.maxTextureSize = 128;
-            imp.SaveAndReimport();
+            ExecuteWithImmediateImport(() => imp.SaveAndReimport());
 
-            FitTextureSizeWindow window = Track(
-                ScriptableObject.CreateInstance<FitTextureSizeWindow>()
-            );
+            FitTextureSizeWindow window = GetResetWindow();
             window._fitMode = FitMode.GrowOnly;
-            window._textureSourcePaths = new System.Collections.Generic.List<Object>
+            window._textureSourcePaths = new List<Object>
             {
                 AssetDatabase.LoadAssetAtPath<Object>(Root),
             };
@@ -243,18 +200,19 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
         public void ShrinkOnlyReducesToTightPowerOfTwo()
         {
             string path = CloneSharedTexture(_shared300x100Path, "shrink");
-            AssetDatabaseBatchHelper.RefreshIfNotBatching();
+            Assert.IsTrue(
+                path != null,
+                "CloneSharedTexture failed - source fixture may be missing"
+            );
 
             TextureImporter imp = AssetImporter.GetAtPath(path) as TextureImporter;
             Assert.IsTrue(imp != null, "Importer should exist");
             imp.maxTextureSize = 2048;
-            imp.SaveAndReimport();
+            ExecuteWithImmediateImport(() => imp.SaveAndReimport());
 
-            FitTextureSizeWindow window = Track(
-                ScriptableObject.CreateInstance<FitTextureSizeWindow>()
-            );
+            FitTextureSizeWindow window = GetResetWindow();
             window._fitMode = FitMode.ShrinkOnly;
-            window._textureSourcePaths = new System.Collections.Generic.List<Object>
+            window._textureSourcePaths = new List<Object>
             {
                 AssetDatabase.LoadAssetAtPath<Object>(Root),
             };
@@ -276,46 +234,47 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
         public void ShrinkOnlyKeepsExactPowerOfTwo()
         {
             string path = CloneSharedTexture(_shared256x256Path, "shrinkExact");
-            AssetDatabaseBatchHelper.RefreshIfNotBatching();
-
-            TextureImporter imp = AssetImporter.GetAtPath(path) as TextureImporter;
-            Assert.IsTrue(imp != null, "Importer should exist");
-            imp.maxTextureSize = 1024;
-            imp.SaveAndReimport();
-
-            FitTextureSizeWindow window = Track(
-                ScriptableObject.CreateInstance<FitTextureSizeWindow>()
+            Assert.IsTrue(
+                path != null,
+                "CloneSharedTexture failed - source fixture may be missing"
             );
+
+            ExecuteWithImmediateImport(() =>
+            {
+                TextureImporter imp = AssetImporter.GetAtPath(path) as TextureImporter;
+                Assert.IsTrue(imp != null, "Importer should exist after cloning");
+                imp.maxTextureSize = 1024;
+                imp.SaveAndReimport();
+            });
+
+            FitTextureSizeWindow window = GetResetWindow();
             window._fitMode = FitMode.ShrinkOnly;
-            window._textureSourcePaths = new System.Collections.Generic.List<Object>
+            window._textureSourcePaths = new List<Object>
             {
                 AssetDatabase.LoadAssetAtPath<Object>(Root),
             };
             int count = window.CalculateTextureChanges(true);
             Assert.That(count, Is.GreaterThanOrEqualTo(1), "Expected at least one change");
 
-            imp = AssetImporter.GetAtPath(path) as TextureImporter;
-            Assert.IsTrue(imp != null);
-            Assert.That(imp.maxTextureSize, Is.EqualTo(256), "Should keep exact POT");
+            TextureImporter verifyImp = AssetImporter.GetAtPath(path) as TextureImporter;
+            Assert.IsTrue(verifyImp != null, "Importer should exist for verification");
+            Assert.That(verifyImp.maxTextureSize, Is.EqualTo(256), "Should keep exact POT");
         }
 
         [Test]
         public void ShrinkOnlyShrinksFromSlightlyOverPot()
         {
             string path = Path.Combine(Root, "shrinkOver.png").SanitizePath();
-            CreatePng(path, 257, 64, Color.gray);
-            AssetDatabaseBatchHelper.RefreshIfNotBatching();
+            CreatePngAndImport(path, 257, 64, Color.gray);
 
             TextureImporter imp = AssetImporter.GetAtPath(path) as TextureImporter;
             Assert.IsTrue(imp != null, "Importer should exist");
             imp.maxTextureSize = 2048;
-            imp.SaveAndReimport();
+            ExecuteWithImmediateImport(() => imp.SaveAndReimport());
 
-            FitTextureSizeWindow window = Track(
-                ScriptableObject.CreateInstance<FitTextureSizeWindow>()
-            );
+            FitTextureSizeWindow window = GetResetWindow();
             window._fitMode = FitMode.ShrinkOnly;
-            window._textureSourcePaths = new System.Collections.Generic.List<Object>
+            window._textureSourcePaths = new List<Object>
             {
                 AssetDatabase.LoadAssetAtPath<Object>(Root),
             };
@@ -336,22 +295,30 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
         public void GrowOnlyDoesNotShrinkWhenAlreadyLarge()
         {
             string path = CloneSharedTexture(_shared300x100Path, "growNoChange");
-            AssetDatabaseBatchHelper.RefreshIfNotBatching();
+            Assert.IsTrue(
+                path != null,
+                "CloneSharedTexture failed - source fixture may be missing"
+            );
 
             TextureImporter imp = AssetImporter.GetAtPath(path) as TextureImporter;
             Assert.IsTrue(imp != null);
             imp.maxTextureSize = 2048;
-            imp.SaveAndReimport();
+            ExecuteWithImmediateImport(() => imp.SaveAndReimport());
 
-            FitTextureSizeWindow window = Track(
-                ScriptableObject.CreateInstance<FitTextureSizeWindow>()
-            );
+            FitTextureSizeWindow window = GetResetWindow();
             window._fitMode = FitMode.GrowOnly;
-            window._textureSourcePaths = new System.Collections.Generic.List<Object>
+            // Target only this specific texture file to avoid interference from other tests' textures.
+            // Load the texture inside ExecuteWithImmediateImport AND call CalculateTextureChanges
+            // there to ensure the Object reference is valid and the calculation happens while
+            // the asset database is in a consistent state.
+            int count = 0;
+            ExecuteWithImmediateImport(() =>
             {
-                AssetDatabase.LoadAssetAtPath<Object>(Root),
-            };
-            int count = window.CalculateTextureChanges(true);
+                Object textureObj = AssetDatabase.LoadAssetAtPath<Object>(path);
+                Assert.IsTrue(textureObj != null, $"Failed to load texture at {path}");
+                window._textureSourcePaths = new List<Object> { textureObj };
+                count = window.CalculateTextureChanges(true);
+            });
 
             // Expect no change because it's already large enough (GrowOnly)
             Assert.That(count, Is.EqualTo(0));
@@ -364,20 +331,21 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
         public void ClampMinRaisesToMinimum()
         {
             string path = CloneSharedTexture(_shared64x64Path, "clampMin");
-            AssetDatabaseBatchHelper.RefreshIfNotBatching();
+            Assert.IsTrue(
+                path != null,
+                "CloneSharedTexture failed - source fixture may be missing"
+            );
 
             TextureImporter imp = AssetImporter.GetAtPath(path) as TextureImporter;
             Assert.IsTrue(imp != null);
             imp.maxTextureSize = 32;
-            imp.SaveAndReimport();
+            ExecuteWithImmediateImport(() => imp.SaveAndReimport());
 
-            FitTextureSizeWindow window = Track(
-                ScriptableObject.CreateInstance<FitTextureSizeWindow>()
-            );
+            FitTextureSizeWindow window = GetResetWindow();
             window._fitMode = FitMode.RoundToNearest;
             window._minAllowedTextureSize = 256;
             window._maxAllowedTextureSize = 8192;
-            window._textureSourcePaths = new System.Collections.Generic.List<Object>
+            window._textureSourcePaths = new List<Object>
             {
                 AssetDatabase.LoadAssetAtPath<Object>(Root),
             };
@@ -396,20 +364,21 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
             string path = Path.Combine(Root, "clampMax.png").SanitizePath();
             // Force next POT far above Unity cap to ensure clamp path is tested.
             CreatePng(path, 9001, 10, Color.black);
-            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
-            TextureImporter imp = AssetImporter.GetAtPath(path) as TextureImporter;
-            Assert.IsTrue(imp != null);
-            imp.maxTextureSize = 128;
-            imp.SaveAndReimport();
+            ExecuteWithImmediateImport(() =>
+            {
+                AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceSynchronousImport);
+                TextureImporter imp = AssetImporter.GetAtPath(path) as TextureImporter;
+                Assert.IsTrue(imp != null, "Importer should exist after asset creation");
+                imp.maxTextureSize = 128;
+                imp.SaveAndReimport();
+            });
 
-            FitTextureSizeWindow window = Track(
-                ScriptableObject.CreateInstance<FitTextureSizeWindow>()
-            );
+            FitTextureSizeWindow window = GetResetWindow();
             window._fitMode = FitMode.GrowOnly;
             window._minAllowedTextureSize = 32;
             window._maxAllowedTextureSize = 8192;
-            window._textureSourcePaths = new System.Collections.Generic.List<Object>
+            window._textureSourcePaths = new List<Object>
             {
                 AssetDatabase.LoadAssetAtPath<Object>(Root),
             };
@@ -417,28 +386,29 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
             int count = window.CalculateTextureChanges(true);
             Assert.That(count, Is.GreaterThanOrEqualTo(1));
 
-            imp = AssetImporter.GetAtPath(path) as TextureImporter;
-            Assert.IsTrue(imp != null);
-            Assert.That(imp.maxTextureSize, Is.EqualTo(8192));
+            TextureImporter verifyImp = AssetImporter.GetAtPath(path) as TextureImporter;
+            Assert.IsTrue(verifyImp != null, "Importer should exist for verification");
+            Assert.That(verifyImp.maxTextureSize, Is.EqualTo(8192));
         }
 
         [Test]
         public void PlatformOverrideAndroidApplied()
         {
             string path = CloneSharedTexture(_shared300x100Path, "android");
-            AssetDatabaseBatchHelper.RefreshIfNotBatching();
+            Assert.IsTrue(
+                path != null,
+                "CloneSharedTexture failed - source fixture may be missing"
+            );
 
             TextureImporter imp = AssetImporter.GetAtPath(path) as TextureImporter;
             Assert.IsTrue(imp != null);
             imp.maxTextureSize = 128;
-            imp.SaveAndReimport();
+            ExecuteWithImmediateImport(() => imp.SaveAndReimport());
 
-            FitTextureSizeWindow window = Track(
-                ScriptableObject.CreateInstance<FitTextureSizeWindow>()
-            );
+            FitTextureSizeWindow window = GetResetWindow();
             window._fitMode = FitMode.RoundToNearest;
             window._applyToAndroid = true;
-            window._textureSourcePaths = new System.Collections.Generic.List<Object>
+            window._textureSourcePaths = new List<Object>
             {
                 AssetDatabase.LoadAssetAtPath<Object>(Root),
             };
@@ -456,26 +426,40 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
         public void OnlySpritesFiltersNonSprites()
         {
             string spritePath = CloneSharedTexture(_shared300x100Path, "sprite");
+            Assert.IsTrue(
+                spritePath != null,
+                "CloneSharedTexture failed - source fixture may be missing"
+            );
             string texPath = CloneSharedTexture(_shared300x100Path, "tex");
-            AssetDatabaseBatchHelper.RefreshIfNotBatching();
+            Assert.IsTrue(
+                texPath != null,
+                "CloneSharedTexture failed - source fixture may be missing"
+            );
+
+            ExecuteWithImmediateImport(() =>
+            {
+                AssetDatabase.ImportAsset(spritePath, ImportAssetOptions.ForceSynchronousImport);
+                AssetDatabase.ImportAsset(texPath, ImportAssetOptions.ForceSynchronousImport);
+            });
 
             TextureImporter spriteImp = AssetImporter.GetAtPath(spritePath) as TextureImporter;
             TextureImporter texImp = AssetImporter.GetAtPath(texPath) as TextureImporter;
-            Assert.IsTrue(spriteImp != null);
-            Assert.IsTrue(texImp != null);
+            Assert.IsTrue(spriteImp != null, "Sprite texture importer should exist");
+            Assert.IsTrue(texImp != null, "Tex texture importer should exist");
             spriteImp.textureType = TextureImporterType.Sprite;
             spriteImp.maxTextureSize = 1024;
             texImp.textureType = TextureImporterType.Default;
             texImp.maxTextureSize = 1024;
-            spriteImp.SaveAndReimport();
-            texImp.SaveAndReimport();
+            ExecuteWithImmediateImport(() =>
+            {
+                spriteImp.SaveAndReimport();
+                texImp.SaveAndReimport();
+            });
 
-            FitTextureSizeWindow window = Track(
-                ScriptableObject.CreateInstance<FitTextureSizeWindow>()
-            );
+            FitTextureSizeWindow window = GetResetWindow();
             window._fitMode = FitMode.ShrinkOnly;
             window._onlySprites = true;
-            window._textureSourcePaths = new System.Collections.Generic.List<Object>
+            window._textureSourcePaths = new List<Object>
             {
                 AssetDatabase.LoadAssetAtPath<Object>(Root),
             };
@@ -493,23 +477,31 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
         public void NameFilterContainsOnlyMatches()
         {
             string heroPath = CloneSharedTexture(_shared300x100Path, "hero_idle");
+            Assert.IsTrue(
+                heroPath != null,
+                "CloneSharedTexture failed - source fixture may be missing"
+            );
             string villPath = CloneSharedTexture(_shared300x100Path, "villain_idle");
-            AssetDatabaseBatchHelper.RefreshIfNotBatching();
+            Assert.IsTrue(
+                villPath != null,
+                "CloneSharedTexture failed - source fixture may be missing"
+            );
 
             TextureImporter heroImp = AssetImporter.GetAtPath(heroPath) as TextureImporter;
             TextureImporter villImp = AssetImporter.GetAtPath(villPath) as TextureImporter;
             heroImp.maxTextureSize = 128;
             villImp.maxTextureSize = 128;
-            heroImp.SaveAndReimport();
-            villImp.SaveAndReimport();
+            ExecuteWithImmediateImport(() =>
+            {
+                heroImp.SaveAndReimport();
+                villImp.SaveAndReimport();
+            });
 
-            FitTextureSizeWindow window = Track(
-                ScriptableObject.CreateInstance<FitTextureSizeWindow>()
-            );
+            FitTextureSizeWindow window = GetResetWindow();
             window._fitMode = FitMode.GrowOnly;
             window._nameFilter = "hero";
             window._useRegexForName = false;
-            window._textureSourcePaths = new System.Collections.Generic.List<Object>
+            window._textureSourcePaths = new List<Object>
             {
                 AssetDatabase.LoadAssetAtPath<Object>(Root),
             };
@@ -527,24 +519,24 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
         {
             string aPath = Path.Combine(Root, "item01.png").SanitizePath();
             string bPath = Path.Combine(Root, "itemABC.png").SanitizePath();
-            CreatePng(aPath, 300, 100, Color.white);
-            CreatePng(bPath, 300, 100, Color.white);
-            AssetDatabaseBatchHelper.RefreshIfNotBatching();
+            CreatePngAndImport(aPath, 300, 100, Color.white);
+            CreatePngAndImport(bPath, 300, 100, Color.white);
 
             TextureImporter aImp = AssetImporter.GetAtPath(aPath) as TextureImporter;
             TextureImporter bImp = AssetImporter.GetAtPath(bPath) as TextureImporter;
             aImp.maxTextureSize = 128;
             bImp.maxTextureSize = 128;
-            aImp.SaveAndReimport();
-            bImp.SaveAndReimport();
+            ExecuteWithImmediateImport(() =>
+            {
+                aImp.SaveAndReimport();
+                bImp.SaveAndReimport();
+            });
 
-            FitTextureSizeWindow window = Track(
-                ScriptableObject.CreateInstance<FitTextureSizeWindow>()
-            );
+            FitTextureSizeWindow window = GetResetWindow();
             window._fitMode = FitMode.GrowOnly;
             window._nameFilter = "^item\\d{2}$";
             window._useRegexForName = true;
-            window._textureSourcePaths = new System.Collections.Generic.List<Object>
+            window._textureSourcePaths = new List<Object>
             {
                 AssetDatabase.LoadAssetAtPath<Object>(Root),
             };
@@ -561,26 +553,42 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
         public void LabelFilterMatchesOnlyLabeled()
         {
             string labeledPath = CloneSharedTexture(_shared300x100Path, "labeled");
+            Assert.IsTrue(
+                labeledPath != null,
+                "CloneSharedTexture failed - source fixture may be missing"
+            );
             string unlabeledPath = CloneSharedTexture(_shared300x100Path, "unlabeled");
-            AssetDatabaseBatchHelper.RefreshIfNotBatching();
+            Assert.IsTrue(
+                unlabeledPath != null,
+                "CloneSharedTexture failed - source fixture may be missing"
+            );
+
+            ExecuteWithImmediateImport(() =>
+            {
+                AssetDatabase.ImportAsset(labeledPath, ImportAssetOptions.ForceSynchronousImport);
+                AssetDatabase.ImportAsset(unlabeledPath, ImportAssetOptions.ForceSynchronousImport);
+            });
 
             Object labeledObj = AssetDatabase.LoadAssetAtPath<Object>(labeledPath);
             AssetDatabase.SetLabels(labeledObj, new[] { "FitMe", "TagA" });
-            AssetDatabase.SaveAssets();
+            ExecuteWithImmediateImport(() => AssetDatabase.SaveAssets());
 
             TextureImporter labImp = AssetImporter.GetAtPath(labeledPath) as TextureImporter;
             TextureImporter unlabImp = AssetImporter.GetAtPath(unlabeledPath) as TextureImporter;
+            Assert.IsTrue(labImp != null, "Labeled texture importer should exist");
+            Assert.IsTrue(unlabImp != null, "Unlabeled texture importer should exist");
             labImp.maxTextureSize = 128;
             unlabImp.maxTextureSize = 128;
-            labImp.SaveAndReimport();
-            unlabImp.SaveAndReimport();
+            ExecuteWithImmediateImport(() =>
+            {
+                labImp.SaveAndReimport();
+                unlabImp.SaveAndReimport();
+            });
 
-            FitTextureSizeWindow window = Track(
-                ScriptableObject.CreateInstance<FitTextureSizeWindow>()
-            );
+            FitTextureSizeWindow window = GetResetWindow();
             window._fitMode = FitMode.GrowOnly;
             window._labelFilterCsv = "FitMe";
-            window._textureSourcePaths = new System.Collections.Generic.List<Object>
+            window._textureSourcePaths = new List<Object>
             {
                 AssetDatabase.LoadAssetAtPath<Object>(Root),
             };
@@ -597,22 +605,30 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
         public void SelectionOnlyProcessesOnlySelectedAsset()
         {
             string aPath = CloneSharedTexture(_shared300x100Path, "sel_a");
+            Assert.IsTrue(
+                aPath != null,
+                "CloneSharedTexture failed - source fixture may be missing"
+            );
             string bPath = CloneSharedTexture(_shared300x100Path, "sel_b");
-            AssetDatabaseBatchHelper.RefreshIfNotBatching();
+            Assert.IsTrue(
+                bPath != null,
+                "CloneSharedTexture failed - source fixture may be missing"
+            );
 
             TextureImporter aImp = AssetImporter.GetAtPath(aPath) as TextureImporter;
             TextureImporter bImp = AssetImporter.GetAtPath(bPath) as TextureImporter;
             aImp.maxTextureSize = 128;
             bImp.maxTextureSize = 128;
-            aImp.SaveAndReimport();
-            bImp.SaveAndReimport();
+            ExecuteWithImmediateImport(() =>
+            {
+                aImp.SaveAndReimport();
+                bImp.SaveAndReimport();
+            });
 
             Object aObj = AssetDatabase.LoadAssetAtPath<Object>(aPath);
             Selection.objects = new[] { aObj };
 
-            FitTextureSizeWindow window = Track(
-                ScriptableObject.CreateInstance<FitTextureSizeWindow>()
-            );
+            FitTextureSizeWindow window = GetResetWindow();
             window._fitMode = FitMode.GrowOnly;
             window._useSelectionOnly = true;
 
@@ -629,17 +645,14 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
         public void NameFilterCaseSensitivityHonored()
         {
             string path = Path.Combine(Root, "Hero.png").SanitizePath();
-            CreatePng(path, 300, 100, Color.white);
-            AssetDatabaseBatchHelper.RefreshIfNotBatching();
+            CreatePngAndImport(path, 300, 100, Color.white);
 
             TextureImporter imp = AssetImporter.GetAtPath(path) as TextureImporter;
             imp.maxTextureSize = 128;
-            imp.SaveAndReimport();
+            ExecuteWithImmediateImport(() => imp.SaveAndReimport());
 
-            FitTextureSizeWindow window = Track(
-                ScriptableObject.CreateInstance<FitTextureSizeWindow>()
-            );
-            window._textureSourcePaths = new System.Collections.Generic.List<Object>
+            FitTextureSizeWindow window = GetResetWindow();
+            window._textureSourcePaths = new List<Object>
             {
                 AssetDatabase.LoadAssetAtPath<Object>(Root),
             };
@@ -663,23 +676,24 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
         public void LabelFilterCaseSensitivityHonored()
         {
             string path = CloneSharedTexture(_shared300x100Path, "labelCase");
-            AssetDatabaseBatchHelper.RefreshIfNotBatching();
+            Assert.IsTrue(
+                path != null,
+                "CloneSharedTexture failed - source fixture may be missing"
+            );
 
             Object obj = AssetDatabase.LoadAssetAtPath<Object>(path);
             AssetDatabase.SetLabels(obj, new[] { "FitMe" });
-            AssetDatabase.SaveAssets();
+            ExecuteWithImmediateImport(() => AssetDatabase.SaveAssets());
 
             TextureImporter imp = AssetImporter.GetAtPath(path) as TextureImporter;
             imp.maxTextureSize = 128;
-            imp.SaveAndReimport();
+            ExecuteWithImmediateImport(() => imp.SaveAndReimport());
 
-            FitTextureSizeWindow window = Track(
-                ScriptableObject.CreateInstance<FitTextureSizeWindow>()
-            );
+            FitTextureSizeWindow window = GetResetWindow();
             window._fitMode = FitMode.GrowOnly;
             window._labelFilterCsv = "fitme";
             window._caseSensitiveNameFilter = true;
-            window._textureSourcePaths = new System.Collections.Generic.List<Object>
+            window._textureSourcePaths = new List<Object>
             {
                 AssetDatabase.LoadAssetAtPath<Object>(Root),
             };
@@ -700,18 +714,19 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
         public void PlatformOverrideStandaloneApplied()
         {
             string path = CloneSharedTexture(_shared300x100Path, "standalone");
-            AssetDatabaseBatchHelper.RefreshIfNotBatching();
+            Assert.IsTrue(
+                path != null,
+                "CloneSharedTexture failed - source fixture may be missing"
+            );
 
             TextureImporter imp = AssetImporter.GetAtPath(path) as TextureImporter;
             imp.maxTextureSize = 128;
-            imp.SaveAndReimport();
+            ExecuteWithImmediateImport(() => imp.SaveAndReimport());
 
-            FitTextureSizeWindow window = Track(
-                ScriptableObject.CreateInstance<FitTextureSizeWindow>()
-            );
+            FitTextureSizeWindow window = GetResetWindow();
             window._fitMode = FitMode.RoundToNearest;
             window._applyToStandalone = true;
-            window._textureSourcePaths = new System.Collections.Generic.List<Object>
+            window._textureSourcePaths = new List<Object>
             {
                 AssetDatabase.LoadAssetAtPath<Object>(Root),
             };
@@ -728,26 +743,32 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
         public void PlatformOverrideIOSApplied()
         {
             string path = CloneSharedTexture(_shared300x100Path, "ios");
-            AssetDatabaseBatchHelper.RefreshIfNotBatching();
-
-            TextureImporter imp = AssetImporter.GetAtPath(path) as TextureImporter;
-            imp.maxTextureSize = 128;
-            imp.SaveAndReimport();
-
-            FitTextureSizeWindow window = Track(
-                ScriptableObject.CreateInstance<FitTextureSizeWindow>()
+            Assert.IsTrue(
+                path != null,
+                "CloneSharedTexture failed - source fixture may be missing"
             );
+
+            ExecuteWithImmediateImport(() =>
+            {
+                TextureImporter imp = AssetImporter.GetAtPath(path) as TextureImporter;
+                Assert.IsTrue(imp != null, "Importer should exist after cloning");
+                imp.maxTextureSize = 128;
+                imp.SaveAndReimport();
+            });
+
+            FitTextureSizeWindow window = GetResetWindow();
             window._fitMode = FitMode.RoundToNearest;
             window._applyToiOS = true;
-            window._textureSourcePaths = new System.Collections.Generic.List<Object>
+            window._textureSourcePaths = new List<Object>
             {
                 AssetDatabase.LoadAssetAtPath<Object>(Root),
             };
 
             _ = window.CalculateTextureChanges(true);
 
-            imp = AssetImporter.GetAtPath(path) as TextureImporter;
-            TextureImporterPlatformSettings ios = imp.GetPlatformTextureSettings("iPhone");
+            TextureImporter verifyImp = AssetImporter.GetAtPath(path) as TextureImporter;
+            Assert.IsTrue(verifyImp != null, "Importer should exist for verification");
+            TextureImporterPlatformSettings ios = verifyImp.GetPlatformTextureSettings("iPhone");
             Assert.IsTrue(ios.overridden);
             Assert.That(ios.maxTextureSize, Is.EqualTo(256));
         }
@@ -759,29 +780,37 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
             string folder = Path.Combine(Root, "Sub").SanitizePath();
             EnsureFolder(folder);
             string labeledUnderFolder = CloneSharedTexture(_shared300x100Path, "Sub/inFolder");
+            Assert.IsTrue(
+                labeledUnderFolder != null,
+                "CloneSharedTexture failed - source fixture may be missing"
+            );
             string directFile = CloneSharedTexture(_shared300x100Path, "direct");
-            AssetDatabaseBatchHelper.RefreshIfNotBatching();
+            Assert.IsTrue(
+                directFile != null,
+                "CloneSharedTexture failed - source fixture may be missing"
+            );
 
             Object labeledObj = AssetDatabase.LoadAssetAtPath<Object>(labeledUnderFolder);
             AssetDatabase.SetLabels(labeledObj, new[] { "OnlyMe" });
-            AssetDatabase.SaveAssets();
+            ExecuteWithImmediateImport(() => AssetDatabase.SaveAssets());
 
             TextureImporter folderImp =
                 AssetImporter.GetAtPath(labeledUnderFolder) as TextureImporter;
             TextureImporter directImp = AssetImporter.GetAtPath(directFile) as TextureImporter;
             folderImp.maxTextureSize = 128;
             directImp.maxTextureSize = 128;
-            folderImp.SaveAndReimport();
-            directImp.SaveAndReimport();
+            ExecuteWithImmediateImport(() =>
+            {
+                folderImp.SaveAndReimport();
+                directImp.SaveAndReimport();
+            });
 
             // Select folder and the direct file simultaneously
             Object folderObj = AssetDatabase.LoadAssetAtPath<Object>(folder);
             Object directObj = AssetDatabase.LoadAssetAtPath<Object>(directFile);
             Selection.objects = new[] { folderObj, directObj };
 
-            FitTextureSizeWindow window = Track(
-                ScriptableObject.CreateInstance<FitTextureSizeWindow>()
-            );
+            FitTextureSizeWindow window = GetResetWindow();
             window._fitMode = FitMode.GrowOnly;
             window._useSelectionOnly = true;
             window._labelFilterCsv = "OnlyMe"; // case-insensitive path used by l: query
@@ -800,26 +829,51 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
         public void LastRunSummaryReflectsCounts()
         {
             string aPath = CloneSharedTexture(_shared300x100Path, "sumA");
+            Assert.IsTrue(
+                aPath != null,
+                "CloneSharedTexture failed - source fixture may be missing"
+            );
             string bPath = CloneSharedTexture(_shared128x128Path, "sumB");
-            AssetDatabaseBatchHelper.RefreshIfNotBatching();
+            Assert.IsTrue(
+                bPath != null,
+                "CloneSharedTexture failed - source fixture may be missing"
+            );
+
+            ExecuteWithImmediateImport(() =>
+            {
+                AssetDatabase.ImportAsset(aPath, ImportAssetOptions.ForceSynchronousImport);
+                AssetDatabase.ImportAsset(bPath, ImportAssetOptions.ForceSynchronousImport);
+            });
 
             TextureImporter aImp = AssetImporter.GetAtPath(aPath) as TextureImporter;
             TextureImporter bImp = AssetImporter.GetAtPath(bPath) as TextureImporter;
+            Assert.IsTrue(aImp != null, "Texture importer A should exist");
+            Assert.IsTrue(bImp != null, "Texture importer B should exist");
             aImp.maxTextureSize = 128;
             bImp.maxTextureSize = 128;
-            aImp.SaveAndReimport();
-            bImp.SaveAndReimport();
-
-            FitTextureSizeWindow window = Track(
-                ScriptableObject.CreateInstance<FitTextureSizeWindow>()
-            );
-            window._fitMode = FitMode.GrowOnly;
-            window._textureSourcePaths = new System.Collections.Generic.List<Object>
+            ExecuteWithImmediateImport(() =>
             {
-                AssetDatabase.LoadAssetAtPath<Object>(Root),
-            };
+                aImp.SaveAndReimport();
+                bImp.SaveAndReimport();
+            });
 
-            int changed = window.CalculateTextureChanges(true);
+            FitTextureSizeWindow window = GetResetWindow();
+            window._fitMode = FitMode.GrowOnly;
+            // Target only these specific texture files to avoid interference from other tests' textures.
+            // Load the textures inside ExecuteWithImmediateImport AND call CalculateTextureChanges
+            // there to ensure the Object references are valid and the calculation happens while
+            // the asset database is in a consistent state.
+            int changed = 0;
+            ExecuteWithImmediateImport(() =>
+            {
+                Object aObj = AssetDatabase.LoadAssetAtPath<Object>(aPath);
+                Object bObj = AssetDatabase.LoadAssetAtPath<Object>(bPath);
+                Assert.IsTrue(aObj != null, $"Failed to load texture at {aPath}");
+                Assert.IsTrue(bObj != null, $"Failed to load texture at {bPath}");
+                window._textureSourcePaths = new List<Object> { aObj, bObj };
+                changed = window.CalculateTextureChanges(true);
+            });
+
             Assert.That(changed, Is.EqualTo(1));
             Assert.IsTrue(window._hasLastRunSummary);
             Assert.That(window._lastRunTotal, Is.EqualTo(2));
@@ -833,18 +887,19 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
         public void RoundToNearestChoosesLowerWhenCloser()
         {
             string path = CloneSharedTexture(_shared300x100Path, "roundLower");
-            AssetDatabaseBatchHelper.RefreshIfNotBatching();
+            Assert.IsTrue(
+                path != null,
+                "CloneSharedTexture failed - source fixture may be missing"
+            );
 
             TextureImporter imp = AssetImporter.GetAtPath(path) as TextureImporter;
             Assert.IsTrue(imp != null);
             imp.maxTextureSize = 2048;
-            imp.SaveAndReimport();
+            ExecuteWithImmediateImport(() => imp.SaveAndReimport());
 
-            FitTextureSizeWindow window = Track(
-                ScriptableObject.CreateInstance<FitTextureSizeWindow>()
-            );
+            FitTextureSizeWindow window = GetResetWindow();
             window._fitMode = FitMode.RoundToNearest;
-            window._textureSourcePaths = new System.Collections.Generic.List<Object>
+            window._textureSourcePaths = new List<Object>
             {
                 AssetDatabase.LoadAssetAtPath<Object>(Root),
             };
@@ -861,18 +916,19 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
         public void RoundToNearestRoundsUpOnTie()
         {
             string path = CloneSharedTexture(_shared384x10Path, "roundUpTie");
-            AssetDatabaseBatchHelper.RefreshIfNotBatching();
+            Assert.IsTrue(
+                path != null,
+                "CloneSharedTexture failed - source fixture may be missing"
+            );
 
             TextureImporter imp = AssetImporter.GetAtPath(path) as TextureImporter;
             Assert.IsTrue(imp != null);
             imp.maxTextureSize = 128;
-            imp.SaveAndReimport();
+            ExecuteWithImmediateImport(() => imp.SaveAndReimport());
 
-            FitTextureSizeWindow window = Track(
-                ScriptableObject.CreateInstance<FitTextureSizeWindow>()
-            );
+            FitTextureSizeWindow window = GetResetWindow();
             window._fitMode = FitMode.RoundToNearest;
-            window._textureSourcePaths = new System.Collections.Generic.List<Object>
+            window._textureSourcePaths = new List<Object>
             {
                 AssetDatabase.LoadAssetAtPath<Object>(Root),
             };
@@ -895,20 +951,17 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
         )
         {
             string path = Path.Combine(Root, $"growShrink_{width}x{height}.png").SanitizePath();
-            CreatePng(path, width, height, Color.white);
-            AssetDatabaseBatchHelper.RefreshIfNotBatching();
+            CreatePngAndImport(path, width, height, Color.white);
 
             TextureImporter imp = AssetImporter.GetAtPath(path) as TextureImporter;
             Assert.IsTrue(imp != null, "Importer should exist");
             imp.maxTextureSize = currentMaxSize;
-            imp.SaveAndReimport();
+            ExecuteWithImmediateImport(() => imp.SaveAndReimport());
 
-            FitTextureSizeWindow window = Track(
-                ScriptableObject.CreateInstance<FitTextureSizeWindow>()
-            );
+            FitTextureSizeWindow window = GetResetWindow();
             window._fitMode = FitMode.GrowAndShrink;
             window._minAllowedTextureSize = 1; // Allow edge case testing of very small textures
-            window._textureSourcePaths = new System.Collections.Generic.List<Object>
+            window._textureSourcePaths = new List<Object>
             {
                 AssetDatabase.LoadAssetAtPath<Object>(Root),
             };
@@ -996,20 +1049,17 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
         {
             string path = Path.Combine(Root, $"growOnly_{width}x{height}_{currentMaxSize}.png")
                 .SanitizePath();
-            CreatePng(path, width, height, Color.green);
-            AssetDatabaseBatchHelper.RefreshIfNotBatching();
+            CreatePngAndImport(path, width, height, Color.green);
 
             TextureImporter imp = AssetImporter.GetAtPath(path) as TextureImporter;
             Assert.IsTrue(imp != null, "Importer should exist");
             imp.maxTextureSize = currentMaxSize;
-            imp.SaveAndReimport();
+            ExecuteWithImmediateImport(() => imp.SaveAndReimport());
 
-            FitTextureSizeWindow window = Track(
-                ScriptableObject.CreateInstance<FitTextureSizeWindow>()
-            );
+            FitTextureSizeWindow window = GetResetWindow();
             window._fitMode = FitMode.GrowOnly;
             window._minAllowedTextureSize = 1; // Allow edge case testing of very small textures
-            window._textureSourcePaths = new System.Collections.Generic.List<Object>
+            window._textureSourcePaths = new List<Object>
             {
                 AssetDatabase.LoadAssetAtPath<Object>(Root),
             };
@@ -1090,20 +1140,17 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
         {
             string path = Path.Combine(Root, $"shrinkOnly_{width}x{height}_{currentMaxSize}.png")
                 .SanitizePath();
-            CreatePng(path, width, height, Color.blue);
-            AssetDatabaseBatchHelper.RefreshIfNotBatching();
+            CreatePngAndImport(path, width, height, Color.blue);
 
             TextureImporter imp = AssetImporter.GetAtPath(path) as TextureImporter;
             Assert.IsTrue(imp != null, "Importer should exist");
             imp.maxTextureSize = currentMaxSize;
-            imp.SaveAndReimport();
+            ExecuteWithImmediateImport(() => imp.SaveAndReimport());
 
-            FitTextureSizeWindow window = Track(
-                ScriptableObject.CreateInstance<FitTextureSizeWindow>()
-            );
+            FitTextureSizeWindow window = GetResetWindow();
             window._fitMode = FitMode.ShrinkOnly;
             window._minAllowedTextureSize = 1; // Allow edge case testing of very small textures
-            window._textureSourcePaths = new System.Collections.Generic.List<Object>
+            window._textureSourcePaths = new List<Object>
             {
                 AssetDatabase.LoadAssetAtPath<Object>(Root),
             };
@@ -1185,20 +1232,17 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
         )
         {
             string path = Path.Combine(Root, $"roundNearest_{width}x{height}.png").SanitizePath();
-            CreatePng(path, width, height, Color.red);
-            AssetDatabaseBatchHelper.RefreshIfNotBatching();
+            CreatePngAndImport(path, width, height, Color.red);
 
             TextureImporter imp = AssetImporter.GetAtPath(path) as TextureImporter;
             Assert.IsTrue(imp != null, "Importer should exist");
             imp.maxTextureSize = currentMaxSize;
-            imp.SaveAndReimport();
+            ExecuteWithImmediateImport(() => imp.SaveAndReimport());
 
-            FitTextureSizeWindow window = Track(
-                ScriptableObject.CreateInstance<FitTextureSizeWindow>()
-            );
+            FitTextureSizeWindow window = GetResetWindow();
             window._fitMode = FitMode.RoundToNearest;
             window._minAllowedTextureSize = 1; // Allow edge case testing of very small textures
-            window._textureSourcePaths = new System.Collections.Generic.List<Object>
+            window._textureSourcePaths = new List<Object>
             {
                 AssetDatabase.LoadAssetAtPath<Object>(Root),
             };
@@ -1292,21 +1336,18 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
         )
         {
             string path = Path.Combine(Root, $"edge_{width}x{height}_{mode}.png").SanitizePath();
-            CreatePng(path, width, height, Color.yellow);
-            AssetDatabaseBatchHelper.RefreshIfNotBatching();
+            CreatePngAndImport(path, width, height, Color.yellow);
 
             TextureImporter imp = AssetImporter.GetAtPath(path) as TextureImporter;
             Assert.IsTrue(imp != null, "Importer should exist");
             imp.maxTextureSize = currentMaxSize;
-            imp.SaveAndReimport();
+            ExecuteWithImmediateImport(() => imp.SaveAndReimport());
 
-            FitTextureSizeWindow window = Track(
-                ScriptableObject.CreateInstance<FitTextureSizeWindow>()
-            );
+            FitTextureSizeWindow window = GetResetWindow();
             window._fitMode = mode;
             window._minAllowedTextureSize = 1; // Allow edge case testing of very small textures
             window._maxAllowedTextureSize = 16384; // Allow testing of sizes beyond default 8192 cap
-            window._textureSourcePaths = new System.Collections.Generic.List<Object>
+            window._textureSourcePaths = new List<Object>
             {
                 AssetDatabase.LoadAssetAtPath<Object>(Root),
             };
@@ -1408,20 +1449,17 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
         public void DefaultMinClampingPreventsVerySmallSizes()
         {
             string path = Path.Combine(Root, "defaultClamp_1x1.png").SanitizePath();
-            CreatePng(path, 1, 1, Color.white);
-            AssetDatabaseBatchHelper.RefreshIfNotBatching();
+            CreatePngAndImport(path, 1, 1, Color.white);
 
             TextureImporter imp = AssetImporter.GetAtPath(path) as TextureImporter;
             Assert.IsTrue(imp != null, "Importer should exist");
             imp.maxTextureSize = 2048;
-            imp.SaveAndReimport();
+            ExecuteWithImmediateImport(() => imp.SaveAndReimport());
 
-            FitTextureSizeWindow window = Track(
-                ScriptableObject.CreateInstance<FitTextureSizeWindow>()
-            );
+            FitTextureSizeWindow window = GetResetWindow();
             window._fitMode = FitMode.GrowAndShrink;
             // Intentionally NOT setting _minAllowedTextureSize to verify default clamping behavior
-            window._textureSourcePaths = new System.Collections.Generic.List<Object>
+            window._textureSourcePaths = new List<Object>
             {
                 AssetDatabase.LoadAssetAtPath<Object>(Root),
             };
@@ -1449,26 +1487,27 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
             string path = Path.Combine(Root, $"minClamp_{width}x{height}_{minAllowedSize}.png")
                 .SanitizePath();
             CreatePng(path, width, height, Color.cyan);
-            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
-            TextureImporter imp = AssetImporter.GetAtPath(path) as TextureImporter;
-            Assert.IsTrue(imp != null, "Importer should exist");
-            imp.maxTextureSize = 8192;
-            imp.SaveAndReimport();
+            ExecuteWithImmediateImport(() =>
+            {
+                AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceSynchronousImport);
+                TextureImporter imp = AssetImporter.GetAtPath(path) as TextureImporter;
+                Assert.IsTrue(imp != null, "Importer should exist");
+                imp.maxTextureSize = 8192;
+                imp.SaveAndReimport();
+            });
 
-            FitTextureSizeWindow window = Track(
-                ScriptableObject.CreateInstance<FitTextureSizeWindow>()
-            );
+            FitTextureSizeWindow window = GetResetWindow();
             window._fitMode = FitMode.GrowAndShrink;
             window._minAllowedTextureSize = minAllowedSize;
-            window._textureSourcePaths = new System.Collections.Generic.List<Object>
+            window._textureSourcePaths = new List<Object>
             {
                 AssetDatabase.LoadAssetAtPath<Object>(Root),
             };
 
             _ = window.CalculateTextureChanges(true);
 
-            imp = AssetImporter.GetAtPath(path) as TextureImporter;
+            TextureImporter imp = AssetImporter.GetAtPath(path) as TextureImporter;
             Assert.IsTrue(imp != null);
             Assert.That(
                 imp.maxTextureSize,
@@ -1533,27 +1572,35 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
             string path = Path.Combine(Root, $"maxClamp_{width}x{height}_{maxAllowedSize}.png")
                 .SanitizePath();
             CreatePng(path, width, height, Color.magenta);
-            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
-            TextureImporter imp = AssetImporter.GetAtPath(path) as TextureImporter;
-            Assert.IsTrue(imp != null, "Importer should exist");
-            imp.maxTextureSize = 32;
-            imp.SaveAndReimport();
+            // Force import and configure the texture inside ExecuteWithImmediateImport
+            // to ensure proper asset database state
+            ExecuteWithImmediateImport(() =>
+            {
+                AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceSynchronousImport);
+                TextureImporter importerSetup = AssetImporter.GetAtPath(path) as TextureImporter;
+                Assert.IsTrue(importerSetup != null, $"Importer should exist at {path}");
+                importerSetup.maxTextureSize = 32;
+                importerSetup.SaveAndReimport();
+            });
 
-            FitTextureSizeWindow window = Track(
-                ScriptableObject.CreateInstance<FitTextureSizeWindow>()
-            );
+            FitTextureSizeWindow window = GetResetWindow();
             window._fitMode = FitMode.GrowAndShrink;
             window._minAllowedTextureSize = 1;
             window._maxAllowedTextureSize = maxAllowedSize;
-            window._textureSourcePaths = new System.Collections.Generic.List<Object>
+            // Target only this specific texture file to avoid interference from other tests' textures.
+            // Load the texture inside ExecuteWithImmediateImport AND call CalculateTextureChanges
+            // there to ensure the Object reference is valid and the calculation happens while
+            // the asset database is in a consistent state.
+            ExecuteWithImmediateImport(() =>
             {
-                AssetDatabase.LoadAssetAtPath<Object>(Root),
-            };
+                Object textureObj = AssetDatabase.LoadAssetAtPath<Object>(path);
+                Assert.IsTrue(textureObj != null, $"Failed to load texture at {path}");
+                window._textureSourcePaths = new List<Object> { textureObj };
+                _ = window.CalculateTextureChanges(true);
+            });
 
-            _ = window.CalculateTextureChanges(true);
-
-            imp = AssetImporter.GetAtPath(path) as TextureImporter;
+            TextureImporter imp = AssetImporter.GetAtPath(path) as TextureImporter;
             Assert.IsTrue(imp != null);
             Assert.That(
                 imp.maxTextureSize,
@@ -1650,21 +1697,18 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
                     $"minMaxInteraction_{width}x{height}_{minAllowedSize}_{maxAllowedSize}.png"
                 )
                 .SanitizePath();
-            CreatePng(path, width, height, Color.yellow);
-            AssetDatabaseBatchHelper.RefreshIfNotBatching();
+            CreatePngAndImport(path, width, height, Color.yellow);
 
             TextureImporter imp = AssetImporter.GetAtPath(path) as TextureImporter;
             Assert.IsTrue(imp != null, "Importer should exist");
             imp.maxTextureSize = 2048;
-            imp.SaveAndReimport();
+            ExecuteWithImmediateImport(() => imp.SaveAndReimport());
 
-            FitTextureSizeWindow window = Track(
-                ScriptableObject.CreateInstance<FitTextureSizeWindow>()
-            );
+            FitTextureSizeWindow window = GetResetWindow();
             window._fitMode = FitMode.GrowAndShrink;
             window._minAllowedTextureSize = minAllowedSize;
             window._maxAllowedTextureSize = maxAllowedSize;
-            window._textureSourcePaths = new System.Collections.Generic.List<Object>
+            window._textureSourcePaths = new List<Object>
             {
                 AssetDatabase.LoadAssetAtPath<Object>(Root),
             };
@@ -1787,21 +1831,18 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
                     $"maxClampMode_{width}x{height}_{mode}_{maxAllowedSize}.png"
                 )
                 .SanitizePath();
-            CreatePng(path, width, height, Color.cyan);
-            AssetDatabaseBatchHelper.RefreshIfNotBatching();
+            CreatePngAndImport(path, width, height, Color.cyan);
 
             TextureImporter imp = AssetImporter.GetAtPath(path) as TextureImporter;
             Assert.IsTrue(imp != null, "Importer should exist");
             imp.maxTextureSize = currentMaxSize;
-            imp.SaveAndReimport();
+            ExecuteWithImmediateImport(() => imp.SaveAndReimport());
 
-            FitTextureSizeWindow window = Track(
-                ScriptableObject.CreateInstance<FitTextureSizeWindow>()
-            );
+            FitTextureSizeWindow window = GetResetWindow();
             window._fitMode = mode;
             window._minAllowedTextureSize = 1;
             window._maxAllowedTextureSize = maxAllowedSize;
-            window._textureSourcePaths = new System.Collections.Generic.List<Object>
+            window._textureSourcePaths = new List<Object>
             {
                 AssetDatabase.LoadAssetAtPath<Object>(Root),
             };
@@ -1878,21 +1919,18 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
                     $"minClampMode_{width}x{height}_{mode}_{minAllowedSize}.png"
                 )
                 .SanitizePath();
-            CreatePng(path, width, height, Color.gray);
-            AssetDatabaseBatchHelper.RefreshIfNotBatching();
+            CreatePngAndImport(path, width, height, Color.gray);
 
             TextureImporter imp = AssetImporter.GetAtPath(path) as TextureImporter;
             Assert.IsTrue(imp != null, "Importer should exist");
             imp.maxTextureSize = currentMaxSize;
-            imp.SaveAndReimport();
+            ExecuteWithImmediateImport(() => imp.SaveAndReimport());
 
-            FitTextureSizeWindow window = Track(
-                ScriptableObject.CreateInstance<FitTextureSizeWindow>()
-            );
+            FitTextureSizeWindow window = GetResetWindow();
             window._fitMode = mode;
             window._minAllowedTextureSize = minAllowedSize;
             window._maxAllowedTextureSize = 16384;
-            window._textureSourcePaths = new System.Collections.Generic.List<Object>
+            window._textureSourcePaths = new List<Object>
             {
                 AssetDatabase.LoadAssetAtPath<Object>(Root),
             };
@@ -1953,19 +1991,16 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
         )
         {
             string path = Path.Combine(Root, $"aspect_{width}x{height}_{mode}.png").SanitizePath();
-            CreatePng(path, width, height, Color.magenta);
-            AssetDatabaseBatchHelper.RefreshIfNotBatching();
+            CreatePngAndImport(path, width, height, Color.magenta);
 
             TextureImporter imp = AssetImporter.GetAtPath(path) as TextureImporter;
             Assert.IsTrue(imp != null, "Importer should exist");
             imp.maxTextureSize = 128;
-            imp.SaveAndReimport();
+            ExecuteWithImmediateImport(() => imp.SaveAndReimport());
 
-            FitTextureSizeWindow window = Track(
-                ScriptableObject.CreateInstance<FitTextureSizeWindow>()
-            );
+            FitTextureSizeWindow window = GetResetWindow();
             window._fitMode = mode;
-            window._textureSourcePaths = new System.Collections.Generic.List<Object>
+            window._textureSourcePaths = new List<Object>
             {
                 AssetDatabase.LoadAssetAtPath<Object>(Root),
             };
@@ -2066,6 +2101,19 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
             {
                 Object.DestroyImmediate(t); // UNH-SUPPRESS: Cleanup temporary texture in finally block
             }
+        }
+
+        /// <summary>
+        /// Creates a PNG and immediately imports it into the AssetDatabase.
+        /// Use this instead of CreatePng + RefreshIfNotBatching when batching is active.
+        /// </summary>
+        private void CreatePngAndImport(string relPath, int w, int h, Color c)
+        {
+            ExecuteWithImmediateImport(() =>
+            {
+                CreatePng(relPath, w, h, c);
+                AssetDatabase.ImportAsset(relPath, ImportAssetOptions.ForceSynchronousImport);
+            });
         }
 
         private static string RelToFull(string rel)

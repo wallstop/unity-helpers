@@ -7,7 +7,6 @@ using System.Runtime.CompilerServices;
 [assembly: InternalsVisibleTo("WallstopStudios.UnityHelpers.Tests.Core")]
 [assembly: InternalsVisibleTo("WallstopStudios.UnityHelpers.Tests.Editor")]
 [assembly: InternalsVisibleTo("WallstopStudios.UnityHelpers.Tests.Editor.Reflex")]
-[assembly: InternalsVisibleTo("WallstopStudios.UnityHelpers.Tests.Editor.Singletons")]
 [assembly: InternalsVisibleTo("WallstopStudios.UnityHelpers.Tests.Editor.Sprites")]
 [assembly: InternalsVisibleTo("WallstopStudios.UnityHelpers.Tests.Editor.Tools")]
 [assembly: InternalsVisibleTo("WallstopStudios.UnityHelpers.Tests.Editor.Validation")]

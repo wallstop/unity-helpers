@@ -1,0 +1,7 @@
+{
+  "sourceFile": "test_single.png",
+  "spriteCount": 1,
+  "expectedNames": ["test_single_0"],
+  "spriteDimensions": [32, 32],
+  "gridSize": [1, 1]
+}

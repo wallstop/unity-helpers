@@ -30,6 +30,25 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
             InvokedInstances.Clear();
         }
 
+        /// <summary>
+        /// Asserts that the handler state is clean (no recorded data), then clears it.
+        /// Use at the start of tests to detect test pollution from prior tests.
+        /// </summary>
+        public static void AssertCleanAndClear()
+        {
+            int recordedCount = Recorded.Count;
+            int instanceCount = InvokedInstances.Count;
+            Clear();
+            if (recordedCount != 0 || instanceCount != 0)
+            {
+                throw new System.InvalidOperationException(
+                    $"{nameof(TestCombinedSearchHandler)} was not clean at test start. "
+                        + $"RecordedContexts.Count={recordedCount}, RecordedInstances.Count={instanceCount}. "
+                        + "This indicates test pollution from a prior test."
+                );
+            }
+        }
+
         [DetectAssetChanged(
             typeof(TestDetectableAsset),
             AssetChangeFlags.Created | AssetChangeFlags.Deleted,

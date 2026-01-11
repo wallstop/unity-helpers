@@ -123,7 +123,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             hash.Query(new Vector2(0, 0), 1.0f, results);
 
             Assert.AreEqual(1, results.Count);
-            Assert.IsNull(results[0], "Queried item should be null as inserted");
+            Assert.IsTrue(results[0] == null, "Queried item should be null as inserted");
         }
 
         [Test]

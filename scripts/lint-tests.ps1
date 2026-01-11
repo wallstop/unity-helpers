@@ -1,5 +1,7 @@
 Param(
-  [switch]$VerboseOutput
+  [switch]$VerboseOutput,
+  [string[]]$Paths,
+  [switch]$FixNullChecks
 )
 
 Set-StrictMode -Version Latest
@@ -13,7 +15,11 @@ function Write-Info($msg) {
 $testRoots = @('Tests')
 $allowedHelperFiles = @(
   'Tests/Runtime/Visuals/VisualsTestHelpers.cs',
-  'Tests/Core/TextureTestHelper.cs'
+  'Tests/Core/TextureTestHelper.cs',
+  'Tests/Editor/Sprites/SharedSpriteTestFixtures.cs',
+  'Tests/Editor/TestAssets/SharedAnimationTestFixtures.cs',
+  'Tests/Editor/TestAssets/SharedEditorTestFixtures.cs',
+  'Tests/Editor/TestAssets/SharedTextureTestFixtures.cs'
 )
 
 $destroyPattern = [regex]'\b(?:UnityEngine\.)?Object\.(?:DestroyImmediate|Destroy)\s*\((?<arg>[^)]*)\)'
@@ -29,6 +35,10 @@ $setNameUnderscorePattern = [regex]'\.SetName\s*\(\s*@?"[^"]*_[^"]*"\s*\)'
 # Matches: TestCaseSource method names with underscores (nameof(Some_Method) or "Some_Method")
 $testCaseSourcePattern = [regex]'\[TestCaseSource\s*\(\s*(?:nameof\s*\(\s*(?<methodName>\w+)\s*\)|"(?<stringName>\w+)")\s*\)\]'
 
+# UNH005: Assert.IsNull/IsNotNull patterns (should use Assert.IsTrue for Unity null checks)
+$assertIsNullPattern = [regex]'Assert\.IsNull\s*\('
+$assertIsNotNullPattern = [regex]'Assert\.IsNotNull\s*\('
+
 # Returns true if line contains an allowlisted helper file path
 function Is-AllowlistedFile([string]$relPath) {
   foreach ($a in $allowedHelperFiles) {
@@ -42,171 +52,267 @@ function Get-RelativePath([string]$path) {
   return ($path.Substring($root.Length).TrimStart([System.IO.Path]::DirectorySeparatorChar))
 }
 
+function Fix-UnityNullAssertions {
+  Param(
+    [string]$Text
+  )
+
+  $originalText = $Text
+
+  $patternNotNullWithMessage = [regex]'(?ms)^(?<indent>\s*)Assert\.IsNotNull\s*\(\s*(?<expr>[^,]+?)\s*,\s*(?<message>[^)]*?)\s*\);'
+  $patternNotNullNoMessage = [regex]'(?ms)^(?<indent>\s*)Assert\.IsNotNull\s*\(\s*(?<expr>[^\)]+?)\s*\);'
+  $patternNullWithMessage = [regex]'(?ms)^(?<indent>\s*)Assert\.IsNull\s*\(\s*(?<expr>[^,]+?)\s*,\s*(?<message>[^)]*?)\s*\);'
+  $patternNullNoMessage = [regex]'(?ms)^(?<indent>\s*)Assert\.IsNull\s*\(\s*(?<expr>[^\)]+?)\s*\);'
+
+  $Text = $patternNotNullWithMessage.Replace($Text, {
+      param($m)
+      $indent = $m.Groups['indent'].Value
+      $expr = $m.Groups['expr'].Value.Trim()
+      $message = $m.Groups['message'].Value.Trim()
+      return "$indent" + "Assert.IsTrue($expr != null, $message);"
+    })
+
+  $Text = $patternNotNullNoMessage.Replace($Text, {
+      param($m)
+      $indent = $m.Groups['indent'].Value
+      $expr = $m.Groups['expr'].Value.Trim()
+      return "$indent" + "Assert.IsTrue($expr != null);"
+    })
+
+  $Text = $patternNullWithMessage.Replace($Text, {
+      param($m)
+      $indent = $m.Groups['indent'].Value
+      $expr = $m.Groups['expr'].Value.Trim()
+      $message = $m.Groups['message'].Value.Trim()
+      return "$indent" + "Assert.IsTrue($expr == null, $message);"
+    })
+
+  $Text = $patternNullNoMessage.Replace($Text, {
+      param($m)
+      $indent = $m.Groups['indent'].Value
+      $expr = $m.Groups['expr'].Value.Trim()
+      return "$indent" + "Assert.IsTrue($expr == null);"
+    })
+
+  $modified = ($originalText -ne $Text)
+  return @{
+    Text = $Text
+    Modified = $modified
+  }
+}
+
 $violations = @()
 
-foreach ($root in $testRoots) {
-  if (-not (Test-Path $root)) { continue }
-  Get-ChildItem -Recurse -Include *.cs -Path $root | ForEach-Object {
-    $file = $_.FullName
-    $rel = Get-RelativePath $file
-    $content = Get-Content $file
-    $text = $content -join "`n"
-
-    if (Is-AllowlistedFile $rel) {
-      return
+$filesToScan = @()
+if ($Paths -and $Paths.Count -gt 0) {
+  foreach ($p in $Paths) {
+    try {
+      $resolved = Resolve-Path $p -ErrorAction Stop
+      if ($resolved -and ($resolved.Path -like '*.cs')) {
+        $filesToScan += $resolved.Path
+      }
+    } catch {
+      Write-Info "Skipping path '$p' because it was not found."
     }
+  }
+} else {
+  foreach ($root in $testRoots) {
+    if (-not (Test-Path $root)) { continue }
+    $filesToScan += Get-ChildItem -Recurse -Include *.cs -Path $root | Select-Object -ExpandProperty FullName
+  }
+}
 
-    # Skip meta or non-source
-    if ($file -like '*.meta') { return }
+$filesToScan = $filesToScan | Sort-Object -Unique
 
-    # Check destroy calls; allow if argument var was tracked earlier in file
-    $lineIndex = 0
-    foreach ($line in $content) {
-      $lineIndex++
-      # Skip lines with UNH-SUPPRESS comment
-      if ($line -match 'UNH-SUPPRESS') { continue }
-      if ($destroyPattern.IsMatch($line)) {
-        $m = $destroyPattern.Match($line)
-        $arg = ($m.Groups['arg'].Value).Trim()
-        # Extract variable token before any commas or closing paren
-        $varName = $arg -replace ',.*','' -replace '\)',''
-        $allowed = $false
-        if (-not [string]::IsNullOrWhiteSpace($varName)) {
-          # Search up to 100 lines above for Track(varName)
-          $searchStart = [Math]::Max(0, $lineIndex - 100)
-          for ($i = $searchStart; $i -lt $lineIndex; $i++) {
-            if ($content[$i] -match "Track\s*\(\s*$varName\b") { $allowed = $true; break }
-          }
-        }
-        if (-not $allowed) {
-          $violations += (@{
-            Path=$rel; Line=$lineIndex; Message="UNH001: Avoid direct destroy in tests; track object and let teardown clean up (or add // UNH-SUPPRESS)"
-          })
+foreach ($file in $filesToScan) {
+  if ($file -like '*.meta') { continue }
+  $rel = Get-RelativePath $file
+  if (Is-AllowlistedFile $rel) { continue }
+
+  $content = Get-Content $file
+  $text = $content -join "`n"
+
+  if ($FixNullChecks) {
+    $fixResult = Fix-UnityNullAssertions -Text $text
+    if ($fixResult.Modified) {
+      Write-Info "Auto-fixed Unity null assertions in $rel"
+      [System.IO.File]::WriteAllText($file, $fixResult.Text)
+      $text = $fixResult.Text
+      $content = $fixResult.Text -split "`n"
+    }
+  }
+
+  # Check destroy calls; allow if argument var was tracked earlier in file
+  $lineIndex = 0
+  foreach ($line in $content) {
+    $lineIndex++
+    # Skip lines with UNH-SUPPRESS comment
+    if ($line -match 'UNH-SUPPRESS') { continue }
+    if ($destroyPattern.IsMatch($line)) {
+      $m = $destroyPattern.Match($line)
+      $arg = ($m.Groups['arg'].Value).Trim()
+      # Extract variable token before any commas or closing paren
+      $varName = $arg -replace ',.*','' -replace '\)',''
+      $allowed = $false
+      if (-not [string]::IsNullOrWhiteSpace($varName)) {
+        # Search up to 100 lines above for Track(varName)
+        $searchStart = [Math]::Max(0, $lineIndex - 100)
+        for ($i = $searchStart; $i -lt $lineIndex; $i++) {
+          if ($content[$i] -match "Track\s*\(\s*$varName\b") { $allowed = $true; break }
         }
       }
+      if (-not $allowed) {
+        $violations += (@{
+          Path=$rel; Line=$lineIndex; Message="UNH001: Avoid direct destroy in tests; track object and let teardown clean up (or add // UNH-SUPPRESS)"
+        })
+      }
     }
+  }
 
-    # Check untracked new allocations via assignment (var = new Type(...))
-    $assignMatches = $createAssignObjectPattern.Matches($text)
-    foreach ($am in $assignMatches) {
-      $var = $am.Groups['var'].Value
-      if ([string]::IsNullOrWhiteSpace($var)) { continue }
-      # Find the index of this match in terms of line
-      $prefix = $text.Substring(0, $am.Index)
-      $lineNo = ($prefix -split "`n").Length
+  # Check untracked new allocations via assignment (var = new Type(...))
+  $assignMatches = $createAssignObjectPattern.Matches($text)
+  foreach ($am in $assignMatches) {
+    $var = $am.Groups['var'].Value
+    if ([string]::IsNullOrWhiteSpace($var)) { continue }
+    # Find the index of this match in terms of line
+    $prefix = $text.Substring(0, $am.Index)
+    $lineNo = ($prefix -split "`n").Length
+    # Skip if line has UNH-SUPPRESS
+    if ($content[$lineNo-1] -match 'UNH-SUPPRESS') { continue }
+    # Look ahead 10 lines for Track(var)
+    $endLine = [Math]::Min($content.Count, $lineNo + 10)
+    $found = $false
+    for ($j = $lineNo; $j -le $endLine; $j++) {
+      if ($content[$j-1] -match "Track\s*\(\s*$var\b") { $found = $true; break }
+    }
+    if (-not $found) {
+      $violations += (@{
+        Path=$rel; Line=$lineNo; Message="UNH002: Unity object allocation should be tracked: add Track($var)"
+      })
+    }
+  }
+
+  # Check inline Track(new ...) OK; but find bare inline new ... in args without Track
+  if ($text -match '\bnew\s+(GameObject|Texture2D|Material|Mesh|Camera)\s*\(') {
+    # If Track(new ...) not present at all, flag a generic warning at file level
+    if (-not $createInlineTrackPattern.IsMatch($text)) {
+      # locate first occurrence for line number
+      $m = [regex]::Match($text, '\bnew\s+(GameObject|Texture2D|Material|Mesh|Camera)\s*\(')
+      $lineNo = (($text.Substring(0, $m.Index)) -split "`n").Length
       # Skip if line has UNH-SUPPRESS
       if ($content[$lineNo-1] -match 'UNH-SUPPRESS') { continue }
-      # Look ahead 10 lines for Track(var)
-      $endLine = [Math]::Min($content.Count, $lineNo + 10)
-      $found = $false
-      for ($j = $lineNo; $j -le $endLine; $j++) {
-        if ($content[$j-1] -match "Track\s*\(\s*$var\b") { $found = $true; break }
+      $violations += (@{
+        Path=$rel; Line=$lineNo; Message="UNH002: Inline Unity object creation should be passed to Track(new …)"
+      })
+    }
+  }
+
+  # Check ScriptableObject.CreateInstance<T>() assigned, ensure tracked
+  $soMatches = $createSoAssignPattern.Matches($text)
+  foreach ($sm in $soMatches) {
+    $var = $sm.Groups['var'].Value
+    if ([string]::IsNullOrWhiteSpace($var)) { continue }
+    $prefix = $text.Substring(0, $sm.Index)
+    $lineNo = ($prefix -split "`n").Length
+    # Skip if line or next few lines have UNH-SUPPRESS (multi-line statements)
+    $checkEnd = [Math]::Min($content.Count, $lineNo + 2)
+    $suppressed = $false
+    for ($s = $lineNo - 1; $s -lt $checkEnd; $s++) {
+      if ($content[$s] -match 'UNH-SUPPRESS') { $suppressed = $true; break }
+    }
+    if ($suppressed) { continue }
+    $found = $false
+    $endLine = [Math]::Min($content.Count, $lineNo + 10)
+    for ($j = $lineNo; $j -le $endLine; $j++) {
+      if ($content[$j-1] -match "Track\s*\(\s*$var\b") { $found = $true; break }
+    }
+    if (-not $found) {
+      $violations += (@{
+        Path=$rel; Line=$lineNo; Message="UNH002: ScriptableObject instance should be tracked: add Track($var)"
+      })
+    }
+  }
+
+  # UNH004: Check for underscores in TestName values
+  $lineIndex = 0
+  foreach ($line in $content) {
+    $lineIndex++
+    if ($line -match 'UNH-SUPPRESS') { continue }
+    if ($testNameUnderscorePattern.IsMatch($line)) {
+      $violations += (@{
+        Path=$rel; Line=$lineIndex; Message="UNH004: TestName contains underscore. Use PascalCase or dot notation (e.g., 'Input.Null.ReturnsFalse')"
+      })
+    }
+  }
+
+  # UNH004: Check for underscores in SetName() calls
+  $lineIndex = 0
+  foreach ($line in $content) {
+    $lineIndex++
+    if ($line -match 'UNH-SUPPRESS') { continue }
+    if ($setNameUnderscorePattern.IsMatch($line)) {
+      $violations += (@{
+        Path=$rel; Line=$lineIndex; Message="UNH004: SetName() contains underscore. Use PascalCase or dot notation (e.g., 'Input.Null.ReturnsFalse')"
+      })
+    }
+  }
+
+  # UNH004: Check for underscores in TestCaseSource method names
+  $lineIndex = 0
+  foreach ($line in $content) {
+    $lineIndex++
+    if ($line -match 'UNH-SUPPRESS') { continue }
+    $sourceMatch = $testCaseSourcePattern.Match($line)
+    if ($sourceMatch.Success) {
+      $methodName = $sourceMatch.Groups['methodName'].Value
+      if ([string]::IsNullOrWhiteSpace($methodName)) {
+        $methodName = $sourceMatch.Groups['stringName'].Value
       }
-      if (-not $found) {
+      if (-not [string]::IsNullOrWhiteSpace($methodName) -and $methodName -match '_') {
         $violations += (@{
-          Path=$rel; Line=$lineNo; Message="UNH002: Unity object allocation should be tracked: add Track($var)"
+          Path=$rel; Line=$lineIndex; Message="UNH004: TestCaseSource method '$methodName' contains underscore. Use PascalCase (e.g., 'EdgeCaseTestData')"
         })
       }
     }
+  }
 
-    # Check inline Track(new ...) OK; but find bare inline new ... in args without Track
-    if ($text -match '\bnew\s+(GameObject|Texture2D|Material|Mesh|Camera)\s*\(') {
-      # If Track(new ...) not present at all, flag a generic warning at file level
-      if (-not $createInlineTrackPattern.IsMatch($text)) {
-        # locate first occurrence for line number
-        $m = [regex]::Match($text, '\bnew\s+(GameObject|Texture2D|Material|Mesh|Camera)\s*\(')
-        $lineNo = (($text.Substring(0, $m.Index)) -split "`n").Length
-        # Skip if line has UNH-SUPPRESS
-        if ($content[$lineNo-1] -match 'UNH-SUPPRESS') { continue }
+  # UNH005: Check for Assert.IsNull (should use Assert.IsTrue(x == null) for Unity null checks)
+  $lineIndex = 0
+  foreach ($line in $content) {
+    $lineIndex++
+    if ($line -match 'UNH-SUPPRESS') { continue }
+    if ($assertIsNullPattern.IsMatch($line)) {
+      $violations += (@{
+        Path=$rel; Line=$lineIndex; Message="UNH005: Use Assert.IsTrue(x == null) instead of Assert.IsNull(x) for Unity object null checks"
+      })
+    }
+  }
+
+  # UNH005: Check for Assert.IsNotNull (should use Assert.IsTrue(x != null) for Unity null checks)
+  $lineIndex = 0
+  foreach ($line in $content) {
+    $lineIndex++
+    if ($line -match 'UNH-SUPPRESS') { continue }
+    if ($assertIsNotNullPattern.IsMatch($line)) {
+      $violations += (@{
+        Path=$rel; Line=$lineIndex; Message="UNH005: Use Assert.IsTrue(x != null) instead of Assert.IsNotNull(x) for Unity object null checks"
+      })
+    }
+  }
+
+  # Enforce CommonTestBase inheritance only if file creates Unity objects and is under Runtime/ or Editor/
+  $createsUnity = ($assignMatches.Count -gt 0) -or ($text -match '\bnew\s+(GameObject|Texture2D|Material|Mesh|Camera)\s*\(') -or ($soMatches.Count -gt 0)
+  if ($createsUnity) {
+    # Check for direct or indirect inheritance (CommonTestBase or any base that inherits it)
+    $usesBase = ($text -match ':\s*(CommonTestBase|AttributeTagsTestBase|TagsTestBase|EditorCommonTestBase|SpriteSheetExtractorTestBase|BatchedEditorTestBase)')
+    # Check for file-level UNH-SUPPRESS UNH003 comment
+    $hasSuppress = ($text -match 'UNH-SUPPRESS.*UNH003|UNH-SUPPRESS:\s*Complex|UNH-SUPPRESS:\s*This IS the CommonTestBase')
+    if (-not $usesBase -and -not $hasSuppress) {
+      # Only enforce for test classes; skip helper-only files
+      if ($text -match '\bnamespace\s+WallstopStudios') {
         $violations += (@{
-          Path=$rel; Line=$lineNo; Message="UNH002: Inline Unity object creation should be passed to Track(new …)"
+          Path=$rel; Line=1; Message="UNH003: Test classes creating Unity objects should inherit CommonTestBase (Editor or Runtime variant)"
         })
-      }
-    }
-
-    # Check ScriptableObject.CreateInstance<T>() assigned, ensure tracked
-    $soMatches = $createSoAssignPattern.Matches($text)
-    foreach ($sm in $soMatches) {
-      $var = $sm.Groups['var'].Value
-      if ([string]::IsNullOrWhiteSpace($var)) { continue }
-      $prefix = $text.Substring(0, $sm.Index)
-      $lineNo = ($prefix -split "`n").Length
-      # Skip if line or next few lines have UNH-SUPPRESS (multi-line statements)
-      $checkEnd = [Math]::Min($content.Count, $lineNo + 2)
-      $suppressed = $false
-      for ($s = $lineNo - 1; $s -lt $checkEnd; $s++) {
-        if ($content[$s] -match 'UNH-SUPPRESS') { $suppressed = $true; break }
-      }
-      if ($suppressed) { continue }
-      $found = $false
-      $endLine = [Math]::Min($content.Count, $lineNo + 10)
-      for ($j = $lineNo; $j -le $endLine; $j++) {
-        if ($content[$j-1] -match "Track\s*\(\s*$var\b") { $found = $true; break }
-      }
-      if (-not $found) {
-        $violations += (@{
-          Path=$rel; Line=$lineNo; Message="UNH002: ScriptableObject instance should be tracked: add Track($var)"
-        })
-      }
-    }
-
-    # UNH004: Check for underscores in TestName values
-    $lineIndex = 0
-    foreach ($line in $content) {
-      $lineIndex++
-      if ($line -match 'UNH-SUPPRESS') { continue }
-      if ($testNameUnderscorePattern.IsMatch($line)) {
-        $violations += (@{
-          Path=$rel; Line=$lineIndex; Message="UNH004: TestName contains underscore. Use PascalCase or dot notation (e.g., 'Input.Null.ReturnsFalse')"
-        })
-      }
-    }
-
-    # UNH004: Check for underscores in SetName() calls
-    $lineIndex = 0
-    foreach ($line in $content) {
-      $lineIndex++
-      if ($line -match 'UNH-SUPPRESS') { continue }
-      if ($setNameUnderscorePattern.IsMatch($line)) {
-        $violations += (@{
-          Path=$rel; Line=$lineIndex; Message="UNH004: SetName() contains underscore. Use PascalCase or dot notation (e.g., 'Input.Null.ReturnsFalse')"
-        })
-      }
-    }
-
-    # UNH004: Check for underscores in TestCaseSource method names
-    $lineIndex = 0
-    foreach ($line in $content) {
-      $lineIndex++
-      if ($line -match 'UNH-SUPPRESS') { continue }
-      $sourceMatch = $testCaseSourcePattern.Match($line)
-      if ($sourceMatch.Success) {
-        $methodName = $sourceMatch.Groups['methodName'].Value
-        if ([string]::IsNullOrWhiteSpace($methodName)) {
-          $methodName = $sourceMatch.Groups['stringName'].Value
-        }
-        if (-not [string]::IsNullOrWhiteSpace($methodName) -and $methodName -match '_') {
-          $violations += (@{
-            Path=$rel; Line=$lineIndex; Message="UNH004: TestCaseSource method '$methodName' contains underscore. Use PascalCase (e.g., 'EdgeCaseTestData')"
-          })
-        }
-      }
-    }
-
-    # Enforce CommonTestBase inheritance only if file creates Unity objects and is under Runtime/ or Editor/
-    $createsUnity = ($assignMatches.Count -gt 0) -or ($text -match '\bnew\s+(GameObject|Texture2D|Material|Mesh|Camera)\s*\(') -or ($soMatches.Count -gt 0)
-    if ($createsUnity) {
-      # Check for direct or indirect inheritance (CommonTestBase or any base that inherits it)
-      $usesBase = ($text -match ':\s*(CommonTestBase|AttributeTagsTestBase|TagsTestBase|EditorCommonTestBase|SpriteSheetExtractorTestBase)')
-      # Check for file-level UNH-SUPPRESS UNH003 comment
-      $hasSuppress = ($text -match 'UNH-SUPPRESS.*UNH003|UNH-SUPPRESS:\s*Complex|UNH-SUPPRESS:\s*This IS the CommonTestBase')
-      if (-not $usesBase -and -not $hasSuppress) {
-        # Only enforce for test classes; skip helper-only files
-        if ($text -match '\bnamespace\s+WallstopStudios') {
-          $violations += (@{
-            Path=$rel; Line=1; Message="UNH003: Test classes creating Unity objects should inherit CommonTestBase (Editor or Runtime variant)"
-          })
-        }
       }
     }
   }

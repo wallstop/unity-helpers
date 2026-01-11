@@ -28,11 +28,12 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
     [TestFixture]
     [NUnit.Framework.Category("Slow")]
     [NUnit.Framework.Category("Integration")]
-    public sealed class WButtonConflictDetectionTests : CommonTestBase
+    public sealed class WButtonConflictDetectionTests : BatchedEditorTestBase
     {
         [SetUp]
         public void SetUp()
         {
+            base.BaseSetUp();
             WButtonGUI.ClearGroupDataForTesting();
             WButtonGUI.ClearConflictingDrawOrderWarningsForTesting();
             WButtonGUI.ClearConflictingGroupPriorityWarningsForTesting();
@@ -44,13 +45,13 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
         [TearDown]
         public override void TearDown()
         {
-            base.TearDown();
             WButtonGUI.ClearGroupDataForTesting();
             WButtonGUI.ClearConflictingDrawOrderWarningsForTesting();
             WButtonGUI.ClearConflictingGroupPriorityWarningsForTesting();
             WButtonGUI.ClearConflictingGroupPlacementWarningsForTesting();
             WButtonGUI.ClearConflictWarningContentCacheForTesting();
             WButtonGUI.ClearContextCache();
+            base.TearDown();
         }
 
         // ===================================================================

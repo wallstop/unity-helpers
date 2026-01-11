@@ -279,8 +279,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                 ?? AssetDatabase.LoadAssetAtPath<Object>(
                     "Assets/Resources/CaseTest/CaseMismatch.asset"
                 );
-            Assert.IsNotNull(
-                finalAsset,
+            Assert.IsTrue(
+                finalAsset != null,
                 $"Asset should exist in either folder. Diagnostics: {diagnostics}"
             );
         }
@@ -937,8 +937,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                     "Assets/Resources/CaseTest/CaseMismatch.asset"
                 );
 
-            Assert.IsNotNull(
-                asset,
+            Assert.IsTrue(
+                asset != null,
                 $"CaseMismatch singleton should be created. Subfolders: [{subfoldersStr}]"
             );
         }
@@ -1117,7 +1117,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
 
             // Verify the asset was created (ensure works when not compiling/updating)
             Object asset = AssetDatabase.LoadAssetAtPath<Object>(targetPath);
-            Assert.IsNotNull(asset, "Asset should be created when not compiling or updating");
+            Assert.IsTrue(asset != null, "Asset should be created when not compiling or updating");
         }
 
         /// <summary>
@@ -1147,8 +1147,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
 
                 // Verify the asset was created
                 Object asset = AssetDatabase.LoadAssetAtPath<Object>(targetPath);
-                Assert.IsNotNull(
-                    asset,
+                Assert.IsTrue(
+                    asset != null,
                     "Asset should be created when IgnoreCompilationState is true. "
                         + $"isCompiling={EditorApplication.isCompiling}, "
                         + $"isUpdating={EditorApplication.isUpdating}"
@@ -1171,7 +1171,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         {
             // Create a ScriptableObject instance
             ScriptableObject instance = ScriptableObject.CreateInstance<CaseMismatch>(); // UNH-SUPPRESS: UNH002 - Testing partial asset creation
-            Assert.IsNotNull(instance, "Instance should be created");
+            Assert.IsTrue(instance != null, "Instance should be created");
 
             string testPath = TestRoot + "/SafeDestroyTest.asset";
             EnsureFolder(TestRoot);
@@ -1182,7 +1182,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
 
             // Verify asset was created
             Object createdAsset = AssetDatabase.LoadAssetAtPath<Object>(testPath);
-            Assert.IsNotNull(createdAsset, "Asset should be created for test setup");
+            Assert.IsTrue(createdAsset != null, "Asset should be created for test setup");
 
             // Now delete the asset file directly to simulate partial creation state
             // where the file is gone but Unity might still track the instance
@@ -1354,7 +1354,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
 
             // Verify final state is correct
             Object asset = AssetDatabase.LoadAssetAtPath<Object>(targetPath);
-            Assert.IsNotNull(asset, "Asset should exist after multiple ensure calls");
+            Assert.IsTrue(asset != null, "Asset should exist after multiple ensure calls");
 
             // Verify no duplicates were created
             string[] guids = AssetDatabase.FindAssets(
@@ -1362,6 +1362,160 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                 new[] { "Assets/Resources" }
             );
             Assert.AreEqual(1, guids.Length, "There should be exactly one CaseMismatch asset");
+        }
+
+        // Null and empty input tests
+        [TestCase(null, null, ExpectedResult = false, TestName = "BothNull")]
+        [TestCase(null, "Folder", ExpectedResult = false, TestName = "ActualNameNull")]
+        [TestCase("Folder 1", null, ExpectedResult = false, TestName = "DesiredNameNull")]
+        [TestCase("", "", ExpectedResult = false, TestName = "BothEmpty")]
+        [TestCase("", "Folder", ExpectedResult = false, TestName = "ActualNameEmpty")]
+        [TestCase("Folder 1", "", ExpectedResult = false, TestName = "DesiredNameEmpty")]
+        // Same length (no suffix possible)
+        [TestCase("Folder", "Folder", ExpectedResult = false, TestName = "SameLengthExactMatch")]
+        [TestCase("FolderX", "FolderY", ExpectedResult = false, TestName = "SameLengthDifferent")]
+        // Valid numbered duplicates
+        [TestCase(
+            "Folder 1",
+            "Folder",
+            ExpectedResult = true,
+            TestName = "ValidDuplicateSingleDigit"
+        )]
+        [TestCase(
+            "Folder 10",
+            "Folder",
+            ExpectedResult = true,
+            TestName = "ValidDuplicateDoubleDigit"
+        )]
+        [TestCase(
+            "Folder 999",
+            "Folder",
+            ExpectedResult = true,
+            TestName = "ValidDuplicateTripleDigit"
+        )]
+        [TestCase(
+            "Resources 1",
+            "Resources",
+            ExpectedResult = true,
+            TestName = "ValidDuplicateResourcesFolder"
+        )]
+        [TestCase(
+            "Resources 42",
+            "Resources",
+            ExpectedResult = true,
+            TestName = "ValidDuplicateResourcesLargeNumber"
+        )]
+        [TestCase(
+            "My Folder 5",
+            "My Folder",
+            ExpectedResult = true,
+            TestName = "ValidDuplicateWithSpaceInName"
+        )]
+        // Zero and negative numbers (should return false per implementation)
+        [TestCase("Folder 0", "Folder", ExpectedResult = false, TestName = "ZeroNotValidDuplicate")]
+        [TestCase(
+            "Folder -1",
+            "Folder",
+            ExpectedResult = false,
+            TestName = "NegativeNumberNotValidDuplicate"
+        )]
+        [TestCase(
+            "Folder -10",
+            "Folder",
+            ExpectedResult = false,
+            TestName = "NegativeDoubleDigitNotValidDuplicate"
+        )]
+        // Case-insensitive matching
+        [TestCase(
+            "FOLDER 1",
+            "folder",
+            ExpectedResult = true,
+            TestName = "CaseInsensitiveUpperToLower"
+        )]
+        [TestCase(
+            "folder 1",
+            "FOLDER",
+            ExpectedResult = true,
+            TestName = "CaseInsensitiveLowerToUpper"
+        )]
+        [TestCase(
+            "FoLdEr 1",
+            "fOlDeR",
+            ExpectedResult = true,
+            TestName = "CaseInsensitiveMixedCase"
+        )]
+        [TestCase(
+            "Resources 1",
+            "RESOURCES",
+            ExpectedResult = true,
+            TestName = "CaseInsensitiveResources"
+        )]
+        // No space separator (should return false)
+        [TestCase("Folder1", "Folder", ExpectedResult = false, TestName = "NoSpaceSeparator")]
+        [TestCase(
+            "Resources1",
+            "Resources",
+            ExpectedResult = false,
+            TestName = "NoSpaceSeparatorResources"
+        )]
+        [TestCase(
+            "Folder10",
+            "Folder",
+            ExpectedResult = false,
+            TestName = "NoSpaceSeparatorDoubleDigit"
+        )]
+        // Double space (should return false - suffix parsing fails)
+        [TestCase("Folder  1", "Folder", ExpectedResult = false, TestName = "DoubleSpaceSeparator")]
+        [TestCase(
+            "Folder  10",
+            "Folder",
+            ExpectedResult = false,
+            TestName = "DoubleSpaceDoubleDigit"
+        )]
+        // Non-numeric suffix
+        [TestCase(
+            "Folder abc",
+            "Folder",
+            ExpectedResult = false,
+            TestName = "NonNumericSuffixLetters"
+        )]
+        [TestCase(
+            "Folder 1a",
+            "Folder",
+            ExpectedResult = false,
+            TestName = "NonNumericSuffixMixed"
+        )]
+        [TestCase(
+            "Folder a1",
+            "Folder",
+            ExpectedResult = false,
+            TestName = "NonNumericSuffixLetterFirst"
+        )]
+        [TestCase(
+            "Folder 1.5",
+            "Folder",
+            ExpectedResult = false,
+            TestName = "NonNumericSuffixDecimal"
+        )]
+        [TestCase(
+            "Folder 1 2",
+            "Folder",
+            ExpectedResult = false,
+            TestName = "NonNumericSuffixMultipleNumbers"
+        )]
+        // Actual name shorter than desired name
+        [TestCase("Fol", "Folder", ExpectedResult = false, TestName = "ActualShorterThanDesired")]
+        [TestCase("F", "Folder", ExpectedResult = false, TestName = "ActualMuchShorterThanDesired")]
+        // Actual name equal length to desired name + space (no room for number)
+        [TestCase(
+            "Folder ",
+            "Folder",
+            ExpectedResult = false,
+            TestName = "ActualHasOnlyTrailingSpace"
+        )]
+        public bool IsNumberedDuplicateReturnsExpectedResult(string actualName, string desiredName)
+        {
+            return ScriptableObjectSingletonCreator.IsNumberedDuplicate(actualName, desiredName);
         }
 
         private static void TryDeleteFolder(string folder)

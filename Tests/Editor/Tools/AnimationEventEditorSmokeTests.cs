@@ -11,8 +11,20 @@ namespace WallstopStudios.UnityHelpers.Tests.Tools
     [TestFixture]
     [NUnit.Framework.Category("Slow")]
     [NUnit.Framework.Category("Integration")]
-    public sealed class AnimationEventEditorSmokeTests : CommonTestBase
+    public sealed class AnimationEventEditorSmokeTests : BatchedEditorTestBase
     {
+        [SetUp]
+        public void SetUp()
+        {
+            base.BaseSetUp();
+        }
+
+        [TearDown]
+        public override void TearDown()
+        {
+            base.TearDown();
+        }
+
         [Test]
         public void AnimationEventEditorOpensAndClosesWithoutAnimator()
         {

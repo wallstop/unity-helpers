@@ -718,7 +718,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             );
 
             Assert.IsFalse(result, "TryCommitPendingEntry should fail for duplicate entry.");
-            Assert.IsNotNull(pending.errorMessage, "Error message should be set.");
+            Assert.IsTrue(pending.errorMessage != null, "Error message should be set.");
             StringAssert.Contains("exists", pending.errorMessage.ToLowerInvariant());
 
             // Clean up
@@ -900,7 +900,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             // The type comparison should use typeof(ScriptableSingleton<>) == type.GetGenericTypeDefinition()
             Type singletonType = typeof(ScriptableSingleton<>);
             Type testType = typeof(TestScriptableSingleton).BaseType;
-            Assert.IsNotNull(testType);
+            Assert.IsTrue(testType != null);
             Assert.IsTrue(testType.IsGenericType);
             Assert.AreEqual(
                 singletonType,
@@ -943,8 +943,8 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 UnityHelpersSettings.SerializedPropertyNames.WButtonCustomColors
             );
 
-            Assert.IsNotNull(
-                paletteProperty,
+            Assert.IsTrue(
+                paletteProperty != null,
                 "WButtonCustomColors property should exist on UnityHelpersSettings."
             );
 
@@ -955,8 +955,8 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 SerializableDictionarySerializedPropertyNames.Values
             );
 
-            Assert.IsNotNull(keysProperty, "Keys property should exist.");
-            Assert.IsNotNull(valuesProperty, "Values property should exist.");
+            Assert.IsTrue(keysProperty != null, "Keys property should exist.");
+            Assert.IsTrue(valuesProperty != null, "Values property should exist.");
             Assert.IsTrue(keysProperty.isArray, "Keys should be an array.");
             Assert.IsTrue(valuesProperty.isArray, "Values should be an array.");
         }
@@ -1020,8 +1020,8 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 ambiguousException = ex;
             }
 
-            Assert.IsNotNull(
-                ambiguousException,
+            Assert.IsTrue(
+                ambiguousException != null,
                 "GetProperty(\"Item\", BindingFlags) should throw AmbiguousMatchException for SerializableDictionary."
             );
 
@@ -1032,8 +1032,8 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 new[] { keyType }
             );
 
-            Assert.IsNotNull(
-                correctIndexer,
+            Assert.IsTrue(
+                correctIndexer != null,
                 "GetProperty(\"Item\", returnType, paramTypes) should find the correct indexer."
             );
             Assert.AreEqual(
@@ -1182,8 +1182,8 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 new[] { keyType }
             );
 
-            Assert.IsNotNull(
-                indexer,
+            Assert.IsTrue(
+                indexer != null,
                 $"Should find indexer for SerializableDictionary<{keyType.Name}, {valueType.Name}>.{diagnosticInfo}"
             );
             Assert.AreEqual(
@@ -1206,8 +1206,8 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 
             // Also verify the indexer actually works by creating an instance
             object dictInstance = Activator.CreateInstance(genericDictType);
-            Assert.IsNotNull(
-                dictInstance,
+            Assert.IsTrue(
+                dictInstance != null,
                 $"Should be able to create dictionary instance.{diagnosticInfo}"
             );
 
@@ -1219,7 +1219,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 new[] { keyType, valueType },
                 null
             );
-            Assert.IsNotNull(addMethod, $"Should find Add method.{diagnosticInfo}");
+            Assert.IsTrue(addMethod != null, $"Should find Add method.{diagnosticInfo}");
 
             addMethod.Invoke(dictInstance, new[] { testKey, testValue });
 
@@ -1257,8 +1257,8 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 new[] { typeof(object) }
             );
 
-            Assert.IsNotNull(
-                nonGenericIndexer,
+            Assert.IsTrue(
+                nonGenericIndexer != null,
                 "Should be able to find the non-generic IDictionary indexer by specifying object types."
             );
             Assert.AreEqual(
@@ -1285,7 +1285,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             );
 
             Assert.IsTrue(found, "TryGetIndexerProperty should find the indexer.");
-            Assert.IsNotNull(indexer, "Indexer should not be null.");
+            Assert.IsTrue(indexer != null, "Indexer should not be null.");
             Assert.AreEqual(valueType, indexer.PropertyType, "Return type should match.");
 
             ParameterInfo[] parameters = indexer.GetIndexParameters();
@@ -1318,7 +1318,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 out PropertyInfo indexer
             );
             Assert.IsFalse(result, "Should return false for null type.");
-            Assert.IsNull(indexer, "Indexer should be null.");
+            Assert.IsTrue(indexer == null, "Indexer should be null.");
 
             result = ReflectionHelpers.TryGetIndexerProperty(
                 typeof(SerializableDictionary<string, int>),
@@ -1327,7 +1327,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 out indexer
             );
             Assert.IsFalse(result, "Should return false for null return type.");
-            Assert.IsNull(indexer, "Indexer should be null.");
+            Assert.IsTrue(indexer == null, "Indexer should be null.");
 
             result = ReflectionHelpers.TryGetIndexerProperty(
                 typeof(SerializableDictionary<string, int>),
@@ -1336,7 +1336,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 out indexer
             );
             Assert.IsFalse(result, "Should return false for null parameter types.");
-            Assert.IsNull(indexer, "Indexer should be null.");
+            Assert.IsTrue(indexer == null, "Indexer should be null.");
         }
 
         [TestCase(
@@ -1441,8 +1441,8 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 
             if (expectedFound)
             {
-                Assert.IsNotNull(
-                    indexer,
+                Assert.IsTrue(
+                    indexer != null,
                     $"Indexer should not be null when found is true.{diagnosticInfo}"
                 );
                 Assert.AreEqual(
@@ -1458,7 +1458,10 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             }
             else
             {
-                Assert.IsNull(indexer, $"Indexer should be null when not found.{diagnosticInfo}");
+                Assert.IsTrue(
+                    indexer == null,
+                    $"Indexer should be null when not found.{diagnosticInfo}"
+                );
             }
         }
 
@@ -1487,7 +1490,10 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 found,
                 $"Should not find indexer with wrong return type (string instead of int). {diagnosticInfo}"
             );
-            Assert.IsNull(indexer, $"Indexer should be null when not found. {diagnosticInfo}");
+            Assert.IsTrue(
+                indexer == null,
+                $"Indexer should be null when not found. {diagnosticInfo}"
+            );
 
             // Try to find an indexer with wrong parameter type
             found = ReflectionHelpers.TryGetIndexerProperty(
@@ -1509,7 +1515,10 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 found,
                 $"Should not find indexer with wrong parameter type (int instead of string). {diagnosticInfo}"
             );
-            Assert.IsNull(indexer, $"Indexer should be null when not found. {diagnosticInfo}");
+            Assert.IsTrue(
+                indexer == null,
+                $"Indexer should be null when not found. {diagnosticInfo}"
+            );
         }
 
         [Test]
@@ -1532,14 +1541,14 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             dict["initial"] = 1;
 
             Action<object, object, object[]> setter = ReflectionHelpers.GetIndexerSetter(indexer);
-            Assert.IsNotNull(setter, "Should get a setter delegate.");
+            Assert.IsTrue(setter != null, "Should get a setter delegate.");
 
             setter(dict, 42, new object[] { "test" });
             Assert.AreEqual(42, dict["test"], "Setter should have set the value.");
 
             // Also test getter
             Func<object, object[], object> getter = ReflectionHelpers.GetIndexerGetter(indexer);
-            Assert.IsNotNull(getter, "Should get a getter delegate.");
+            Assert.IsTrue(getter != null, "Should get a getter delegate.");
 
             object retrieved = getter(dict, new object[] { "test" });
             Assert.AreEqual(42, retrieved, "Getter should retrieve the value.");
@@ -1564,7 +1573,10 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 foundObjectIndexer,
                 "SerializableDictionary should have a PUBLIC object indexer."
             );
-            Assert.IsNotNull(objectIndexer, "The object indexer PropertyInfo should not be null.");
+            Assert.IsTrue(
+                objectIndexer != null,
+                "The object indexer PropertyInfo should not be null."
+            );
             Assert.AreEqual(
                 typeof(object),
                 objectIndexer.PropertyType,
@@ -1599,8 +1611,8 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 foundObjectIndexer,
                 "Dictionary should NOT have a public object indexer (it's an explicit interface implementation)."
             );
-            Assert.IsNull(
-                objectIndexer,
+            Assert.IsTrue(
+                objectIndexer == null,
                 "The object indexer PropertyInfo should be null for Dictionary."
             );
 
@@ -1613,8 +1625,8 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             );
 
             Assert.IsTrue(foundGenericIndexer, "Dictionary SHOULD have a public generic indexer.");
-            Assert.IsNotNull(
-                genericIndexer,
+            Assert.IsTrue(
+                genericIndexer != null,
                 "The generic indexer PropertyInfo should not be null."
             );
             Assert.AreEqual(typeof(int), genericIndexer.PropertyType, "Return type should be int.");
@@ -1636,7 +1648,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             );
 
             Assert.IsTrue(foundGeneric, "Should find generic indexer.");
-            Assert.IsNotNull(genericIndexer, "Generic indexer should not be null.");
+            Assert.IsTrue(genericIndexer != null, "Generic indexer should not be null.");
 
             // Find the object indexer
             bool foundObject = ReflectionHelpers.TryGetIndexerProperty(
@@ -1647,7 +1659,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             );
 
             Assert.IsTrue(foundObject, "Should find object indexer.");
-            Assert.IsNotNull(objectIndexer, "Object indexer should not be null.");
+            Assert.IsTrue(objectIndexer != null, "Object indexer should not be null.");
 
             // They should be different properties
             Assert.AreNotEqual(

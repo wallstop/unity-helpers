@@ -353,11 +353,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         public void GetBytesHandlesNullAndEmpty()
         {
             byte[] nullResult = ((string)null).GetBytes();
-            Assert.IsNotNull(nullResult);
+            Assert.IsTrue(nullResult != null);
             Assert.AreEqual(0, nullResult.Length);
 
             byte[] emptyResult = string.Empty.GetBytes();
-            Assert.IsNotNull(emptyResult);
+            Assert.IsTrue(emptyResult != null);
             Assert.AreEqual(0, emptyResult.Length);
         }
 
@@ -365,7 +365,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         public void GetBytesConvertsString()
         {
             byte[] result = "test".GetBytes();
-            Assert.IsNotNull(result);
+            Assert.IsTrue(result != null);
             Assert.Greater(result.Length, 0);
 
             // Verify round-trip
@@ -378,7 +378,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         {
             byte[] bytes = { 116, 101, 115, 116 }; // "test" in ASCII
             string result = bytes.GetString();
-            Assert.IsNotNull(result);
+            Assert.IsTrue(result != null);
             Assert.AreEqual("test", result);
         }
 
@@ -396,12 +396,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         {
             int intValue = 42;
             string json = intValue.ToJson();
-            Assert.IsNotNull(json);
+            Assert.IsTrue(json != null);
             Assert.IsTrue(json.Contains("42"));
 
             string stringValue = "test";
             string stringJson = stringValue.ToJson();
-            Assert.IsNotNull(stringJson);
+            Assert.IsTrue(stringJson != null);
             Assert.IsTrue(stringJson.Contains("test"));
         }
 
@@ -893,7 +893,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             {
                 string result = pattern.ToCamelCase();
                 // Basic invariants
-                Assert.IsNotNull(result, $"Result should not be null for: {pattern}");
+                Assert.IsTrue(result != null, $"Result should not be null for: {pattern}");
 
                 if (result.Length > 0)
                 {
@@ -1467,7 +1467,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             {
                 string result = pattern.ToKebabCase();
                 // Basic invariants
-                Assert.IsNotNull(result, $"Result should not be null for: {pattern}");
+                Assert.IsTrue(result != null, $"Result should not be null for: {pattern}");
 
                 if (result.Length > 0)
                 {
@@ -1835,7 +1835,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         {
             string original = "Hello, World!";
             string base64 = original.ToBase64();
-            Assert.IsNotNull(base64);
+            Assert.IsTrue(base64 != null);
             Assert.AreNotEqual(original, base64);
 
             string decoded = base64.FromBase64();
@@ -2008,7 +2008,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         {
             string unicode = "Hello 世界 🌍";
             byte[] bytes = unicode.GetBytes();
-            Assert.IsNotNull(bytes);
+            Assert.IsTrue(bytes != null);
             Assert.Greater(bytes.Length, unicode.Length);
 
             string decoded = bytes.GetString();

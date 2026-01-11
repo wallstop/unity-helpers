@@ -122,14 +122,26 @@ For complete naming rules, see [test-naming-conventions](./test-naming-conventio
 
 ### Unity-Specific
 
-1. **Unity object null checks** — Use `== null` / `!= null`, never `Assert.IsNull`
+> **WARNING: UNH005 Lint Check Enforced**
+>
+> The pre-commit and pre-push hooks enforce UNH005, which flags `Assert.IsNull` and `Assert.IsNotNull` usage.
+> These assertions use `ReferenceEquals` internally, which bypasses Unity's custom `==` operator and fails to detect Unity's "fake null" (destroyed objects that are not yet garbage collected).
+
+1. **Unity object null checks** — Use `== null` / `!= null`, never `Assert.IsNull` / `Assert.IsNotNull`
+
+**Why this matters:**
+
+- Unity's `==` operator for `UnityEngine.Object` performs special "fake null" checking
+- When a Unity object is destroyed, it becomes a "fake null" — the C# reference still exists, but Unity considers it null
+- `Assert.IsNull` / `Assert.IsNotNull` use `ReferenceEquals`, which bypasses this check entirely
+- This can cause tests to pass when they should fail (or vice versa)
 
 ```csharp
-// CORRECT
+// CORRECT - Uses Unity's == operator
 Assert.IsTrue(gameObject != null);
 Assert.IsFalse(component == null);
 
-// NEVER USE - bypasses Unity's null check
+// NEVER USE - Bypasses Unity's null check (flagged by UNH005)
 Assert.IsNull(gameObject);
 Assert.IsNotNull(component);
 ```
@@ -160,6 +172,45 @@ Assert.IsNotNull(component);
 | Static mutable state between tests | Reset in `[TearDown]` or use instance state |
 | Shared fixtures without reset      | `[SetUp]` creates fresh state each test     |
 | Tests affecting each other         | Each test must be completely independent    |
+
+---
+
+## Editor Integration Tests
+
+### Shared Fixture Pattern
+
+For tests requiring Unity assets (textures, prefabs, etc.):
+
+1. Use `[OneTimeSetUp]`/`[OneTimeTearDown]` for asset lifecycle
+2. Create shared output directory once, delete once at end
+3. Use per-test subdirectories via `TestContext.CurrentContext.Test.Name`
+
+### AssetDatabase Batching
+
+Wrap slow operations in `AssetDatabaseBatchHelper.BeginBatch()`:
+
+- Store scope: `_batchScope = AssetDatabaseBatchHelper.BeginBatch(refreshOnDispose: true)` in `[OneTimeSetUp]`
+- Dispose scope: `_batchScope?.Dispose()` in `[OneTimeTearDown]`
+- Defers ALL imports until scope is disposed
+
+### Golden File Metadata Pattern
+
+For tests that would require slow extraction/generation:
+
+1. Create JSON metadata files with expected outputs
+2. Commit to `Tests/Editor/{Feature}/Assets/GoldenOutput/`
+3. Add `[Explicit]` utility test to regenerate when logic changes
+4. Verification tests read JSON and assert against expected values
+
+### Filesystem vs AssetDatabase Verification
+
+Prefer `System.IO` over `AssetDatabase` for verification:
+
+- `Directory.GetFiles("*.png")` instead of `AssetDatabase.FindAssets`
+- `File.Exists()` instead of `AssetDatabase.LoadAssetAtPath`
+- Only use AssetDatabase when testing actual Unity asset behavior
+
+See also: [test-parallelization-rules](./test-parallelization-rules.md)
 
 ---
 
@@ -286,11 +337,11 @@ Every test MUST be completely independent:
 
 ### Technical
 
-- [ ] Unity null checks use `== null` / `!= null`
+- [ ] Unity null checks use `== null` / `!= null` (UNH005 enforces this)
 - [ ] No `async Task` test methods
 - [ ] No `#region` blocks
 - [ ] MonoBehaviour/ScriptableObject helpers in separate files
-- [ ] Ran `pwsh -NoProfile -File scripts/lint-tests.ps1` and fixed any issues
+- [ ] Ran `pwsh -NoProfile -File scripts/lint-tests.ps1` and fixed any issues (checks UNH001-UNH005)
 
 ---
 

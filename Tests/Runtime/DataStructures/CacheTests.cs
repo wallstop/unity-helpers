@@ -1502,7 +1502,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             CacheBuilder<string, int> builder = CacheBuilder<string, int>.NewBuilder();
             // Verify builder can be used by building a cache
             using Cache<string, int> cache = builder.Build();
-            Assert.IsNotNull(cache);
+            Assert.IsTrue(cache != null);
         }
 
         [Test]
@@ -3232,7 +3232,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
                 ExpireAfterAccessSeconds = expireAfterAccess,
             };
             using Cache<string, int> cache = new(options);
-            Assert.IsNotNull(cache);
+            Assert.IsTrue(cache != null);
             Assert.AreEqual(10, cache.Capacity);
         }
     }
@@ -3315,7 +3315,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             // Default struct should still be usable (though may have default values)
             // This verifies the struct doesn't require special initialization
             using Cache<string, int> cache = builder.Build();
-            Assert.IsNotNull(cache);
+            Assert.IsTrue(cache != null);
         }
 
         [TestCase(1)]
@@ -3343,7 +3343,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
                 .MaximumSize(10)
                 .EvictionPolicy(policy)
                 .Build();
-            Assert.IsNotNull(cache);
+            Assert.IsTrue(cache != null);
             Assert.AreEqual(10, cache.Capacity);
         }
     }
@@ -3368,7 +3368,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             // Structs can be boxed and compared to null, but default is not null
             CacheOptions<string, int> options = default;
             object boxedOptions = options;
-            Assert.IsNotNull(boxedOptions, "Boxed struct should not be null");
+            Assert.IsTrue(boxedOptions != null, "Boxed struct should not be null");
         }
     }
 
@@ -3495,7 +3495,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
                 .Build();
 
             Assert.IsFalse(cache.TryGet("nonexistent", out string value));
-            Assert.IsNull(value, "Value should be null on miss for reference types");
+            Assert.IsTrue(value == null, "Value should be null on miss for reference types");
         }
 
         [Test]
@@ -3513,7 +3513,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             Assert.AreEqual(42, value1);
 
             Assert.IsTrue(cache.TryGet("withNull", out int? value2));
-            Assert.IsNull(value2, "Should successfully retrieve null value");
+            Assert.IsTrue(value2 == null, "Should successfully retrieve null value");
         }
 
         [Test]

@@ -728,12 +728,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
                 json
             );
 
-            Assert.IsNull(
-                deserialized.TypeProperty,
+            Assert.IsTrue(
+                deserialized.TypeProperty == null,
                 "TypeProperty should be null after round-trip of null"
             );
-            Assert.IsNull(
-                deserialized.TypeList,
+            Assert.IsTrue(
+                deserialized.TypeList == null,
                 "TypeList should be null after round-trip of null"
             );
         }
@@ -744,7 +744,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
             string json = "\"\"";
             Type deserialized = Serializer.JsonDeserialize<Type>(json);
 
-            Assert.IsNull(deserialized, "Empty string should deserialize to null Type");
+            Assert.IsTrue(deserialized == null, "Empty string should deserialize to null Type");
         }
 
         [Test]
@@ -753,7 +753,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
             string json = "\"   \"";
             Type deserialized = Serializer.JsonDeserialize<Type>(json);
 
-            Assert.IsNull(deserialized, "Whitespace-only string should deserialize to null Type");
+            Assert.IsTrue(
+                deserialized == null,
+                "Whitespace-only string should deserialize to null Type"
+            );
         }
 
         [Test]
@@ -762,7 +765,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
             string json = "\"NonExistent.Type.Name\"";
             Type deserialized = Serializer.JsonDeserialize<Type>(json);
 
-            Assert.IsNull(deserialized, "Invalid type name should deserialize to null Type");
+            Assert.IsTrue(
+                deserialized == null,
+                "Invalid type name should deserialize to null Type"
+            );
         }
 
         [Test]

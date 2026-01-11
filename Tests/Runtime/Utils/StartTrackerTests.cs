@@ -143,7 +143,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             GameObject go = Track(new GameObject("Tracker", typeof(StartTracker)));
             StartTracker first = go.GetComponent<StartTracker>();
 
-            Assert.IsNotNull(first, "First StartTracker should exist");
+            Assert.IsTrue(first != null, "First StartTracker should exist");
             Assert.AreEqual(
                 1,
                 go.GetComponents<StartTracker>().Length,
@@ -156,8 +156,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             LogAssert.ignoreFailingMessages = false;
 
             // Verify the actual behavior: second component was not added
-            Assert.IsNull(
-                second,
+            Assert.IsTrue(
+                second == null,
                 "AddComponent should return null when DisallowMultipleComponent prevents addition"
             );
             Assert.AreEqual(

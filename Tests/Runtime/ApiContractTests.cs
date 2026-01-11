@@ -70,8 +70,8 @@ namespace WallstopStudios.UnityHelpers.Tests
                 BindingFlags.Public | BindingFlags.Instance
             );
 
-            Assert.IsNull(
-                tryGetValueMethod,
+            Assert.IsTrue(
+                tryGetValueMethod == null,
                 "Cache should NOT have a TryGetValue method. Use TryGet instead. "
                     + "This is a common mistake when developers expect Dictionary-like API."
             );
@@ -102,7 +102,10 @@ namespace WallstopStudios.UnityHelpers.Tests
                 }
             }
 
-            Assert.IsNotNull(tryGetMethod, "Cache must have a TryGet method for value retrieval");
+            Assert.IsTrue(
+                tryGetMethod != null,
+                "Cache must have a TryGet method for value retrieval"
+            );
 
             ParameterInfo[] parameters = tryGetMethod.GetParameters();
             Assert.AreEqual(
@@ -239,7 +242,7 @@ namespace WallstopStudios.UnityHelpers.Tests
             bool foundNull = cache.TryGet("nullKey", out string nullValue);
             // If the cache stores null values, foundNull should be true
             // The assertion depends on Cache implementation behavior
-            Assert.IsNull(nullValue, "Value should be null when null was stored");
+            Assert.IsTrue(nullValue == null, "Value should be null when null was stored");
         }
     }
 
@@ -387,7 +390,7 @@ namespace WallstopStudios.UnityHelpers.Tests
 
             byte[] result = Serializer.JsonSerialize(msg);
 
-            Assert.IsNotNull(result, "JsonSerialize should return a byte array");
+            Assert.IsTrue(result != null, "JsonSerialize should return a byte array");
             Assert.IsInstanceOf<byte[]>(
                 result,
                 "JsonSerialize returns byte[], not string. Use JsonStringify for string output."
@@ -627,7 +630,7 @@ namespace WallstopStudios.UnityHelpers.Tests
                 .RecordStatistics()
                 .Build();
 
-            Assert.IsNotNull(cache, "Build should return a Cache instance");
+            Assert.IsTrue(cache != null, "Build should return a Cache instance");
             Assert.IsInstanceOf<Cache<string, int>>(
                 cache,
                 "Build should return correct Cache type"

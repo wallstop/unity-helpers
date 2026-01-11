@@ -99,7 +99,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
 
             using PooledResource<TestPoolItem> resource = pool.Get(out TestPoolItem item);
 
-            Assert.IsNotNull(item, "Pool should create a new item when empty");
+            Assert.IsTrue(item != null, "Pool should create a new item when empty");
             Assert.AreEqual(1, item.Id, "First created item should have Id 1");
         }
 
@@ -1170,7 +1170,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
 
             using PooledResource<TestPoolItem> resource = pool.Get(out TestPoolItem item);
 
-            Assert.IsNotNull(item, "Item should not be null even after pool disposal");
+            Assert.IsTrue(item != null, "Item should not be null even after pool disposal");
         }
 
         [Test]
@@ -1725,7 +1725,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
                         using PooledResource<TestPoolItem> resource = pool.Get(
                             out TestPoolItem item
                         );
-                        Assert.IsNotNull(item, "Concurrent Get should always return a valid item");
+                        Assert.IsTrue(
+                            item != null,
+                            "Concurrent Get should always return a valid item"
+                        );
                     }
                 });
             }
@@ -2081,7 +2084,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
         [TestCase("   ", TestName = "ResolveType.Whitespace.ReturnsNull")]
         public void GenericMatchingResolveTypeNullInputsReturnNull(string typeName)
         {
-            Assert.IsNull(PoolTypeResolver.ResolveType(typeName));
+            Assert.IsTrue(PoolTypeResolver.ResolveType(typeName) == null);
         }
 
         [Test]
@@ -2120,7 +2123,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
             Type first = config.ResolvedType;
             Type second = config.ResolvedType;
 
-            Assert.IsNotNull(first, "ResolvedType should return a non-null type");
+            Assert.IsTrue(first != null, "ResolvedType should return a non-null type");
             Assert.AreEqual(typeof(List<int>), first);
             Assert.AreSame(first, second);
         }
@@ -2181,14 +2184,14 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
             PoolTypeConfiguration config = new() { TypeName = "List<int>" };
 
             Type first = config.ResolvedType;
-            Assert.IsNotNull(first, "First resolution should return a valid type");
+            Assert.IsTrue(first != null, "First resolution should return a valid type");
 
             config.InvalidateCache();
             config.TypeName = "List<string>";
 
             Type second = config.ResolvedType;
-            Assert.IsNotNull(
-                second,
+            Assert.IsTrue(
+                second != null,
                 "Second resolution should return a valid type after cache invalidation"
             );
             Assert.AreEqual(typeof(List<string>), second);

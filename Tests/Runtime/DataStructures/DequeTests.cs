@@ -471,7 +471,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             int count = deque.ToArray(ref array);
 
             Assert.AreEqual(2, count);
-            Assert.IsNotNull(array);
+            Assert.IsTrue(array != null);
             Assert.AreEqual(2, array.Length);
         }
 

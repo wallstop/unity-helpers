@@ -73,7 +73,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
             string path = Path.Combine(_dir, "does_not_exist.json");
             bool read = Serializer.TryReadFromJsonFile(path, out Sample loaded);
             Assert.IsFalse(read);
-            Assert.IsNull(loaded, "Loaded object should be null when file is missing");
+            Assert.IsTrue(loaded == null, "Loaded object should be null when file is missing");
         }
 
         [Test]

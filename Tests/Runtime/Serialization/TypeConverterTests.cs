@@ -32,7 +32,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
 
             string json = JsonSerializer.Serialize(holder, options);
             TypeHolder roundtrip = JsonSerializer.Deserialize<TypeHolder>(json, options);
-            Assert.IsNotNull(roundtrip, "Deserialized TypeHolder should not be null");
+            Assert.IsTrue(roundtrip != null, "Deserialized TypeHolder should not be null");
             Assert.AreEqual(typeof(ReflectionHelpers), roundtrip.T);
         }
     }

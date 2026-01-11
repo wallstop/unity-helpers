@@ -47,7 +47,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         {
             List<Vector3> points = new();
             RTree3D<Vector3> tree = CreateTree(points);
-            Assert.IsNotNull(tree);
+            Assert.IsTrue(tree != null);
 
             List<Vector3> results = new();
             tree.GetElementsInBounds(new Bounds(Vector3.zero, Vector3.one * 100f), results);

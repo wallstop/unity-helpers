@@ -96,7 +96,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Tags
 
             if (AssetDatabase.LoadAssetAtPath<Object>(assetPath) != null)
             {
-                AssetDatabase.ImportAsset(assetPath, ImportAssetOptions.ForceUpdate);
+                AssetDatabase.ImportAsset(assetPath, ImportAssetOptions.ForceSynchronousImport);
             }
         }
 

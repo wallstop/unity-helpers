@@ -6,7 +6,6 @@
     "UnityEngine.TestRunner",
     "WallstopStudios.UnityHelpers",
     "WallstopStudios.UnityHelpers.Integration.Reflex",
-    "WallstopStudios.UnityHelpers.Tests.Editor",
     "WallstopStudios.UnityHelpers.Tests.Core",
     "Reflex"
   ],

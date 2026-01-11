@@ -6,6 +6,7 @@ namespace WallstopStudios.UnityHelpers.Editor.AssetProcessors
     using System;
     using System.Collections.Generic;
     using System.Globalization;
+    using System.IO;
     using System.Linq;
     using System.Reflection;
     using UnityEditor;
@@ -29,14 +30,14 @@ namespace WallstopStudios.UnityHelpers.Editor.AssetProcessors
         private static readonly Func<double> DefaultTimeProvider = () =>
             EditorApplication.timeSinceStartup;
 
-        private enum SubscriptionParameterMode
+        internal enum SubscriptionParameterMode
         {
-            None,
-            Context,
-            CreatedAndDeleted,
+            None = 0,
+            Context = 1,
+            CreatedAndDeleted = 2,
         }
 
-        private sealed class MethodSubscription
+        internal sealed class MethodSubscription
         {
             internal Type _declaringType;
             internal MethodInfo _method;
@@ -47,7 +48,27 @@ namespace WallstopStudios.UnityHelpers.Editor.AssetProcessors
             internal bool _searchSceneObjects;
         }
 
-        private sealed class AssetWatcher
+        internal sealed class AssetWatcherSettings
+        {
+            internal bool IncludeAssignableTypes { get; set; }
+            internal bool SearchPrefabs { get; set; }
+            internal bool SearchSceneObjects { get; set; }
+            internal HashSet<string> KnownAssetPaths { get; set; }
+            internal List<MethodSubscription> Subscriptions { get; set; }
+            internal Dictionary<Type, AssetWatcher> WatchersByAssetType { get; set; } = new();
+            internal Queue<PendingAssetChangeSet> PendingAssetChanges { get; set; } = new();
+            internal bool Initialized { get; set; }
+            internal bool IncludeTestAssets { get; set; }
+            internal bool ProcessingAssetChanges { get; set; }
+            internal bool LoopProtectionActive { get; set; }
+            internal int ConsecutiveChangeBatches { get; set; }
+            internal double LastChangeProcessTimestamp { get; set; }
+            internal Func<double> TimeProvider { get; set; } = DefaultTimeProvider;
+            internal double? LoopWindowSecondsOverride { get; set; }
+            internal bool DiagnosticsEnabled { get; set; }
+        }
+
+        internal sealed class AssetWatcher
         {
             internal AssetWatcher(Type assetType, bool includeAssignableTypes)
             {
@@ -80,7 +101,7 @@ namespace WallstopStudios.UnityHelpers.Editor.AssetProcessors
             }
         }
 
-        private sealed class PendingAssetChangeSet
+        internal sealed class PendingAssetChangeSet
         {
             internal PendingAssetChangeSet(
                 IReadOnlyList<string> imported,
@@ -111,6 +132,7 @@ namespace WallstopStudios.UnityHelpers.Editor.AssetProcessors
         private static double _lastChangeProcessTimestamp;
         private static Func<double> _timeProvider = DefaultTimeProvider;
         private static double? _loopWindowSecondsOverride;
+        private static bool _diagnosticsEnabled;
 
         internal static Func<double> TimeProvider
         {
@@ -128,6 +150,16 @@ namespace WallstopStudios.UnityHelpers.Editor.AssetProcessors
         {
             get => _includeTestAssets;
             set => _includeTestAssets = value;
+        }
+
+        /// <summary>
+        /// Enables diagnostic logging for debugging asset change detection behavior.
+        /// When enabled, logs detailed information about instance enumeration and search options.
+        /// </summary>
+        internal static bool DiagnosticsEnabled
+        {
+            get => _diagnosticsEnabled;
+            set => _diagnosticsEnabled = value;
         }
 
         static DetectAssetChangeProcessor()
@@ -151,17 +183,51 @@ namespace WallstopStudios.UnityHelpers.Editor.AssetProcessors
             );
         }
 
-        internal static void ResetForTesting()
+        internal static AssetWatcherSettings GetSettingsForTesting()
         {
-            _initialized = false;
+            return new AssetWatcherSettings
+            {
+                Initialized = _initialized,
+                IncludeTestAssets = _includeTestAssets,
+                WatchersByAssetType = new Dictionary<Type, AssetWatcher>(WatchersByAssetType),
+                PendingAssetChanges = new Queue<PendingAssetChangeSet>(PendingAssetChanges),
+                ProcessingAssetChanges = _processingAssetChanges,
+                LoopProtectionActive = _loopProtectionActive,
+                ConsecutiveChangeBatches = _consecutiveChangeBatches,
+                LastChangeProcessTimestamp = _lastChangeProcessTimestamp,
+                TimeProvider = _timeProvider,
+                LoopWindowSecondsOverride = _loopWindowSecondsOverride,
+                DiagnosticsEnabled = _diagnosticsEnabled,
+            };
+        }
+
+        internal static void ResetForTesting(AssetWatcherSettings settings = null)
+        {
+            _initialized = settings?.Initialized ?? false;
+            IncludeTestAssets = settings?.IncludeTestAssets ?? false;
             WatchersByAssetType.Clear();
+            foreach (
+                var kvp in settings?.WatchersByAssetType
+                    ?? Enumerable.Empty<KeyValuePair<Type, AssetWatcher>>()
+            )
+            {
+                WatchersByAssetType.Add(kvp.Key, kvp.Value);
+            }
             PendingAssetChanges.Clear();
-            _processingAssetChanges = false;
-            _loopProtectionActive = false;
-            _consecutiveChangeBatches = 0;
-            _lastChangeProcessTimestamp = 0;
-            TimeProvider = DefaultTimeProvider;
-            LoopWindowSecondsOverride = null;
+            foreach (
+                var pendingChange in settings?.PendingAssetChanges
+                    ?? Enumerable.Empty<PendingAssetChangeSet>()
+            )
+            {
+                PendingAssetChanges.Enqueue(pendingChange);
+            }
+            _processingAssetChanges = settings?.ProcessingAssetChanges ?? false;
+            _loopProtectionActive = settings?.LoopProtectionActive ?? false;
+            _consecutiveChangeBatches = settings?.ConsecutiveChangeBatches ?? 0;
+            _lastChangeProcessTimestamp = settings?.LastChangeProcessTimestamp ?? 0;
+            TimeProvider = settings?.TimeProvider ?? DefaultTimeProvider;
+            LoopWindowSecondsOverride = settings?.LoopWindowSecondsOverride;
+            DiagnosticsEnabled = settings?.DiagnosticsEnabled ?? false;
         }
 
         internal static bool ValidateMethodSignatureForTesting(
@@ -588,56 +654,115 @@ namespace WallstopStudios.UnityHelpers.Editor.AssetProcessors
             HashSet<string> yieldedPaths = new(StringComparer.OrdinalIgnoreCase);
             HashSet<int> yieldedInstanceIds = new();
 
-            // Primary search using Unity's type filter (for ScriptableObjects and direct asset types)
-            string filter = $"t:{declaringType.Name}";
-            string[] guids = AssetDatabase.FindAssets(filter);
-            for (int i = 0; i < guids.Length; i++)
-            {
-                string path = AssetDatabase.GUIDToAssetPath(guids[i]);
-                if (ShouldSkipPath(path))
-                {
-                    continue;
-                }
+            // Determine if this is a Component type - these require explicit prefab/scene search
+            // and should NOT be found via the primary asset search (which would incorrectly
+            // return prefab assets containing the component regardless of search flags)
+            bool isComponentType = typeof(Component).IsAssignableFrom(declaringType);
 
-                UnityEngine.Object instance = AssetDatabase.LoadAssetAtPath(path, declaringType);
-                if (instance != null)
-                {
-                    yieldedPaths.Add(path);
-                    yield return instance;
-                }
+            if (_diagnosticsEnabled)
+            {
+                Debug.Log(
+                    string.Format(
+                        CultureInfo.InvariantCulture,
+                        "[DetectAssetChanged] EnumeratePersistedInstances: type={0}, isComponent={1}, searchPrefabs={2}, searchSceneObjects={3}",
+                        declaringType.FullName,
+                        isComponentType,
+                        searchPrefabs,
+                        searchSceneObjects
+                    )
+                );
             }
 
-            // Fallback for test assets: Unity's t:TypeName filter may fail to find assets
-            // when the class is defined in a file that doesn't match the class name.
-            // Search test directories directly by scanning for ScriptableObject assets.
-            if (_includeTestAssets)
+            // Primary search using Unity's type filter - ONLY for non-Component types
+            // (ScriptableObjects and other direct asset types that exist as standalone .asset files)
+            // Component types must use the explicit prefab/scene search paths below
+            if (!isComponentType)
             {
-                string[] testGuids = AssetDatabase.FindAssets(
-                    "t:ScriptableObject",
-                    new[] { "Assets/" + TestAssetFolderMarker }
-                );
-                for (int i = 0; i < testGuids.Length; i++)
+                string filter = $"t:{declaringType.Name}";
+                string[] guids = AssetDatabase.FindAssets(filter);
+                for (int i = 0; i < guids.Length; i++)
                 {
-                    string path = AssetDatabase.GUIDToAssetPath(testGuids[i]);
-                    if (yieldedPaths.Contains(path))
+                    string path = AssetDatabase.GUIDToAssetPath(guids[i]);
+                    if (ShouldSkipPath(path))
                     {
                         continue;
                     }
 
-                    UnityEngine.Object asset = AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(
-                        path
+                    UnityEngine.Object instance = AssetDatabase.LoadAssetAtPath(
+                        path,
+                        declaringType
                     );
-                    if (asset != null && declaringType.IsInstanceOfType(asset))
+                    if (instance != null)
                     {
                         yieldedPaths.Add(path);
-                        yield return asset;
+                        yield return instance;
+                    }
+                }
+
+                // Fallback for test assets: Unity's t:TypeName filter may fail to find assets
+                // when the class is defined in a file that doesn't match the class name.
+                // Search test directories directly by scanning for ScriptableObject assets.
+                // This only applies to non-Component types (ScriptableObjects).
+                if (_includeTestAssets)
+                {
+                    string testFolder = "Assets/" + TestAssetFolderMarker;
+                    if (!AssetDatabase.IsValidFolder(testFolder))
+                    {
+                        yield break;
+                    }
+
+                    // Additional filesystem check to avoid race condition where Unity logs a warning
+                    // before the exception can be caught
+                    string fullTestFolderPath = Path.Combine(
+                        Path.GetDirectoryName(Application.dataPath) ?? string.Empty,
+                        testFolder
+                    );
+                    if (!Directory.Exists(fullTestFolderPath))
+                    {
+                        yield break;
+                    }
+
+                    // Wrap in try-catch to handle race condition where folder may be deleted
+                    // between IsValidFolder check and FindAssets call
+                    string[] testGuids;
+                    try
+                    {
+                        testGuids = AssetDatabase.FindAssets(
+                            "t:ScriptableObject",
+                            new[] { testFolder }
+                        );
+                    }
+                    catch (Exception ex)
+                        when (ex is not OutOfMemoryException and not StackOverflowException)
+                    {
+                        // Race condition: folder may have been deleted between validation and search.
+                        // Silently ignore - this is expected during test cleanup.
+                        testGuids = Array.Empty<string>();
+                    }
+
+                    for (int i = 0; i < testGuids.Length; i++)
+                    {
+                        string path = AssetDatabase.GUIDToAssetPath(testGuids[i]);
+                        if (yieldedPaths.Contains(path))
+                        {
+                            continue;
+                        }
+
+                        UnityEngine.Object asset =
+                            AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(path);
+                        if (asset != null && declaringType.IsInstanceOfType(asset))
+                        {
+                            yieldedPaths.Add(path);
+                            yield return asset;
+                        }
                     }
                 }
             }
 
-            // Search prefabs for MonoBehaviour components
-            if (searchPrefabs && typeof(Component).IsAssignableFrom(declaringType))
+            // Search prefabs for MonoBehaviour components - ONLY when searchPrefabs is true
+            if (searchPrefabs && isComponentType)
             {
+                int prefabCount = 0;
                 foreach (
                     UnityEngine.Object component in EnumeratePrefabComponents(
                         declaringType,
@@ -646,13 +771,27 @@ namespace WallstopStudios.UnityHelpers.Editor.AssetProcessors
                     )
                 )
                 {
+                    prefabCount++;
                     yield return component;
+                }
+
+                if (_diagnosticsEnabled)
+                {
+                    Debug.Log(
+                        string.Format(
+                            CultureInfo.InvariantCulture,
+                            "[DetectAssetChanged] Prefab search for {0} found {1} instances",
+                            declaringType.Name,
+                            prefabCount
+                        )
+                    );
                 }
             }
 
-            // Search open scenes for MonoBehaviour components
-            if (searchSceneObjects && typeof(Component).IsAssignableFrom(declaringType))
+            // Search open scenes for MonoBehaviour components - ONLY when searchSceneObjects is true
+            if (searchSceneObjects && isComponentType)
             {
+                int sceneCount = 0;
                 foreach (
                     UnityEngine.Object component in EnumerateSceneComponents(
                         declaringType,
@@ -660,7 +799,20 @@ namespace WallstopStudios.UnityHelpers.Editor.AssetProcessors
                     )
                 )
                 {
+                    sceneCount++;
                     yield return component;
+                }
+
+                if (_diagnosticsEnabled)
+                {
+                    Debug.Log(
+                        string.Format(
+                            CultureInfo.InvariantCulture,
+                            "[DetectAssetChanged] Scene search for {0} found {1} instances",
+                            declaringType.Name,
+                            sceneCount
+                        )
+                    );
                 }
             }
         }
@@ -989,7 +1141,13 @@ namespace WallstopStudios.UnityHelpers.Editor.AssetProcessors
                             watcher.EnableSceneObjectSearch();
                         }
 
-                        watcher.Subscriptions.Add(subscription);
+                        bool alreadyExists = watcher.Subscriptions.Any(existing =>
+                            existing._declaringType == type && existing._method == method
+                        );
+                        if (!alreadyExists)
+                        {
+                            watcher.Subscriptions.Add(subscription);
+                        }
                     }
                 }
             }
@@ -1036,10 +1194,42 @@ namespace WallstopStudios.UnityHelpers.Editor.AssetProcessors
             // folder directly and check runtime types.
             if (_includeTestAssets)
             {
-                string[] testGuids = AssetDatabase.FindAssets(
-                    "t:ScriptableObject",
-                    new[] { "Assets/" + TestAssetFolderMarker }
+                string testFolder = "Assets/" + TestAssetFolderMarker;
+                if (!AssetDatabase.IsValidFolder(testFolder))
+                {
+                    return;
+                }
+
+                // Additional filesystem check to avoid race condition where Unity logs a warning
+                // before the exception can be caught
+                string fullTestFolderPath = Path.Combine(
+                    Path.GetDirectoryName(Application.dataPath) ?? string.Empty,
+                    testFolder
                 );
+                if (!Directory.Exists(fullTestFolderPath))
+                {
+                    return;
+                }
+
+                // Now safe to call FindAssets since folder definitely exists
+                // Wrap in try-catch to handle race condition where folder may be deleted
+                // between IsValidFolder check and FindAssets call
+                string[] testGuids;
+                try
+                {
+                    testGuids = AssetDatabase.FindAssets(
+                        "t:ScriptableObject",
+                        new[] { testFolder }
+                    );
+                }
+                catch (Exception ex)
+                    when (ex is not OutOfMemoryException and not StackOverflowException)
+                {
+                    // Race condition: folder may have been deleted between validation and search.
+                    // Silently ignore - this is expected during test cleanup.
+                    return;
+                }
+
                 for (int i = 0; i < testGuids.Length; i++)
                 {
                     string path = AssetDatabase.GUIDToAssetPath(testGuids[i]);

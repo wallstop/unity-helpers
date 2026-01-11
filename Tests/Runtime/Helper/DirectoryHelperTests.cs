@@ -1148,7 +1148,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         public void SanitizePathWithNullReturnsNull()
         {
             string result = PathHelper.Sanitize(null);
-            Assert.IsNull(result);
+            Assert.IsTrue(result == null);
         }
 
         [Test]
@@ -1217,7 +1217,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         {
             string path = null;
             string result = path.SanitizePath();
-            Assert.IsNull(result);
+            Assert.IsTrue(result == null);
         }
 
         [Test]

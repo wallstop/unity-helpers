@@ -38,7 +38,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Validation
             "WallstopStudios.UnityHelpers.Tests.Core",
             "WallstopStudios.UnityHelpers.Tests.Editor",
             "WallstopStudios.UnityHelpers.Tests.Editor.Reflex",
-            "WallstopStudios.UnityHelpers.Tests.Editor.Singletons",
             "WallstopStudios.UnityHelpers.Tests.Editor.Sprites",
             "WallstopStudios.UnityHelpers.Tests.Editor.Tools",
             "WallstopStudios.UnityHelpers.Tests.Editor.Validation",
@@ -526,10 +525,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Validation
         {
             // This test verifies that InternalsVisibleTo is working for this assembly
             Assembly runtimeAssembly = GetLoadedAssembly("WallstopStudios.UnityHelpers");
-            Assert.IsNotNull(runtimeAssembly, "Runtime assembly should be loaded");
+            Assert.IsTrue(runtimeAssembly != null, "Runtime assembly should be loaded");
 
             Assembly editorAssembly = GetLoadedAssembly("WallstopStudios.UnityHelpers.Editor");
-            Assert.IsNotNull(editorAssembly, "Editor assembly should be loaded");
+            Assert.IsTrue(editorAssembly != null, "Editor assembly should be loaded");
 
             // Verify we can see internal types (if any exist)
             // This is a basic check that InternalsVisibleTo is configured
@@ -560,6 +559,90 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Validation
 
             Debug.Log(
                 $"Internal types accessible: Runtime={internalRuntimeTypes}, Editor={internalEditorTypes}"
+            );
+        }
+
+        /// <summary>
+        /// Verifies that GetPackagePath returns a valid path and correctly excludes node_modules.
+        /// </summary>
+        [Test]
+        public void GetPackagePathReturnsValidPath()
+        {
+            string packagePath = GetPackagePath();
+
+            // Verify path is not null or empty
+            Assert.IsFalse(
+                string.IsNullOrEmpty(packagePath),
+                "GetPackagePath should return a non-null, non-empty path"
+            );
+
+            // Verify path does not contain node_modules (the fix we're testing)
+            Assert.IsFalse(
+                packagePath.Contains("node_modules"),
+                $"GetPackagePath should not return a path containing node_modules. Got: {packagePath}"
+            );
+
+            // Verify package.json exists at the returned path
+            string packageJsonPath = Path.Combine(packagePath, "package.json");
+            Assert.IsTrue(
+                File.Exists(packageJsonPath),
+                $"package.json should exist at the returned path. Expected: {packageJsonPath}"
+            );
+
+            // Verify this is the correct package (com.wallstop-studios.unity-helpers)
+            string packageJsonContent = File.ReadAllText(packageJsonPath);
+            Assert.IsTrue(
+                packageJsonContent.Contains("com.wallstop-studios.unity-helpers"),
+                $"package.json should contain the correct package name. Path: {packageJsonPath}"
+            );
+        }
+
+        /// <summary>
+        /// Verifies that GetPackagePath returns a path that is consistent across multiple calls.
+        /// </summary>
+        [Test]
+        public void GetPackagePathReturnsConsistentPath()
+        {
+            string path1 = GetPackagePath();
+            string path2 = GetPackagePath();
+
+            Assert.AreEqual(
+                path1,
+                path2,
+                "GetPackagePath should return the same path on multiple calls"
+            );
+        }
+
+        /// <summary>
+        /// Verifies that the package path contains expected directories.
+        /// </summary>
+        [Test]
+        public void GetPackagePathContainsExpectedStructure()
+        {
+            string packagePath = GetPackagePath();
+            if (string.IsNullOrEmpty(packagePath))
+            {
+                Assert.Inconclusive("Could not determine package path");
+                return;
+            }
+
+            // Verify expected directories exist
+            string testsPath = Path.Combine(packagePath, "Tests");
+            Assert.IsTrue(
+                Directory.Exists(testsPath),
+                $"Tests directory should exist at: {testsPath}"
+            );
+
+            string runtimePath = Path.Combine(packagePath, "Runtime");
+            Assert.IsTrue(
+                Directory.Exists(runtimePath),
+                $"Runtime directory should exist at: {runtimePath}"
+            );
+
+            string editorPath = Path.Combine(packagePath, "Editor");
+            Assert.IsTrue(
+                Directory.Exists(editorPath),
+                $"Editor directory should exist at: {editorPath}"
             );
         }
 
@@ -776,6 +859,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Validation
                 if (
                     path.EndsWith("package.json")
                     && path.Contains("com.wallstop-studios.unity-helpers")
+                    && !path.Contains("/node_modules/")
+                    && !path.Contains("\\node_modules\\")
                 )
                 {
                     return Path.GetDirectoryName(path);
@@ -823,8 +908,28 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Validation
                 }
             }
 
+            // Fallback: use CallerFilePath to resolve at compile time
+            string scriptPath = GetScriptFilePath();
+            if (!string.IsNullOrEmpty(scriptPath))
+            {
+                // 3 levels up: Tests/Editor/Validation -> Tests/Editor -> Tests -> package root
+                const int levelsToPackageRoot = 3;
+                string currentDir = Path.GetDirectoryName(scriptPath);
+                for (int i = 0; i < levelsToPackageRoot; i++)
+                {
+                    currentDir = Path.Combine(currentDir, "..");
+                }
+                string packageRoot = Path.GetFullPath(currentDir);
+                if (File.Exists(Path.Combine(packageRoot, "package.json")))
+                {
+                    return packageRoot;
+                }
+            }
+
             return null;
         }
+
+        private static string GetScriptFilePath([CallerFilePath] string path = "") => path;
     }
 
     /// <summary>

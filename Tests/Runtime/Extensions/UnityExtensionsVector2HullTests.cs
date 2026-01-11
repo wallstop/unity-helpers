@@ -550,7 +550,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
                 () =>
                 {
                     List<Vector2> hull = points.BuildConcaveHullKnn(nearestNeighbors: 12);
-                    Assert.IsNotNull(hull);
+                    Assert.IsTrue(hull != null);
                     Assert.GreaterOrEqual(hull.Count, 4);
                 },
                 warmupIterations: 2,

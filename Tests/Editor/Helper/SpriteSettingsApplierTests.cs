@@ -9,49 +9,45 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
     using UnityEditor;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Editor.Sprites;
-    using WallstopStudios.UnityHelpers.Editor.Utils;
     using WallstopStudios.UnityHelpers.Tests.Core;
 
     [TestFixture]
     [NUnit.Framework.Category("Slow")]
     [NUnit.Framework.Category("Integration")]
-    public sealed class SpriteSettingsApplierTests : CommonTestBase
+    public sealed class SpriteSettingsApplierTests : BatchedEditorTestBase
     {
         private const string TestFolder = "Assets/TempSpriteApplierTests";
         private string _assetPath;
+
+        [OneTimeSetUp]
+        public override void CommonOneTimeSetUp()
+        {
+            base.CommonOneTimeSetUp();
+            if (Application.isPlaying)
+            {
+                return;
+            }
+            EnsureFolder(TestFolder);
+            TrackFolder(TestFolder);
+        }
 
         [SetUp]
         public override void BaseSetUp()
         {
             base.BaseSetUp();
-            if (Application.isPlaying)
-            {
-                return;
-            }
-            if (!AssetDatabase.IsValidFolder(TestFolder))
-            {
-                AssetDatabase.CreateFolder("Assets", "TempSpriteApplierTests");
-            }
+            // Reset per-test state
+            _assetPath = null;
         }
 
         [TearDown]
         public override void TearDown()
         {
             base.TearDown();
-            if (Application.isPlaying)
+            // Per-test cleanup: track individual asset paths for deferred cleanup
+            if (!string.IsNullOrEmpty(_assetPath))
             {
-                return;
+                TrackAssetPath(_assetPath);
             }
-            if (!string.IsNullOrEmpty(_assetPath) && File.Exists(_assetPath))
-            {
-                AssetDatabase.DeleteAsset(_assetPath);
-                _assetPath = null;
-            }
-            if (AssetDatabase.IsValidFolder(TestFolder))
-            {
-                AssetDatabase.DeleteAsset(TestFolder);
-            }
-            AssetDatabaseBatchHelper.RefreshIfNotBatching();
         }
 
         private string CreateTempTexture(bool asSprite = false)
@@ -60,15 +56,19 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             byte[] png = tex.EncodeToPNG();
             string path = Path.Combine(TestFolder, "ui_button.png");
             File.WriteAllBytes(path, png);
-            AssetDatabase.ImportAsset(path);
 
-            TextureImporter ti = AssetImporter.GetAtPath(path) as TextureImporter;
-            Assert.IsTrue(ti != null, "TextureImporter not found for path: " + path);
-            if (asSprite)
+            ExecuteWithImmediateImport(() =>
             {
-                ti.textureType = TextureImporterType.Sprite;
-                ti.SaveAndReimport();
-            }
+                AssetDatabase.ImportAsset(path);
+
+                TextureImporter ti = AssetImporter.GetAtPath(path) as TextureImporter;
+                Assert.IsTrue(ti != null, "TextureImporter not found for path: " + path);
+                if (asSprite)
+                {
+                    ti.textureType = TextureImporterType.Sprite;
+                    ti.SaveAndReimport();
+                }
+            });
             return path;
         }
 
@@ -85,10 +85,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             // Set initial filter mode to Point (different from what the higher-priority profile wants)
             // Unity's default is Bilinear, so we need to explicitly set a different value
             // to ensure WillTextureSettingsChange detects a change
-            TextureImporter initialImporter = AssetImporter.GetAtPath(path) as TextureImporter;
-            Assert.IsTrue(initialImporter != null, "Initial importer not found");
-            initialImporter.filterMode = FilterMode.Point;
-            initialImporter.SaveAndReimport();
+            ExecuteWithImmediateImport(() =>
+            {
+                TextureImporter initialImporter = AssetImporter.GetAtPath(path) as TextureImporter;
+                Assert.IsTrue(initialImporter != null, "Initial importer not found");
+                initialImporter.filterMode = FilterMode.Point;
+                initialImporter.SaveAndReimport();
+            });
 
             // lower priority sets FilterMode.Point; higher sets Bilinear
             List<SpriteSettings> profiles = new()
@@ -126,7 +129,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
                 $"Expected TryUpdateTextureSettings to apply settings. Path={path}"
             );
             Assert.IsTrue(importer != null, $"Importer was null for path: {path}");
-            importer.SaveAndReimport();
+
+            ExecuteWithImmediateImport(() =>
+            {
+                importer.SaveAndReimport();
+            });
 
             // Verify final filter mode is from higher priority profile
             Assert.AreEqual(
@@ -148,10 +155,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
 
             // Explicitly set the texture type to Default to ensure a change is detected
             // when the profile sets it to Sprite
-            TextureImporter initialImporter = AssetImporter.GetAtPath(path) as TextureImporter;
-            Assert.IsTrue(initialImporter != null, "Initial importer not found");
-            initialImporter.textureType = TextureImporterType.Default;
-            initialImporter.SaveAndReimport();
+            ExecuteWithImmediateImport(() =>
+            {
+                TextureImporter initialImporter = AssetImporter.GetAtPath(path) as TextureImporter;
+                Assert.IsTrue(initialImporter != null, "Initial importer not found");
+                initialImporter.textureType = TextureImporterType.Default;
+                initialImporter.SaveAndReimport();
+            });
 
             List<SpriteSettings> profiles = new()
             {
@@ -176,7 +186,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
                 $"Expected TryUpdateTextureSettings to update importer for path: {path}"
             );
             Assert.IsTrue(importer != null, $"Importer was null for path: {path}");
-            importer.SaveAndReimport();
+
+            ExecuteWithImmediateImport(() =>
+            {
+                importer.SaveAndReimport();
+            });
+
             Assert.AreEqual(
                 TextureImporterType.Sprite,
                 importer.textureType,

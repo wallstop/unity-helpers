@@ -1008,7 +1008,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.DataStructures
             Assert.IsTrue(cache.TryGet("withValue", out int? v1));
             Assert.AreEqual(42, v1);
             Assert.IsTrue(cache.TryGet("withNull", out int? v2));
-            Assert.IsNull(v2);
+            Assert.IsTrue(v2 == null);
         }
 
         [Test]

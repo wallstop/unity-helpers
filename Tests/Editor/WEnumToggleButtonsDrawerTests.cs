@@ -126,18 +126,18 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor
             SerializedProperty property = serializedObject.FindProperty(
                 nameof(ToggleDropDownAsset.mode)
             );
-            Assert.IsNotNull(property, "Failed to locate serialized property for test asset.");
+            Assert.IsTrue(property != null, "Failed to locate serialized property for test asset.");
 
             FieldInfo fieldInfo = typeof(ToggleDropDownAsset).GetField(
                 nameof(ToggleDropDownAsset.mode),
                 BindingFlags.Instance | BindingFlags.Public
             );
-            Assert.IsNotNull(fieldInfo, "Failed to locate field info for test asset.");
+            Assert.IsTrue(fieldInfo != null, "Failed to locate field info for test asset.");
 
             WEnumToggleButtonsAttribute toggleAttribute =
                 fieldInfo.GetCustomAttribute<WEnumToggleButtonsAttribute>();
-            Assert.IsNotNull(
-                toggleAttribute,
+            Assert.IsTrue(
+                toggleAttribute != null,
                 "Expected WEnumToggleButtonsAttribute on test field."
             );
 
@@ -178,7 +178,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor
             SerializedProperty property = serializedObject.FindProperty(
                 nameof(ToggleDropDownAsset.mode)
             );
-            Assert.IsNotNull(property, "Failed to locate serialized property for test asset.");
+            Assert.IsTrue(property != null, "Failed to locate serialized property for test asset.");
 
             ToggleSet toggleSet = WEnumToggleButtonsUtility.CreateToggleSet(
                 property,
@@ -200,17 +200,17 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor
             SerializedProperty property = serializedObject.FindProperty(
                 nameof(ToggleDropDownAsset.mode)
             );
-            Assert.IsNotNull(property, "Failed to locate serialized property for test asset.");
+            Assert.IsTrue(property != null, "Failed to locate serialized property for test asset.");
 
             FieldInfo fieldInfo = typeof(ToggleDropDownAsset).GetField(
                 nameof(ToggleDropDownAsset.mode),
                 BindingFlags.Instance | BindingFlags.Public
             );
-            Assert.IsNotNull(fieldInfo);
+            Assert.IsTrue(fieldInfo != null);
 
             WEnumToggleButtonsAttribute toggleAttribute =
                 fieldInfo.GetCustomAttribute<WEnumToggleButtonsAttribute>();
-            Assert.IsNotNull(toggleAttribute);
+            Assert.IsTrue(toggleAttribute != null);
 
             WEnumToggleButtonsDrawer drawer = new();
             ConfigureDrawer(drawer, fieldInfo, toggleAttribute);
@@ -254,18 +254,18 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor
             SerializedProperty property = serializedObject.FindProperty(
                 nameof(ToggleDropDownAsset.mode)
             );
-            Assert.IsNotNull(property, "Failed to locate serialized property for test asset.");
+            Assert.IsTrue(property != null, "Failed to locate serialized property for test asset.");
 
             FieldInfo fieldInfo = typeof(ToggleDropDownAsset).GetField(
                 nameof(ToggleDropDownAsset.mode),
                 BindingFlags.Instance | BindingFlags.Public
             );
-            Assert.IsNotNull(fieldInfo, "FieldInfo should be found for mode field");
+            Assert.IsTrue(fieldInfo != null, "FieldInfo should be found for mode field");
 
             WEnumToggleButtonsAttribute toggleAttribute =
                 fieldInfo.GetCustomAttribute<WEnumToggleButtonsAttribute>();
-            Assert.IsNotNull(
-                toggleAttribute,
+            Assert.IsTrue(
+                toggleAttribute != null,
                 "WEnumToggleButtonsAttribute should be present on mode field"
             );
 

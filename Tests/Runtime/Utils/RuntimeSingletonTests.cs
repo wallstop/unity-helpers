@@ -810,8 +810,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                     .GetResult();
             });
 
-            Assert.IsNotNull(
-                exception,
+            Assert.IsTrue(
+                exception != null,
                 "InvalidOperationException should be thrown for background thread access"
             );
             StringAssert.Contains("main thread", exception.Message);

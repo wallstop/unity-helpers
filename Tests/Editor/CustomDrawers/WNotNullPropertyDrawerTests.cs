@@ -41,7 +41,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializedProperty property = serializedObject.FindProperty(
                 nameof(WNotNullObjectReferenceTestAsset.requiredGameObject)
             );
-            Assert.IsNotNull(property, "Failed to locate requiredGameObject property.");
+            Assert.IsTrue(property != null, "Failed to locate requiredGameObject property.");
             Assert.IsTrue(WNotNullPropertyDrawer.IsPropertyNull(property));
         }
 
@@ -57,7 +57,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializedProperty property = serializedObject.FindProperty(
                 nameof(WNotNullObjectReferenceTestAsset.requiredGameObject)
             );
-            Assert.IsNotNull(property, "Failed to locate requiredGameObject property.");
+            Assert.IsTrue(property != null, "Failed to locate requiredGameObject property.");
             Assert.IsFalse(WNotNullPropertyDrawer.IsPropertyNull(property));
         }
 
@@ -72,7 +72,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializedProperty property = serializedObject.FindProperty(
                 nameof(WNotNullObjectReferenceTestAsset.requiredTransform)
             );
-            Assert.IsNotNull(property, "Failed to locate requiredTransform property.");
+            Assert.IsTrue(property != null, "Failed to locate requiredTransform property.");
             Assert.IsTrue(WNotNullPropertyDrawer.IsPropertyNull(property));
         }
 
@@ -88,7 +88,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializedProperty property = serializedObject.FindProperty(
                 nameof(WNotNullObjectReferenceTestAsset.requiredTransform)
             );
-            Assert.IsNotNull(property, "Failed to locate requiredTransform property.");
+            Assert.IsTrue(property != null, "Failed to locate requiredTransform property.");
             Assert.IsFalse(WNotNullPropertyDrawer.IsPropertyNull(property));
         }
 
@@ -103,7 +103,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializedProperty property = serializedObject.FindProperty(
                 nameof(WNotNullStringTestAsset.requiredString)
             );
-            Assert.IsNotNull(property, "Failed to locate requiredString property.");
+            Assert.IsTrue(property != null, "Failed to locate requiredString property.");
             Assert.IsTrue(WNotNullPropertyDrawer.IsPropertyNull(property));
         }
 
@@ -118,7 +118,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializedProperty property = serializedObject.FindProperty(
                 nameof(WNotNullStringTestAsset.requiredString)
             );
-            Assert.IsNotNull(property, "Failed to locate requiredString property.");
+            Assert.IsTrue(property != null, "Failed to locate requiredString property.");
             Assert.IsTrue(WNotNullPropertyDrawer.IsPropertyNull(property));
         }
 
@@ -133,7 +133,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializedProperty property = serializedObject.FindProperty(
                 nameof(WNotNullStringTestAsset.requiredString)
             );
-            Assert.IsNotNull(property, "Failed to locate requiredString property.");
+            Assert.IsTrue(property != null, "Failed to locate requiredString property.");
             Assert.IsFalse(WNotNullPropertyDrawer.IsPropertyNull(property));
         }
 
@@ -148,15 +148,15 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializedProperty property = serializedObject.FindProperty(
                 nameof(WNotNullObjectReferenceTestAsset.requiredGameObject)
             );
-            Assert.IsNotNull(property, "Failed to locate requiredGameObject property.");
+            Assert.IsTrue(property != null, "Failed to locate requiredGameObject property.");
 
             WNotNullPropertyDrawer drawer = new();
             PropertyDrawerTestHelper.AssignAttribute(drawer, new WNotNullAttribute());
             VisualElement element = drawer.CreatePropertyGUI(property);
 
-            Assert.IsNotNull(element, "CreatePropertyGUI should return a non-null element.");
+            Assert.IsTrue(element != null, "CreatePropertyGUI should return a non-null element.");
             HelpBox helpBox = element.Q<HelpBox>();
-            Assert.IsNotNull(helpBox, "Container should contain a HelpBox.");
+            Assert.IsTrue(helpBox != null, "Container should contain a HelpBox.");
             Assert.That(helpBox.style.display.value, Is.EqualTo(DisplayStyle.Flex));
         }
 
@@ -172,15 +172,15 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializedProperty property = serializedObject.FindProperty(
                 nameof(WNotNullObjectReferenceTestAsset.requiredGameObject)
             );
-            Assert.IsNotNull(property, "Failed to locate requiredGameObject property.");
+            Assert.IsTrue(property != null, "Failed to locate requiredGameObject property.");
 
             WNotNullPropertyDrawer drawer = new();
             PropertyDrawerTestHelper.AssignAttribute(drawer, new WNotNullAttribute());
             VisualElement element = drawer.CreatePropertyGUI(property);
 
-            Assert.IsNotNull(element, "CreatePropertyGUI should return a non-null element.");
+            Assert.IsTrue(element != null, "CreatePropertyGUI should return a non-null element.");
             HelpBox helpBox = element.Q<HelpBox>();
-            Assert.IsNotNull(helpBox, "Container should contain a HelpBox.");
+            Assert.IsTrue(helpBox != null, "Container should contain a HelpBox.");
             Assert.That(helpBox.style.display.value, Is.EqualTo(DisplayStyle.None));
         }
 
@@ -195,14 +195,14 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializedProperty property = serializedObject.FindProperty(
                 nameof(WNotNullObjectReferenceTestAsset.requiredGameObject)
             );
-            Assert.IsNotNull(property, "Failed to locate requiredGameObject property.");
+            Assert.IsTrue(property != null, "Failed to locate requiredGameObject property.");
 
             WNotNullPropertyDrawer drawer = new();
             PropertyDrawerTestHelper.AssignAttribute(drawer, new WNotNullAttribute());
             VisualElement element = drawer.CreatePropertyGUI(property);
 
             PropertyField propertyField = element.Q<PropertyField>();
-            Assert.IsNotNull(propertyField, "Container should include a PropertyField.");
+            Assert.IsTrue(propertyField != null, "Container should include a PropertyField.");
         }
 
         [Test]
@@ -216,14 +216,14 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializedProperty property = serializedObject.FindProperty(
                 nameof(WNotNullMessageTypeTestAsset.defaultField)
             );
-            Assert.IsNotNull(property, "Failed to locate defaultField property.");
+            Assert.IsTrue(property != null, "Failed to locate defaultField property.");
 
             WNotNullPropertyDrawer drawer = new();
             PropertyDrawerTestHelper.AssignAttribute(drawer, new WNotNullAttribute());
             VisualElement element = drawer.CreatePropertyGUI(property);
 
             HelpBox helpBox = element.Q<HelpBox>();
-            Assert.IsNotNull(helpBox, "Container should contain a HelpBox.");
+            Assert.IsTrue(helpBox != null, "Container should contain a HelpBox.");
             Assert.That(helpBox.messageType, Is.EqualTo(HelpBoxMessageType.Warning));
         }
 
@@ -238,7 +238,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializedProperty property = serializedObject.FindProperty(
                 nameof(WNotNullMessageTypeTestAsset.errorField)
             );
-            Assert.IsNotNull(property, "Failed to locate errorField property.");
+            Assert.IsTrue(property != null, "Failed to locate errorField property.");
 
             WNotNullPropertyDrawer drawer = new();
             PropertyDrawerTestHelper.AssignAttribute(
@@ -248,7 +248,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             VisualElement element = drawer.CreatePropertyGUI(property);
 
             HelpBox helpBox = element.Q<HelpBox>();
-            Assert.IsNotNull(helpBox, "Container should contain a HelpBox.");
+            Assert.IsTrue(helpBox != null, "Container should contain a HelpBox.");
             Assert.That(helpBox.messageType, Is.EqualTo(HelpBoxMessageType.Error));
         }
 
@@ -263,7 +263,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializedProperty property = serializedObject.FindProperty(
                 nameof(WNotNullMessageTypeTestAsset.warningField)
             );
-            Assert.IsNotNull(property, "Failed to locate warningField property.");
+            Assert.IsTrue(property != null, "Failed to locate warningField property.");
 
             WNotNullPropertyDrawer drawer = new();
             PropertyDrawerTestHelper.AssignAttribute(
@@ -273,7 +273,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             VisualElement element = drawer.CreatePropertyGUI(property);
 
             HelpBox helpBox = element.Q<HelpBox>();
-            Assert.IsNotNull(helpBox, "Container should contain a HelpBox.");
+            Assert.IsTrue(helpBox != null, "Container should contain a HelpBox.");
             Assert.That(helpBox.messageType, Is.EqualTo(HelpBoxMessageType.Warning));
         }
 
@@ -288,7 +288,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializedProperty property = serializedObject.FindProperty(
                 nameof(WNotNullCustomMessageTestAsset.playerPrefab)
             );
-            Assert.IsNotNull(property, "Failed to locate playerPrefab property.");
+            Assert.IsTrue(property != null, "Failed to locate playerPrefab property.");
 
             string customMessage = "Player prefab is required for spawning";
             WNotNullPropertyDrawer drawer = new();
@@ -296,7 +296,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             VisualElement element = drawer.CreatePropertyGUI(property);
 
             HelpBox helpBox = element.Q<HelpBox>();
-            Assert.IsNotNull(helpBox, "Container should contain a HelpBox.");
+            Assert.IsTrue(helpBox != null, "Container should contain a HelpBox.");
             Assert.That(helpBox.text, Is.EqualTo(customMessage));
         }
 
@@ -311,7 +311,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializedProperty property = serializedObject.FindProperty(
                 nameof(WNotNullCustomMessageTestAsset.audioSource)
             );
-            Assert.IsNotNull(property, "Failed to locate audioSource property.");
+            Assert.IsTrue(property != null, "Failed to locate audioSource property.");
 
             string customMessage = "Audio source must be assigned for sound effects";
             WNotNullPropertyDrawer drawer = new();
@@ -322,7 +322,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             VisualElement element = drawer.CreatePropertyGUI(property);
 
             HelpBox helpBox = element.Q<HelpBox>();
-            Assert.IsNotNull(helpBox, "Container should contain a HelpBox.");
+            Assert.IsTrue(helpBox != null, "Container should contain a HelpBox.");
             Assert.That(helpBox.text, Is.EqualTo(customMessage));
             Assert.That(helpBox.messageType, Is.EqualTo(HelpBoxMessageType.Error));
         }
@@ -338,14 +338,14 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializedProperty property = serializedObject.FindProperty(
                 nameof(WNotNullObjectReferenceTestAsset.requiredGameObject)
             );
-            Assert.IsNotNull(property, "Failed to locate requiredGameObject property.");
+            Assert.IsTrue(property != null, "Failed to locate requiredGameObject property.");
 
             WNotNullPropertyDrawer drawer = new();
             PropertyDrawerTestHelper.AssignAttribute(drawer, new WNotNullAttribute());
             VisualElement element = drawer.CreatePropertyGUI(property);
 
             HelpBox helpBox = element.Q<HelpBox>();
-            Assert.IsNotNull(helpBox, "Container should contain a HelpBox.");
+            Assert.IsTrue(helpBox != null, "Container should contain a HelpBox.");
             Assert.That(helpBox.text, Does.Contain("Required Game Object"));
         }
 
@@ -361,7 +361,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializedProperty nullProperty = serializedObject.FindProperty(
                 nameof(WNotNullObjectReferenceTestAsset.requiredGameObject)
             );
-            Assert.IsNotNull(nullProperty, "Failed to locate requiredGameObject property.");
+            Assert.IsTrue(nullProperty != null, "Failed to locate requiredGameObject property.");
 
             WNotNullPropertyDrawer drawer = new();
             PropertyDrawerTestHelper.AssignAttribute(drawer, new WNotNullAttribute());
@@ -405,7 +405,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializedProperty property = serializedObject.FindProperty(
                 nameof(WNotNullObjectReferenceTestAsset.requiredGameObject)
             );
-            Assert.IsNotNull(property, "Failed to locate requiredGameObject property.");
+            Assert.IsTrue(property != null, "Failed to locate requiredGameObject property.");
 
             WNotNullPropertyDrawer drawer = new();
             PropertyDrawerTestHelper.AssignAttribute(drawer, new WNotNullAttribute());
@@ -431,7 +431,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializedProperty property = serializedObject.FindProperty(
                 nameof(WNotNullObjectReferenceTestAsset.requiredGameObject)
             );
-            Assert.IsNotNull(property, "Failed to locate requiredGameObject property.");
+            Assert.IsTrue(property != null, "Failed to locate requiredGameObject property.");
 
             WNotNullPropertyDrawer drawer = new();
             PropertyDrawerTestHelper.AssignAttribute(drawer, new WNotNullAttribute());
@@ -492,7 +492,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializedProperty property = serializedObject.FindProperty(
                 nameof(WNotNullMixedFieldsTestAsset.nonDecoratedIntField)
             );
-            Assert.IsNotNull(property, "Failed to locate nonDecoratedIntField property.");
+            Assert.IsTrue(property != null, "Failed to locate nonDecoratedIntField property.");
             Assert.IsFalse(WNotNullPropertyDrawer.IsPropertyNull(property));
         }
 
@@ -507,7 +507,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializedProperty property = serializedObject.FindProperty(
                 nameof(WNotNullMixedFieldsTestAsset.nullableSprite)
             );
-            Assert.IsNotNull(property, "Failed to locate nullableSprite property.");
+            Assert.IsTrue(property != null, "Failed to locate nullableSprite property.");
             Assert.IsTrue(WNotNullPropertyDrawer.IsPropertyNull(property));
         }
 
@@ -522,7 +522,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializedProperty property = serializedObject.FindProperty(
                 nameof(WNotNullMixedFieldsTestAsset.nullableAudioClip)
             );
-            Assert.IsNotNull(property, "Failed to locate nullableAudioClip property.");
+            Assert.IsTrue(property != null, "Failed to locate nullableAudioClip property.");
             Assert.IsTrue(WNotNullPropertyDrawer.IsPropertyNull(property));
         }
 
@@ -537,7 +537,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializedProperty property = serializedObject.FindProperty(
                 nameof(WNotNullObjectReferenceTestAsset.requiredScriptableObject)
             );
-            Assert.IsNotNull(property, "Failed to locate requiredScriptableObject property.");
+            Assert.IsTrue(property != null, "Failed to locate requiredScriptableObject property.");
             Assert.IsTrue(WNotNullPropertyDrawer.IsPropertyNull(property));
         }
 
@@ -553,7 +553,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializedProperty property = serializedObject.FindProperty(
                 nameof(WNotNullObjectReferenceTestAsset.requiredScriptableObject)
             );
-            Assert.IsNotNull(property, "Failed to locate requiredScriptableObject property.");
+            Assert.IsTrue(property != null, "Failed to locate requiredScriptableObject property.");
             Assert.IsFalse(WNotNullPropertyDrawer.IsPropertyNull(property));
         }
 
@@ -568,7 +568,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializedProperty property = serializedObject.FindProperty(
                 nameof(WNotNullObjectReferenceTestAsset.requiredMaterial)
             );
-            Assert.IsNotNull(property, "Failed to locate requiredMaterial property.");
+            Assert.IsTrue(property != null, "Failed to locate requiredMaterial property.");
             Assert.IsTrue(WNotNullPropertyDrawer.IsPropertyNull(property));
         }
 
@@ -589,8 +589,8 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializedProperty property = serializedObject.FindProperty(
                 nameof(WNotNullObjectReferenceTestAsset.requiredGameObject)
             );
-            Assert.IsNotNull(
-                property,
+            Assert.IsTrue(
+                property != null,
                 "Failed to locate requiredGameObject property for non-GUI context test."
             );
 
@@ -623,7 +623,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializedProperty property = serializedObject.FindProperty(
                 nameof(WNotNullObjectReferenceTestAsset.requiredGameObject)
             );
-            Assert.IsNotNull(property, "Failed to locate requiredGameObject property.");
+            Assert.IsTrue(property != null, "Failed to locate requiredGameObject property.");
 
             WNotNullPropertyDrawer drawer = new();
             PropertyDrawerTestHelper.AssignAttribute(drawer, new WNotNullAttribute());

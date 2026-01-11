@@ -762,7 +762,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
                 threads[t].Join(TimeSpan.FromSeconds(30));
             }
 
-            Assert.IsNull(capturedException, $"Exception in thread: {capturedException}");
+            Assert.IsTrue(capturedException == null, $"Exception in thread: {capturedException}");
             Assert.AreEqual(threadCount, successCount, "All threads should complete successfully");
         }
 
@@ -818,7 +818,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
                 threads[t].Join(TimeSpan.FromSeconds(30));
             }
 
-            Assert.IsNull(capturedException, $"Exception in thread: {capturedException}");
+            Assert.IsTrue(capturedException == null, $"Exception in thread: {capturedException}");
             Assert.AreEqual(threadCount, successCount, "All threads should complete successfully");
         }
 #endif
@@ -847,7 +847,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
 
             // Pool should be created with size-aware effective options
             PoolStatistics stats = pool.GetStatistics();
-            Assert.IsNotNull(stats, "Pool statistics should not be null");
+            Assert.IsTrue(stats != null, "Pool statistics should not be null");
         }
 
         [Test]

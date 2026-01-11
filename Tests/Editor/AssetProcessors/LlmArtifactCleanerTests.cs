@@ -77,7 +77,7 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
             string guid = AssetDatabase.AssetPathToGUID(assetPath);
             Assert.IsFalse(string.IsNullOrEmpty(guid));
             TextAsset textAsset = AssetDatabase.LoadAssetAtPath<TextAsset>(assetPath);
-            Assert.IsNotNull(textAsset);
+            Assert.IsTrue(textAsset != null);
             Assert.AreEqual("keep", textAsset.text);
         }
 

@@ -552,8 +552,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
 
             AttributeUsageAttribute usage =
                 attributeType.GetCustomAttribute<AttributeUsageAttribute>();
-            Assert.IsNotNull(
-                usage,
+            Assert.IsTrue(
+                usage != null,
                 "ExcludeFromSingletonCreationAttribute should have AttributeUsage"
             );
             Assert.AreEqual(

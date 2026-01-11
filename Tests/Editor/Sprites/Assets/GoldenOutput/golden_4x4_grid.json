@@ -1,0 +1,24 @@
+{
+  "sourceFile": "test_4x4_grid.png",
+  "spriteCount": 16,
+  "expectedNames": [
+    "test_4x4_grid_0",
+    "test_4x4_grid_1",
+    "test_4x4_grid_2",
+    "test_4x4_grid_3",
+    "test_4x4_grid_4",
+    "test_4x4_grid_5",
+    "test_4x4_grid_6",
+    "test_4x4_grid_7",
+    "test_4x4_grid_8",
+    "test_4x4_grid_9",
+    "test_4x4_grid_10",
+    "test_4x4_grid_11",
+    "test_4x4_grid_12",
+    "test_4x4_grid_13",
+    "test_4x4_grid_14",
+    "test_4x4_grid_15"
+  ],
+  "spriteDimensions": [32, 32],
+  "gridSize": [4, 4]
+}

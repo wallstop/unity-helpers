@@ -48,8 +48,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
                 }
             }
 
-            Assert.IsNotNull(
-                captured,
+            Assert.IsTrue(
+                captured != null,
                 "Exception should have been captured from background thread"
             );
             StringAssert.Contains(nameof(EnsureMainThreadThrowsWhenOffThread), captured.Message);

@@ -373,7 +373,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Tools
                 nameof(FramerateMode.None)
 #pragma warning restore CS0618 // Type or member is obsolete
             );
-            Assert.IsNotNull(field, "FramerateMode.None field should exist");
+            Assert.IsTrue(field != null, "FramerateMode.None field should exist");
 
             object[] obsoleteAttributes = field.GetCustomAttributes(
                 typeof(ObsoleteAttribute),
@@ -410,8 +410,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Tools
         {
             AnimationData data = new();
 
-            Assert.IsNotNull(
-                data.frames,
+            Assert.IsTrue(
+                data.frames != null,
                 "Frames list should be initialized by default constructor"
             );
             Assert.AreEqual(0, data.frames.Count);
@@ -420,8 +420,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Tools
             Assert.IsFalse(data.isCreatedFromAutoParse);
             Assert.IsFalse(data.loop);
             Assert.AreEqual(FramerateMode.Constant, data.framerateMode);
-            Assert.IsNotNull(
-                data.framesPerSecondCurve,
+            Assert.IsTrue(
+                data.framesPerSecondCurve != null,
                 "Frames per second curve should be initialized by default constructor"
             );
             Assert.AreEqual(0f, data.cycleOffset);
@@ -440,7 +440,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Tools
             AnimationData data = new();
 
             AnimationCurve curve = data.framesPerSecondCurve;
-            Assert.IsNotNull(curve, "Default curve should not be null");
+            Assert.IsTrue(curve != null, "Default curve should not be null");
 
             float startValue = curve.Evaluate(0f);
             float midValue = curve.Evaluate(0.5f);
@@ -472,7 +472,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Tools
             System.Reflection.FieldInfo field = typeof(AnimationData).GetField(
                 nameof(AnimationData.showPreview)
             );
-            Assert.IsNotNull(field, "AnimationData.showPreview field should exist");
+            Assert.IsTrue(field != null, "AnimationData.showPreview field should exist");
 
             object[] nonSerializedAttributes = field.GetCustomAttributes(
                 typeof(NonSerializedAttribute),
@@ -647,7 +647,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Tools
                 AnimationCreatorWindow.CreateAnimationClipForTests(data, frames)
             );
 
-            Assert.IsNotNull(clip, "Created animation clip should not be null");
+            Assert.IsTrue(clip != null, "Created animation clip should not be null");
             Assert.AreEqual(fps, clip.frameRate, "Frame rate should match");
 
             AnimationClipSettings settings = AnimationUtility.GetAnimationClipSettings(clip);
@@ -755,7 +755,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Tools
                 AnimationCreatorWindow.CreateAnimationClipForTests(data, frames)
             );
 
-            Assert.IsNotNull(clip, "Created animation clip should not be null");
+            Assert.IsTrue(clip != null, "Created animation clip should not be null");
 
             EditorCurveBinding[] bindings = AnimationUtility.GetObjectReferenceCurveBindings(clip);
             Assert.AreEqual(1, bindings.Length);
@@ -814,7 +814,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Tools
         {
             AnimationData data = new() { frames = null };
 
-            Assert.IsNull(data.frames, "Frames list should be null when explicitly set to null");
+            Assert.IsTrue(
+                data.frames == null,
+                "Frames list should be null when explicitly set to null"
+            );
         }
 
         [Test]
@@ -862,8 +865,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Tools
                 AnimationCreatorWindow.CreateAnimationClipForTests(data, frames)
             );
 
-            Assert.IsNotNull(
-                clip,
+            Assert.IsTrue(
+                clip != null,
                 "Created animation clip should not be null for full workflow test"
             );
             Assert.AreEqual(12f, clip.frameRate);

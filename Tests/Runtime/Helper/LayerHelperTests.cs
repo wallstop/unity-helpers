@@ -67,7 +67,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             ClearCaches();
 
             string[] layers = Helpers.GetAllLayerNames();
-            Assert.IsNotNull(layers);
+            Assert.IsTrue(layers != null);
             Assert.IsNotEmpty(layers);
         }
 

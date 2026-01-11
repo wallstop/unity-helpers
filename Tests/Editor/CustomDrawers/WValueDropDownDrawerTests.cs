@@ -31,7 +31,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializedProperty property = serializedObject.FindProperty(
                 nameof(WValueDropDownFloatAsset.selection)
             );
-            Assert.IsNotNull(property, "Failed to locate float selection property.");
+            Assert.IsTrue(property != null, "Failed to locate float selection property.");
 
             InvokeApplyOption(property, 2.5f);
             serializedObject.ApplyModifiedProperties();
@@ -49,7 +49,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializedProperty property = serializedObject.FindProperty(
                 nameof(WValueDropDownFloatAsset.preciseSelection)
             );
-            Assert.IsNotNull(property, "Failed to locate double selection property.");
+            Assert.IsTrue(property != null, "Failed to locate double selection property.");
 
             InvokeApplyOption(property, 5.25);
             serializedObject.ApplyModifiedProperties();
@@ -68,7 +68,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializedProperty property = serializedObject.FindProperty(
                 nameof(WValueDropDownNoOptionsAsset.unspecified)
             );
-            Assert.IsNotNull(property, "Failed to locate int property.");
+            Assert.IsTrue(property != null, "Failed to locate int property.");
 
             WValueDropDownDrawer drawer = new();
             AssignAttribute(
@@ -94,7 +94,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializedProperty property = serializedObject.FindProperty(
                 nameof(WValueDropDownIntOptionsAsset.selection)
             );
-            Assert.IsNotNull(property, "Failed to locate selection property.");
+            Assert.IsTrue(property != null, "Failed to locate selection property.");
 
             WValueDropDownDrawer drawer = new();
             AssignAttribute(drawer, new WValueDropDownAttribute(10, 20, 30));
@@ -103,7 +103,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 
             BaseField<string> selector = (BaseField<string>)element;
             DropdownField dropdown = selector.Q<DropdownField>();
-            Assert.IsNotNull(dropdown, "DropDown field was not created.");
+            Assert.IsTrue(dropdown != null, "DropDown field was not created.");
             Assert.That(dropdown.value, Is.EqualTo("10"));
 
             InvokeApplySelection(selector, 2);
@@ -126,7 +126,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializedProperty property = serializedObject.FindProperty(
                 nameof(WValueDropDownStringOptionsAsset.selection)
             );
-            Assert.IsNotNull(property, "Failed to locate string selection property.");
+            Assert.IsTrue(property != null, "Failed to locate string selection property.");
             Assert.That(
                 property.propertyType,
                 Is.EqualTo(SerializedPropertyType.String),
@@ -153,7 +153,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 
             BaseField<string> selector = (BaseField<string>)element;
             DropdownField dropdown = selector.Q<DropdownField>();
-            Assert.IsNotNull(dropdown, "Dropdown field was not created.");
+            Assert.IsTrue(dropdown != null, "Dropdown field was not created.");
             Assert.That(dropdown.value, Is.EqualTo("Alpha"));
 
             InvokeApplySelection(selector, 1);
@@ -173,13 +173,13 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializedProperty property = serializedObject.FindProperty(
                 nameof(WValueDropDownInstanceMethodAsset.selection)
             );
-            Assert.IsNotNull(property, "Failed to locate instance method backed property.");
+            Assert.IsTrue(property != null, "Failed to locate instance method backed property.");
 
             WValueDropDownAttribute attribute =
                 PropertyDrawerTestHelper.GetAttributeFromProperty<WValueDropDownAttribute>(
                     property
                 );
-            Assert.IsNotNull(attribute, "Failed to retrieve attribute.");
+            Assert.IsTrue(attribute != null, "Failed to retrieve attribute.");
 
             object[] options = attribute.GetOptions(asset);
             Assert.That(options.Length, Is.EqualTo(3));
@@ -209,13 +209,13 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializedProperty property = serializedObject.FindProperty(
                 nameof(WValueDropDownFloatAsset.selection)
             );
-            Assert.IsNotNull(property, "Failed to locate float selection property.");
+            Assert.IsTrue(property != null, "Failed to locate float selection property.");
 
             WValueDropDownAttribute attribute =
                 PropertyDrawerTestHelper.GetAttributeFromProperty<WValueDropDownAttribute>(
                     property
                 );
-            Assert.IsNotNull(attribute, "Failed to retrieve attribute.");
+            Assert.IsTrue(attribute != null, "Failed to retrieve attribute.");
 
             object[] options = attribute.GetOptions(asset);
             Assert.That(options.Length, Is.EqualTo(3));
@@ -498,7 +498,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializedProperty property = serializedObject.FindProperty(
                 nameof(WValueDropDownStringOptionsAsset.selection)
             );
-            Assert.IsNotNull(property, "Failed to locate string selection property.");
+            Assert.IsTrue(property != null, "Failed to locate string selection property.");
             Assert.That(
                 property.propertyType,
                 Is.EqualTo(SerializedPropertyType.String),
@@ -577,8 +577,8 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         {
             WDropDownSelectorBase<string> dropDownSelector =
                 selector as WDropDownSelectorBase<string>;
-            Assert.IsNotNull(
-                dropDownSelector,
+            Assert.IsTrue(
+                dropDownSelector != null,
                 $"Expected selector to derive from WDropDownSelectorBase<string>, but was {selector?.GetType().FullName ?? "null"}."
             );
             dropDownSelector.ApplySelection(optionIndex);

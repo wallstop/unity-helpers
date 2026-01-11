@@ -91,9 +91,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
             SimpleMessage clone = Serializer.JsonDeserialize<SimpleMessage>(json);
 
             Assert.AreEqual(msg.Id, clone.Id);
-            Assert.IsNull(clone.Name, "Name should be null after round-trip of null value");
-            Assert.IsNull(
-                clone.Values,
+            Assert.IsTrue(clone.Name == null, "Name should be null after round-trip of null value");
+            Assert.IsTrue(
+                clone.Values == null,
                 "Values should be null after round-trip of null collection"
             );
         }
@@ -256,7 +256,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
                 Assert.AreEqual(i, cloneCurrent.Level, $"Level {i} value mismatch");
                 cloneCurrent = cloneCurrent.Child;
             }
-            Assert.IsNull(cloneCurrent, "Should be null after last level");
+            Assert.IsTrue(cloneCurrent == null, "Should be null after last level");
         }
 
         [Test]
@@ -453,8 +453,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
                 Assert.AreEqual(msg.Name, clone.Name);
                 if (msg.Values == null)
                 {
-                    Assert.IsNull(
-                        clone.Values,
+                    Assert.IsTrue(
+                        clone.Values == null,
                         "Null collection should remain null after round-trip"
                     );
                 }

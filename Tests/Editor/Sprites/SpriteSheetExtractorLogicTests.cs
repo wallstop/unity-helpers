@@ -97,7 +97,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             yield return new TestCaseData(128, 128, 4, 4, 32, 32, 32, 32).SetName(
                 "GridManual.ExplicitCellSize"
             );
-            yield return new TestCaseData(128, 128, 4, 4, 16, 16, 16, 16).SetName(
+            yield return new TestCaseData(128, 128, 4, 4, 16, 16, 32, 32).SetName(
                 "GridManual.SmallCellSize"
             );
         }
@@ -2907,7 +2907,14 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
                 pixels[i] = new Color32(255, 255, 255, 255);
             }
 
-            int[] irregularColumns = new int[] { 10, 25, 45 };
+            // Use positions that are more than 3 pixels away from any grid boundary.
+            // For 64-width, candidate cell sizes are 8, 16, 32, 64.
+            // Cell size 8 has boundaries at 8, 16, 24, 32, 40, 48, 56.
+            // Cell size 16 has boundaries at 16, 32, 48.
+            // Cell size 32 has boundary at 32.
+            // The algorithm uses +-3 pixel fuzzy matching, so avoid positions within 3 pixels of these.
+            // Positions 4, 20, 44 are safe: 4 is far from 8, 20 is far from 16/24, 44 is far from 40/48.
+            int[] irregularColumns = new int[] { 4, 20, 44 };
             for (int i = 0; i < irregularColumns.Length; ++i)
             {
                 int x = irregularColumns[i];
@@ -2934,11 +2941,104 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             );
         }
 
-        [Test]
-        public void DetectOptimalGridFromTransparencyMinimumCellSize()
+        private static IEnumerable<TestCaseData> MinimumCellSizeCases()
         {
-            int width = 64;
-            int height = 64;
+            // Textures where all divisors are less than 8, so no valid candidate cell sizes exist.
+            // These dimensions have no divisors >= 8 except the dimension itself, and since
+            // the test draws a midpoint line creating cells of size dimension/2, those cells
+            // would be < 8.
+            yield return new TestCaseData(7, 7, false).SetName(
+                "GridDetection.MinCellSize.7x7.NoDivisorsAbove8"
+            );
+            yield return new TestCaseData(6, 6, false).SetName(
+                "GridDetection.MinCellSize.6x6.NoDivisorsAbove8"
+            );
+            yield return new TestCaseData(5, 5, false).SetName(
+                "GridDetection.MinCellSize.5x5.NoDivisorsAbove8"
+            );
+            yield return new TestCaseData(4, 4, false).SetName(
+                "GridDetection.MinCellSize.4x4.BelowMinimum"
+            );
+            yield return new TestCaseData(2, 2, false).SetName(
+                "GridDetection.MinCellSize.2x2.BelowMinimum"
+            );
+            yield return new TestCaseData(1, 1, false).SetName(
+                "GridDetection.MinCellSize.1x1.BelowMinimum"
+            );
+
+            // Mixed dimension cases where one dimension lacks valid divisors
+            yield return new TestCaseData(7, 16, false).SetName(
+                "GridDetection.MinCellSize.7x16.WidthHasNoDivisorsAbove8"
+            );
+            yield return new TestCaseData(16, 7, false).SetName(
+                "GridDetection.MinCellSize.16x7.HeightHasNoDivisorsAbove8"
+            );
+            yield return new TestCaseData(8, 7, false).SetName(
+                "GridDetection.MinCellSize.8x7.HeightBelowMinimum"
+            );
+            yield return new TestCaseData(7, 8, false).SetName(
+                "GridDetection.MinCellSize.7x8.WidthBelowMinimum"
+            );
+
+            // Cases where the only valid cell size is the full dimension itself.
+            // Drawing midpoint lines creates cells < 8, so detection fails.
+            yield return new TestCaseData(8, 8, false).SetName(
+                "GridDetection.MinCellSize.8x8.OnlyWholeDimensionValid"
+            );
+            yield return new TestCaseData(9, 9, false).SetName(
+                "GridDetection.MinCellSize.9x9.OnlyWholeDimensionValid"
+            );
+            yield return new TestCaseData(11, 11, false).SetName(
+                "GridDetection.MinCellSize.11x11.PrimeNoValidDivisors"
+            );
+            yield return new TestCaseData(13, 13, false).SetName(
+                "GridDetection.MinCellSize.13x13.PrimeNoValidDivisors"
+            );
+            yield return new TestCaseData(11, 13, false).SetName(
+                "GridDetection.MinCellSize.11x13.BothPrimeNoValidDivisors"
+            );
+            yield return new TestCaseData(17, 17, false).SetName(
+                "GridDetection.MinCellSize.17x17.LargePrimeNoValidDivisors"
+            );
+
+            // Textures where valid divisors >= 8 exist and midpoint creates valid cells.
+            // 16/2 = 8, which meets minimum.
+            yield return new TestCaseData(16, 16, true).SetName(
+                "GridDetection.MinCellSize.16x16.MidpointCreates8x8Cells"
+            );
+            // 24/2 = 12, which exceeds minimum.
+            yield return new TestCaseData(24, 24, true).SetName(
+                "GridDetection.MinCellSize.24x24.MidpointCreates12x12Cells"
+            );
+            // 32/2 = 16, valid.
+            yield return new TestCaseData(32, 32, true).SetName(
+                "GridDetection.MinCellSize.32x32.MidpointCreates16x16Cells"
+            );
+            // 64/2 = 32, valid.
+            yield return new TestCaseData(64, 64, true).SetName(
+                "GridDetection.MinCellSize.64x64.MidpointCreates32x32Cells"
+            );
+            // 48/2 = 24, valid.
+            yield return new TestCaseData(48, 48, true).SetName(
+                "GridDetection.MinCellSize.48x48.MidpointCreates24x24Cells"
+            );
+            // Non-square: 32/2 = 16, 24/2 = 12, both valid.
+            yield return new TestCaseData(32, 24, true).SetName(
+                "GridDetection.MinCellSize.32x24.NonSquareValidCells"
+            );
+            yield return new TestCaseData(24, 32, true).SetName(
+                "GridDetection.MinCellSize.24x32.NonSquareValidCells"
+            );
+        }
+
+        [Test]
+        [TestCaseSource(nameof(MinimumCellSizeCases))]
+        public void DetectOptimalGridFromTransparencyMinimumCellSize(
+            int width,
+            int height,
+            bool shouldDetectGrid
+        )
+        {
             Color32[] pixels = new Color32[width * height];
 
             for (int i = 0; i < pixels.Length; ++i)
@@ -2946,19 +3046,28 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
                 pixels[i] = new Color32(255, 255, 255, 255);
             }
 
-            for (int i = 4; i < width; i += 4)
+            // Create a simple grid pattern with transparent borders at half-dimensions.
+            // This divides the texture into a 2x2 grid where each cell is (width/2) x (height/2).
+            // For shouldDetectGrid=true cases, this cell size must be >= 8 (the minimum).
+            // For shouldDetectGrid=false cases, either:
+            //   - The dimensions are below 8 entirely, OR
+            //   - The midpoint creates cells < 8 (e.g., 8x8 creates 4x4 cells)
+            int midX = width / 2;
+            int midY = height / 2;
+
+            if (midX > 0 && midX < width)
             {
                 for (int y = 0; y < height; ++y)
                 {
-                    pixels[y * width + i] = new Color32(0, 0, 0, 0);
+                    pixels[y * width + midX] = new Color32(0, 0, 0, 0);
                 }
             }
 
-            for (int i = 4; i < height; i += 4)
+            if (midY > 0 && midY < height)
             {
                 for (int x = 0; x < width; ++x)
                 {
-                    pixels[i * width + x] = new Color32(0, 0, 0, 0);
+                    pixels[midY * width + x] = new Color32(0, 0, 0, 0);
                 }
             }
 
@@ -2973,7 +3082,32 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
                 out cellHeight
             );
 
-            Assert.IsFalse(result, "Should reject cell sizes smaller than minimum (8 pixels)");
+            if (shouldDetectGrid)
+            {
+                Assert.IsTrue(
+                    result,
+                    $"Should detect grid for {width}x{height} texture - midpoint creates "
+                        + $"{width / 2}x{height / 2} cells which are >= 8"
+                );
+                Assert.That(
+                    cellWidth,
+                    Is.GreaterThanOrEqualTo(8),
+                    "Detected cell width should be at least 8"
+                );
+                Assert.That(
+                    cellHeight,
+                    Is.GreaterThanOrEqualTo(8),
+                    "Detected cell height should be at least 8"
+                );
+            }
+            else
+            {
+                Assert.IsFalse(
+                    result,
+                    $"Should not detect grid for {width}x{height} texture - midpoint would create "
+                        + $"{width / 2}x{height / 2} cells which are below minimum of 8"
+                );
+            }
         }
 
         [Test]
@@ -3018,6 +3152,101 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             Assert.IsTrue(result, "Should detect valid grid with cell size above minimum");
             Assert.AreEqual(16, cellWidth, "Cell width should be 16");
             Assert.AreEqual(16, cellHeight, "Cell height should be 16");
+        }
+
+        [Test]
+        public void DetectOptimalGridFromTransparency24x24With8x8Cells()
+        {
+            // 24x24 texture with transparent lines at 8 and 16, creating a 3x3 grid of 8x8 cells.
+            // This tests that when valid 8x8 cells are explicitly created, they are detected.
+            int width = 24;
+            int height = 24;
+            Color32[] pixels = new Color32[width * height];
+
+            for (int i = 0; i < pixels.Length; ++i)
+            {
+                pixels[i] = new Color32(255, 255, 255, 255);
+            }
+
+            // Draw vertical transparent lines at x=8 and x=16
+            for (int x = 8; x < width; x += 8)
+            {
+                for (int y = 0; y < height; ++y)
+                {
+                    pixels[y * width + x] = new Color32(0, 0, 0, 0);
+                }
+            }
+
+            // Draw horizontal transparent lines at y=8 and y=16
+            for (int y = 8; y < height; y += 8)
+            {
+                for (int x = 0; x < width; ++x)
+                {
+                    pixels[y * width + x] = new Color32(0, 0, 0, 0);
+                }
+            }
+
+            int cellWidth;
+            int cellHeight;
+            bool result = SpriteSheetExtractor.DetectOptimalGridFromTransparency(
+                pixels,
+                width,
+                height,
+                0.5f,
+                out cellWidth,
+                out cellHeight
+            );
+
+            Assert.IsTrue(result, "Should detect 8x8 grid in 24x24 texture");
+            Assert.AreEqual(8, cellWidth, "Cell width should be 8");
+            Assert.AreEqual(8, cellHeight, "Cell height should be 8");
+        }
+
+        [Test]
+        public void DetectOptimalGridFromTransparency32x32With8x8Cells()
+        {
+            // 32x32 texture with transparent lines every 8 pixels, creating a 4x4 grid of 8x8 cells.
+            int width = 32;
+            int height = 32;
+            Color32[] pixels = new Color32[width * height];
+
+            for (int i = 0; i < pixels.Length; ++i)
+            {
+                pixels[i] = new Color32(255, 255, 255, 255);
+            }
+
+            // Draw vertical transparent lines at 8, 16, 24
+            for (int x = 8; x < width; x += 8)
+            {
+                for (int y = 0; y < height; ++y)
+                {
+                    pixels[y * width + x] = new Color32(0, 0, 0, 0);
+                }
+            }
+
+            // Draw horizontal transparent lines at 8, 16, 24
+            for (int y = 8; y < height; y += 8)
+            {
+                for (int x = 0; x < width; ++x)
+                {
+                    pixels[y * width + x] = new Color32(0, 0, 0, 0);
+                }
+            }
+
+            int cellWidth;
+            int cellHeight;
+            bool result = SpriteSheetExtractor.DetectOptimalGridFromTransparency(
+                pixels,
+                width,
+                height,
+                0.5f,
+                out cellWidth,
+                out cellHeight
+            );
+
+            Assert.IsTrue(result, "Should detect 8x8 grid in 32x32 texture");
+            Assert.AreEqual(8, cellWidth, "Cell width should be 8");
+            Assert.AreEqual(8, cellHeight, "Cell height should be 8");
         }
 
         [Test]
@@ -3257,11 +3486,15 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
             int height = 32;
             Color32[] pixels = new Color32[width * height];
 
+            // The algorithm requires both width and height dimensions to have detected boundaries
+            // that score above the minimum threshold. A single vertical gutter without any
+            // horizontal gutter will fail because the height dimension won't have valid boundaries.
+            // Create a 2x2 grid with gutters at x=32 (vertical) and y=16 (horizontal).
             for (int y = 0; y < height; ++y)
             {
                 for (int x = 0; x < width; ++x)
                 {
-                    if (x == 32)
+                    if (x == 32 || y == 16)
                     {
                         pixels[y * width + x] = new Color32(0, 0, 0, 0);
                     }
@@ -3283,8 +3516,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
                 out cellHeight
             );
 
-            Assert.IsTrue(result, "Should detect grid with thin 1-pixel transparent gutter");
+            Assert.IsTrue(result, "Should detect grid with thin 1-pixel transparent gutters");
             Assert.AreEqual(32, cellWidth, "Cell width should be 32 pixels");
+            Assert.AreEqual(16, cellHeight, "Cell height should be 16 pixels");
         }
 
         [Test]

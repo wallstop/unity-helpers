@@ -1840,8 +1840,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
         {
             string actualFieldName =
                 UnityHelpersSettings.SerializedPropertyNames.GetPropertyNameValue(constantName);
-            Assert.IsNotNull(
-                actualFieldName,
+            Assert.IsTrue(
+                actualFieldName != null,
                 $"SerializedPropertyNames.{constantName} should have a non-null value."
             );
 
@@ -1850,8 +1850,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
             serialized.Update();
 
             SerializedProperty property = serialized.FindProperty(actualFieldName);
-            Assert.IsNotNull(
-                property,
+            Assert.IsTrue(
+                property != null,
                 $"SerializedPropertyNames.{constantName} = \"{actualFieldName}\" should reference an actual "
                     + $"serialized field on {nameof(UnityHelpersSettings)}. "
                     + $"Expected field description: {expectedFieldDescription}. "
@@ -1907,8 +1907,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
 
             SerializedProperty property = serialized.FindProperty(fieldName);
 
-            Assert.IsNotNull(
-                property,
+            Assert.IsTrue(
+                property != null,
                 $"SerializedPropertyNames.{constantName} = \"{fieldName}\" should resolve to a valid SerializedProperty. "
                     + $"This could indicate the field is not serializable, has incorrect attributes, or was renamed."
             );
@@ -1977,8 +1977,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
             serialized.Update();
 
             SerializedProperty property = serialized.FindProperty(fieldName);
-            Assert.IsNotNull(
-                property,
+            Assert.IsTrue(
+                property != null,
                 $"Field '{fieldName}' from SerializedPropertyNames.{constantName} should be accessible via SerializedObject."
             );
 
@@ -2028,12 +2028,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
             SerializedProperty paletteProperty = serialized.FindProperty(
                 UnityHelpersSettings.SerializedPropertyNames.WButtonCustomColors
             );
-            Assert.IsNotNull(paletteProperty, "Should find WButtonCustomColors property.");
+            Assert.IsTrue(paletteProperty != null, "Should find WButtonCustomColors property.");
 
             SerializedProperty keysProperty = paletteProperty.FindPropertyRelative(
                 nameof(SerializableDictionary<object, object>._keys)
             );
-            Assert.IsNotNull(keysProperty, "Should find keys property in dictionary.");
+            Assert.IsTrue(keysProperty != null, "Should find keys property in dictionary.");
 
             if (keysProperty.arraySize == 0)
             {
@@ -2046,18 +2046,18 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
             SerializedProperty valuesProperty = paletteProperty.FindPropertyRelative(
                 nameof(SerializableDictionary<object, object>._values)
             );
-            Assert.IsNotNull(valuesProperty, "Should find values property in dictionary.");
+            Assert.IsTrue(valuesProperty != null, "Should find values property in dictionary.");
             Assert.Greater(valuesProperty.arraySize, 0, "Should have at least one value entry.");
 
             SerializedProperty firstValue = valuesProperty.GetArrayElementAtIndex(0);
-            Assert.IsNotNull(firstValue, "Should be able to get first value element.");
+            Assert.IsTrue(firstValue != null, "Should be able to get first value element.");
 
             string buttonFieldName = UnityHelpersSettings
                 .SerializedPropertyNames
                 .WButtonCustomColorButton;
             SerializedProperty buttonColor = firstValue.FindPropertyRelative(buttonFieldName);
-            Assert.IsNotNull(
-                buttonColor,
+            Assert.IsTrue(
+                buttonColor != null,
                 $"WButtonCustomColor should have property '{buttonFieldName}'. "
                     + $"This typically indicates the field was renamed. "
                     + $"Available properties: {GetAvailableRelativeProperties(firstValue)}"
@@ -2067,8 +2067,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
                 .SerializedPropertyNames
                 .WButtonCustomColorText;
             SerializedProperty textColor = firstValue.FindPropertyRelative(textFieldName);
-            Assert.IsNotNull(
-                textColor,
+            Assert.IsTrue(
+                textColor != null,
                 $"WButtonCustomColor should have property '{textFieldName}'. "
                     + $"This typically indicates the field was renamed. "
                     + $"Available properties: {GetAvailableRelativeProperties(firstValue)}"
@@ -2089,15 +2089,15 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
             SerializedProperty paletteProperty = serialized.FindProperty(
                 UnityHelpersSettings.SerializedPropertyNames.WEnumToggleButtonsCustomColors
             );
-            Assert.IsNotNull(
-                paletteProperty,
+            Assert.IsTrue(
+                paletteProperty != null,
                 "Should find WEnumToggleButtonsCustomColors property."
             );
 
             SerializedProperty keysProperty = paletteProperty.FindPropertyRelative(
                 nameof(SerializableDictionary<object, object>._keys)
             );
-            Assert.IsNotNull(keysProperty, "Should find keys property in dictionary.");
+            Assert.IsTrue(keysProperty != null, "Should find keys property in dictionary.");
 
             if (keysProperty.arraySize == 0)
             {
@@ -2110,11 +2110,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
             SerializedProperty valuesProperty = paletteProperty.FindPropertyRelative(
                 nameof(SerializableDictionary<object, object>._values)
             );
-            Assert.IsNotNull(valuesProperty, "Should find values property in dictionary.");
+            Assert.IsTrue(valuesProperty != null, "Should find values property in dictionary.");
             Assert.Greater(valuesProperty.arraySize, 0, "Should have at least one value entry.");
 
             SerializedProperty firstValue = valuesProperty.GetArrayElementAtIndex(0);
-            Assert.IsNotNull(firstValue, "Should be able to get first value element.");
+            Assert.IsTrue(firstValue != null, "Should be able to get first value element.");
 
             string selectedBackgroundFieldName = UnityHelpersSettings
                 .SerializedPropertyNames
@@ -2122,8 +2122,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
             SerializedProperty selectedBackground = firstValue.FindPropertyRelative(
                 selectedBackgroundFieldName
             );
-            Assert.IsNotNull(
-                selectedBackground,
+            Assert.IsTrue(
+                selectedBackground != null,
                 $"WEnumToggleButtonsCustomColor should have property '{selectedBackgroundFieldName}'. "
                     + $"This typically indicates the field was renamed. "
                     + $"Available properties: {GetAvailableRelativeProperties(firstValue)}"
@@ -2135,8 +2135,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
             SerializedProperty selectedText = firstValue.FindPropertyRelative(
                 selectedTextFieldName
             );
-            Assert.IsNotNull(
-                selectedText,
+            Assert.IsTrue(
+                selectedText != null,
                 $"WEnumToggleButtonsCustomColor should have property '{selectedTextFieldName}'. "
                     + $"This typically indicates the field was renamed. "
                     + $"Available properties: {GetAvailableRelativeProperties(firstValue)}"
@@ -2148,8 +2148,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
             SerializedProperty inactiveBackground = firstValue.FindPropertyRelative(
                 inactiveBackgroundFieldName
             );
-            Assert.IsNotNull(
-                inactiveBackground,
+            Assert.IsTrue(
+                inactiveBackground != null,
                 $"WEnumToggleButtonsCustomColor should have property '{inactiveBackgroundFieldName}'. "
                     + $"This typically indicates the field was renamed. "
                     + $"Available properties: {GetAvailableRelativeProperties(firstValue)}"
@@ -2161,8 +2161,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
             SerializedProperty inactiveText = firstValue.FindPropertyRelative(
                 inactiveTextFieldName
             );
-            Assert.IsNotNull(
-                inactiveText,
+            Assert.IsTrue(
+                inactiveText != null,
                 $"WEnumToggleButtonsCustomColor should have property '{inactiveTextFieldName}'. "
                     + $"This typically indicates the field was renamed. "
                     + $"Available properties: {GetAvailableRelativeProperties(firstValue)}"
@@ -2215,10 +2215,16 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
                         UnityHelpersBufferSettingsAsset.ApplyOnLoadPropertyName
                     );
 
-                    Assert.IsNotNull(quantizationProperty, "Should find quantization property.");
-                    Assert.IsNotNull(maxEntriesProperty, "Should find max entries property.");
-                    Assert.IsNotNull(useLruProperty, "Should find use LRU property.");
-                    Assert.IsNotNull(applyOnLoadProperty, "Should find apply on load property.");
+                    Assert.IsTrue(
+                        quantizationProperty != null,
+                        "Should find quantization property."
+                    );
+                    Assert.IsTrue(maxEntriesProperty != null, "Should find max entries property.");
+                    Assert.IsTrue(useLruProperty != null, "Should find use LRU property.");
+                    Assert.IsTrue(
+                        applyOnLoadProperty != null,
+                        "Should find apply on load property."
+                    );
 
                     quantizationProperty.floatValue = testQuantization;
                     maxEntriesProperty.intValue = testMaxEntries;
@@ -2859,32 +2865,32 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
             SerializedProperty applyOnLoadProperty = serialized.FindProperty(
                 UnityHelpersBufferSettingsAsset.ApplyOnLoadPropertyName
             );
-            Assert.IsNotNull(
-                applyOnLoadProperty,
+            Assert.IsTrue(
+                applyOnLoadProperty != null,
                 $"Property '{UnityHelpersBufferSettingsAsset.ApplyOnLoadPropertyName}' should exist on the asset."
             );
 
             SerializedProperty quantizationProperty = serialized.FindProperty(
                 UnityHelpersBufferSettingsAsset.QuantizationStepSecondsPropertyName
             );
-            Assert.IsNotNull(
-                quantizationProperty,
+            Assert.IsTrue(
+                quantizationProperty != null,
                 $"Property '{UnityHelpersBufferSettingsAsset.QuantizationStepSecondsPropertyName}' should exist on the asset."
             );
 
             SerializedProperty maxEntriesProperty = serialized.FindProperty(
                 UnityHelpersBufferSettingsAsset.MaxDistinctEntriesPropertyName
             );
-            Assert.IsNotNull(
-                maxEntriesProperty,
+            Assert.IsTrue(
+                maxEntriesProperty != null,
                 $"Property '{UnityHelpersBufferSettingsAsset.MaxDistinctEntriesPropertyName}' should exist on the asset."
             );
 
             SerializedProperty useLruProperty = serialized.FindProperty(
                 UnityHelpersBufferSettingsAsset.UseLruEvictionPropertyName
             );
-            Assert.IsNotNull(
-                useLruProperty,
+            Assert.IsTrue(
+                useLruProperty != null,
                 $"Property '{UnityHelpersBufferSettingsAsset.UseLruEvictionPropertyName}' should exist on the asset."
             );
         }

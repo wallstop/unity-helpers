@@ -984,7 +984,9 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools.UnityMethodAnalyzer
         {
             try
             {
-                if (task.IsCanceled || _cancellationTokenSource.IsCancellationRequested)
+                // Capture to local variable to avoid TOCTOU race, since OnDisable() may null the field
+                CancellationTokenSource cts = _cancellationTokenSource;
+                if (task.IsCanceled || (cts?.IsCancellationRequested ?? false))
                 {
                     _statusMessage = "Analysis cancelled";
                 }

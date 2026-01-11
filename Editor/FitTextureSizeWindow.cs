@@ -410,7 +410,13 @@ namespace WallstopStudios.UnityHelpers.Editor
                     }
                     else
                     {
-                        this.LogWarn($"Skipping non-folder object: '{assetPath}'");
+                        // Support individual texture files directly; type filtering is applied later.
+                        // This mirrors the behavior in the _useSelectionOnly branch.
+                        string guid = AssetDatabase.AssetPathToGUID(assetPath);
+                        if (!string.IsNullOrWhiteSpace(guid))
+                        {
+                            _ = guidSet.Add(guid);
+                        }
                     }
                 }
             }

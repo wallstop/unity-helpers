@@ -201,7 +201,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         public void GetBoundsFromFastVectorCollectionReturnsNullWhenEmpty()
         {
             List<FastVector3Int> points = new();
-            Assert.IsNull(points.GetBounds());
+            Assert.IsTrue(points.GetBounds() == null);
         }
 
         [Test]
@@ -340,7 +340,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         public void GetBoundsFromVector3IntCollectionReturnsNullWhenEmpty()
         {
             List<Vector3Int> points = new();
-            Assert.IsNull(points.GetBounds());
+            Assert.IsTrue(points.GetBounds() == null);
         }
 
         [Test]
@@ -374,7 +374,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         [Test]
         public void GetBoundsFromVector2CollectionReturnsNullWhenEmpty()
         {
-            Assert.IsNull(new List<Vector2>().GetBounds());
+            Assert.IsTrue(new List<Vector2>().GetBounds() == null);
         }
 
         [Test]
@@ -425,7 +425,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         [Test]
         public void GetBoundsFromBoundsCollectionReturnsNullWhenEmpty()
         {
-            Assert.IsNull(new List<Bounds>().GetBounds());
+            Assert.IsTrue(new List<Bounds>().GetBounds() == null);
         }
 
         [UnityTest]

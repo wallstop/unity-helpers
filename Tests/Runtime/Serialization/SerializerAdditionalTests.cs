@@ -180,9 +180,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
             TestMessage deserialized = Serializer.BinaryDeserialize<TestMessage>(serialized);
 
             Assert.AreEqual(msg.Id, deserialized.Id);
-            Assert.IsNull(deserialized.Name, "Name should be null after round-trip of null value");
-            Assert.IsNull(
-                deserialized.Values,
+            Assert.IsTrue(
+                deserialized.Name == null,
+                "Name should be null after round-trip of null value"
+            );
+            Assert.IsTrue(
+                deserialized.Values == null,
                 "Values should be null after round-trip of null value"
             );
         }

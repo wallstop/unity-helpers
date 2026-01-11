@@ -33,7 +33,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
             byte[] data = Serializer.ProtoSerialize<BaseMsg>(original);
             DerivedMsg round = Serializer.ProtoDeserialize<DerivedMsg>(data);
 
-            Assert.IsNotNull(round, "Deserialized instance should not be null");
+            Assert.IsTrue(round != null, "Deserialized instance should not be null");
             Assert.AreEqual(123, round.A, "Base field A should match");
             Assert.AreEqual("hello", round.B, "Derived field B should be preserved");
         }
@@ -46,7 +46,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
 
             DerivedMsg round = Serializer.ProtoDeserialize<DerivedMsg>(data);
 
-            Assert.IsNotNull(round, "Deserialized instance should not be null");
+            Assert.IsTrue(round != null, "Deserialized instance should not be null");
             Assert.AreEqual(7, round.A, "Base field A should match");
             Assert.AreEqual("world", round.B, "Derived field B should be preserved");
         }
@@ -58,7 +58,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
             byte[] data = Serializer.ProtoSerialize(original);
             DerivedMsg round = Serializer.ProtoDeserialize<DerivedMsg>(data);
 
-            Assert.IsNotNull(round, "Deserialized instance should not be null");
+            Assert.IsTrue(round != null, "Deserialized instance should not be null");
             Assert.AreEqual(42, round.A, "Base field A should match");
             Assert.AreEqual("obj", round.B, "Derived field B should be preserved");
         }

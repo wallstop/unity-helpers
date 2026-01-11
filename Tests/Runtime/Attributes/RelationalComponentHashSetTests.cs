@@ -31,7 +31,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
             tester.AssignParentComponents();
 
             // Should find 2 parent SpriteRenderers
-            Assert.IsNotNull(tester.parentRenderers);
+            Assert.IsTrue(tester.parentRenderers != null);
             Assert.AreEqual(2, tester.parentRenderers.Count);
 
             yield break;
@@ -52,7 +52,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
             tester.AssignChildComponents();
 
             // Should find 3 child SpriteRenderers
-            Assert.IsNotNull(tester.childRenderers);
+            Assert.IsTrue(tester.childRenderers != null);
             Assert.AreEqual(3, tester.childRenderers.Count);
 
             yield break;
@@ -72,7 +72,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
             tester.AssignSiblingComponents();
 
             // Should find 3 sibling BoxColliders
-            Assert.IsNotNull(tester.siblingColliders);
+            Assert.IsTrue(tester.siblingColliders != null);
             Assert.AreEqual(3, tester.siblingColliders.Count);
 
             yield break;
@@ -96,7 +96,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
             tester.AssignChildComponents();
 
             // Should find 1 unique SpriteRenderer (HashSet ensures uniqueness)
-            Assert.IsNotNull(tester.uniqueChildren);
+            Assert.IsTrue(tester.uniqueChildren != null);
             Assert.AreEqual(1, tester.uniqueChildren.Count);
 
             yield break;
@@ -137,7 +137,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
             tester.AssignChildComponents();
 
             // Should find 2 components implementing ITestInterface
-            Assert.IsNotNull(tester.interfaceChildren);
+            Assert.IsTrue(tester.interfaceChildren != null);
             Assert.AreEqual(2, tester.interfaceChildren.Count);
 
             yield break;

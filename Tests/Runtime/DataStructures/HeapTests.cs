@@ -1354,7 +1354,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             int count = heap.ToArray(ref array);
 
             Assert.AreEqual(4, count);
-            Assert.IsNotNull(array);
+            Assert.IsTrue(array != null);
             Assert.AreEqual(4, array.Length);
             CollectionAssert.AreEquivalent(new[] { 5, 3, 7, 1 }, array);
         }

@@ -146,8 +146,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Random
             IllusionFlow flow = new(DeterministicGuid, extraSeed);
 
             RandomState state = flow.InternalState;
-            Assert.IsNotNull(
-                state.PayloadBytes,
+            Assert.IsTrue(
+                state.PayloadBytes != null,
                 "PayloadBytes should not be null for IllusionFlow state"
             );
             Assert.GreaterOrEqual(state.PayloadBytes.Count, sizeof(uint));

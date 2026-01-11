@@ -11,16 +11,27 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
     using UnityEditor;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Editor.Sprites;
-    using WallstopStudios.UnityHelpers.Editor.Utils;
     using WallstopStudios.UnityHelpers.Tests.Core;
 
     [TestFixture]
     [NUnit.Framework.Category("Slow")]
     [NUnit.Framework.Category("Integration")]
-    public sealed class SpriteSettingsApplierAdditionalTests : CommonTestBase
+    public sealed class SpriteSettingsApplierAdditionalTests : BatchedEditorTestBase
     {
         private const string TestFolder = "Assets/TempSpriteApplierAdditional";
         private string _assetPath;
+
+        [OneTimeSetUp]
+        public override void CommonOneTimeSetUp()
+        {
+            base.CommonOneTimeSetUp();
+            if (Application.isPlaying)
+            {
+                return;
+            }
+            EnsureFolder(TestFolder);
+            TrackFolder(TestFolder);
+        }
 
         [SetUp]
         public override void BaseSetUp()
@@ -30,30 +41,19 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             {
                 Assert.Ignore("AssetDatabase access requires edit mode.");
             }
-            if (!AssetDatabase.IsValidFolder(TestFolder))
-            {
-                AssetDatabase.CreateFolder("Assets", "TempSpriteApplierAdditional");
-            }
+            // Reset per-test state
+            _assetPath = null;
         }
 
         [TearDown]
         public override void TearDown()
         {
             base.TearDown();
-            if (Application.isPlaying)
+            // Per-test cleanup: track individual asset paths for deferred cleanup
+            if (!string.IsNullOrEmpty(_assetPath))
             {
-                return;
+                TrackAssetPath(_assetPath);
             }
-            if (!string.IsNullOrEmpty(_assetPath) && File.Exists(_assetPath))
-            {
-                AssetDatabase.DeleteAsset(_assetPath);
-                _assetPath = null;
-            }
-            if (AssetDatabase.IsValidFolder(TestFolder))
-            {
-                AssetDatabase.DeleteAsset(TestFolder);
-            }
-            AssetDatabaseBatchHelper.RefreshIfNotBatching();
         }
 
         private string CreatePng(string name, bool asSprite)
@@ -62,14 +62,18 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             byte[] png = tex.EncodeToPNG();
             string path = Path.Combine(TestFolder, name + ".png");
             File.WriteAllBytes(path, png);
-            AssetDatabase.ImportAsset(path);
-            TextureImporter ti = AssetImporter.GetAtPath(path) as TextureImporter;
-            Assert.IsTrue(ti != null, "Importer not found for asset path: " + path);
-            if (asSprite)
+
+            ExecuteWithImmediateImport(() =>
             {
-                ti.textureType = TextureImporterType.Sprite;
-                ti.SaveAndReimport();
-            }
+                AssetDatabase.ImportAsset(path);
+                TextureImporter ti = AssetImporter.GetAtPath(path) as TextureImporter;
+                Assert.IsTrue(ti != null, "Importer not found for asset path: " + path);
+                if (asSprite)
+                {
+                    ti.textureType = TextureImporterType.Sprite;
+                    ti.SaveAndReimport();
+                }
+            });
             return path;
         }
 
@@ -82,10 +86,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             // Set initial filter mode to Point (different from what the higher-priority profile wants)
             // Unity's default is Bilinear, so we need to explicitly set a different value
             // to ensure WillTextureSettingsChange detects a change
-            TextureImporter initialImporter = AssetImporter.GetAtPath(path) as TextureImporter;
-            Assert.IsTrue(initialImporter != null, "Initial importer not found");
-            initialImporter.filterMode = FilterMode.Point;
-            initialImporter.SaveAndReimport();
+            ExecuteWithImmediateImport(() =>
+            {
+                TextureImporter initialImporter = AssetImporter.GetAtPath(path) as TextureImporter;
+                Assert.IsTrue(initialImporter != null, "Initial importer not found");
+                initialImporter.filterMode = FilterMode.Point;
+                initialImporter.SaveAndReimport();
+            });
 
             List<SpriteSettings> profiles = new()
             {
@@ -126,7 +133,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
                 "Expected TryUpdateTextureSettings to apply settings. Path=" + path
             );
             Assert.IsTrue(importer != null, "Expected non-null importer after change");
-            importer.SaveAndReimport();
+            ExecuteWithImmediateImport(() => importer.SaveAndReimport());
             Assert.AreEqual(
                 FilterMode.Bilinear,
                 importer.filterMode,
@@ -141,10 +148,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             _assetPath = path;
 
             // Explicitly set texture type to Default to ensure it differs from the profile's Sprite type
-            TextureImporter initialImporter = AssetImporter.GetAtPath(path) as TextureImporter;
-            Assert.IsTrue(initialImporter != null, "Initial importer not found");
-            initialImporter.textureType = TextureImporterType.Default;
-            initialImporter.SaveAndReimport();
+            ExecuteWithImmediateImport(() =>
+            {
+                TextureImporter initialImporter = AssetImporter.GetAtPath(path) as TextureImporter;
+                Assert.IsTrue(initialImporter != null, "Initial importer not found");
+                initialImporter.textureType = TextureImporterType.Default;
+                initialImporter.SaveAndReimport();
+            });
 
             List<SpriteSettings> profiles = new()
             {
@@ -170,7 +180,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             );
             Assert.IsTrue(changed, "Expected importer to be updated for path: " + path);
             Assert.IsTrue(importer != null, "Importer was null after update for path: " + path);
-            importer.SaveAndReimport();
+            ExecuteWithImmediateImport(() => importer.SaveAndReimport());
             Assert.AreEqual(
                 TextureImporterType.Sprite,
                 importer.textureType,
@@ -249,7 +259,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             TextureImporter importer = AssetImporter.GetAtPath(path) as TextureImporter;
             Assert.IsTrue(importer != null, "Importer not found");
             importer.filterMode = spriteFilterMode;
-            importer.SaveAndReimport();
+            ExecuteWithImmediateImport(() => importer.SaveAndReimport());
 
             List<SpriteSettings> profiles = new()
             {
@@ -330,7 +340,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             TextureImporter importer = AssetImporter.GetAtPath(path) as TextureImporter;
             Assert.IsTrue(importer != null, "Importer not found");
             importer.wrapMode = spriteWrapMode;
-            importer.SaveAndReimport();
+            ExecuteWithImmediateImport(() => importer.SaveAndReimport());
 
             List<SpriteSettings> profiles = new()
             {
@@ -382,7 +392,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             TextureImporter importer = AssetImporter.GetAtPath(path) as TextureImporter;
             Assert.IsTrue(importer != null, "Importer not found");
             importer.spritePixelsPerUnit = spritePpu;
-            importer.SaveAndReimport();
+            ExecuteWithImmediateImport(() => importer.SaveAndReimport());
 
             List<SpriteSettings> profiles = new()
             {
@@ -463,7 +473,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             TextureImporter importer = AssetImporter.GetAtPath(path) as TextureImporter;
             Assert.IsTrue(importer != null, "Importer not found");
             importer.textureCompression = spriteCompression;
-            importer.SaveAndReimport();
+            ExecuteWithImmediateImport(() => importer.SaveAndReimport());
 
             List<SpriteSettings> profiles = new()
             {
@@ -516,7 +526,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             TextureImporter importer = AssetImporter.GetAtPath(path) as TextureImporter;
             Assert.IsTrue(importer != null, "Importer not found");
             importer.mipmapEnabled = spriteMipMaps;
-            importer.SaveAndReimport();
+            ExecuteWithImmediateImport(() => importer.SaveAndReimport());
 
             List<SpriteSettings> profiles = new()
             {
@@ -569,7 +579,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             TextureImporter importer = AssetImporter.GetAtPath(path) as TextureImporter;
             Assert.IsTrue(importer != null, "Importer not found");
             importer.crunchedCompression = spriteCrunch;
-            importer.SaveAndReimport();
+            ExecuteWithImmediateImport(() => importer.SaveAndReimport());
 
             List<SpriteSettings> profiles = new()
             {
@@ -622,7 +632,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             TextureImporter importer = AssetImporter.GetAtPath(path) as TextureImporter;
             Assert.IsTrue(importer != null, "Importer not found");
             importer.isReadable = spriteReadWrite;
-            importer.SaveAndReimport();
+            ExecuteWithImmediateImport(() => importer.SaveAndReimport());
 
             List<SpriteSettings> profiles = new()
             {
@@ -675,7 +685,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             TextureImporter importer = AssetImporter.GetAtPath(path) as TextureImporter;
             Assert.IsTrue(importer != null, "Importer not found");
             importer.alphaIsTransparency = spriteAlpha;
-            importer.SaveAndReimport();
+            ExecuteWithImmediateImport(() => importer.SaveAndReimport());
 
             List<SpriteSettings> profiles = new()
             {
@@ -751,7 +761,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             TextureImporter importer = AssetImporter.GetAtPath(path) as TextureImporter;
             Assert.IsTrue(importer != null, "Importer not found");
             importer.spriteImportMode = spriteSpriteMode;
-            importer.SaveAndReimport();
+            ExecuteWithImmediateImport(() => importer.SaveAndReimport());
 
             List<SpriteSettings> profiles = new()
             {
@@ -832,7 +842,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             TextureImporter importer = AssetImporter.GetAtPath(path) as TextureImporter;
             Assert.IsTrue(importer != null, "Importer not found");
             importer.textureType = spriteTextureType;
-            importer.SaveAndReimport();
+            ExecuteWithImmediateImport(() => importer.SaveAndReimport());
 
             List<SpriteSettings> profiles = new()
             {
@@ -900,7 +910,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             importer.ReadTextureSettings(settings);
             settings.spriteExtrude = spriteExtrude;
             importer.SetTextureSettings(settings);
-            importer.SaveAndReimport();
+            ExecuteWithImmediateImport(() => importer.SaveAndReimport());
 
             List<SpriteSettings> profiles = new()
             {
@@ -939,7 +949,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             importer.textureCompression = TextureImporterCompression.Compressed;
             importer.alphaIsTransparency = true;
             importer.isReadable = false;
-            importer.SaveAndReimport();
+            ExecuteWithImmediateImport(() => importer.SaveAndReimport());
 
             List<SpriteSettings> profiles = new()
             {
@@ -986,7 +996,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             importer.filterMode = FilterMode.Bilinear;
             importer.wrapMode = TextureWrapMode.Repeat;
             importer.spritePixelsPerUnit = 32;
-            importer.SaveAndReimport();
+            ExecuteWithImmediateImport(() => importer.SaveAndReimport());
 
             List<SpriteSettings> profiles = new()
             {
@@ -1028,7 +1038,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             importer.filterMode = FilterMode.Point;
             importer.wrapMode = TextureWrapMode.Clamp;
             importer.spritePixelsPerUnit = 100;
-            importer.SaveAndReimport();
+            ExecuteWithImmediateImport(() => importer.SaveAndReimport());
 
             List<SpriteSettings> profiles = new()
             {
@@ -1065,7 +1075,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             importer.filterMode = FilterMode.Bilinear;
             importer.wrapMode = TextureWrapMode.Repeat;
             importer.spritePixelsPerUnit = 32;
-            importer.SaveAndReimport();
+            ExecuteWithImmediateImport(() => importer.SaveAndReimport());
 
             List<SpriteSettings> profiles = new()
             {
@@ -1366,7 +1376,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             importerBefore.filterMode = FilterMode.Point;
             importerBefore.wrapMode = TextureWrapMode.Clamp;
             importerBefore.spritePixelsPerUnit = 100;
-            importerBefore.SaveAndReimport();
+            ExecuteWithImmediateImport(() => importerBefore.SaveAndReimport());
 
             List<SpriteSettings> profiles = new()
             {
@@ -1392,7 +1402,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             );
             Assert.IsTrue(changed, "Expected changes to be applied");
             Assert.IsTrue(outImporter != null, "Importer should be returned");
-            outImporter.SaveAndReimport();
+            ExecuteWithImmediateImport(() => outImporter.SaveAndReimport());
 
             TextureImporter importerAfter = AssetImporter.GetAtPath(path) as TextureImporter;
             Assert.IsTrue(importerAfter != null, "Importer after not found");
@@ -1496,7 +1506,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             settings.spriteAlignment = (int)SpriteAlignment.Custom;
             settings.spritePivot = spritePivot;
             importer.SetTextureSettings(settings);
-            importer.SaveAndReimport();
+            ExecuteWithImmediateImport(() => importer.SaveAndReimport());
 
             List<SpriteSettings> profiles = new()
             {
@@ -1531,7 +1541,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             importer.ReadTextureSettings(settings);
             settings.spriteAlignment = (int)SpriteAlignment.Center;
             importer.SetTextureSettings(settings);
-            importer.SaveAndReimport();
+            ExecuteWithImmediateImport(() => importer.SaveAndReimport());
 
             List<SpriteSettings> profiles = new()
             {
@@ -1567,7 +1577,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             settingsBefore.spriteAlignment = (int)SpriteAlignment.Custom;
             settingsBefore.spritePivot = new Vector2(0.5f, 0.5f);
             importerBefore.SetTextureSettings(settingsBefore);
-            importerBefore.SaveAndReimport();
+            ExecuteWithImmediateImport(() => importerBefore.SaveAndReimport());
 
             List<SpriteSettings> profiles = new()
             {
@@ -1589,7 +1599,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             );
             Assert.IsTrue(changed, "Expected changes to be applied");
             Assert.IsTrue(outImporter != null, "Importer should be returned");
-            outImporter.SaveAndReimport();
+            ExecuteWithImmediateImport(() => outImporter.SaveAndReimport());
 
             TextureImporter importerAfter = AssetImporter.GetAtPath(path) as TextureImporter;
             Assert.IsTrue(importerAfter != null, "Importer after not found");
@@ -1617,7 +1627,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             TextureImporter importer = AssetImporter.GetAtPath(path) as TextureImporter;
             Assert.IsTrue(importer != null, "Importer not found");
             importer.filterMode = FilterMode.Point;
-            importer.SaveAndReimport();
+            ExecuteWithImmediateImport(() => importer.SaveAndReimport());
 
             List<SpriteSettings> matchingProfiles = new()
             {
@@ -1685,7 +1695,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             TextureImporter importer1 = AssetImporter.GetAtPath(path1) as TextureImporter;
             Assert.IsTrue(importer1 != null, "Importer not found for first asset");
             importer1.filterMode = FilterMode.Point;
-            importer1.SaveAndReimport();
+            ExecuteWithImmediateImport(() => importer1.SaveAndReimport());
 
             string path2 = null;
             try
@@ -1694,12 +1704,17 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
                 Texture2D tex2 = Track(new Texture2D(4, 4, TextureFormat.RGBA32, false));
                 byte[] png2 = tex2.EncodeToPNG();
                 File.WriteAllBytes(path2, png2);
-                AssetDatabase.ImportAsset(path2);
-                TextureImporter importer2 = AssetImporter.GetAtPath(path2) as TextureImporter;
-                Assert.IsTrue(importer2 != null, "Importer not found for second asset");
-                importer2.textureType = TextureImporterType.Sprite;
-                importer2.filterMode = FilterMode.Bilinear;
-                importer2.SaveAndReimport();
+
+                TextureImporter importer2 = null;
+                ExecuteWithImmediateImport(() =>
+                {
+                    AssetDatabase.ImportAsset(path2);
+                    importer2 = AssetImporter.GetAtPath(path2) as TextureImporter;
+                    Assert.IsTrue(importer2 != null, "Importer not found for second asset");
+                    importer2.textureType = TextureImporterType.Sprite;
+                    importer2.filterMode = FilterMode.Bilinear;
+                    importer2.SaveAndReimport();
+                });
 
                 List<SpriteSettings> profiles = new()
                 {
@@ -1763,7 +1778,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             Assert.IsTrue(importer1 != null, "Importer not found for first asset");
             importer1.filterMode = FilterMode.Point;
             importer1.wrapMode = TextureWrapMode.Clamp;
-            importer1.SaveAndReimport();
+            ExecuteWithImmediateImport(() => importer1.SaveAndReimport());
 
             string path2 = null;
             try
@@ -1772,13 +1787,18 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
                 Texture2D tex2 = Track(new Texture2D(4, 4, TextureFormat.RGBA32, false));
                 byte[] png2 = tex2.EncodeToPNG();
                 File.WriteAllBytes(path2, png2);
-                AssetDatabase.ImportAsset(path2);
-                TextureImporter importer2 = AssetImporter.GetAtPath(path2) as TextureImporter;
-                Assert.IsTrue(importer2 != null, "Importer not found for second asset");
-                importer2.textureType = TextureImporterType.Sprite;
-                importer2.filterMode = FilterMode.Bilinear;
-                importer2.wrapMode = TextureWrapMode.Repeat;
-                importer2.SaveAndReimport();
+
+                TextureImporter importer2 = null;
+                ExecuteWithImmediateImport(() =>
+                {
+                    AssetDatabase.ImportAsset(path2);
+                    importer2 = AssetImporter.GetAtPath(path2) as TextureImporter;
+                    Assert.IsTrue(importer2 != null, "Importer not found for second asset");
+                    importer2.textureType = TextureImporterType.Sprite;
+                    importer2.filterMode = FilterMode.Bilinear;
+                    importer2.wrapMode = TextureWrapMode.Repeat;
+                    importer2.SaveAndReimport();
+                });
 
                 List<SpriteSettings> profiles = new()
                 {
@@ -1814,7 +1834,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
                 );
                 Assert.IsTrue(changed2, "Second asset should change");
                 Assert.IsTrue(outImporter2 != null, "Importer should be returned for second asset");
-                outImporter2.SaveAndReimport();
+                ExecuteWithImmediateImport(() => outImporter2.SaveAndReimport());
 
                 TextureImporter verifyImporter2 = AssetImporter.GetAtPath(path2) as TextureImporter;
                 Assert.IsTrue(verifyImporter2 != null, "Verify importer not found");
@@ -1849,7 +1869,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             importerBefore.spritePixelsPerUnit = 100;
             importerBefore.filterMode = FilterMode.Point;
             importerBefore.wrapMode = TextureWrapMode.Clamp;
-            importerBefore.SaveAndReimport();
+            ExecuteWithImmediateImport(() => importerBefore.SaveAndReimport());
 
             List<SpriteSettings> profiles = new()
             {
@@ -1905,7 +1925,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             TextureImporter importer = AssetImporter.GetAtPath(path) as TextureImporter;
             Assert.IsTrue(importer != null, "Importer not found for path: " + path);
             importer.filterMode = FilterMode.Point;
-            importer.SaveAndReimport();
+            ExecuteWithImmediateImport(() => importer.SaveAndReimport());
 
             List<SpriteSettings> profiles = new()
             {
@@ -2323,7 +2343,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             TextureImporter importer = AssetImporter.GetAtPath(path) as TextureImporter;
             Assert.IsTrue(importer != null, "Importer not found for path: " + path);
             importer.filterMode = FilterMode.Point;
-            importer.SaveAndReimport();
+            ExecuteWithImmediateImport(() => importer.SaveAndReimport());
 
             List<SpriteSettings> profiles = new()
             {

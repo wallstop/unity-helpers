@@ -857,7 +857,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             BoundingBox3D box = new(Vector3.zero, Vector3.one);
             string str = box.ToString();
 
-            Assert.IsNotNull(str);
+            Assert.IsTrue(str != null);
             Assert.IsTrue(str.Contains("BoundingBox3D"));
         }
 

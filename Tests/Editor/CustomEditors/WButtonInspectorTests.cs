@@ -16,12 +16,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomEditors
     using WallstopStudios.UnityHelpers.Editor.Utils.WButton;
     using WallstopStudios.UnityHelpers.Tests.Core;
     using WallstopStudios.UnityHelpers.Tests.Editor.TestTypes;
+    using WallstopStudios.UnityHelpers.Tests.Runtime.TestTypes;
     using WallstopStudios.UnityHelpers.Tests.EditorFramework;
 
     [TestFixture]
     [NUnit.Framework.Category("Slow")]
     [NUnit.Framework.Category("Integration")]
-    public sealed class WButtonInspectorTests : CommonTestBase
+    public sealed class WButtonInspectorTests : BatchedEditorTestBase
     {
         [Test]
         public void WButtonInspectorCanBeInstantiatedForScriptableObject()

@@ -7,7 +7,6 @@
     "WallstopStudios.UnityHelpers",
     "WallstopStudios.UnityHelpers.Integration.Reflex",
     "WallstopStudios.UnityHelpers.Tests.Runtime",
-    "WallstopStudios.UnityHelpers.Tests.Editor",
     "WallstopStudios.UnityHelpers.Tests.Core",
     "Reflex"
   ],

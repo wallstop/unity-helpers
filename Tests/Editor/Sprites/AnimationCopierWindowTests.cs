@@ -70,7 +70,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
                 || AssetDatabase.LoadAssetAtPath<Object>(assetPath) != null
             )
             {
-                AssetDatabase.ImportAsset(assetPath, ImportAssetOptions.ForceUpdate);
+                AssetDatabase.ImportAsset(assetPath, ImportAssetOptions.ForceSynchronousImport);
             }
         }
 

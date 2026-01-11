@@ -91,8 +91,11 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             int[] serializedKeys = dictionary.SerializedKeys;
             string[] serializedValues = dictionary.SerializedValues;
 
-            Assert.IsNotNull(serializedKeys, "Serialized keys should be produced on demand.");
-            Assert.IsNotNull(serializedValues, "Serialized values should be produced on demand.");
+            Assert.IsTrue(serializedKeys != null, "Serialized keys should be produced on demand.");
+            Assert.IsTrue(
+                serializedValues != null,
+                "Serialized values should be produced on demand."
+            );
 
             bool added = dictionary.TryAdd(1, "duplicate");
 
@@ -117,9 +120,12 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
 
             dictionary.OnBeforeSerialize();
 
-            Assert.IsNotNull(dictionary.SerializedKeys, "Keys cache should exist before update.");
-            Assert.IsNotNull(
-                dictionary.SerializedValues,
+            Assert.IsTrue(
+                dictionary.SerializedKeys != null,
+                "Keys cache should exist before update."
+            );
+            Assert.IsTrue(
+                dictionary.SerializedValues != null,
                 "Values cache should exist before update."
             );
             Assert.IsTrue(
@@ -130,12 +136,12 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             dictionary[2] = "second";
 
             // Arrays are preserved for order maintenance, but preserve flag is cleared
-            Assert.IsNotNull(
-                dictionary.SerializedKeys,
+            Assert.IsTrue(
+                dictionary.SerializedKeys != null,
                 "Indexer mutations preserve arrays for order maintenance."
             );
-            Assert.IsNotNull(
-                dictionary.SerializedValues,
+            Assert.IsTrue(
+                dictionary.SerializedValues != null,
                 "Indexer mutations preserve arrays for order maintenance."
             );
             Assert.IsFalse(
@@ -156,8 +162,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
 
             dictionary.OnBeforeSerialize();
 
-            Assert.IsNotNull(dictionary.SerializedKeys);
-            Assert.IsNotNull(dictionary.SerializedValues);
+            Assert.IsTrue(dictionary.SerializedKeys != null);
+            Assert.IsTrue(dictionary.SerializedValues != null);
             Assert.IsTrue(dictionary.PreserveSerializedEntries);
 
             bool removed = dictionary.Remove(2, out string removedValue);
@@ -165,12 +171,12 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             Assert.IsTrue(removed);
             Assert.AreEqual("two", removedValue);
             // Arrays are preserved for order maintenance, but preserve flag is cleared
-            Assert.IsNotNull(
-                dictionary.SerializedKeys,
+            Assert.IsTrue(
+                dictionary.SerializedKeys != null,
                 "Removal preserves arrays for order maintenance."
             );
-            Assert.IsNotNull(
-                dictionary.SerializedValues,
+            Assert.IsTrue(
+                dictionary.SerializedValues != null,
                 "Removal preserves arrays for order maintenance."
             );
             Assert.IsFalse(
@@ -194,8 +200,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
 
             int[] serializedKeysBefore = dictionary.SerializedKeys;
             string[] serializedValuesBefore = dictionary.SerializedValues;
-            Assert.IsNotNull(serializedKeysBefore);
-            Assert.IsNotNull(serializedValuesBefore);
+            Assert.IsTrue(serializedKeysBefore != null);
+            Assert.IsTrue(serializedValuesBefore != null);
 
             byte[] payload = Serializer.ProtoSerialize(dictionary);
 
@@ -240,8 +246,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             int[] serializedKeys = original.SerializedKeys;
             string[] serializedValues = original.SerializedValues;
 
-            Assert.IsNotNull(serializedKeys);
-            Assert.IsNotNull(serializedValues);
+            Assert.IsTrue(serializedKeys != null);
+            Assert.IsTrue(serializedValues != null);
             Assert.AreEqual(original.Count, serializedKeys.Length);
             Assert.AreEqual(serializedKeys.Length, serializedValues.Length);
 
@@ -279,8 +285,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             int[] serializedKeys = original.SerializedKeys;
             IntCache[] serializedValues = original.SerializedValues;
 
-            Assert.IsNotNull(serializedKeys);
-            Assert.IsNotNull(serializedValues);
+            Assert.IsTrue(serializedKeys != null);
+            Assert.IsTrue(serializedValues != null);
             Assert.AreEqual(original.Count, serializedKeys.Length);
             Assert.AreEqual(serializedKeys.Length, serializedValues.Length);
 
@@ -339,8 +345,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             string[] storedValues = dictionary.SerializedValues;
             bool preserveFlag = dictionary.PreserveSerializedEntries;
 
-            Assert.IsNotNull(storedKeys, "Serialized keys were unexpectedly cleared.");
-            Assert.IsNotNull(storedValues, "Serialized values were unexpectedly cleared.");
+            Assert.IsTrue(storedKeys != null, "Serialized keys were unexpectedly cleared.");
+            Assert.IsTrue(storedValues != null, "Serialized values were unexpectedly cleared.");
             Assert.AreEqual(2, storedKeys.Length);
             Assert.AreEqual(2, storedValues.Length);
             Assert.IsTrue(preserveFlag, "Preserve flag should remain true while duplicates exist.");
@@ -351,8 +357,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             string[] roundTripValues = dictionary.SerializedValues;
             bool roundTripPreserve = dictionary.PreserveSerializedEntries;
 
-            Assert.IsNotNull(roundTripKeys, "Round-trip keys should stay populated.");
-            Assert.IsNotNull(roundTripValues, "Round-trip values should stay populated.");
+            Assert.IsTrue(roundTripKeys != null, "Round-trip keys should stay populated.");
+            Assert.IsTrue(roundTripValues != null, "Round-trip values should stay populated.");
             Assert.AreEqual(2, roundTripKeys.Length);
             Assert.AreEqual(2, roundTripValues.Length);
             Assert.AreEqual("first", roundTripValues[0]);
@@ -388,8 +394,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             string[] storedValues = dictionary._values;
             bool preserveFlag = dictionary.PreserveSerializedEntries;
 
-            Assert.IsNotNull(
-                storedKeys,
+            Assert.IsTrue(
+                storedKeys != null,
                 "Serialized keys should be preserved when null keys exist."
             );
             CollectionAssert.AreEqual(serializedKeys, storedKeys);
@@ -418,19 +424,19 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             Assert.IsTrue(dictionary.ContainsKey("keep"));
             Assert.AreEqual("retained", dictionary["keep"]);
             Assert.IsTrue(dictionary.ContainsKey("skip"));
-            Assert.IsNull(dictionary["skip"]);
+            Assert.IsTrue(dictionary["skip"] == null);
 
             string[] storedKeys = dictionary._keys;
             string[] storedValues = dictionary._values;
             bool preserveFlag = dictionary.PreserveSerializedEntries;
 
             // Arrays are now always preserved after deserialization to maintain user-defined order
-            Assert.IsNotNull(
-                storedKeys,
+            Assert.IsTrue(
+                storedKeys != null,
                 "Serialized keys should be preserved to maintain user-defined order."
             );
-            Assert.IsNotNull(
-                storedValues,
+            Assert.IsTrue(
+                storedValues != null,
                 "Serialized values should be preserved to maintain user-defined order."
             );
             Assert.IsTrue(preserveFlag, "Preserve flag should be true after deserialization.");
@@ -506,8 +512,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             CaseInsensitiveDictionaryKey[] cachedKeys = dictionary.SerializedKeys;
             string[] cachedValues = dictionary.SerializedValues;
 
-            Assert.IsNotNull(cachedKeys);
-            Assert.IsNotNull(cachedValues);
+            Assert.IsTrue(cachedKeys != null);
+            Assert.IsTrue(cachedValues != null);
             Assert.AreSame(loud, cachedKeys[0]);
             Assert.AreSame(quiet, cachedKeys[1]);
             CollectionAssert.AreEqual(new[] { "upper", "lower" }, cachedValues);
@@ -531,12 +537,12 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
 
             Assert.AreEqual(original.Count, roundTrip.Count);
             // After JSON deserialization, arrays are preserved to maintain user-defined order
-            Assert.IsNotNull(
-                roundTrip.SerializedKeys,
+            Assert.IsTrue(
+                roundTrip.SerializedKeys != null,
                 "Serialized keys should be preserved after JSON deserialization."
             );
-            Assert.IsNotNull(
-                roundTrip.SerializedValues,
+            Assert.IsTrue(
+                roundTrip.SerializedValues != null,
                 "Serialized values should be preserved after JSON deserialization."
             );
             Assert.IsTrue(
@@ -549,8 +555,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             int[] rebuiltKeys = roundTrip.SerializedKeys;
             string[] rebuiltValues = roundTrip.SerializedValues;
 
-            Assert.IsNotNull(rebuiltKeys);
-            Assert.IsNotNull(rebuiltValues);
+            Assert.IsTrue(rebuiltKeys != null);
+            Assert.IsTrue(rebuiltValues != null);
             Dictionary<int, string> snapshot = new();
             for (int index = 0; index < rebuiltKeys.Length; index++)
             {
@@ -576,8 +582,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             dictionary.OnAfterDeserialize();
 
             Assert.AreEqual(0, dictionary.Count);
-            Assert.IsNull(dictionary.SerializedKeys);
-            Assert.IsNull(dictionary.SerializedValues);
+            Assert.IsTrue(dictionary.SerializedKeys == null);
+            Assert.IsTrue(dictionary.SerializedValues == null);
             Assert.IsFalse(dictionary.PreserveSerializedEntries);
         }
 
@@ -666,12 +672,12 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
                 "HasDuplicatesOrNulls should be cleared after mutation (MarkSerializationCacheDirty)."
             );
             // Arrays are preserved for order maintenance, not nulled
-            Assert.IsNotNull(
-                storedKeysAfterAdd,
+            Assert.IsTrue(
+                storedKeysAfterAdd != null,
                 "Serialized keys should be preserved for order maintenance after mutation."
             );
-            Assert.IsNotNull(
-                storedValuesAfterAdd,
+            Assert.IsTrue(
+                storedValuesAfterAdd != null,
                 "Serialized values should be preserved for order maintenance after mutation."
             );
 
@@ -1042,16 +1048,16 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             // Arrays should still exist for order preservation (except Clear which nulls them)
             if (operation == "Clear")
             {
-                Assert.IsNull(dictionary.SerializedKeys);
-                Assert.IsNull(dictionary.SerializedValues);
+                Assert.IsTrue(dictionary.SerializedKeys == null);
+                Assert.IsTrue(dictionary.SerializedValues == null);
             }
             else
             {
-                Assert.IsNotNull(
-                    dictionary.SerializedKeys,
+                Assert.IsTrue(
+                    dictionary.SerializedKeys != null,
                     $"Arrays should be preserved after {operation} for order maintenance"
                 );
-                Assert.IsNotNull(dictionary.SerializedValues);
+                Assert.IsTrue(dictionary.SerializedValues != null);
             }
         }
 
@@ -1104,7 +1110,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
 
             string[] result = dictionary.ToKeysArray();
 
-            Assert.IsNotNull(result);
+            Assert.IsTrue(result != null);
             Assert.AreEqual(0, result.Length);
             Assert.AreSame(Array.Empty<string>(), result);
         }
@@ -1116,7 +1122,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
 
             string[] result = dictionary.ToPersistedOrderKeysArray();
 
-            Assert.IsNotNull(result);
+            Assert.IsTrue(result != null);
             Assert.AreEqual(0, result.Length);
             Assert.AreSame(Array.Empty<string>(), result);
         }
@@ -1128,7 +1134,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
 
             int[] result = dictionary.ToValuesArray();
 
-            Assert.IsNotNull(result);
+            Assert.IsTrue(result != null);
             Assert.AreEqual(0, result.Length);
             Assert.AreSame(Array.Empty<int>(), result);
         }
@@ -1140,7 +1146,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
 
             int[] result = dictionary.ToPersistedOrderValuesArray();
 
-            Assert.IsNotNull(result);
+            Assert.IsTrue(result != null);
             Assert.AreEqual(0, result.Length);
             Assert.AreSame(Array.Empty<int>(), result);
         }
@@ -1152,7 +1158,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
 
             KeyValuePair<string, int>[] result = dictionary.ToArray();
 
-            Assert.IsNotNull(result);
+            Assert.IsTrue(result != null);
             Assert.AreEqual(0, result.Length);
             Assert.AreSame(Array.Empty<KeyValuePair<string, int>>(), result);
         }
@@ -1164,7 +1170,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
 
             KeyValuePair<string, int>[] result = dictionary.ToPersistedOrderArray();
 
-            Assert.IsNotNull(result);
+            Assert.IsTrue(result != null);
             Assert.AreEqual(0, result.Length);
             Assert.AreSame(Array.Empty<KeyValuePair<string, int>>(), result);
         }

@@ -36,7 +36,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Performance
                 () =>
                 {
                     List<Vector2> hull = points.BuildConcaveHullKnn(nearestNeighbors: 8);
-                    Assert.IsNotNull(hull, "Hull should not be null");
+                    Assert.IsTrue(hull != null, "Hull should not be null");
                     Assert.GreaterOrEqual(hull.Count, 3);
                 },
                 warmupIterations: 3,
@@ -59,7 +59,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Performance
                 () =>
                 {
                     List<Vector2> hull = points.BuildConcaveHullKnn(nearestNeighbors: 8);
-                    Assert.IsNotNull(hull, "Hull should not be null for large point cloud");
+                    Assert.IsTrue(hull != null, "Hull should not be null for large point cloud");
                     Assert.GreaterOrEqual(hull.Count, 3);
                 },
                 warmupIterations: 2,
@@ -87,7 +87,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Performance
                         grid,
                         nearestNeighbors: 8
                     );
-                    Assert.IsNotNull(hull, "Grid hull should not be null");
+                    Assert.IsTrue(hull != null, "Grid hull should not be null");
                     Assert.GreaterOrEqual(hull.Count, 3);
                 },
                 warmupIterations: 3,
@@ -182,7 +182,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Performance
                         grid,
                         nearestNeighbors: 8
                     );
-                    Assert.IsNotNull(hull, "Grid hull should not be null for large point cloud");
+                    Assert.IsTrue(
+                        hull != null,
+                        "Grid hull should not be null for large point cloud"
+                    );
                     Assert.GreaterOrEqual(hull.Count, 3);
                 },
                 warmupIterations: 2,

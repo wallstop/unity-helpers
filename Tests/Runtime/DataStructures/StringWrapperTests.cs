@@ -24,7 +24,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         public void GetReturnsNonNullWrapper()
         {
             StringWrapper wrapper = StringWrapper.Get("test");
-            Assert.IsNotNull(wrapper, "StringWrapper should not be null for valid string");
+            Assert.IsTrue(wrapper != null, "StringWrapper should not be null for valid string");
             Assert.AreEqual("test", wrapper.value);
         }
 
@@ -32,7 +32,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         public void GetWithEmptyStringReturnsValidWrapper()
         {
             StringWrapper wrapper = StringWrapper.Get("");
-            Assert.IsNotNull(wrapper, "StringWrapper should not be null for empty string");
+            Assert.IsTrue(wrapper != null, "StringWrapper should not be null for empty string");
             Assert.AreEqual("", wrapper.value);
         }
 

@@ -193,7 +193,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Tags
             handler.ApplyTag("Shield");
 
             List<string> firstCall = handler.GetActiveTags();
-            Assert.IsNotNull(firstCall, "GetActiveTags should return non-null list");
+            Assert.IsTrue(firstCall != null, "GetActiveTags should return non-null list");
             CollectionAssert.AreEquivalent(new[] { "Buff", "Shield" }, firstCall);
 
             List<string> reusable = new() { "Sentinel" };
@@ -228,7 +228,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Tags
             Assert.AreEqual(0, handler.GetHandlesWithTag("Buff").Count);
 
             List<EffectHandle> empty = handler.RemoveTag("Missing");
-            Assert.IsNotNull(empty, "RemoveTag should return non-null list even for missing tag");
+            Assert.IsTrue(
+                empty != null,
+                "RemoveTag should return non-null list even for missing tag"
+            );
             Assert.AreEqual(0, empty.Count);
             yield return null;
         }

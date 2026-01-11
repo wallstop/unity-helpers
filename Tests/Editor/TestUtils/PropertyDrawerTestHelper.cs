@@ -108,8 +108,8 @@ namespace WallstopStudios.UnityHelpers.Tests.TestUtils
         public static FieldInfo GetFieldInfoOrFail(Type hostType, string fieldName)
         {
             FieldInfo field = GetFieldInfo(hostType, fieldName);
-            Assert.IsNotNull(
-                field,
+            Assert.IsTrue(
+                field != null,
                 $"Unable to resolve field '{fieldName}' on type {hostType?.FullName ?? "null"}"
             );
             return field;
@@ -188,8 +188,8 @@ namespace WallstopStudios.UnityHelpers.Tests.TestUtils
         {
             (FieldInfo field, TAttribute attribute) result =
                 FindFirstFieldWithAttribute<TAttribute>(hostType);
-            Assert.IsNotNull(
-                result.field,
+            Assert.IsTrue(
+                result.field != null,
                 $"No field with {typeof(TAttribute).Name} found on {hostType?.FullName ?? "null"}"
             );
             return result;

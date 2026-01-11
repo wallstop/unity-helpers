@@ -30,16 +30,18 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomEditors
             string listLabel = "History:"
         )
         {
-            if (PersistentDirectorySettings.Instance == null)
-            {
-                return 0f;
-            }
-
+            // Validate callback first - this is a programming error that should always be reported
             if (onPathClickedFromHistory == null)
             {
                 Debug.LogError(
                     "PersistentDirectoryGUI.DrawFrequentPathsWithEditorGUI: onPathClickedFromHistory callback cannot be null."
                 );
+                return 0f;
+            }
+
+            // Then check settings - this is an environmental condition
+            if (PersistentDirectorySettings.Instance == null)
+            {
                 return 0f;
             }
 
@@ -703,16 +705,18 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomEditors
             string listLabel = "Frequent Paths:"
         )
         {
-            if (PersistentDirectorySettings.Instance == null)
-            {
-                return;
-            }
-
+            // Validate callback first - this is a programming error that should always be reported
             if (onPathClickedFromHistory == null)
             {
                 Debug.LogError(
                     "PersistentDirectoryGUI.DrawFrequentPaths: onPathClickedFromHistory callback cannot be null."
                 );
+                return;
+            }
+
+            // Then check settings - this is an environmental condition
+            if (PersistentDirectorySettings.Instance == null)
+            {
                 return;
             }
 

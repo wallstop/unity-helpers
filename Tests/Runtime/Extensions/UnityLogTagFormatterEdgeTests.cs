@@ -51,7 +51,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
 
                 go.Log($"Hello {"world":does_not_exist}", pretty: pretty);
                 Assert.AreEqual(++expectedLogCount, logCount);
-                Assert.IsNull(exception, exception?.ToString());
+                Assert.IsTrue(exception == null, exception?.ToString());
             }
             finally
             {
@@ -110,7 +110,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
 
                 go.Log($"{"value":b,,,,,}", pretty: pretty);
                 Assert.AreEqual(++expectedLogCount, logCount);
-                Assert.IsNull(exception, exception?.ToString());
+                Assert.IsTrue(exception == null, exception?.ToString());
             }
             finally
             {
@@ -158,7 +158,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
                 };
                 formatter.Log($"Hello", context: null, e: testException, pretty: true);
                 Assert.AreEqual(++expectedLogCount, logCount);
-                Assert.IsNull(exception, exception?.ToString());
+                Assert.IsTrue(exception == null, exception?.ToString());
 
                 assertion = (message, type) =>
                 {
@@ -170,7 +170,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
                 LogAssert.Expect(LogType.Warning, new Regex("Hello[\n\r]+.*Boom"));
                 formatter.LogWarn($"Hello", context: null, e: testException, pretty: false);
                 Assert.AreEqual(++expectedLogCount, logCount);
-                Assert.IsNull(exception, exception?.ToString());
+                Assert.IsTrue(exception == null, exception?.ToString());
 
                 assertion = (message, type) =>
                 {
@@ -182,7 +182,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
                 LogAssert.Expect(LogType.Error, new Regex("Hello[\n\r]+.*Boom"));
                 formatter.LogError($"Hello", context: null, e: testException, pretty: false);
                 Assert.AreEqual(++expectedLogCount, logCount);
-                Assert.IsNull(exception, exception?.ToString());
+                Assert.IsTrue(exception == null, exception?.ToString());
             }
             finally
             {
@@ -363,7 +363,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
 
                 formatter.Log($"Hello", pretty: true);
                 Assert.AreEqual(++expectedLogCount, logCount);
-                Assert.IsNull(exception, exception?.ToString());
+                Assert.IsTrue(exception == null, exception?.ToString());
             }
             finally
             {
@@ -414,7 +414,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
                 );
                 worker.Join();
 
-                Assert.IsNotNull(loggedMessage, "Worker log was not captured.");
+                Assert.IsTrue(loggedMessage != null, "Worker log was not captured.");
                 StringAssert.Contains($"worker#{workerThreadId}", loggedMessage);
             }
             finally

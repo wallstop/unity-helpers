@@ -177,8 +177,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.Reflex.Runtime
                 Is.SameAs(parentBody),
                 "ParentComponent attribute should resolve the injected parent Rigidbody."
             );
-            Assert.IsNotNull(
-                instance.childCollider,
+            Assert.IsTrue(
+                instance.childCollider != null,
                 "ChildComponent attribute should resolve the child collider on instantiation."
             );
         }
@@ -207,8 +207,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.Reflex.Runtime
                 Is.SameAs(parentBody),
                 "Fallback path should assign the parent Rigidbody."
             );
-            Assert.IsNotNull(
-                instance.childCollider,
+            Assert.IsTrue(
+                instance.childCollider != null,
                 "Fallback path should assign the child collider."
             );
         }
@@ -259,8 +259,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.Reflex.Runtime
                 Is.SameAs(parentBody),
                 "ParentComponent attribute should bind to the supplied parent hierarchy."
             );
-            Assert.IsNotNull(
-                instanceTester.childCollider,
+            Assert.IsTrue(
+                instanceTester.childCollider != null,
                 "ChildComponent attribute should bind to the prefab child after instantiation."
             );
         }
@@ -296,8 +296,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.Reflex.Runtime
                 Is.SameAs(parentBody),
                 "Fallback path should assign the parent Rigidbody inside the instantiated hierarchy."
             );
-            Assert.IsNotNull(
-                instanceTester.childCollider,
+            Assert.IsTrue(
+                instanceTester.childCollider != null,
                 "Fallback path should assign the child collider inside the instantiated hierarchy."
             );
         }

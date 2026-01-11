@@ -1412,6 +1412,15 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
                         }
                     }
 
+                    // Final check before CreateFolder: the folder may now exist in AssetDatabase
+                    // (e.g., after a refresh or import) even though FindMatchingSubfolder missed it.
+                    // This prevents Unity from creating numbered duplicates like "Resources 1".
+                    if (AssetDatabase.IsValidFolder(intendedPath))
+                    {
+                        current = ResolveExistingFolderPath(intendedPath);
+                        continue;
+                    }
+
                     string createdGuid = string.Empty;
                     string createdPath = string.Empty;
                     try
@@ -1428,6 +1437,62 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
                     if (!string.IsNullOrEmpty(createdGuid))
                     {
                         createdPath = NormalizePath(AssetDatabase.GUIDToAssetPath(createdGuid));
+
+                        // Race condition detection: Unity may create numbered duplicates like "Resources 1"
+                        // when parallel tests try to create the same folder simultaneously.
+                        // Check if createdPath differs from intendedPath and matches the pattern "Name N".
+                        if (
+                            !string.IsNullOrEmpty(createdPath)
+                            && !string.Equals(
+                                createdPath,
+                                intendedPath,
+                                StringComparison.OrdinalIgnoreCase
+                            )
+                        )
+                        {
+                            string createdName = Path.GetFileName(createdPath);
+                            if (IsNumberedDuplicate(createdName, desiredName))
+                            {
+                                // This is a numbered duplicate created due to race condition.
+                                // Delete it and check if the intended folder now exists.
+                                LogVerbose(
+                                    $"ScriptableObjectSingletonCreator: Detected numbered duplicate folder '{createdPath}' (intended: '{intendedPath}'). Deleting duplicate."
+                                );
+                                bool duplicateDeleted = AssetDatabase.DeleteAsset(createdPath);
+                                if (!duplicateDeleted)
+                                {
+                                    Debug.LogWarning(
+                                        $"ScriptableObjectSingletonCreator: Failed to delete numbered duplicate folder '{createdPath}'. Manual cleanup may be required."
+                                    );
+                                }
+                                createdGuid = string.Empty;
+                                createdPath = string.Empty;
+
+                                // Re-check if intended folder now exists (created by concurrent operation)
+                                string matchAfterDelete = FindMatchingSubfolder(
+                                    current,
+                                    desiredName
+                                );
+                                if (!string.IsNullOrEmpty(matchAfterDelete))
+                                {
+                                    current = matchAfterDelete;
+                                    continue;
+                                }
+
+                                // Also check via IsValidFolder in case FindMatchingSubfolder missed it
+                                if (AssetDatabase.IsValidFolder(intendedPath))
+                                {
+                                    current = ResolveExistingFolderPath(intendedPath);
+                                    continue;
+                                }
+
+                                // Folder still doesn't exist - try disk creation fallback
+                                if (EnsureFolderExistsOnDisk(intendedPath))
+                                {
+                                    createdPath = intendedPath;
+                                }
+                            }
+                        }
                     }
                     else if (EnsureFolderExistsOnDisk(intendedPath))
                     {
@@ -1878,6 +1943,45 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
                     $"ScriptableObjectSingletonCreator: Temporary folder '{path}' was created while attempting to ensure a target path, but it could not be removed."
                 );
             }
+        }
+
+        /// <summary>
+        /// Checks if a folder name is a numbered duplicate of the desired name.
+        /// Unity creates numbered duplicates like "Resources 1", "Resources 2" when
+        /// parallel operations try to create the same folder simultaneously.
+        /// </summary>
+        /// <param name="actualName">The actual folder name that was created.</param>
+        /// <param name="desiredName">The intended folder name.</param>
+        /// <returns>True if actualName matches the pattern "desiredName N" where N is a number.</returns>
+        internal static bool IsNumberedDuplicate(string actualName, string desiredName)
+        {
+            if (
+                string.IsNullOrEmpty(actualName)
+                || string.IsNullOrEmpty(desiredName)
+                || actualName.Length <= desiredName.Length
+            )
+            {
+                return false;
+            }
+
+            // Check if actualName starts with desiredName followed by a space
+            if (!actualName.StartsWith(desiredName + " ", StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+
+            // Extract the suffix after "desiredName "
+            string suffix = actualName.Substring(desiredName.Length + 1);
+
+            // Reject if suffix starts with whitespace (handles double-space like "Folder  1")
+            // int.TryParse would otherwise accept " 1" as valid since it trims whitespace
+            if (suffix.Length == 0 || char.IsWhiteSpace(suffix[0]))
+            {
+                return false;
+            }
+
+            // Check if the suffix is a positive integer
+            return int.TryParse(suffix, out int number) && number > 0;
         }
 
         private static bool IsRunningInsideAssetImportWorkerProcess()

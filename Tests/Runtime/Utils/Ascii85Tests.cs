@@ -16,7 +16,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         [Test]
         public void EncodeNullReturnsNull()
         {
-            Assert.IsNull(Ascii85.Encode(null), "Encode should return null for null input");
+            Assert.IsTrue(Ascii85.Encode(null) == null, "Encode should return null for null input");
         }
 
         [Test]

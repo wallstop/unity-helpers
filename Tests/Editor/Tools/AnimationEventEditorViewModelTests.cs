@@ -16,8 +16,20 @@ namespace WallstopStudios.UnityHelpers.Tests.Tools
     [TestFixture]
     [NUnit.Framework.Category("Slow")]
     [NUnit.Framework.Category("Integration")]
-    public sealed class AnimationEventEditorViewModelTests : CommonTestBase
+    public sealed class AnimationEventEditorViewModelTests : BatchedEditorTestBase
     {
+        [SetUp]
+        public void SetUp()
+        {
+            base.BaseSetUp();
+        }
+
+        [TearDown]
+        public override void TearDown()
+        {
+            base.TearDown();
+        }
+
         [Test]
         public void LoadClipCopiesEventsAndBaseline()
         {
@@ -224,8 +236,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Tools
 
             viewModel.LoadClip(null);
 
-            Assert.IsNull(
-                viewModel.CurrentClip,
+            Assert.IsTrue(
+                viewModel.CurrentClip == null,
                 "CurrentClip should be null after loading null clip"
             );
             Assert.AreEqual(0f, viewModel.FrameRate);
@@ -457,8 +469,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Tools
 
             AnimationEvent[] arr = viewModel.BuildEventArray();
 
-            Assert.IsNotNull(
-                arr,
+            Assert.IsTrue(
+                arr != null,
                 "BuildEventArray should return non-null array even for null clip"
             );
             Assert.AreEqual(0, arr.Length);

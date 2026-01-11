@@ -30,7 +30,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Tags
             PeriodicEffectDefinition definition = CreateDefinition();
 
             byte[] serialized = Serializer.ProtoSerialize(definition);
-            Assert.IsNotNull(serialized, "Serialized bytes should not be null");
+            Assert.IsTrue(serialized != null, "Serialized bytes should not be null");
             Assert.Greater(serialized.Length, 0);
 
             PeriodicEffectDefinition deserialized =
@@ -72,15 +72,15 @@ namespace WallstopStudios.UnityHelpers.Tests.Tags
             PeriodicEffectDefinition actual
         )
         {
-            Assert.IsNotNull(actual, "Deserialized definition should not be null");
+            Assert.IsTrue(actual != null, "Deserialized definition should not be null");
             Assert.AreNotSame(expected, actual);
             Assert.AreEqual(expected.name, actual.name);
             Assert.AreEqual(expected.initialDelay, actual.initialDelay);
             Assert.AreEqual(expected.interval, actual.interval);
             Assert.AreEqual(expected.maxTicks, actual.maxTicks);
 
-            Assert.IsNotNull(
-                actual.modifications,
+            Assert.IsTrue(
+                actual.modifications != null,
                 "Modifications list should not be null after deserialization"
             );
             Assert.AreNotSame(expected.modifications, actual.modifications);

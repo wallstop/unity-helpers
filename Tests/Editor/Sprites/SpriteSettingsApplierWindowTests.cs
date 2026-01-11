@@ -26,35 +26,15 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
     [TestFixture]
     [NUnit.Framework.Category("Slow")]
     [NUnit.Framework.Category("Integration")]
-    public sealed class SpriteSettingsApplierWindowTests : CommonTestBase
+    public sealed class SpriteSettingsApplierWindowTests : BatchedEditorTestBase
     {
         private const string Root = "Assets/Temp/SpriteSettingsApplierWindowTests";
-
-        [SetUp]
-        public override void BaseSetUp()
-        {
-            base.BaseSetUp();
-            EnsureFolder(Root);
-        }
-
-        [TearDown]
-        public override void TearDown()
-        {
-            base.TearDown();
-            CleanupTrackedFoldersAndAssets();
-        }
 
         public override void CommonOneTimeSetUp()
         {
             base.CommonOneTimeSetUp();
-            DeferAssetCleanupToOneTimeTearDown = true;
-        }
-
-        [OneTimeTearDown]
-        public override void OneTimeTearDown()
-        {
-            CleanupDeferredAssetsAndFolders();
-            base.OneTimeTearDown();
+            EnsureFolder(Root);
+            TrackFolder(Root);
         }
 
         [Test]
@@ -64,13 +44,15 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
             EnsureFolder(dir);
             string texPath = (dir + "/sprite.png").SanitizePath();
             CreatePng(texPath, 8, 8, Color.white);
-            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             // Mark as sprite
-            TextureImporter imp = AssetImporter.GetAtPath(texPath) as TextureImporter;
-            Assert.IsTrue(imp != null, $"Expected importer at path '{texPath}' to not be null");
-            imp.textureType = TextureImporterType.Sprite;
-            imp.SaveAndReimport();
+            ExecuteWithImmediateImport(() =>
+            {
+                TextureImporter imp = AssetImporter.GetAtPath(texPath) as TextureImporter;
+                Assert.IsTrue(imp != null, $"Expected importer at path '{texPath}' to not be null");
+                imp.textureType = TextureImporterType.Sprite;
+                imp.SaveAndReimport();
+            });
 
             SpriteSettingsApplierWindow window = Track(
                 ScriptableObject.CreateInstance<SpriteSettingsApplierWindow>()
@@ -104,19 +86,20 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
                 CreatePng(textures[i], 4, 4, Color.white);
             }
 
-            AssetDatabaseBatchHelper.RefreshIfNotBatching();
-
             // Mark all as sprites
-            for (int i = 0; i < textures.Length; i++)
+            ExecuteWithImmediateImport(() =>
             {
-                TextureImporter imp = AssetImporter.GetAtPath(textures[i]) as TextureImporter;
-                Assert.IsTrue(
-                    imp != null,
-                    $"Expected importer at path '{textures[i]}' to not be null"
-                );
-                imp.textureType = TextureImporterType.Sprite;
-                imp.SaveAndReimport();
-            }
+                for (int i = 0; i < textures.Length; i++)
+                {
+                    TextureImporter imp = AssetImporter.GetAtPath(textures[i]) as TextureImporter;
+                    Assert.IsTrue(
+                        imp != null,
+                        $"Expected importer at path '{textures[i]}' to not be null"
+                    );
+                    imp.textureType = TextureImporterType.Sprite;
+                    imp.SaveAndReimport();
+                }
+            });
 
             SpriteSettingsApplierWindow window = Track(
                 ScriptableObject.CreateInstance<SpriteSettingsApplierWindow>()
@@ -150,14 +133,17 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
         {
             string texPath = (Root + "/solo.png").SanitizePath();
             CreatePng(texPath, 8, 8, Color.white);
-            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
-            TextureImporter imp = AssetImporter.GetAtPath(texPath) as TextureImporter;
-            Assert.IsTrue(imp != null, $"Expected importer at path '{texPath}' to not be null");
-            imp.textureType = TextureImporterType.Sprite;
-            imp.SaveAndReimport();
+            Sprite sprite = null;
+            ExecuteWithImmediateImport(() =>
+            {
+                TextureImporter imp = AssetImporter.GetAtPath(texPath) as TextureImporter;
+                Assert.IsTrue(imp != null, $"Expected importer at path '{texPath}' to not be null");
+                imp.textureType = TextureImporterType.Sprite;
+                imp.SaveAndReimport();
 
-            Sprite sprite = AssetDatabase.LoadAssetAtPath<Sprite>(texPath);
+                sprite = AssetDatabase.LoadAssetAtPath<Sprite>(texPath);
+            });
             Assert.IsTrue(sprite != null, $"Expected sprite at path '{texPath}' to not be null");
 
             SpriteSettingsApplierWindow window = Track(
@@ -181,12 +167,14 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
             EnsureFolder(dir);
             string texPath = (dir + "/valid.png").SanitizePath();
             CreatePng(texPath, 8, 8, Color.white);
-            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
-            TextureImporter imp = AssetImporter.GetAtPath(texPath) as TextureImporter;
-            Assert.IsTrue(imp != null, $"Expected importer at path '{texPath}' to not be null");
-            imp.textureType = TextureImporterType.Sprite;
-            imp.SaveAndReimport();
+            ExecuteWithImmediateImport(() =>
+            {
+                TextureImporter imp = AssetImporter.GetAtPath(texPath) as TextureImporter;
+                Assert.IsTrue(imp != null, $"Expected importer at path '{texPath}' to not be null");
+                imp.textureType = TextureImporterType.Sprite;
+                imp.SaveAndReimport();
+            });
 
             SpriteSettingsApplierWindow window = Track(
                 ScriptableObject.CreateInstance<SpriteSettingsApplierWindow>()
@@ -214,7 +202,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
             // Tests a directory that contains no textures
             string emptyDir = (Root + "/EmptyDir").SanitizePath();
             EnsureFolder(emptyDir);
-            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             SpriteSettingsApplierWindow window = Track(
                 ScriptableObject.CreateInstance<SpriteSettingsApplierWindow>()

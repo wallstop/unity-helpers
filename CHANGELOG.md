@@ -241,6 +241,10 @@ See [the roadmap](./docs/overview/roadmap.md) for details
 - **Pool hysteresis incorrectly blocking idle timeout purges**: Fixed hysteresis protection blocking all purge types including idle timeout
   - Idle timeout purges now proceed during hysteresis since they only remove items unused for extended periods
   - Capacity and explicit purges remain blocked during hysteresis to prevent thrashing
+- **ScriptableObjectSingletonCreator race condition creating numbered duplicate folders**: Fixed race condition where parallel operations could cause Unity to create numbered duplicate folders like "Resources 1", "Resources 2", etc.
+  - Added detection for Unity's numbered duplicate folder creation pattern
+  - Automatically deletes duplicate folders and uses the intended folder path
+  - Logs warning if duplicate folder deletion fails, alerting user to manual cleanup needed
 
 ## [3.0.5]
 

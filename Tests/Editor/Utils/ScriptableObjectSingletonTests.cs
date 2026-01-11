@@ -730,7 +730,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             TestSingleton instance = TestSingleton.Instance;
             string result = instance.ToString();
 
-            Assert.IsNotNull(result, "ToString result should not be null");
+            Assert.IsTrue(result != null, "ToString result should not be null");
             Assert.IsTrue(result.Contains("TestSingleton") || result.Length > 0);
             yield break;
         }
@@ -743,7 +743,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
 
             MissingResourceSingleton instance = MissingResourceSingleton.Instance;
 
-            Assert.IsNull(instance, "Instance should be null when resource is missing");
+            Assert.IsTrue(instance == null, "Instance should be null when resource is missing");
             Assert.IsFalse(MissingResourceSingleton.HasInstance);
             Assert.IsTrue(MissingResourceSingleton._lazyInstance.IsValueCreated);
             yield break;
@@ -863,8 +863,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                 + $"MetadataPath: {ScriptableObjectSingletonMetadata.AssetPath}, "
                 + $"FileExists: {metadataFileExists}";
 
-            Assert.IsNotNull(
-                metadata,
+            Assert.IsTrue(
+                metadata != null,
                 $"Metadata asset missing for {scenario.Description}. Diagnostics: {diagnosticInfo}"
             );
 
@@ -1303,12 +1303,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
 
             Assert.IsTrue(task.IsFaulted);
             AggregateException aggregate = task.Exception;
-            Assert.IsNotNull(aggregate, "Task exception should not be null for faulted task");
+            Assert.IsTrue(aggregate != null, "Task exception should not be null for faulted task");
             AggregateException flattened = aggregate.Flatten();
             Assert.IsTrue(flattened.InnerExceptions.Count > 0);
             InvalidOperationException exception =
                 flattened.InnerExceptions[0] as InvalidOperationException;
-            Assert.IsNotNull(exception, "Inner exception should be InvalidOperationException");
+            Assert.IsTrue(exception != null, "Inner exception should be InvalidOperationException");
             StringAssert.Contains("main thread", exception.Message);
             Assert.IsFalse(TestSingleton.HasInstance);
         }

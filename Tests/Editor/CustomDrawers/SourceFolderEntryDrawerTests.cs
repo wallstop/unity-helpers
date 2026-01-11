@@ -278,8 +278,8 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             });
 
             // Assert
-            Assert.IsNull(
-                caughtException,
+            Assert.IsTrue(
+                caughtException == null,
                 $"OnGUI should not throw when rendering. Exception: {caughtException}"
             );
         }
@@ -325,8 +325,8 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 });
 
                 // Assert
-                Assert.IsNull(
-                    caughtException,
+                Assert.IsTrue(
+                    caughtException == null,
                     $"OnGUI should not throw for mode {capturedMode}. Exception: {caughtException}"
                 );
             }
@@ -450,8 +450,8 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             });
 
             // Assert
-            Assert.IsNull(
-                caughtException,
+            Assert.IsTrue(
+                caughtException == null,
                 $"OnGUI should handle null property gracefully. Exception: {caughtException}"
             );
         }
@@ -482,8 +482,8 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             });
 
             // Assert
-            Assert.IsNull(
-                caughtException,
+            Assert.IsTrue(
+                caughtException == null,
                 $"OnGUI should handle collapsed property. Exception: {caughtException}"
             );
         }
@@ -513,8 +513,8 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             });
 
             // Assert
-            Assert.IsNull(
-                caughtException,
+            Assert.IsTrue(
+                caughtException == null,
                 $"OnGUI should handle zero-width rect. Exception: {caughtException}"
             );
         }
@@ -545,8 +545,8 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             });
 
             // Assert
-            Assert.IsNull(
-                caughtException,
+            Assert.IsTrue(
+                caughtException == null,
                 $"OnGUI should handle null label. Exception: {caughtException}"
             );
         }
@@ -581,8 +581,8 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             });
 
             // Assert
-            Assert.IsNull(
-                caughtException,
+            Assert.IsTrue(
+                caughtException == null,
                 $"OnGUI should handle empty regexes list. Exception: {caughtException}"
             );
         }
@@ -680,8 +680,8 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             });
 
             // Assert
-            Assert.IsNull(
-                caughtException,
+            Assert.IsTrue(
+                caughtException == null,
                 $"OnGUI should handle {testCase.TestName}. Exception: {caughtException}"
             );
         }
