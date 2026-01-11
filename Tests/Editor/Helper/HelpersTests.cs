@@ -83,7 +83,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
 
             string assetPath = Path.Combine(ScriptableFolder, "Dummy.asset").SanitizePath();
             TrackAssetPath(assetPath);
-            DummyScriptableObject asset = ScriptableObject.CreateInstance<DummyScriptableObject>();
+            DummyScriptableObject asset = Track(
+                ScriptableObject.CreateInstance<DummyScriptableObject>()
+            );
 
             ExecuteWithImmediateImport(() =>
             {

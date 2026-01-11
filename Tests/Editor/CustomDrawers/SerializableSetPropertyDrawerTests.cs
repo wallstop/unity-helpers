@@ -62,8 +62,8 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         private void ResetHostState()
         {
             // Diagnostic: Verify SerializedObject is still valid
-            Assert.IsNotNull(
-                _sharedSerializedObject,
+            Assert.IsTrue(
+                _sharedSerializedObject != null,
                 "SerializedObject was disposed or null - check OneTimeTearDown ordering"
             );
             Assert.IsTrue(
