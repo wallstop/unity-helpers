@@ -5,12 +5,14 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
 {
     using System;
     using System.Collections;
+    using System.Diagnostics;
     using System.Runtime.CompilerServices;
     using System.Text.RegularExpressions;
     using System.Threading;
     using System.Threading.Tasks;
     using NUnit.Framework;
     using UnityEngine;
+    using UnityEngine.SceneManagement;
     using UnityEngine.TestTools;
     using WallstopStudios.UnityHelpers.Core.Extension;
     using WallstopStudios.UnityHelpers.Core.Helper;
@@ -25,6 +27,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         public override void BaseSetUp()
         {
             base.BaseSetUp();
+            UnityMainThreadDispatcher.ClearInstance();
             if (!UnityMainThreadDispatcher.TryGetInstance(out UnityMainThreadDispatcher dispatcher))
             {
                 dispatcher = UnityMainThreadDispatcher.Instance;
@@ -45,6 +48,30 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             yield return null;
 
             Assert.IsTrue(executed);
+        }
+
+        [UnityTest]
+        public IEnumerator StartSceneOnlyOneInstance()
+        {
+            int sceneCount = SceneManager.sceneCountInBuildSettings;
+            if (sceneCount == 0)
+            {
+                Assert.Fail("No scenes in build settings");
+                yield break;
+            }
+
+            SceneManager.LoadScene(0);
+            Stopwatch timer = Stopwatch.StartNew();
+            do
+            {
+                // Spin-inspect initialize count to see if we're messing up by destroying ourselves.
+                long mainThreadDispatcherCount = UnityMainThreadDispatcher.InitializeCount;
+                Assert.IsTrue(
+                    mainThreadDispatcherCount <= 1,
+                    $"Expected 0 or 1 instances, got {mainThreadDispatcherCount} instances of UnityMainThreadDispatcher."
+                );
+                yield return null;
+            } while (timer.Elapsed < TimeSpan.FromSeconds(1));
         }
 
         [Test]

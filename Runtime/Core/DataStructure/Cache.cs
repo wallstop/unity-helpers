@@ -72,14 +72,13 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
         // which can cause deadlocks during Unity's "Open Project: Open Scene" phase.
         private IRandom _random;
         private IRandom Random => _random ??= PRNG.Instance;
+        private ReaderWriterLockSlim _lock;
 
 #if SINGLE_THREADED
         private readonly Dictionary<TKey, int> _keyToIndex;
 #else
         private readonly ConcurrentDictionary<TKey, int> _keyToIndex;
-        private readonly object _evictionLock = new object();
 #endif
-
         private CacheEntry[] _entries;
         private int _count;
         private int _capacity;
@@ -246,6 +245,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             );
 #endif
 
+            _lock = new ReaderWriterLockSlim(LockRecursionPolicy.NoRecursion);
             _entries = new CacheEntry[initialCapacity];
 
             InitializeFreeList();
@@ -295,16 +295,35 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
         /// <returns>True if the key was found and not expired, false otherwise.</returns>
         public bool TryGet(TKey key, out TValue value)
         {
-            value = default;
+            if (_disposed)
+            {
+                value = default;
+                return false;
+            }
 
+            _lock.EnterReadLock();
+            try
+            {
+                return TryGetUnlocked(key, out value);
+            }
+            finally
+            {
+                _lock.ExitReadLock();
+            }
+        }
+
+        private bool TryGetUnlocked(TKey key, out TValue value)
+        {
             if (key == null || _disposed)
             {
+                value = default;
                 return false;
             }
 
             if (!_keyToIndex.TryGetValue(key, out int index))
             {
                 RecordMiss();
+                value = default;
                 return false;
             }
 
@@ -315,6 +334,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 EvictEntry(index, EvictionReason.Expired);
                 RecordMiss();
                 RecordExpired();
+                value = default;
                 return false;
             }
 
@@ -339,30 +359,51 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 return default;
             }
 
-            if (TryGet(key, out TValue value))
-            {
-                return value;
-            }
-
-            Func<TKey, TValue> actualFactory = factory ?? _options.Loader;
-            if (actualFactory == null)
-            {
-                return default;
-            }
-
-            TValue newValue;
+            _lock.EnterUpgradeableReadLock();
             try
             {
-                newValue = actualFactory(key);
-                RecordLoad();
-            }
-            catch
-            {
-                return default;
-            }
+                if (TryGetUnlocked(key, out TValue value))
+                {
+                    return value;
+                }
 
-            Set(key, newValue);
-            return newValue;
+                _lock.EnterWriteLock();
+                try
+                {
+                    if (TryGetUnlocked(key, out value))
+                    {
+                        return value;
+                    }
+
+                    Func<TKey, TValue> actualFactory = factory ?? _options.Loader;
+                    if (actualFactory == null)
+                    {
+                        return default;
+                    }
+
+                    TValue newValue;
+                    try
+                    {
+                        newValue = actualFactory(key);
+                        RecordLoad();
+                    }
+                    catch
+                    {
+                        return default;
+                    }
+
+                    SetUnlocked(key, newValue);
+                    return newValue;
+                }
+                finally
+                {
+                    _lock.ExitWriteLock();
+                }
+            }
+            finally
+            {
+                _lock.ExitUpgradeableReadLock();
+            }
         }
 
         /// <summary>
@@ -388,15 +429,18 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 return;
             }
 
-#if !SINGLE_THREADED
-            lock (_evictionLock)
-#endif
+            _lock.EnterWriteLock();
+            try
             {
-                SetInternal(key, value, ttlSeconds);
+                SetUnlocked(key, value, ttlSeconds);
+            }
+            finally
+            {
+                _lock.ExitWriteLock();
             }
         }
 
-        private void SetInternal(TKey key, TValue value, float? ttlSeconds)
+        private void SetUnlocked(TKey key, TValue value, float? ttlSeconds = null)
         {
             float currentTime = _timeProvider();
 
@@ -442,6 +486,7 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                     Grow();
                     break;
                 }
+
                 EvictOne(EvictionReason.Capacity);
             }
 
@@ -508,25 +553,28 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
         /// <returns>True if the entry was removed, false if not found.</returns>
         public bool TryRemove(TKey key, out TValue value)
         {
-            value = default;
-
             if (key == null || _disposed)
             {
+                value = default;
                 return false;
             }
 
-#if !SINGLE_THREADED
-            lock (_evictionLock)
-#endif
+            _lock.EnterWriteLock();
+            try
             {
                 if (!_keyToIndex.TryGetValue(key, out int index))
                 {
+                    value = default;
                     return false;
                 }
 
                 value = _entries[index].Value;
                 EvictEntry(index, EvictionReason.Explicit);
                 return true;
+            }
+            finally
+            {
+                _lock.ExitWriteLock();
             }
         }
 
@@ -540,9 +588,8 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 return;
             }
 
-#if !SINGLE_THREADED
-            lock (_evictionLock)
-#endif
+            _lock.EnterWriteLock();
+            try
             {
                 for (int i = 0; i < _entries.Length; i++)
                 {
@@ -566,6 +613,10 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 InitializeFreeList();
                 InitializeLinkedLists();
             }
+            finally
+            {
+                _lock.ExitWriteLock();
+            }
         }
 
         /// <summary>
@@ -580,17 +631,25 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 return false;
             }
 
-            if (!_keyToIndex.TryGetValue(key, out int index))
+            _lock.EnterReadLock();
+            try
             {
-                return false;
-            }
+                if (!_keyToIndex.TryGetValue(key, out int index))
+                {
+                    return false;
+                }
 
-            if (!_entries[index].IsAlive || IsExpired(index, _timeProvider()))
+                if (!_entries[index].IsAlive || IsExpired(index, _timeProvider()))
+                {
+                    return false;
+                }
+
+                return true;
+            }
+            finally
             {
-                return false;
+                _lock.ExitReadLock();
             }
-
-            return true;
         }
 
         /// <summary>
@@ -705,9 +764,8 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 return;
             }
 
-#if !SINGLE_THREADED
-            lock (_evictionLock)
-#endif
+            _lock.EnterWriteLock();
+            try
             {
                 float currentTime = _timeProvider();
                 for (int i = 0; i < _entries.Length; i++)
@@ -718,6 +776,10 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                         RecordExpired();
                     }
                 }
+            }
+            finally
+            {
+                _lock.ExitWriteLock();
             }
         }
 
@@ -737,15 +799,18 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 percentage = 1f;
             }
 
-#if !SINGLE_THREADED
-            lock (_evictionLock)
-#endif
+            _lock.EnterWriteLock();
+            try
             {
                 int toEvict = (int)(_count * percentage);
                 for (int i = 0; i < toEvict && _count > 0; i++)
                 {
                     EvictOne(EvictionReason.Capacity);
                 }
+            }
+            finally
+            {
+                _lock.ExitWriteLock();
             }
         }
 
@@ -760,16 +825,20 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 return;
             }
 
-#if !SINGLE_THREADED
-            lock (_evictionLock)
-#endif
+            _lock.EnterWriteLock();
+            try
             {
                 while (_count > newCapacity)
                 {
                     EvictOne(EvictionReason.Capacity);
                 }
+
                 _capacity = newCapacity;
                 _protectedCapacity = (int)(_capacity * _options.ProtectedRatio);
+            }
+            finally
+            {
+                _lock.ExitWriteLock();
             }
         }
 
@@ -781,8 +850,10 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 return;
             }
 
-            _disposed = true;
             Clear();
+            _disposed = true;
+            _lock.Dispose();
+            _lock = null;
         }
 
         private float ComputeExpirationTime(

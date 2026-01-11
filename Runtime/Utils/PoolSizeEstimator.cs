@@ -507,7 +507,7 @@ namespace WallstopStudios.UnityHelpers.Utils
             catch (Exception e)
             {
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
-                Debug.LogWarning(
+                Debug.Log(
                     $"[PoolSizeEstimator] Failed to get element size for {type.Name}, using field-based estimate: {e.Message}"
                 );
 #endif

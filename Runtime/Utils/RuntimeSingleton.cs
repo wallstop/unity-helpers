@@ -5,6 +5,7 @@ namespace WallstopStudios.UnityHelpers.Utils
 {
     using System;
     using System.Runtime.CompilerServices;
+    using System.Threading;
     using Core.Attributes;
     using Core.Extension;
     using Core.Helper;
@@ -47,6 +48,10 @@ namespace WallstopStudios.UnityHelpers.Utils
         /// </summary>
         public static bool HasInstance => _instance != null;
 
+        public static long InitializeCount => Interlocked.Read(ref _initializeCount);
+
+        protected static long _initializeCount;
+
         protected internal static T _instance;
 
         /// <summary>
@@ -55,6 +60,8 @@ namespace WallstopStudios.UnityHelpers.Utils
         /// scene‑local.
         /// </summary>
         protected virtual bool Preserve => true;
+
+        protected virtual bool LogErrorOnDestruction => true;
 
         /// <summary>
         /// Gets the global instance, creating one if needed.
@@ -100,14 +107,16 @@ namespace WallstopStudios.UnityHelpers.Utils
         }
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
-        private static void ClearInstance()
+        internal static void ClearInstance()
         {
             _instance.Destroy();
+            Interlocked.Exchange(ref _initializeCount, 0);
             _instance = null;
         }
 
         protected virtual void Awake()
         {
+            Interlocked.Increment(ref _initializeCount);
             this.AssignRelationalComponents();
             if (_instance == null)
             {
@@ -128,7 +137,18 @@ namespace WallstopStudios.UnityHelpers.Utils
                 return;
             }
 
-            this.LogError($"Double singleton detected, {_instance.name} conflicts with {name}.");
+            string duplicateMessage =
+                $"Double singleton detected, {_instance.name} conflicts with {name}. Total initialize count: {InitializeCount}.";
+
+            if (LogErrorOnDestruction)
+            {
+                Debug.LogError(duplicateMessage);
+            }
+            else
+            {
+                Debug.Log(duplicateMessage);
+            }
+
             gameObject.Destroy();
         }
 

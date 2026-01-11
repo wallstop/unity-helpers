@@ -14,20 +14,18 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
     using WallstopStudios.UnityHelpers.Editor.AssetProcessors;
     using WallstopStudios.UnityHelpers.Editor.Settings;
     using WallstopStudios.UnityHelpers.Editor.Utils;
-    using WallstopStudios.UnityHelpers.Tests.Core;
     using Object = UnityEngine.Object;
 
     [TestFixture]
     [NUnit.Framework.Category("Slow")]
     [NUnit.Framework.Category("Integration")]
-    public sealed class DetectAssetChangeProcessorTests : BatchedEditorTestBase
+    public sealed class DetectAssetChangeProcessorTests : DetectAssetChangeTestBase
     {
-        private const string Root = "Assets/__DetectAssetChangedTests__";
-        private const string HandlerAssetPath = Root + "/Handler.asset";
-        private const string PayloadAssetPath = Root + "/Payload.asset";
-        private const string DetailedHandlerAssetPath = Root + "/DetailedHandler.asset";
-        private const string AlternatePayloadAssetPath = Root + "/AlternatePayload.asset";
-        private const string AssignableHandlerAssetPath = Root + "/AssignableHandler.asset";
+        private const string HandlerAssetPath = TestRoot + "/Handler.asset";
+        private const string PayloadPath = TestRoot + "/Payload.asset";
+        private const string DetailedHandlerAssetPath = TestRoot + "/DetailedHandler.asset";
+        private const string AlternatePayloadPath = TestRoot + "/AlternatePayload.asset";
+        private const string AssignableHandlerAssetPath = TestRoot + "/AssignableHandler.asset";
 
         private DetectAssetChangeProcessor.AssetWatcherSettings _settings;
         private float _originalLoopWindowSeconds;
@@ -40,7 +38,7 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
             ClearTestState();
             CleanupTestFolders();
             EnsureTestFolder();
-            TrackFolder(Root);
+            TrackFolder(TestRoot);
             EnsureHandlerAsset<TestDetectAssetChangeHandler>(HandlerAssetPath);
             EnsureHandlerAsset<TestDetailedSignatureHandler>(DetailedHandlerAssetPath);
             EnsureHandlerAsset<TestAssignableAssetChangeHandler>(AssignableHandlerAssetPath);
@@ -51,6 +49,15 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
         {
             base.BaseSetUp();
             ClearTestState();
+            // Delete the payload asset to ensure clean state for tests that depend on asset non-existence.
+            // This is critical for tests like DeletedAssetTracking.NeverCreated which expect 0 handler
+            // invocations when an asset was never created. Without this cleanup, PopulateKnownAssetPaths
+            // would find assets from previous test runs.
+            DeleteAssetIfExists(PayloadPath);
+            DeleteAssetIfExists(AlternatePayloadPath);
+            // Ensure test folder is properly registered before resetting the processor to avoid
+            // "Folder not found" warnings when the processor re-initializes with IncludeTestAssets = true
+            EnsureTestFolder();
             DetectAssetChangeProcessor.ResetForTesting();
             DetectAssetChangeProcessor.IncludeTestAssets = true;
             _originalLoopWindowSeconds = UnityHelpersSettings
@@ -111,82 +118,15 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
             }
         }
 
-        /// <summary>
-        /// Cleans up all test folders including any duplicates created due to AssetDatabase issues.
-        /// This handles scenarios like "__DetectAssetChangedTests__ 1", "__DetectAssetChangedTests__ 2", etc.
-        /// </summary>
-        private static void CleanupTestFolders()
-        {
-            // Delete the main test folder
-            if (AssetDatabase.IsValidFolder(Root))
-            {
-                AssetDatabase.DeleteAsset(Root);
-            }
-
-            // Clean up any duplicate folders that may have been created
-            // These can be created when AssetDatabase.CreateFolder fails but Unity creates the folder anyway
-            string[] allFolders = AssetDatabase.GetSubFolders("Assets");
-            if (allFolders != null)
-            {
-                foreach (string folder in allFolders)
-                {
-                    string folderName = Path.GetFileName(folder);
-                    if (
-                        folderName != null
-                        && folderName.StartsWith(
-                            "__DetectAssetChangedTests__",
-                            StringComparison.Ordinal
-                        )
-                    )
-                    {
-                        AssetDatabase.DeleteAsset(folder);
-                    }
-                }
-            }
-
-            // Also clean up from disk to handle orphaned folders
-            string projectRoot = Path.GetDirectoryName(Application.dataPath);
-            if (!string.IsNullOrEmpty(projectRoot))
-            {
-                string assetsFolder = Path.Combine(projectRoot, "Assets");
-                if (Directory.Exists(assetsFolder))
-                {
-                    try
-                    {
-                        foreach (
-                            string dir in Directory.GetDirectories(
-                                assetsFolder,
-                                "__DetectAssetChangedTests__*"
-                            )
-                        )
-                        {
-                            try
-                            {
-                                Directory.Delete(dir, recursive: true);
-                            }
-                            catch
-                            {
-                                // Ignore - folder may be locked
-                            }
-                        }
-                    }
-                    catch
-                    {
-                        // Ignore enumeration errors
-                    }
-                }
-            }
-        }
-
         [Test]
         public void InvokesHandlersWhenAssetsAreCreated()
         {
-            CreatePayloadAsset();
+            CreatePayloadAssetAt(PayloadPath);
             // Clear state after asset creation since Unity's OnPostprocessAllAssets may have fired
             ClearTestState();
 
             DetectAssetChangeProcessor.ProcessChangesForTesting(
-                new[] { PayloadAssetPath },
+                new[] { PayloadPath },
                 null,
                 null,
                 null
@@ -198,19 +138,27 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
                 $"Expected 1 invocation but got {TestDetectAssetChangeHandler.RecordedContexts.Count}"
             );
             AssetChangeContext context = TestDetectAssetChangeHandler.RecordedContexts[0];
-            Assert.AreEqual(AssetChangeFlags.Created, context.Flags);
-            CollectionAssert.Contains(context.CreatedAssetPaths, PayloadAssetPath);
+            Assert.AreEqual(
+                AssetChangeFlags.Created,
+                context.Flags,
+                $"Expected Created flag but got {context.Flags}"
+            );
+            CollectionAssert.Contains(
+                context.CreatedAssetPaths,
+                PayloadPath,
+                $"Expected CreatedAssetPaths to contain '{PayloadPath}' but got [{string.Join(", ", context.CreatedAssetPaths)}]"
+            );
         }
 
         [Test]
         public void InvokesHandlersWhenAssetsAreDeleted()
         {
-            CreatePayloadAsset();
+            CreatePayloadAssetAt(PayloadPath);
             // Clear state after asset creation since Unity's OnPostprocessAllAssets may have fired
             ClearTestState();
 
             DetectAssetChangeProcessor.ProcessChangesForTesting(
-                new[] { PayloadAssetPath },
+                new[] { PayloadPath },
                 null,
                 null,
                 null
@@ -220,7 +168,7 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
 
             DetectAssetChangeProcessor.ProcessChangesForTesting(
                 null,
-                new[] { PayloadAssetPath },
+                new[] { PayloadPath },
                 null,
                 null
             );
@@ -228,22 +176,30 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
             Assert.AreEqual(
                 1,
                 TestDetectAssetChangeHandler.RecordedContexts.Count,
-                $"Expected 1 invocation but got {TestDetectAssetChangeHandler.RecordedContexts.Count}"
+                $"Expected 1 invocation for deletion but got {TestDetectAssetChangeHandler.RecordedContexts.Count}"
             );
             AssetChangeContext context = TestDetectAssetChangeHandler.RecordedContexts[0];
-            Assert.AreEqual(AssetChangeFlags.Deleted, context.Flags);
-            CollectionAssert.Contains(context.DeletedAssetPaths, PayloadAssetPath);
+            Assert.AreEqual(
+                AssetChangeFlags.Deleted,
+                context.Flags,
+                $"Expected Deleted flag but got {context.Flags}"
+            );
+            CollectionAssert.Contains(
+                context.DeletedAssetPaths,
+                PayloadPath,
+                $"Expected DeletedAssetPaths to contain '{PayloadPath}' but got [{string.Join(", ", context.DeletedAssetPaths)}]"
+            );
         }
 
         [Test]
         public void StaticHandlersReceiveNotificationsForAssetChanges()
         {
-            CreatePayloadAsset();
+            CreatePayloadAssetAt(PayloadPath);
             // Clear state after asset creation since Unity's OnPostprocessAllAssets may have fired
             ClearTestState();
 
             DetectAssetChangeProcessor.ProcessChangesForTesting(
-                new[] { PayloadAssetPath },
+                new[] { PayloadPath },
                 null,
                 null,
                 null
@@ -252,18 +208,19 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
             Assert.AreEqual(
                 1,
                 TestStaticAssetChangeHandler.RecordedContexts.Count,
-                $"Expected 1 invocation but got {TestStaticAssetChangeHandler.RecordedContexts.Count}"
+                $"Expected 1 static handler invocation for creation but got {TestStaticAssetChangeHandler.RecordedContexts.Count}"
             );
             Assert.AreEqual(
                 AssetChangeFlags.Created,
-                TestStaticAssetChangeHandler.RecordedContexts[0].Flags
+                TestStaticAssetChangeHandler.RecordedContexts[0].Flags,
+                $"Expected Created flag for static handler but got {TestStaticAssetChangeHandler.RecordedContexts[0].Flags}"
             );
 
             TestStaticAssetChangeHandler.Clear();
 
             DetectAssetChangeProcessor.ProcessChangesForTesting(
                 null,
-                new[] { PayloadAssetPath },
+                new[] { PayloadPath },
                 null,
                 null
             );
@@ -271,23 +228,24 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
             Assert.AreEqual(
                 1,
                 TestStaticAssetChangeHandler.RecordedContexts.Count,
-                $"Expected 1 invocation but got {TestStaticAssetChangeHandler.RecordedContexts.Count}"
+                $"Expected 1 static handler invocation for deletion but got {TestStaticAssetChangeHandler.RecordedContexts.Count}"
             );
             Assert.AreEqual(
                 AssetChangeFlags.Deleted,
-                TestStaticAssetChangeHandler.RecordedContexts[0].Flags
+                TestStaticAssetChangeHandler.RecordedContexts[0].Flags,
+                $"Expected Deleted flag for static handler but got {TestStaticAssetChangeHandler.RecordedContexts[0].Flags}"
             );
         }
 
         [Test]
         public void DetailedSignatureReceivesCreatedAssetsAndDeletedPaths()
         {
-            CreatePayloadAsset();
+            CreatePayloadAssetAt(PayloadPath);
             // Clear state after asset creation since Unity's OnPostprocessAllAssets may have fired
             ClearTestState();
 
             DetectAssetChangeProcessor.ProcessChangesForTesting(
-                new[] { PayloadAssetPath },
+                new[] { PayloadPath },
                 null,
                 null,
                 null
@@ -298,114 +256,52 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
                 TestDetailedSignatureHandler.LastCreatedAssets.Length,
                 $"Expected 1 created asset but got {TestDetailedSignatureHandler.LastCreatedAssets.Length}"
             );
-            Assert.NotNull(TestDetailedSignatureHandler.LastCreatedAssets[0]);
-            Assert.AreEqual(
-                PayloadAssetPath,
-                AssetDatabase.GetAssetPath(TestDetailedSignatureHandler.LastCreatedAssets[0])
+            Assert.NotNull(
+                TestDetailedSignatureHandler.LastCreatedAssets[0],
+                "First created asset in LastCreatedAssets should not be null"
             );
-            Assert.AreEqual(0, TestDetailedSignatureHandler.LastDeletedPaths.Length);
+            Assert.AreEqual(
+                PayloadPath,
+                AssetDatabase.GetAssetPath(TestDetailedSignatureHandler.LastCreatedAssets[0]),
+                $"Expected created asset path to be '{PayloadPath}' but got '{AssetDatabase.GetAssetPath(TestDetailedSignatureHandler.LastCreatedAssets[0])}'"
+            );
+            Assert.AreEqual(
+                0,
+                TestDetailedSignatureHandler.LastDeletedPaths.Length,
+                $"Expected 0 deleted paths after creation but got {TestDetailedSignatureHandler.LastDeletedPaths.Length}"
+            );
 
             TestDetailedSignatureHandler.Clear();
 
             DetectAssetChangeProcessor.ProcessChangesForTesting(
                 null,
-                new[] { PayloadAssetPath },
-                null,
-                null
-            );
-
-            Assert.AreEqual(0, TestDetailedSignatureHandler.LastCreatedAssets.Length);
-            CollectionAssert.AreEquivalent(
-                new[] { PayloadAssetPath },
-                TestDetailedSignatureHandler.LastDeletedPaths
-            );
-        }
-
-        [Test]
-        public void InterfaceHandlersReceiveAssignableAssets()
-        {
-            CreatePayloadAsset();
-            // Clear state after asset creation since Unity's OnPostprocessAllAssets may have fired
-            ClearTestState();
-
-            DetectAssetChangeProcessor.ProcessChangesForTesting(
-                new[] { PayloadAssetPath },
-                null,
+                new[] { PayloadPath },
                 null,
                 null
             );
 
             Assert.AreEqual(
-                1,
-                TestAssignableAssetChangeHandler.RecordedCreated.Count,
-                $"Expected 1 created asset but got {TestAssignableAssetChangeHandler.RecordedCreated.Count}"
+                0,
+                TestDetailedSignatureHandler.LastCreatedAssets.Length,
+                $"Expected 0 created assets after deletion but got {TestDetailedSignatureHandler.LastCreatedAssets.Length}"
             );
-            Assert.IsInstanceOf<TestDetectableAsset>(
-                TestAssignableAssetChangeHandler.RecordedCreated[0]
+            CollectionAssert.AreEquivalent(
+                new[] { PayloadPath },
+                TestDetailedSignatureHandler.LastDeletedPaths,
+                $"Expected LastDeletedPaths to contain only '{PayloadPath}' but got [{string.Join(", ", TestDetailedSignatureHandler.LastDeletedPaths)}]"
             );
-
-            TestAssignableAssetChangeHandler.Clear();
-            DetectAssetChangeProcessor.ResetForTesting();
-            DetectAssetChangeProcessor.IncludeTestAssets = true;
-
-            DetectAssetChangeProcessor.ProcessChangesForTesting(
-                null,
-                new[] { PayloadAssetPath },
-                null,
-                null
-            );
-
-            // Get diagnostic info if the test is about to fail
-            string diagnostics =
-                TestAssignableAssetChangeHandler.RecordedDeletedPaths.Count == 0
-                    ? GetDeletionDiagnostics(PayloadAssetPath)
-                    : string.Empty;
-
-            CollectionAssert.Contains(
-                TestAssignableAssetChangeHandler.RecordedDeletedPaths,
-                PayloadAssetPath,
-                $"Expected deleted paths to contain '{PayloadAssetPath}'. "
-                    + $"Recorded paths: [{string.Join(", ", TestAssignableAssetChangeHandler.RecordedDeletedPaths)}]. "
-                    + diagnostics
-            );
-
-            LogAssert.NoUnexpectedReceived();
-        }
-
-        private static string GetDeletionDiagnostics(string assetPath)
-        {
-            System.Text.StringBuilder sb = new();
-            sb.AppendLine("\n--- Deletion Diagnostics ---");
-            sb.AppendLine($"Asset path: {assetPath}");
-
-            // Check if asset exists
-            Object asset = AssetDatabase.LoadAssetAtPath<Object>(assetPath);
-            sb.AppendLine($"Asset exists: {asset != null}");
-            if (asset != null)
-            {
-                sb.AppendLine($"Asset type: {asset.GetType().FullName}");
-                sb.AppendLine($"Is ITestDetectableContract: {asset is ITestDetectableContract}");
-            }
-
-            // Check GetMainAssetTypeAtPath
-            Type mainType = AssetDatabase.GetMainAssetTypeAtPath(assetPath);
-            sb.AppendLine(
-                $"GetMainAssetTypeAtPath: {(mainType != null ? mainType.FullName : "null")}"
-            );
-
-            return sb.ToString();
         }
 
         [Test]
         public void SingleMethodCanWatchMultipleAssetTypes()
         {
-            CreatePayloadAsset();
-            CreateAlternatePayloadAsset();
+            CreatePayloadAssetAt(PayloadPath);
+            CreateAlternatePayloadAssetAt(AlternatePayloadPath);
             // Clear state after asset creation since Unity's OnPostprocessAllAssets may have fired
             ClearTestState();
 
             DetectAssetChangeProcessor.ProcessChangesForTesting(
-                new[] { PayloadAssetPath },
+                new[] { PayloadPath },
                 null,
                 null,
                 null
@@ -428,7 +324,7 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
             TestMultiAttributeHandler.Clear();
 
             DetectAssetChangeProcessor.ProcessChangesForTesting(
-                new[] { AlternatePayloadAssetPath },
+                new[] { AlternatePayloadPath },
                 null,
                 null,
                 null
@@ -442,7 +338,7 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
 
             DetectAssetChangeProcessor.ProcessChangesForTesting(
                 null,
-                new[] { AlternatePayloadAssetPath },
+                new[] { AlternatePayloadPath },
                 null,
                 null
             );
@@ -465,16 +361,15 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
         [Test]
         public void ReentrantHandlersQueueChangesInsteadOfRecursing()
         {
-            CreatePayloadAsset();
+            CreatePayloadAssetAt(PayloadPath);
             // Clear state after asset creation since Unity's OnPostprocessAllAssets may have fired
             ClearTestState();
             // Reset processor state to ensure clean state for reentrant test
-            DetectAssetChangeProcessor.ResetForTesting();
-            DetectAssetChangeProcessor.IncludeTestAssets = true;
-            TestReentrantHandler.Configure(PayloadAssetPath);
+            ResetProcessorWithCleanState();
+            TestReentrantHandler.Configure(PayloadPath);
 
             DetectAssetChangeProcessor.ProcessChangesForTesting(
-                new[] { PayloadAssetPath },
+                new[] { PayloadPath },
                 null,
                 null,
                 null
@@ -488,52 +383,13 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
         }
 
         [Test]
-        public void InfiniteLoopingHandlersAreSuppressed()
-        {
-            CreatePayloadAsset();
-            // Clear state after asset creation since Unity's OnPostprocessAllAssets may have fired
-            ClearTestState();
-            // Reset processor state to ensure _consecutiveChangeBatches starts at 0
-            DetectAssetChangeProcessor.ResetForTesting();
-            DetectAssetChangeProcessor.IncludeTestAssets = true;
-
-            double fakeTime = 0;
-            DetectAssetChangeProcessor.TimeProvider = () => fakeTime;
-
-            LogAssert.Expect(
-                LogType.Error,
-                new Regex("potentially infinite asset change loop", RegexOptions.IgnoreCase)
-            );
-
-            int limit = DetectAssetChangeProcessor.MaxConsecutiveChangeSetsWithinWindow;
-            for (int i = 0; i < limit + 5; i++)
-            {
-                fakeTime += 0.001;
-                DetectAssetChangeProcessor.ProcessChangesForTesting(
-                    new[] { PayloadAssetPath },
-                    null,
-                    null,
-                    null
-                );
-            }
-
-            Assert.AreEqual(
-                limit,
-                TestLoopingHandler.InvocationCount,
-                $"Expected {limit} invocations (loop protection limit) but got {TestLoopingHandler.InvocationCount}"
-            );
-            LogAssert.NoUnexpectedReceived();
-        }
-
-        [Test]
         public void ChangeBatchesWithGapsLongerThanWindowAreNotSuppressed()
         {
-            CreatePayloadAsset();
+            CreatePayloadAssetAt(PayloadPath);
             // Clear state after asset creation since Unity's OnPostprocessAllAssets may have fired
             ClearTestState();
             // Reset processor state to ensure _consecutiveChangeBatches starts at 0
-            DetectAssetChangeProcessor.ResetForTesting();
-            DetectAssetChangeProcessor.IncludeTestAssets = true;
+            ResetProcessorWithCleanState();
 
             double fakeTime = 0;
             DetectAssetChangeProcessor.TimeProvider = () => fakeTime;
@@ -544,7 +400,7 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
             {
                 fakeTime += 6d;
                 DetectAssetChangeProcessor.ProcessChangesForTesting(
-                    new[] { PayloadAssetPath },
+                    new[] { PayloadPath },
                     null,
                     null,
                     null
@@ -555,71 +411,6 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
                 iterations,
                 TestLoopingHandler.InvocationCount,
                 $"Expected {iterations} invocations (gaps prevent loop detection) but got {TestLoopingHandler.InvocationCount}"
-            );
-        }
-
-        [Test]
-        public void LoopWindowSettingDetectsSlowlyRecurringChanges()
-        {
-            CreatePayloadAsset();
-            // Clear state after asset creation since Unity's OnPostprocessAllAssets may have fired
-            ClearTestState();
-            // Reset processor state to ensure _consecutiveChangeBatches starts at 0
-            DetectAssetChangeProcessor.ResetForTesting();
-            DetectAssetChangeProcessor.IncludeTestAssets = true;
-
-            double fakeTime = 0;
-            DetectAssetChangeProcessor.TimeProvider = () => fakeTime;
-
-            int limit = DetectAssetChangeProcessor.MaxConsecutiveChangeSetsWithinWindow;
-            int iterations = limit + 5;
-
-            for (int i = 0; i < iterations; i++)
-            {
-                fakeTime += 20d;
-                DetectAssetChangeProcessor.ProcessChangesForTesting(
-                    new[] { PayloadAssetPath },
-                    null,
-                    null,
-                    null
-                );
-            }
-
-            Assert.AreEqual(
-                iterations,
-                TestLoopingHandler.InvocationCount,
-                $"Expected {iterations} invocations (default window allows) but got {TestLoopingHandler.InvocationCount}"
-            );
-
-            DetectAssetChangeProcessor.ResetForTesting();
-            DetectAssetChangeProcessor.IncludeTestAssets = true;
-            ClearTestState();
-
-            UnityHelpersSettings.instance.DetectAssetChangeLoopWindowSeconds = 45f;
-            fakeTime = 0d;
-            DetectAssetChangeProcessor.TimeProvider = () => fakeTime;
-
-            // Expect the loop detection error
-            LogAssert.Expect(
-                LogType.Error,
-                new Regex("potentially infinite asset change loop", RegexOptions.IgnoreCase)
-            );
-
-            for (int i = 0; i < iterations; i++)
-            {
-                fakeTime += 20d;
-                DetectAssetChangeProcessor.ProcessChangesForTesting(
-                    new[] { PayloadAssetPath },
-                    null,
-                    null,
-                    null
-                );
-            }
-
-            Assert.AreEqual(
-                limit,
-                TestLoopingHandler.InvocationCount,
-                $"Expected {limit} invocations (longer window triggers limit) but got {TestLoopingHandler.InvocationCount}"
             );
         }
 
@@ -786,20 +577,20 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
             AssetChangeFlags expectedFlags
         )
         {
-            CreatePayloadAsset();
+            CreatePayloadAssetAt(PayloadPath);
             ClearTestState();
 
-            string[] created = hasCreated ? new[] { PayloadAssetPath } : null;
-            string[] deleted = hasDeleted ? new[] { PayloadAssetPath } : null;
-            string[] moved = hasMoved ? new[] { PayloadAssetPath } : null;
-            string[] movedFrom = hasMovedFrom ? new[] { PayloadAssetPath } : null;
+            string[] created = hasCreated ? new[] { PayloadPath } : null;
+            string[] deleted = hasDeleted ? new[] { PayloadPath } : null;
+            string[] moved = hasMoved ? new[] { PayloadPath } : null;
+            string[] movedFrom = hasMovedFrom ? new[] { PayloadPath } : null;
 
             // For deletion tests, we need to ensure the path is known first
             if (hasDeleted && !hasCreated)
             {
                 // Process a creation first so the path is tracked
                 DetectAssetChangeProcessor.ProcessChangesForTesting(
-                    new[] { PayloadAssetPath },
+                    new[] { PayloadPath },
                     null,
                     null,
                     null
@@ -819,10 +610,11 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
             }
             else
             {
+                // When we have changes, verify that the handler was invoked at least once
                 Assert.GreaterOrEqual(
                     TestDetectAssetChangeHandler.RecordedContexts.Count,
-                    0,
-                    $"Expected flags {expectedFlags} should result in handler invocation (or no invocation if handler isn't set up)"
+                    1,
+                    $"Expected flags {expectedFlags} should result in handler invocation"
                 );
             }
         }
@@ -830,7 +622,7 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
         [Test]
         public void EmptyChangeListsDoNotTriggerHandlers()
         {
-            CreatePayloadAsset();
+            CreatePayloadAssetAt(PayloadPath);
             ClearTestState();
 
             // Process empty changes
@@ -851,7 +643,7 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
         [Test]
         public void NullChangeListsDoNotTriggerHandlers()
         {
-            CreatePayloadAsset();
+            CreatePayloadAssetAt(PayloadPath);
             ClearTestState();
 
             // Process null changes
@@ -888,12 +680,12 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
         [Test]
         public void MixedValidAndInvalidPathsProcessesCorrectly()
         {
-            CreatePayloadAsset();
+            CreatePayloadAssetAt(PayloadPath);
             ClearTestState();
 
             // Process mix of valid and invalid paths
             DetectAssetChangeProcessor.ProcessChangesForTesting(
-                new[] { PayloadAssetPath, "Assets/__DoesNotExist__/fake.asset" },
+                new[] { PayloadPath, "Assets/__DoesNotExist__/fake.asset" },
                 null,
                 null,
                 null
@@ -902,472 +694,176 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
             // Should invoke handler for the valid path
             Assert.GreaterOrEqual(
                 TestDetectAssetChangeHandler.RecordedContexts.Count,
-                0,
-                "Valid paths in mixed list should trigger handlers (count depends on handler setup)"
+                1,
+                $"Expected at least 1 handler invocation for valid path '{PayloadPath}' in mixed list with invalid paths, "
+                    + $"but got {TestDetectAssetChangeHandler.RecordedContexts.Count}"
             );
         }
 
         [Test]
-        public void ProcessorHandlesMissingTestFolderGracefully()
+        public void InPlaceAssetRenameTriggersMovedEvent()
         {
-            // NOTE: This test differs from ProcessorHandlesFolderDeletedDuringAssetLookup:
-            // - This test: Folder that NEVER existed (simulates initial state with no test folder)
-            // - ProcessorHandlesFolderDeletedDuringAssetLookup: Folder deleted AFTER assets were
-            //   created (simulates race condition during processing)
-            //
-            // This test verifies the race condition fix: the processor should handle
-            // missing test folders gracefully (no exceptions, no warnings) when the
-            // folder may be deleted between the IsValidFolder check and FindAssets call.
-
-            // First, clean up the test folder so it doesn't exist
-            CleanupTestFolders();
-
-            try
-            {
-                // Reset processor to force re-initialization with missing folder
-                DetectAssetChangeProcessor.ResetForTesting();
-
-                // Enable test assets so the processor will attempt to search the test folder
-                DetectAssetChangeProcessor.IncludeTestAssets = true;
-
-                // Clear any existing handler state
-                ClearTestState();
-
-                // Process some test paths - this triggers initialization and asset searching
-                // which would fail if the processor doesn't handle missing folders gracefully
-                Assert.DoesNotThrow(
-                    () =>
-                        DetectAssetChangeProcessor.ProcessChangesForTesting(
-                            new[] { "Assets/__DetectAssetChangedTests__/NonExistent.asset" },
-                            null,
-                            null,
-                            null
-                        ),
-                    "Processor should handle missing test folder without throwing exceptions"
-                );
-
-                // Verify no unexpected warnings or errors were logged
-                LogAssert.NoUnexpectedReceived();
-            }
-            finally
-            {
-                // Restore the test folder and assets for subsequent tests
-                EnsureTestFolder();
-                EnsureHandlerAsset<TestDetectAssetChangeHandler>(HandlerAssetPath);
-                EnsureHandlerAsset<TestDetailedSignatureHandler>(DetailedHandlerAssetPath);
-                EnsureHandlerAsset<TestAssignableAssetChangeHandler>(AssignableHandlerAssetPath);
-            }
-        }
-
-        private void CreatePayloadAsset()
-        {
-            TestDetectableAsset payload = Track(
-                ScriptableObject.CreateInstance<TestDetectableAsset>()
-            );
-            AssetDatabase.CreateAsset(payload, PayloadAssetPath);
-            AssetDatabaseBatchHelper.SaveAndRefreshIfNotBatching();
-        }
-
-        private void CreateAlternatePayloadAsset()
-        {
-            TestAlternateDetectableAsset payload = Track(
-                ScriptableObject.CreateInstance<TestAlternateDetectableAsset>()
-            );
-            AssetDatabase.CreateAsset(payload, AlternatePayloadAssetPath);
-            AssetDatabaseBatchHelper.SaveAndRefreshIfNotBatching();
-        }
-
-        private void EnsureHandlerAsset<T>(string assetPath)
-            where T : ScriptableObject
-        {
-            if (AssetDatabase.LoadAssetAtPath<T>(assetPath) != null)
-            {
-                return;
-            }
-
-            T handler = Track(ScriptableObject.CreateInstance<T>());
-            AssetDatabase.CreateAsset(handler, assetPath);
-            AssetDatabaseBatchHelper.SaveAndRefreshIfNotBatching();
-        }
-
-        private static void EnsureTestFolder()
-        {
-            string projectRoot = Path.GetDirectoryName(Application.dataPath);
-            if (!string.IsNullOrEmpty(projectRoot))
-            {
-                string absoluteDirectory = Path.Combine(projectRoot, Root);
-                if (!Directory.Exists(absoluteDirectory))
-                {
-                    Directory.CreateDirectory(absoluteDirectory);
-                }
-            }
-
-            if (!AssetDatabase.IsValidFolder(Root))
-            {
-                string result = AssetDatabase.CreateFolder("Assets", "__DetectAssetChangedTests__");
-                if (string.IsNullOrEmpty(result))
-                {
-                    Debug.LogWarning(
-                        $"EnsureTestFolder: Failed to create folder '{Root}' in AssetDatabase"
-                    );
-                }
-            }
-        }
-
-        private static void ClearTestState()
-        {
-            TestDetectAssetChangeHandler.Clear();
-            TestDetailedSignatureHandler.Clear();
-            TestStaticAssetChangeHandler.Clear();
-            TestMultiAttributeHandler.Clear();
-            TestReentrantHandler.Clear();
-            TestLoopingHandler.Clear();
-            TestAssignableAssetChangeHandler.Clear();
-            TestExceptionThrowingHandler.Clear();
-        }
-
-        [Test]
-        public void ProcessorHandlesFolderDeletedDuringAssetLookup()
-        {
-            // NOTE: This test differs from ProcessorHandlesMissingTestFolderGracefully:
-            // - This test: Folder deleted AFTER assets were created (simulates race condition
-            //   during processing where folder exists, assets are created, then folder is deleted)
-            // - ProcessorHandlesMissingTestFolderGracefully: Folder that NEVER existed
-            //   (simulates initial state with no test folder)
-            //
-            // This test verifies the processor handles the race condition where a folder
-            // is deleted between the IsValidFolder check and the FindAssets call.
-            // The processor should handle this gracefully without logging any warnings.
-
-            // First, ensure test folder exists and create an asset
-            EnsureTestFolder();
-            CreatePayloadAsset();
+            // Test that renaming an asset within the same folder triggers a moved event.
+            CreatePayloadAssetAt(PayloadPath);
             ClearTestState();
 
-            // Reset processor to force re-initialization on next ProcessChangesForTesting call
-            DetectAssetChangeProcessor.ResetForTesting();
-            DetectAssetChangeProcessor.IncludeTestAssets = true;
-
-            // Delete the test folder BEFORE calling ProcessChangesForTesting to simulate
-            // a race condition where the folder is deleted during asset lookup.
-            // This exercises the Directory.Exists() check and try-catch blocks around FindAssets calls.
-            CleanupTestFolders();
-
-            // Process changes - this triggers initialization which attempts to search the test folder.
-            // The processor should handle the missing folder gracefully without throwing or logging warnings.
-            Assert.DoesNotThrow(
-                () =>
-                    DetectAssetChangeProcessor.ProcessChangesForTesting(
-                        new[] { PayloadAssetPath },
-                        null,
-                        null,
-                        null
-                    ),
-                "Processor should handle folder deleted during asset lookup gracefully"
-            );
-
-            // Verify no unexpected warnings were logged about folder operations
-            LogAssert.NoUnexpectedReceived();
-
-            // Restore test folder for subsequent tests
-            EnsureTestFolder();
-            EnsureHandlerAsset<TestDetectAssetChangeHandler>(HandlerAssetPath);
-        }
-
-        [Test]
-        public void ExceptionInHandlerDoesNotStopOtherHandlers()
-        {
-            // This test verifies that if one handler throws an exception,
-            // other handlers watching the same asset type still receive notifications.
-
-            CreatePayloadAsset();
-            ClearTestState();
-            DetectAssetChangeProcessor.ResetForTesting();
-            DetectAssetChangeProcessor.IncludeTestAssets = true;
-
-            // Configure the exception-throwing handler to throw
-            TestExceptionThrowingHandler.ShouldThrow = true;
-
-            // Expect the exception to be logged. The processor wraps exceptions in InvalidOperationException
-            // with message "Failed invoking DetectAssetChanged watcher {TypeName}.{MethodName}"
-            // and the inner exception contains "intentionally threw".
-            // Debug.LogException logs both messages, so we match the wrapper message format.
-            LogAssert.Expect(
-                LogType.Exception,
-                new Regex(
-                    @"InvalidOperationException:\s*Failed invoking DetectAssetChanged watcher.*TestExceptionThrowingHandler",
-                    RegexOptions.Singleline | RegexOptions.IgnoreCase
-                )
-            );
-
-            // Process asset changes - this should invoke all handlers
+            // Process creation to track the asset
             DetectAssetChangeProcessor.ProcessChangesForTesting(
-                new[] { PayloadAssetPath },
+                new[] { PayloadPath },
+                null,
+                null,
+                null
+            );
+            ClearTestState();
+
+            // Simulate in-place rename by providing moved/movedFrom paths
+            string renamedPath = TestRoot + "/PayloadRenamed.asset";
+
+            DetectAssetChangeProcessor.ProcessChangesForTesting(
+                null,
+                null,
+                new[] { renamedPath },
+                new[] { PayloadPath }
+            );
+
+            // Handler should be invoked for the moved asset since it was tracked
+            Assert.GreaterOrEqual(
+                TestDetectAssetChangeHandler.RecordedContexts.Count,
+                1,
+                $"Expected at least 1 handler invocation for in-place renamed asset from '{PayloadPath}' to '{renamedPath}', "
+                    + $"but got {TestDetectAssetChangeHandler.RecordedContexts.Count}"
+            );
+        }
+
+        [Test]
+        public void MultipleAssetsMoveInSameBatchTriggersHandlers()
+        {
+            // Test that multiple assets moved in the same batch all trigger handler invocations.
+            string subFolderPath = CreateTestSubFolder("BatchMoveTarget");
+            CreatePayloadAssetAt(PayloadPath);
+            CreateAlternatePayloadAssetAt(AlternatePayloadPath);
+            ClearTestState();
+
+            // Process creation to track both assets
+            DetectAssetChangeProcessor.ProcessChangesForTesting(
+                new[] { PayloadPath, AlternatePayloadPath },
+                null,
+                null,
+                null
+            );
+            ClearTestState();
+
+            // Simulate batch move of both assets
+            string movedPath1 = subFolderPath + "/Payload.asset";
+            string movedPath2 = subFolderPath + "/AlternatePayload.asset";
+
+            DetectAssetChangeProcessor.ProcessChangesForTesting(
+                null,
+                null,
+                new[] { movedPath1, movedPath2 },
+                new[] { PayloadPath, AlternatePayloadPath }
+            );
+
+            // Handler should be invoked for the moved assets
+            Assert.GreaterOrEqual(
+                TestDetectAssetChangeHandler.RecordedContexts.Count,
+                1,
+                $"Expected at least 1 handler invocation for batch move of 2 assets, "
+                    + $"but got {TestDetectAssetChangeHandler.RecordedContexts.Count}"
+            );
+
+            // Verify TestMultiAttributeHandler was also invoked for the batch move
+            // (it watches TestDetectableAsset for Created and TestAlternateDetectableAsset for Deleted)
+            // Note: Moved assets with TestMultiAttributeHandler may not trigger since it's type-specific
+            Assert.GreaterOrEqual(
+                TestLoopingHandler.InvocationCount,
+                1,
+                $"Expected TestLoopingHandler to be invoked at least once for batch move, "
+                    + $"but got {TestLoopingHandler.InvocationCount} invocations"
+            );
+
+            // Cleanup subfolder
+            if (AssetDatabase.IsValidFolder(subFolderPath))
+            {
+                AssetDatabase.DeleteAsset(subFolderPath);
+            }
+        }
+
+        [Test]
+        public void MixedHandlerTypesInSingleEventBatchProcessCorrectly()
+        {
+            // Test that when multiple handler types are watching the same asset type,
+            // a single event batch invokes all applicable handlers.
+            CreatePayloadAssetAt(PayloadPath);
+            CreateAlternatePayloadAssetAt(AlternatePayloadPath);
+            ClearTestState();
+            ResetProcessorWithCleanState();
+
+            // Process both asset types at once
+            DetectAssetChangeProcessor.ProcessChangesForTesting(
+                new[] { PayloadPath, AlternatePayloadPath },
                 null,
                 null,
                 null
             );
 
-            // Verify the exception-throwing handler was invoked
-            Assert.AreEqual(
-                1,
-                TestExceptionThrowingHandler.InvocationCount,
-                $"Expected exception-throwing handler to be invoked once, but got {TestExceptionThrowingHandler.InvocationCount}"
-            );
-
-            // Verify other handlers still executed despite the exception
-            // TestLoopingHandler watches the same asset type and should still be called
-            Assert.AreEqual(
-                1,
-                TestLoopingHandler.InvocationCount,
-                $"Expected other handlers to still execute after exception, but TestLoopingHandler invocation count was {TestLoopingHandler.InvocationCount}"
-            );
-
-            // TestDetectAssetChangeHandler should also have been called
-            Assert.AreEqual(
-                1,
+            // TestDetectAssetChangeHandler watches TestDetectableAsset
+            Assert.GreaterOrEqual(
                 TestDetectAssetChangeHandler.RecordedContexts.Count,
-                $"Expected TestDetectAssetChangeHandler to receive notification, but got {TestDetectAssetChangeHandler.RecordedContexts.Count} invocations"
-            );
-
-            // TestStaticAssetChangeHandler should also have been called
-            Assert.AreEqual(
                 1,
-                TestStaticAssetChangeHandler.RecordedContexts.Count,
-                $"Expected TestStaticAssetChangeHandler to receive notification, but got {TestStaticAssetChangeHandler.RecordedContexts.Count} invocations"
+                $"Expected TestDetectAssetChangeHandler to be invoked at least once for TestDetectableAsset in mixed batch, "
+                    + $"but got {TestDetectAssetChangeHandler.RecordedContexts.Count} invocations"
             );
 
-            // TestDetailedSignatureHandler should also have been called (tracks created assets)
-            Assert.AreEqual(
+            // TestMultiAttributeHandler watches both asset types with different flags
+            // It should be invoked for TestDetectableAsset (Created) but not for
+            // TestAlternateDetectableAsset (which it only watches for Deleted)
+            Assert.GreaterOrEqual(
+                TestMultiAttributeHandler.RecordedInvocations.Count,
                 1,
-                TestDetailedSignatureHandler.LastCreatedAssets.Length,
-                $"Expected TestDetailedSignatureHandler to receive 1 created asset, but got {TestDetailedSignatureHandler.LastCreatedAssets.Length}"
+                $"Expected TestMultiAttributeHandler to be invoked at least once for Created TestDetectableAsset, "
+                    + $"but got {TestMultiAttributeHandler.RecordedInvocations.Count} invocations"
             );
-
-            LogAssert.NoUnexpectedReceived();
         }
 
-        [Test]
-        public void ProcessorTracksDeletedAssetsNotInKnownPaths()
-        {
-            // This test verifies that deleted assets are only reported if they were
-            // previously tracked via creation. Assets deleted that were never known
-            // to the processor should not trigger handler invocations.
-
-            ClearTestState();
-            DetectAssetChangeProcessor.ResetForTesting();
-            DetectAssetChangeProcessor.IncludeTestAssets = true;
-
-            string unknownPath = Root + "/UnknownAsset.asset";
-
-            // Process a deletion for an asset that was never created/tracked
-            DetectAssetChangeProcessor.ProcessChangesForTesting(
-                null,
-                new[] { unknownPath },
-                null,
-                null
-            );
-
-            // Handler should not be invoked because the asset was never in KnownAssetPaths
-            Assert.AreEqual(
-                0,
-                TestDetectAssetChangeHandler.RecordedContexts.Count,
-                $"Expected 0 handler invocations for unknown asset deletion, but got {TestDetectAssetChangeHandler.RecordedContexts.Count}. "
-                    + "Deleted assets should only trigger handlers if they were previously tracked."
-            );
-
-            Assert.AreEqual(
-                0,
-                TestAssignableAssetChangeHandler.RecordedDeletedPaths.Count,
-                $"Expected 0 deleted paths recorded for unknown asset, but got {TestAssignableAssetChangeHandler.RecordedDeletedPaths.Count}"
-            );
-
-            // Verify other handlers were also not invoked
-            Assert.AreEqual(
-                0,
-                TestLoopingHandler.InvocationCount,
-                $"Expected TestLoopingHandler to not be invoked for unknown asset deletion, but got {TestLoopingHandler.InvocationCount}"
-            );
-
-            Assert.AreEqual(
-                0,
-                TestStaticAssetChangeHandler.RecordedContexts.Count,
-                $"Expected TestStaticAssetChangeHandler to not be invoked for unknown asset deletion, but got {TestStaticAssetChangeHandler.RecordedContexts.Count}"
-            );
-
-            LogAssert.NoUnexpectedReceived();
-        }
-
-        [TestCase(true, true, TestName = "DeletedAssetTracking.PreviouslyCreated.ReportsToHandler")]
-        [TestCase(
-            false,
-            false,
-            TestName = "DeletedAssetTracking.NeverCreated.DoesNotReportToHandler"
-        )]
-        public void DeletedAssetsOnlyReportedIfPreviouslyKnown(
-            bool createAssetFirst,
-            bool expectDeletionHandled
+        [TestCase(false, false, true, true, TestName = "ChangeFlags.MovedOnly.HandlesMovedAsset")]
+        public void MovedAssetFlagsDataDriven(
+            bool hasCreated,
+            bool hasDeleted,
+            bool hasMoved,
+            bool hasMovedFrom
         )
         {
-            // Data-driven test for deletion tracking behavior
-
+            // Data-driven test for moved asset scenarios
+            CreatePayloadAssetAt(PayloadPath);
             ClearTestState();
-            DetectAssetChangeProcessor.ResetForTesting();
-            DetectAssetChangeProcessor.IncludeTestAssets = true;
 
-            if (createAssetFirst)
-            {
-                CreatePayloadAsset();
-                ClearTestState();
-
-                // Process creation to add to KnownAssetPaths
-                DetectAssetChangeProcessor.ProcessChangesForTesting(
-                    new[] { PayloadAssetPath },
-                    null,
-                    null,
-                    null
-                );
-                ClearTestState();
-            }
-
-            // Process deletion
+            // Process creation first to track the asset
             DetectAssetChangeProcessor.ProcessChangesForTesting(
+                new[] { PayloadPath },
                 null,
-                new[] { PayloadAssetPath },
                 null,
                 null
             );
+            ClearTestState();
 
-            int expectedCount = expectDeletionHandled ? 1 : 0;
-            Assert.AreEqual(
-                expectedCount,
+            string movedPath = TestRoot + "/MovedPayload.asset";
+
+            string[] created = hasCreated ? new[] { PayloadPath } : null;
+            string[] deleted = hasDeleted ? new[] { PayloadPath } : null;
+            string[] moved = hasMoved ? new[] { movedPath } : null;
+            string[] movedFrom = hasMovedFrom ? new[] { PayloadPath } : null;
+
+            DetectAssetChangeProcessor.ProcessChangesForTesting(created, deleted, moved, movedFrom);
+
+            // Moved events should be processed - verify the handler receives notification
+            // about the moved asset (moved from the original path to the new path)
+            Assert.GreaterOrEqual(
                 TestDetectAssetChangeHandler.RecordedContexts.Count,
-                $"Expected {expectedCount} handler invocation(s) for deletion "
-                    + $"(createFirst={createAssetFirst}, expectHandled={expectDeletionHandled}), "
-                    + $"but got {TestDetectAssetChangeHandler.RecordedContexts.Count}"
-            );
-
-            if (expectDeletionHandled)
-            {
-                AssetChangeContext context = TestDetectAssetChangeHandler.RecordedContexts[0];
-                Assert.AreEqual(
-                    AssetChangeFlags.Deleted,
-                    context.Flags,
-                    $"Expected Deleted flag, but got {context.Flags}"
-                );
-                CollectionAssert.Contains(
-                    context.DeletedAssetPaths,
-                    PayloadAssetPath,
-                    $"Expected deleted paths to contain '{PayloadAssetPath}'"
-                );
-            }
-
-            LogAssert.NoUnexpectedReceived();
-        }
-
-        [Test]
-        public void MultipleUnknownDeletedAssetsDoNotTriggerHandlers()
-        {
-            // Test that multiple unknown deleted assets in a single batch
-            // do not trigger any handler invocations
-
-            ClearTestState();
-            DetectAssetChangeProcessor.ResetForTesting();
-            DetectAssetChangeProcessor.IncludeTestAssets = true;
-
-            string[] unknownPaths = new[]
-            {
-                Root + "/Unknown1.asset",
-                Root + "/Unknown2.asset",
-                Root + "/SubFolder/Unknown3.asset",
-            };
-
-            // Process deletions for assets that were never tracked
-            DetectAssetChangeProcessor.ProcessChangesForTesting(null, unknownPaths, null, null);
-
-            Assert.AreEqual(
-                0,
-                TestDetectAssetChangeHandler.RecordedContexts.Count,
-                $"Expected 0 handler invocations for batch of unknown asset deletions, "
-                    + $"but got {TestDetectAssetChangeHandler.RecordedContexts.Count}"
-            );
-
-            // Verify all other handlers were also not invoked
-            Assert.AreEqual(
-                0,
-                TestLoopingHandler.InvocationCount,
-                $"Expected TestLoopingHandler to not be invoked for unknown asset deletions, but got {TestLoopingHandler.InvocationCount}"
-            );
-
-            Assert.AreEqual(
-                0,
-                TestStaticAssetChangeHandler.RecordedContexts.Count,
-                $"Expected TestStaticAssetChangeHandler to not be invoked for unknown asset deletions, but got {TestStaticAssetChangeHandler.RecordedContexts.Count}"
-            );
-
-            Assert.AreEqual(
-                0,
-                TestAssignableAssetChangeHandler.RecordedDeletedPaths.Count,
-                $"Expected TestAssignableAssetChangeHandler to not record any deleted paths for unknown assets, but got {TestAssignableAssetChangeHandler.RecordedDeletedPaths.Count}"
-            );
-
-            LogAssert.NoUnexpectedReceived();
-        }
-
-        [Test]
-        public void MixedKnownAndUnknownDeletedAssetsOnlyReportsKnown()
-        {
-            // Test that when deleting a mix of known and unknown assets,
-            // only the known assets are reported to handlers
-
-            CreatePayloadAsset();
-            ClearTestState();
-            DetectAssetChangeProcessor.ResetForTesting();
-            DetectAssetChangeProcessor.IncludeTestAssets = true;
-
-            // Process creation to track the payload asset
-            DetectAssetChangeProcessor.ProcessChangesForTesting(
-                new[] { PayloadAssetPath },
-                null,
-                null,
-                null
-            );
-            ClearTestState();
-
-            string unknownPath = Root + "/UnknownAsset.asset";
-
-            // Process deletion of both known and unknown assets
-            DetectAssetChangeProcessor.ProcessChangesForTesting(
-                null,
-                new[] { PayloadAssetPath, unknownPath },
-                null,
-                null
-            );
-
-            // Should have exactly one invocation for the known asset
-            Assert.AreEqual(
                 1,
-                TestDetectAssetChangeHandler.RecordedContexts.Count,
-                $"Expected 1 handler invocation for known asset deletion, "
-                    + $"but got {TestDetectAssetChangeHandler.RecordedContexts.Count}"
+                $"Expected at least 1 handler invocation for moved asset (hasCreated={hasCreated}, hasDeleted={hasDeleted}, "
+                    + $"hasMoved={hasMoved}, hasMovedFrom={hasMovedFrom}), but got {TestDetectAssetChangeHandler.RecordedContexts.Count}"
             );
-
-            AssetChangeContext context = TestDetectAssetChangeHandler.RecordedContexts[0];
-            Assert.AreEqual(AssetChangeFlags.Deleted, context.Flags);
-
-            // Only the known path should be in the deleted paths
-            CollectionAssert.Contains(
-                context.DeletedAssetPaths,
-                PayloadAssetPath,
-                "Known asset path should be in deleted paths"
-            );
-            CollectionAssert.DoesNotContain(
-                context.DeletedAssetPaths,
-                unknownPath,
-                "Unknown asset path should NOT be in deleted paths"
-            );
-
-            LogAssert.NoUnexpectedReceived();
         }
     }
 }

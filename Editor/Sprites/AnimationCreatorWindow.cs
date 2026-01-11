@@ -859,6 +859,15 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 GUILayout.Width(80)
             );
 
+            // Pre-load all assets to avoid display flickers
+            if (wantsPreview)
+            {
+                foreach (Sprite spriteFrame in data.frames)
+                {
+                    _ = GetPreviewTexture(spriteFrame);
+                }
+            }
+
             if (wantsPreview != data.showPreview)
             {
                 data.showPreview = wantsPreview;
