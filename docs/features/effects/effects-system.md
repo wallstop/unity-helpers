@@ -2100,17 +2100,20 @@ public class DebugConsole : MonoBehaviour
    /// Burning - Takes fire damage over time, can ignite others
    ```
 
-4. **Use effect tags for internal organization**
+4. **Use effect tags for multiple purposes**
 
    ```csharp
-   // EffectTags vs GrantTags:
-   // - EffectTags: Internal organization (removable via GetHandlesWithTag + RemoveEffects)
-   // - GrantTags: Gameplay queries (checked via HasTag)
+   // effectTags serve multiple purposes:
+   // - Internal organization (removable via GetHandlesWithTag + RemoveEffects)
+   // - Gameplay queries (checked via HasTag)
+   // - Effect identification and categorization
 
    // Example effect:
    // HastePotion.asset:
-   //   - effectTags: ["Potion", "Buff", "Consumable"]  // For removal/organization
-   //   - grantTags: ["Haste", "MovementBuff"]          // For gameplay queries
+   //   - effectTags: ["Haste", "Potion", "Buff", "MovementBuff"]
+   //   - Use "Haste" for gameplay queries (player.HasTag("Haste"))
+   //   - Use "Potion" for finding/removing all potions
+   //   - Use "Buff" for UI categorization
    ```
 
 5. **Test tag combinations** - Verify interactions work correctly

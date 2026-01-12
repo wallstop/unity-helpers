@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 See [the roadmap](./docs/overview/roadmap.md) for details
 
+## [3.1.0]
+
 ### Added
 
 - **Pool Access Frequency Tracking**: Intelligent purge decisions based on pool usage patterns
@@ -57,10 +59,7 @@ See [the roadmap](./docs/overview/roadmap.md) for details
   - Lifecycle hooks automatically registered via `RuntimeInitializeOnLoadMethod`
 - **RandomExtensions `NextOfExcept`**: New extension methods for selecting random elements with exclusions
   - `NextOfExcept(values)` - no exclusions (convenience overload)
-  - `NextOfExcept(values, exception1)` - exclude one value
-  - `NextOfExcept(values, exception1, exception2)` - exclude two values
-  - `NextOfExcept(values, exception1, exception2, exception3)` - exclude three values
-  - `NextOfExcept(values, exceptions)` - exclude arbitrary set of values
+  - `NextOfExcept(values, exception1...)` - exclude values
   - Zero-allocation using pooled collections internally
 
 ### Changed
@@ -71,7 +70,7 @@ See [the roadmap](./docs/overview/roadmap.md) for details
   - `DefaultHysteresisSeconds` defaults to `120` (was `60`)
   - `DefaultSpikeThresholdMultiplier` defaults to `2.5` (was `2.0`)
   - Use `PoolPurgeSettings.DisableGlobally()` to restore previous behavior
-  - `UnityMainThreadDispatcher` auto-load behavior has changed from auto-loading to not auto-loading (you will need to manually create it.)
+  - `UnityMainThreadDispatcher` auto-load behavior has changed from auto-loading to not auto-loading.
   - `UnityMainThreadDispatcher` hide flags have been changed to `None`.
 
 - **DictionaryExtensions `ToDictionary`**: Now uses last-wins semantics for duplicate keys instead of throwing `ArgumentException`

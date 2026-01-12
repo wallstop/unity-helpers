@@ -136,8 +136,7 @@ Select `HasteEffect` and set these values in Inspector:
 
 **Tags:**
 
-- Effect Tags: Add tag `"Haste"`
-- Grant Tags: Add tag `"Haste"` (allows gameplay queries)
+- Effect Tags: Add `"Haste"` (used for both gameplay queries via `HasTag()` and effect organization)
 
 ### 3.3 Add Visual Effects (Optional)
 
@@ -219,8 +218,7 @@ Let's make a more complex effect that prevents movement.
 
 **Tags:**
 
-- Effect Tags: `"Stun"`, `"Debuff"`
-- Grant Tags: `"Stunned"`, `"CC"` (crowd control)
+- Effect Tags: `"Stunned"`, `"Stun"`, `"Debuff"`, `"CC"` (for gameplay queries and organization)
 
 ### 5.3 Query Tags in Gameplay
 

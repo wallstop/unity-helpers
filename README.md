@@ -452,7 +452,7 @@ Add to your `Packages/manifest.json`:
     }
   ],
   "dependencies": {
-    "com.wallstop-studios.unity-helpers": "2.2.0"
+    "com.wallstop-studios.unity-helpers": "3.1.0"
   }
 }
 ```
@@ -475,7 +475,7 @@ Install directly from GitHub for the latest version:
 }
 ```
 
-> **Tip:** To lock to a specific version, append `#v2.2.0` to the URL.
+> **Tip:** To lock to a specific version, append `#3.1.0` to the URL.
 
 ### From NPM Registry
 
