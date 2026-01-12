@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Tests.Helper
@@ -10,20 +10,27 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
     using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Tests.Core;
 
-    public sealed class ObjectHelpersEditorTests : CommonTestBase
+    [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
+    public sealed class ObjectHelpersEditorTests : BatchedEditorTestBase
     {
         private const string TempFolder = "Assets/TempObjectHelpersEditorTests";
         private const string AssetName = "TestMaterial.mat";
         private string _assetPath;
 
+        [OneTimeSetUp]
+        public override void CommonOneTimeSetUp()
+        {
+            base.CommonOneTimeSetUp();
+            EnsureFolder(TempFolder);
+            TrackFolder(TempFolder);
+        }
+
         [SetUp]
         public override void BaseSetUp()
         {
             base.BaseSetUp();
-            if (!AssetDatabase.IsValidFolder(TempFolder))
-            {
-                AssetDatabase.CreateFolder("Assets", "TempObjectHelpersEditorTests");
-            }
             _assetPath = TempFolder + "/" + AssetName;
         }
 
@@ -31,12 +38,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         public override void TearDown()
         {
             base.TearDown();
-            if (AssetDatabase.IsValidFolder(TempFolder))
+            // Track asset for deferred cleanup
+            if (!string.IsNullOrEmpty(_assetPath))
             {
-                AssetDatabase.DeleteAsset(_assetPath);
-                AssetDatabase.DeleteAsset(TempFolder);
-                AssetDatabase.SaveAssets();
-                AssetDatabase.Refresh();
+                TrackAssetPath(_assetPath);
             }
         }
 
@@ -48,18 +53,26 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             {
                 Assert.Inconclusive("Required shader not found.");
             }
-            Material mat = new(shader);
-            AssetDatabase.CreateAsset(mat, _assetPath);
-            AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
 
-            Material loaded = AssetDatabase.LoadAssetAtPath<Material>(_assetPath);
+            Material loaded = null;
+            ExecuteWithImmediateImport(() =>
+            {
+                Material mat = new(shader);
+                AssetDatabase.CreateAsset(mat, _assetPath);
+                AssetDatabase.SaveAssets();
+                loaded = AssetDatabase.LoadAssetAtPath<Material>(_assetPath);
+            });
+
             Assert.IsTrue(loaded != null, "Expected asset to be created and loadable");
 
             // Should not log errors and should not delete the on-disk asset
             loaded.Destroy();
 
-            Material reloaded = AssetDatabase.LoadAssetAtPath<Material>(_assetPath);
+            Material reloaded = null;
+            ExecuteWithImmediateImport(() =>
+            {
+                reloaded = AssetDatabase.LoadAssetAtPath<Material>(_assetPath);
+            });
             Assert.IsTrue(reloaded != null, "Expected asset to remain after SmartDestroy");
         }
     }

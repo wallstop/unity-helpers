@@ -1,6 +1,22 @@
 # Skill: Use Serializable Types
 
+<!-- trigger: dictionary, hashset, nullable, type, guid | Dictionaries, HashSets, Nullable, Type, Guid | Feature -->
+
 **Trigger**: When you need Unity-serializable collections (dictionaries, hash sets), nullable value types, type references, or GUIDs that work in the Inspector, JSON, and Protobuf.
+
+---
+
+## When to Use This Skill
+
+Use this skill when you need:
+
+- Dictionary or hash set collections that serialize in Unity Inspector
+- Nullable value types (`int?`, `float?`) that Unity can serialize
+- Type references (`System.Type`) stored in assets
+- GUIDs that survive Unity serialization
+
+For common patterns and integration examples, see [Serializable Types Patterns](./use-serializable-types-patterns.md).
+For serialization system details, see [Serialization](./use-serialization.md).
 
 ---
 
@@ -438,221 +454,21 @@ names[id1] = "Player";
 
 ---
 
-## JSON/Protobuf Compatibility
+## Quick Reference
 
-All serializable types work automatically with the package's serialization system.
-
-### JSON Example
-
-```csharp
-using WallstopStudios.UnityHelpers.Core.Serialization;
-
-[Serializable]
-public class GameState
-{
-    public SerializableDictionary<string, int> Scores = new();
-    public SerializableHashSet<string> UnlockedLevels = new();
-    public SerializableNullable<float> BestTime = new();
-    public WGuid PlayerId = WGuid.NewGuid();
-}
-
-// Serialize to JSON
-GameState state = new();
-state.Scores["Level1"] = 1500;
-state.UnlockedLevels.Add("Level1");
-state.BestTime.SetValue(45.3f);
-
-string json = Serializer.JsonSerialize(state, prettyPrint: true);
-
-// Deserialize from JSON
-GameState loaded = Serializer.JsonDeserialize<GameState>(json);
-```
-
-### Protobuf Example
-
-```csharp
-using ProtoBuf;
-using WallstopStudios.UnityHelpers.Core.Serialization;
-
-[ProtoContract]
-public class SaveData
-{
-    [ProtoMember(1)]
-    public SerializableDictionary<string, int> Inventory { get; set; } = new();
-
-    [ProtoMember(2)]
-    public SerializableHashSet<string> Achievements { get; set; } = new();
-
-    [ProtoMember(3)]
-    public SerializableNullable<int> HighScore { get; set; } = new();
-
-    [ProtoMember(4)]
-    public WGuid SessionId { get; set; } = WGuid.NewGuid();
-}
-
-// Serialize to bytes
-SaveData data = new();
-byte[] bytes = Serializer.ProtoSerialize(data);
-
-// Deserialize from bytes
-SaveData loaded = Serializer.ProtoDeserialize<SaveData>(bytes);
-```
+| Type                      | Create                  | Check Value        | Get Value                      |
+| ------------------------- | ----------------------- | ------------------ | ------------------------------ |
+| `SerializableDictionary`  | `new()`                 | `ContainsKey(key)` | `TryGetValue(key, out value)`  |
+| `SerializableSortedDict`  | `new()`                 | `ContainsKey(key)` | `TryGetValue(key, out value)`  |
+| `SerializableHashSet`     | `new()`                 | `Contains(item)`   | N/A (set membership)           |
+| `SerializableNullable<T>` | `new()` or `new(value)` | `HasValue`         | `Value` or `GetValueOrDefault` |
+| `SerializableType`        | `new(typeof(T))`        | `!IsEmpty`         | `Value` or `TryGetValue`       |
+| `WGuid`                   | `WGuid.NewGuid()`       | `!= WGuid.Empty`   | Implicit conversion to `Guid`  |
 
 ---
 
-## Common Patterns
+## Related Skills
 
-### Configuration with Defaults
-
-```csharp
-public sealed class EnemyConfig : MonoBehaviour
-{
-    [SerializeField]
-    private SerializableDictionary<string, float> _statMultipliers = new()
-    {
-        { "Health", 1.0f },
-        { "Damage", 1.0f },
-        { "Speed", 1.0f }
-    };
-
-    [SerializeField]
-    private SerializableNullable<float> _bossMultiplier = new();
-
-    public float GetMultiplier(string stat)
-    {
-        float baseMultiplier = _statMultipliers.GetValueOrDefault(stat, 1.0f);
-        float bossBonus = _bossMultiplier.GetValueOrDefault(1.0f);
-        return baseMultiplier * bossBonus;
-    }
-}
-```
-
-### Entity Registry with GUIDs
-
-```csharp
-public sealed class EntityRegistry : MonoBehaviour
-{
-    [SerializeField]
-    private SerializableDictionary<WGuid, string> _entityNames = new();
-
-    public void Register(WGuid id, string name)
-    {
-        _entityNames[id] = name;
-    }
-
-    public string GetName(WGuid id)
-    {
-        return _entityNames.GetValueOrDefault(id, "Unknown");
-    }
-}
-```
-
-### Type-Based Factory
-
-```csharp
-public sealed class EnemyFactory : MonoBehaviour
-{
-    [SerializeField]
-    private SerializableDictionary<string, SerializableType> _enemyTypes = new();
-
-    public Component SpawnEnemy(string enemyId, GameObject prefab)
-    {
-        if (_enemyTypes.TryGetValue(enemyId, out SerializableType typeRef))
-        {
-            Type type = typeRef.Value;
-            if (type != null)
-            {
-                return prefab.AddComponent(type);
-            }
-        }
-        return null;
-    }
-}
-```
-
-### Unlockables Tracking
-
-```csharp
-public sealed class ProgressTracker : MonoBehaviour
-{
-    [SerializeField]
-    private SerializableHashSet<string> _unlockedItems = new();
-
-    [SerializeField]
-    private SerializableSortedDictionary<string, int> _itemCounts = new();
-
-    public void UnlockItem(string itemId)
-    {
-        _unlockedItems.Add(itemId);
-    }
-
-    public void AddItem(string itemId, int count)
-    {
-        if (_itemCounts.TryGetValue(itemId, out int current))
-        {
-            _itemCounts[itemId] = current + count;
-        }
-        else
-        {
-            _itemCounts[itemId] = count;
-        }
-    }
-}
-```
-
----
-
-## Common Pitfalls
-
-### ❌ Using Standard Dictionary
-
-```csharp
-// Won't serialize in Unity Inspector or save files
-[SerializeField]
-private Dictionary<string, int> scores;  // ❌ Not serializable!
-```
-
-### ✅ Use SerializableDictionary
-
-```csharp
-[SerializeField]
-private SerializableDictionary<string, int> scores = new();  // ✅ Works!
-```
-
-### ❌ Forgetting to Initialize
-
-```csharp
-[SerializeField]
-private SerializableDictionary<string, int> _scores;  // Might be null!
-
-void Start()
-{
-    _scores["test"] = 1;  // ❌ NullReferenceException
-}
-```
-
-### ✅ Always Initialize
-
-```csharp
-[SerializeField]
-private SerializableDictionary<string, int> _scores = new();  // ✅ Safe
-
-void Start()
-{
-    _scores["test"] = 1;  // Works
-}
-```
-
-### ❌ Nullable<T> in SerializeField
-
-```csharp
-[SerializeField]
-private int? _optionalValue;  // ❌ Unity ignores this!
-```
-
-### ✅ Use SerializableNullable
-
-```csharp
-[SerializeField]
-private SerializableNullable<int> _optionalValue = new();  // ✅ Works!
-```
+- [Serializable Types Patterns](./use-serializable-types-patterns.md) - Common patterns and integration examples
+- [Serialization](./use-serialization.md) - JSON and Protobuf serialization details
+- [Data Structures](./use-data-structures.md) - Other available data structures

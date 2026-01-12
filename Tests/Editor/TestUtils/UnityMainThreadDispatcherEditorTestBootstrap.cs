@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Tests.TestUtils
@@ -8,26 +8,42 @@ namespace WallstopStudios.UnityHelpers.Tests.TestUtils
     using WallstopStudios.UnityHelpers.Core.Helper;
     using Object = UnityEngine.Object;
 
+    /// <summary>
+    /// Disables automatic UnityMainThreadDispatcher creation during test runs.
+    /// This prevents the dispatcher from being created unexpectedly during tests
+    /// and ensures clean test isolation.
+    /// </summary>
+    /// <remarks>
+    /// The dispatcher cleanup is deferred via EditorApplication.delayCall to avoid
+    /// blocking during Unity's early initialization phase (e.g., during "Open Project: Open Scene").
+    /// Calling Resources.FindObjectsOfTypeAll during static initialization can cause
+    /// Unity Editor hangs.
+    /// </remarks>
     [InitializeOnLoad]
     internal static class UnityMainThreadDispatcherEditorTestBootstrap
     {
         static UnityMainThreadDispatcherEditorTestBootstrap()
         {
-            DisableDispatcherAutoCreation();
-        }
-
-        private static void DisableDispatcherAutoCreation()
-        {
+            // Immediately disable auto-creation (safe - no Unity API call required)
             UnityMainThreadDispatcher.SetAutoCreationEnabled(false);
 
-            UnityMainThreadDispatcher dispatcher = null;
+            // Defer the dispatcher cleanup to avoid blocking during "Open Scene".
+            // Resources.FindObjectsOfTypeAll can cause Unity Editor hangs when called
+            // during static initialization before Unity is fully loaded.
+            EditorApplication.delayCall += CleanupExistingDispatchers;
+        }
+
+        private static void CleanupExistingDispatchers()
+        {
             UnityMainThreadDispatcher[] allDispatchers =
                 Resources.FindObjectsOfTypeAll<UnityMainThreadDispatcher>();
-            if (allDispatchers != null && allDispatchers.Length > 0)
+
+            if (allDispatchers == null || allDispatchers.Length == 0)
             {
-                dispatcher = allDispatchers[0];
+                return;
             }
 
+            UnityMainThreadDispatcher dispatcher = allDispatchers[0];
             if (dispatcher == null)
             {
                 return;

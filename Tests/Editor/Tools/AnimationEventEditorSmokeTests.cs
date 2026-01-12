@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Tests.Tools
@@ -9,8 +9,22 @@ namespace WallstopStudios.UnityHelpers.Tests.Tools
     using WallstopStudios.UnityHelpers.Tests.Core;
 
     [TestFixture]
-    public sealed class AnimationEventEditorSmokeTests : CommonTestBase
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
+    public sealed class AnimationEventEditorSmokeTests : BatchedEditorTestBase
     {
+        [SetUp]
+        public void SetUp()
+        {
+            base.BaseSetUp();
+        }
+
+        [TearDown]
+        public override void TearDown()
+        {
+            base.TearDown();
+        }
+
         [Test]
         public void AnimationEventEditorOpensAndClosesWithoutAnimator()
         {

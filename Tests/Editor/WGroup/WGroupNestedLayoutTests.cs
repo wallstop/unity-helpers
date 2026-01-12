@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 #if UNITY_EDITOR
@@ -18,6 +18,8 @@ namespace WallstopStudios.UnityHelpers.Tests.WGroup
     /// orphan children, and proper operation ordering.
     /// </summary>
     [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class WGroupNestedLayoutTests : CommonTestBase
     {
         private UnityHelpersSettings.WGroupAutoIncludeConfiguration _previousConfiguration;

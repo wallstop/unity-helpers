@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Core.Attributes
@@ -6,7 +6,6 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
     using System;
     using System.Collections;
     using System.Collections.Generic;
-    using System.Linq;
     using System.Linq.Expressions;
     using System.Reflection;
     using Extension;
@@ -713,14 +712,31 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
     {
         private static readonly Dictionary<Type, Func<Component, bool, Array>> ArrayGetters = new();
 
-        private static readonly MethodInfo GetComponentsInParentGeneric = typeof(Component)
-            .GetMethods(BindingFlags.Instance | BindingFlags.Public)
-            .First(method =>
-                method.Name == nameof(Component.GetComponentsInParent)
-                && method.IsGenericMethodDefinition
-                && method.GetParameters().Length == 1
-                && method.GetParameters()[0].ParameterType == typeof(bool)
+        private static readonly MethodInfo GetComponentsInParentGeneric =
+            FindGetComponentsInParentMethod();
+
+        private static MethodInfo FindGetComponentsInParentMethod()
+        {
+            MethodInfo[] methods = typeof(Component).GetMethods(
+                BindingFlags.Instance | BindingFlags.Public
             );
+            for (int i = 0; i < methods.Length; i++)
+            {
+                MethodInfo method = methods[i];
+                if (
+                    method.Name == nameof(Component.GetComponentsInParent)
+                    && method.IsGenericMethodDefinition
+                    && method.GetParameters().Length == 1
+                    && method.GetParameters()[0].ParameterType == typeof(bool)
+                )
+                {
+                    return method;
+                }
+            }
+            throw new InvalidOperationException(
+                "Could not find GetComponentsInParent<T>(bool) method on Component type."
+            );
+        }
 
         internal static Array GetArray(Component component, Type elementType, bool includeInactive)
         {

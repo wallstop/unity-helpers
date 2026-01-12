@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Tests.Helper
@@ -17,6 +17,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
     using WallstopStudios.UnityHelpers.Tests.TestDoubles;
     using Object = UnityEngine.Object;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class HelpersTests : CommonTestBase
     {
         // Tracking handled by CommonTestBase
@@ -100,7 +102,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
                 Helpers.ResetSpriteLabelCache();
 
                 string[] labels = Helpers.GetAllSpriteLabelNames();
-                Assert.IsNotNull(labels);
+                Assert.IsTrue(labels != null);
                 Assert.IsEmpty(labels);
 
                 List<string> buffer = new();
@@ -240,7 +242,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         {
             ScriptableObject asset = Track(ScriptableObject.CreateInstance<ScriptableObject>());
             Component[] result = asset.GetComponents<Component>();
-            Assert.IsNotNull(result);
+            Assert.IsTrue(result != null);
             Assert.IsEmpty(result);
             Assert.AreSame(Array.Empty<Component>(), result);
             yield break;

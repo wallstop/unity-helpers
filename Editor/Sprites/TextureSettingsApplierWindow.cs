@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Editor.Sprites
@@ -12,6 +12,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
     using CustomEditors;
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Core.Extension;
+    using WallstopStudios.UnityHelpers.Editor.Utils;
     using WallstopStudios.UnityHelpers.Utils;
     using Object = UnityEngine.Object;
 
@@ -617,62 +618,52 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             int count = 0;
             using PooledResource<List<TextureImporter>> changedResource =
                 Buffers<TextureImporter>.List.Get(out List<TextureImporter> changed);
+            using (AssetDatabaseBatchHelper.BeginBatch(refreshOnDispose: false))
             {
-                AssetDatabase.StartAssetEditing();
-                try
+                double lastUpdate = EditorApplication.timeSinceStartup;
+                for (int i = 0; i < targets.Count; i++)
                 {
-                    double lastUpdate = EditorApplication.timeSinceStartup;
-                    for (int i = 0; i < targets.Count; i++)
-                    {
-                        string path = targets[i];
-                        double now = EditorApplication.timeSinceStartup;
-                        bool shouldUpdate =
-                            i == 0
-                            || i == targets.Count - 1
-                            || i % 50 == 0
-                            || now - lastUpdate > 0.2;
-                        if (
-                            shouldUpdate
-                            && Utils.EditorUi.CancelableProgress(
-                                "Applying Texture Settings",
-                                $"Processing '{Path.GetFileName(path)}' ({i + 1}/{targets.Count})",
-                                (float)(i + 1) / Math.Max(1, targets.Count)
-                            )
+                    string path = targets[i];
+                    double now = EditorApplication.timeSinceStartup;
+                    bool shouldUpdate =
+                        i == 0 || i == targets.Count - 1 || i % 50 == 0 || now - lastUpdate > 0.2;
+                    if (
+                        shouldUpdate
+                        && EditorUi.CancelableProgress(
+                            "Applying Texture Settings",
+                            $"Processing '{Path.GetFileName(path)}' ({i + 1}/{targets.Count})",
+                            (float)(i + 1) / Math.Max(1, targets.Count)
                         )
-                        {
-                            break;
-                        }
-                        if (shouldUpdate)
-                        {
-                            lastUpdate = now;
-                        }
+                    )
+                    {
+                        break;
+                    }
+                    if (shouldUpdate)
+                    {
+                        lastUpdate = now;
+                    }
 
-                        if (
-                            TextureSettingsApplierAPI.TryUpdateTextureSettings(
-                                path,
-                                in config,
-                                out TextureImporter importer,
-                                _settingsBuffer
-                            )
+                    if (
+                        TextureSettingsApplierAPI.TryUpdateTextureSettings(
+                            path,
+                            in config,
+                            out TextureImporter importer,
+                            _settingsBuffer
                         )
+                    )
+                    {
+                        if (importer != null)
                         {
-                            if (importer != null)
-                            {
-                                changed.Add(importer);
-                                ++count;
-                            }
+                            changed.Add(importer);
+                            ++count;
                         }
                     }
                 }
-                finally
-                {
-                    AssetDatabase.StopAssetEditing();
-                    Utils.EditorUi.ClearProgress();
-                    for (int j = 0; j < changed.Count; j++)
-                    {
-                        changed[j].SaveAndReimport();
-                    }
-                }
+            }
+            EditorUi.ClearProgress();
+            for (int j = 0; j < changed.Count; j++)
+            {
+                changed[j].SaveAndReimport();
             }
 
             if (count > 0)

@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 #if UNITY_EDITOR
@@ -15,9 +15,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
     using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Editor.Utils;
     using WallstopStudios.UnityHelpers.Tests.Core;
+    using WallstopStudios.UnityHelpers.Tests.Core.TestUtils;
     using WallstopStudios.UnityHelpers.Tests.Editor.TestTypes;
     using Object = UnityEngine.Object;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class DuplicateSingletonCleanupTests : CommonTestBase
     {
         private const string TestRoot = "Assets/Resources/DuplicateCleanupTests";
@@ -149,7 +153,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         private static void CleanupAllTestAssetsAndFolders()
         {
             // Refresh first to ensure asset database is in sync with disk
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             // Delete assets in folders (check folder validity right before FindAssets to avoid race conditions)
             TryDeleteAssetsInFolder(DeeplyNestedFolder);
@@ -199,7 +203,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             }
 
             // Final refresh to sync changes
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
         }
 
         /// <summary>
@@ -282,21 +286,25 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             }
 
             bool deletedAny = false;
-            foreach (string guid in guids)
+            // Batch the delete operations - use refreshOnDispose: false since callers handle refresh
+            using (AssetDatabaseBatchHelper.BeginBatch(refreshOnDispose: false))
             {
-                string path = AssetDatabase.GUIDToAssetPath(guid);
-                if (!string.IsNullOrEmpty(path) && !AssetDatabase.IsValidFolder(path))
+                foreach (string guid in guids)
                 {
-                    if (AssetDatabase.DeleteAsset(path))
+                    string path = AssetDatabase.GUIDToAssetPath(guid);
+                    if (!string.IsNullOrEmpty(path) && !AssetDatabase.IsValidFolder(path))
                     {
-                        deletedAny = true;
+                        if (AssetDatabase.DeleteAsset(path))
+                        {
+                            deletedAny = true;
+                        }
                     }
                 }
             }
 
             if (deletedAny)
             {
-                AssetDatabase.SaveAssets();
+                AssetDatabaseBatchHelper.SaveAndRefreshIfNotBatching();
             }
         }
 
@@ -319,8 +327,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                 ScriptableObject.CreateInstance<CleanupEnabledSingleton>(); // UNH-SUPPRESS: Asset managed by CleanupTestAssets
             AssetDatabase.CreateAsset(duplicate, duplicatePath);
 
-            AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.SaveAndRefreshIfNotBatching();
 
             Assert.That(
                 AssetDatabase.LoadAssetAtPath<CleanupEnabledSingleton>(canonicalPath),
@@ -333,7 +340,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
 
             ScriptableObjectSingletonCreator.EnsureSingletonAssets();
             yield return null;
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             Assert.That(
                 AssetDatabase.LoadAssetAtPath<CleanupEnabledSingleton>(canonicalPath),
@@ -365,8 +372,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                 ScriptableObject.CreateInstance<CleanupDisabledSingleton>(); // UNH-SUPPRESS: UNH002 - Asset managed by CleanupTestAssets
             AssetDatabase.CreateAsset(duplicate, duplicatePath);
 
-            AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.SaveAndRefreshIfNotBatching();
 
             Assert.That(
                 AssetDatabase.LoadAssetAtPath<CleanupDisabledSingleton>(canonicalPath),
@@ -379,7 +385,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
 
             ScriptableObjectSingletonCreator.EnsureSingletonAssets();
             yield return null;
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             Assert.That(
                 AssetDatabase.LoadAssetAtPath<CleanupDisabledSingleton>(canonicalPath),
@@ -415,8 +421,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             duplicate.TestString = "different";
             AssetDatabase.CreateAsset(duplicate, duplicatePath);
 
-            AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.SaveAndRefreshIfNotBatching();
 
             Assert.That(
                 AssetDatabase.LoadAssetAtPath<CleanupWithDataSingleton>(canonicalPath),
@@ -429,7 +434,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
 
             ScriptableObjectSingletonCreator.EnsureSingletonAssets();
             yield return null;
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             Assert.That(
                 AssetDatabase.LoadAssetAtPath<CleanupWithDataSingleton>(canonicalPath),
@@ -467,8 +472,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                 ScriptableObject.CreateInstance<CleanupEnabledSingleton>(); // UNH-SUPPRESS: UNH002 - Asset managed by CleanupTestAssets
             AssetDatabase.CreateAsset(duplicate2, duplicatePath2);
 
-            AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.SaveAndRefreshIfNotBatching();
 
             Assert.That(
                 AssetDatabase.LoadAssetAtPath<CleanupEnabledSingleton>(canonicalPath),
@@ -485,7 +489,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
 
             ScriptableObjectSingletonCreator.EnsureSingletonAssets();
             yield return null;
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             Assert.That(
                 AssetDatabase.LoadAssetAtPath<CleanupEnabledSingleton>(canonicalPath),
@@ -511,8 +515,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             EnsureFolder(DeeplyNestedFolder);
 
             // Ensure folders are registered with AssetDatabase before proceeding
-            AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
+            AssetDatabaseBatchHelper.SaveAndRefreshIfNotBatching();
             yield return null;
 
             LogAssert.ignoreFailingMessages = true;
@@ -529,8 +532,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                 ScriptableObject.CreateInstance<CleanupEnabledSingleton>(); // UNH-SUPPRESS: UNH002 - Asset managed by CleanupTestAssets
             AssetDatabase.CreateAsset(duplicate, duplicatePath);
 
-            AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
+            AssetDatabaseBatchHelper.SaveAndRefreshIfNotBatching();
 
             // Verify setup
             Assert.That(
@@ -552,8 +554,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             yield return null;
 
             // Force refresh to ensure we see the latest state
-            AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
+            AssetDatabaseBatchHelper.SaveAndRefreshIfNotBatching();
             yield return null;
 
             // Verify duplicate was removed
@@ -635,8 +636,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             ScriptableObject otherAsset = ScriptableObject.CreateInstance<DummyScriptable>(); // UNH-SUPPRESS: UNH002 - Asset managed by CleanupTestAssets
             AssetDatabase.CreateAsset(otherAsset, otherAssetPath);
 
-            AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.SaveAndRefreshIfNotBatching();
 
             // Verify setup: other asset exists at expected path
             Assert.That(
@@ -647,7 +647,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
 
             ScriptableObjectSingletonCreator.EnsureSingletonAssets();
             yield return null;
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             Assert.That(
                 AssetDatabase.LoadAssetAtPath<CleanupEnabledSingleton>(duplicatePath),
@@ -684,8 +684,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                 ScriptableObject.CreateInstance<CleanupEnabledSingleton>(); // UNH-SUPPRESS: UNH002 - Asset managed by CleanupTestAssets
             AssetDatabase.CreateAsset(duplicate, duplicatePath);
 
-            AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.SaveAndRefreshIfNotBatching();
 
             Assert.That(
                 AssetDatabase.LoadAssetAtPath<CleanupEnabledSingleton>(duplicatePath),
@@ -694,7 +693,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
 
             ScriptableObjectSingletonCreator.EnsureSingletonAssets();
             yield return null;
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             string canonicalPath = TestRoot + "/CleanupEnabledSingleton.asset";
             Assert.That(
@@ -717,8 +716,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                 ScriptableObject.CreateInstance<CleanupEnabledSingleton>(); // UNH-SUPPRESS: UNH002 - Asset managed by CleanupTestAssets
             AssetDatabase.CreateAsset(canonical, canonicalPath);
 
-            AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.SaveAndRefreshIfNotBatching();
 
             Assert.That(
                 AssetDatabase.LoadAssetAtPath<CleanupEnabledSingleton>(canonicalPath),
@@ -727,7 +725,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
 
             ScriptableObjectSingletonCreator.EnsureSingletonAssets();
             yield return null;
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             Assert.That(
                 AssetDatabase.LoadAssetAtPath<CleanupEnabledSingleton>(canonicalPath),
@@ -759,12 +757,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             duplicate.TestString = "test";
             AssetDatabase.CreateAsset(duplicate, duplicatePath);
 
-            AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.SaveAndRefreshIfNotBatching();
 
             ScriptableObjectSingletonCreator.EnsureSingletonAssets();
             yield return null;
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             Assert.That(
                 AssetDatabase.LoadAssetAtPath<CleanupWithDataSingleton>(canonicalPath),
@@ -833,8 +830,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             EnsureFolder(Level3);
             EnsureFolder(Level4);
 
-            AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
+            AssetDatabaseBatchHelper.SaveAndRefreshIfNotBatching();
             yield return null;
 
             LogAssert.ignoreFailingMessages = true;
@@ -850,8 +846,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                 ScriptableObject.CreateInstance<CleanupEnabledSingleton>(); // UNH-SUPPRESS: UNH002 - Asset managed by CleanupTestAssets
             AssetDatabase.CreateAsset(duplicate, duplicatePath);
 
-            AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
+            AssetDatabaseBatchHelper.SaveAndRefreshIfNotBatching();
 
             ScriptableObjectSingletonCreator.EnsureSingletonAssets();
 
@@ -859,8 +854,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             yield return null;
             yield return null;
 
-            AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
+            AssetDatabaseBatchHelper.SaveAndRefreshIfNotBatching();
             yield return null;
 
             // Build diagnostics
@@ -906,8 +900,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             EnsureFolder(SiblingFolder);
             EnsureFolder(DeepFolder);
 
-            AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
+            AssetDatabaseBatchHelper.SaveAndRefreshIfNotBatching();
             yield return null;
 
             LogAssert.ignoreFailingMessages = true;
@@ -928,8 +921,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             ScriptableObject siblingAsset = ScriptableObject.CreateInstance<DummyScriptable>(); // UNH-SUPPRESS: UNH002 - Asset managed by CleanupTestAssets
             AssetDatabase.CreateAsset(siblingAsset, siblingAssetPath);
 
-            AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
+            AssetDatabaseBatchHelper.SaveAndRefreshIfNotBatching();
 
             ScriptableObjectSingletonCreator.EnsureSingletonAssets();
 
@@ -937,8 +929,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             yield return null;
             yield return null;
 
-            AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
+            AssetDatabaseBatchHelper.SaveAndRefreshIfNotBatching();
             yield return null;
 
             // Build diagnostics
@@ -986,8 +977,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             EnsureFolder(EmptySubfolder2);
             EnsureFolder(AssetSubfolder);
 
-            AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
+            AssetDatabaseBatchHelper.SaveAndRefreshIfNotBatching();
             yield return null;
 
             LogAssert.ignoreFailingMessages = true;
@@ -1003,8 +993,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                 ScriptableObject.CreateInstance<CleanupEnabledSingleton>(); // UNH-SUPPRESS: UNH002 - Asset managed by CleanupTestAssets
             AssetDatabase.CreateAsset(duplicate, duplicatePath);
 
-            AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
+            AssetDatabaseBatchHelper.SaveAndRefreshIfNotBatching();
 
             ScriptableObjectSingletonCreator.EnsureSingletonAssets();
 
@@ -1012,8 +1001,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             yield return null;
             yield return null;
 
-            AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
+            AssetDatabaseBatchHelper.SaveAndRefreshIfNotBatching();
             yield return null;
 
             // Build diagnostics

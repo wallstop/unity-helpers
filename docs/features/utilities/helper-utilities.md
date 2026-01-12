@@ -1035,7 +1035,9 @@ foreach (string varName in Helpers.CiEnvironmentVariables.All)
 
 ## Related Documentation
 
+- [Intelligent Pooling System](./pooling-guide.md) - Advanced object pooling with auto-purging
 - [Math & Extensions](./math-and-extensions.md) - Extension methods on built-in types
 - [Utility Components](../inspector/utility-components.md) - MonoBehaviour-based utilities
 - [Reflection Helpers](./reflection-helpers.md) - High-performance reflection utilities
 - [Singletons](./singletons.md) - RuntimeSingleton and ScriptableObjectSingleton
+- [Data Structures](./data-structures.md) - Cache, spatial trees, and other collections

@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 #if UNITY_EDITOR
@@ -19,6 +19,8 @@ namespace WallstopStudios.UnityHelpers.Tests.WGroup
     /// Focuses on EditorGUI.indentLevel behavior during group rendering.
     /// </summary>
     [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class WGroupIndentLevelTests : CommonTestBase
     {
         private UnityHelpersSettings.WGroupAutoIncludeConfiguration _previousConfiguration;
@@ -400,9 +402,15 @@ namespace WallstopStudios.UnityHelpers.Tests.WGroup
             target.level3List = new List<int> { 1, 2, 3 };
             using SerializedObject serializedObject = new(target);
 
-            SerializedProperty level1Property = serializedObject.FindProperty("level1Field");
-            SerializedProperty level2Property = serializedObject.FindProperty("level2Field");
-            SerializedProperty level3ListProperty = serializedObject.FindProperty("level3List");
+            SerializedProperty level1Property = serializedObject.FindProperty(
+                nameof(ThreeLevelGroupsTarget.level1Field)
+            );
+            SerializedProperty level2Property = serializedObject.FindProperty(
+                nameof(ThreeLevelGroupsTarget.level2Field)
+            );
+            SerializedProperty level3ListProperty = serializedObject.FindProperty(
+                nameof(ThreeLevelGroupsTarget.level3List)
+            );
 
             Assert.That(
                 level1Property.hasVisibleChildren,
@@ -428,7 +436,9 @@ namespace WallstopStudios.UnityHelpers.Tests.WGroup
             target.deepestArray = new[] { 1, 2, 3 };
             using SerializedObject serializedObject = new(target);
 
-            SerializedProperty deepestArray = serializedObject.FindProperty("deepestArray");
+            SerializedProperty deepestArray = serializedObject.FindProperty(
+                nameof(ComplexCombinedTarget.deepestArray)
+            );
 
             Assert.That(
                 deepestArray.hasVisibleChildren,
@@ -447,7 +457,9 @@ namespace WallstopStudios.UnityHelpers.Tests.WGroup
             };
             using SerializedObject serializedObject = new(target);
 
-            SerializedProperty middleNestedList = serializedObject.FindProperty("middleNestedList");
+            SerializedProperty middleNestedList = serializedObject.FindProperty(
+                nameof(ComplexCombinedTarget.middleNestedList)
+            );
 
             Assert.That(
                 middleNestedList.hasVisibleChildren,

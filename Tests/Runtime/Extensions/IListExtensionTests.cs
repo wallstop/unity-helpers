@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Tests.Extensions
@@ -13,6 +13,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
     using WallstopStudios.UnityHelpers.Core.Random;
     using WallstopStudios.UnityHelpers.Tests.Core;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class IListExtensionTests : CommonTestBase
     {
         private const int NumTries = 1_000;

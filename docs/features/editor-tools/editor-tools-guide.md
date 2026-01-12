@@ -15,8 +15,6 @@ Comprehensive documentation for all editor wizards, windows, and automation tool
 
 ## What Do You Want To Do? (Task-Based Index)
 
-<!-- markdownlint-disable MD040 -->
-
 ### Optimize Sprite Memory & Performance
 
 - Remove transparent padding → [Sprite Cropper](#sprite-cropper)
@@ -56,7 +54,7 @@ Comprehensive documentation for all editor wizards, windows, and automation tool
 - Respond to asset changes → [Asset Change Detection](./asset-change-detection.md)
 - Cache attribute metadata → [Attribute Metadata Cache Generator](#attribute-metadata-cache-generator)
 - Track sprite labels → [Sprite Label Processor](#sprite-label-processor)
-- Manually trigger script recompilation → [Request Script Recompilation](#request-script-recompilation)
+- Manually trigger script recompilation → [Request Script Compilation](#request-script-recompilation)
 - Configure buffer settings → [Project Settings: Unity Helpers](#project-settings-unity-helpers)
 
 ### Enhance Inspector Workflows
@@ -110,7 +108,7 @@ See the **[Inspector Attributes documentation](../inspector/inspector-overview.m
 
 **Common Workflow:**
 
-```
+```text
 1. Open Image Blur Tool
 2. Drag sprite folder into designated area
 3. Set blur radius (e.g., 10 for subtle, 50 for heavy)
@@ -148,7 +146,7 @@ See the **[Inspector Attributes documentation](../inspector/inspector-overview.m
 
 **Common Workflow:**
 
-```
+```text
 1. Open Sprite Cropper
 2. Add sprite directories to "Input Directories"
 3. Set padding (e.g., 2px on all sides for outlines)
@@ -205,7 +203,7 @@ See the **[Inspector Attributes documentation](../inspector/inspector-overview.m
 
 **UI Sprites (Pixel-Perfect):**
 
-```
+```text
 Filter Mode: Point
 Wrap Mode: Clamp
 Compression: CompressedHQ or None
@@ -215,7 +213,7 @@ Max Size: 2048 or match source
 
 **Environment Textures:**
 
-```
+```text
 Filter Mode: Trilinear
 Wrap Mode: Repeat
 Compression: CompressedHQ
@@ -225,7 +223,7 @@ Crunch Compression: true
 
 **Character Sprites:**
 
-```
+```text
 Filter Mode: Bilinear
 Wrap Mode: Clamp
 Compression: CompressedHQ
@@ -234,7 +232,7 @@ Generate Mip Maps: false
 
 **Workflow:**
 
-```
+```text
 1. Open Texture Settings Applier
 2. Configure desired settings with checkboxes
 3. Add textures individually OR add directories
@@ -278,7 +276,7 @@ Generate Mip Maps: false
 
 **Workflow:**
 
-```
+```text
 1) Open Sprite Pivot Adjuster
 2) Add one or more directories
 3) (Optional) Set Sprite Name Regex to filter
@@ -325,7 +323,7 @@ Generate Mip Maps: false
 
 **Workflow:**
 
-```
+```text
 1) Create a SpriteSettingsProfileCollection (Assets > Create > … if available) or configure profiles in the window
 2) Open Sprite Settings Applier
 3) Add directories and/or explicit sprites
@@ -372,7 +370,7 @@ Generate Mip Maps: false
 
 **Workflow:**
 
-```
+```text
 1. Open Texture Resizer wizard
 2. Add textures manually OR drag texture folders
 3. Set algorithm (Bilinear for smooth, Point for pixel art)
@@ -456,7 +454,7 @@ Generate Mip Maps: false
 
 **Workflow:**
 
-```
+```text
 1. Open Fit Texture Size
 2. Select Fit Mode (GrowAndShrink/GrowOnly/ShrinkOnly)
 3. Add texture folders to process
@@ -467,7 +465,7 @@ Generate Mip Maps: false
 
 **Example:**
 
-```
+```text
 Source Texture: 1920x1080 pixels
 Current Max Size: 512
 Fit Mode: GrowAndShrink
@@ -529,7 +527,7 @@ Result: Max Size → 64 (matches source)
 
 **Typical Workflow:**
 
-```
+```text
 1. Open Sprite Animation Editor
 2. Click "Browse Clips (Multi)..." to select animations
 3. Click a loaded clip in left panel to edit
@@ -541,7 +539,7 @@ Result: Max Size → 64 (matches source)
 
 **Example Session:**
 
-```
+```text
 // Edit walk cycle animation:
 1. Load "PlayerWalk.anim"
 2. Preview plays at original 12 FPS
@@ -603,11 +601,20 @@ Result: Max Size → 64 (matches source)
 - Auto‑parse name prefix/suffix and duplicate‑name resolution
 - Dry‑run and preview (see groups and final asset paths)
 - Per‑clip FPS and loop flag; bulk name append/remove
-- “Populate First Slot with X Matched Sprites” helper
+- "Populate First Slot with X Matched Sprites" helper
+- **Live preview**: Real-time animation playback in the editor before committing
+- **Variable framerate**: Constant FPS or curve-based frame timing per clip
+
+**Framerate Modes:**
+
+| Mode       | Description                                               |
+| ---------- | --------------------------------------------------------- |
+| `Constant` | Fixed frames per second (default)                         |
+| `Curve`    | AnimationCurve-based timing for per-frame speed variation |
 
 **Common Naming Patterns (auto‑detected):**
 
-```
+```text
 Player_Idle_0.png, Player_Idle_1.png, ...       // base: Player_Idle, index: 0..N
 slime-walk-01.png, slime-walk-02.png            // base: slime-walk, index: 1..N
 Mage/Attack (0).png, Mage/Attack (1).png        // base: Mage_Attack, index: 0..N (folder prefix optional)
@@ -615,7 +622,7 @@ Mage/Attack (0).png, Mage/Attack (1).png        // base: Mage_Attack, index: 0..
 
 **Custom Group Regex Examples:**
 
-```
+```text
 // Named groups are optional but powerful when needed
 ^(?<base>.*?)(?:_|\s|-)?(?<index>\d+)\.[Pp][Nn][Gg]$   // base + trailing digits
 ^Enemy_(?<base>Walk)_(?<index>\d+)$                      // narrow to specific clip type
@@ -623,7 +630,7 @@ Mage/Attack (0).png, Mage/Attack (1).png        // base: Mage_Attack, index: 0..
 
 **How To Use (one‑click flow):**
 
-```
+```text
 1) Open Animation Creator
 2) Add one or more source folders
 3) (Optional) Set sprite filter regex to narrow matches
@@ -682,7 +689,7 @@ Mage/Attack (0).png, Mage/Attack (1).png        // base: Mage_Attack, index: 0..
 
 **Workflow:**
 
-```
+```text
 1) Open Animation Copier
 2) Select Source Path (e.g., Assets/Sprites/Animations)
 3) Select Destination Path (e.g., Assets/Animations)
@@ -733,7 +740,7 @@ Mage/Attack (0).png, Mage/Attack (1).png        // base: Mage_Attack, index: 0..
 
 **Usage:**
 
-```
+```text
 1) Open Sprite Sheet Animation Creator
 2) Drag a sliced Texture2D (or use the object field)
 3) Select frames (drag across thumbnails) to define a clip
@@ -756,6 +763,94 @@ Mage/Attack (0).png, Mage/Attack (1).png        // base: Mage_Attack, index: 0..
 
 ---
 
+### Sprite Sheet Extractor
+
+**Menu:** `Tools > Wallstop Studios > Unity Helpers > Sprite Sheet Extractor`
+
+**Purpose:** Extract individual sprites from sprite sheet textures and save them as separate PNG files with batch processing, preview, and optional reference replacement.
+
+**Key Features:**
+
+- **Multiple extraction modes:** From existing metadata, grid-based, alpha detection, or padded grid
+- **Auto-detection algorithms:** Automatically detect optimal grid dimensions from transparency patterns
+- **Pivot preservation:** Maintain original pivot points or set custom pivots per sprite
+- **Preview interface:** Visual preview of all detected sprites before extraction
+- **Batch processing:** Process multiple sprite sheets at once
+- **Reference replacement:** Optionally update prefab/scene references to new sprites
+- **Per-sheet configuration:** Override global settings for individual sprite sheets
+- **Config persistence:** Save and load extraction settings per sprite sheet
+
+**Extraction Modes:**
+
+**FromMetadata:**
+
+- Uses existing Unity sprite metadata (SpriteImportMode.Multiple)
+- Preserves original names, rects, pivots, and borders
+- Best for already-sliced sprite sheets
+
+**GridBased:**
+
+- Divides texture into uniform grid cells
+- Auto or manual grid dimensions
+- Good for evenly-spaced sprite sheets
+
+**AlphaDetection:**
+
+- Analyzes transparency to find sprite boundaries
+- Works with irregular sprite layouts
+- Configurable alpha threshold
+
+**PaddedGrid:**
+
+- Grid-based with configurable padding/gutters
+- Handles sprite sheets with spacing between cells
+
+**Pivot Modes:**
+
+- **Center:** Pivot at sprite center (0.5, 0.5)
+- **BottomCenter:** Pivot at bottom center (0.5, 0)
+- **TopCenter:** Pivot at top center (0.5, 1)
+- **LeftCenter:** Pivot at left center (0, 0.5)
+- **RightCenter:** Pivot at right center (1, 0.5)
+- **BottomLeft:** Pivot at bottom left (0, 0)
+- **BottomRight:** Pivot at bottom right (1, 0)
+- **TopLeft:** Pivot at top left (0, 1)
+- **TopRight:** Pivot at top right (1, 1)
+- **Custom:** User-specified pivot coordinates
+
+**Workflow:**
+
+```text
+1. Open Sprite Sheet Extractor
+2. Add input directories containing sprite sheets
+3. (Optional) Set sprite name regex filter
+4. Configure extraction mode and settings
+5. Click "Discover Sprite Sheets" to scan
+6. Review detected sheets and sprites in preview
+7. Adjust per-sheet settings if needed
+8. Set output directory
+9. Click "Extract" to generate individual sprites
+10. (Optional) Use reference replacement for prefab updates
+```
+
+**Best For:**
+
+- Converting packed sprite sheets to individual assets
+- Preparing sprites for animation systems that expect separate files
+- Creating backup copies of individual sprites
+- Reorganizing sprite assets
+- Migrating from third-party sprite sheet formats
+
+**Tips:**
+
+- Use "Snap to Texture Divisor" for cleaner grid alignment
+- Preview sprites before extraction to verify detection
+- Save per-sheet configs for consistent re-extraction
+- Enable reference replacement only with VCS backup
+- Use alpha detection for irregularly-spaced sprite sheets
+
+---
+
 ### Animation Event Editor
 
 **Menu:** `Tools > Wallstop Studios > Unity Helpers > AnimationEvent Editor`
@@ -774,7 +869,7 @@ Mage/Attack (0).png, Mage/Attack (1).png        // base: Mage_Attack, index: 0..
 
 **Workflow:**
 
-```
+```text
 1. Open Animation Event Editor
 2. Drag Animator component into "Animator Object" field
 3. Select animation from dropdown (or use Animation Search)
@@ -912,7 +1007,7 @@ Create configurations via `Assets > Create > Wallstop Studios > Unity Helpers > 
 
 **ScriptableSpriteAtlas Configuration:**
 
-```
+```text
 Sprite Sources:
 - spritesToPack: Manually added sprites (always included)
 - sourceFolderEntries: Define folders with regex/label filters
@@ -945,7 +1040,7 @@ Compression Settings:
 
 **Typical Workflow:**
 
-```
+```text
 1. Open Sprite Atlas Generator
 2. Click "Create New Config in 'Assets/Data'"
 3. Configure the new atlas:
@@ -966,7 +1061,7 @@ Compression Settings:
 
 **Character Sprites Atlas:**
 
-```
+```text
 folderPath: Assets/Sprites/Characters
 selectionMode: Regex
 regexes: ["^player_.*\\.png$", ".*_idle_.*"]
@@ -977,7 +1072,7 @@ compression: CompressedHQ
 
 **UI Icons by Label:**
 
-```
+```text
 folderPath: Assets/Sprites/UI
 selectionMode: Labels
 labelSelectionMode: AnyOf
@@ -988,7 +1083,7 @@ padding: 2
 
 **Combined Regex + Labels:**
 
-```
+```text
 folderPath: Assets/Sprites/Effects
 selectionMode: Regex | Labels
 regexes: ["^vfx_.*"]
@@ -1081,7 +1176,7 @@ maxTextureSize: 2048
 
 **Typical Validation Workflow:**
 
-```
+```text
 // Before committing prefab changes:
 1. Open Prefab Checker
 2. Enable relevant checks (especially Missing Scripts, Required Components)
@@ -1095,7 +1190,7 @@ maxTextureSize: 2048
 
 **CI/CD Integration:**
 
-```
+```text
 // Can be scripted for automated builds
 - Run validation on changed prefab folders
 - Parse console output for errors
@@ -1160,7 +1255,7 @@ maxTextureSize: 2048
 
 **Quick Start:**
 
-```
+```text
 1. Open Unity Method Analyzer
 2. Add source directories (e.g., Assets/Scripts)
 3. Click "Analyze Code"
@@ -1297,7 +1392,7 @@ These custom inspectors enhance Unity components with additional functionality a
 
 **Workflow:**
 
-```
+```text
 1. Add EnhancedImage component to UI GameObject
 2. If yellow "Fix Material" button appears, click it
 3. Configure HDR Color for glow/intensity
@@ -1895,7 +1990,7 @@ See the base API guide for details on `ScriptableObjectSingleton<T>` usage, scen
 
 **How It Works:**
 
-```
+```text
 1. Runs when Unity editor starts
 2. Scans all ScriptableObjectSingleton<T> derived types
 3. Creates missing assets in Assets/Resources/
@@ -1933,7 +2028,7 @@ float volume = GameSettings.Instance.masterVolume;
 
 **Folder Structure:**
 
-```
+```text
 Assets/
   Resources/
     GameSettings.asset              (no path attribute)
@@ -1997,9 +2092,9 @@ string[] labels = SpriteLabelCache.GetAllLabels();
 
 <a id="request-script-recompilation"></a>
 
-### Request Script Recompilation
+### Request Script Compilation
 
-**Menu:** `Tools > Wallstop Studios > Unity Helpers > Request Script Recompilation`
+**Menu:** `Tools > Wallstop Studios > Unity Helpers > Request Script Compilation`
 **Shortcut:** `Ctrl/Cmd + Alt + R` (configurable in Unity's Shortcut Manager)
 
 **Purpose:** Manually trigger Unity script recompilation without needing to modify files or restart the editor.
@@ -2026,7 +2121,7 @@ string[] labels = SpriteLabelCache.GetAllLabels();
 
 **Common Workflow:**
 
-```
+```text
 1. Run external code generator
 2. Press Ctrl+Alt+R (or use menu item)
 3. Wait for Unity to recompile scripts
@@ -2302,6 +2397,7 @@ else
 - Sprite Pivot Adjuster
 - Sprite Settings Applier
 - Sprite Sheet Animation Creator
+- Sprite Sheet Extractor
 - Texture Resizer
 - Texture Settings Applier
 
@@ -2315,7 +2411,7 @@ else
 
 #### Setting Up New Sprites
 
-```
+```text
 1. Import sprites to Assets/Sprites/
 2. Use Sprite Cropper to remove padding
 3. Use Texture Settings Applier:
@@ -2329,7 +2425,7 @@ else
 
 #### Creating and Editing Animations
 
-```
+```text
 1. Prepare sprite frames in folder
 2. Open Sprite Animation Editor
 3. Click "Browse Clips (Multi)..." if clips exist, or
@@ -2349,7 +2445,7 @@ else
 
 #### Creating Sprite Atlases
 
-```
+```text
 1. Create atlas config:
    a. Open Sprite Atlas Generator
    b. Click "Create New Config in 'Assets/Data'"
@@ -2374,7 +2470,7 @@ else
 
 #### Pre-Commit Validation
 
-```
+```text
 1. Open Prefab Checker
 2. Enable all critical checks:
    - Missing Scripts ✓
@@ -2389,7 +2485,7 @@ else
 
 #### Optimizing Textures for Build
 
-```
+```text
 1. Use Sprite Cropper on all sprites (reduces memory)
 2. Use Texture Settings Applier with:
    - Appropriate compression for platform

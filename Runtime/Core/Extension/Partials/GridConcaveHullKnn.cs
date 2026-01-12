@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 // ReSharper disable once CheckNamespace
@@ -26,7 +26,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             ConcaveHullOptions options = ConcaveHullOptions
                 .Default.WithStrategy(ConcaveHullStrategy.Knn)
                 .WithNearestNeighbors(Math.Max(3, nearestNeighbors));
-            return BuildConcaveHull(points, options);
+            return points.BuildConcaveHull(options);
         }
 
         // KNN-style concave hull for Vector2 (port of BuildConcaveHull2)

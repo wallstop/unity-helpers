@@ -89,6 +89,9 @@ Notes
 
 ---
 
+<a id="-zero-allocation-queries-the-performance-killer-feature"></a>
+<a id="zero-allocation-queries-the-performance-killer-feature"></a>
+
 ## ⭐ Zero-Allocation Queries: The Performance Killer Feature
 
 **The Problem - GC Spikes Every Frame:**

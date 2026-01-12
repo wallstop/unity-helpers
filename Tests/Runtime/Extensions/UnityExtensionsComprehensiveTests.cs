@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Tests.Extensions
@@ -16,6 +16,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
     using WallstopStudios.UnityHelpers.Core.Random;
     using WallstopStudios.UnityHelpers.Tests.Core;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class UnityExtensionsComprehensiveTests : CommonTestBase
     {
         private static List<FastVector3Int> GenerateRandomPointsSquare(
@@ -199,7 +201,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         public void GetBoundsFromFastVectorCollectionReturnsNullWhenEmpty()
         {
             List<FastVector3Int> points = new();
-            Assert.IsNull(points.GetBounds());
+            Assert.IsTrue(points.GetBounds() == null);
         }
 
         [Test]
@@ -338,7 +340,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         public void GetBoundsFromVector3IntCollectionReturnsNullWhenEmpty()
         {
             List<Vector3Int> points = new();
-            Assert.IsNull(points.GetBounds());
+            Assert.IsTrue(points.GetBounds() == null);
         }
 
         [Test]
@@ -372,7 +374,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         [Test]
         public void GetBoundsFromVector2CollectionReturnsNullWhenEmpty()
         {
-            Assert.IsNull(new List<Vector2>().GetBounds());
+            Assert.IsTrue(new List<Vector2>().GetBounds() == null);
         }
 
         [Test]
@@ -423,7 +425,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         [Test]
         public void GetBoundsFromBoundsCollectionReturnsNullWhenEmpty()
         {
-            Assert.IsNull(new List<Bounds>().GetBounds());
+            Assert.IsTrue(new List<Bounds>().GetBounds() == null);
         }
 
         [UnityTest]

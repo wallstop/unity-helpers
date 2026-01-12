@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2024 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Tests.Extensions
@@ -12,6 +12,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
     using WallstopStudios.UnityHelpers.Core.Extension;
     using WallstopStudios.UnityHelpers.Tests.Core;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class DictionaryExtensionTests : CommonTestBase
     {
         [Test]
@@ -139,7 +141,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         {
             Dictionary<string, List<int>> dictionary = new();
             List<int> value = dictionary.GetOrAdd("test");
-            Assert.IsNotNull(value);
+            Assert.IsTrue(value != null);
             Assert.AreEqual(value, dictionary["test"]);
             value.Add(1);
 
@@ -695,7 +697,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             ConcurrentDictionary<string, List<int>> dict = new();
 
             List<int> value = dict.GetOrAdd("test");
-            Assert.IsNotNull(value);
+            Assert.IsTrue(value != null);
             Assert.AreEqual(0, value.Count);
             value.Add(42);
 
@@ -744,11 +746,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         }
 
         [Test]
-        public void ToDictionaryThrowsOnDuplicateTupleKeys()
+        public void ToDictionaryLastWinsOnDuplicateTupleKeys()
         {
             IEnumerable<(string, int)> tuples = new List<(string, int)> { ("dup", 1), ("dup", 2) };
 
-            Assert.Throws<ArgumentException>(() => tuples.ToDictionary());
+            Dictionary<string, int> result = tuples.ToDictionary();
+            Assert.AreEqual(1, result.Count);
+            Assert.AreEqual(2, result["dup"]);
         }
     }
 }

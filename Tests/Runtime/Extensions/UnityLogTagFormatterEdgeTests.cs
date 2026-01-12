@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Tests.Extensions
@@ -14,6 +14,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
     using WallstopStudios.UnityHelpers.Core.Helper.Logging;
     using WallstopStudios.UnityHelpers.Tests.Core;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     [SuppressMessage("ReSharper", "AccessToModifiedClosure")]
     public sealed class UnityLogTagFormatterEdgeTests : CommonTestBase
     {
@@ -49,7 +51,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
 
                 go.Log($"Hello {"world":does_not_exist}", pretty: pretty);
                 Assert.AreEqual(++expectedLogCount, logCount);
-                Assert.IsNull(exception, exception?.ToString());
+                Assert.IsTrue(exception == null, exception?.ToString());
             }
             finally
             {
@@ -108,7 +110,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
 
                 go.Log($"{"value":b,,,,,}", pretty: pretty);
                 Assert.AreEqual(++expectedLogCount, logCount);
-                Assert.IsNull(exception, exception?.ToString());
+                Assert.IsTrue(exception == null, exception?.ToString());
             }
             finally
             {
@@ -156,7 +158,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
                 };
                 formatter.Log($"Hello", context: null, e: testException, pretty: true);
                 Assert.AreEqual(++expectedLogCount, logCount);
-                Assert.IsNull(exception, exception?.ToString());
+                Assert.IsTrue(exception == null, exception?.ToString());
 
                 assertion = (message, type) =>
                 {
@@ -168,7 +170,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
                 LogAssert.Expect(LogType.Warning, new Regex("Hello[\n\r]+.*Boom"));
                 formatter.LogWarn($"Hello", context: null, e: testException, pretty: false);
                 Assert.AreEqual(++expectedLogCount, logCount);
-                Assert.IsNull(exception, exception?.ToString());
+                Assert.IsTrue(exception == null, exception?.ToString());
 
                 assertion = (message, type) =>
                 {
@@ -180,7 +182,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
                 LogAssert.Expect(LogType.Error, new Regex("Hello[\n\r]+.*Boom"));
                 formatter.LogError($"Hello", context: null, e: testException, pretty: false);
                 Assert.AreEqual(++expectedLogCount, logCount);
-                Assert.IsNull(exception, exception?.ToString());
+                Assert.IsTrue(exception == null, exception?.ToString());
             }
             finally
             {
@@ -361,7 +363,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
 
                 formatter.Log($"Hello", pretty: true);
                 Assert.AreEqual(++expectedLogCount, logCount);
-                Assert.IsNull(exception, exception?.ToString());
+                Assert.IsTrue(exception == null, exception?.ToString());
             }
             finally
             {
@@ -412,7 +414,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
                 );
                 worker.Join();
 
-                Assert.IsNotNull(loggedMessage, "Worker log was not captured.");
+                Assert.IsTrue(loggedMessage != null, "Worker log was not captured.");
                 StringAssert.Contains($"worker#{workerThreadId}", loggedMessage);
             }
             finally

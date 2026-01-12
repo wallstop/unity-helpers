@@ -4,6 +4,7 @@
   "language": "en",
   "ignorePaths": [
     "node_modules/**",
+    ".devcontainer/**",
     "Library/**",
     "Temp/**",
     "obj/**",
@@ -22,6 +23,7 @@
     "docs/**/*.md",
     "README.md",
     "CHANGELOG.md",
+    "PLAN.md",
     ".llm/**/*.md",
     ".github/**/*.md",
     "AGENTS.md",
@@ -193,6 +195,7 @@
         "URP",
         "HDRP",
         "SRP",
+        "NPOT",
         "ShaderGraph",
         "VFXGraph",
         "Cinemachine",
@@ -217,7 +220,8 @@
         "AsyncOperation",
         "YieldInstruction",
         "CustomYieldInstruction",
-        "EditorCoroutineUtility"
+        "EditorCoroutineUtility",
+        "Blit"
       ]
     },
     {
@@ -250,6 +254,8 @@
         "ConcurrentBag",
         "ArrayPool",
         "MemoryPool",
+        "LOH",
+        "Loh",
         "Span",
         "ReadOnlySpan",
         "Memory",
@@ -338,7 +344,9 @@
         "init",
         "record",
         "covariant",
-        "contravariant"
+        "contravariant",
+        "vtable",
+        "blittable"
       ]
     },
     {
@@ -490,6 +498,14 @@
         "IL2CPP",
         "AOT",
         "JIT",
+        "LRU",
+        "lru",
+        "SLRU",
+        "Slru",
+        "LFU",
+        "Lfu",
+        "FIFO",
+        "Fifo",
         "Mono",
         "WebGL",
         "Protobuf",
@@ -501,11 +517,15 @@
         "XML",
         "xml",
         "CRLF",
+        "csharpierrc",
         "LF",
+        "RTL",
         "BOM",
         "UTF",
         "ASCII",
         "ASTC",
+        "DXT",
+        "TOCTOU",
         "Regex",
         "regex",
         "Lookaheads",
@@ -580,6 +600,7 @@
         "SDK",
         "CLI",
         "GUI",
+        "guids",
         "UI",
         "UX",
         "DI",
@@ -680,6 +701,7 @@
         "unfocused",
         "unselected",
         "deselected",
+        "desync",
         "interactable",
         "readonly",
         "modifiable",
@@ -768,7 +790,10 @@
         "misconfiguration",
         "failsafe",
         "fallback",
-        "fallbacks"
+        "fallbacks",
+        "lacunarity",
+        "reentrancy",
+        "unsubscription"
       ]
     }
   ],
@@ -989,6 +1014,8 @@
     "Eiserloh",
     "GDC",
     "gdc",
+    "GCD",
+    "gcd",
     "Wyhash",
     "wyhash",
     "Gravell",
@@ -1115,7 +1142,8 @@
     "shopt",
     "pytest",
     "GHA",
-    "venv"
+    "venv",
+    "rcs"
   ],
   "flagWords": [],
   "minWordLength": 3,

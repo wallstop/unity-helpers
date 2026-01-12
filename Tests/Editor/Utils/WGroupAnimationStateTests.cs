@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 #if UNITY_EDITOR
@@ -14,6 +14,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Utils
     /// Tests for <see cref="WGroupAnimationState"/> to validate animation state management,
     /// caching behavior, and integration with settings.
     /// </summary>
+    [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class WGroupAnimationStateTests
     {
         private bool _originalTweenEnabled;

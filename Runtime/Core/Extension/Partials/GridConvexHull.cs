@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 // ReSharper disable once CheckNamespace
@@ -72,7 +72,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
 
             PopulateVectorBuffers(pointsSet, vectorPoints, mapping, out int fallbackZ);
 
-            List<Vector2> vectorHull = BuildConvexHull(vectorPoints, includeColinearPoints);
+            List<Vector2> vectorHull = vectorPoints.BuildConvexHull(includeColinearPoints);
             return ConvertVector2HullToFastVector3(vectorHull, mapping, fallbackZ);
         }
 

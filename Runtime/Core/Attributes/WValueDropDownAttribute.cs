@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Core.Attributes
@@ -433,10 +433,10 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
             {
                 result = provider.Invoke(context);
             }
-            catch (Exception exception)
+            catch (Exception e)
             {
                 Debug.LogError(
-                    $"{AttributeName}: Invocation of '{lookupType.FullName}.{provider.Method.Name}' threw {exception.GetType().Name}."
+                    $"{AttributeName}: Invocation of '{lookupType.FullName}.{provider.Method.Name}' threw {e.GetType().Name}."
                 );
                 return Empty;
             }

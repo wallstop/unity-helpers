@@ -1,0 +1,57 @@
+name: LLM Instructions Lint
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".llm/**"
+      - "scripts/lint-llm-instructions.ps1"
+      - "scripts/generate-skills-index.ps1"
+      - ".github/workflows/llm-instructions-lint.yml"
+  pull_request:
+    paths:
+      - ".llm/**"
+      - "scripts/lint-llm-instructions.ps1"
+      - "scripts/generate-skills-index.ps1"
+      - ".github/workflows/llm-instructions-lint.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  lint-llm-instructions:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6.0.1
+
+      - name: Setup Node.js (cached)
+        if: ${{ hashFiles('package-lock.json') != '' }}
+        uses: actions/setup-node@v6.1.0
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: package-lock.json
+
+      - name: Setup Node.js (no cache)
+        if: ${{ hashFiles('package-lock.json') == '' }}
+        uses: actions/setup-node@v6.1.0
+        with:
+          node-version: "22"
+
+      - name: Install dependencies
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci
+          else
+            npm i --no-audit --no-fund
+          fi
+
+      - name: Lint LLM instructions
+        shell: pwsh
+        run: ./scripts/lint-llm-instructions.ps1 -VerboseOutput
+
+      - name: Check skill file sizes
+        shell: pwsh
+        run: ./scripts/lint-skill-sizes.ps1 -VerboseOutput

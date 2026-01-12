@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Tests.Runtime.Performance
@@ -11,6 +11,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Performance
     using NUnit.Framework;
     using WallstopStudios.UnityHelpers.Core.Helper;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class ReflectionPerformanceTests
     {
         private const int BatchSize = 256;
@@ -62,18 +65,22 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Performance
                 outputLines.Add(string.Empty);
                 outputLines.Add("#### Boxed Access (object)");
                 outputLines.Add(string.Empty);
-                outputLines.Add(
-                    "| Scenario | Helper (ops/sec) | System.Reflection (ops/sec) | Speedup vs Reflection |"
-                );
-                outputLines.Add(
-                    "| -------- | ---------------- | --------------------------- | --------------------- |"
-                );
+                outputLines.Add("<table data-sortable>");
+                outputLines.Add("  <thead>");
+                outputLines.Add("    <tr>");
+                outputLines.Add("      <th align=\"left\">Scenario</th>");
+                outputLines.Add("      <th align=\"right\">Helper (ops/sec)</th>");
+                outputLines.Add("      <th align=\"right\">System.Reflection (ops/sec)</th>");
+                outputLines.Add("      <th align=\"right\">Speedup vs Reflection</th>");
+                outputLines.Add("    </tr>");
+                outputLines.Add("  </thead>");
+                outputLines.Add("  <tbody>");
 
                 foreach (ScenarioResult result in run.BoxedResults)
                 {
                     string row = string.Format(
                         System.Globalization.CultureInfo.InvariantCulture,
-                        "| {0} | {1} | {2} | {3:F2}x |",
+                        "    <tr><td align=\"left\">{0}</td><td align=\"right\">{1}</td><td align=\"right\">{2}</td><td align=\"right\">{3:F2}x</td></tr>",
                         result.Name,
                         FormatOps(result.HelperOpsPerSecond),
                         FormatOps(result.BaselineOpsPerSecond),
@@ -92,15 +99,23 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Performance
                     );
                 }
 
+                outputLines.Add("  </tbody>");
+                outputLines.Add("</table>");
                 outputLines.Add(string.Empty);
                 outputLines.Add("#### Typed Access (no boxing)");
                 outputLines.Add(string.Empty);
-                outputLines.Add(
-                    "| Scenario | Helper (ops/sec) | Baseline Delegate (ops/sec) | System.Reflection (ops/sec) | Speedup vs Delegate | Speedup vs Reflection |"
-                );
-                outputLines.Add(
-                    "| -------- | ---------------- | --------------------------- | --------------------------- | ------------------- | -------------------- |"
-                );
+                outputLines.Add("<table data-sortable>");
+                outputLines.Add("  <thead>");
+                outputLines.Add("    <tr>");
+                outputLines.Add("      <th align=\"left\">Scenario</th>");
+                outputLines.Add("      <th align=\"right\">Helper (ops/sec)</th>");
+                outputLines.Add("      <th align=\"right\">Baseline Delegate (ops/sec)</th>");
+                outputLines.Add("      <th align=\"right\">System.Reflection (ops/sec)</th>");
+                outputLines.Add("      <th align=\"right\">Speedup vs Delegate</th>");
+                outputLines.Add("      <th align=\"right\">Speedup vs Reflection</th>");
+                outputLines.Add("    </tr>");
+                outputLines.Add("  </thead>");
+                outputLines.Add("  <tbody>");
 
                 Dictionary<string, double> reflectionBaselineLookup = new(StringComparer.Ordinal);
                 foreach (ScenarioResult boxed in run.BoxedResults)
@@ -122,7 +137,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Performance
 
                     string row = string.Format(
                         System.Globalization.CultureInfo.InvariantCulture,
-                        "| {0} | {1} | {2} | {3} | {4:F2}x | {5:F2}x |",
+                        "    <tr><td align=\"left\">{0}</td><td align=\"right\">{1}</td><td align=\"right\">{2}</td><td align=\"right\">{3}</td><td align=\"right\">{4:F2}x</td><td align=\"right\">{5:F2}x</td></tr>",
                         result.Name,
                         FormatOps(result.HelperOpsPerSecond),
                         FormatOps(result.BaselineOpsPerSecond),
@@ -144,6 +159,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Performance
                     );
                 }
 
+                outputLines.Add("  </tbody>");
+                outputLines.Add("</table>");
                 outputLines.Add(string.Empty);
             }
 

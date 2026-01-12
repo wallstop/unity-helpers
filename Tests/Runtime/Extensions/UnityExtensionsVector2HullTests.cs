@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 #if UNITY_EDITOR || UNITY_INCLUDE_TESTS || WALLSTOP_CONCAVE_HULL_STATS
@@ -17,6 +17,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
     using WallstopStudios.UnityHelpers.Tests.Core;
     using WallstopStudios.UnityHelpers.Tests.TestUtils;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class UnityExtensionsVector2HullTests : CommonTestBase
     {
         [Test]
@@ -548,7 +550,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
                 () =>
                 {
                     List<Vector2> hull = points.BuildConcaveHullKnn(nearestNeighbors: 12);
-                    Assert.IsNotNull(hull);
+                    Assert.IsTrue(hull != null);
                     Assert.GreaterOrEqual(hull.Count, 4);
                 },
                 warmupIterations: 2,

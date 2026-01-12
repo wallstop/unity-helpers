@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
@@ -22,6 +22,9 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
     /// Note: UnityHelpersSettings does not contain SerializableHashSet properties, so settings
     /// context behavior for sets is tested via mock detection and property attribute inference.
     /// </summary>
+    [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class SerializableSetPendingPaddingTests : CommonTestBase
     {
         [SetUp]

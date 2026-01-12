@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
@@ -25,6 +25,15 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
     public sealed class IntDropDownOdinDrawer : OdinAttributeDrawer<IntDropDownAttribute>
     {
         private static readonly Dictionary<int, string[]> DisplayOptionsCache = new();
+
+        /// <summary>
+        /// Clears all cached state. Called during domain reload via
+        /// <see cref="Internal.EditorCacheManager.ClearAllCaches"/>.
+        /// </summary>
+        internal static void ClearCache()
+        {
+            DisplayOptionsCache.Clear();
+        }
 
         /// <summary>
         /// Draws the property as a dropdown selector with the integer options provided by the attribute.

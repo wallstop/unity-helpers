@@ -1,5 +1,7 @@
 # Skill: Use Relational Component Attributes
 
+<!-- trigger: sibling, parent, child, component, hierarchy | Auto-wiring components via hierarchy | Feature -->
+
 **Trigger**: When automatically finding and assigning components based on Unity GameObject hierarchy relationships (parent, sibling, or child components).
 
 ---

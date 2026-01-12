@@ -1,5 +1,7 @@
 # Skill: Defensive Programming
 
+<!-- trigger: defensive, null, validate, error, exception | ALL code - never throw, handle gracefully | Core -->
+
 **Trigger**: When writing ANY production code (Runtime OR Editor). ALL code in this repository MUST follow defensive programming practices.
 
 ---
@@ -47,7 +49,7 @@ Exceptions should ONLY be thrown for:
 ### 1. Guard Clauses with Graceful Returns
 
 ```csharp
-// ❌ THROWS - Bad for production
+// THROWS - Bad for production
 public void ProcessItems(List<Item> items)
 {
     if (items == null)
@@ -57,7 +59,7 @@ public void ProcessItems(List<Item> items)
     // Process...
 }
 
-// ✅ GRACEFUL - Returns safely
+// GRACEFUL - Returns safely
 public void ProcessItems(List<Item> items)
 {
     if (items == null || items.Count == 0)
@@ -67,7 +69,7 @@ public void ProcessItems(List<Item> items)
     // Process...
 }
 
-// ✅ GRACEFUL with logging (when debugging matters)
+// GRACEFUL with logging (when debugging matters)
 public void ProcessItems(List<Item> items)
 {
     if (items == null)
@@ -82,7 +84,7 @@ public void ProcessItems(List<Item> items)
 ### 2. TryXxx Pattern for Failable Operations
 
 ```csharp
-// ✅ Return success/failure, never throw
+// Return success/failure, never throw
 public bool TryGetValue(string key, out TValue value)
 {
     value = default;
@@ -100,7 +102,7 @@ public bool TryGetValue(string key, out TValue value)
     return true;
 }
 
-// ✅ For complex operations
+// For complex operations
 public bool TryParse(string json, out MyData result, out string error)
 {
     result = default;
@@ -128,13 +130,13 @@ public bool TryParse(string json, out MyData result, out string error)
 ### 3. Safe Indexing
 
 ```csharp
-// ❌ THROWS on invalid index
+// THROWS on invalid index
 public T Get(int index)
 {
     return _items[index]; // IndexOutOfRangeException!
 }
 
-// ✅ GRACEFUL - Returns default for invalid index
+// GRACEFUL - Returns default for invalid index
 public T Get(int index)
 {
     if (index < 0 || index >= _items.Count)
@@ -144,7 +146,7 @@ public T Get(int index)
     return _items[index];
 }
 
-// ✅ TryGet pattern for callers who need to know
+// TryGet pattern for callers who need to know
 public bool TryGet(int index, out T value)
 {
     if (index < 0 || index >= _items.Count)
@@ -160,7 +162,7 @@ public bool TryGet(int index, out T value)
 ### 4. Null-Safe Unity Object Handling
 
 ```csharp
-// ✅ Safe component access
+// Safe component access
 public void UpdateTarget()
 {
     if (_targetTransform == null)
@@ -171,7 +173,7 @@ public void UpdateTarget()
     _targetTransform.position = _newPosition;
 }
 
-// ✅ Safe GetComponent with caching
+// Safe GetComponent with caching
 public T GetCachedComponent<T>() where T : Component
 {
     if (_cachedComponent == null)
@@ -181,7 +183,7 @@ public T GetCachedComponent<T>() where T : Component
     return _cachedComponent; // May still be null - caller handles
 }
 
-// ✅ Safe child access
+// Safe child access
 public Transform GetChildSafe(int index)
 {
     if (transform == null)
@@ -201,7 +203,7 @@ public Transform GetChildSafe(int index)
 ### 5. Enum Safety
 
 ```csharp
-// ❌ THROWS for undefined values
+// THROWS for undefined values
 public string GetDisplayName(MyEnum value)
 {
     return value switch
@@ -212,7 +214,7 @@ public string GetDisplayName(MyEnum value)
     };
 }
 
-// ✅ GRACEFUL - Handles undefined values
+// GRACEFUL - Handles undefined values
 public string GetDisplayName(MyEnum value)
 {
     return value switch
@@ -223,7 +225,7 @@ public string GetDisplayName(MyEnum value)
     };
 }
 
-// ✅ GRACEFUL with logging for debugging
+// GRACEFUL with logging for debugging
 public string GetDisplayName(MyEnum value)
 {
     switch (value)
@@ -242,7 +244,7 @@ public string GetDisplayName(MyEnum value)
 ### 6. Collection Operations
 
 ```csharp
-// ✅ Safe iteration (collection may be modified)
+// Safe iteration (collection may be modified)
 public void ProcessAll()
 {
     int count = _items.Count;
@@ -257,7 +259,7 @@ public void ProcessAll()
     }
 }
 
-// ✅ Safe dictionary access
+// Safe dictionary access
 public TValue GetOrDefault(TKey key, TValue defaultValue = default)
 {
     if (key == null)
@@ -273,7 +275,7 @@ public TValue GetOrDefault(TKey key, TValue defaultValue = default)
     return defaultValue;
 }
 
-// ✅ Safe removal
+// Safe removal
 public bool TryRemove(TKey key)
 {
     if (key == null)
@@ -282,221 +284,6 @@ public bool TryRemove(TKey key)
     }
 
     return _dictionary.Remove(key);
-}
-```
-
-### 7. Serialization Resilience
-
-```csharp
-// ✅ Defensive deserialization
-public T DeserializeSafe<T>(string json) where T : class, new()
-{
-    if (string.IsNullOrEmpty(json))
-    {
-        return new T();
-    }
-
-    try
-    {
-        T result = JsonUtility.FromJson<T>(json);
-        return result ?? new T();
-    }
-    catch (Exception ex)
-    {
-        Debug.LogWarning($"[Serialization] Failed to deserialize {typeof(T).Name}: {ex.Message}");
-        return new T();
-    }
-}
-
-// ✅ Validate after deserialization
-public void OnAfterDeserialize()
-{
-    // Repair potentially corrupt data
-    if (_items == null)
-    {
-        _items = new List<Item>();
-    }
-
-    // Remove null entries that may have resulted from missing references
-    _items.RemoveAll(item => item == null);
-
-    // Clamp values to valid ranges
-    _health = Mathf.Clamp(_health, 0, _maxHealth);
-
-    // Ensure required references
-    if (string.IsNullOrEmpty(_id))
-    {
-        _id = System.Guid.NewGuid().ToString();
-    }
-}
-```
-
-### 8. Event/Callback Safety
-
-```csharp
-// ✅ Safe event invocation
-public void RaiseValueChanged(int newValue)
-{
-    if (OnValueChanged == null)
-    {
-        return;
-    }
-
-    // Copy delegate to avoid race conditions
-    Action<int> handler = OnValueChanged;
-
-    try
-    {
-        handler.Invoke(newValue);
-    }
-    catch (Exception ex)
-    {
-        // Never let subscriber exceptions crash the publisher
-        Debug.LogError($"[{nameof(MyClass)}] Exception in OnValueChanged handler: {ex}");
-    }
-}
-
-// ✅ Safe multi-cast delegate invocation
-public void RaiseEvent()
-{
-    Delegate[] handlers = OnEvent?.GetInvocationList();
-    if (handlers == null)
-    {
-        return;
-    }
-
-    for (int i = 0; i < handlers.Length; i++)
-    {
-        try
-        {
-            ((Action)handlers[i]).Invoke();
-        }
-        catch (Exception ex)
-        {
-            Debug.LogError($"[{nameof(MyClass)}] Exception in event handler: {ex}");
-        }
-    }
-}
-```
-
----
-
-## Editor-Specific Defensive Patterns
-
-Editor code is especially vulnerable because:
-
-- User can modify inspector values at any time
-- SerializedProperty may reference destroyed objects
-- Assets may be deleted mid-operation
-- Unity reload may invalidate cached state
-
-### 1. SerializedProperty Safety
-
-```csharp
-// ✅ Safe property access
-public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
-{
-    if (property == null)
-    {
-        return;
-    }
-
-    if (property.serializedObject == null || property.serializedObject.targetObject == null)
-    {
-        EditorGUI.LabelField(position, label, new GUIContent("(Missing Object)"));
-        return;
-    }
-
-    EditorGUI.BeginProperty(position, label, property);
-    try
-    {
-        // Draw property...
-    }
-    finally
-    {
-        EditorGUI.EndProperty();
-    }
-}
-```
-
-### 2. Safe Asset Operations
-
-```csharp
-// ✅ Safe asset loading
-public static T LoadAssetSafe<T>(string path) where T : Object
-{
-    if (string.IsNullOrEmpty(path))
-    {
-        return null;
-    }
-
-    T asset = AssetDatabase.LoadAssetAtPath<T>(path);
-
-    if (asset == null)
-    {
-        Debug.LogWarning($"[AssetLoader] Failed to load asset at: {path}");
-    }
-
-    return asset;
-}
-
-// ✅ Safe asset iteration
-public void ProcessSelectedAssets()
-{
-    Object[] selection = Selection.objects;
-    if (selection == null || selection.Length == 0)
-    {
-        return;
-    }
-
-    for (int i = 0; i < selection.Length; i++)
-    {
-        Object obj = selection[i];
-        if (obj == null)
-        {
-            continue;
-        }
-
-        string path = AssetDatabase.GetAssetPath(obj);
-        if (string.IsNullOrEmpty(path))
-        {
-            continue;
-        }
-
-        ProcessAsset(path);
-    }
-}
-```
-
-### 3. Cache Invalidation Safety
-
-```csharp
-// ✅ Safe cached value access
-private SerializedProperty _cachedProperty;
-private Object _cachedTarget;
-
-private SerializedProperty GetProperty(SerializedObject serializedObject)
-{
-    if (serializedObject == null)
-    {
-        _cachedProperty = null;
-        _cachedTarget = null;
-        return null;
-    }
-
-    // Invalidate cache if target changed
-    if (_cachedTarget != serializedObject.targetObject)
-    {
-        _cachedProperty = null;
-        _cachedTarget = serializedObject.targetObject;
-    }
-
-    if (_cachedProperty == null)
-    {
-        _cachedProperty = serializedObject.FindProperty("_fieldName");
-    }
-
-    return _cachedProperty;
 }
 ```
 
@@ -605,19 +392,19 @@ private void RepairInternalState()
 ### Logging Best Practices
 
 ```csharp
-// ✅ Include context for debugging
+// Include context for debugging
 Debug.LogWarning($"[{nameof(MyComponent)}] Skipping null target in {nameof(ProcessTargets)}");
 
-// ✅ Include relevant data
+// Include relevant data
 Debug.LogError($"[Serializer] Failed to deserialize type {typeof(T).Name} from {json?.Length ?? 0} chars");
 
-// ❌ Don't log in hot paths
+// Don't log in hot paths
 public void Update()
 {
     // Never log every frame unless explicitly debugging
 }
 
-// ✅ Use conditional logging for hot paths
+// Use conditional logging for hot paths
 [System.Diagnostics.Conditional("DEBUG_VERBOSE")]
 private void LogVerbose(string message)
 {
@@ -637,17 +424,17 @@ Before submitting production code, verify:
 - [ ] All dictionary access uses TryGetValue
 - [ ] All enum switches have default case
 - [ ] All Unity Objects null-checked before use
-- [ ] All event handlers wrapped in try-catch
-- [ ] Serialization handles corrupt/missing data
-- [ ] Editor code handles missing SerializedProperty
 - [ ] Internal state maintains invariants after any operation
 - [ ] Warnings logged for unexpected-but-handled states
 - [ ] No excessive logging in frequently-called code
+
+For Editor-specific defensive patterns, see [defensive-editor-programming](./defensive-editor-programming.md).
 
 ---
 
 ## Related Skills
 
-- [high-performance-csharp](./high-performance-csharp.md) — Performance patterns (applies alongside defensive patterns)
-- [create-editor-tool](./create-editor-tool.md) — Editor-specific patterns
-- [create-test](./create-test.md) — Test edge cases and error conditions
+- [defensive-editor-programming](./defensive-editor-programming.md) - Editor-specific defensive patterns
+- [high-performance-csharp](./high-performance-csharp.md) - Performance patterns (applies alongside defensive patterns)
+- [create-editor-tool](./create-editor-tool.md) - Editor-specific patterns
+- [create-test](./create-test.md) - Test edge cases and error conditions

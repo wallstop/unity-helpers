@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 // ReSharper disable ArrangeRedundantParentheses
@@ -21,6 +21,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
     using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
     using WallstopStudios.UnityHelpers.Core.Extension;
     using WallstopStudios.UnityHelpers.Core.Helper;
+    using WallstopStudios.UnityHelpers.Editor.Core.Helper;
     using WallstopStudios.UnityHelpers.Editor.Settings;
     using WallstopStudios.UnityHelpers.Editor.Utils;
     using WallstopStudios.UnityHelpers.Utils;
@@ -735,37 +736,41 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         private static readonly GUIContent DuplicateIconContentCache = new();
         private static readonly GUIContent NullKeyTooltipContent = new();
         private static readonly GUIContent NullKeyIconContentCache = new();
-        private static readonly GUIContent DuplicateIconTemplate = EditorGUIUtility.IconContent(
-            "console.warnicon.sml"
-        );
-        private static readonly GUIContent PendingFoldoutContent = EditorGUIUtility.TrTextContent(
-            "New Entry"
-        );
+
+        // Lazy initialization to avoid calling EditorGUIUtility during static class loading,
+        // which can hang Unity during "Open Project: Open Scene" if the class is accessed
+        // before EditorGUIUtility is fully initialized.
+        private static GUIContent _duplicateIconTemplate;
+        private static GUIContent _pendingFoldoutContent;
+        private static GUIContent _paginationPrevContent;
+        private static GUIContent _paginationNextContent;
+        private static GUIContent _paginationFirstContent;
+        private static GUIContent _paginationLastContent;
+
+        private static GUIContent DuplicateIconTemplate =>
+            _duplicateIconTemplate ??= EditorGUIUtility.IconContent("console.warnicon.sml");
+
+        private static GUIContent PendingFoldoutContent =>
+            _pendingFoldoutContent ??= EditorGUIUtility.TrTextContent("New Entry");
+
         private static readonly GUIContent FoldoutLabelContent = new();
         private static readonly GUIContent PaginationPageLabelContent = new();
         private static readonly GUIContent PaginationRangeContent = new();
         private static readonly GUIContent UnsupportedTypeContent = new();
         private static readonly Dictionary<Type, string> UnsupportedTypeMessageCache = new();
-        private static readonly Dictionary<int, string> IntToStringCache = new();
-        private static readonly Dictionary<(int, int), string> PaginationLabelCache = new();
         private static readonly Dictionary<(int, int, int), string> RangeLabelCache = new();
-        private const int IntToStringCacheMax = 1000;
-        private static readonly GUIContent PaginationPrevContent = EditorGUIUtility.TrTextContent(
-            "<",
-            "Previous page"
-        );
-        private static readonly GUIContent PaginationNextContent = EditorGUIUtility.TrTextContent(
-            ">",
-            "Next page"
-        );
-        private static readonly GUIContent PaginationFirstContent = EditorGUIUtility.TrTextContent(
-            "<<",
-            "Jump to first page"
-        );
-        private static readonly GUIContent PaginationLastContent = EditorGUIUtility.TrTextContent(
-            ">>",
-            "Jump to last page"
-        );
+
+        private static GUIContent PaginationPrevContent =>
+            _paginationPrevContent ??= EditorGUIUtility.TrTextContent("<", "Previous page");
+
+        private static GUIContent PaginationNextContent =>
+            _paginationNextContent ??= EditorGUIUtility.TrTextContent(">", "Next page");
+
+        private static GUIContent PaginationFirstContent =>
+            _paginationFirstContent ??= EditorGUIUtility.TrTextContent("<<", "Jump to first page");
+
+        private static GUIContent PaginationLastContent =>
+            _paginationLastContent ??= EditorGUIUtility.TrTextContent(">>", "Jump to last page");
         private static GUIStyle _footerLabelStyle;
         private static GUIStyle _pendingFoldoutLabelStyle;
         private static GUIStyle _rowChildLabelStyle;
@@ -8344,11 +8349,11 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             TryRegisterDualColorPaletteRenderer(
                 renderers,
                 settingsType,
-                "WButtonCustomColor",
+                nameof(UnityHelpersSettings.WButtonCustomColor),
                 "Button",
-                "buttonColor",
+                UnityHelpersSettings.SerializedPropertyNames.WButtonCustomColorButton,
                 "Text",
-                "textColor"
+                UnityHelpersSettings.SerializedPropertyNames.WButtonCustomColorText
             );
             TryRegisterWEnumPaletteRenderer(renderers, settingsType);
             return renderers;
@@ -8406,7 +8411,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         )
         {
             Type nestedType = containerType.GetNestedType(
-                "WEnumToggleButtonsCustomColor",
+                nameof(UnityHelpersSettings.WEnumToggleButtonsCustomColor),
                 BindingFlags.Instance | BindingFlags.NonPublic
             );
             if (nestedType == null)
@@ -8415,19 +8420,19 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
 
             FieldInfo selectedBackground = nestedType.GetField(
-                "selectedBackgroundColor",
+                UnityHelpersSettings.SerializedPropertyNames.WEnumToggleButtonsSelectedBackground,
                 BindingFlags.Instance | BindingFlags.NonPublic
             );
             FieldInfo selectedText = nestedType.GetField(
-                "selectedTextColor",
+                UnityHelpersSettings.SerializedPropertyNames.WEnumToggleButtonsSelectedText,
                 BindingFlags.Instance | BindingFlags.NonPublic
             );
             FieldInfo inactiveBackground = nestedType.GetField(
-                "inactiveBackgroundColor",
+                UnityHelpersSettings.SerializedPropertyNames.WEnumToggleButtonsInactiveBackground,
                 BindingFlags.Instance | BindingFlags.NonPublic
             );
             FieldInfo inactiveText = nestedType.GetField(
-                "inactiveTextColor",
+                UnityHelpersSettings.SerializedPropertyNames.WEnumToggleButtonsInactiveText,
                 BindingFlags.Instance | BindingFlags.NonPublic
             );
             if (
@@ -9910,8 +9915,14 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             Type valueType = genericArgs.Length >= 2 ? genericArgs[1] : null;
 
             // Get the _keys and _values fields
-            FieldInfo keysField = FindFieldInHierarchy(dictionaryType, "_keys");
-            FieldInfo valuesField = FindFieldInHierarchy(dictionaryType, "_values");
+            FieldInfo keysField = FindFieldInHierarchy(
+                dictionaryType,
+                SerializableDictionarySerializedPropertyNames.Keys
+            );
+            FieldInfo valuesField = FindFieldInHierarchy(
+                dictionaryType,
+                SerializableDictionarySerializedPropertyNames.Values
+            );
 
             if (keysField == null || valuesField == null)
             {
@@ -10181,48 +10192,22 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             return current;
         }
 
+        /// <summary>
+        /// Gets a cached string representation of an integer.
+        /// Delegates to <see cref="EditorCacheHelper.GetCachedIntString"/> for shared LRU caching.
+        /// </summary>
         private static string GetCachedIntString(int value)
         {
-            if (value >= 0 && value < IntToStringCacheMax)
-            {
-                if (IntToStringCache.TryGetValue(value, out string cached))
-                {
-                    return cached;
-                }
-
-                string result = value.ToString();
-                IntToStringCache[value] = result;
-                return result;
-            }
-
-            return value.ToString();
+            return EditorCacheHelper.GetCachedIntString(value);
         }
 
+        /// <summary>
+        /// Gets a cached pagination label in the format "Page X / Y".
+        /// Delegates to <see cref="EditorCacheHelper.GetPaginationLabel"/> for shared LRU caching.
+        /// </summary>
         private static string GetPaginationLabel(int currentPage, int totalPages)
         {
-            (int, int) key = (currentPage, totalPages);
-            if (PaginationLabelCache.TryGetValue(key, out string cached))
-            {
-                return cached;
-            }
-
-            using PooledResource<StringBuilder> lease = Buffers.GetStringBuilder(
-                24,
-                out StringBuilder builder
-            );
-            builder.Clear();
-            builder.Append("Page ");
-            builder.Append(currentPage);
-            builder.Append('/');
-            builder.Append(totalPages);
-            string result = builder.ToString();
-
-            if (PaginationLabelCache.Count < 10000)
-            {
-                PaginationLabelCache[key] = result;
-            }
-
-            return result;
+            return EditorCacheHelper.GetPaginationLabel(currentPage, totalPages);
         }
 
         private static string GetRangeLabel(int start, int end, int total)

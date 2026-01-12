@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 #if UNITY_EDITOR
@@ -17,6 +17,8 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
     using WallstopStudios.UnityHelpers.Tests.Editor.TestTypes;
 
     [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class WButtonMetadataCacheTests : CommonTestBase
     {
         [Test]

@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Core.Helper
@@ -20,7 +20,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         /// <returns>The input path with all backslashes replaced by forward slashes; null if input is null.</returns>
         public static string Sanitize(string path)
         {
-            return SanitizePath(path);
+            return path.SanitizePath();
         }
 
         /// <summary>

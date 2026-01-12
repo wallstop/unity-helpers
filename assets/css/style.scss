@@ -44,10 +44,10 @@ section {
 }
 
 /* Header - remove bottom line that appears as "random line" */
+/* Note: box-shadow is intentionally NOT removed here to allow Issue #127 sticky header shadow */
 header {
   border: none !important;
   border-bottom: none !important;
-  box-shadow: none !important;
   outline: none !important;
 }
 
@@ -138,4 +138,77 @@ hr {
   border-top: 1px solid var(--border-color) !important;
   background: var(--border-color) !important;
   height: 1px !important;
+}
+
+/* ===== FIX: Code block word-wrap issues (GitHub Issue #130) ===== */
+/* Core code block styles (pre, .highlight) are in theme.css */
+
+/* Only allow wrapping for inline code (not in pre) */
+:not(pre) > code {
+  white-space: normal !important;
+  word-wrap: break-word !important;
+  overflow-wrap: break-word !important;
+}
+
+/* ===== Sortable Tables (Issue #126) ===== */
+
+/* Sortable table headers - cursor and selection */
+table[data-sortable] th {
+  cursor: pointer;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  position: relative;
+  padding-inline-end: 1.5em !important;
+  transition: background-color 0.15s ease;
+}
+
+/* Initial sortable indicator - subtle cue that headers are sortable */
+table[data-sortable] th::after {
+  content: "\21C5"; /* Up-Down Arrow character */
+  position: absolute;
+  inset-inline-end: 0.4em;
+  opacity: 0.3;
+  font-size: 0.75em;
+  color: var(--text-muted);
+}
+
+/* Hide default indicator when sort indicator is present */
+table[data-sortable] th:has(.sort-indicator)::after {
+  display: none;
+}
+
+/* Hover state for sortable headers - improved dark mode contrast */
+table[data-sortable] th:hover {
+  background-color: var(--bg-code) !important;
+}
+
+/* Focus state for keyboard navigation */
+table[data-sortable] th:focus {
+  outline: 2px solid var(--accent-color) !important;
+  outline-offset: -2px !important;
+}
+
+table[data-sortable] th:focus:not(:focus-visible) {
+  outline: none !important;
+}
+
+table[data-sortable] th:focus-visible {
+  outline: 2px solid var(--accent-color) !important;
+  outline-offset: -2px !important;
+}
+
+/* Sort indicator styling */
+table[data-sortable] th .sort-indicator {
+  font-size: 0.75em;
+  margin-inline-start: 0.25em;
+  color: var(--accent-color);
+  font-weight: normal;
+}
+
+/* Active sorted column highlight */
+table[data-sortable] th[aria-sort="ascending"],
+table[data-sortable] th[aria-sort="descending"] {
+  background-color: var(--bg-secondary) !important;
 }

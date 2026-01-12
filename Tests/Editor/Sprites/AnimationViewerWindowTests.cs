@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Tests.Sprites
@@ -9,6 +9,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Editor.Sprites;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class AnimationViewerWindowTests
     {
         [Test]

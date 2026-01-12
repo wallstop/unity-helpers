@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Tests.Core.Random
@@ -9,6 +9,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Core.Random
     using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
     using WallstopStudios.UnityHelpers.Core.Random;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class RandomComparerTests
     {
         [Test]

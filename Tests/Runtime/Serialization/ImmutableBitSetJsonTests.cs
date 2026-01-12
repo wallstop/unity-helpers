@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Tests.Serialization
@@ -7,6 +7,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
     using WallstopStudios.UnityHelpers.Core.DataStructure;
     using WallstopStudios.UnityHelpers.Core.Serialization;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class ImmutableBitSetJsonTests
     {
         [Test]

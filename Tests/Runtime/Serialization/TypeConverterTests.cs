@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Tests.Serialization
@@ -10,6 +10,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
     using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Core.Serialization.JsonConverters;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class TypeConverterTests
     {
         private sealed class TypeHolder
@@ -30,7 +32,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
 
             string json = JsonSerializer.Serialize(holder, options);
             TypeHolder roundtrip = JsonSerializer.Deserialize<TypeHolder>(json, options);
-            Assert.IsNotNull(roundtrip);
+            Assert.IsTrue(roundtrip != null, "Deserialized TypeHolder should not be null");
             Assert.AreEqual(typeof(ReflectionHelpers), roundtrip.T);
         }
     }

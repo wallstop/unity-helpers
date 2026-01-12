@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2023 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Core.Extension
@@ -141,7 +141,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         /// </remarks>
         public static Direction AsDirection(this Vector3 vector3)
         {
-            return AsDirection((Vector2)vector3);
+            return ((Vector2)vector3).AsDirection();
         }
 
         /// <summary>

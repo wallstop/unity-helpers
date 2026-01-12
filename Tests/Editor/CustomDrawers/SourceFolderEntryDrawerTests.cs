@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
@@ -23,6 +23,8 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
     /// 3. Foldout states correctly affect height calculations
     /// </summary>
     [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class SourceFolderEntryDrawerTests : CommonTestBase
     {
         private const string TestRoot = "Assets/Temp/SourceFolderEntryDrawerTests";
@@ -276,8 +278,8 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             });
 
             // Assert
-            Assert.IsNull(
-                caughtException,
+            Assert.IsTrue(
+                caughtException == null,
                 $"OnGUI should not throw when rendering. Exception: {caughtException}"
             );
         }
@@ -323,8 +325,8 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 });
 
                 // Assert
-                Assert.IsNull(
-                    caughtException,
+                Assert.IsTrue(
+                    caughtException == null,
                     $"OnGUI should not throw for mode {capturedMode}. Exception: {caughtException}"
                 );
             }
@@ -448,8 +450,8 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             });
 
             // Assert
-            Assert.IsNull(
-                caughtException,
+            Assert.IsTrue(
+                caughtException == null,
                 $"OnGUI should handle null property gracefully. Exception: {caughtException}"
             );
         }
@@ -480,8 +482,8 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             });
 
             // Assert
-            Assert.IsNull(
-                caughtException,
+            Assert.IsTrue(
+                caughtException == null,
                 $"OnGUI should handle collapsed property. Exception: {caughtException}"
             );
         }
@@ -511,8 +513,8 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             });
 
             // Assert
-            Assert.IsNull(
-                caughtException,
+            Assert.IsTrue(
+                caughtException == null,
                 $"OnGUI should handle zero-width rect. Exception: {caughtException}"
             );
         }
@@ -543,8 +545,8 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             });
 
             // Assert
-            Assert.IsNull(
-                caughtException,
+            Assert.IsTrue(
+                caughtException == null,
                 $"OnGUI should handle null label. Exception: {caughtException}"
             );
         }
@@ -579,8 +581,8 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             });
 
             // Assert
-            Assert.IsNull(
-                caughtException,
+            Assert.IsTrue(
+                caughtException == null,
                 $"OnGUI should handle empty regexes list. Exception: {caughtException}"
             );
         }
@@ -678,8 +680,8 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             });
 
             // Assert
-            Assert.IsNull(
-                caughtException,
+            Assert.IsTrue(
+                caughtException == null,
                 $"OnGUI should handle {testCase.TestName}. Exception: {caughtException}"
             );
         }

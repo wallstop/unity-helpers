@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 #if UNITY_EDITOR
@@ -26,11 +26,14 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
     /// - A group with all identical explicit values does NOT generate a conflict
     /// </summary>
     [TestFixture]
-    public sealed class WButtonConflictDetectionTests : CommonTestBase
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
+    public sealed class WButtonConflictDetectionTests : BatchedEditorTestBase
     {
         [SetUp]
         public void SetUp()
         {
+            base.BaseSetUp();
             WButtonGUI.ClearGroupDataForTesting();
             WButtonGUI.ClearConflictingDrawOrderWarningsForTesting();
             WButtonGUI.ClearConflictingGroupPriorityWarningsForTesting();
@@ -42,13 +45,13 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
         [TearDown]
         public override void TearDown()
         {
-            base.TearDown();
             WButtonGUI.ClearGroupDataForTesting();
             WButtonGUI.ClearConflictingDrawOrderWarningsForTesting();
             WButtonGUI.ClearConflictingGroupPriorityWarningsForTesting();
             WButtonGUI.ClearConflictingGroupPlacementWarningsForTesting();
             WButtonGUI.ClearConflictWarningContentCacheForTesting();
             WButtonGUI.ClearContextCache();
+            base.TearDown();
         }
 
         // ===================================================================

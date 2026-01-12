@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Tests.DataStructures
@@ -9,6 +9,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
     using WallstopStudios.UnityHelpers.Core.Math;
 
     [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class BoundingBox3DTests
     {
         [Test]
@@ -856,7 +857,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             BoundingBox3D box = new(Vector3.zero, Vector3.one);
             string str = box.ToString();
 
-            Assert.IsNotNull(str);
+            Assert.IsTrue(str != null);
             Assert.IsTrue(str.Contains("BoundingBox3D"));
         }
 

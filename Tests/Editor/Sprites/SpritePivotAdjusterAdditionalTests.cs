@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Tests.Sprites
@@ -11,9 +11,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
     using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Editor.AssetProcessors;
     using WallstopStudios.UnityHelpers.Editor.Sprites;
+    using WallstopStudios.UnityHelpers.Editor.Utils;
     using WallstopStudios.UnityHelpers.Tests.Core;
     using Object = UnityEngine.Object;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class SpritePivotAdjusterAdditionalTests : CommonTestBase
     {
         private const string Root = "Assets/Temp/SpritePivotAdjusterAdditionalTests";
@@ -37,13 +41,26 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
             SpritePivotAdjuster.SuppressUserPrompts = false;
         }
 
+        public override void CommonOneTimeSetUp()
+        {
+            base.CommonOneTimeSetUp();
+            DeferAssetCleanupToOneTimeTearDown = true;
+        }
+
+        [OneTimeTearDown]
+        public override void OneTimeTearDown()
+        {
+            CleanupDeferredAssetsAndFolders();
+            base.OneTimeTearDown();
+        }
+
         [Test]
         public void RespectsAlphaCutoffWhenComputingPivot()
         {
             string src = (Root + "/alpha_bias.png").SanitizePath();
             // 20x20 with a faint (alpha=0.2) 4x4 block at bottom-left and a solid 4x4 at top-right
             CreateDualAlphaPattern(src, 20, 20);
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             TextureImporter imp = AssetImporter.GetAtPath(src) as TextureImporter;
             imp.textureType = TextureImporterType.Sprite;
@@ -66,7 +83,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
             window._alphaCutoff = 0.1f;
             window._forceReimport = true;
             window.AdjustPivotsInDirectory(false);
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
             imp = AssetImporter.GetAtPath(src) as TextureImporter;
             Vector2 pivotLow = imp.spritePivot;
 
@@ -81,7 +98,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
             window._forceReimport = true;
             window.FindFilesToProcess();
             window.AdjustPivotsInDirectory(false);
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
             imp = AssetImporter.GetAtPath(src) as TextureImporter;
             Vector2 pivotHigh = imp.spritePivot;
 
@@ -95,7 +112,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
         {
             string src = (Root + "/nonreadable.png").SanitizePath();
             CreateOpaqueLShape(src, 10, 10);
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             TextureImporter imp = AssetImporter.GetAtPath(src) as TextureImporter;
             imp.textureType = TextureImporterType.Sprite;
@@ -117,7 +134,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
             window._forceReimport = true;
             window.FindFilesToProcess();
             window.AdjustPivotsInDirectory(false);
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             imp = AssetImporter.GetAtPath(src) as TextureImporter;
             Vector2 after = imp.spritePivot;
@@ -129,7 +146,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
         {
             string src = (Root + "/multi.png").SanitizePath();
             CreateOpaqueLShape(src, 12, 12);
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             TextureImporter imp = AssetImporter.GetAtPath(src) as TextureImporter;
             imp.textureType = TextureImporterType.Sprite;
@@ -151,7 +168,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
             window._forceReimport = true;
             window.FindFilesToProcess();
             window.AdjustPivotsInDirectory(false);
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             imp = AssetImporter.GetAtPath(src) as TextureImporter;
             Vector2 after = imp.spritePivot;

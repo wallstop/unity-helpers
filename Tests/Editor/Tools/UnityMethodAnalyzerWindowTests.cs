@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 #if UNITY_EDITOR
@@ -21,6 +21,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Tools
     /// cancellation behavior, and UI state consistency.
     /// </summary>
     [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     // UNH-SUPPRESS: Complex test class with manual EditorWindow lifecycle management in TearDown
     public sealed class UnityMethodAnalyzerWindowTests
     {

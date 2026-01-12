@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Tests.Tags
@@ -15,6 +15,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Tags
     using WallstopStudios.UnityHelpers.Tests.Core;
 
     [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class AttributeMetadataCacheGeneratorTests : CommonTestBase
     {
         private const string CacheAssetPath =
@@ -36,8 +38,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Tags
             ScriptableObjectSingletonCreator.AllowAssetCreationDuringSuppression = true;
 
             // Force a refresh to ensure we have the latest state
-            AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.SaveAndRefreshIfNotBatching();
             yield return null;
 
             _assetExistedBefore =
@@ -95,7 +96,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Tags
 
             if (AssetDatabase.LoadAssetAtPath<Object>(assetPath) != null)
             {
-                AssetDatabase.ImportAsset(assetPath, ImportAssetOptions.ForceUpdate);
+                AssetDatabase.ImportAsset(assetPath, ImportAssetOptions.ForceSynchronousImport);
             }
         }
 
@@ -253,8 +254,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Tags
             if (AssetDatabase.LoadAssetAtPath<AttributeMetadataCache>(CacheAssetPath) != null)
             {
                 AssetDatabase.DeleteAsset(CacheAssetPath);
-                AssetDatabase.SaveAssets();
-                AssetDatabase.Refresh();
+                AssetDatabaseBatchHelper.SaveAndRefreshIfNotBatching();
                 yield return null;
             }
 
@@ -303,8 +303,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Tags
             if (AssetDatabase.LoadAssetAtPath<AttributeMetadataCache>(CacheAssetPath) != null)
             {
                 AssetDatabase.DeleteAsset(CacheAssetPath);
-                AssetDatabase.SaveAssets();
-                AssetDatabase.Refresh();
+                AssetDatabaseBatchHelper.SaveAndRefreshIfNotBatching();
                 yield return null;
             }
 

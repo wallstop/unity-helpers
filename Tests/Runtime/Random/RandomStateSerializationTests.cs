@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Tests.Runtime.Random
@@ -10,6 +10,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Random
     using WallstopStudios.UnityHelpers.Core.Random;
     using Serializer = WallstopStudios.UnityHelpers.Core.Serialization.Serializer;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class RandomStateSerializationTests
     {
         private static void AssertStateEqual(
@@ -33,7 +35,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Random
             if (expectedHasGaussian)
             {
                 double ev = expected.Gaussian.Value;
-                Assert.IsNotNull(actual.Gaussian, "actual.Gaussian != null");
+                Assert.IsTrue(actual.Gaussian != null, "actual.Gaussian != null");
                 double av = actual.Gaussian.Value;
                 if (double.IsNaN(ev))
                 {
@@ -63,11 +65,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Random
             IReadOnlyList<byte> actualPayload = actual.PayloadBytes;
             if (expectedPayload == null)
             {
-                Assert.IsNull(actualPayload, $"{context}: Payload should be null");
+                Assert.IsTrue(actualPayload == null, $"{context}: Payload should be null");
             }
             else
             {
-                Assert.IsNotNull(actualPayload, $"{context}: Payload should not be null");
+                Assert.IsTrue(actualPayload != null, $"{context}: Payload should not be null");
                 Assert.AreEqual(
                     expectedPayload.Count,
                     actualPayload.Count,
@@ -95,7 +97,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Random
             RandomState state = new(123UL);
 
             string json = Serializer.JsonStringify(state);
-            Assert.IsNotNull(json, "JSON should not be null");
+            Assert.IsTrue(json != null, "JSON should not be null");
             Assert.IsTrue(json.Contains("State1"), "JSON should include State1");
 
             RandomState clone = Serializer.JsonDeserialize<RandomState>(json);
@@ -215,7 +217,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Random
         {
             RandomState state = new(123UL);
             byte[] bytes = Serializer.ProtoSerialize(state);
-            Assert.IsNotNull(bytes, "Protobuf should produce bytes");
+            Assert.IsTrue(bytes != null, "Protobuf should produce bytes");
             Assert.Greater(bytes.Length, 0, "Protobuf should produce non-empty bytes");
 
             RandomState clone = Serializer.ProtoDeserialize<RandomState>(bytes);

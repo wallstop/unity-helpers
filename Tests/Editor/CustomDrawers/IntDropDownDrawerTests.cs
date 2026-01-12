@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
@@ -19,6 +19,8 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
     using PropertyAttribute = UnityEngine.PropertyAttribute;
 
     [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class IntDropDownDrawerTests : CommonTestBase
     {
         [Test]
@@ -31,7 +33,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializedProperty property = serializedObject.FindProperty(
                 nameof(IntDropDownNoOptionsAsset.unspecified)
             );
-            Assert.IsNotNull(property, "Failed to locate int property.");
+            Assert.IsTrue(property != null, "Failed to locate int property.");
 
             IntDropDownDrawer drawer = new();
             AssignAttribute(
@@ -56,7 +58,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializedProperty property = serializedObject.FindProperty(
                 nameof(IntDropDownTestAsset.validValue)
             );
-            Assert.IsNotNull(property, "Failed to locate valid value property.");
+            Assert.IsTrue(property != null, "Failed to locate valid value property.");
 
             IntDropDownDrawer drawer = new();
             AssignAttribute(drawer, new IntDropDownAttribute(5, 10, 15));
@@ -65,7 +67,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 
             BaseField<int> selector = (BaseField<int>)element;
             DropdownField dropdown = selector.Q<DropdownField>();
-            Assert.IsNotNull(dropdown, "DropDown field was not created.");
+            Assert.IsTrue(dropdown != null, "DropDown field was not created.");
             Assert.That(dropdown.value, Is.EqualTo("10"));
         }
 
@@ -81,7 +83,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializedProperty property = serializedObject.FindProperty(
                 nameof(IntDropDownLargeOptionsAsset.selection)
             );
-            Assert.IsNotNull(property, "Failed to locate selection property.");
+            Assert.IsTrue(property != null, "Failed to locate selection property.");
 
             IntDropDownDrawer drawer = new();
             AssignAttribute(
@@ -109,7 +111,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializedProperty property = serializedObject.FindProperty(
                 nameof(IntDropDownTestAsset.missingValue)
             );
-            Assert.IsNotNull(property, "Failed to locate missing value property.");
+            Assert.IsTrue(property != null, "Failed to locate missing value property.");
 
             IntDropDownDrawer drawer = new();
             AssignAttribute(drawer, new IntDropDownAttribute(5, 10, 15));
@@ -137,7 +139,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializedProperty property = serializedObject.FindProperty(
                 nameof(IntDropDownTestAsset.validValue)
             );
-            Assert.IsNotNull(property, "Failed to locate valid value property.");
+            Assert.IsTrue(property != null, "Failed to locate valid value property.");
 
             IntDropDownDrawer drawer = new();
             AssignAttribute(drawer, new IntDropDownAttribute(5, 10, 15));
@@ -212,7 +214,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         {
             IntDropDownAttribute attribute = new(10, 20, 30);
             WValueDropDownAttribute backingAttribute = attribute.BackingAttribute;
-            Assert.IsNotNull(backingAttribute);
+            Assert.IsTrue(backingAttribute != null);
             Assert.That(backingAttribute.ValueType, Is.EqualTo(typeof(int)));
         }
 
@@ -316,7 +318,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializedProperty property = serializedObject.FindProperty(
                 nameof(IntDropDownLargeOptionsAsset.selection)
             );
-            Assert.IsNotNull(property, "Failed to locate selection property.");
+            Assert.IsTrue(property != null, "Failed to locate selection property.");
 
             IntDropDownDrawer drawer = new();
             IntDropDownAttribute attribute = new(
@@ -350,7 +352,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializedProperty property = serializedObject.FindProperty(
                 nameof(IntDropDownTypeMismatchAsset.stringFieldWithIntDropDown)
             );
-            Assert.IsNotNull(property, "Failed to locate string field property.");
+            Assert.IsTrue(property != null, "Failed to locate string field property.");
 
             IntDropDownDrawer drawer = new();
             AssignAttribute(drawer, new IntDropDownAttribute(1, 2, 3));
@@ -387,7 +389,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializedProperty property = serializedObject.FindProperty(
                 nameof(IntDropDownTypeMismatchAsset.floatFieldWithIntDropDown)
             );
-            Assert.IsNotNull(property, "Failed to locate float field property.");
+            Assert.IsTrue(property != null, "Failed to locate float field property.");
 
             IntDropDownDrawer drawer = new();
             AssignAttribute(drawer, new IntDropDownAttribute(1, 2, 3));
@@ -434,7 +436,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             serializedObject.Update();
 
             SerializedProperty property = serializedObject.FindProperty(fieldName);
-            Assert.IsNotNull(property, $"Failed to locate {fieldName} property.");
+            Assert.IsTrue(property != null, $"Failed to locate {fieldName} property.");
 
             IntDropDownDrawer drawer = new();
             AssignAttribute(drawer, new IntDropDownAttribute(1, 2, 3));

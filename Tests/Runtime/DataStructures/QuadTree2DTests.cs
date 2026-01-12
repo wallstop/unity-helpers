@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Tests.DataStructures
@@ -11,6 +11,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
     using WallstopStudios.UnityHelpers.Core.DataStructure;
     using WallstopStudios.UnityHelpers.Core.Random;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class QuadTree2DTests : SpatialTree2DTests<QuadTree2D<Vector2>>
     {
         private IRandom Random => PRNG.Instance;
@@ -44,7 +46,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         {
             List<Vector2> points = new();
             QuadTree2D<Vector2> tree = CreateTree(points);
-            Assert.IsNotNull(tree);
+            Assert.IsTrue(tree != null);
 
             List<Vector2> results = new();
             tree.GetElementsInRange(Vector2.zero, 10000f, results);
@@ -58,7 +60,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             List<Vector2> points = new() { point };
             QuadTree2D<Vector2> tree = CreateTree(points);
 
-            Assert.IsNotNull(tree);
+            Assert.IsTrue(tree != null);
 
             List<Vector2> results = new();
             tree.GetElementsInRange(point, 10000f, results);
@@ -508,7 +510,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             QuadTree2D<Vector2> tree = CreateTree(points);
 
             // Verify tree was created successfully
-            Assert.IsNotNull(tree);
+            Assert.IsTrue(tree != null);
 
             // Verify all points are stored in the tree
             Assert.AreEqual(100, tree.elements.Length);
@@ -558,7 +560,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             QuadTree2D<Vector2> tree = CreateTree(points);
 
             // Verify tree was created successfully
-            Assert.IsNotNull(tree);
+            Assert.IsTrue(tree != null);
 
             // Verify all points are stored in the tree
             Assert.AreEqual(100, tree.elements.Length);

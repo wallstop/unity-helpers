@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Core.Extension
@@ -38,7 +38,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 throw new ArgumentNullException(nameof(readonlyList));
             }
 
-            return IndexOf(readonlyList, element, 0, readonlyList.Count, null);
+            return readonlyList.IndexOf(element, 0, readonlyList.Count, null);
         }
 
         /// <summary>
@@ -65,7 +65,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             }
 
             int length = readonlyList.Count;
-            return IndexOf(readonlyList, element, startIndex, length - startIndex, null);
+            return readonlyList.IndexOf(element, startIndex, length - startIndex, null);
         }
 
         /// <summary>
@@ -93,7 +93,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             int count
         )
         {
-            return IndexOf(readonlyList, element, startIndex, count, null);
+            return readonlyList.IndexOf(element, startIndex, count, null);
         }
 
         /// <summary>
@@ -188,7 +188,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 return -1;
             }
 
-            return LastIndexOf(readonlyList, element, length - 1, length, null);
+            return readonlyList.LastIndexOf(element, length - 1, length, null);
         }
 
         /// <summary>
@@ -218,7 +218,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 throw new ArgumentNullException(nameof(readonlyList));
             }
 
-            return LastIndexOf(readonlyList, element, startIndex, startIndex + 1, null);
+            return readonlyList.LastIndexOf(element, startIndex, startIndex + 1, null);
         }
 
         /// <summary>
@@ -246,7 +246,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             int count
         )
         {
-            return LastIndexOf(readonlyList, element, startIndex, count, null);
+            return readonlyList.LastIndexOf(element, startIndex, count, null);
         }
 
         /// <summary>
@@ -334,7 +334,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         /// <exception cref="ArgumentNullException">Thrown when readonlyList is null.</exception>
         public static bool Contains<T>(this IReadOnlyList<T> readonlyList, T element)
         {
-            return Contains(readonlyList, element, null);
+            return readonlyList.Contains(element, null);
         }
 
         /// <summary>
@@ -364,7 +364,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 throw new ArgumentNullException(nameof(readonlyList));
             }
 
-            return IndexOf(readonlyList, element, 0, readonlyList.Count, comparer) >= 0;
+            return readonlyList.IndexOf(element, 0, readonlyList.Count, comparer) >= 0;
         }
 
         /// <summary>
@@ -509,7 +509,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 throw new ArgumentNullException(nameof(readonlyList));
             }
 
-            return BinarySearch(readonlyList, 0, readonlyList.Count, value, null);
+            return readonlyList.BinarySearch(0, readonlyList.Count, value, null);
         }
 
         /// <summary>
@@ -539,7 +539,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 throw new ArgumentNullException(nameof(readonlyList));
             }
 
-            return BinarySearch(readonlyList, 0, readonlyList.Count, value, comparer);
+            return readonlyList.BinarySearch(0, readonlyList.Count, value, comparer);
         }
 
         /// <summary>
@@ -567,7 +567,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             T value
         )
         {
-            return BinarySearch(readonlyList, index, count, value, null);
+            return readonlyList.BinarySearch(index, count, value, null);
         }
 
         /// <summary>

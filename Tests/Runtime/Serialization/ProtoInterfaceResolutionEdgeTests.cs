@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Tests.Serialization
@@ -8,6 +8,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
     using Serializer = WallstopStudios.UnityHelpers.Core.Serialization.Serializer;
 
     [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class ProtoInterfaceResolutionEdgeTests
     {
         public interface IWidget { }
@@ -36,7 +37,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
             // After registration, it should succeed
             Serializer.RegisterProtobufRoot<IWidget, Widget>();
             IWidget round = Serializer.ProtoDeserialize<IWidget>(data);
-            Assert.IsNotNull(round, "Deserialized instance should not be null");
+            Assert.IsTrue(round != null, "Deserialized instance should not be null");
             Assert.IsInstanceOf<Widget>(round);
             Widget w = (Widget)round;
             Assert.AreEqual(3, w.Id);

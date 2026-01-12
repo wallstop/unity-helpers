@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers.TestTypes
@@ -65,11 +65,11 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers.TestTypes
     {
         [FormerlySerializedAs("primary")]
         [SerializeField]
-        private Color _primary = Color.white;
+        internal Color _primary = Color.white;
 
         [FormerlySerializedAs("secondary")]
         [SerializeField]
-        private Color _secondary = Color.black;
+        internal Color _secondary = Color.black;
 
         public Color Primary
         {

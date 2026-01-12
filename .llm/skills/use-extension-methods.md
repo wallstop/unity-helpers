@@ -1,5 +1,7 @@
 # Skill: Use Extension Methods
 
+<!-- trigger: extension, utility, collection, string, color | Collection, string, color utilities | Feature -->
+
 **Trigger**: When manipulating collections, strings, or colors and need convenient, performant utilities beyond built-in methods.
 
 ---

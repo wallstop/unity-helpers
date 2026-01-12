@@ -1,0 +1,16 @@
+{
+  "sourceFile": "test_tall.png",
+  "spriteCount": 8,
+  "expectedNames": [
+    "test_tall_0",
+    "test_tall_1",
+    "test_tall_2",
+    "test_tall_3",
+    "test_tall_4",
+    "test_tall_5",
+    "test_tall_6",
+    "test_tall_7"
+  ],
+  "spriteDimensions": [32, 32],
+  "gridSize": [2, 4]
+}

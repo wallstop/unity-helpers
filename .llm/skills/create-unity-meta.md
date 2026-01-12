@@ -1,5 +1,7 @@
 # Skill: Create Unity Meta File
 
+<!-- trigger: meta, unity, asset, guid, file, folder | After creating ANY new file or folder | Core -->
+
 **Trigger**: **MANDATORY** — After creating ANY new file or folder in the Unity package.
 
 > ⚠️ **CRITICAL**: This skill is NOT optional. Every file and folder you create MUST have a corresponding `.meta` file generated immediately. Failure to generate meta files breaks Unity asset references and causes build failures.
@@ -19,16 +21,18 @@ Unity requires a corresponding `.meta` file for every asset. Missing `.meta` fil
 
 ---
 
-## Exception: Dot Folders
+## Exception: Dot Folders (Hidden Folders)
 
-**Do NOT generate `.meta` files** for anything inside folders that start with `.` (dot folders). These include:
+**Do NOT generate `.meta` files** for any folder or file inside a folder whose name starts with `.` (dot/hidden folders). Unity automatically ignores all dot folders, so meta files are unnecessary and would clutter the repository.
+
+Common dot folders in this repository:
 
 - `.llm/` — LLM agent instructions and skills
 - `.github/` — GitHub workflows and configuration
 - `.git/` — Git repository data
 - `.vscode/` — VS Code workspace settings
 
-Unity automatically ignores these folders, so meta files are unnecessary and would clutter the repository.
+**General rule**: If the path contains `/.` (a folder component starting with a dot), do NOT generate a meta file.
 
 ---
 

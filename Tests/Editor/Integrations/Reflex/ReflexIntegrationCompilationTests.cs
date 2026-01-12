@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 #if REFLEX_PRESENT
@@ -8,6 +8,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.Reflex
     using NUnit.Framework;
     using WallstopStudios.UnityHelpers.Integrations.Reflex;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class ReflexIntegrationCompilationTests
     {
         [Test]

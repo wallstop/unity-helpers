@@ -201,9 +201,9 @@ API snapshot (int IDs)
 using WallstopStudios.UnityHelpers.Core.DataStructure;
 
 var set = new SparseSet(capacity: 1000); // supports IDs in [0,1000)
-set.Add(42);
-bool has42 = set.Contains(42); // true
-set.Remove(42);
+set.TryAdd(42);                   // returns bool indicating success
+bool has42 = set.Contains(42);    // true
+set.TryRemove(42);                // returns bool indicating success
 
 // Dense iteration order over active IDs
 foreach (int id in set) { /* ... */ }
@@ -213,7 +213,7 @@ API snapshot (generic values)
 
 ```csharp
 var set = new SparseSet<MyComponent>(capacity: 1024);
-set.Add(100, new MyComponent()); // key 100 -> value
+set.TryAdd(100, new MyComponent()); // key 100 -> value, returns bool
 var comp = set[0];               // dense index 0 value
 ```
 
@@ -246,14 +246,14 @@ using WallstopStudios.UnityHelpers.Core.DataStructure;
 var words = new Trie(new[] { "cat", "car", "dog" });
 bool hasDog = words.Contains("dog");          // true
 List<string> outWords = new();
-int count = words.SearchByPrefix("ca", outWords); // ["cat","car"]
+words.GetWordsWithPrefix("ca", outWords);     // outWords = ["cat","car"]
 
 // Key -> Value
 var items = new Dictionary<string, int> { ["apple"] = 1, ["apricot"] = 2 };
 var trie = new Trie<int>(items);
 if (trie.TryGetValue("apricot", out var v)) { /* 2 */ }
 List<int> values = new();
-trie.SearchValuesByPrefix("ap", values);      // [1,2]
+trie.GetValuesWithPrefix("ap", values);       // values = [1,2]
 ```
 
 Tips
@@ -307,6 +307,7 @@ Tips
 - Need prefix search: Trie
 - Need compact boolean set: Bitset
 - Need dynamic connectivity: Disjoint Set
+- Need auto-evicting key-value store: Cache
 
 Common pitfalls
 
@@ -323,7 +324,182 @@ Common pitfalls
 - Sparse Set: insert/remove/contains O(1), iterate dense O(n_active)
 - Trie: insert/search O(m)
 - Bitset: set/test O(1), bitwise ops O(n/word_size)
+- Cache: get/set/remove O(1), expiration scan O(n)
 
 Notes on constants
 
 - All structures are allocation-aware (enumerators avoid boxing; internal buffers reuse pools where applicable). Real-world throughput is often more important than asymptotic notation; these implementations are tuned for Unity/IL2CPP.
+
+---
+
+## Cache (LRU/LFU/SLRU/FIFO/Random)
+
+- What it is: High-performance key-value cache with configurable eviction policies and time-based expiration.
+- Use for: Memoization, asset lookups, network response caching, session data.
+- Operations: get/set/remove in O(1); supports weighted entries, auto-loading, and statistics.
+- Pros: Multiple eviction strategies; fluent builder API; jitter for thundering herd prevention.
+- Cons: Memory overhead for tracking access patterns; requires configuration for optimal performance.
+
+```mermaid
+flowchart LR
+    subgraph Cache Operations
+        Get[Get] --> Hit{Hit?}
+        Hit -->|Yes| Return[Return Value]
+        Hit -->|No| Load[Load/Miss]
+        Set[Set] --> Evict{At Capacity?}
+        Evict -->|Yes| Policy[Apply Eviction Policy]
+        Evict -->|No| Store[Store Entry]
+        Policy --> Store
+    end
+```
+
+### When to use
+
+- Use `Cache<TKey, TValue>` when you need automatic eviction, expiration, or access tracking.
+- Use `Dictionary<TKey, TValue>` for simple lookups without size limits or expiration.
+- Use `ConcurrentDictionary<TKey, TValue>` for thread-safe access without cache semantics.
+
+### Eviction Policies
+
+| Policy     | Description                                     | Best For                             |
+| ---------- | ----------------------------------------------- | ------------------------------------ |
+| **LRU**    | Evicts least recently used entry                | General purpose, most common         |
+| **SLRU**   | Segmented LRU with probation/protected segments | High-throughput with scan resistance |
+| **LFU**    | Evicts least frequently used entry              | Stable access patterns               |
+| **FIFO**   | First in, first out eviction                    | Render caches, predictable eviction  |
+| **Random** | Random eviction                                 | Low overhead, uniform access         |
+
+### API snapshot (Basic usage)
+
+```csharp
+using WallstopStudios.UnityHelpers.Core.DataStructure;
+
+// Simple LRU cache with fluent builder
+Cache<string, UserData> cache = CacheBuilder<string, UserData>.NewBuilder()
+    .MaximumSize(1000)
+    .ExpireAfterWrite(TimeSpan.FromMinutes(5))
+    .EvictionPolicy(EvictionPolicy.Lru)
+    .Build();
+
+// Basic operations
+cache.Set("user1", userData);
+if (cache.TryGet("user1", out UserData data))
+{
+    // Use cached data
+}
+
+cache.TryRemove("user1");
+cache.Clear();
+```
+
+### API snapshot (Loading cache with auto-compute)
+
+```csharp
+using WallstopStudios.UnityHelpers.Core.DataStructure;
+
+// Loading cache - auto-computes missing values
+Cache<int, ExpensiveResult> loadingCache = CacheBuilder<int, ExpensiveResult>.NewBuilder()
+    .MaximumSize(100)
+    .Build(key => ComputeExpensiveResult(key));
+
+// GetOrAdd uses the loader when key is missing
+ExpensiveResult result = loadingCache.GetOrAdd(42, null);
+```
+
+### API snapshot (Advanced configuration)
+
+```csharp
+using WallstopStudios.UnityHelpers.Core.DataStructure;
+
+Cache<string, PathResult> pathCache = CacheBuilder<string, PathResult>.NewBuilder()
+    .MaximumSize(2000)
+    .InitialCapacity(64)                    // Start small, grow as needed
+    .ExpireAfterWrite(300f)                 // 5 minutes TTL
+    .WithJitter(12f)                        // Prevent thundering herd
+    .EvictionPolicy(EvictionPolicy.Slru)    // Scan-resistant eviction
+    .ProtectedRatio(0.8f)                   // 80% protected segment for SLRU
+    .AllowGrowth(1.5f, 4000)                // Grow 1.5x up to 4000 when thrashing
+    .RecordStatistics()                     // Enable hit/miss tracking
+    .OnEviction((key, value, reason) => Debug.Log($"Evicted {key}: {reason}"))
+    .OnGet((key, value) => Debug.Log($"Cache hit: {key}"))
+    .OnSet((key, value) => Debug.Log($"Cache set: {key}"))
+    .Build();
+
+// Access statistics
+CacheStatistics stats = pathCache.GetStatistics();
+Debug.Log($"Hit rate: {stats.HitRate:P1}, Evictions: {stats.EvictionCount}");
+```
+
+### API snapshot (Weighted caching)
+
+```csharp
+using WallstopStudios.UnityHelpers.Core.DataStructure;
+
+// Weight-based eviction (e.g., by byte size)
+Cache<string, Texture2D> textureCache = CacheBuilder<string, Texture2D>.NewBuilder()
+    .MaximumWeight(100_000_000)  // 100 MB total
+    .Weigher((key, tex) => tex.width * tex.height * 4)  // Bytes per texture
+    .ExpireAfterAccess(TimeSpan.FromMinutes(10))        // Sliding window
+    .Build();
+```
+
+### CachePresets (Ready-to-use configurations)
+
+Use `CachePresets` for common scenarios:
+
+```csharp
+using WallstopStudios.UnityHelpers.Core.DataStructure;
+
+// Short-lived cache: 100 entries, 60s TTL, LRU
+Cache<int, Vector3> tempCache = CachePresets.ShortLived<int, Vector3>().Build();
+
+// Long-lived cache: 1000 entries, no TTL, LRU
+Cache<string, GameObject> prefabCache = CachePresets.LongLived<string, GameObject>()
+    .Build(key => Resources.Load<GameObject>($"Prefabs/{key}"));
+
+// Session cache: 500 entries, 30 min sliding window, LRU
+Cache<string, InventoryData> sessionCache = CachePresets.SessionCache<string, InventoryData>().Build();
+
+// High-throughput: 2000 entries, 5 min TTL, SLRU, growth enabled
+Cache<(Vector3, Vector3), NavMeshPath> pathCache = CachePresets.HighThroughput<(Vector3, Vector3), NavMeshPath>().Build();
+
+// Render cache: 200 entries, 30s TTL, FIFO
+Cache<int, MaterialPropertyBlock> renderCache = CachePresets.RenderCache<int, MaterialPropertyBlock>().Build();
+
+// Network cache: 100 entries, 2 min TTL with jitter, LRU
+Cache<string, JsonResponse> apiCache = CachePresets.NetworkCache<string, JsonResponse>().Build();
+```
+
+### Cache Properties and Methods
+
+| Member                      | Description                                                                   |
+| --------------------------- | ----------------------------------------------------------------------------- |
+| `Count`                     | Current number of entries                                                     |
+| `Size`                      | Total weight (weighted caching) or count                                      |
+| `MaximumSize`               | Configured maximum entries                                                    |
+| `Capacity`                  | Current internal capacity (may be < MaximumSize)                              |
+| `Keys`                      | Enumerable of all keys (allocates state machine)                              |
+| `TryGet(key, out value)`    | Returns true if key exists and not expired                                    |
+| `Set(key, value)`           | Adds or updates an entry                                                      |
+| `GetOrAdd(key, factory)`    | Gets existing or computes and caches new value (factory optional with loader) |
+| `TryRemove(key)`            | Removes entry if present, returns bool                                        |
+| `TryRemove(key, out value)` | Removes entry and returns the removed value                                   |
+| `ContainsKey(key)`          | Checks if key exists                                                          |
+| `Clear()`                   | Removes all entries                                                           |
+| `CleanUp()`                 | Forces expiration scan                                                        |
+| `Compact(ratio)`            | Evicts percentage of entries                                                  |
+| `Resize(newSize)`           | Changes maximum size                                                          |
+| `GetStatistics()`           | Returns hit/miss/eviction stats (if enabled)                                  |
+| `GetAll(keys, dict)`        | Batch get into provided dictionary                                            |
+| `SetAll(items)`             | Batch set from collection                                                     |
+| `GetKeys(list)`             | Zero-allocation key enumeration into provided list                            |
+
+### Tips and pitfalls
+
+- **Choose the right preset**: `CachePresets` provides optimized defaults for common scenarios.
+- **Enable statistics sparingly**: Recording stats adds overhead; enable only when debugging.
+- **Use jitter for network caches**: Prevents thundering herd when many entries expire together.
+- **Consider SLRU for high-throughput**: Better scan resistance than plain LRU.
+- **Watch InitialCapacity**: The cache clamps initial capacity to prevent OutOfMemoryException. Don't set it larger than needed.
+- **Weighted caches**: Use `MaximumWeight` + `Weigher` for size-based eviction (e.g., texture bytes).
+- **Callbacks are synchronous**: `OnEviction`, `OnGet`, `OnSet` run on the calling thread.

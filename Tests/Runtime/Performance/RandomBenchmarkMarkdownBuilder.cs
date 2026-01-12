@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Tests.Runtime.Performance
@@ -46,7 +46,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Performance
         {
             List<string> lines = new()
             {
-                "<table>",
+                "<table data-sortable>",
                 "  <thead>",
                 "    <tr>",
                 "      <th align=\"left\">Random</th>",
@@ -75,7 +75,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Performance
         {
             List<string> lines = new()
             {
-                "<table>",
+                "<table data-sortable>",
                 "  <thead>",
                 "    <tr>",
                 "      <th align=\"left\">Random</th>",

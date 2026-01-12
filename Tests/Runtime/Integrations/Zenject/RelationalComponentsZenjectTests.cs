@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 #if ZENJECT_PRESENT
@@ -17,6 +17,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.Zenject.Runtime
     using WallstopStudios.UnityHelpers.Tests.Core;
     using WallstopStudios.UnityHelpers.Tests.TestUtils;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class RelationalComponentsZenjectTests : CommonTestBase
     {
         private DiContainer Container;

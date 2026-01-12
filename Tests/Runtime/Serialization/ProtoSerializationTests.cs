@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Tests.Serialization
@@ -12,6 +12,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
     using WallstopStudios.UnityHelpers.Core.Serialization;
     using Serializer = WallstopStudios.UnityHelpers.Core.Serialization.Serializer;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class ProtoSerializationTests
     {
         [ProtoContract]
@@ -98,7 +100,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
         public void ProtoDeserializeHandlesEmpty()
         {
             SampleMessage message = Serializer.ProtoDeserialize<SampleMessage>(Array.Empty<byte>());
-            Assert.IsNotNull(message);
+            Assert.IsTrue(
+                message != null,
+                "ProtoDeserialize should return non-null for empty byte array"
+            );
             SampleMessage expected = new();
             Assert.AreEqual(expected.Id, message.Id);
             Assert.AreEqual(expected.Name, message.Name);
@@ -137,7 +142,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
                 Array.Empty<byte>(),
                 typeof(SampleMessage)
             );
-            Assert.IsNotNull(message);
+            Assert.IsTrue(
+                message != null,
+                "ProtoDeserialize should return non-null for empty byte array with explicit type"
+            );
             Assert.IsInstanceOf<SampleMessage>(message);
             SampleMessage sample = (SampleMessage)message;
             SampleMessage expected = new();

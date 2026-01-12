@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Tests.Runtime.Performance
@@ -11,6 +11,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Performance
     using SerializerAlias = WallstopStudios.UnityHelpers.Core.Serialization.Serializer;
 
     [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class ProtoSerializationPerformanceTests
     {
         [ProtoContract]

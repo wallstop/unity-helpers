@@ -1,5 +1,7 @@
 # Skill: Update Documentation
 
+<!-- trigger: docs, documentation, changelog, readme, api | After ANY feature/bug fix/API change | Core -->
+
 **Trigger**: **MANDATORY** after ANY feature addition, bug fix, API change, or user-facing modification.
 
 ---
@@ -8,7 +10,7 @@
 
 This skill applies **every time** you make changes to the codebase. Documentation is a first-class deliverable—incomplete documentation = incomplete work.
 
-**CHANGELOG is for USER-FACING changes ONLY.** Internal changes like CI/CD workflows, build scripts, dev tooling, GitHub Actions, and infrastructure do NOT belong in the CHANGELOG. Users don't care about how the package is built or tested—they care about what the package does for them.
+**CHANGELOG is for USER-FACING changes ONLY.** Internal changes like CI/CD workflows, build scripts, dev tooling, GitHub Actions, and infrastructure do NOT belong in the CHANGELOG.
 
 | Trigger                       | Required?    | Documentation Scope                               |
 | ----------------------------- | ------------ | ------------------------------------------------- |
@@ -19,9 +21,11 @@ This skill applies **every time** you make changes to the codebase. Documentatio
 | **CI/CD, build scripts**      | N/A          | **NO CHANGELOG** — internal, not user-facing      |
 | **Dev tooling, workflows**    | N/A          | **NO CHANGELOG** — internal infrastructure        |
 
+For markdown formatting and link rules, see [markdown-reference](./markdown-reference.md).
+
 ---
 
-## Documentation Types to Update
+## Documentation Types
 
 ### 1. Markdown Documentation (`docs/` folder)
 
@@ -52,13 +56,7 @@ Required on ALL public types, methods, properties, and fields.
 - **Include error handling** — Where appropriate
 - **Self-contained** — No undeclared dependencies
 
-### 4. CHANGELOG
-
-- Follow Keep a Changelog format
-- Categories: Added, Changed, Deprecated, Removed, Fixed, Security, Improved
-- Version info for new features ("Added in vX.Y.Z")
-
-### 5. Other Documentation
+### 4. Other Documentation
 
 | Location                   | Purpose                       | When to Update               |
 | -------------------------- | ----------------------------- | ---------------------------- |
@@ -68,536 +66,21 @@ Required on ALL public types, methods, properties, and fields.
 
 ---
 
-## What Requires Documentation Updates
-
-### Always Update Documentation For
-
-| Change Type              | Documentation Required                                           |
-| ------------------------ | ---------------------------------------------------------------- |
-| New feature/class/method | Docs, XML docs, code samples, CHANGELOG                          |
-| Bug fix                  | CHANGELOG, potentially docs if behavior changed                  |
-| API modification         | All affected docs, XML docs, code samples, CHANGELOG             |
-| Breaking change          | All affected docs, migration notes, CHANGELOG (Breaking Changes) |
-| New attribute/decorator  | Inspector docs, usage examples, CHANGELOG                        |
-| Editor tool              | Tools documentation, usage examples, CHANGELOG                   |
-| Performance improvement  | CHANGELOG (Improved section), potentially performance docs       |
-
-### NEVER Add to CHANGELOG
-
-| Change Type                         | Why Excluded                                  |
-| ----------------------------------- | --------------------------------------------- |
-| CI/CD workflows (GitHub Actions)    | Internal infrastructure, not user-facing      |
-| Build scripts, Makefiles            | Dev tooling, users don't interact with these  |
-| Documentation deployment automation | Users access docs, don't care how they deploy |
-| Test infrastructure changes         | Users don't run the package's test suite      |
-| Code linting/formatting config      | Internal code quality standards               |
-| Dev container, IDE config           | Development environment setup                 |
-
-### Documentation Locations
-
-| Content Type              | Location                    |
-| ------------------------- | --------------------------- |
-| Feature documentation     | `docs/features/<category>/` |
-| Usage guides              | `docs/guides/`              |
-| API reference (XML docs)  | Inline `///` comments       |
-| Performance documentation | `docs/performance/`         |
-| Changelog                 | Root changelog file         |
-| LLM documentation         | Root llms.txt file          |
-| Skill procedures          | `.llm/skills/`              |
-| README quickstart         | Root README file            |
-
----
-
-## Quality Requirements
-
-### MANDATORY Standards
-
-1. **Accuracy** — All code samples MUST compile and run correctly
-2. **Clarity** — Clear, direct language; no unnecessary jargon
-3. **Conciseness** — Say what needs to be said, nothing more
-4. **Front-loaded** — Important information comes first
-5. **Completeness** — Cover all parameters, return values, edge cases
-6. **Examples** — Every public API needs at least one usage example
-7. **Versioning** — New features include "Added in vX.Y.Z"
-8. **Defined terms** — Technical terms defined when first used
-
-### Code Sample Requirements
-
-**All code samples MUST**:
-
-- Compile without errors
-- Be tested before committing
-- Demonstrate typical usage patterns
-- Be self-contained (no missing context)
-- Include error handling where appropriate
-
-```csharp
-// ✅ GOOD: Correct, complete, compilable
-using WallstopStudios.UnityHelpers.Core.Random;
-
-IRandom random = PRNG.Instance;
-int value = random.NextInt(0, 100);
-
-// ❌ BAD: Incomplete, wrong namespace, won't compile
-var random = new PRNG();  // Wrong: PRNG.Instance is correct
-int value = random.Next();  // Wrong: Method is NextInt()
-```
-
-### Documentation Formatting
-
-- Use **bold** for emphasis on important concepts
-- Use `backticks` for code references (classes, methods, parameters)
-- Use fenced code blocks with language hints (```csharp)
-- Use tables for parameter/option lists
-- Keep paragraphs short (2-4 sentences max)
-- Use bullet points for lists of items
-
----
-
-## Markdown Linting and Quality
-
-**MANDATORY**: Run markdown linters after ANY changes to `.md` files.
-
-### CRITICAL: Markdown Link Formatting
-
-**NEVER use backtick-wrapped markdown file references.** Always use proper markdown links.
-
-```text
-❌ WRONG                                         ✅ CORRECT
-────────────────────────────────────────────────────────────────────────────────
-See `some-file` for details                      See [some-file](./some-file.md) for details
-Refer to `skills/create-test` for guidelines     Refer to [create-test](./create-test.md) for guidelines
-Check `context` for rules                        Check [context](../context.md) for rules
-```
-
-**Why this matters:**
-
-- Backtick-wrapped file names are NOT clickable links
-- The doc link linter (`./scripts/lint-doc-links.ps1`) will **fail** on backtick-wrapped markdown file references
-- Proper links enable navigation and link validation
-- CI will reject PRs with broken or improperly formatted links
-
-### Internal Link Formatting
-
-**CRITICAL**: ALL internal markdown links MUST use `./` or `../` prefix for relative paths.
-
-> ⚠️ **MANDATORY**: Run `npm run lint:docs` IMMEDIATELY after ANY markdown change to catch link errors before they reach CI.
-
-**Wrong vs Correct Examples:**
-
-```text
-❌ WRONG                                        ✅ CORRECT
-────────────────────────────────────────────────────────────────────────────────
-[text](file.md)                                 [text](./file.md)
-[text](docs/guide.md)                           [text](./docs/guide.md)
-[create-test](create-test.md)                   [create-test](./create-test.md)
-[features](features/core.md)                    [features](./features/core.md)
-[skill](skills/doc.md)                          [skill](./skills/doc.md)
-[context](../context.md)                        [context](../context.md)  ← ../ is OK
-```
-
-**Rule**: Every relative link MUST start with either:
-
-- `./` — for files in the same directory or subdirectories
-- `../` — for files in parent directories
-
-**Why this matters:**
-
-- Links without `./` prefix WILL fail the doc link linter
-- CI will reject PRs with improperly formatted links
-- Some Markdown renderers fail to resolve links without explicit relative paths
-- Consistent link format prevents rendering issues on GitHub Pages
-
-### Absolute GitHub Pages Paths
-
-> ⚠️ **NEVER use absolute GitHub Pages paths like `/unity-helpers/...`**
-
-Even though absolute paths might appear to work on the deployed GitHub Pages site, these paths:
-
-- **FAIL CI validation** — The `lint-doc-links.ps1` script cannot resolve paths starting with `/`
-- **Break local preview** — Absolute paths don't work when previewing docs locally
-- **Are fragile** — If the repository name or base path changes, all links break
-
-```text
-❌ WRONG: Absolute GitHub Pages paths
-────────────────────────────────────────────────────────────────────────────────
-[guide](/unity-helpers/docs/guide.md)           ← Breaks in CI
-[features](/unity-helpers/docs/features/)       ← Cannot be validated
-[API ref](/unity-helpers/docs/api/core.md)      ← Fails lint-doc-links.ps1
-
-✅ CORRECT: Relative paths
-────────────────────────────────────────────────────────────────────────────────
-[guide](./docs/guide.md)                        ← Works everywhere
-[features](./docs/features/)                    ← Validated by linter
-[API ref](../api/core.md)                       ← Portable and correct
-```
-
-**Rule**: Always use relative paths (`./` or `../`) — the `lint-doc-links.ps1` script catches absolute path errors automatically.
-
-### Required Commands After Markdown Changes
-
-> ⚠️ **RUN IMMEDIATELY**: Execute `npm run lint:docs` right after ANY markdown edit—don't wait until you're "done."
-
-```bash
-# STEP 1: IMMEDIATELY after ANY markdown change:
-npm run lint:docs         # ← RUN THIS FIRST! Catches link errors early
-
-# STEP 2: Then run remaining linters:
-npm run lint:markdown     # Check markdownlint rules
-npm run lint:spelling     # Check spelling (MUST PASS)
-npm run format:md:check   # Check Prettier formatting
-
-# Or run full content validation (includes all above):
-npm run validate:content
-
-# Alternative: Direct script invocation for verbose output:
-pwsh ./scripts/lint-doc-links.ps1 -VerboseOutput
-```
-
-**STOP**: Do NOT mark documentation work complete until `npm run lint:docs` passes with zero errors.
-
-### Link Validation Checklist
-
-**Before committing ANY markdown file:**
-
-- [ ] ✅ All internal links use `./` or `../` prefix
-- [ ] ✅ No bare links like `` `[text](file)` `` — must be `` `[text](./file)` ``
-- [ ] ✅ No absolute GitHub Pages paths like `/unity-helpers/...`
-- [ ] ✅ No backtick-wrapped markdown file references
-- [ ] ✅ Ran `npm run lint:docs` and it passed with zero errors
-- [ ] ✅ All links resolve to existing files
-
-### Code Block Language Specifiers
-
-**ALL fenced code blocks MUST have a language specifier.** Blocks without specifiers will fail linting.
-
-| Language   | Specifier    | Example Use Case                          |
-| ---------- | ------------ | ----------------------------------------- |
-| C#         | `csharp`     | All C# code examples                      |
-| Bash       | `bash`       | Terminal commands, shell scripts          |
-| PowerShell | `powershell` | Windows/PowerShell commands               |
-| JSON       | `json`       | Configuration files, API responses        |
-| YAML       | `yaml`       | Unity manifests, GitHub Actions           |
-| XML        | `xml`        | XML documentation, config files           |
-| Markdown   | `markdown`   | Markdown syntax examples                  |
-| Plain text | `text`       | File structures, command output, diagrams |
-
-````markdown
-<!-- ✅ CORRECT: Language specifier present -->
-
-```csharp
-public void Example() { }
-`` `
-
-<!-- ❌ WRONG: Missing language specifier -->
-
-`` `
-public void Example() { }
-`` `
-```
-````
-
-### Heading Rules
-
-**NEVER use emphasis (bold/italic) as a substitute for headings.** Use proper `#` heading syntax.
-
-```markdown
-<!-- ✅ CORRECT: Proper heading -->
-
-## Button Configuration
-
-The button supports...
-
-<!-- ❌ WRONG: Bold text used as heading -->
-
-**Button Configuration**
-
-The button supports...
-```
-
-**Why this matters:**
-
-- Proper headings create document structure for navigation
-- Screen readers and accessibility tools rely on heading hierarchy
-- Markdown linters enforce heading structure
-- Table of contents generation requires proper headings
-
-### Pipe Characters in Markdown Tables
-
-> **⚠️ CRITICAL**: Pipe characters (`|`) inside markdown tables MUST be escaped with `\|`, even when inside backticks (code spans). This is per the GFM specification.
-
-**The Problem**: In GitHub Flavored Markdown tables, the pipe character `|` is the column separator. Backticks (`` ` ``) do NOT prevent pipes from being interpreted as separators—the table parser processes pipes BEFORE inline code spans are parsed.
-
-**Example of the Issue**:
-
-```text
-| Command Pattern                | Alternative           |
-| ------------------------------ | --------------------- |
-| `cmd | while read`             | Process substitution  |  ← BROKEN: splits into wrong columns
-| `cmd \| while read`            | Process substitution  |  ← CORRECT: renders as `cmd | while read`
-```
-
-**GFM Spec Reference**: See [Example 200](https://github.github.com/gfm/#example-200) which explicitly shows `\|` inside backticks in table cells.
-
-**Common Patterns Requiring Escape**:
-
-| Pattern in Code         | How to Write in Table Cell |
-| ----------------------- | -------------------------- |
-| `cmd \| while read`     | Pipe in shell pipeline     |
-| `expr \|\| fallback`    | Logical OR operator        |
-| `grep -E 'a\|b'`        | Regex alternation          |
-| `2>/dev/null \|\| true` | Error suppression          |
-
-**Verification**: The `\|` is consumed during parsing—the rendered output shows the correct `|` character. Automated code review tools (like Copilot) may incorrectly flag these escapes as unnecessary; the escapes ARE required per the GFM spec.
-
-### Prettier vs Markdownlint
-
-> **⚠️ CRITICAL**: Prettier and markdownlint catch DIFFERENT issues. A file can pass Prettier but fail markdownlint. You MUST run BOTH.
-
-| Tool         | Catches                                                  | Misses                                        |
-| ------------ | -------------------------------------------------------- | --------------------------------------------- |
-| Prettier     | Formatting: spacing, indentation, line wrapping          | Structural rules like MD028, MD031            |
-| markdownlint | Structural: heading hierarchy, blank lines, code context | Formatting/spacing issues (Prettier's domain) |
-
-**Workflow for ALL markdown changes:**
-
-```bash
-# STEP 1: Format with Prettier
-npx prettier --write <file>
-
-# STEP 2: Check structural rules with markdownlint
-npm run lint:markdown
-
-# STEP 3: Fix any markdownlint errors, then re-run Prettier if you made changes
-```
-
-### Common Structural Mistakes (Prettier Won't Fix)
-
-#### MD028: Blank Line Inside Blockquote
-
-Consecutive blockquotes separated by blank lines trigger this error:
-
-```markdown
-<!-- ❌ WRONG (MD028) -->
-
-> First quote.
-
-> Second quote.
-
-<!-- ✅ CORRECT: Continuous blockquote -->
-
-> First quote.
-> Second quote.
-```
-
-#### MD031: Fenced Code Blocks Need Blank Lines
-
-Code fences must have blank lines before and after:
-
-```markdown
-<!-- ❌ WRONG (MD031) -->
-
-Some text:
-\`\`\`csharp
-code here
-\`\`\`
-More text.
-
-<!-- ✅ CORRECT -->
-
-Some text:
-
-\`\`\`csharp
-code here
-\`\`\`
-
-More text.
-```
-
-### Common Markdownlint Rules
-
-| Rule  | Issue                        | Fix                                             |
-| ----- | ---------------------------- | ----------------------------------------------- |
-| MD028 | Blank line inside blockquote | Remove blank line between consecutive quotes    |
-| MD031 | No blank line around fences  | Add blank line before and after code blocks     |
-| MD032 | No blank line around lists   | Add blank line before and after lists           |
-| MD022 | No blank line after headings | Add blank line after `#` headings               |
-| MD040 | Fenced code without language | Add language specifier (`csharp`, `bash`, etc.) |
-| MD025 | Multiple top-level headings  | Only one `#` heading per document               |
-| MD009 | Trailing spaces              | Remove trailing whitespace (except line break)  |
-
-### Markdown Quality Checklist
-
-**Before committing ANY markdown changes:**
-
-- [ ] **ALL internal links use `./` or `../` prefix** — `` `[text](./file)` `` NOT `` `[text](file)` ``
-- [ ] **NO backtick-wrapped markdown file references** — use `` `[name](./path/to/file)` `` links
-- [ ] All fenced code blocks have language specifiers
-- [ ] No emphasis (bold/italic) used as headings
-- [ ] Blank lines before and after code blocks
-- [ ] Blank lines before and after lists
-- [ ] Blank lines after headings
-- [ ] Proper heading hierarchy (no skipping levels)
-- [ ] **`npm run lint:docs` passes** ← Run IMMEDIATELY after any markdown change
-- [ ] `npm run lint:markdown` passes
-- [ ] `npm run format:md:check` passes
-
-### Auto-Fix Commands
-
-```bash
-# Auto-fix Prettier formatting issues
-npm run format:md
-
-# Markdownlint issues usually require manual fixes
-# Review the error message and fix the specific issue
-```
-
----
-
-## Escaping Example Links in Documentation
-
-> **CRITICAL**: When showing link syntax examples in documentation, ALL examples MUST be escaped so the linter doesn't parse them as real links.
-
-### Why Escaping Matters
-
-Documentation that teaches link format often includes:
-
-- Examples of correct link syntax
-- Examples of INCORRECT link syntax (to show what NOT to do)
-- Reference tables showing patterns
-
-**Without escaping**, the linter will:
-
-- Try to resolve example paths as real files
-- Report false "file not found" errors
-- Flag intentionally "wrong" examples for missing `./` prefix
-
-### Escaping Methods
-
-#### Fenced Code Blocks (Recommended)
-
-Use `text` language specifier with escaped brackets:
-
-```text
-<!-- Examples with escaped brackets are NOT parsed -->
-Correct: ]\(./file)
-Wrong: ]\(file) -- missing prefix
-```
-
-#### Inline Backticks
-
-For brief inline mentions, escape the brackets:
-
-```text
-Use `]\(./file)` format not `]\(file)` format.
-```
-
-#### Text Tables
-
-For comparison tables, use `text` code blocks:
-
-```text
-❌ WRONG: [link](file.md)     →  ✅ CORRECT: [link](./file.md)
-```
-
-### Verification After Adding Examples
-
-```bash
-# MANDATORY: Run after adding any link examples to docs
-npm run lint:docs
-
-# If errors appear from example links, improve escaping
-```
-
-### Related
-
-See [validate-before-commit](./validate-before-commit.md#escaping-example-links-in-documentation) for detailed escaping patterns.
-
----
-
-## Spelling Validation
-
-**MANDATORY**: Run spelling checks after ANY documentation change.
-
-### Required Command
-
-```bash
-# MANDATORY: Run after ANY markdown or code comment changes:
-npm run lint:spelling
-```
-
-### Handling Spelling Errors
-
-When cspell flags a word:
-
-1. **If it's a typo**: Fix the spelling
-2. **If it's a valid technical term**: Add it to the appropriate dictionary in `cspell.json`
-
-### cspell.json Dictionary Categories
-
-The spelling configuration uses categorized dictionaries for maintainability:
-
-| Dictionary      | Purpose                           | Examples                                       |
-| --------------- | --------------------------------- | ---------------------------------------------- |
-| `unity-terms`   | Unity API names and types         | MonoBehaviour, ScriptableObject, GetComponent  |
-| `csharp-terms`  | C# language features and keywords | async, ValueTask, Nullable, stackalloc         |
-| `package-terms` | Package-specific types and names  | WGroup, SerializableDictionary, WButton, KGuid |
-| `tech-terms`    | Technical/industry terminology    | IL2CPP, PRNG, SEO, SSE, SIMD, OAuth            |
-| `words`         | General words not fitting above   | cancelable, performant, unoptimized            |
-
-### Adding Words to cspell.json
-
-When adding a new word, place it in the most specific applicable dictionary:
-
-```jsonc
-// In cspell.json, find the appropriate dictionary section:
-{
-  "dictionaryDefinitions": [
-    {
-      "name": "unity-terms",
-      "words": [
-        // Unity-specific API names go here
-        "MonoBehaviour",
-        "YourNewUnityTerm"
-      ]
-    },
-    {
-      "name": "package-terms",
-      "words": [
-        // Package-specific types go here
-        "WButton",
-        "YourNewPackageTerm"
-      ]
-    }
-  ]
-}
-```
-
-### Spelling Validation Checklist
-
-- [ ] Run `npm run lint:spelling` after documentation changes
-- [ ] Fix genuine typos in the source text
-- [ ] Add valid technical terms to the correct dictionary category
-- [ ] Keep dictionary entries alphabetically sorted (when possible)
-- [ ] Do NOT add common misspellings to suppress errors
-
----
-
 ## CHANGELOG Format
 
 The CHANGELOG follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) format.
 
 ### User-Facing Changes ONLY
 
-**CRITICAL**: The CHANGELOG documents changes that affect USERS of the package. Exclude:
+**CRITICAL**: The CHANGELOG documents changes that affect USERS of the package.
 
-| ❌ Exclude from CHANGELOG           | Why                                           |
-| ----------------------------------- | --------------------------------------------- |
-| CI/CD workflows (GitHub Actions)    | Internal build/test infrastructure            |
-| Build scripts, dev tooling          | Users don't interact with these               |
-| Documentation deployment automation | Users access docs, don't care how they deploy |
-| Code linting/formatting changes     | Internal code quality, not user-facing        |
-| Test infrastructure                 | Users don't run the package's test suite      |
+| ❌ Exclude from CHANGELOG           | Why                                |
+| ----------------------------------- | ---------------------------------- |
+| CI/CD workflows (GitHub Actions)    | Internal build/test infrastructure |
+| Build scripts, dev tooling          | Users don't interact with these    |
+| Documentation deployment automation | Internal infrastructure            |
+| Test infrastructure                 | Users don't run the test suite     |
+| Internal implementation details     | Users don't care about internals   |
 
 | ✅ Include in CHANGELOG              | Why                                   |
 | ------------------------------------ | ------------------------------------- |
@@ -606,7 +89,56 @@ The CHANGELOG follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) f
 | API changes, breaking changes        | Users need to update their code       |
 | Performance improvements             | Users benefit from faster execution   |
 | New inspector attributes/drawers     | Users see these in Unity Editor       |
-| New editor tools/windows             | Users can access these tools          |
+
+### NEVER Modify Released Notes
+
+**CRITICAL**: Once a version is released, its CHANGELOG entries are **immutable**.
+
+- ✅ **DO**: Add new entries to `## [Unreleased]` section only
+- ❌ **NEVER**: Edit entries under versioned headings like `## [3.0.5]`
+- ❌ **NEVER**: "Clean up" or "improve" wording in released notes
+
+### Unreleased Features: Edit In Place
+
+**CRITICAL**: If a feature is still in the `[Unreleased]` section and you're modifying it, **edit the existing entry directly** rather than creating new "Fixed" or "Changed" entries.
+
+**Why?** From the user's perspective, unreleased features don't exist yet. There's nothing to "fix" or "change" — it's all part of the same new feature that hasn't shipped.
+
+| Scenario                                      | Correct Action                                        |
+| --------------------------------------------- | ----------------------------------------------------- |
+| Bug in unreleased feature                     | Edit the feature's entry to describe correct behavior |
+| Behavior change in unreleased feature         | Update the feature's entry with new behavior          |
+| Performance improvement in unreleased feature | Update the feature's entry to reflect final perf      |
+| API change in unreleased feature              | Update the feature's entry with correct API           |
+
+**Example**:
+
+```markdown
+## [Unreleased]
+
+### Added
+
+- **Sprite Sheet Extractor**: New tool for extracting individual sprites from sprite sheets
+  - Auto-detection algorithm strongly prefers transparent boundaries ← Edit this line when fixing algorithm
+  - Preview size changes update immediately without breaking ← Edit this line when fixing preview
+```
+
+❌ **WRONG** — Creating separate entries for unreleased feature issues:
+
+```markdown
+## [Unreleased]
+
+### Added
+
+- **Sprite Sheet Extractor**: New tool for extracting individual sprites
+
+### Fixed
+
+- Fixed Sprite Sheet Extractor algorithm selecting non-transparent boundaries ← NO! Feature isn't released yet
+- Fixed preview breaking when changing size ← NO! Nothing to "fix" for users
+```
+
+**Exception**: If a _released_ version introduced a bug and the fix is in `[Unreleased]`, then a "Fixed" entry is appropriate because users experienced the bug.
 
 ### Required Format
 
@@ -638,33 +170,17 @@ The CHANGELOG follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) f
 ### Removed
 
 - Removed [feature/capability]
-
-### Security
-
-- Fixed [security issue description]
 ```
 
 ### Section Order
 
-Sections should appear in this order (include only sections with content):
-
 1. Added — New features (user-facing additions)
 2. Fixed — Bug fixes
 3. Improved — Enhancements to existing features
-4. Changed — Changes to existing functionality (may include breaking changes)
+4. Changed — Changes to existing functionality
 5. Deprecated — Features marked for future removal
 6. Removed — Features removed in this version
 7. Security — Security-related fixes
-
-### Entry Format
-
-```markdown
-### Added
-
-- **Feature Name**: Brief description of what was added
-  - Sub-bullet for additional details or sub-features
-  - Another sub-bullet for related functionality
-```
 
 ### Writing Good CHANGELOG Entries
 
@@ -673,12 +189,6 @@ Sections should appear in this order (include only sections with content):
 | **WButton Odin Support**: WButton now works with Odin Inspector types | Added Odin support   |
 | Fixed null reference in SerializableDictionary drawer on Unity 2021   | Fixed bug            |
 | Improved QuadTree query performance by 40% for large datasets         | Made QuadTree faster |
-| **Breaking**: Renamed KGuid to WGuid, changed data layout             | Renamed GUID class   |
-
-### When to Add to Unreleased vs Version
-
-- **Active development**: Add to `## [Unreleased]` section
-- **Preparing release**: Move unreleased items to versioned section `## [X.Y.Z]`
 
 ---
 
@@ -692,7 +202,6 @@ Sections should appear in this order (include only sections with content):
 /// </summary>
 /// <remarks>
 /// Additional details, usage notes, or important caveats.
-/// Only include if there's genuinely more to say.
 /// </remarks>
 /// <typeparam name="T">Description of type parameter.</typeparam>
 /// <param name="paramName">Description of parameter.</param>
@@ -700,7 +209,6 @@ Sections should appear in this order (include only sections with content):
 /// <exception cref="ArgumentNullException">When <paramref name="paramName"/> is null.</exception>
 /// <example>
 /// <code>
-/// // Usage example
 /// var result = MyMethod(input);
 /// </code>
 /// </example>
@@ -712,35 +220,41 @@ public T MyMethod<T>(string paramName) { }
 1. **Summary is mandatory** for all public types and members
 2. **Keep summary concise** — One sentence, ideally under 100 characters
 3. **Document exceptions** — List all exceptions that can be thrown
-4. **Use `<paramref>` and `<typeparamref>`** — For referencing parameters in descriptions
+4. **Use `<paramref>` and `<typeparamref>`** — For referencing parameters
 5. **Avoid redundancy** — Don't repeat the method name in the summary
-6. **Use `<inheritdoc/>`** — When implementing interfaces or overriding, inherit docs
+6. **Use `<inheritdoc/>`** — When implementing interfaces or overriding
 
-### Example: Well-Documented Method
+---
+
+## Quality Requirements
+
+### MANDATORY Standards
+
+1. **Accuracy** — All code samples MUST compile and run correctly
+2. **Clarity** — Clear, direct language; no unnecessary jargon
+3. **Conciseness** — Say what needs to be said, nothing more
+4. **Front-loaded** — Important information comes first
+5. **Completeness** — Cover all parameters, return values, edge cases
+6. **Examples** — Every public API needs at least one usage example
+7. **Versioning** — New features include "Added in vX.Y.Z"
+
+### Code Sample Requirements
 
 ```csharp
-/// <summary>
-/// Finds all items within the specified radius of a point.
-/// </summary>
-/// <param name="center">The center point of the search area.</param>
-/// <param name="radius">The search radius. Must be positive.</param>
-/// <param name="results">Buffer to store results. Cleared before use.</param>
-/// <returns>The number of items found.</returns>
-/// <exception cref="ArgumentOutOfRangeException">
-/// When <paramref name="radius"/> is less than or equal to zero.
-/// </exception>
-/// <remarks>
-/// Results are not guaranteed to be in any particular order.
-/// For ordered results, use <see cref="QueryNearest"/>.
-/// </remarks>
-public int QueryRadius(Vector2 center, float radius, List<T> results)
+// ✅ GOOD: Correct, complete, compilable
+using WallstopStudios.UnityHelpers.Core.Random;
+
+IRandom random = PRNG.Instance;
+int value = random.NextInt(0, 100);
+
+// ❌ BAD: Incomplete, wrong namespace, won't compile
+var random = new PRNG();  // Wrong: PRNG.Instance is correct
+int value = random.Next();  // Wrong: Method is NextInt()
 ```
 
 ---
 
 ## Documentation Checklist
-
-**Before marking ANY work complete, verify these items.**
 
 ### Master Checklist (All Changes)
 
@@ -751,7 +265,6 @@ public int QueryRadius(Vector2 center, float radius, List<T> results)
 - [ ] Version info included for new features
 - [ ] No broken links
 - [ ] Technical terms defined when first used
-- [ ] Language is clear and succinct
 
 ### For New Features
 
@@ -759,9 +272,6 @@ public int QueryRadius(Vector2 center, float radius, List<T> results)
 - [ ] XML documentation on all public types/members
 - [ ] At least one working code sample in docs
 - [ ] CHANGELOG entry in `### Added` section
-- [ ] README updated if feature is significant
-- [ ] llms.txt updated if feature adds new capabilities
-- [ ] Related skills updated if feature affects workflows
 - [ ] "Added in vX.Y.Z" version annotation included
 
 ### For Bug Fixes
@@ -775,21 +285,11 @@ public int QueryRadius(Vector2 center, float radius, List<T> results)
 - [ ] All documentation referencing old API updated
 - [ ] Migration notes if breaking change
 - [ ] CHANGELOG entry (in `### Changed` or `### Breaking Changes`)
-- [ ] XML docs updated with new parameter names/types
-- [ ] Code samples updated throughout
 - [ ] **Breaking**: prefix used in CHANGELOG for breaking changes
-
-### For Performance Improvements
-
-- [ ] CHANGELOG entry in `### Improved` section
-- [ ] Performance docs updated if metrics changed
-- [ ] Benchmark results documented if available
 
 ---
 
 ## Common Documentation Mistakes
-
-### ❌ Avoid These
 
 | Mistake                             | Why It's Wrong                                |
 | ----------------------------------- | --------------------------------------------- |
@@ -798,179 +298,7 @@ public int QueryRadius(Vector2 center, float radius, List<T> results)
 | Outdated parameter names            | Causes confusion when code doesn't match docs |
 | Missing edge case documentation     | Users hit unexpected behavior                 |
 | Version info missing                | Users don't know if feature exists            |
-| Overly verbose explanations         | Readers lose focus; key info gets buried      |
 | Absolute paths (`/unity-helpers/…`) | Breaks CI validation and local preview        |
-| Links without `./` or `../` prefix  | Fails `lint-doc-links.ps1`, rejected by CI    |
-
-### ✅ Do These Instead
-
-| Best Practice             | Benefit                                  |
-| ------------------------- | ---------------------------------------- |
-| Test all code samples     | Users can copy-paste and run immediately |
-| Self-contained examples   | No hunting for dependencies or context   |
-| Document nullability      | Prevents null reference exceptions       |
-| List all exceptions       | Users can handle errors appropriately    |
-| Include "Added in vX.Y"   | Users know feature availability          |
-| Front-load important info | Key details visible without scrolling    |
-
----
-
-## Good vs Bad Examples
-
-### XML Documentation
-
-#### Bad Example: Vague, incomplete, no examples
-
-```csharp
-/// <summary>
-/// Gets a random number.
-/// </summary>
-public int GetRandom(int max) { }
-```
-
-#### Good Example: Complete, clear, with example
-
-```csharp
-/// <summary>
-/// Returns a random integer in the range [0, <paramref name="max"/>).
-/// </summary>
-/// <param name="max">The exclusive upper bound. Must be positive.</param>
-/// <returns>A random integer from 0 (inclusive) to <paramref name="max"/> (exclusive).</returns>
-/// <exception cref="ArgumentOutOfRangeException">
-/// When <paramref name="max"/> is less than or equal to zero.
-/// </exception>
-/// <example>
-/// <code>
-/// int roll = random.GetRandom(6) + 1; // Returns 1-6
-/// </code>
-/// </example>
-public int GetRandom(int max) { }
-```
-
-### CHANGELOG Entries
-
-#### Bad Example: Vague, no context
-
-```markdown
-### Added
-
-- Added new feature
-- Bug fix
-
-### Fixed
-
-- Fixed issue
-```
-
-#### Good Example: Specific, actionable, descriptive
-
-```markdown
-### Added
-
-- **WButton Odin Support**: WButton now works automatically with Odin Inspector's `SerializedMonoBehaviour` and `SerializedScriptableObject`
-  - No setup required - just use `[WButton]` on methods in Odin types
-  - Custom editors registered specifically for Odin types when `ODIN_INSPECTOR` symbol is defined
-
-### Fixed
-
-- Fixed null reference exception in `SerializableDictionary` drawer when dictionary contains null values on Unity 2021.3+
-```
-
-### Feature Documentation
-
-#### Bad Example: Missing context, no example
-
-```markdown
-## WButton
-
-Use WButton on methods.
-```
-
-#### Good Example: Complete with example and details
-
-````markdown
-## WButton Attribute
-
-The `[WButton]` attribute exposes methods as clickable buttons in the Unity Inspector.
-
-### Basic Usage
-
-```csharp
-using WallstopStudios.UnityHelpers.Attributes;
-
-public class MyComponent : MonoBehaviour
-{
-    [WButton]
-    public void DoSomething()
-    {
-        Debug.Log("Button clicked!");
-    }
-}
-```
-````
-
-### Parameters
-
-| Parameter        | Type               | Default | Description                                    |
-| ---------------- | ------------------ | ------- | ---------------------------------------------- |
-| `buttonName`     | `string`           | `null`  | Custom button label (uses method name if null) |
-| `groupPriority`  | `int`              | `0`     | Order within button group (lower = first)      |
-| `groupPlacement` | `WButtonPlacement` | `Top`   | Position buttons at top or bottom              |
-
-### Notes
-
-- Works with `async Task` methods (Added in v3.0.0)
-- Supports Odin Inspector types automatically (Added in v3.0.4)
-
-````text
-
----
-
-## Indicating New Behavior
-
-When documenting new features or changed behavior, clearly indicate the change:
-
-### In CHANGELOG
-
-```markdown
-### Added
-
-- **WButton Grouping**: New `groupPriority` and `groupPlacement` parameters for controlling button layout
-  - `groupPriority` determines button order within a group (lower = earlier)
-  - `groupPlacement` controls whether buttons appear at top or bottom of inspector
-````
-
-### In Feature Documentation
-
-```markdown
-## Button Grouping (Added in v3.0.0)
-
-WButton now supports grouping buttons together with custom ordering...
-```
-
-### In XML Documentation
-
-```csharp
-/// <summary>
-/// Gets or sets the group priority for button ordering.
-/// </summary>
-/// <remarks>
-/// Added in v3.0.0. Lower values appear first within a group.
-/// Default is 0.
-/// </remarks>
-public int GroupPriority { get; set; }
-```
-
----
-
-## Integration with Other Skills
-
-This skill should be invoked alongside:
-
-- [create-csharp-file](./create-csharp-file.md) — New files need XML docs
-- [create-test](./create-test.md) — Test files serve as documentation
-- [validate-before-commit](./validate-before-commit.md) — Validates doc formatting
-- [format-code](./format-code.md) — Formats markdown and JSON docs
 
 ---
 
@@ -985,4 +313,37 @@ npm run format:md
 
 # Check all documentation formatting
 npm run validate:content
+
+# Check spelling
+npm run lint:spelling
 ```
+
+---
+
+## Skills That MUST Trigger Documentation Updates
+
+The following skills involve customer-visible changes and MUST be followed by documentation updates:
+
+| Skill                                                               | Documentation Required                       |
+| ------------------------------------------------------------------- | -------------------------------------------- |
+| [create-csharp-file](./create-csharp-file.md)                       | CHANGELOG, XML docs, feature docs            |
+| [create-scriptable-object](./create-scriptable-object.md)           | CHANGELOG, XML docs, asset type docs         |
+| [create-editor-tool](./create-editor-tool.md)                       | CHANGELOG, tool docs, screenshots            |
+| [create-property-drawer](./create-property-drawer.md)               | CHANGELOG, attribute docs                    |
+| [add-inspector-attribute](./add-inspector-attribute.md)             | CHANGELOG, attribute docs, usage examples    |
+| [use-effects-system](./use-effects-system.md) (when extending)      | CHANGELOG, effects system docs               |
+| [use-serializable-types](./use-serializable-types.md) (new type)    | CHANGELOG, type docs, serialization examples |
+| [use-spatial-structure](./use-spatial-structure.md) (new struct)    | CHANGELOG, data structure docs               |
+| [integrate-optional-dependency](./integrate-optional-dependency.md) | CHANGELOG, integration docs                  |
+
+**Rule**: If your change affects what users see, use, or configure, it needs documentation.
+
+---
+
+## Related Skills
+
+- [markdown-reference](./markdown-reference.md) — Link formatting, escaping, linting rules
+- [validate-before-commit](./validate-before-commit.md) — Pre-commit validation workflow
+- [create-csharp-file](./create-csharp-file.md) — New files need XML docs
+- [create-test](./create-test.md) — Test files serve as documentation
+- [manage-skills](./manage-skills.md) — Creating and maintaining skill files

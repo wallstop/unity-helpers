@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2024 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Tests.Extensions
@@ -10,8 +10,311 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
     using WallstopStudios.UnityHelpers.Core.Extension;
     using WallstopStudios.UnityHelpers.Tests.Core;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class StringExtensionTests : CommonTestBase
     {
+        private static IEnumerable<TestCaseData> LevenshteinDistanceTestCases()
+        {
+            yield return new TestCaseData("test", "test", 0).SetName(
+                "Levenshtein.Identical.ReturnsZero"
+            );
+            yield return new TestCaseData("", "", 0).SetName("Levenshtein.BothEmpty.ReturnsZero");
+            yield return new TestCaseData("hello world", "hello world", 0).SetName(
+                "Levenshtein.LongIdentical.ReturnsZero"
+            );
+            yield return new TestCaseData("A", "A", 0).SetName(
+                "Levenshtein.SingleCharIdentical.ReturnsZero"
+            );
+            yield return new TestCaseData("test", "", 4).SetName(
+                "Levenshtein.SecondEmpty.ReturnsFirstLength"
+            );
+            yield return new TestCaseData("", "hello", 5).SetName(
+                "Levenshtein.FirstEmpty.ReturnsSecondLength"
+            );
+            yield return new TestCaseData("test", null, 4).SetName(
+                "Levenshtein.SecondNull.ReturnsFirstLength"
+            );
+            yield return new TestCaseData(null, "hello", 5).SetName(
+                "Levenshtein.FirstNull.ReturnsSecondLength"
+            );
+            yield return new TestCaseData(null, null, 0).SetName(
+                "Levenshtein.BothNull.ReturnsZero"
+            );
+            yield return new TestCaseData("test", "text", 1).SetName(
+                "Levenshtein.SingleCharDifference.ReturnsOne"
+            );
+            yield return new TestCaseData("cat", "bat", 1).SetName(
+                "Levenshtein.SingleSubstitution.ReturnsOne"
+            );
+            yield return new TestCaseData("hello", "hallo", 1).SetName(
+                "Levenshtein.SingleSubstitutionMiddle.ReturnsOne"
+            );
+            yield return new TestCaseData("cat", "cats", 1).SetName(
+                "Levenshtein.SingleInsertion.ReturnsOne"
+            );
+            yield return new TestCaseData("cat", "catch", 2).SetName(
+                "Levenshtein.TwoInsertions.ReturnsTwo"
+            );
+            yield return new TestCaseData("foo", "foobar", 3).SetName(
+                "Levenshtein.ThreeInsertions.ReturnsThree"
+            );
+            yield return new TestCaseData("cats", "cat", 1).SetName(
+                "Levenshtein.SingleDeletion.ReturnsOne"
+            );
+            yield return new TestCaseData("catch", "cat", 2).SetName(
+                "Levenshtein.TwoDeletions.ReturnsTwo"
+            );
+            yield return new TestCaseData("foobar", "foo", 3).SetName(
+                "Levenshtein.ThreeDeletions.ReturnsThree"
+            );
+            yield return new TestCaseData("abc", "xyz", 3).SetName(
+                "Levenshtein.CompletelyDifferent.ReturnsLength"
+            );
+            yield return new TestCaseData("hello", "world", 4).SetName(
+                "Levenshtein.DifferentWords.ReturnsFour"
+            );
+            yield return new TestCaseData("kitten", "sitting", 3).SetName(
+                "Levenshtein.ClassicKitten.ReturnsThree"
+            );
+            yield return new TestCaseData("saturday", "sunday", 3).SetName(
+                "Levenshtein.ClassicSaturday.ReturnsThree"
+            );
+            yield return new TestCaseData("book", "back", 2).SetName(
+                "Levenshtein.ClassicBook.ReturnsTwo"
+            );
+            yield return new TestCaseData("Test", "test", 1).SetName(
+                "Levenshtein.CaseDifferenceOne.ReturnsOne"
+            );
+            yield return new TestCaseData("TEST", "test", 4).SetName(
+                "Levenshtein.CaseDifferenceAll.ReturnsFour"
+            );
+            yield return new TestCaseData("intention", "execution", 5).SetName(
+                "Levenshtein.LongWords.ReturnsFive"
+            );
+            yield return new TestCaseData("algorithm", "altruistic", 6).SetName(
+                "Levenshtein.ComplexWords.ReturnsSix"
+            );
+        }
+
+        [TestCaseSource(nameof(LevenshteinDistanceTestCases))]
+        public void LevenshteinDistanceReturnsExpected(string first, string second, int expected)
+        {
+            int actual = first.LevenshteinDistance(second);
+
+            Assert.AreEqual(expected, actual);
+        }
+
+        private static IEnumerable<TestCaseData> NeedsLowerInvariantConversionTestCases()
+        {
+            yield return new TestCaseData(null, false).SetName("NeedsLower.Null.ReturnsFalse");
+            yield return new TestCaseData("", false).SetName("NeedsLower.Empty.ReturnsFalse");
+            yield return new TestCaseData("   ", false).SetName(
+                "NeedsLower.Whitespace.ReturnsFalse"
+            );
+            yield return new TestCaseData("\t\n\r", false).SetName(
+                "NeedsLower.TabNewline.ReturnsFalse"
+            );
+            yield return new TestCaseData("Test", true).SetName(
+                "NeedsLower.LeadingUpper.ReturnsTrue"
+            );
+            yield return new TestCaseData("TEST", true).SetName("NeedsLower.AllUpper.ReturnsTrue");
+            yield return new TestCaseData("Hello World", true).SetName(
+                "NeedsLower.MixedWithSpace.ReturnsTrue"
+            );
+            yield return new TestCaseData("A", true).SetName(
+                "NeedsLower.SingleUpperChar.ReturnsTrue"
+            );
+            yield return new TestCaseData("test", false).SetName(
+                "NeedsLower.AllLower.ReturnsFalse"
+            );
+            yield return new TestCaseData("hello world", false).SetName(
+                "NeedsLower.AllLowerWithSpace.ReturnsFalse"
+            );
+            yield return new TestCaseData("a", false).SetName(
+                "NeedsLower.SingleLowerChar.ReturnsFalse"
+            );
+            yield return new TestCaseData("lowercase123", false).SetName(
+                "NeedsLower.LowerWithNumbers.ReturnsFalse"
+            );
+            yield return new TestCaseData("helloWorld", true).SetName(
+                "NeedsLower.CamelCase.ReturnsTrue"
+            );
+            yield return new TestCaseData("test123Test", true).SetName(
+                "NeedsLower.NumbersThenUpper.ReturnsTrue"
+            );
+            yield return new TestCaseData("hello123", false).SetName(
+                "NeedsLower.LowerThenNumbers.ReturnsFalse"
+            );
+        }
+
+        [TestCaseSource(nameof(NeedsLowerInvariantConversionTestCases))]
+        public void NeedsLowerInvariantConversionReturnsExpected(string input, bool expected)
+        {
+            bool actual = input.NeedsLowerInvariantConversion();
+
+            Assert.AreEqual(expected, actual);
+        }
+
+        private static IEnumerable<TestCaseData> NeedsTrimTestCases()
+        {
+            yield return new TestCaseData(null, false).SetName("NeedsTrim.Null.ReturnsFalse");
+            yield return new TestCaseData("", false).SetName("NeedsTrim.Empty.ReturnsFalse");
+            yield return new TestCaseData(" test", true).SetName(
+                "NeedsTrim.LeadingSpace.ReturnsTrue"
+            );
+            yield return new TestCaseData("  test", true).SetName(
+                "NeedsTrim.TwoLeadingSpaces.ReturnsTrue"
+            );
+            yield return new TestCaseData("\ttest", true).SetName(
+                "NeedsTrim.LeadingTab.ReturnsTrue"
+            );
+            yield return new TestCaseData("\ntest", true).SetName(
+                "NeedsTrim.LeadingNewline.ReturnsTrue"
+            );
+            yield return new TestCaseData("test ", true).SetName(
+                "NeedsTrim.TrailingSpace.ReturnsTrue"
+            );
+            yield return new TestCaseData("test  ", true).SetName(
+                "NeedsTrim.TwoTrailingSpaces.ReturnsTrue"
+            );
+            yield return new TestCaseData("test\t", true).SetName(
+                "NeedsTrim.TrailingTab.ReturnsTrue"
+            );
+            yield return new TestCaseData("test\n", true).SetName(
+                "NeedsTrim.TrailingNewline.ReturnsTrue"
+            );
+            yield return new TestCaseData(" test ", true).SetName("NeedsTrim.BothEnds.ReturnsTrue");
+            yield return new TestCaseData("  test  ", true).SetName(
+                "NeedsTrim.MultipleSpacesBothEnds.ReturnsTrue"
+            );
+            yield return new TestCaseData("\ttest\n", true).SetName(
+                "NeedsTrim.MixedWhitespaceBothEnds.ReturnsTrue"
+            );
+            yield return new TestCaseData("test", false).SetName(
+                "NeedsTrim.NoWhitespace.ReturnsFalse"
+            );
+            yield return new TestCaseData("hello world", false).SetName(
+                "NeedsTrim.MiddleWhitespaceOnly.ReturnsFalse"
+            );
+            yield return new TestCaseData("a", false).SetName("NeedsTrim.SingleChar.ReturnsFalse");
+            yield return new TestCaseData("no trim needed", false).SetName(
+                "NeedsTrim.NoTrimNeeded.ReturnsFalse"
+            );
+            yield return new TestCaseData("test\tvalue", false).SetName(
+                "NeedsTrim.MiddleTab.ReturnsFalse"
+            );
+        }
+
+        [TestCaseSource(nameof(NeedsTrimTestCases))]
+        public void NeedsTrimReturnsExpected(string input, bool expected)
+        {
+            bool actual = input.NeedsTrim();
+
+            Assert.AreEqual(expected, actual);
+        }
+
+        private static IEnumerable<TestCaseData> TruncateTestCases()
+        {
+            yield return new TestCaseData(null, 5, "...", null).SetName(
+                "Truncate.Null.ReturnsNull"
+            );
+            yield return new TestCaseData("", 5, "...", "").SetName("Truncate.Empty.ReturnsEmpty");
+            yield return new TestCaseData("test", -1, "...", "test").SetName(
+                "Truncate.NegativeLength.ReturnsOriginal"
+            );
+            yield return new TestCaseData("test", 10, "...", "test").SetName(
+                "Truncate.LongerThanInput.ReturnsOriginal"
+            );
+            yield return new TestCaseData("test", 4, "...", "test").SetName(
+                "Truncate.ExactLength.ReturnsOriginal"
+            );
+            yield return new TestCaseData("hello world", 6, "...", "hel...").SetName(
+                "Truncate.DefaultEllipsis.TruncatesCorrectly"
+            );
+            yield return new TestCaseData("hello", 3, "...", "...").SetName(
+                "Truncate.VeryShortLimit.ReturnsEllipsisOnly"
+            );
+            yield return new TestCaseData("hello world", 10, "...", "hello w...").SetName(
+                "Truncate.TenChars.TruncatesCorrectly"
+            );
+            yield return new TestCaseData("hello world", 5, "--", "hel--").SetName(
+                "Truncate.CustomEllipsis.TruncatesCorrectly"
+            );
+            yield return new TestCaseData("hello world", 12, " [more]", "hello world").SetName(
+                "Truncate.LongerThanWithCustom.ReturnsOriginal"
+            );
+            yield return new TestCaseData("hello world", 5, "", "hello").SetName(
+                "Truncate.EmptyEllipsis.TruncatesExact"
+            );
+            yield return new TestCaseData("hello", 3, "", "hel").SetName(
+                "Truncate.EmptyEllipsisShort.TruncatesExact"
+            );
+            yield return new TestCaseData("hello", 2, "...", "...").SetName(
+                "Truncate.EllipsisLongerThanMax.ReturnsEllipsis"
+            );
+            yield return new TestCaseData("testing", 6, "...", "tes...").SetName(
+                "Truncate.ExactAtLimit.TruncatesCorrectly"
+            );
+            yield return new TestCaseData("testing", 5, "...", "te...").SetName(
+                "Truncate.OneUnderLimit.TruncatesCorrectly"
+            );
+        }
+
+        [TestCaseSource(nameof(TruncateTestCases))]
+        public void TruncateReturnsExpected(
+            string input,
+            int maxLength,
+            string ellipsis,
+            string expected
+        )
+        {
+            string actual = input.Truncate(maxLength, ellipsis);
+
+            Assert.AreEqual(expected, actual);
+        }
+
+        private static IEnumerable<TestCaseData> CenterTestCases()
+        {
+            yield return new TestCaseData(null, 10, null).SetName("Center.Null.ReturnsNull");
+            yield return new TestCaseData("test", 4, "test").SetName(
+                "Center.ExactWidth.ReturnsOriginal"
+            );
+            yield return new TestCaseData("test", 3, "test").SetName(
+                "Center.ShorterWidth.ReturnsOriginal"
+            );
+            yield return new TestCaseData("test", 0, "test").SetName(
+                "Center.ZeroWidth.ReturnsOriginal"
+            );
+            yield return new TestCaseData("test", -1, "test").SetName(
+                "Center.NegativeWidth.ReturnsOriginal"
+            );
+            yield return new TestCaseData("test", 8, "  test  ").SetName(
+                "Center.EvenPadding.PadsEvenly"
+            );
+            yield return new TestCaseData("test", 7, " test  ").SetName(
+                "Center.OddPaddingLeft.PadsCorrectly"
+            );
+            yield return new TestCaseData("test", 9, "  test   ").SetName(
+                "Center.OddPaddingRight.PadsCorrectly"
+            );
+            yield return new TestCaseData("a", 11, "     a     ").SetName(
+                "Center.SingleChar.PadsEvenly"
+            );
+            yield return new TestCaseData("", 0, "").SetName("Center.EmptyZeroWidth.ReturnsEmpty");
+            yield return new TestCaseData("", 5, "     ").SetName(
+                "Center.EmptyWithWidth.ReturnsPadding"
+            );
+        }
+
+        [TestCaseSource(nameof(CenterTestCases))]
+        public void CenterReturnsExpected(string input, int width, string expected)
+        {
+            string actual = input.Center(width);
+
+            Assert.AreEqual(expected, actual);
+        }
+
         [Test]
         public void ToPascalCaseNominal()
         {
@@ -47,34 +350,14 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         }
 
         [Test]
-        public void CenterNullOrShorterString()
-        {
-            Assert.AreEqual(null, ((string)null).Center(10));
-            Assert.AreEqual("test", "test".Center(4));
-            Assert.AreEqual("test", "test".Center(3));
-            Assert.AreEqual("test", "test".Center(0));
-            Assert.AreEqual("test", "test".Center(-1));
-        }
-
-        [Test]
-        public void CenterPadsCorrectly()
-        {
-            Assert.AreEqual("  test  ", "test".Center(8));
-            Assert.AreEqual(" test  ", "test".Center(7));
-            Assert.AreEqual("  test   ", "test".Center(9));
-            Assert.AreEqual("     a     ", "a".Center(11));
-            Assert.AreEqual(string.Empty, string.Empty.Center(0));
-        }
-
-        [Test]
         public void GetBytesHandlesNullAndEmpty()
         {
             byte[] nullResult = ((string)null).GetBytes();
-            Assert.IsNotNull(nullResult);
+            Assert.IsTrue(nullResult != null);
             Assert.AreEqual(0, nullResult.Length);
 
             byte[] emptyResult = string.Empty.GetBytes();
-            Assert.IsNotNull(emptyResult);
+            Assert.IsTrue(emptyResult != null);
             Assert.AreEqual(0, emptyResult.Length);
         }
 
@@ -82,7 +365,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         public void GetBytesConvertsString()
         {
             byte[] result = "test".GetBytes();
-            Assert.IsNotNull(result);
+            Assert.IsTrue(result != null);
             Assert.Greater(result.Length, 0);
 
             // Verify round-trip
@@ -95,7 +378,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         {
             byte[] bytes = { 116, 101, 115, 116 }; // "test" in ASCII
             string result = bytes.GetString();
-            Assert.IsNotNull(result);
+            Assert.IsTrue(result != null);
             Assert.AreEqual("test", result);
         }
 
@@ -113,217 +396,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         {
             int intValue = 42;
             string json = intValue.ToJson();
-            Assert.IsNotNull(json);
+            Assert.IsTrue(json != null);
             Assert.IsTrue(json.Contains("42"));
 
             string stringValue = "test";
             string stringJson = stringValue.ToJson();
-            Assert.IsNotNull(stringJson);
+            Assert.IsTrue(stringJson != null);
             Assert.IsTrue(stringJson.Contains("test"));
-        }
-
-        [Test]
-        public void LevenshteinDistanceIdenticalStrings()
-        {
-            Assert.AreEqual(0, "test".LevenshteinDistance("test"));
-            Assert.AreEqual(0, "".LevenshteinDistance(""));
-            Assert.AreEqual(0, "hello world".LevenshteinDistance("hello world"));
-            Assert.AreEqual(0, "A".LevenshteinDistance("A"));
-        }
-
-        [Test]
-        public void LevenshteinDistanceEmptyStrings()
-        {
-            Assert.AreEqual(4, "test".LevenshteinDistance(""));
-            Assert.AreEqual(5, "".LevenshteinDistance("hello"));
-            Assert.AreEqual(0, "".LevenshteinDistance(""));
-        }
-
-        [Test]
-        public void LevenshteinDistanceNullStrings()
-        {
-            Assert.AreEqual(4, "test".LevenshteinDistance(null));
-            Assert.AreEqual(5, ((string)null).LevenshteinDistance("hello"));
-            Assert.AreEqual(0, ((string)null).LevenshteinDistance(null));
-        }
-
-        [Test]
-        public void LevenshteinDistanceSingleCharacterDifference()
-        {
-            Assert.AreEqual(1, "test".LevenshteinDistance("text"));
-            Assert.AreEqual(1, "cat".LevenshteinDistance("bat"));
-            Assert.AreEqual(1, "hello".LevenshteinDistance("hallo"));
-        }
-
-        [Test]
-        public void LevenshteinDistanceInsertions()
-        {
-            Assert.AreEqual(1, "cat".LevenshteinDistance("cats"));
-            Assert.AreEqual(2, "cat".LevenshteinDistance("catch"));
-            Assert.AreEqual(3, "foo".LevenshteinDistance("foobar"));
-        }
-
-        [Test]
-        public void LevenshteinDistanceDeletions()
-        {
-            Assert.AreEqual(1, "cats".LevenshteinDistance("cat"));
-            Assert.AreEqual(2, "catch".LevenshteinDistance("cat"));
-            Assert.AreEqual(3, "foobar".LevenshteinDistance("foo"));
-        }
-
-        [Test]
-        public void LevenshteinDistanceCompletelyDifferent()
-        {
-            Assert.AreEqual(3, "abc".LevenshteinDistance("xyz"));
-            Assert.AreEqual(4, "hello".LevenshteinDistance("world"));
-        }
-
-        [Test]
-        public void LevenshteinDistanceClassicExamples()
-        {
-            Assert.AreEqual(3, "kitten".LevenshteinDistance("sitting"));
-            Assert.AreEqual(3, "saturday".LevenshteinDistance("sunday"));
-            Assert.AreEqual(2, "book".LevenshteinDistance("back"));
-        }
-
-        [Test]
-        public void LevenshteinDistanceCaseSensitive()
-        {
-            Assert.AreEqual(1, "Test".LevenshteinDistance("test"));
-            Assert.AreEqual(4, "TEST".LevenshteinDistance("test"));
-        }
-
-        [Test]
-        public void NeedsLowerInvariantConversionReturnsFalseForNullOrWhitespace()
-        {
-            Assert.IsFalse(((string)null).NeedsLowerInvariantConversion());
-            Assert.IsFalse(string.Empty.NeedsLowerInvariantConversion());
-            Assert.IsFalse("   ".NeedsLowerInvariantConversion());
-            Assert.IsFalse("\t\n\r".NeedsLowerInvariantConversion());
-        }
-
-        [Test]
-        public void NeedsLowerInvariantConversionReturnsTrueForUpperCase()
-        {
-            Assert.IsTrue("Test".NeedsLowerInvariantConversion());
-            Assert.IsTrue("TEST".NeedsLowerInvariantConversion());
-            Assert.IsTrue("Hello World".NeedsLowerInvariantConversion());
-            Assert.IsTrue("A".NeedsLowerInvariantConversion());
-        }
-
-        [Test]
-        public void NeedsLowerInvariantConversionReturnsFalseForLowerCase()
-        {
-            Assert.IsFalse("test".NeedsLowerInvariantConversion());
-            Assert.IsFalse("hello world".NeedsLowerInvariantConversion());
-            Assert.IsFalse("a".NeedsLowerInvariantConversion());
-            Assert.IsFalse("lowercase123".NeedsLowerInvariantConversion());
-        }
-
-        [Test]
-        public void NeedsLowerInvariantConversionHandlesMixedCase()
-        {
-            Assert.IsTrue("helloWorld".NeedsLowerInvariantConversion());
-            Assert.IsTrue("test123Test".NeedsLowerInvariantConversion());
-            Assert.IsFalse("hello123".NeedsLowerInvariantConversion());
-        }
-
-        [Test]
-        public void NeedsTrimReturnsFalseForNullOrEmpty()
-        {
-            Assert.IsFalse(((string)null).NeedsTrim());
-            Assert.IsFalse(string.Empty.NeedsTrim());
-        }
-
-        [Test]
-        public void NeedsTrimReturnsTrueForLeadingWhitespace()
-        {
-            Assert.IsTrue(" test".NeedsTrim());
-            Assert.IsTrue("  test".NeedsTrim());
-            Assert.IsTrue("\ttest".NeedsTrim());
-            Assert.IsTrue("\ntest".NeedsTrim());
-        }
-
-        [Test]
-        public void NeedsTrimReturnsTrueForTrailingWhitespace()
-        {
-            Assert.IsTrue("test ".NeedsTrim());
-            Assert.IsTrue("test  ".NeedsTrim());
-            Assert.IsTrue("test\t".NeedsTrim());
-            Assert.IsTrue("test\n".NeedsTrim());
-        }
-
-        [Test]
-        public void NeedsTrimReturnsTrueForBothEndsWhitespace()
-        {
-            Assert.IsTrue(" test ".NeedsTrim());
-            Assert.IsTrue("  test  ".NeedsTrim());
-            Assert.IsTrue("\ttest\n".NeedsTrim());
-        }
-
-        [Test]
-        public void NeedsTrimReturnsFalseForNoWhitespace()
-        {
-            Assert.IsFalse("test".NeedsTrim());
-            Assert.IsFalse("hello world".NeedsTrim());
-            Assert.IsFalse("a".NeedsTrim());
-            Assert.IsFalse("no trim needed".NeedsTrim());
-        }
-
-        [Test]
-        public void NeedsTrimHandlesMiddleWhitespace()
-        {
-            Assert.IsFalse("hello world".NeedsTrim());
-            Assert.IsFalse("test\tvalue".NeedsTrim());
-        }
-
-        [Test]
-        public void TruncateHandlesNullAndEmpty()
-        {
-            Assert.AreEqual(null, ((string)null).Truncate(5));
-            Assert.AreEqual(string.Empty, string.Empty.Truncate(5));
-        }
-
-        [Test]
-        public void TruncateHandlesNegativeLength()
-        {
-            Assert.AreEqual("test", "test".Truncate(-1));
-        }
-
-        [Test]
-        public void TruncateDoesNotTruncateShortStrings()
-        {
-            Assert.AreEqual("test", "test".Truncate(10));
-            Assert.AreEqual("test", "test".Truncate(4));
-        }
-
-        [Test]
-        public void TruncateWithDefaultEllipsis()
-        {
-            Assert.AreEqual("hel...", "hello world".Truncate(6));
-            Assert.AreEqual("...", "hello".Truncate(3));
-            Assert.AreEqual("hello w...", "hello world".Truncate(10));
-        }
-
-        [Test]
-        public void TruncateWithCustomEllipsis()
-        {
-            Assert.AreEqual("hel--", "hello world".Truncate(5, "--"));
-            Assert.AreEqual("hello world", "hello world".Truncate(12, " [more]"));
-        }
-
-        [Test]
-        public void TruncateWithEmptyEllipsis()
-        {
-            Assert.AreEqual("hello", "hello world".Truncate(5, ""));
-            Assert.AreEqual("hel", "hello".Truncate(3, ""));
-        }
-
-        [Test]
-        public void TruncateWithEllipsisLongerThanMaxLength()
-        {
-            Assert.AreEqual("...", "hello".Truncate(3, "..."));
-            Assert.AreEqual("...", "hello".Truncate(2, "..."));
         }
 
         [Test]
@@ -814,7 +893,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             {
                 string result = pattern.ToCamelCase();
                 // Basic invariants
-                Assert.IsNotNull(result, $"Result should not be null for: {pattern}");
+                Assert.IsTrue(result != null, $"Result should not be null for: {pattern}");
 
                 if (result.Length > 0)
                 {
@@ -1388,7 +1467,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             {
                 string result = pattern.ToKebabCase();
                 // Basic invariants
-                Assert.IsNotNull(result, $"Result should not be null for: {pattern}");
+                Assert.IsTrue(result != null, $"Result should not be null for: {pattern}");
 
                 if (result.Length > 0)
                 {
@@ -1756,7 +1835,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         {
             string original = "Hello, World!";
             string base64 = original.ToBase64();
-            Assert.IsNotNull(base64);
+            Assert.IsTrue(base64 != null);
             Assert.AreNotEqual(original, base64);
 
             string decoded = base64.FromBase64();
@@ -1929,7 +2008,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         {
             string unicode = "Hello 世界 🌍";
             byte[] bytes = unicode.GetBytes();
-            Assert.IsNotNull(bytes);
+            Assert.IsTrue(bytes != null);
             Assert.Greater(bytes.Length, unicode.Length);
 
             string decoded = bytes.GetString();
@@ -1964,19 +2043,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             Assert.AreEqual("ThisIsAComplexTest", "this_is_a_complex_test".ToPascalCase());
             Assert.AreEqual("ThisIsAComplexTest", "THIS_IS_A_COMPLEX_TEST".ToPascalCase());
             Assert.AreEqual("ThisIsAComplexTest", "this-is-a-complex-test".ToPascalCase());
-        }
-
-        [Test]
-        public void CenterHandlesEmptyString()
-        {
-            Assert.AreEqual("     ", string.Empty.Center(5));
-        }
-
-        [Test]
-        public void LevenshteinDistanceLongerStrings()
-        {
-            Assert.AreEqual(5, "intention".LevenshteinDistance("execution"));
-            Assert.AreEqual(6, "algorithm".LevenshteinDistance("altruistic"));
         }
 
         [Test]
@@ -2131,13 +2197,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             // Many number transitions
             string manyNumbers = "a1b2c3d4e5f6g7h8i9j0";
             Assert.AreEqual(manyNumbers, manyNumbers.ToSnakeCase());
-        }
-
-        [Test]
-        public void TruncateExactlyAtLimit()
-        {
-            Assert.AreEqual("tes...", "testing".Truncate(6));
-            Assert.AreEqual("te...", "testing".Truncate(5));
         }
 
         [Test]

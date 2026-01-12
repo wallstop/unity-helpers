@@ -1,5 +1,7 @@
 # Skill: Use Serialization
 
+<!-- trigger: serialize, json, protobuf, save, persist | Save files, network, persistence | Feature -->
+
 **Trigger**: When serializing/deserializing data for save files, network, or persistence.
 
 ---

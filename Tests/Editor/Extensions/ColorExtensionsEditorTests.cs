@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Tests.Extensions
@@ -9,8 +9,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
     using UnityEditor;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Extension;
+    using WallstopStudios.UnityHelpers.Editor.Utils;
     using Object = UnityEngine.Object;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class ColorExtensionsEditorTests
     {
         private const string TempFolder = "Assets/TempColorExtensionTests";
@@ -26,7 +30,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
         public void GetAverageColorSpriteForcesTextureReadableViaMakeReadable()
         {
             Sprite sprite = CreateNonReadableSprite(new Color(0.1f, 0.8f, 0.2f, 1f));
-            Assert.IsNotNull(sprite, "Sprite asset failed to load.");
+            Assert.IsTrue(sprite != null, "Sprite asset failed to load.");
             Assert.IsFalse(
                 sprite.texture.isReadable,
                 "Test setup requires a non-readable texture."
@@ -49,10 +53,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             byte[] png = texture.EncodeToPNG();
             Object.DestroyImmediate(texture); // UNH-SUPPRESS: Intentional cleanup of temp texture
             File.WriteAllBytes(TempTexturePath, png);
-            AssetDatabase.ImportAsset(TempTexturePath, ImportAssetOptions.ForceUpdate);
+            AssetDatabase.ImportAsset(TempTexturePath, ImportAssetOptions.ForceSynchronousImport);
 
             TextureImporter importer = AssetImporter.GetAtPath(TempTexturePath) as TextureImporter;
-            Assert.IsNotNull(importer, "TextureImporter not found for temp texture.");
+            Assert.IsTrue(importer != null, "TextureImporter not found for temp texture.");
 
             importer.textureType = TextureImporterType.Sprite;
             importer.spriteImportMode = SpriteImportMode.Single;
@@ -84,7 +88,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
 
             if (refreshed)
             {
-                AssetDatabase.Refresh();
+                AssetDatabaseBatchHelper.RefreshIfNotBatching();
             }
         }
     }

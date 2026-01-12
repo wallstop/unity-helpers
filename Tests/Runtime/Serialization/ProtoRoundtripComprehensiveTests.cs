@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Tests.Serialization
@@ -12,6 +12,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
     using WallstopStudios.UnityHelpers.Core.Math;
     using Serializer = WallstopStudios.UnityHelpers.Core.Serialization.Serializer;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class ProtoRoundtripComprehensiveTests
     {
         [ProtoContract]
@@ -30,7 +32,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
         private static T RoundTrip<T>(T value)
         {
             byte[] bytes = Serializer.ProtoSerialize(value);
-            Assert.IsNotNull(bytes, "Protobuf should produce bytes");
+            Assert.IsTrue(bytes != null, "Protobuf should produce bytes");
             Assert.Greater(bytes.Length, 0, "Protobuf should produce non-empty bytes");
             return Serializer.ProtoDeserialize<T>(bytes);
         }

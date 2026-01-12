@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
@@ -13,6 +13,9 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
     using WallstopStudios.UnityHelpers.Tests.Core;
     using WallstopStudios.UnityHelpers.Tests.Editor.TestTypes;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class WGuidPropertyDrawerTests : CommonTestBase
     {
         [SetUp]
@@ -299,9 +302,9 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             state.InvalidateCache();
 
             // Assert
-            Assert.IsNull(state.cachedLowProperty);
-            Assert.IsNull(state.cachedHighProperty);
-            Assert.IsNull(state.cachedSerializedObject);
+            Assert.IsTrue(state.cachedLowProperty == null);
+            Assert.IsTrue(state.cachedHighProperty == null);
+            Assert.IsTrue(state.cachedSerializedObject == null);
             Assert.AreEqual(-1, state.lastCacheFrame);
         }
 

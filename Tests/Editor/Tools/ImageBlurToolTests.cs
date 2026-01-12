@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Tests.Tools
@@ -8,6 +8,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Tools
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Editor.Tools;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class ImageBlurToolTests
     {
         [TestCase(1)]

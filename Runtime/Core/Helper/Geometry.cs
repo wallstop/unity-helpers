@@ -1,10 +1,10 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2023 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Core.Helper
 {
+    using System;
     using System.Collections.Generic;
-    using System.Linq;
     using UnityEngine;
 
     /// <summary>
@@ -18,22 +18,28 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         /// <param name="rects">A non-empty sequence of rectangles to accumulate.</param>
         /// <returns>The minimal axis-aligned <see cref="Rect"/> that contains all input rectangles.</returns>
         /// <remarks>
-        /// Expects a non-empty sequence. Passing an empty sequence throws <see cref="System.InvalidOperationException"/>
-        /// from LINQ <c>Aggregate</c>.
+        /// Expects a non-empty sequence. Passing an empty sequence throws <see cref="InvalidOperationException"/>.
         /// </remarks>
         public static Rect Accumulate(this IEnumerable<Rect> rects)
         {
-            return rects.Aggregate(
-                (accumulated, next) =>
-                    new Rect(
-                        Mathf.Min(accumulated.xMin, next.xMin),
-                        Mathf.Min(accumulated.yMin, next.yMin),
-                        Mathf.Max(accumulated.xMax, next.xMax)
-                            - Mathf.Min(accumulated.xMin, next.xMin),
-                        Mathf.Max(accumulated.yMax, next.yMax)
-                            - Mathf.Min(accumulated.yMin, next.yMin)
-                    )
-            );
+            using IEnumerator<Rect> enumerator = rects.GetEnumerator();
+            if (!enumerator.MoveNext())
+            {
+                throw new InvalidOperationException("Sequence contains no elements");
+            }
+
+            Rect accumulated = enumerator.Current;
+            while (enumerator.MoveNext())
+            {
+                Rect next = enumerator.Current;
+                accumulated = new Rect(
+                    Mathf.Min(accumulated.xMin, next.xMin),
+                    Mathf.Min(accumulated.yMin, next.yMin),
+                    Mathf.Max(accumulated.xMax, next.xMax) - Mathf.Min(accumulated.xMin, next.xMin),
+                    Mathf.Max(accumulated.yMax, next.yMax) - Mathf.Min(accumulated.yMin, next.yMin)
+                );
+            }
+            return accumulated;
         }
 
         //Where is p in relation to a-b

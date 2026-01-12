@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Tests.Serialization
@@ -9,6 +9,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
     using Serializer = WallstopStudios.UnityHelpers.Core.Serialization.Serializer;
 
     [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class ProtoRootRegistrationTests
     {
         public interface IAnimal { }
@@ -45,7 +46,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
 
             IAnimal round = Serializer.ProtoDeserialize<IAnimal>(data);
 
-            Assert.IsNotNull(round, "Deserialized instance should not be null");
+            Assert.IsTrue(round != null, "Deserialized instance should not be null");
             Assert.IsInstanceOf<Dog>(round, "Expected registered root type to be used");
             Dog dog = (Dog)round;
             Assert.AreEqual(5, dog.Age, "Age should match");

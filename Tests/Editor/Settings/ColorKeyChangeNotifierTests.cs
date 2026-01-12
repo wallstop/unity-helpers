@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 #if UNITY_EDITOR
@@ -16,6 +16,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
     /// Tests for verifying that <see cref="ColorKeyChangeNotifier"/> correctly detects
     /// and notifies when WButton and WEnumToggleButtons custom color entries are modified.
     /// </summary>
+    [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class ColorKeyChangeNotifierTests
     {
         private UnityHelpersSettings _settings;
@@ -84,7 +87,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
             SerializedProperty customColors = _serializedSettings.FindProperty(
                 UnityHelpersSettings.SerializedPropertyNames.WButtonCustomColors
             );
-            Assert.IsNotNull(customColors, "WButtonCustomColors property should exist.");
+            Assert.IsTrue(customColors != null, "WButtonCustomColors property should exist.");
 
             // Capture should not throw and should complete without error
             Assert.DoesNotThrow(() =>
@@ -98,7 +101,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
             SerializedProperty customColors = _serializedSettings.FindProperty(
                 UnityHelpersSettings.SerializedPropertyNames.WEnumToggleButtonsCustomColors
             );
-            Assert.IsNotNull(customColors, "WEnumToggleButtonsCustomColors property should exist.");
+            Assert.IsTrue(
+                customColors != null,
+                "WEnumToggleButtonsCustomColors property should exist."
+            );
 
             Assert.DoesNotThrow(() =>
                 ColorKeyChangeNotifier.CaptureCurrentState(_serializedSettings)
@@ -150,8 +156,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
                 SerializableDictionarySerializedPropertyNames.Values
             );
 
-            Assert.IsNotNull(keys, "Keys property should exist.");
-            Assert.IsNotNull(values, "Values property should exist.");
+            Assert.IsTrue(keys != null, "Keys property should exist.");
+            Assert.IsTrue(values != null, "Values property should exist.");
 
             if (keys.arraySize == 0)
             {
@@ -170,7 +176,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
             SerializedProperty buttonColorProp = firstValue.FindPropertyRelative(
                 UnityHelpersSettings.SerializedPropertyNames.WButtonCustomColorButton
             );
-            Assert.IsNotNull(buttonColorProp, "Button color property should exist.");
+            Assert.IsTrue(buttonColorProp != null, "Button color property should exist.");
 
             Color originalColor = buttonColorProp.colorValue;
             Color newColor = new(
@@ -210,8 +216,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
                 SerializableDictionarySerializedPropertyNames.Values
             );
 
-            Assert.IsNotNull(keys, "Keys property should exist.");
-            Assert.IsNotNull(values, "Values property should exist.");
+            Assert.IsTrue(keys != null, "Keys property should exist.");
+            Assert.IsTrue(values != null, "Values property should exist.");
 
             if (keys.arraySize == 0)
             {
@@ -229,7 +235,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
             SerializedProperty selectedBgProp = firstValue.FindPropertyRelative(
                 UnityHelpersSettings.SerializedPropertyNames.WEnumToggleButtonsSelectedBackground
             );
-            Assert.IsNotNull(selectedBgProp, "Selected background property should exist.");
+            Assert.IsTrue(selectedBgProp != null, "Selected background property should exist.");
 
             Color originalColor = selectedBgProp.colorValue;
             Color newColor = new(
@@ -383,7 +389,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
             SerializedProperty textColorProp = firstValue.FindPropertyRelative(
                 UnityHelpersSettings.SerializedPropertyNames.WButtonCustomColorText
             );
-            Assert.IsNotNull(textColorProp, "Text color property should exist.");
+            Assert.IsTrue(textColorProp != null, "Text color property should exist.");
 
             Color originalColor = textColorProp.colorValue;
             Color newColor = new(
@@ -436,7 +442,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
             SerializedProperty selectedTextProp = firstValue.FindPropertyRelative(
                 UnityHelpersSettings.SerializedPropertyNames.WEnumToggleButtonsSelectedText
             );
-            Assert.IsNotNull(selectedTextProp, "Selected text property should exist.");
+            Assert.IsTrue(selectedTextProp != null, "Selected text property should exist.");
 
             Color originalColor = selectedTextProp.colorValue;
             Color newColor = new(
@@ -489,7 +495,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
             SerializedProperty inactiveBgProp = firstValue.FindPropertyRelative(
                 UnityHelpersSettings.SerializedPropertyNames.WEnumToggleButtonsInactiveBackground
             );
-            Assert.IsNotNull(inactiveBgProp, "Inactive background property should exist.");
+            Assert.IsTrue(inactiveBgProp != null, "Inactive background property should exist.");
 
             Color originalColor = inactiveBgProp.colorValue;
             Color newColor = new(
@@ -542,7 +548,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
             SerializedProperty inactiveTextProp = firstValue.FindPropertyRelative(
                 UnityHelpersSettings.SerializedPropertyNames.WEnumToggleButtonsInactiveText
             );
-            Assert.IsNotNull(inactiveTextProp, "Inactive text property should exist.");
+            Assert.IsTrue(inactiveTextProp != null, "Inactive text property should exist.");
 
             Color originalColor = inactiveTextProp.colorValue;
             Color newColor = new(

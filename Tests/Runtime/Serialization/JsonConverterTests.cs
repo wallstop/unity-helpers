@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Tests.Serialization
@@ -13,6 +13,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
     using WallstopStudios.UnityHelpers.Tests.Core;
 
     [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class JsonConverterTests : CommonTestBase
     {
         [Test]
@@ -727,8 +728,14 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
                 json
             );
 
-            Assert.IsNull(deserialized.TypeProperty);
-            Assert.IsNull(deserialized.TypeList);
+            Assert.IsTrue(
+                deserialized.TypeProperty == null,
+                "TypeProperty should be null after round-trip of null"
+            );
+            Assert.IsTrue(
+                deserialized.TypeList == null,
+                "TypeList should be null after round-trip of null"
+            );
         }
 
         [Test]
@@ -737,7 +744,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
             string json = "\"\"";
             Type deserialized = Serializer.JsonDeserialize<Type>(json);
 
-            Assert.IsNull(deserialized);
+            Assert.IsTrue(deserialized == null, "Empty string should deserialize to null Type");
         }
 
         [Test]
@@ -746,7 +753,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
             string json = "\"   \"";
             Type deserialized = Serializer.JsonDeserialize<Type>(json);
 
-            Assert.IsNull(deserialized);
+            Assert.IsTrue(
+                deserialized == null,
+                "Whitespace-only string should deserialize to null Type"
+            );
         }
 
         [Test]
@@ -755,7 +765,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
             string json = "\"NonExistent.Type.Name\"";
             Type deserialized = Serializer.JsonDeserialize<Type>(json);
 
-            Assert.IsNull(deserialized);
+            Assert.IsTrue(
+                deserialized == null,
+                "Invalid type name should deserialize to null Type"
+            );
         }
 
         [Test]

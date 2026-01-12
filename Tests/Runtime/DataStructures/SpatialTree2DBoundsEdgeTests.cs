@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Tests.DataStructures
@@ -10,6 +10,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
     using Vector2 = UnityEngine.Vector2;
     using Vector3 = UnityEngine.Vector3;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class SpatialTree2DBoundsEdgeTests
     {
         private static Vector2[] CreateGridPoints(int width, int height)

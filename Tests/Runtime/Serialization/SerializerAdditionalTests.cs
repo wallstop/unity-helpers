@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Tests.Serialization
@@ -21,6 +21,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
     /// Additional tests for Serializer methods that were not covered by existing test files.
     /// Tests BinarySerialize/Deserialize, generic Serialize/Deserialize, and file I/O methods.
     /// </summary>
+    [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class SerializerAdditionalTests
     {
         private string _tempDirectory;
@@ -177,8 +180,14 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
             TestMessage deserialized = Serializer.BinaryDeserialize<TestMessage>(serialized);
 
             Assert.AreEqual(msg.Id, deserialized.Id);
-            Assert.IsNull(deserialized.Name);
-            Assert.IsNull(deserialized.Values);
+            Assert.IsTrue(
+                deserialized.Name == null,
+                "Name should be null after round-trip of null value"
+            );
+            Assert.IsTrue(
+                deserialized.Values == null,
+                "Values should be null after round-trip of null value"
+            );
         }
 
         [Test]

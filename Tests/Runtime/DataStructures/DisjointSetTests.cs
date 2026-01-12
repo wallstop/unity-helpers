@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Tests.DataStructures
@@ -10,6 +10,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
     using WallstopStudios.UnityHelpers.Core.DataStructure;
     using WallstopStudios.UnityHelpers.Core.Random;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class DisjointSetTests
     {
         [Test]
@@ -351,7 +353,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             List<int> results = new();
             List<int> set = ds.TryGetSet(0, results);
 
-            Assert.IsNotNull(set);
+            Assert.IsTrue(set != null);
             Assert.AreEqual(3, set.Count);
             CollectionAssert.Contains(set, 0);
             CollectionAssert.Contains(set, 1);

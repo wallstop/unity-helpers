@@ -1,12 +1,12 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Utils
 {
     using System;
     using System.Collections.Generic;
-    using System.Linq;
     using Core.Extension;
+    using Core.Helper;
     using UnityEngine;
     using UnityEngine.Serialization;
 
@@ -105,31 +105,95 @@ namespace WallstopStudios.UnityHelpers.Utils
         }
 
         /// <summary>
+        /// Checks all prefab arrays for duplicates and logs an error if any are found.
+        /// Uses pooled collections to avoid allocations. Null prefabs are skipped.
+        /// </summary>
+        private void CheckForDuplicatePrefabs()
+        {
+            GameObject[] prefabs = _prefabs ?? Array.Empty<GameObject>();
+            GameObject[] editorOnlyPrefabs = _editorOnlyPrefabs ?? Array.Empty<GameObject>();
+            GameObject[] developmentOnlyPrefabs =
+                _developmentOnlyPrefabs ?? Array.Empty<GameObject>();
+
+            int totalCount =
+                prefabs.Length + editorOnlyPrefabs.Length + developmentOnlyPrefabs.Length;
+
+            if (totalCount == 0)
+            {
+                return;
+            }
+
+            using PooledResource<HashSet<GameObject>> seenLease = Buffers<GameObject>.HashSet.Get(
+                out HashSet<GameObject> seen
+            );
+            using PooledResource<HashSet<GameObject>> duplicatesLease =
+                Buffers<GameObject>.HashSet.Get(out HashSet<GameObject> duplicates);
+
+            for (int i = 0; i < prefabs.Length; i++)
+            {
+                GameObject prefab = prefabs[i];
+                if (prefab == null)
+                {
+                    continue;
+                }
+                if (!seen.Add(prefab))
+                {
+                    duplicates.Add(prefab);
+                }
+            }
+
+            for (int i = 0; i < editorOnlyPrefabs.Length; i++)
+            {
+                GameObject prefab = editorOnlyPrefabs[i];
+                if (prefab == null)
+                {
+                    continue;
+                }
+                if (!seen.Add(prefab))
+                {
+                    duplicates.Add(prefab);
+                }
+            }
+
+            for (int i = 0; i < developmentOnlyPrefabs.Length; i++)
+            {
+                GameObject prefab = developmentOnlyPrefabs[i];
+                if (prefab == null)
+                {
+                    continue;
+                }
+                if (!seen.Add(prefab))
+                {
+                    duplicates.Add(prefab);
+                }
+            }
+
+            if (duplicates.Count == 0)
+            {
+                return;
+            }
+
+            using PooledResource<List<string>> namesLease = Buffers<string>.GetList(
+                duplicates.Count,
+                out List<string> duplicateNames
+            );
+
+            foreach (GameObject prefab in duplicates)
+            {
+                duplicateNames.Add(prefab.name);
+            }
+
+            this.LogError($"Duplicate child prefab detected: {string.Join(",", duplicateNames)}");
+        }
+
+        /// <summary>
         /// Performs the spawning process for all configured prefab collections, applying naming
         /// suffixes and duplicate checks for each group.
         /// </summary>
         private void Spawn()
         {
             TrySetDontDestroyOnLoad();
-            if (
-                _prefabs
-                    .Concat(_editorOnlyPrefabs)
-                    .Concat(_developmentOnlyPrefabs)
-                    .Distinct()
-                    .Count()
-                != (_prefabs.Length + _editorOnlyPrefabs.Length + _developmentOnlyPrefabs.Length)
-            )
-            {
-                IEnumerable<string> duplicateChildNames = _prefabs
-                    .Concat(_editorOnlyPrefabs)
-                    .Concat(_developmentOnlyPrefabs)
-                    .GroupBy(x => x)
-                    .Where(group => group.Count() > 1)
-                    .Select(group => group.Key != null ? group.Key.name : "null");
-                this.LogError(
-                    $"Duplicate child prefab detected: {string.Join(",", duplicateChildNames)}"
-                );
-            }
+            CheckForDuplicatePrefabs();
 
             int count = 0;
             foreach (GameObject prefab in _prefabs)

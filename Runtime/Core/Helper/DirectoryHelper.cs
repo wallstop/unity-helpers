@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Core.Helper
@@ -66,10 +66,10 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                         Directory.CreateDirectory(absoluteDirectory);
                     }
                 }
-                catch (Exception ex)
+                catch (Exception e)
                 {
                     Debug.LogWarning(
-                        $"DirectoryHelper: Failed to create directory on disk '{absoluteDirectory}': {ex.Message}"
+                        $"DirectoryHelper: Failed to create directory on disk '{absoluteDirectory}': {e.Message}"
                     );
                 }
             }

@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
@@ -10,8 +10,12 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
     using UnityEditor;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Editor.AssetProcessors;
+    using WallstopStudios.UnityHelpers.Editor.Utils;
     using WallstopStudios.UnityHelpers.Tests.Core;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class LlmArtifactCleanerTests : CommonTestBase
     {
         private const string PackagePrefix = "Packages/com.wallstop-studios.unity-helpers/";
@@ -28,7 +32,7 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
         public override void TearDown()
         {
             CleanupTrackedFoldersAndAssets();
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
             base.TearDown();
         }
 
@@ -44,7 +48,9 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
 
             // Manually invoke deletion logic since OnPostprocessAllAssets timing is unreliable in tests
             LlmArtifactCleaner.DeleteBlockedAssets(new[] { assetPath });
-            AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
+            AssetDatabaseBatchHelper.RefreshIfNotBatching(
+                ImportAssetOptions.ForceSynchronousImport
+            );
 
             Assert.IsTrue(string.IsNullOrEmpty(AssetDatabase.AssetPathToGUID(assetPath)));
             Assert.IsFalse(File.Exists(absolutePath));
@@ -63,13 +69,15 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
             TrackAssetPath(assetPath);
 
             AssetDatabase.ImportAsset(assetPath, ImportAssetOptions.ForceSynchronousImport);
-            AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
+            AssetDatabaseBatchHelper.RefreshIfNotBatching(
+                ImportAssetOptions.ForceSynchronousImport
+            );
 
             Assert.IsFalse(LlmArtifactCleaner.ShouldDelete(assetPath));
             string guid = AssetDatabase.AssetPathToGUID(assetPath);
             Assert.IsFalse(string.IsNullOrEmpty(guid));
             TextAsset textAsset = AssetDatabase.LoadAssetAtPath<TextAsset>(assetPath);
-            Assert.IsNotNull(textAsset);
+            Assert.IsTrue(textAsset != null);
             Assert.AreEqual("keep", textAsset.text);
         }
 

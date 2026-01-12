@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Core.Helper
@@ -29,8 +29,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         private int _pendingActionCount;
         private int _lastOverflowFrame = -1;
 #if UNITY_EDITOR
-        private const HideFlags EditorDispatcherHideFlags =
-            HideFlags.HideInHierarchy | HideFlags.HideInInspector | HideFlags.NotEditable;
+        private const HideFlags EditorDispatcherHideFlags = HideFlags.None;
 #endif
 
         [SerializeField]
@@ -41,7 +40,9 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 
         protected override bool Preserve => false;
 
-        internal static bool AutoCreationEnabled { get; private set; } = true;
+        protected override bool LogErrorOnDestruction => false;
+
+        internal static bool AutoCreationEnabled { get; private set; } = false;
 
         /// <summary>
         /// Gets the number of actions currently waiting to be executed on the main thread.
@@ -470,7 +471,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             if (!Application.isPlaying)
             {
                 FormattableString formatted = FormattableStringFactory.Create("{0}", message);
-                this.LogWarn(formatted);
+                Debug.LogWarning(formatted);
                 return;
             }
 
@@ -482,7 +483,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 
             _lastOverflowFrame = currentFrame;
             FormattableString throttled = FormattableStringFactory.Create("{0}", message);
-            this.LogWarn(throttled);
+            Debug.LogWarning(throttled);
         }
 
         private string BuildOverflowMessage()
@@ -544,10 +545,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 }
                 catch (Exception e)
                 {
-                    this.LogError(
-                        $"UnityMainThreadDispatcher action threw {e.GetType().Name}: {e.Message}",
-                        e
-                    );
+                    Debug.LogError($"UnityMainThreadDispatcher action threw an exception: {e}");
                 }
                 finally
                 {
@@ -590,9 +588,9 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                         action();
                         taskCompletionSource.TrySetResult(true);
                     }
-                    catch (Exception ex)
+                    catch (Exception e)
                     {
-                        taskCompletionSource.TrySetException(ex);
+                        taskCompletionSource.TrySetException(e);
                     }
                 },
                 logOverflow: true
@@ -665,10 +663,10 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                     {
                         runTask = action(cancellationToken);
                     }
-                    catch (Exception ex)
+                    catch (Exception e)
                     {
                         registration.Dispose();
-                        taskCompletionSource.TrySetException(ex);
+                        taskCompletionSource.TrySetException(e);
                         return;
                     }
 
@@ -787,9 +785,9 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                         T result = func();
                         taskCompletionSource.TrySetResult(result);
                     }
-                    catch (Exception ex)
+                    catch (Exception e)
                     {
-                        taskCompletionSource.TrySetException(ex);
+                        taskCompletionSource.TrySetException(e);
                     }
                 },
                 logOverflow: true

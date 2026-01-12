@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Tests.Attributes
@@ -16,6 +16,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
     /// These tests verify that all existing functionality still works exactly as before.
     /// </summary>
     [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class RelationalComponentBackwardCompatibilityTests : CommonTestBase
     {
         [UnityTest]

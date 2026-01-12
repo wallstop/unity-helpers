@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Tests.DataStructures
@@ -13,6 +13,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
     using WallstopStudios.UnityHelpers.Core.Math;
     using Serializer = WallstopStudios.UnityHelpers.Core.Serialization.Serializer;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class ProtobufSerializationTests
     {
         private static T SerializeDeserialize<T>(T original)
@@ -258,12 +260,12 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             original.OnBeforeSerialize();
 
             // Diagnostic: Verify original state
-            Assert.IsNotNull(
-                original._keys,
+            Assert.IsTrue(
+                original._keys != null,
                 "Original _keys should not be null before serialization"
             );
-            Assert.IsNotNull(
-                original._values,
+            Assert.IsTrue(
+                original._values != null,
                 "Original _values should not be null before serialization"
             );
             string originalKeysStr = string.Join(", ", original._keys);
@@ -273,7 +275,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             byte[] data = Serializer.ProtoSerialize(original);
 
             // Diagnostic: Verify data was serialized
-            Assert.IsNotNull(data, "Serialized data should not be null");
+            Assert.IsTrue(data != null, "Serialized data should not be null");
             Assert.Greater(
                 data.Length,
                 0,
@@ -287,14 +289,14 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             >(data);
 
             // Assert: Internal arrays should be restored
-            Assert.IsNotNull(deserialized, "Deserialized object should not be null");
-            Assert.IsNotNull(
-                deserialized._keys,
+            Assert.IsTrue(deserialized != null, "Deserialized object should not be null");
+            Assert.IsTrue(
+                deserialized._keys != null,
                 $"Deserialized _keys should not be null. "
                     + $"Original keys: [{originalKeysStr}], Bytes: {data.Length}, Hex: {hexDump}"
             );
-            Assert.IsNotNull(
-                deserialized._values,
+            Assert.IsTrue(
+                deserialized._values != null,
                 $"Deserialized _values should not be null. "
                     + $"Original values: [{originalValuesStr}], Bytes: {data.Length}, Hex: {hexDump}"
             );
@@ -352,8 +354,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             original.OnBeforeSerialize();
 
             // Diagnostic
-            Assert.IsNotNull(original._keys, "Original _keys should not be null");
-            Assert.IsNotNull(original._values, "Original _values should not be null");
+            Assert.IsTrue(original._keys != null, "Original _keys should not be null");
+            Assert.IsTrue(original._values != null, "Original _values should not be null");
             Assert.AreEqual(keys.Length, original._keys.Length, "Original _keys length mismatch");
             Assert.AreEqual(
                 values.Length,
@@ -372,14 +374,14 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             >(data);
 
             // Assert
-            Assert.IsNotNull(deserialized, "Deserialized object should not be null");
-            Assert.IsNotNull(
-                deserialized._keys,
+            Assert.IsTrue(deserialized != null, "Deserialized object should not be null");
+            Assert.IsTrue(
+                deserialized._keys != null,
                 $"Deserialized _keys should not be null. "
                     + $"Input keys: [{string.Join(", ", keys)}], Bytes: {data.Length}, Hex: {hexDump}"
             );
-            Assert.IsNotNull(
-                deserialized._values,
+            Assert.IsTrue(
+                deserialized._values != null,
                 $"Deserialized _values should not be null. "
                     + $"Input values: [{string.Join(", ", values)}], Bytes: {data.Length}, Hex: {hexDump}"
             );
@@ -895,8 +897,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             original.OnBeforeSerialize();
 
             // Verify original state
-            Assert.IsNotNull(
-                original._items,
+            Assert.IsTrue(
+                original._items != null,
                 "Original _items should be set after OnBeforeSerialize"
             );
             string originalItems = string.Join(", ", original._items);
@@ -919,7 +921,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
                 SerializableHashSet<int>
             >(ms);
 
-            Assert.IsNotNull(deserialized, "Deserialized object should not be null");
+            Assert.IsTrue(deserialized != null, "Deserialized object should not be null");
 
             // Check if items were added via Add() (collection behavior) vs _items population
             string deserializedItems =
@@ -943,8 +945,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             // This is why Serializer.ProtoDeserialize has special wrapper-based handling.
             // Note: If this assertion fails (i.e., _items is NOT null), protobuf-net's behavior
             // has changed and the workaround in Serializer.ProtoDeserialize may no longer be needed.
-            Assert.IsNull(
-                deserialized._items,
+            Assert.IsTrue(
+                deserialized._items == null,
                 $"Direct protobuf-net deserialization leaves _items null due to collection path. "
                     + $"If this fails, protobuf-net behavior has changed. "
                     + $"Original: [{originalItems}], Bytes: {bytes.Length}, Hex: {hexDump}, "
@@ -968,14 +970,14 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             SerializableHashSet<int> original = new() { 1, 2, 3, 5, 8, 13 };
 
             byte[] data = Serializer.ProtoSerialize(original);
-            Assert.IsNotNull(data, "Serialized data should not be null");
+            Assert.IsTrue(data != null, "Serialized data should not be null");
             Assert.Greater(data.Length, 0, "Serialized data should not be empty");
 
             SerializableHashSet<int> deserialized = Serializer.ProtoDeserialize<
                 SerializableHashSet<int>
             >(data);
 
-            Assert.IsNotNull(deserialized, "Deserialized object should not be null");
+            Assert.IsTrue(deserialized != null, "Deserialized object should not be null");
             Assert.AreEqual(original.Count, deserialized.Count, "Count should match");
             foreach (int item in original)
             {
@@ -991,8 +993,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             original.OnBeforeSerialize();
 
             // Diagnostic: Verify original state
-            Assert.IsNotNull(
-                original._items,
+            Assert.IsTrue(
+                original._items != null,
                 "Original _items should not be null before serialization"
             );
             string originalItemsStr = string.Join(", ", original._items);
@@ -1001,7 +1003,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             byte[] data = Serializer.ProtoSerialize(original);
 
             // Diagnostic: Verify data was serialized
-            Assert.IsNotNull(data, "Serialized data should not be null");
+            Assert.IsTrue(data != null, "Serialized data should not be null");
             Assert.Greater(
                 data.Length,
                 0,
@@ -1015,9 +1017,9 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             >(data);
 
             // Assert: Internal _items array should be restored
-            Assert.IsNotNull(deserialized, "Deserialized object should not be null");
-            Assert.IsNotNull(
-                deserialized._items,
+            Assert.IsTrue(deserialized != null, "Deserialized object should not be null");
+            Assert.IsTrue(
+                deserialized._items != null,
                 $"Deserialized _items should not be null. "
                     + $"Original items: [{originalItemsStr}], Bytes: {data.Length}, Hex: {hexDump}"
             );
@@ -1068,7 +1070,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             original.OnBeforeSerialize();
 
             // Diagnostic
-            Assert.IsNotNull(original._items, "Original _items should not be null");
+            Assert.IsTrue(original._items != null, "Original _items should not be null");
             Assert.AreEqual(
                 items.Length,
                 original._items.Length,
@@ -1086,9 +1088,9 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             >(data);
 
             // Assert
-            Assert.IsNotNull(deserialized, "Deserialized object should not be null");
-            Assert.IsNotNull(
-                deserialized._items,
+            Assert.IsTrue(deserialized != null, "Deserialized object should not be null");
+            Assert.IsTrue(
+                deserialized._items != null,
                 $"Deserialized _items should not be null. "
                     + $"Input: [{string.Join(", ", items)}], Bytes: {data.Length}, Hex: {hexDump}"
             );
@@ -1114,7 +1116,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
                 SerializableHashSet<string>
             >(data);
 
-            Assert.IsNotNull(deserialized, "Deserialized object should not be null");
+            Assert.IsTrue(deserialized != null, "Deserialized object should not be null");
             Assert.AreEqual(0, deserialized.Count, "Empty set should have zero count");
         }
 
@@ -1183,14 +1185,14 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             SerializableSortedSet<int> original = new() { 5, 1, 9, 3, 7 };
 
             byte[] data = Serializer.ProtoSerialize(original);
-            Assert.IsNotNull(data, "Serialized data should not be null");
+            Assert.IsTrue(data != null, "Serialized data should not be null");
             Assert.Greater(data.Length, 0, "Serialized data should not be empty");
 
             SerializableSortedSet<int> deserialized = Serializer.ProtoDeserialize<
                 SerializableSortedSet<int>
             >(data);
 
-            Assert.IsNotNull(deserialized, "Deserialized object should not be null");
+            Assert.IsTrue(deserialized != null, "Deserialized object should not be null");
             Assert.AreEqual(original.Count, deserialized.Count, "Count should match");
             foreach (int item in original)
             {
@@ -1206,8 +1208,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             original.OnBeforeSerialize();
 
             // Diagnostic: Verify original state
-            Assert.IsNotNull(
-                original._items,
+            Assert.IsTrue(
+                original._items != null,
                 "Original _items should not be null before serialization"
             );
             string originalItemsStr = string.Join(", ", original._items);
@@ -1216,7 +1218,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             byte[] data = Serializer.ProtoSerialize(original);
 
             // Diagnostic: Verify data was serialized
-            Assert.IsNotNull(data, "Serialized data should not be null");
+            Assert.IsTrue(data != null, "Serialized data should not be null");
             Assert.Greater(
                 data.Length,
                 0,
@@ -1230,9 +1232,9 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             >(data);
 
             // Assert: Internal _items array should be restored
-            Assert.IsNotNull(deserialized, "Deserialized object should not be null");
-            Assert.IsNotNull(
-                deserialized._items,
+            Assert.IsTrue(deserialized != null, "Deserialized object should not be null");
+            Assert.IsTrue(
+                deserialized._items != null,
                 $"Deserialized _items should not be null. "
                     + $"Original items: [{originalItemsStr}], Bytes: {data.Length}, Hex: {hexDump}"
             );
@@ -1282,7 +1284,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             original.OnBeforeSerialize();
 
             // Diagnostic
-            Assert.IsNotNull(original._items, "Original _items should not be null");
+            Assert.IsTrue(original._items != null, "Original _items should not be null");
             Assert.AreEqual(
                 items.Length,
                 original._items.Length,
@@ -1300,9 +1302,9 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             >(data);
 
             // Assert
-            Assert.IsNotNull(deserialized, "Deserialized object should not be null");
-            Assert.IsNotNull(
-                deserialized._items,
+            Assert.IsTrue(deserialized != null, "Deserialized object should not be null");
+            Assert.IsTrue(
+                deserialized._items != null,
                 $"Deserialized _items should not be null. "
                     + $"Input: [{string.Join(", ", items)}], Bytes: {data.Length}, Hex: {hexDump}"
             );
@@ -1328,7 +1330,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
                 SerializableSortedSet<int>
             >(data);
 
-            Assert.IsNotNull(deserialized, "Deserialized object should not be null");
+            Assert.IsTrue(deserialized != null, "Deserialized object should not be null");
             Assert.AreEqual(0, deserialized.Count, "Empty set should have zero count");
         }
 

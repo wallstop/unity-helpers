@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Tests.Helper
@@ -15,8 +15,38 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
     using WallstopStudios.UnityHelpers.Tests.Core;
     using WallstopStudios.UnityHelpers.Utils;
 
-    public sealed class HelpersTests : CommonTestBase
+    [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
+    public sealed class HelpersTests : BatchedEditorTestBase
     {
+        private const string PrefabFolder = "Assets/TempHelpersPrefabs";
+        private const string ScriptableFolder = "Assets/TempHelpersScriptables";
+
+        [OneTimeSetUp]
+        public override void CommonOneTimeSetUp()
+        {
+            base.CommonOneTimeSetUp();
+
+            EnsureFolder(PrefabFolder);
+            TrackFolder(PrefabFolder);
+
+            EnsureFolder(ScriptableFolder);
+            TrackFolder(ScriptableFolder);
+        }
+
+        [SetUp]
+        public override void BaseSetUp()
+        {
+            base.BaseSetUp();
+        }
+
+        [TearDown]
+        public override void TearDown()
+        {
+            base.TearDown();
+        }
+
         [Test]
         public void EnumeratePrefabsFindsGeneratedPrefab()
         {
@@ -25,31 +55,22 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
                 Assert.Ignore("AssetDatabase access requires edit mode.");
             }
 
-            const string folder = "Assets/TempHelpersPrefabs";
-            if (!AssetDatabase.IsValidFolder(folder))
-            {
-                AssetDatabase.CreateFolder("Assets", "TempHelpersPrefabs");
-            }
-
-            string assetPath = Path.Combine(folder, "TestPrefab.prefab").SanitizePath();
+            string assetPath = Path.Combine(PrefabFolder, "TestPrefab.prefab").SanitizePath();
+            TrackAssetPath(assetPath);
             GameObject prefabSource = Track(new GameObject("Helpers_PrefabSource"));
-            try
-            {
-                GameObject prefab = PrefabUtility.SaveAsPrefabAsset(prefabSource, assetPath);
-                Assert.IsTrue(prefab != null);
 
-                HashSet<string> names = Helpers
-                    .EnumeratePrefabs(new[] { folder })
-                    .Select(go => go.name)
-                    .ToHashSet(StringComparer.Ordinal);
-                Assert.Contains(prefab.name, names.ToList());
-            }
-            finally
+            GameObject prefab = null;
+            ExecuteWithImmediateImport(() =>
             {
-                AssetDatabase.DeleteAsset(assetPath);
-                AssetDatabase.DeleteAsset(folder);
-                AssetDatabase.Refresh();
-            }
+                prefab = PrefabUtility.SaveAsPrefabAsset(prefabSource, assetPath);
+            });
+            Assert.IsTrue(prefab != null);
+
+            HashSet<string> names = Helpers
+                .EnumeratePrefabs(new[] { PrefabFolder })
+                .Select(go => go.name)
+                .ToHashSet(StringComparer.Ordinal);
+            Assert.Contains(prefab.name, names.ToList());
         }
 
         [Test]
@@ -60,33 +81,23 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
                 Assert.Ignore("AssetDatabase access requires edit mode.");
             }
 
-            const string folder = "Assets/TempHelpersScriptables";
-            if (!AssetDatabase.IsValidFolder(folder))
-            {
-                AssetDatabase.CreateFolder("Assets", "TempHelpersScriptables");
-            }
+            string assetPath = Path.Combine(ScriptableFolder, "Dummy.asset").SanitizePath();
+            TrackAssetPath(assetPath);
+            DummyScriptableObject asset = Track(
+                ScriptableObject.CreateInstance<DummyScriptableObject>()
+            );
 
-            string assetPath = Path.Combine(folder, "Dummy.asset").SanitizePath();
-            // Don't use Track() - asset becomes persistent via CreateAsset and is cleaned up in finally block
-            DummyScriptableObject asset = ScriptableObject.CreateInstance<DummyScriptableObject>(); // UNH-SUPPRESS: Asset becomes persistent via CreateAsset and is cleaned up in finally block
-            try
+            ExecuteWithImmediateImport(() =>
             {
                 AssetDatabase.CreateAsset(asset, assetPath);
                 AssetDatabase.SaveAssets();
-                AssetDatabase.Refresh();
+            });
 
-                HashSet<string> guids = Helpers
-                    .EnumerateScriptableObjects<DummyScriptableObject>(new[] { folder })
-                    .Select(so => AssetDatabase.GetAssetPath(so))
-                    .ToHashSet(StringComparer.Ordinal);
-                Assert.Contains(assetPath, guids.ToList());
-            }
-            finally
-            {
-                AssetDatabase.DeleteAsset(assetPath);
-                AssetDatabase.DeleteAsset(folder);
-                AssetDatabase.Refresh();
-            }
+            HashSet<string> guids = Helpers
+                .EnumerateScriptableObjects<DummyScriptableObject>(new[] { ScriptableFolder })
+                .Select(so => AssetDatabase.GetAssetPath(so))
+                .ToHashSet(StringComparer.Ordinal);
+            Assert.Contains(assetPath, guids.ToList());
         }
 
         [Test]

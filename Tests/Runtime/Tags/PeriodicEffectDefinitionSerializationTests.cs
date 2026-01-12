@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Tests.Tags
@@ -9,6 +9,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Tags
     using Serializer = WallstopStudios.UnityHelpers.Core.Serialization.Serializer;
 
     [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class PeriodicEffectDefinitionSerializationTests
     {
         [Test]
@@ -29,7 +30,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Tags
             PeriodicEffectDefinition definition = CreateDefinition();
 
             byte[] serialized = Serializer.ProtoSerialize(definition);
-            Assert.IsNotNull(serialized);
+            Assert.IsTrue(serialized != null, "Serialized bytes should not be null");
             Assert.Greater(serialized.Length, 0);
 
             PeriodicEffectDefinition deserialized =
@@ -71,14 +72,17 @@ namespace WallstopStudios.UnityHelpers.Tests.Tags
             PeriodicEffectDefinition actual
         )
         {
-            Assert.IsNotNull(actual);
+            Assert.IsTrue(actual != null, "Deserialized definition should not be null");
             Assert.AreNotSame(expected, actual);
             Assert.AreEqual(expected.name, actual.name);
             Assert.AreEqual(expected.initialDelay, actual.initialDelay);
             Assert.AreEqual(expected.interval, actual.interval);
             Assert.AreEqual(expected.maxTicks, actual.maxTicks);
 
-            Assert.IsNotNull(actual.modifications);
+            Assert.IsTrue(
+                actual.modifications != null,
+                "Modifications list should not be null after deserialization"
+            );
             Assert.AreNotSame(expected.modifications, actual.modifications);
             Assert.AreEqual(expected.modifications.Count, actual.modifications.Count);
 

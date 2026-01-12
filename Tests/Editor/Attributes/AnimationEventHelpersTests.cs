@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Tests.Attributes
@@ -13,6 +13,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
     using WallstopStudios.UnityHelpers.Tests.Editor.TestTypes;
 
     [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class AnimationEventHelpersTests : CommonTestBase
     {
         [Test]

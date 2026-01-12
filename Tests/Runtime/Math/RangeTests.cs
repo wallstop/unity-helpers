@@ -1,15 +1,154 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Tests.Math
 {
     using System;
+    using System.Collections.Generic;
     using NUnit.Framework;
     using WallstopStudios.UnityHelpers.Core.Math;
 
     [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class RangeTests
     {
+        private static IEnumerable<TestCaseData> WithinRangeTestCases()
+        {
+            yield return new TestCaseData(0, 10, true, true, 5, true).SetName(
+                "WithinRange.InsideInclusive.ReturnsTrue"
+            );
+            yield return new TestCaseData(0, 10, true, true, 0, true).SetName(
+                "WithinRange.AtMinInclusive.ReturnsTrue"
+            );
+            yield return new TestCaseData(0, 10, true, true, 10, true).SetName(
+                "WithinRange.AtMaxInclusive.ReturnsTrue"
+            );
+            yield return new TestCaseData(0, 10, false, true, 0, false).SetName(
+                "WithinRange.AtMinExclusiveStart.ReturnsFalse"
+            );
+            yield return new TestCaseData(0, 10, false, true, 1, true).SetName(
+                "WithinRange.InsideExclusiveStart.ReturnsTrue"
+            );
+            yield return new TestCaseData(0, 10, true, false, 10, false).SetName(
+                "WithinRange.AtMaxExclusiveEnd.ReturnsFalse"
+            );
+            yield return new TestCaseData(0, 10, true, false, 9, true).SetName(
+                "WithinRange.InsideExclusiveEnd.ReturnsTrue"
+            );
+            yield return new TestCaseData(0, 10, true, true, -1, false).SetName(
+                "WithinRange.BelowMin.ReturnsFalse"
+            );
+            yield return new TestCaseData(0, 10, true, true, 11, false).SetName(
+                "WithinRange.AboveMax.ReturnsFalse"
+            );
+            yield return new TestCaseData(0, 10, false, false, 0, false).SetName(
+                "WithinRange.AtMinBothExclusive.ReturnsFalse"
+            );
+            yield return new TestCaseData(0, 10, false, false, 10, false).SetName(
+                "WithinRange.AtMaxBothExclusive.ReturnsFalse"
+            );
+            yield return new TestCaseData(0, 10, false, false, 5, true).SetName(
+                "WithinRange.InsideBothExclusive.ReturnsTrue"
+            );
+            yield return new TestCaseData(-5, 5, true, true, 0, true).SetName(
+                "WithinRange.ZeroInNegativeRange.ReturnsTrue"
+            );
+            yield return new TestCaseData(-10, -5, true, true, -7, true).SetName(
+                "WithinRange.InsideNegativeRange.ReturnsTrue"
+            );
+            yield return new TestCaseData(-10, -5, true, true, -3, false).SetName(
+                "WithinRange.AboveNegativeRange.ReturnsFalse"
+            );
+        }
+
+        [TestCaseSource(nameof(WithinRangeTestCases))]
+        public void WithinRangeReturnsExpected(
+            int min,
+            int max,
+            bool startInclusive,
+            bool endInclusive,
+            int value,
+            bool expected
+        )
+        {
+            Range<int> range = new(min, max, startInclusive, endInclusive);
+
+            bool actual = range.WithinRange(value);
+
+            Assert.AreEqual(expected, actual);
+        }
+
+        private static IEnumerable<TestCaseData> ContainsTestCases()
+        {
+            yield return new TestCaseData(0, 10, true, true, 10, true).SetName(
+                "Contains.AtMaxInclusive.ReturnsTrue"
+            );
+            yield return new TestCaseData(0, 10, true, true, 11, false).SetName(
+                "Contains.AboveMax.ReturnsFalse"
+            );
+            yield return new TestCaseData(0, 10, true, true, 0, true).SetName(
+                "Contains.AtMinInclusive.ReturnsTrue"
+            );
+            yield return new TestCaseData(0, 10, true, true, -1, false).SetName(
+                "Contains.BelowMin.ReturnsFalse"
+            );
+        }
+
+        [TestCaseSource(nameof(ContainsTestCases))]
+        public void ContainsReturnsExpected(
+            int min,
+            int max,
+            bool startInclusive,
+            bool endInclusive,
+            int value,
+            bool expected
+        )
+        {
+            Range<int> range = new(min, max, startInclusive, endInclusive);
+
+            bool actual = range.Contains(value);
+
+            Assert.AreEqual(expected, actual);
+        }
+
+        private static IEnumerable<TestCaseData> ToStringTestCases()
+        {
+            yield return new TestCaseData(1, 2, true, true, "[1, 2]").SetName(
+                "ToString.BothInclusive.UsesBrackets"
+            );
+            yield return new TestCaseData(1, 2, false, true, "(1, 2]").SetName(
+                "ToString.ExclusiveStart.UsesParenBracket"
+            );
+            yield return new TestCaseData(1, 2, true, false, "[1, 2)").SetName(
+                "ToString.ExclusiveEnd.UsesBracketParen"
+            );
+            yield return new TestCaseData(1, 2, false, false, "(1, 2)").SetName(
+                "ToString.BothExclusive.UsesParens"
+            );
+            yield return new TestCaseData(-5, 10, true, true, "[-5, 10]").SetName(
+                "ToString.NegativeMin.FormatsCorrectly"
+            );
+            yield return new TestCaseData(0, 0, true, true, "[0, 0]").SetName(
+                "ToString.SameMinMax.FormatsCorrectly"
+            );
+        }
+
+        [TestCaseSource(nameof(ToStringTestCases))]
+        public void ToStringReturnsExpected(
+            int min,
+            int max,
+            bool startInclusive,
+            bool endInclusive,
+            string expected
+        )
+        {
+            Range<int> range = new(min, max, startInclusive, endInclusive);
+
+            string actual = range.ToString();
+
+            Assert.AreEqual(expected, actual);
+        }
+
         [Test]
         public void ConstructorSetsValuesAndDefaults()
         {
@@ -34,50 +173,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Math
         public void ConstructorThrowsWhenMinIsGreaterThanMax()
         {
             Assert.Throws<ArgumentException>(() => new Range<int>(5, 4));
-        }
-
-        [Test]
-        public void WithinRangeReturnsTrueWhenValueInsideInclusiveBounds()
-        {
-            Range<int> range = new(0, 10);
-
-            Assert.IsTrue(range.WithinRange(5));
-        }
-
-        [Test]
-        public void WithinRangeRespectsExclusiveStart()
-        {
-            Range<int> range = new(0, 10, false, true);
-
-            Assert.IsFalse(range.WithinRange(0));
-            Assert.IsTrue(range.WithinRange(1));
-        }
-
-        [Test]
-        public void WithinRangeRespectsExclusiveEnd()
-        {
-            Range<int> range = new(0, 10, true, false);
-
-            Assert.IsFalse(range.WithinRange(10));
-            Assert.IsTrue(range.WithinRange(9));
-        }
-
-        [Test]
-        public void WithinRangeReturnsFalseWhenValueOutsideBounds()
-        {
-            Range<int> range = new(0, 10);
-
-            Assert.IsFalse(range.WithinRange(-1));
-            Assert.IsFalse(range.WithinRange(11));
-        }
-
-        [Test]
-        public void ContainsDelegatesToWithinRange()
-        {
-            Range<int> range = Range<int>.Inclusive(0, 10);
-
-            Assert.IsTrue(range.Contains(10));
-            Assert.IsFalse(range.Contains(11));
         }
 
         [Test]
@@ -185,16 +280,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Math
             Assert.IsFalse(inclusiveExclusive.EndInclusive);
             Assert.IsFalse(exclusiveInclusive.StartInclusive);
             Assert.IsTrue(exclusiveInclusive.EndInclusive);
-        }
-
-        [Test]
-        public void ToStringUsesMatchingBracketStyles()
-        {
-            Range<int> inclusive = new(1, 2, true, true);
-            Range<int> mixed = new(1, 2, false, true);
-
-            Assert.AreEqual("[1, 2]", inclusive.ToString());
-            Assert.AreEqual("(1, 2]", mixed.ToString());
         }
     }
 }

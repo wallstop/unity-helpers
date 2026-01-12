@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
@@ -17,7 +17,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
     using WallstopStudios.UnityHelpers.Editor.Utils;
     using WallstopStudios.UnityHelpers.Editor.Utils.WButton;
     using WallstopStudios.UnityHelpers.Utils;
-    using CacheHelper = WallstopStudios.UnityHelpers.Editor.CustomDrawers.Utils.EditorDrawerCacheHelper;
+    using CacheHelper = WallstopStudios.UnityHelpers.Editor.Core.Helper.EditorCacheHelper;
     using EnumShared = WallstopStudios.UnityHelpers.Editor.CustomDrawers.Utils.EnumToggleButtonsShared;
 
     [CustomPropertyDrawer(typeof(WEnumToggleButtonsAttribute))]
@@ -353,7 +353,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 float availableWidth = rect.width - EnumShared.ToolbarButtonGap;
                 float buttonWidth = Mathf.Max(
                     EnumShared.ToolbarButtonMinWidth,
-                    Mathf.Floor(availableWidth * 0.5f)
+                    Mathf.Floor(availableWidth * EnumShared.EqualSplitRatio)
                 );
 
                 // Draw "All" button as standalone (not joined)
@@ -453,7 +453,10 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
 
             float spacing = EnumShared.ToolbarSpacing;
-            float buttonWidth = Mathf.Min(EnumShared.PaginationButtonWidth, rect.width * 0.2f);
+            float buttonWidth = Mathf.Min(
+                EnumShared.PaginationButtonWidth,
+                rect.width * EnumShared.MaxPaginationButtonWidthRatio
+            );
             float labelWidth = Mathf.Max(
                 EnumShared.PaginationLabelMinWidth,
                 rect.width - (buttonWidth * 4f) - spacing * 4f
@@ -468,11 +471,11 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             if (lastRect.xMax > rect.xMax)
             {
                 float overflow = lastRect.xMax - rect.xMax;
-                firstRect.x -= overflow * 0.5f;
-                prevRect.x -= overflow * 0.5f;
-                labelRect.x -= overflow * 0.5f;
-                nextRect.x -= overflow * 0.5f;
-                lastRect.x -= overflow * 0.5f;
+                firstRect.x -= overflow * EnumShared.OverflowCenteringRatio;
+                prevRect.x -= overflow * EnumShared.OverflowCenteringRatio;
+                labelRect.x -= overflow * EnumShared.OverflowCenteringRatio;
+                nextRect.x -= overflow * EnumShared.OverflowCenteringRatio;
+                lastRect.x -= overflow * EnumShared.OverflowCenteringRatio;
             }
 
             bool originalEnabled = GUI.enabled;
@@ -914,6 +917,10 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 ulong numericValue = ConvertToUInt64(value);
                 if (isFlags && numericValue != 0UL && !IsPowerOfTwo(numericValue))
                 {
+                    Debug.LogWarning(
+                        $"[{nameof(WEnumToggleButtonsUtility)}] Skipping composite flag value {name} "
+                            + $"in {enumType.Name} (value: {numericValue})"
+                    );
                     continue;
                 }
 

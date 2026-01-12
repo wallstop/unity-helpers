@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Tests.Utils
@@ -14,6 +14,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
     using WallstopStudios.UnityHelpers.Utils;
     using Object = UnityEngine.Object;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class RuntimeSingletonTests : CommonTestBase
     {
         [SetUp]
@@ -808,7 +810,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                     .GetResult();
             });
 
-            Assert.IsNotNull(exception);
+            Assert.IsTrue(
+                exception != null,
+                "InvalidOperationException should be thrown for background thread access"
+            );
             StringAssert.Contains("main thread", exception.Message);
             Assert.IsFalse(TestRuntimeSingleton.HasInstance);
         }

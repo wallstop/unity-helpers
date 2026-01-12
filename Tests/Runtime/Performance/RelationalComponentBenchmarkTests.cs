@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 #pragma warning disable CS0169 // Field is never used
@@ -13,6 +13,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Performance
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Tests.Core;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class RelationalComponentBenchmarkTests : CommonTestBase
     {
         private const int NumIterations = 10_000;
@@ -78,8 +81,17 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Performance
                 "Higher operations per second are better.",
                 string.Empty,
                 "### Operations per second (higher is better)",
-                opsHeader,
-                opsDivider,
+                "<table data-sortable>",
+                "  <thead>",
+                "    <tr>",
+                "      <th align=\"left\">Scenario</th>",
+                "      <th align=\"right\">Relational Ops/s</th>",
+                "      <th align=\"right\">Manual Ops/s</th>",
+                "      <th align=\"right\">Rel/Manual</th>",
+                "      <th align=\"right\">Iterations</th>",
+                "    </tr>",
+                "  </thead>",
+                "  <tbody>",
             };
 
             foreach (ScenarioResult result in results)
@@ -89,6 +101,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Performance
                 sectionLines.Add(opsRow);
             }
 
+            sectionLines.Add("  </tbody>");
+            sectionLines.Add("</table>");
             sectionLines.Add(string.Empty);
 
             string sectionName = SectionPrefix + GetOperatingSystemToken();
@@ -398,17 +412,17 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Performance
                     ) + "x"
                     : "n/a";
 
-            return "| "
+            return "    <tr><td align=\"left\">"
                 + result.Label
-                + " | "
+                + "</td><td align=\"right\">"
                 + FormatOps(result.Relational.OpsPerSecond)
-                + " | "
+                + "</td><td align=\"right\">"
                 + FormatOps(result.Manual.OpsPerSecond)
-                + " | "
+                + "</td><td align=\"right\">"
                 + ratio
-                + " | "
+                + "</td><td align=\"right\">"
                 + result.Relational.Iterations.ToString("N0", CultureInfo.InvariantCulture)
-                + " |";
+                + "</td></tr>";
         }
 
         private static string FormatOps(double value)

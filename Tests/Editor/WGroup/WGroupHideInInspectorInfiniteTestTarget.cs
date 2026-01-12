@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 #if UNITY_EDITOR
@@ -17,9 +17,9 @@ namespace WallstopStudios.UnityHelpers.Tests.WGroup
 
         [HideInInspector]
         [SerializeField]
-#pragma warning disable CS0169 // Field is never used
-        private int _hiddenField;
-#pragma warning restore CS0169 // Field is never used
+#pragma warning disable CS0649 // Field is never assigned to
+        internal int _hiddenField;
+#pragma warning restore CS0649 // Field is never assigned to
 
         public int visibleField1;
         public int visibleField2;

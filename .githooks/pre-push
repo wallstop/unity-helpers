@@ -124,14 +124,64 @@ else
   echo "lychee not found; skipping external link check. CI will run lychee." >&2
 fi
 
-# Test lifecycle lint
+# Test lifecycle lint (UNH001-UNH003: lifecycle, UNH004: naming conventions, UNH005: null checks)
 if command -v pwsh >/dev/null 2>&1; then
-  pwsh -NoProfile -File scripts/lint-tests.ps1 -VerboseOutput
+  pwsh -NoProfile -File scripts/lint-tests.ps1 -VerboseOutput || {
+    echo ""
+    echo "=== Test lint failed ==="
+    echo "Fix the issues above or add // UNH-SUPPRESS comments for valid exceptions."
+    echo "For naming convention errors (UNH004):"
+    echo "  - Use PascalCase or dot notation in TestName/SetName (e.g., 'Input.Null.ReturnsFalse')"
+    echo "  - Use PascalCase for TestCaseSource method names (e.g., 'EdgeCaseTestData')"
+    echo "For null check errors (UNH005):"
+    echo "  - Use Assert.IsTrue(x != null) instead of Assert.IsNotNull(x)"
+    echo "  - Use Assert.IsTrue(x == null) instead of Assert.IsNull(x)"
+    echo "  - Why: Unity's == operator performs special 'fake null' checking"
+    echo "Auto-fix null asserts: pwsh -NoProfile -File scripts/lint-tests.ps1 -FixNullChecks -Paths <test files>"
+    echo ""
+    exit 1
+  }
 elif command -v powershell >/dev/null 2>&1; then
-  powershell -NoProfile -ExecutionPolicy Bypass -File scripts/lint-tests.ps1 -VerboseOutput
+  powershell -NoProfile -ExecutionPolicy Bypass -File scripts/lint-tests.ps1 -VerboseOutput || {
+    echo ""
+    echo "=== Test lint failed ==="
+    echo "Fix the issues above or add // UNH-SUPPRESS comments for valid exceptions."
+    echo "For naming convention errors (UNH004):"
+    echo "  - Use PascalCase or dot notation in TestName/SetName (e.g., 'Input.Null.ReturnsFalse')"
+    echo "  - Use PascalCase for TestCaseSource method names (e.g., 'EdgeCaseTestData')"
+    echo "For null check errors (UNH005):"
+    echo "  - Use Assert.IsTrue(x != null) instead of Assert.IsNotNull(x)"
+    echo "  - Use Assert.IsTrue(x == null) instead of Assert.IsNull(x)"
+    echo "  - Why: Unity's == operator performs special 'fake null' checking"
+    echo "Auto-fix null asserts: powershell -NoProfile -ExecutionPolicy Bypass -File scripts/lint-tests.ps1 -FixNullChecks -Paths <test files>"
+    echo ""
+    exit 1
+  }
 else
-  echo  'PowerShell not found; skipping test lints.' >&2 
+  echo 'PowerShell not found; skipping test lints.' >&2
 fi
+
+# Check for forbidden #region/#endregion directives in ALL C# files
+# This is a full repository scan (not just staged files) to catch any regions before push
+# Regions are forbidden in this codebase - see .llm/skills/no-regions.md
+echo "Checking for forbidden #region directives in C# files..."
+REGION_VIOLATIONS=$(grep -r -n -i '^\s*#\s*region\|^\s*#\s*endregion' --include="*.cs" Runtime/ Editor/ Tests/ Samples~/ 2>/dev/null || true)
+if [ -n "$REGION_VIOLATIONS" ]; then
+  echo ""
+  echo "=== Error: C# regions (#region/#endregion) are forbidden ==="
+  echo "The following files contain regions:"
+  echo "$REGION_VIOLATIONS" | head -50
+  VIOLATION_COUNT=$(echo "$REGION_VIOLATIONS" | wc -l)
+  if [ "$VIOLATION_COUNT" -gt 50 ]; then
+    echo "... and $((VIOLATION_COUNT - 50)) more violations"
+  fi
+  echo ""
+  echo "Remove all #region and #endregion directives before pushing."
+  echo "See .llm/skills/no-regions.md for guidance on code organization alternatives."
+  echo ""
+  exit 1
+fi
+echo "✓ No #region directives found"
 
 # Wiki generation tests (validates sidebar format, link transformations)
 # This mirrors the validate-wiki-links.yml CI workflow

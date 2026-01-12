@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Tests.DataStructures
@@ -8,6 +8,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
     using WallstopStudios.UnityHelpers.Core.DataStructure;
 
     [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class StringWrapperTests
     {
         private const int NumTries = 100;
@@ -23,7 +24,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         public void GetReturnsNonNullWrapper()
         {
             StringWrapper wrapper = StringWrapper.Get("test");
-            Assert.IsNotNull(wrapper);
+            Assert.IsTrue(wrapper != null, "StringWrapper should not be null for valid string");
             Assert.AreEqual("test", wrapper.value);
         }
 
@@ -31,7 +32,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         public void GetWithEmptyStringReturnsValidWrapper()
         {
             StringWrapper wrapper = StringWrapper.Get("");
-            Assert.IsNotNull(wrapper);
+            Assert.IsTrue(wrapper != null, "StringWrapper should not be null for empty string");
             Assert.AreEqual("", wrapper.value);
         }
 

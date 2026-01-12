@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Editor.Sprites
@@ -90,12 +90,23 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             return string.IsNullOrEmpty(p) ? p : p.SanitizePath();
         }
 
+        /// <summary>
+        /// Finds the highest-priority profile matching the asset path.
+        /// </summary>
+        /// <param name="assetPath">The asset path to match. Returns null if null/empty.</param>
+        /// <param name="prepared">Prepared profiles to search. Returns null if null/empty.</param>
+        /// <returns>The matching settings, or null if no match or invalid input.</returns>
         public static SpriteSettings FindMatchingSettings(
             string assetPath,
             List<PreparedProfile> prepared
         )
         {
             assetPath = SanitizePath(assetPath);
+            if (string.IsNullOrEmpty(assetPath))
+            {
+                return null;
+            }
+
             if (prepared == null || prepared.Count == 0)
             {
                 return null;
@@ -156,6 +167,13 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             return best;
         }
 
+        /// <summary>
+        /// Determines if applying sprite settings would change texture import settings.
+        /// </summary>
+        /// <param name="assetPath">The asset path to check. Returns false if null/empty/missing.</param>
+        /// <param name="prepared">Prepared profiles to search for matching settings. Returns false if null.</param>
+        /// <param name="buffer">Optional buffer for reading texture settings. If null, a new one will be created.</param>
+        /// <returns>True if changes would occur, false otherwise.</returns>
         public static bool WillTextureSettingsChange(
             string assetPath,
             List<PreparedProfile> prepared,
@@ -178,19 +196,6 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             }
 
             bool changed = false;
-            bool anyApplied =
-                spriteData.applyTextureType
-                || spriteData.applySpriteMode
-                || spriteData.applyPixelsPerUnit
-                || spriteData.applyPivot
-                || spriteData.applyGenerateMipMaps
-                || spriteData.applyAlphaIsTransparency
-                || spriteData.applyReadWriteEnabled
-                || spriteData.applyExtrudeEdges
-                || spriteData.applyWrapMode
-                || spriteData.applyFilterMode
-                || spriteData.applyCrunchCompression
-                || spriteData.applyCompression;
             if (spriteData.applyPixelsPerUnit)
             {
                 changed |= textureImporter.spritePixelsPerUnit != spriteData.pixelsPerUnit;
@@ -232,6 +237,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             }
             if (spriteData.applySpriteMode)
             {
+                changed |= textureImporter.spriteImportMode != spriteData.spriteMode;
                 changed |= buffer.spriteMode != (int)spriteData.spriteMode;
             }
             if (spriteData.applyExtrudeEdges)
@@ -246,9 +252,17 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             {
                 changed |= buffer.filterMode != spriteData.filterMode;
             }
-            return changed || anyApplied;
+            return changed;
         }
 
+        /// <summary>
+        /// Applies sprite settings to texture import settings.
+        /// </summary>
+        /// <param name="assetPath">The asset path to update. Returns false if null/empty/missing.</param>
+        /// <param name="prepared">Prepared profiles to search for matching settings. Returns false if null.</param>
+        /// <param name="textureImporter">The texture importer that was updated, or null if no update occurred.</param>
+        /// <param name="buffer">Optional buffer for reading/writing texture settings. If null, a new one will be created.</param>
+        /// <returns>True if changes were applied, false otherwise.</returns>
         public static bool TryUpdateTextureSettings(
             string assetPath,
             List<PreparedProfile> prepared,
@@ -273,19 +287,6 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
 
             bool changed = false;
             bool settingsChanged = false;
-            bool anyApplied =
-                spriteData.applyTextureType
-                || spriteData.applySpriteMode
-                || spriteData.applyPixelsPerUnit
-                || spriteData.applyPivot
-                || spriteData.applyGenerateMipMaps
-                || spriteData.applyAlphaIsTransparency
-                || spriteData.applyReadWriteEnabled
-                || spriteData.applyExtrudeEdges
-                || spriteData.applyWrapMode
-                || spriteData.applyFilterMode
-                || spriteData.applyCrunchCompression
-                || spriteData.applyCompression;
 
             buffer ??= new TextureImporterSettings();
             textureImporter.ReadTextureSettings(buffer);
@@ -438,7 +439,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 textureImporter.SetTextureSettings(buffer);
             }
 
-            return changed || settingsChanged || anyApplied;
+            return changed || settingsChanged;
         }
     }
 #endif

@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 // ReSharper disable once CheckNamespace
@@ -31,7 +31,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 .Default.WithStrategy(ConcaveHullStrategy.EdgeSplit)
                 .WithBucketSize(clampedBucketSize)
                 .WithAngleThreshold(effectiveAngleThreshold);
-            return BuildConcaveHull(points, options);
+            return points.BuildConcaveHull(options);
         }
 
         private readonly struct HullEdge

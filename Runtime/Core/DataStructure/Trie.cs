@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Core.DataStructure
@@ -6,7 +6,6 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
     using System;
     using System.Collections;
     using System.Collections.Generic;
-    using System.Linq;
     using System.Text;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Utils;
@@ -47,42 +46,62 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 throw new ArgumentNullException(nameof(words));
             }
 
-            IReadOnlyList<string> wordList = words as IReadOnlyList<string> ?? words.ToArray();
-            int maxWordLength;
-            if (wordList.Count > 0)
+            IReadOnlyList<string> wordList = words as IReadOnlyList<string>;
+            PooledResource<List<string>> pooledListResource = default;
+            bool usedPooledList = false;
+            try
             {
-                maxWordLength = wordList[0].Length;
-                for (int i = 1; i < wordList.Count; ++i)
+                if (wordList == null)
                 {
-                    maxWordLength = Mathf.Max(maxWordLength, wordList[i].Length);
+                    pooledListResource = Buffers<string>.List.Get(out List<string> pooledList);
+                    pooledList.AddRange(words);
+                    wordList = pooledList;
+                    usedPooledList = true;
+                }
+
+                int maxWordLength;
+                if (wordList.Count > 0)
+                {
+                    maxWordLength = wordList[0].Length;
+                    for (int i = 1; i < wordList.Count; ++i)
+                    {
+                        maxWordLength = Mathf.Max(maxWordLength, wordList[i].Length);
+                    }
+                }
+                else
+                {
+                    maxWordLength = 0;
+                }
+
+                int capacity = 1;
+                for (int i = 0; i < wordList.Count; ++i)
+                {
+                    capacity += wordList[i].Length;
+                }
+
+                _chars = new char[capacity];
+                _firstChild = new int[capacity];
+                _nextSibling = new int[capacity];
+                _isWord = new bool[capacity];
+
+                Array.Fill(_firstChild, Poison);
+                Array.Fill(_nextSibling, Poison);
+
+                _maxWordLength = maxWordLength;
+
+                _nodeCount = 1; // root node index
+                for (int i = 0; i < wordList.Count; ++i)
+                {
+                    string word = wordList[i];
+                    Insert(word);
                 }
             }
-            else
+            finally
             {
-                maxWordLength = 0;
-            }
-
-            int capacity = 1;
-            for (int i = 0; i < wordList.Count; ++i)
-            {
-                capacity += wordList[i].Length;
-            }
-
-            _chars = new char[capacity];
-            _firstChild = new int[capacity];
-            _nextSibling = new int[capacity];
-            _isWord = new bool[capacity];
-
-            Array.Fill(_firstChild, Poison);
-            Array.Fill(_nextSibling, Poison);
-
-            _maxWordLength = maxWordLength;
-
-            _nodeCount = 1; // root node index
-            for (int i = 0; i < wordList.Count; ++i)
-            {
-                string word = wordList[i];
-                Insert(word);
+                if (usedPooledList)
+                {
+                    pooledListResource.Dispose();
+                }
             }
         }
 
@@ -413,11 +432,14 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
                 throw new ArgumentNullException(nameof(items));
             }
 
-            KeyValuePair<string, T>[] array = items.ToArray();
+            using PooledResource<List<KeyValuePair<string, T>>> pooledListResource = Buffers<
+                KeyValuePair<string, T>
+            >.List.Get(out List<KeyValuePair<string, T>> itemList);
             int capacity = 1;
-            foreach (KeyValuePair<string, T> entry in array)
+            foreach (KeyValuePair<string, T> entry in items)
             {
                 capacity += entry.Key.Length;
+                itemList.Add(entry);
             }
 
             _chars = new char[capacity];
@@ -430,8 +452,9 @@ namespace WallstopStudios.UnityHelpers.Core.DataStructure
             Array.Fill(_nextSibling, Poison);
 
             _nodeCount = 1;
-            foreach (KeyValuePair<string, T> kv in array)
+            for (int i = 0; i < itemList.Count; ++i)
             {
+                KeyValuePair<string, T> kv = itemList[i];
                 Insert(kv.Key, kv.Value);
             }
         }

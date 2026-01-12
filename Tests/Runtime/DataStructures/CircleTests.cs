@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Tests.DataStructures
@@ -10,6 +10,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
     using WallstopStudios.UnityHelpers.Core.Math;
     using WallstopStudios.UnityHelpers.Core.Random;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class CircleTests
     {
         private const int NumTries = 100;
@@ -700,7 +702,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             Circle circle = new(new Vector2(5f, 10f), 3f);
             string str = circle.ToString();
 
-            Assert.IsNotNull(str);
+            Assert.IsTrue(str != null);
             Assert.IsTrue(str.Contains("Circle"));
             Assert.IsTrue(str.Contains("5") || str.Contains("10") || str.Contains("3"));
         }

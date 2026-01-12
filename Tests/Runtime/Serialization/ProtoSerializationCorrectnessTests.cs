@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Tests.Serialization
@@ -11,6 +11,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
     using WallstopStudios.UnityHelpers.Core.Random;
     using Serializer = WallstopStudios.UnityHelpers.Core.Serialization.Serializer;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class ProtoSerializationCorrectnessTests
     {
         [ProtoContract]
@@ -130,9 +132,15 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
             Assert.AreEqual(msg.Id, clone.Id);
             Assert.AreEqual(msg.Name, clone.Name);
             // With OverwriteList = true, empty collections are preserved
-            Assert.IsNotNull(clone.Values);
+            Assert.IsTrue(
+                clone.Values != null,
+                "Values should not be null after round-trip of empty collection"
+            );
             Assert.AreEqual(0, clone.Values.Count);
-            Assert.IsNotNull(clone.Data);
+            Assert.IsTrue(
+                clone.Data != null,
+                "Data should not be null after round-trip of empty array"
+            );
             Assert.AreEqual(0, clone.Data.Length);
         }
 
@@ -152,9 +160,15 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
             Assert.AreEqual(msg.Id, clone.Id);
             Assert.AreEqual(msg.Name, clone.Name);
             // With property initializers, null collections deserialize as empty
-            Assert.IsNotNull(clone.Values);
+            Assert.IsTrue(
+                clone.Values != null,
+                "Values should not be null after round-trip with property initializers"
+            );
             Assert.AreEqual(0, clone.Values.Count);
-            Assert.IsNotNull(clone.Data);
+            Assert.IsTrue(
+                clone.Data != null,
+                "Data should not be null after round-trip with property initializers"
+            );
             Assert.AreEqual(0, clone.Data.Length);
         }
 
@@ -209,7 +223,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
                 // With property initializers, null collections deserialize as empty
                 if (msg.Values == null)
                 {
-                    Assert.IsNotNull(clone.Values);
+                    Assert.IsTrue(
+                        clone.Values != null,
+                        "Values should not be null with property initializers"
+                    );
                     Assert.AreEqual(0, clone.Values.Count);
                 }
                 else
@@ -219,7 +236,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
 
                 if (msg.Data == null)
                 {
-                    Assert.IsNotNull(clone.Data);
+                    Assert.IsTrue(
+                        clone.Data != null,
+                        "Data should not be null with property initializers"
+                    );
                     Assert.AreEqual(0, clone.Data.Length);
                 }
                 else
@@ -342,7 +362,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
                 Assert.AreEqual(i, cloneCurrent.Level, $"Level {i} value mismatch");
                 cloneCurrent = cloneCurrent.Child;
             }
-            Assert.IsNull(cloneCurrent, "Should be null after last level");
+            Assert.IsTrue(cloneCurrent == null, "Should be null after last level");
         }
 
         [Test]
@@ -418,19 +438,28 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
             EdgeCaseMessage nullClone = Serializer.ProtoDeserialize<EdgeCaseMessage>(nullBytes);
 
             // Empty collections should remain empty (with property initializers)
-            Assert.IsNotNull(emptyClone.Values);
+            Assert.IsTrue(
+                emptyClone.Values != null,
+                "Empty collection should be preserved as non-null"
+            );
             Assert.AreEqual(0, emptyClone.Values.Count);
-            Assert.IsNotNull(emptyClone.Data);
+            Assert.IsTrue(emptyClone.Data != null, "Empty array should be preserved as non-null");
             Assert.AreEqual(0, emptyClone.Data.Length);
             Assert.AreEqual(string.Empty, emptyClone.Name);
 
             // With property initializers, null collections also deserialize as empty
             // (property initializers create the collection before protobuf can set null)
-            Assert.IsNotNull(nullClone.Values);
+            Assert.IsTrue(
+                nullClone.Values != null,
+                "Null collection deserializes as empty with property initializers"
+            );
             Assert.AreEqual(0, nullClone.Values.Count);
-            Assert.IsNotNull(nullClone.Data);
+            Assert.IsTrue(
+                nullClone.Data != null,
+                "Null array deserializes as empty with property initializers"
+            );
             Assert.AreEqual(0, nullClone.Data.Length);
-            Assert.IsNull(nullClone.Name);
+            Assert.IsTrue(nullClone.Name == null, "Null string should remain null");
         }
 
         [Test]

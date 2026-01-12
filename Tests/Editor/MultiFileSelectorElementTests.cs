@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Tests
@@ -12,6 +12,9 @@ namespace WallstopStudios.UnityHelpers.Tests
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Visuals.UIToolkit;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class MultiFileSelectorElementTests
     {
         private string _baseRel;

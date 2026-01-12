@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Tests.DataStructures
@@ -11,6 +11,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
     using UnityEngine.TestTools;
     using WallstopStudios.UnityHelpers.Core.DataStructure;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class TimedCacheTests
     {
         [Test]
@@ -83,7 +85,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             );
 
             string value = cache.Value;
-            Assert.IsNull(value);
+            Assert.IsTrue(value == null, "Value should be null when producer returns null");
             Assert.AreEqual(1, producerCalls);
         }
 
@@ -843,14 +845,20 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
                 1f
             );
 
-            Assert.IsNull(nullCache.Value);
-            Assert.IsNull(defaultCache.Value);
+            Assert.IsTrue(nullCache.Value == null, "Null cache value should be null");
+            Assert.IsTrue(
+                defaultCache.Value == null,
+                "Default cache value should be null for reference types"
+            );
             Assert.AreEqual(1, nullProducerCalls);
             Assert.AreEqual(1, defaultProducerCalls);
 
             // Both should cache the null/default value
-            Assert.IsNull(nullCache.Value);
-            Assert.IsNull(defaultCache.Value);
+            Assert.IsTrue(nullCache.Value == null, "Null cache should return cached null value");
+            Assert.IsTrue(
+                defaultCache.Value == null,
+                "Default cache should return cached null value"
+            );
             Assert.AreEqual(1, nullProducerCalls);
             Assert.AreEqual(1, defaultProducerCalls);
         }

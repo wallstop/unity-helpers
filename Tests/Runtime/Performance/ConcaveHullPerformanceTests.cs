@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Tests.Runtime.Performance
@@ -11,6 +11,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Performance
     using WallstopStudios.UnityHelpers.Tests.Core;
     using WallstopStudios.UnityHelpers.Tests.TestUtils;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class ConcaveHullPerformanceTests : CommonTestBase
     {
         private const int DefaultWidth = 16;
@@ -33,7 +36,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Performance
                 () =>
                 {
                     List<Vector2> hull = points.BuildConcaveHullKnn(nearestNeighbors: 8);
-                    Assert.IsNotNull(hull);
+                    Assert.IsTrue(hull != null, "Hull should not be null");
                     Assert.GreaterOrEqual(hull.Count, 3);
                 },
                 warmupIterations: 3,
@@ -56,7 +59,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Performance
                 () =>
                 {
                     List<Vector2> hull = points.BuildConcaveHullKnn(nearestNeighbors: 8);
-                    Assert.IsNotNull(hull);
+                    Assert.IsTrue(hull != null, "Hull should not be null for large point cloud");
                     Assert.GreaterOrEqual(hull.Count, 3);
                 },
                 warmupIterations: 2,
@@ -84,7 +87,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Performance
                         grid,
                         nearestNeighbors: 8
                     );
-                    Assert.IsNotNull(hull);
+                    Assert.IsTrue(hull != null, "Grid hull should not be null");
                     Assert.GreaterOrEqual(hull.Count, 3);
                 },
                 warmupIterations: 3,
@@ -179,7 +182,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Performance
                         grid,
                         nearestNeighbors: 8
                     );
-                    Assert.IsNotNull(hull);
+                    Assert.IsTrue(
+                        hull != null,
+                        "Grid hull should not be null for large point cloud"
+                    );
                     Assert.GreaterOrEqual(hull.Count, 3);
                 },
                 warmupIterations: 2,

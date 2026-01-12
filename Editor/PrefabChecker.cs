@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Editor
@@ -1353,7 +1353,7 @@ namespace WallstopStudios.UnityHelpers.Editor
             }
             catch (Exception e)
             {
-                this.LogError($"Failed to save report: {e.Message}");
+                this.LogError($"Failed to save report", e);
             }
         }
 
@@ -1400,7 +1400,7 @@ namespace WallstopStudios.UnityHelpers.Editor
             }
             catch (Exception e)
             {
-                this.LogError($"Failed to save CSV: {e.Message}");
+                this.LogError($"Failed to save CSV", e);
             }
         }
     }

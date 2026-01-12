@@ -1,5 +1,7 @@
 # Skill: Create ScriptableObject
 
+<!-- trigger: scriptableobject, so, asset, data, config | Creating ScriptableObject data assets | Core -->
+
 **Trigger**: When creating a new `ScriptableObject` class for data assets, configuration, or shared runtime state in this repository.
 
 ---
@@ -348,9 +350,18 @@ public sealed class MyAsset :
    - Check IDE for compilation errors
    - Ensure `.asmdef` references are correct if adding new namespaces
 
+4. **Update documentation** (MANDATORY for user-facing ScriptableObjects):
+   - Add CHANGELOG entry in `### Added` section
+   - Document the asset type in `docs/features/`
+   - Add XML documentation (`///`) on all public members
+   - Include usage examples in documentation
+   - See [update-documentation](./update-documentation.md) for standards
+
 ---
 
-## Complete Example: Effect Behavior
+## Complete Examples
+
+### Effect Behavior (Condensed)
 
 ```csharp
 namespace WallstopStudios.UnityHelpers.Tags
@@ -360,10 +371,6 @@ namespace WallstopStudios.UnityHelpers.Tags
     /// <summary>
     /// Custom effect behaviour that spawns a particle effect while active.
     /// </summary>
-    /// <remarks>
-    /// Attach to an <see cref="AttributeEffect"/> to add visual feedback
-    /// that follows the effect's lifecycle.
-    /// </remarks>
     [CreateAssetMenu(menuName = "Wallstop Studios/Unity Helpers/Effects/Particle Behaviour")]
     public sealed class ParticleBehavior : EffectBehavior
     {
@@ -379,29 +386,14 @@ namespace WallstopStudios.UnityHelpers.Tags
         [NonSerialized]
         private GameObject _spawnedInstance;
 
-        /// <summary>
-        /// Spawns the particle effect when the effect becomes active.
-        /// </summary>
         public override void OnApply(EffectBehaviorContext context)
         {
-            if (_particlePrefab == null)
-            {
-                return;
-            }
-
+            if (_particlePrefab == null) return;
             Transform parent = context.Target.transform;
-            _spawnedInstance = Object.Instantiate(
-                _particlePrefab,
-                parent.position,
-                parent.rotation,
-                parent
-            );
+            _spawnedInstance = Object.Instantiate(_particlePrefab, parent.position, parent.rotation, parent);
             _spawnedInstance.transform.localScale = Vector3.one * _scale;
         }
 
-        /// <summary>
-        /// Destroys the particle effect when the effect expires.
-        /// </summary>
         public override void OnRemove(EffectBehaviorContext context)
         {
             if (_spawnedInstance != null)
@@ -410,35 +402,21 @@ namespace WallstopStudios.UnityHelpers.Tags
                 _spawnedInstance = null;
             }
         }
-
-#if UNITY_EDITOR
-        private void OnValidate()
-        {
-            _scale = Mathf.Max(0.01f, _scale);
-        }
-#endif
     }
 }
 ```
 
----
-
-## Complete Example: Singleton Settings
+### Singleton Settings (Condensed)
 
 ```csharp
 namespace WallstopStudios.UnityHelpers.Settings
 {
-    using System;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Utils;
-#if ODIN_INSPECTOR
-    using Sirenix.OdinInspector;
-#endif
 
     /// <summary>
-    /// Global audio settings singleton.
-    /// Automatically loaded from Resources/Wallstop Studios/Unity Helpers/.
+    /// Global audio settings singleton. Loaded from Resources/Wallstop Studios/Unity Helpers/.
     /// </summary>
     [ScriptableSingletonPath("Wallstop Studios/Unity Helpers")]
     [AllowDuplicateCleanup]
@@ -446,70 +424,26 @@ namespace WallstopStudios.UnityHelpers.Settings
     public sealed class AudioSettings : ScriptableObjectSingleton<AudioSettings>
     {
         [Header("Volume")]
-        [SerializeField]
-        [Range(0f, 1f)]
-        private float _masterVolume = 1f;
-
-        [SerializeField]
-        [Range(0f, 1f)]
-        private float _musicVolume = 0.8f;
-
-        [SerializeField]
-        [Range(0f, 1f)]
-        private float _sfxVolume = 1f;
+        [SerializeField] [Range(0f, 1f)] private float _masterVolume = 1f;
+        [SerializeField] [Range(0f, 1f)] private float _musicVolume = 0.8f;
+        [SerializeField] [Range(0f, 1f)] private float _sfxVolume = 1f;
 
         [Header("Advanced")]
-        [SerializeField]
-        private bool _enableSpatialAudio = true;
+        [SerializeField] private bool _enableSpatialAudio = true;
 
-#if ODIN_INSPECTOR
-        [ShowIf("@_enableSpatialAudio")]
-#else
         [WShowIf(nameof(_enableSpatialAudio))]
-#endif
-        [SerializeField]
-        [Min(1f)]
-        private float _maxDistance = 50f;
+        [SerializeField] [Min(1f)] private float _maxDistance = 50f;
 
-        /// <summary>
-        /// Gets the master volume multiplier (0-1).
-        /// </summary>
         public float MasterVolume => _masterVolume;
-
-        /// <summary>
-        /// Gets the music volume multiplier (0-1).
-        /// </summary>
         public float MusicVolume => _musicVolume;
-
-        /// <summary>
-        /// Gets the SFX volume multiplier (0-1).
-        /// </summary>
         public float SfxVolume => _sfxVolume;
-
-        /// <summary>
-        /// Gets whether spatial audio is enabled.
-        /// </summary>
         public bool EnableSpatialAudio => _enableSpatialAudio;
-
-        /// <summary>
-        /// Gets the maximum hearing distance for spatial audio.
-        /// </summary>
         public float MaxDistance => _enableSpatialAudio ? _maxDistance : 0f;
 
-        /// <summary>
-        /// Applies the current settings to the audio system.
-        /// </summary>
-        public void ApplySettings()
-        {
-            AudioListener.volume = _masterVolume;
-            // Additional audio system configuration...
-        }
+        public void ApplySettings() => AudioListener.volume = _masterVolume;
 
 #if UNITY_EDITOR
-        private void OnValidate()
-        {
-            _maxDistance = Mathf.Max(1f, _maxDistance);
-        }
+        private void OnValidate() => _maxDistance = Mathf.Max(1f, _maxDistance);
 #endif
     }
 }

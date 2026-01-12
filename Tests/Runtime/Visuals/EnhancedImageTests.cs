@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Tests.Visuals
@@ -9,6 +9,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Visuals
     using WallstopStudios.UnityHelpers.Tests.Core;
     using WallstopStudios.UnityHelpers.Visuals.UGUI;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class EnhancedImageTests : CommonTestBase
     {
         // Tracking handled by CommonTestBase

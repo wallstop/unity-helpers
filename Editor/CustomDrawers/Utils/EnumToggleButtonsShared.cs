@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers.Utils
@@ -11,6 +11,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers.Utils
     using System.Runtime.CompilerServices;
     using UnityEditor;
     using UnityEngine;
+    using WallstopStudios.UnityHelpers.Core.Helper;
+    using WallstopStudios.UnityHelpers.Editor.Core.Helper;
     using WallstopStudios.UnityHelpers.Editor.Settings;
     using WallstopStudios.UnityHelpers.Editor.Utils.WButton;
 
@@ -95,6 +97,23 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers.Utils
         public const float SummarySpacing = 2f;
 
         /// <summary>
+        /// Ratio used to split available width evenly between two aligned buttons (e.g., Select All / None).
+        /// </summary>
+        public const float EqualSplitRatio = 0.5f;
+
+        /// <summary>
+        /// Maximum ratio of the pagination area width allocated to each navigation button.
+        /// Ensures buttons don't become excessively wide in large layouts.
+        /// </summary>
+        public const float MaxPaginationButtonWidthRatio = 0.2f;
+
+        /// <summary>
+        /// Ratio used to center elements when distributing overflow correction.
+        /// Applies half the overflow adjustment to shift elements toward center.
+        /// </summary>
+        public const float OverflowCenteringRatio = 0.5f;
+
+        /// <summary>
         /// Content for navigating to previous page.
         /// </summary>
         public static readonly GUIContent PrevPageContent = new("◀", "Previous Page");
@@ -129,21 +148,23 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers.Utils
         /// </summary>
         public static readonly GUIContent SearchContent = new("🔍", "Search");
 
+        // Lazy initialization to avoid calling EditorGUIUtility during static class loading,
+        // which can hang Unity during "Open Project: Open Scene" if the class is accessed
+        // before EditorGUIUtility is fully initialized.
+        private static GUIContent _firstPageContent;
+        private static GUIContent _lastPageContent;
+
         /// <summary>
         /// Content for navigating to first page.
         /// </summary>
-        public static readonly GUIContent FirstPageContent = EditorGUIUtility.TrTextContent(
-            "<<",
-            "First Page"
-        );
+        public static GUIContent FirstPageContent =>
+            _firstPageContent ??= EditorGUIUtility.TrTextContent("<<", "First Page");
 
         /// <summary>
         /// Content for navigating to last page.
         /// </summary>
-        public static readonly GUIContent LastPageContent = EditorGUIUtility.TrTextContent(
-            ">>",
-            "Last Page"
-        );
+        public static GUIContent LastPageContent =>
+            _lastPageContent ??= EditorGUIUtility.TrTextContent(">>", "Last Page");
 
         private static readonly Dictionary<ButtonStyleCacheKey, GUIStyle> ButtonStyleCache = new(
             new ButtonStyleCacheKeyComparer()
@@ -165,7 +186,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers.Utils
                     return _summaryStyle;
                 }
 
-                _summaryStyle = EditorDrawerCacheHelper.GetOrCreateStyle(
+                _summaryStyle = EditorCacheHelper.GetOrCreateStyle(
                     SummaryStyleKey,
                     CreateSummaryStyle
                 );
@@ -456,11 +477,11 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers.Utils
                 return;
             }
 
-            Texture2D normalTexture = EditorDrawerCacheHelper.GetOrCreateTexture(normalBg);
+            Texture2D normalTexture = EditorCacheHelper.GetOrCreateTexture(normalBg);
 
-            Texture2D hoverTexture = EditorDrawerCacheHelper.GetOrCreateTexture(hoverBg);
+            Texture2D hoverTexture = EditorCacheHelper.GetOrCreateTexture(hoverBg);
 
-            Texture2D activeTexture = EditorDrawerCacheHelper.GetOrCreateTexture(activeBg);
+            Texture2D activeTexture = EditorCacheHelper.GetOrCreateTexture(activeBg);
 
             style.normal.background = normalTexture;
 
@@ -619,16 +640,16 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers.Utils
             {
                 return Segment == other.Segment
                     && IsActive == other.IsActive
-                    && EditorDrawerCacheHelper.AreColorsEqual(
+                    && EditorCacheHelper.AreColorsEqual(
                         SelectedBackground,
                         other.SelectedBackground
                     )
-                    && EditorDrawerCacheHelper.AreColorsEqual(SelectedText, other.SelectedText)
-                    && EditorDrawerCacheHelper.AreColorsEqual(
+                    && EditorCacheHelper.AreColorsEqual(SelectedText, other.SelectedText)
+                    && EditorCacheHelper.AreColorsEqual(
                         InactiveBackground,
                         other.InactiveBackground
                     )
-                    && EditorDrawerCacheHelper.AreColorsEqual(InactiveText, other.InactiveText);
+                    && EditorCacheHelper.AreColorsEqual(InactiveText, other.InactiveText);
             }
 
             /// <inheritdoc />
@@ -640,24 +661,26 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers.Utils
             /// <inheritdoc />
             public override int GetHashCode()
             {
-                unchecked
-                {
-                    int hash = 17;
-
-                    hash = hash * 31 + (int)Segment;
-
-                    hash = hash * 31 + (IsActive ? 1 : 0);
-
-                    hash = hash * 31 + EditorDrawerCacheHelper.GetColorHashCode(SelectedBackground);
-
-                    hash = hash * 31 + EditorDrawerCacheHelper.GetColorHashCode(SelectedText);
-
-                    hash = hash * 31 + EditorDrawerCacheHelper.GetColorHashCode(InactiveBackground);
-
-                    hash = hash * 31 + EditorDrawerCacheHelper.GetColorHashCode(InactiveText);
-
-                    return hash;
-                }
+                return Objects.HashCode(
+                    Segment,
+                    IsActive,
+                    SelectedBackground.r,
+                    SelectedBackground.g,
+                    SelectedBackground.b,
+                    SelectedBackground.a,
+                    SelectedText.r,
+                    SelectedText.g,
+                    SelectedText.b,
+                    SelectedText.a,
+                    InactiveBackground.r,
+                    InactiveBackground.g,
+                    InactiveBackground.b,
+                    InactiveBackground.a,
+                    InactiveText.r,
+                    InactiveText.g,
+                    InactiveText.b,
+                    InactiveText.a
+                );
             }
         }
 

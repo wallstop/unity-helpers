@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Tests
@@ -16,8 +16,12 @@ namespace WallstopStudios.UnityHelpers.Tests
     using WallstopStudios.UnityHelpers.Editor;
     using WallstopStudios.UnityHelpers.Editor.Utils;
     using WallstopStudios.UnityHelpers.Tests.Core;
+    using WallstopStudios.UnityHelpers.Tests.Core.TestUtils;
     using Object = UnityEngine.Object;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class PersistentDirectorySettingsMigrationTests : CommonTestBase
     {
         private readonly List<string> _createdAssets = new();
@@ -61,12 +65,12 @@ namespace WallstopStudios.UnityHelpers.Tests
             PersistentDirectorySettings result = PersistentDirectorySettings.RunMigration();
             yield return null;
 
-            Assert.IsNotNull(result, "RunMigration should return a non-null instance");
+            Assert.IsTrue(result != null, "RunMigration should return a non-null instance");
 
             Object asset = AssetDatabase.LoadAssetAtPath<PersistentDirectorySettings>(
                 PersistentDirectorySettings.TargetAssetPath
             );
-            Assert.IsNotNull(asset, "Asset should exist at target path after migration");
+            Assert.IsTrue(asset != null, "Asset should exist at target path after migration");
             _createdAssets.Add(PersistentDirectorySettings.TargetAssetPath);
         }
 
@@ -84,36 +88,35 @@ namespace WallstopStudios.UnityHelpers.Tests
             );
             legacy.RecordPath("TestTool", "Context", "Assets/TestPath");
             AssetDatabase.CreateAsset(legacy, PersistentDirectorySettings.LegacyAssetPath);
-            AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.SaveAndRefreshIfNotBatching();
             yield return null;
 
-            Assert.IsNotNull(
+            Assert.IsTrue(
                 AssetDatabase.LoadAssetAtPath<PersistentDirectorySettings>(
                     PersistentDirectorySettings.LegacyAssetPath
-                ),
+                ) != null,
                 "Legacy asset should exist before migration"
             );
 
             PersistentDirectorySettings result = PersistentDirectorySettings.RunMigration();
             yield return null;
 
-            Assert.IsNotNull(result, "RunMigration should return a non-null instance");
+            Assert.IsTrue(result != null, "RunMigration should return a non-null instance");
             _createdAssets.Add(PersistentDirectorySettings.TargetAssetPath);
 
             PersistentDirectorySettings targetAsset =
                 AssetDatabase.LoadAssetAtPath<PersistentDirectorySettings>(
                     PersistentDirectorySettings.TargetAssetPath
                 );
-            Assert.IsNotNull(targetAsset, "Asset should exist at target path after migration");
+            Assert.IsTrue(targetAsset != null, "Asset should exist at target path after migration");
 
             Object legacyAsset = AssetDatabase.LoadAssetAtPath<PersistentDirectorySettings>(
                 PersistentDirectorySettings.LegacyAssetPath
             );
-            Assert.IsNull(legacyAsset, "Legacy asset should be deleted after migration");
+            Assert.IsTrue(legacyAsset == null, "Legacy asset should be deleted after migration");
 
             DirectoryUsageData[] paths = targetAsset.GetPaths("TestTool", "Context");
-            Assert.IsNotNull(paths, "Paths should not be null");
+            Assert.IsTrue(paths != null, "Paths should not be null");
             Assert.AreEqual(1, paths.Length, "Should have one recorded path");
             Assert.AreEqual("Assets/TestPath", paths[0].path, "Path should be preserved");
         }
@@ -144,33 +147,32 @@ namespace WallstopStudios.UnityHelpers.Tests
             AssetDatabase.CreateAsset(legacy, PersistentDirectorySettings.LegacyAssetPath);
             yield return null;
 
-            AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.SaveAndRefreshIfNotBatching();
             yield return null;
 
             PersistentDirectorySettings result = PersistentDirectorySettings.RunMigration();
             yield return null;
 
-            Assert.IsNotNull(result, "RunMigration should return a non-null instance");
+            Assert.IsTrue(result != null, "RunMigration should return a non-null instance");
 
             PersistentDirectorySettings finalAsset =
                 AssetDatabase.LoadAssetAtPath<PersistentDirectorySettings>(
                     PersistentDirectorySettings.TargetAssetPath
                 );
-            Assert.IsNotNull(finalAsset, "Target asset should exist after migration");
+            Assert.IsTrue(finalAsset != null, "Target asset should exist after migration");
 
             Object legacyAsset = AssetDatabase.LoadAssetAtPath<PersistentDirectorySettings>(
                 PersistentDirectorySettings.LegacyAssetPath
             );
-            Assert.IsNull(legacyAsset, "Legacy asset should be deleted after merge");
+            Assert.IsTrue(legacyAsset == null, "Legacy asset should be deleted after merge");
 
             DirectoryUsageData[] pathsA = finalAsset.GetPaths("ToolA", "ContextA");
-            Assert.IsNotNull(pathsA, "PathsA should not be null");
+            Assert.IsTrue(pathsA != null, "PathsA should not be null");
             Assert.AreEqual(1, pathsA.Length, "Should have one path for ToolA");
             Assert.AreEqual("Assets/PathA", pathsA[0].path, "PathA should be preserved");
 
             DirectoryUsageData[] pathsB = finalAsset.GetPaths("ToolB", "ContextB");
-            Assert.IsNotNull(pathsB, "PathsB should not be null");
+            Assert.IsTrue(pathsB != null, "PathsB should not be null");
             Assert.AreEqual(1, pathsB.Length, "Should have one path for ToolB");
             Assert.AreEqual("Assets/PathB", pathsB[0].path, "PathB should be preserved from merge");
         }
@@ -206,37 +208,36 @@ namespace WallstopStudios.UnityHelpers.Tests
             _createdAssets.Add(customAssetPath);
             yield return null;
 
-            AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.SaveAndRefreshIfNotBatching();
             yield return null;
 
             PersistentDirectorySettings result = PersistentDirectorySettings.RunMigration();
             _createdAssets.Add(PersistentDirectorySettings.TargetAssetPath);
             yield return null;
 
-            Assert.IsNotNull(result, "RunMigration should return a non-null instance");
+            Assert.IsTrue(result != null, "RunMigration should return a non-null instance");
 
             Object legacyAsset = AssetDatabase.LoadAssetAtPath<PersistentDirectorySettings>(
                 PersistentDirectorySettings.LegacyAssetPath
             );
-            Assert.IsNull(legacyAsset, "Legacy asset should be deleted");
+            Assert.IsTrue(legacyAsset == null, "Legacy asset should be deleted");
 
             Object customAsset = AssetDatabase.LoadAssetAtPath<PersistentDirectorySettings>(
                 customAssetPath
             );
-            Assert.IsNull(customAsset, "Custom location asset should be deleted");
+            Assert.IsTrue(customAsset == null, "Custom location asset should be deleted");
 
             PersistentDirectorySettings finalAsset =
                 AssetDatabase.LoadAssetAtPath<PersistentDirectorySettings>(
                     PersistentDirectorySettings.TargetAssetPath
                 );
-            Assert.IsNotNull(finalAsset, "Target asset should exist");
+            Assert.IsTrue(finalAsset != null, "Target asset should exist");
 
             DirectoryUsageData[] paths1 = finalAsset.GetPaths("Tool1", "Ctx1");
             DirectoryUsageData[] paths2 = finalAsset.GetPaths("Tool2", "Ctx2");
 
-            Assert.IsNotNull(paths1, "Paths1 should exist");
-            Assert.IsNotNull(paths2, "Paths2 should exist");
+            Assert.IsTrue(paths1 != null, "Paths1 should exist");
+            Assert.IsTrue(paths2 != null, "Paths2 should exist");
             Assert.AreEqual(1, paths1.Length, "Should have path from first duplicate");
             Assert.AreEqual(1, paths2.Length, "Should have path from second duplicate");
         }
@@ -250,7 +251,7 @@ namespace WallstopStudios.UnityHelpers.Tests
             _createdAssets.Add(PersistentDirectorySettings.TargetAssetPath);
             yield return null;
 
-            Assert.IsNotNull(first, "First migration should succeed");
+            Assert.IsTrue(first != null, "First migration should succeed");
             first.RecordPath("TestTool", "TestContext", "Assets/TestDir");
             EditorUtility.SetDirty(first);
             AssetDatabase.SaveAssets();
@@ -263,7 +264,7 @@ namespace WallstopStudios.UnityHelpers.Tests
             PersistentDirectorySettings second = PersistentDirectorySettings.RunMigration();
             yield return null;
 
-            Assert.IsNotNull(second, "Second migration should succeed");
+            Assert.IsTrue(second != null, "Second migration should succeed");
 
             string guid2 = AssetDatabase.AssetPathToGUID(
                 PersistentDirectorySettings.TargetAssetPath
@@ -275,7 +276,7 @@ namespace WallstopStudios.UnityHelpers.Tests
             );
 
             DirectoryUsageData[] paths = second.GetPaths("TestTool", "TestContext");
-            Assert.IsNotNull(paths, "Recorded data should persist");
+            Assert.IsTrue(paths != null, "Recorded data should persist");
             Assert.AreEqual(1, paths.Length, "Should still have recorded path");
             Assert.AreEqual("Assets/TestDir", paths[0].path, "Path data should be preserved");
         }
@@ -293,8 +294,7 @@ namespace WallstopStudios.UnityHelpers.Tests
                 ScriptableObject.CreateInstance<PersistentDirectorySettings>()
             );
             AssetDatabase.CreateAsset(legacy, PersistentDirectorySettings.LegacyAssetPath);
-            AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.SaveAndRefreshIfNotBatching();
             yield return null;
 
             Assert.IsTrue(
@@ -306,7 +306,7 @@ namespace WallstopStudios.UnityHelpers.Tests
             _createdAssets.Add(PersistentDirectorySettings.TargetAssetPath);
             yield return null;
 
-            Assert.IsNotNull(result, "Migration should succeed");
+            Assert.IsTrue(result != null, "Migration should succeed");
 
             Assert.IsFalse(
                 AssetDatabase.IsValidFolder(PersistentDirectorySettings.LegacyFolder),
@@ -331,24 +331,23 @@ namespace WallstopStudios.UnityHelpers.Tests
             legacy.RecordPath("ExportTool", "Default", "Assets/Exports");
             legacy.RecordPath("ImportTool", "Audio", "Assets/Audio/Import");
             AssetDatabase.CreateAsset(legacy, PersistentDirectorySettings.LegacyAssetPath);
-            AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.SaveAndRefreshIfNotBatching();
             yield return null;
 
             PersistentDirectorySettings result = PersistentDirectorySettings.RunMigration();
             _createdAssets.Add(PersistentDirectorySettings.TargetAssetPath);
             yield return null;
 
-            Assert.IsNotNull(result, "Migration should succeed");
+            Assert.IsTrue(result != null, "Migration should succeed");
 
             DirectoryUsageData[] exportPaths = result.GetPaths("ExportTool", "Default");
-            Assert.IsNotNull(exportPaths, "Export paths should exist");
+            Assert.IsTrue(exportPaths != null, "Export paths should exist");
             Assert.AreEqual(1, exportPaths.Length, "Should have one export path");
             Assert.AreEqual("Assets/Exports", exportPaths[0].path);
             Assert.AreEqual(3, exportPaths[0].count, "Usage count should be preserved");
 
             DirectoryUsageData[] importPaths = result.GetPaths("ImportTool", "Audio");
-            Assert.IsNotNull(importPaths, "Import paths should exist");
+            Assert.IsTrue(importPaths != null, "Import paths should exist");
             Assert.AreEqual(1, importPaths.Length, "Should have one import path");
             Assert.AreEqual("Assets/Audio/Import", importPaths[0].path);
         }
@@ -371,11 +370,11 @@ namespace WallstopStudios.UnityHelpers.Tests
             yield return null;
 
             DirectoryUsageData[] pathsA1 = target.GetPaths("ToolA", "Context1");
-            Assert.IsNotNull(pathsA1);
+            Assert.IsTrue(pathsA1 != null);
             Assert.AreEqual(2, pathsA1.Length, "Should have both paths for ToolA/Context1");
 
             DirectoryUsageData[] pathsB = target.GetPaths("ToolB", "Context2");
-            Assert.IsNotNull(pathsB);
+            Assert.IsTrue(pathsB != null);
             Assert.AreEqual(1, pathsB.Length, "Should have path from other for ToolB");
         }
 
@@ -393,7 +392,7 @@ namespace WallstopStudios.UnityHelpers.Tests
             yield return null;
 
             DirectoryUsageData[] paths = target.GetPaths("Tool", "Ctx");
-            Assert.IsNotNull(paths, "Data should be unchanged after null/self merge");
+            Assert.IsTrue(paths != null, "Data should be unchanged after null/self merge");
             Assert.AreEqual(1, paths.Length);
         }
 
@@ -416,7 +415,7 @@ namespace WallstopStudios.UnityHelpers.Tests
             yield return null;
 
             DirectoryUsageData[] paths = target.GetPaths("Tool", "Ctx");
-            Assert.IsNotNull(paths);
+            Assert.IsTrue(paths != null);
             Assert.AreEqual(1, paths.Length, "Should still be one unique path");
             Assert.AreEqual(5, paths[0].count, "Counts should be summed (2 + 3 = 5)");
         }
@@ -481,25 +480,24 @@ namespace WallstopStudios.UnityHelpers.Tests
             AssetDatabase.CreateAsset(legacy, PersistentDirectorySettings.LegacyAssetPath);
             yield return null;
 
-            AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.SaveAndRefreshIfNotBatching();
             yield return null;
 
             PersistentDirectorySettings result = PersistentDirectorySettings.RunMigration();
             yield return null;
 
-            Assert.IsNotNull(result, "Migration should succeed");
+            Assert.IsTrue(result != null, "Migration should succeed");
 
             Object legacyCheck = AssetDatabase.LoadAssetAtPath<PersistentDirectorySettings>(
                 PersistentDirectorySettings.LegacyAssetPath
             );
-            Assert.IsNull(legacyCheck, "Legacy should be deleted when target exists");
+            Assert.IsTrue(legacyCheck == null, "Legacy should be deleted when target exists");
 
             DirectoryUsageData[] targetPaths = result.GetPaths("TargetTool", "TargetCtx");
             DirectoryUsageData[] legacyPaths = result.GetPaths("LegacyTool", "LegacyCtx");
 
-            Assert.IsNotNull(targetPaths, "Target paths should exist");
-            Assert.IsNotNull(legacyPaths, "Legacy paths should be merged in");
+            Assert.IsTrue(targetPaths != null, "Target paths should exist");
+            Assert.IsTrue(legacyPaths != null, "Legacy paths should be merged in");
             Assert.AreEqual(1, targetPaths.Length);
             Assert.AreEqual(1, legacyPaths.Length);
         }
@@ -514,8 +512,7 @@ namespace WallstopStudios.UnityHelpers.Tests
             _createdFolders.Add("Assets/Resources/Wallstop Studios");
             yield return null;
 
-            AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.SaveAndRefreshIfNotBatching();
             yield return null;
 
             Assert.IsTrue(
@@ -542,8 +539,7 @@ namespace WallstopStudios.UnityHelpers.Tests
             _createdFolders.Add("Assets/Resources/Wallstop Studios");
             yield return null;
 
-            AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.SaveAndRefreshIfNotBatching();
             yield return null;
 
             Assert.IsTrue(
@@ -584,8 +580,7 @@ namespace WallstopStudios.UnityHelpers.Tests
             EnsureFolderExists(emptyFolder);
             yield return null;
 
-            AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.SaveAndRefreshIfNotBatching();
             yield return null;
 
             PersistentDirectorySettings.CleanupLegacyEmptyFolders();
@@ -621,8 +616,7 @@ namespace WallstopStudios.UnityHelpers.Tests
             EnsureFolderExists(legacyFolder);
             yield return null;
 
-            AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.SaveAndRefreshIfNotBatching();
             yield return null;
 
             PersistentDirectorySettings.CleanupLegacyEmptyFolders();
@@ -648,8 +642,7 @@ namespace WallstopStudios.UnityHelpers.Tests
             _createdFolders.Add("Assets/Resources/Wallstop Studios");
             yield return null;
 
-            AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.SaveAndRefreshIfNotBatching();
             yield return null;
 
             PersistentDirectorySettings.CleanupLegacyEmptyFolders();
@@ -677,8 +670,7 @@ namespace WallstopStudios.UnityHelpers.Tests
             EnsureFolderExists(wallstopRoot);
             yield return null;
 
-            AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.SaveAndRefreshIfNotBatching();
             yield return null;
 
             Assert.IsTrue(
@@ -716,8 +708,7 @@ namespace WallstopStudios.UnityHelpers.Tests
             _createdFolders.Add(wallstopRoot);
             yield return null;
 
-            AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.SaveAndRefreshIfNotBatching();
             yield return null;
 
             Assert.IsTrue(
@@ -788,8 +779,7 @@ namespace WallstopStudios.UnityHelpers.Tests
             DeleteFolderIfExists(PersistentDirectorySettings.WallstopStudiosRoot);
             yield return null;
 
-            AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.SaveAndRefreshIfNotBatching();
             yield return null;
 
             Assert.DoesNotThrow(
@@ -829,8 +819,7 @@ namespace WallstopStudios.UnityHelpers.Tests
             _createdFolders.Add(wallstopRoot);
             yield return null;
 
-            AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.SaveAndRefreshIfNotBatching();
             yield return null;
 
             Assert.IsTrue(
@@ -888,8 +877,7 @@ namespace WallstopStudios.UnityHelpers.Tests
             _createdAssets.Add(dummyPath);
             yield return null;
 
-            AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.SaveAndRefreshIfNotBatching();
             yield return null;
 
             PersistentDirectorySettings.CleanupLegacyEmptyFolders();
@@ -931,8 +919,7 @@ namespace WallstopStudios.UnityHelpers.Tests
             );
             legacy.RecordPath("Tool", "Ctx", "Assets/Path");
             AssetDatabase.CreateAsset(legacy, PersistentDirectorySettings.LegacyAssetPath);
-            AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.SaveAndRefreshIfNotBatching();
             yield return null;
 
             PersistentDirectorySettings result = PersistentDirectorySettings.RunMigration();
@@ -942,7 +929,7 @@ namespace WallstopStudios.UnityHelpers.Tests
             PersistentDirectorySettings.CleanupLegacyEmptyFolders();
             yield return null;
 
-            Assert.IsNotNull(result, "Migration should succeed");
+            Assert.IsTrue(result != null, "Migration should succeed");
 
             Assert.IsFalse(
                 AssetDatabase.IsValidFolder(PersistentDirectorySettings.LegacyFolder),
@@ -963,7 +950,7 @@ namespace WallstopStudios.UnityHelpers.Tests
             );
 
             DirectoryUsageData[] paths = result.GetPaths("Tool", "Ctx");
-            Assert.IsNotNull(paths);
+            Assert.IsTrue(paths != null);
             Assert.AreEqual(1, paths.Length);
         }
 
@@ -980,8 +967,7 @@ namespace WallstopStudios.UnityHelpers.Tests
                 ScriptableObject.CreateInstance<PersistentDirectorySettings>()
             );
             AssetDatabase.CreateAsset(legacy, PersistentDirectorySettings.LegacyAssetPath);
-            AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.SaveAndRefreshIfNotBatching();
             yield return null;
 
             Assert.IsTrue(
@@ -993,7 +979,7 @@ namespace WallstopStudios.UnityHelpers.Tests
             _createdAssets.Add(PersistentDirectorySettings.TargetAssetPath);
             yield return null;
 
-            Assert.IsNotNull(result, "Migration should succeed");
+            Assert.IsTrue(result != null, "Migration should succeed");
             Assert.IsFalse(
                 AssetDatabase.IsValidFolder(PersistentDirectorySettings.LegacyFolder),
                 "Legacy folder should be cleaned up after move"
@@ -1026,8 +1012,7 @@ namespace WallstopStudios.UnityHelpers.Tests
             AssetDatabase.CreateAsset(legacy, PersistentDirectorySettings.LegacyAssetPath);
             yield return null;
 
-            AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.SaveAndRefreshIfNotBatching();
             yield return null;
 
             Assert.IsTrue(
@@ -1041,7 +1026,7 @@ namespace WallstopStudios.UnityHelpers.Tests
             PersistentDirectorySettings.CleanupLegacyEmptyFolders();
             yield return null;
 
-            Assert.IsNotNull(result, "Migration should succeed");
+            Assert.IsTrue(result != null, "Migration should succeed");
             Assert.IsFalse(
                 AssetDatabase.IsValidFolder(PersistentDirectorySettings.LegacyFolder),
                 "Legacy folder should be cleaned up after merge"
@@ -1049,8 +1034,8 @@ namespace WallstopStudios.UnityHelpers.Tests
 
             DirectoryUsageData[] targetPaths = result.GetPaths("TargetTool", "Ctx");
             DirectoryUsageData[] legacyPaths = result.GetPaths("LegacyTool", "Ctx");
-            Assert.IsNotNull(targetPaths);
-            Assert.IsNotNull(legacyPaths);
+            Assert.IsTrue(targetPaths != null);
+            Assert.IsTrue(legacyPaths != null);
             Assert.AreEqual(1, targetPaths.Length, "Target paths should be preserved");
             Assert.AreEqual(1, legacyPaths.Length, "Legacy paths should be merged");
         }
@@ -1082,8 +1067,7 @@ namespace WallstopStudios.UnityHelpers.Tests
             legacy.RecordPath("ExportTool", "Audio", "Assets/Audio/Export");
             legacy.RecordPath("ImportTool", "Default", "Assets/Import");
             AssetDatabase.CreateAsset(legacy, PersistentDirectorySettings.LegacyAssetPath);
-            AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.SaveAndRefreshIfNotBatching();
             yield return null;
 
             PersistentDirectorySettings result = PersistentDirectorySettings.RunMigration();
@@ -1093,16 +1077,16 @@ namespace WallstopStudios.UnityHelpers.Tests
             PersistentDirectorySettings.CleanupLegacyEmptyFolders();
             yield return null;
 
-            Assert.IsNotNull(result, "Migration should succeed");
+            Assert.IsTrue(result != null, "Migration should succeed");
 
             Assert.IsTrue(
                 AssetDatabase.IsValidFolder(PersistentDirectorySettings.TargetFolder),
                 "Target folder should exist"
             );
-            Assert.IsNotNull(
+            Assert.IsTrue(
                 AssetDatabase.LoadAssetAtPath<PersistentDirectorySettings>(
                     PersistentDirectorySettings.TargetAssetPath
-                ),
+                ) != null,
                 "Target asset should exist"
             );
 
@@ -1120,17 +1104,17 @@ namespace WallstopStudios.UnityHelpers.Tests
             );
 
             DirectoryUsageData[] spritePaths = result.GetPaths("ExportTool", "Sprites");
-            Assert.IsNotNull(spritePaths);
+            Assert.IsTrue(spritePaths != null);
             Assert.AreEqual(1, spritePaths.Length);
             Assert.AreEqual("Assets/Sprites/Export", spritePaths[0].path);
             Assert.AreEqual(2, spritePaths[0].count, "Usage count should be preserved");
 
             DirectoryUsageData[] audioPaths = result.GetPaths("ExportTool", "Audio");
-            Assert.IsNotNull(audioPaths);
+            Assert.IsTrue(audioPaths != null);
             Assert.AreEqual(1, audioPaths.Length);
 
             DirectoryUsageData[] importPaths = result.GetPaths("ImportTool", "Default");
-            Assert.IsNotNull(importPaths);
+            Assert.IsTrue(importPaths != null);
             Assert.AreEqual(1, importPaths.Length);
         }
 
@@ -1165,8 +1149,7 @@ namespace WallstopStudios.UnityHelpers.Tests
             TryDeleteEmptyFolder("Assets/Resources");
             yield return null;
 
-            AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.SaveAndRefreshIfNotBatching();
             yield return null;
         }
 
@@ -1469,8 +1452,7 @@ namespace WallstopStudios.UnityHelpers.Tests
             }
             yield return null;
 
-            AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.SaveAndRefreshIfNotBatching();
             yield return null;
 
             string[] subFoldersBeforeCleanup = AssetDatabase.IsValidFolder(

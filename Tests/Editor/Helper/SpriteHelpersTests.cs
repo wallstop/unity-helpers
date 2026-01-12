@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Tests.Helper
@@ -11,49 +11,46 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
     using WallstopStudios.UnityHelpers.Tests.Core;
 
     [TestFixture]
-    public sealed class SpriteHelpersTests : CommonTestBase
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
+    public sealed class SpriteHelpersTests : BatchedEditorTestBase
     {
         private const string TestFolder = "Assets/TempSpriteHelpersTests";
         private string _testTexturePath;
         private Texture2D _testTexture;
         private static readonly int[] TextureSizeCases = { 1, 2, 4, 16, 64, 256, 512 };
 
-        [SetUp]
-        public override void BaseSetUp()
+        [OneTimeSetUp]
+        public override void CommonOneTimeSetUp()
         {
-            base.BaseSetUp();
+            base.CommonOneTimeSetUp();
             if (Application.isPlaying)
             {
                 return;
             }
 
-            if (!AssetDatabase.IsValidFolder(TestFolder))
-            {
-                AssetDatabase.CreateFolder("Assets", "TempSpriteHelpersTests");
-            }
+            EnsureFolder(TestFolder);
+            TrackFolder(TestFolder);
+        }
+
+        [SetUp]
+        public override void BaseSetUp()
+        {
+            base.BaseSetUp();
+            // Reset per-test state
+            _testTexturePath = null;
+            _testTexture = null;
         }
 
         [TearDown]
         public override void TearDown()
         {
             base.TearDown();
-            if (Application.isPlaying)
+            // Per-test cleanup: track individual texture paths for deferred cleanup
+            if (!string.IsNullOrEmpty(_testTexturePath))
             {
-                return;
+                TrackAssetPath(_testTexturePath);
             }
-
-            if (!string.IsNullOrEmpty(_testTexturePath) && File.Exists(_testTexturePath))
-            {
-                AssetDatabase.DeleteAsset(_testTexturePath);
-                _testTexturePath = null;
-            }
-
-            if (AssetDatabase.IsValidFolder(TestFolder))
-            {
-                AssetDatabase.DeleteAsset(TestFolder);
-            }
-
-            AssetDatabase.Refresh();
         }
 
         [Test]
@@ -104,10 +101,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
 
             Assert.IsFalse(_testTexture.isReadable, "Texture should not be readable initially");
 
-            _testTexture.MakeReadable();
-
-            AssetDatabase.Refresh();
-            _testTexture = AssetDatabase.LoadAssetAtPath<Texture2D>(_testTexturePath);
+            ExecuteWithImmediateImport(() =>
+            {
+                _testTexture.MakeReadable();
+                _testTexture = AssetDatabase.LoadAssetAtPath<Texture2D>(_testTexturePath);
+            });
 
             Assert.IsTrue(
                 _testTexture.isReadable,
@@ -162,8 +160,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
                 _testTexture.MakeReadable();
             });
 
-            AssetDatabase.Refresh();
-            _testTexture = AssetDatabase.LoadAssetAtPath<Texture2D>(_testTexturePath);
+            ExecuteWithImmediateImport(() =>
+            {
+                _testTexture = AssetDatabase.LoadAssetAtPath<Texture2D>(_testTexturePath);
+            });
             Assert.IsTrue(
                 _testTexture.isReadable,
                 "Texture should be readable after multiple calls"
@@ -183,10 +183,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             int originalHeight = _testTexture.height;
             TextureFormat originalFormat = _testTexture.format;
 
-            _testTexture.MakeReadable();
-
-            AssetDatabase.Refresh();
-            _testTexture = AssetDatabase.LoadAssetAtPath<Texture2D>(_testTexturePath);
+            ExecuteWithImmediateImport(() =>
+            {
+                _testTexture.MakeReadable();
+                _testTexture = AssetDatabase.LoadAssetAtPath<Texture2D>(_testTexturePath);
+            });
 
             Assert.AreEqual(originalWidth, _testTexture.width, "Width should be preserved");
             Assert.AreEqual(originalHeight, _testTexture.height, "Height should be preserved");
@@ -203,17 +204,18 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
 
             CreateTestTexture(readable: false, width: size, height: size);
 
-            _testTexture.MakeReadable();
-
-            AssetDatabase.Refresh();
-            _testTexture = AssetDatabase.LoadAssetAtPath<Texture2D>(_testTexturePath);
+            ExecuteWithImmediateImport(() =>
+            {
+                _testTexture.MakeReadable();
+                _testTexture = AssetDatabase.LoadAssetAtPath<Texture2D>(_testTexturePath);
+            });
 
             Assert.IsTrue(
                 _testTexture.isReadable,
                 $"Texture of size {size}x{size} should be readable"
             );
 
-            AssetDatabase.DeleteAsset(_testTexturePath);
+            // Clear per-test state (TearDown will track for deferred cleanup)
             _testTexture = null;
             _testTexturePath = null;
         }
@@ -228,10 +230,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
 
             CreateTestTexture(readable: false, width: 64, height: 128);
 
-            _testTexture.MakeReadable();
-
-            AssetDatabase.Refresh();
-            _testTexture = AssetDatabase.LoadAssetAtPath<Texture2D>(_testTexturePath);
+            ExecuteWithImmediateImport(() =>
+            {
+                _testTexture.MakeReadable();
+                _testTexture = AssetDatabase.LoadAssetAtPath<Texture2D>(_testTexturePath);
+            });
 
             Assert.IsTrue(_testTexture.isReadable, "Non-square texture should be readable");
             Assert.AreEqual(64, _testTexture.width);
@@ -248,10 +251,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
 
             CreateTestTexture(readable: false, width: 1, height: 1);
 
-            _testTexture.MakeReadable();
-
-            AssetDatabase.Refresh();
-            _testTexture = AssetDatabase.LoadAssetAtPath<Texture2D>(_testTexturePath);
+            ExecuteWithImmediateImport(() =>
+            {
+                _testTexture.MakeReadable();
+                _testTexture = AssetDatabase.LoadAssetAtPath<Texture2D>(_testTexturePath);
+            });
 
             Assert.IsTrue(_testTexture.isReadable, "1x1 texture should be readable");
         }
@@ -317,18 +321,22 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             byte[] pngData = tempTexture.EncodeToPNG();
 
             File.WriteAllBytes(_testTexturePath, pngData);
-            AssetDatabase.ImportAsset(_testTexturePath);
 
-            TextureImporter importer = AssetImporter.GetAtPath(_testTexturePath) as TextureImporter;
-            if (importer != null)
+            ExecuteWithImmediateImport(() =>
             {
-                importer.isReadable = readable;
-                importer.textureCompression = TextureImporterCompression.Uncompressed;
-                importer.SaveAndReimport();
-            }
+                AssetDatabase.ImportAsset(_testTexturePath);
 
-            AssetDatabase.Refresh();
-            _testTexture = AssetDatabase.LoadAssetAtPath<Texture2D>(_testTexturePath);
+                TextureImporter importer =
+                    AssetImporter.GetAtPath(_testTexturePath) as TextureImporter;
+                if (importer != null)
+                {
+                    importer.isReadable = readable;
+                    importer.textureCompression = TextureImporterCompression.Uncompressed;
+                    importer.SaveAndReimport();
+                }
+
+                _testTexture = AssetDatabase.LoadAssetAtPath<Texture2D>(_testTexturePath);
+            });
         }
     }
 }

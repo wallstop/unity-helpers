@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Editor
@@ -161,7 +161,7 @@ namespace WallstopStudios.UnityHelpers.Editor
                     EditorGUILayout.EnumPopup(
                         new GUIContent(
                             "Fit Mode",
-                            "GrowAndShrink: increase or decrease to closest POT bound around size.\nGrowOnly: increase up to next POT if needed, never shrink.\nShrinkOnly: decrease down to tightest POT <= size, never grow.\nRoundToNearest: choose nearest POT to source size (ties round up)."
+                            "GrowAndShrink: set max size to the smallest power-of-two that fits the source dimensions.\nGrowOnly: increase up to next POT if needed, never shrink.\nShrinkOnly: decrease to smallest POT that fits the source, never grow.\nRoundToNearest: choose nearest POT to source size (ties round up)."
                         ),
                         _fitMode
                     );
@@ -410,7 +410,13 @@ namespace WallstopStudios.UnityHelpers.Editor
                     }
                     else
                     {
-                        this.LogWarn($"Skipping non-folder object: '{assetPath}'");
+                        // Support individual texture files directly; type filtering is applied later.
+                        // This mirrors the behavior in the _useSelectionOnly branch.
+                        string guid = AssetDatabase.AssetPathToGUID(assetPath);
+                        if (!string.IsNullOrWhiteSpace(guid))
+                        {
+                            _ = guidSet.Add(guid);
+                        }
                     }
                 }
             }
@@ -502,9 +508,9 @@ namespace WallstopStudios.UnityHelpers.Editor
                 {
                     nameRegex = new Regex(_nameFilter, opts);
                 }
-                catch (Exception ex)
+                catch (Exception e)
                 {
-                    this.LogError($"Invalid name regex '{_nameFilter}': {ex.Message}");
+                    this.LogError($"Invalid name regex '{_nameFilter}'", e);
                     nameRegex = null;
                 }
             }
@@ -546,11 +552,10 @@ namespace WallstopStudios.UnityHelpers.Editor
                     }
                 }
             }
-            if (applyChanges)
-            {
-                AssetDatabase.StartAssetEditing();
-            }
             int totalAssets = textureGuids.Count;
+            AssetDatabaseBatchScope batchScope = applyChanges
+                ? AssetDatabaseBatchHelper.BeginBatch(refreshOnDispose: false)
+                : default;
             try
             {
                 for (int i = 0; i < textureGuids.Count; i++)
@@ -650,7 +655,6 @@ namespace WallstopStudios.UnityHelpers.Editor
 
                     textureImporter.GetSourceTextureWidthAndHeight(out int width, out int height);
 
-                    float size = Mathf.Max(width, height);
                     int currentTextureSize = textureImporter.maxTextureSize;
                     int targetTextureSize = currentTextureSize;
                     bool needsChange = false;
@@ -671,8 +675,22 @@ namespace WallstopStudios.UnityHelpers.Editor
                             needsChange = true;
                         }
                     }
-                    else if (_fitMode is FitMode.GrowAndShrink or FitMode.GrowOnly)
+                    else if (_fitMode == FitMode.GrowAndShrink)
                     {
+                        // GrowAndShrink: Calculate smallest POT >= max(width, height)
+                        // Then grow or shrink current size to match that target
+                        int largest = Mathf.Max(width, height);
+                        int target = Mathf.NextPowerOfTwo(Mathf.Max(largest, 1));
+                        if (currentTextureSize != target)
+                        {
+                            targetTextureSize = target;
+                            needsChange = true;
+                        }
+                    }
+                    else if (_fitMode == FitMode.GrowOnly)
+                    {
+                        // GrowOnly: Only increase to next POT if current size is below what's needed
+                        int size = Mathf.Max(width, height);
                         int tempSize = targetTextureSize;
                         while (tempSize < size)
                         {
@@ -684,22 +702,19 @@ namespace WallstopStudios.UnityHelpers.Editor
                             needsChange = true;
                         }
                     }
-
-                    if (_fitMode is FitMode.GrowAndShrink or FitMode.ShrinkOnly)
+                    else if (_fitMode == FitMode.ShrinkOnly)
                     {
+                        // ShrinkOnly: Find the smallest POT that fits (>=) the source size,
+                        // then shrink to that if current size is larger. Never grow.
+                        int size = Mathf.Max(width, height);
+                        int neededPot = Mathf.NextPowerOfTwo(Mathf.Max(size, 1));
                         int tempSize = targetTextureSize;
-                        // Shrink to the tightest power-of-two that is <= the largest dimension (size),
-                        // without dipping below 1. This matches test expectation for ShrinkOnly.
-                        while (tempSize > 1 && tempSize > size)
+                        // Only shrink if current size is above the needed POT
+                        if (tempSize > neededPot)
                         {
-                            tempSize >>= 1;
+                            tempSize = neededPot;
                         }
                         if (tempSize != targetTextureSize)
-                        {
-                            targetTextureSize = tempSize;
-                            needsChange = true;
-                        }
-                        else if (!needsChange && tempSize != currentTextureSize)
                         {
                             targetTextureSize = tempSize;
                             needsChange = true;
@@ -763,7 +778,7 @@ namespace WallstopStudios.UnityHelpers.Editor
                 }
                 if (applyChanges)
                 {
-                    AssetDatabase.StopAssetEditing();
+                    batchScope.Dispose();
                 }
                 EditorUi.ClearProgress();
 

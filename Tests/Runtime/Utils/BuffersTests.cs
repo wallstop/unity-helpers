@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Tests.Utils
@@ -20,6 +20,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
     using System.Threading.Tasks;
 #endif
 
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class BuffersTests
     {
         private IDisposable _waitInstructionScope;
@@ -54,6 +56,102 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             Assert.AreEqual(10, retrieved);
             Assert.AreEqual(10, released);
             Assert.AreEqual(10, pool.Count);
+        }
+
+        [TestCase(1, TestName = "PreWarmCallbacksInvokedInCorrectOrderCount1")]
+        [TestCase(5, TestName = "PreWarmCallbacksInvokedInCorrectOrderCount5")]
+        [TestCase(10, TestName = "PreWarmCallbacksInvokedInCorrectOrderCount10")]
+        public void PreWarmCallbacksInvokedInCorrectOrder(int preWarmCount)
+        {
+            List<string> callOrder = new();
+            using WallstopGenericPool<int> pool = new(
+                () => 0,
+                preWarmCount: preWarmCount,
+                onGet: _ => callOrder.Add("onGet"),
+                onRelease: _ => callOrder.Add("onRelease")
+            );
+
+            Assert.AreEqual(preWarmCount * 2, callOrder.Count);
+
+            for (int i = 0; i < preWarmCount; i++)
+            {
+                int getIndex = i * 2;
+                int releaseIndex = i * 2 + 1;
+                Assert.AreEqual(
+                    "onGet",
+                    callOrder[getIndex],
+                    $"Pre-warm item {i}: expected onGet at index {getIndex}, but found {callOrder[getIndex]}"
+                );
+                Assert.AreEqual(
+                    "onRelease",
+                    callOrder[releaseIndex],
+                    $"Pre-warm item {i}: expected onRelease at index {releaseIndex}, but found {callOrder[releaseIndex]}"
+                );
+            }
+        }
+
+        [TestCase(1, TestName = "PreWarmCallbackSymmetryCount1")]
+        [TestCase(5, TestName = "PreWarmCallbackSymmetryCount5")]
+        [TestCase(10, TestName = "PreWarmCallbackSymmetryCount10")]
+        public void PreWarmCallbackSymmetry(int preWarmCount)
+        {
+            HashSet<int> gotItems = new();
+            HashSet<int> releasedItems = new();
+            int itemId = 0;
+            using WallstopGenericPool<int> pool = new(
+                () => itemId++,
+                preWarmCount: preWarmCount,
+                onGet: item => gotItems.Add(item),
+                onRelease: item => releasedItems.Add(item)
+            );
+
+            Assert.AreEqual(
+                preWarmCount,
+                gotItems.Count,
+                "Each pre-warmed item should have onGet invoked exactly once"
+            );
+            Assert.AreEqual(
+                preWarmCount,
+                releasedItems.Count,
+                "Each pre-warmed item should have onRelease invoked exactly once"
+            );
+            Assert.IsTrue(
+                gotItems.SetEquals(releasedItems),
+                "The same items should have both onGet and onRelease invoked"
+            );
+        }
+
+        [TestCase(0, TestName = "PreWarmCallbackCountCorrectCount0")]
+        [TestCase(1, TestName = "PreWarmCallbackCountCorrectCount1")]
+        [TestCase(5, TestName = "PreWarmCallbackCountCorrectCount5")]
+        [TestCase(10, TestName = "PreWarmCallbackCountCorrectCount10")]
+        [TestCase(100, TestName = "PreWarmCallbackCountCorrectCount100")]
+        public void PreWarmCallbackCountCorrect(int preWarmCount)
+        {
+            int getCount = 0;
+            int releaseCount = 0;
+            using WallstopGenericPool<int> pool = new(
+                () => 0,
+                preWarmCount: preWarmCount,
+                onGet: _ => getCount++,
+                onRelease: _ => releaseCount++
+            );
+
+            Assert.AreEqual(
+                preWarmCount,
+                getCount,
+                $"onGet should be called exactly {preWarmCount} times during pre-warming"
+            );
+            Assert.AreEqual(
+                preWarmCount,
+                releaseCount,
+                $"onRelease should be called exactly {preWarmCount} times during pre-warming"
+            );
+            Assert.AreEqual(
+                preWarmCount,
+                pool.Count,
+                $"Pool should contain exactly {preWarmCount} items after pre-warming"
+            );
         }
 
         [Test]

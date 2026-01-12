@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 // UNH-SUPPRESS: This IS the CommonTestBase class
@@ -14,10 +14,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Core
     using UnityEngine.SceneManagement;
     using UnityEngine.TestTools;
     using WallstopStudios.UnityHelpers.Core.Helper;
+    using AssetDatabaseBatchHelper = WallstopStudios.UnityHelpers.Editor.Utils.AssetDatabaseBatchHelper;
     using Object = UnityEngine.Object;
 #if UNITY_EDITOR
     using UnityEditor.SceneManagement;
     using WallstopStudios.UnityHelpers.Editor.Utils;
+    using WallstopStudios.UnityHelpers.Tests.Core.TestUtils;
 #endif
 
     /// <summary>
@@ -45,6 +47,22 @@ namespace WallstopStudios.UnityHelpers.Tests.Core
         /// </summary>
         protected readonly List<string> _trackedAssetPaths = new();
 
+        /// <summary>
+        /// When true, CleanupTrackedFoldersAndAssets() accumulates assets for batch cleanup
+        /// in OneTimeTearDown instead of cleaning per-test. Set in subclass constructor or OneTimeSetUp.
+        /// </summary>
+        protected bool DeferAssetCleanupToOneTimeTearDown { get; set; }
+
+        /// <summary>
+        /// Accumulated asset paths when deferred cleanup is enabled.
+        /// </summary>
+        private readonly List<string> _deferredAssetPaths = new();
+
+        /// <summary>
+        /// Accumulated folder paths when deferred cleanup is enabled.
+        /// </summary>
+        private readonly List<string> _deferredFolderPaths = new();
+
         private bool _previousEditorUiSuppress;
 #endif
 
@@ -57,6 +75,28 @@ namespace WallstopStudios.UnityHelpers.Tests.Core
 #if UNITY_EDITOR
             _previousEditorUiSuppress = EditorUi.Suppress;
             EditorUi.Suppress = true;
+
+            // Proactively reset asset editing state to ensure clean state for each test
+            // This handles cases where a previous test crashed without proper cleanup
+            // All AssetDatabase batching now uses the unified Editor.Utils.AssetDatabaseBatchHelper
+            try
+            {
+                // Only reset batch depth if not using fixture-level batching (BatchedEditorTestBase)
+                // When DeferAssetCleanupToOneTimeTearDown is true, the fixture manages its own batch scope
+                if (!DeferAssetCleanupToOneTimeTearDown)
+                {
+                    // Reset unified batch helper with Unity cleanup (handles both counters AND Unity state)
+                    // This ensures any lingering batch state from a crashed test is properly cleaned up
+                    Editor.Utils.AssetDatabaseBatchHelper.ResetBatchDepth();
+                }
+                // Reset legacy state in production code classes
+                ScriptableObjectSingletonCreator.ResetAssetEditingScopeDepthForTesting();
+                ScriptableObjectSingletonMetadataUtility.ResetAssetEditingDepthForTesting();
+            }
+            catch
+            {
+                // Best-effort cleanup - ignore exceptions during setup
+            }
 #endif
             InitializeDispatcherScope();
         }
@@ -144,6 +184,27 @@ namespace WallstopStudios.UnityHelpers.Tests.Core
         public virtual void TearDown()
         {
 #if UNITY_EDITOR
+            // Safety cleanup: ensure AssetDatabase is not stuck in batch mode
+            // This handles tests that throw exceptions before properly disposing batch scopes
+            // All AssetDatabase batching now uses the unified Editor.Utils.AssetDatabaseBatchHelper
+            try
+            {
+                // Only reset batch depth if not using fixture-level batching (BatchedEditorTestBase)
+                // When DeferAssetCleanupToOneTimeTearDown is true, the fixture manages its own batch scope
+                if (!DeferAssetCleanupToOneTimeTearDown)
+                {
+                    // Reset unified batch helper (handles all AssetDatabase state cleanup)
+                    Editor.Utils.AssetDatabaseBatchHelper.ResetBatchDepth();
+                }
+                // Reset legacy state in production code classes
+                ScriptableObjectSingletonCreator.ResetAssetEditingScopeDepthForTesting();
+                ScriptableObjectSingletonMetadataUtility.ResetAssetEditingDepthForTesting();
+            }
+            catch
+            {
+                // Best-effort cleanup - ignore exceptions during teardown
+            }
+
             if (!Application.isPlaying && _trackedScenes.Count > 0)
             {
                 CloseTrackedScenesInEditor();
@@ -170,28 +231,33 @@ namespace WallstopStudios.UnityHelpers.Tests.Core
 
             if (!Application.isPlaying && _trackedObjects.Count > 0)
             {
-                Object[] snapshot = _trackedObjects.ToArray();
-                foreach (Object obj in snapshot)
-                {
-                    if (obj != null)
-                    {
 #if UNITY_EDITOR
-                        // If the object is a persisted asset, use AssetDatabase.DeleteAsset
-                        // DestroyImmediate without allowDestroyingAssets=true will fail for assets
-                        if (UnityEditor.EditorUtility.IsPersistent(obj))
-                        {
-                            string assetPath = UnityEditor.AssetDatabase.GetAssetPath(obj);
-                            if (!string.IsNullOrEmpty(assetPath))
-                            {
-                                UnityEditor.AssetDatabase.DeleteAsset(assetPath);
-                                continue;
-                            }
-                        }
+                using (AssetDatabaseBatchHelper.BeginBatch(refreshOnDispose: false))
 #endif
-                        Object.DestroyImmediate(obj); // UNH-SUPPRESS: Required for EditMode test cleanup
+                {
+                    Object[] snapshot = _trackedObjects.ToArray();
+                    foreach (Object obj in snapshot)
+                    {
+                        if (obj != null)
+                        {
+#if UNITY_EDITOR
+                            // If the object is a persisted asset, use AssetDatabase.DeleteAsset
+                            // DestroyImmediate without allowDestroyingAssets=true will fail for assets
+                            if (UnityEditor.EditorUtility.IsPersistent(obj))
+                            {
+                                string assetPath = UnityEditor.AssetDatabase.GetAssetPath(obj);
+                                if (!string.IsNullOrEmpty(assetPath))
+                                {
+                                    UnityEditor.AssetDatabase.DeleteAsset(assetPath);
+                                    continue;
+                                }
+                            }
+#endif
+                            Object.DestroyImmediate(obj); // UNH-SUPPRESS: Required for EditMode test cleanup
+                        }
                     }
+                    _trackedObjects.Clear();
                 }
-                _trackedObjects.Clear();
             }
 
             DisposeDispatcherScope();
@@ -235,15 +301,77 @@ namespace WallstopStudios.UnityHelpers.Tests.Core
             }
 
 #if UNITY_EDITOR
+            // Safety cleanup: ensure AssetDatabase is not stuck in batch mode
+            // All AssetDatabase batching now uses the unified Editor.Utils.AssetDatabaseBatchHelper
+            try
+            {
+                // Only reset batch depth if not using fixture-level batching (BatchedEditorTestBase)
+                // When DeferAssetCleanupToOneTimeTearDown is true, the fixture manages its own batch scope
+                if (!DeferAssetCleanupToOneTimeTearDown)
+                {
+                    // Reset unified batch helper (handles all AssetDatabase state cleanup)
+                    Editor.Utils.AssetDatabaseBatchHelper.ResetBatchDepth();
+                }
+                // Reset legacy state in production code classes
+                ScriptableObjectSingletonCreator.ResetAssetEditingScopeDepthForTesting();
+                ScriptableObjectSingletonMetadataUtility.ResetAssetEditingDepthForTesting();
+            }
+            catch
+            {
+                // Best-effort cleanup - ignore exceptions during teardown
+            }
+
             EditorUi.Suppress = _previousEditorUiSuppress;
 #endif
             DisposeDispatcherScope();
+        }
+
+        /// <summary>
+        /// Called once before any tests in the fixture run.
+        /// Subclasses can override to create shared test assets using BeginBatch().
+        /// </summary>
+        [OneTimeSetUp]
+        public virtual void CommonOneTimeSetUp()
+        {
+#if UNITY_EDITOR
+            // Reset counters only (not Unity state) to handle domain reload scenarios.
+            // After a domain reload, Unity's internal AssetDatabase state is reset to zero,
+            // but our static counters may persist with stale values from previous sessions.
+            // Using ResetCountersOnly() (not ResetBatchDepth()) ensures we don't call
+            // StopAssetEditing/AllowAutoRefresh when Unity's counters are already at zero,
+            // which would cause assertion failures.
+            try
+            {
+                Editor.Utils.AssetDatabaseBatchHelper.ResetCountersOnly();
+            }
+            catch
+            {
+                // Best-effort cleanup - ignore exceptions during setup
+            }
+#endif
+            // Subclasses can override to create shared test assets using BeginBatch()
         }
 
         [OneTimeTearDown]
         public virtual void OneTimeTearDown()
         {
 #if UNITY_EDITOR
+            // Safety cleanup: ensure AssetDatabase is not stuck in batch mode
+            // Use force reset at OneTimeTearDown for maximum cleanup
+            // All AssetDatabase batching now uses the unified Editor.Utils.AssetDatabaseBatchHelper
+            try
+            {
+                // Reset unified batch helper (handles all AssetDatabase state cleanup)
+                Editor.Utils.AssetDatabaseBatchHelper.ForceResetAssetDatabase();
+                // Reset legacy state in production code classes
+                ScriptableObjectSingletonCreator.ResetAssetEditingScopeDepthForTesting();
+                ScriptableObjectSingletonMetadataUtility.ResetAssetEditingDepthForTesting();
+            }
+            catch
+            {
+                // Best-effort cleanup - ignore exceptions during teardown
+            }
+
             if (_trackedScenes.Count > 0)
             {
                 CloseTrackedScenesInEditor();
@@ -252,28 +380,33 @@ namespace WallstopStudios.UnityHelpers.Tests.Core
 
             if (_trackedObjects.Count > 0)
             {
-                Object[] snapshot = _trackedObjects.ToArray();
-                foreach (Object obj in snapshot)
-                {
-                    if (obj != null)
-                    {
 #if UNITY_EDITOR
-                        // If the object is a persisted asset, use AssetDatabase.DeleteAsset
-                        // DestroyImmediate without allowDestroyingAssets=true will fail for assets
-                        if (UnityEditor.EditorUtility.IsPersistent(obj))
-                        {
-                            string assetPath = UnityEditor.AssetDatabase.GetAssetPath(obj);
-                            if (!string.IsNullOrEmpty(assetPath))
-                            {
-                                UnityEditor.AssetDatabase.DeleteAsset(assetPath);
-                                continue;
-                            }
-                        }
+                using (AssetDatabaseBatchHelper.BeginBatch(refreshOnDispose: false))
 #endif
-                        Object.DestroyImmediate(obj); // UNH-SUPPRESS: Required for final test cleanup
+                {
+                    Object[] snapshot = _trackedObjects.ToArray();
+                    foreach (Object obj in snapshot)
+                    {
+                        if (obj != null)
+                        {
+#if UNITY_EDITOR
+                            // If the object is a persisted asset, use AssetDatabase.DeleteAsset
+                            // DestroyImmediate without allowDestroyingAssets=true will fail for assets
+                            if (UnityEditor.EditorUtility.IsPersistent(obj))
+                            {
+                                string assetPath = UnityEditor.AssetDatabase.GetAssetPath(obj);
+                                if (!string.IsNullOrEmpty(assetPath))
+                                {
+                                    UnityEditor.AssetDatabase.DeleteAsset(assetPath);
+                                    continue;
+                                }
+                            }
+#endif
+                            Object.DestroyImmediate(obj); // UNH-SUPPRESS: Required for final test cleanup
+                        }
                     }
+                    _trackedObjects.Clear();
                 }
-                _trackedObjects.Clear();
             }
 
             if (_trackedDisposables.Count > 0)
@@ -747,43 +880,212 @@ namespace WallstopStudios.UnityHelpers.Tests.Core
         /// Cleans up all tracked folders and assets that were created by this test.
         /// Only deletes folders/assets that were explicitly tracked - user data is safe.
         /// Folders are deleted in reverse order (deepest first) to handle nested structures.
+        /// When <see cref="DeferAssetCleanupToOneTimeTearDown"/> is true, assets are accumulated
+        /// for batch cleanup in OneTimeTearDown instead of being deleted immediately.
         /// </summary>
         protected void CleanupTrackedFoldersAndAssets()
         {
 #if UNITY_EDITOR
-            // First, delete tracked assets
-            foreach (string assetPath in _trackedAssetPaths)
+            if (DeferAssetCleanupToOneTimeTearDown)
             {
-                if (
-                    !string.IsNullOrEmpty(assetPath)
-                    && UnityEditor.AssetDatabase.LoadAssetAtPath<Object>(assetPath) != null
-                )
+                // Accumulate for batch cleanup later - don't delete or refresh yet
+                _deferredAssetPaths.AddRange(_trackedAssetPaths);
+                _deferredFolderPaths.AddRange(_trackedFolders);
+                _trackedAssetPaths.Clear();
+                _trackedFolders.Clear();
+                return;
+            }
+
+            using (AssetDatabaseBatchHelper.BeginBatch(refreshOnDispose: false))
+            {
+                // First, delete tracked assets
+                foreach (string assetPath in _trackedAssetPaths)
                 {
-                    UnityEditor.AssetDatabase.DeleteAsset(assetPath);
+                    if (
+                        !string.IsNullOrEmpty(assetPath)
+                        && UnityEditor.AssetDatabase.LoadAssetAtPath<Object>(assetPath) != null
+                    )
+                    {
+                        UnityEditor.AssetDatabase.DeleteAsset(assetPath);
+                    }
+                }
+                _trackedAssetPaths.Clear();
+
+                // Sort folders by depth (deepest first) to delete children before parents
+                List<string> sortedFolders = new(_trackedFolders);
+                sortedFolders.Sort((a, b) => b.Split('/').Length.CompareTo(a.Split('/').Length));
+
+                foreach (string folderPath in sortedFolders)
+                {
+                    if (
+                        !string.IsNullOrEmpty(folderPath)
+                        && UnityEditor.AssetDatabase.IsValidFolder(folderPath)
+                    )
+                    {
+                        // Only delete if the folder is empty or contains only items we created
+                        // For safety, we'll delete the folder - if it has unexpected contents,
+                        // Unity will fail the delete which is fine
+                        UnityEditor.AssetDatabase.DeleteAsset(folderPath);
+                    }
+                }
+                _trackedFolders.Clear();
+            }
+
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
+#endif
+        }
+
+#if UNITY_EDITOR
+        /// <summary>
+        /// Executes an action with immediate asset import enabled by pausing any active batch scope.
+        /// Use this for operations that require immediate asset processing, such as
+        /// <see cref="UnityEditor.AssetImporter.SaveAndReimport"/> or texture operations that need
+        /// the asset to be fully imported before continuing.
+        /// </summary>
+        /// <param name="action">The action to execute outside of batch mode.</param>
+        /// <param name="refreshAfter">Whether to refresh the asset database after the action completes. Default is false.</param>
+        /// <remarks>
+        /// <para>
+        /// This method:
+        /// </para>
+        /// <list type="bullet">
+        /// <item>Pauses the current batch scope (if any)</item>
+        /// <item>Refreshes the AssetDatabase to ensure all pending operations are complete</item>
+        /// <item>Executes the provided action</item>
+        /// <item>Optionally refreshes the AssetDatabase again after the action (if <paramref name="refreshAfter"/> is true)</item>
+        /// <item>Resumes the batch scope</item>
+        /// </list>
+        /// <para>
+        /// Use sparingly, as each pause/resume cycle incurs overhead. Group related
+        /// immediate operations together when possible.
+        /// </para>
+        /// </remarks>
+        /// <example>
+        /// <code>
+        /// ExecuteWithImmediateImport(() =>
+        /// {
+        ///     TextureImporter importer = AssetImporter.GetAtPath(path) as TextureImporter;
+        ///     importer.textureType = TextureImporterType.Sprite;
+        ///     importer.SaveAndReimport();
+        /// }, refreshAfter: true);
+        /// </code>
+        /// </example>
+        protected void ExecuteWithImmediateImport(Action action, bool refreshAfter = false)
+        {
+            if (action == null)
+            {
+                return;
+            }
+
+            using (AssetDatabaseBatchHelper.PauseBatch())
+            {
+                UnityEditor.AssetDatabase.Refresh(
+                    UnityEditor.ImportAssetOptions.ForceSynchronousImport
+                );
+                action();
+                if (refreshAfter)
+                {
+                    UnityEditor.AssetDatabase.Refresh(
+                        UnityEditor.ImportAssetOptions.ForceSynchronousImport
+                    );
                 }
             }
-            _trackedAssetPaths.Clear();
+        }
 
-            // Sort folders by depth (deepest first) to delete children before parents
-            List<string> sortedFolders = new(_trackedFolders);
-            sortedFolders.Sort((a, b) => b.Split('/').Length.CompareTo(a.Split('/').Length));
-
-            foreach (string folderPath in sortedFolders)
+        /// <summary>
+        /// Executes a function with immediate asset import enabled by pausing any active batch scope
+        /// and returns the function's result.
+        /// </summary>
+        /// <typeparam name="T">The return type of the function.</typeparam>
+        /// <param name="func">The function to execute that returns a value.</param>
+        /// <param name="refreshAfter">
+        /// If <c>true</c>, a second <see cref="UnityEditor.AssetDatabase.Refresh"/> is called after <paramref name="func"/>
+        /// completes to ensure any newly created or modified assets are available. Default is <c>false</c>.
+        /// </param>
+        /// <returns>The result of the function, or <c>default(T)</c> if <paramref name="func"/> is <c>null</c>.</returns>
+        /// <remarks>
+        /// This method is useful when you need to perform asset operations that return values while
+        /// ensuring proper AssetDatabase synchronization. For void operations, use
+        /// <see cref="ExecuteWithImmediateImport(Action, bool)"/> instead.
+        /// </remarks>
+        /// <example>
+        /// <code>
+        /// TextureImporter importer = ExecuteWithImmediateImport(() =>
+        /// {
+        ///     return AssetImporter.GetAtPath(texturePath) as TextureImporter;
+        /// });
+        /// </code>
+        /// </example>
+        protected T ExecuteWithImmediateImport<T>(Func<T> func, bool refreshAfter = false)
+        {
+            if (func == null)
             {
-                if (
-                    !string.IsNullOrEmpty(folderPath)
-                    && UnityEditor.AssetDatabase.IsValidFolder(folderPath)
-                )
-                {
-                    // Only delete if the folder is empty or contains only items we created
-                    // For safety, we'll delete the folder - if it has unexpected contents,
-                    // Unity will fail the delete which is fine
-                    UnityEditor.AssetDatabase.DeleteAsset(folderPath);
-                }
+                return default;
             }
-            _trackedFolders.Clear();
 
-            UnityEditor.AssetDatabase.Refresh();
+            using (AssetDatabaseBatchHelper.PauseBatch())
+            {
+                UnityEditor.AssetDatabase.Refresh(
+                    UnityEditor.ImportAssetOptions.ForceSynchronousImport
+                );
+                T result = func();
+                if (refreshAfter)
+                {
+                    UnityEditor.AssetDatabase.Refresh(
+                        UnityEditor.ImportAssetOptions.ForceSynchronousImport
+                    );
+                }
+                return result;
+            }
+        }
+#endif
+
+        /// <summary>
+        /// Performs batch cleanup of all deferred assets and folders.
+        /// Call this in OneTimeTearDown when <see cref="DeferAssetCleanupToOneTimeTearDown"/> is true.
+        /// </summary>
+        protected void CleanupDeferredAssetsAndFolders()
+        {
+#if UNITY_EDITOR
+            if (_deferredAssetPaths.Count == 0 && _deferredFolderPaths.Count == 0)
+            {
+                return;
+            }
+
+            using (AssetDatabaseBatchHelper.BeginBatch(refreshOnDispose: false))
+            {
+                // Delete all accumulated assets
+                foreach (string assetPath in _deferredAssetPaths)
+                {
+                    if (
+                        !string.IsNullOrEmpty(assetPath)
+                        && UnityEditor.AssetDatabase.LoadAssetAtPath<Object>(assetPath) != null
+                    )
+                    {
+                        UnityEditor.AssetDatabase.DeleteAsset(assetPath);
+                    }
+                }
+                _deferredAssetPaths.Clear();
+
+                // Sort folders by depth (deepest first) and delete
+                List<string> sortedFolders = new(_deferredFolderPaths);
+                sortedFolders.Sort((a, b) => b.Split('/').Length.CompareTo(a.Split('/').Length));
+
+                foreach (string folderPath in sortedFolders)
+                {
+                    if (
+                        !string.IsNullOrEmpty(folderPath)
+                        && UnityEditor.AssetDatabase.IsValidFolder(folderPath)
+                    )
+                    {
+                        UnityEditor.AssetDatabase.DeleteAsset(folderPath);
+                    }
+                }
+                _deferredFolderPaths.Clear();
+            }
+
+            // Single refresh at end of all cleanup
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 #endif
         }
 
@@ -796,10 +1098,37 @@ namespace WallstopStudios.UnityHelpers.Tests.Core
         /// - Assets/Resources: CreatorTests, Deep, Lifecycle, Loose, Multi, etc.
         /// - Assets: Temp and its duplicates (Temp 1, Temp 2, etc.)
         /// - Assets/Resources: Wallstop Studios duplicates (Wallstop Studios 1, etc.)
+        ///
+        /// This method automatically batches its operations when not already inside a batch scope.
+        /// If called from within an existing batch scope, it will respect that scope.
         /// </remarks>
         protected static void CleanupAllKnownTestFolders()
         {
+            // Use batching if not already in a batch scope to improve performance
+            // and ensure atomic cleanup operations
+            bool shouldBatch = !AssetDatabaseBatchHelper.IsCurrentlyBatching;
+            IDisposable batchScope = shouldBatch
+                ? AssetDatabaseBatchHelper.BeginBatch(refreshOnDispose: true)
+                : null;
+
+            try
+            {
+                CleanupAllKnownTestFoldersInternal();
+            }
+            finally
+            {
+                batchScope?.Dispose();
+            }
+        }
+
+        /// <summary>
+        /// Internal implementation of CleanupAllKnownTestFolders that performs the actual cleanup.
+        /// This method assumes it's called either within a batch scope or that batching is not needed.
+        /// </summary>
+        private static void CleanupAllKnownTestFoldersInternal()
+        {
             // List of test folder patterns to clean up (relative to Assets/Resources)
+            // IMPORTANT: If you update this list, also update CleanupAllKnownTestFoldersTests.ResourcesTestFolderPatterns()
             string[] resourcesTestFolderPatterns = new[]
             {
                 "CreatorTests",
@@ -822,9 +1151,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Core
 
             // List of test folder patterns to clean up (relative to Assets)
             // Note: "Temp" will also match "Temp 1", "Temp 2", etc. due to duplicate handling
+            // IMPORTANT: If you update this list, also update CleanupAllKnownTestFoldersTests.AssetsTestFolderPatterns()
             string[] assetsTestFolderPatterns = new[]
             {
                 "Temp",
+                "TempCleanupIntegrationTests",
                 "TempMultiFileSelectorTests",
                 "TempSpriteApplierTests",
                 "TempSpriteApplierAdditional",
@@ -833,6 +1164,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Core
                 "TempHelpersPrefabs",
                 "TempHelpersScriptables",
                 "TempColorExtensionTests",
+                "TempTestFolder",
+                "TestFolder",
+                "__LlmArtifactCleanerTests__",
+                "__DetectAssetChangedTests__",
             };
 
             // Also clean up duplicate Wallstop Studios folders
@@ -841,12 +1176,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Core
             // Clean up duplicate "Unity Helpers" folders inside Wallstop Studios
             string[] unityHelpersDuplicatePatterns = new[] { "Unity Helpers" };
 
+            // Clean up duplicate "Resources" folders (e.g., "Resources 1", "Resources 2", etc.)
+            // These are created when parallel tests or failed cleanup leaves orphaned folders
+            string[] resourcesDuplicatePatterns = new[] { "Resources" };
+
             string resourcesRoot = "Assets/Resources";
             string assetsRoot = "Assets";
             string wallstopStudiosRoot = "Assets/Resources/Wallstop Studios";
-
-            // First, refresh to ensure we have current state
-            UnityEditor.AssetDatabase.Refresh();
 
             // Clean up test folders in Assets/Resources and their duplicates
             foreach (string pattern in resourcesTestFolderPatterns)
@@ -870,6 +1206,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Core
             foreach (string pattern in unityHelpersDuplicatePatterns)
             {
                 CleanupDuplicateFoldersOnly(wallstopStudiosRoot, pattern);
+            }
+
+            // Clean up Resources duplicates in Assets folder (e.g., "Resources 1", "Resources 2")
+            foreach (string pattern in resourcesDuplicatePatterns)
+            {
+                CleanupDuplicateFoldersOnly(assetsRoot, pattern);
             }
 
             // Also clean up from disk to handle orphaned folders
@@ -911,11 +1253,14 @@ namespace WallstopStudios.UnityHelpers.Tests.Core
                     {
                         CleanupFolderAndDuplicatesOnDisk(assetsOnDisk, pattern);
                     }
+
+                    // Clean up Resources duplicates on disk (e.g., "Resources 1", "Resources 2")
+                    foreach (string pattern in resourcesDuplicatePatterns)
+                    {
+                        CleanupDuplicateFoldersOnlyOnDisk(assetsOnDisk, pattern);
+                    }
                 }
             }
-
-            UnityEditor.AssetDatabase.SaveAssets();
-            UnityEditor.AssetDatabase.Refresh();
         }
 
         /// <summary>
@@ -986,7 +1331,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Core
         }
 
         /// <summary>
-        /// Checks if a folder name matches the pattern "BaseName N" where N is a number.
+        /// Checks if a folder name matches the pattern "BaseName N" where N is a positive integer.
+        /// Unity creates duplicate folders with names like "Folder 1", "Folder 2", etc.
         /// </summary>
         private static bool IsDuplicateFolder(string actualName, string baseName)
         {
@@ -996,7 +1342,16 @@ namespace WallstopStudios.UnityHelpers.Tests.Core
             }
 
             string suffix = actualName.Substring(baseName.Length + 1);
-            return int.TryParse(suffix, out _);
+
+            // Reject if suffix starts with whitespace (handles double-space like "Folder  1")
+            // int.TryParse would otherwise accept " 1" as valid since it trims whitespace
+            if (suffix.Length == 0 || char.IsWhiteSpace(suffix[0]))
+            {
+                return false;
+            }
+
+            // Only positive integers are valid duplicates (Unity uses 1, 2, 3, etc.)
+            return int.TryParse(suffix, out int number) && number > 0;
         }
 
         /// <summary>
@@ -1022,6 +1377,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Core
         {
             ("Assets/Resources/Wallstop Studios", "Unity Helpers"),
             ("Assets/Resources", "Wallstop Studios"),
+            ("Assets", "Resources"), // "Resources 1", "Resources 2", etc. are pollution
+            ("Assets", "Temp"), // "Temp 1", "Temp 2", etc. are pollution
         };
 
         /// <summary>

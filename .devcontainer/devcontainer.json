@@ -39,6 +39,7 @@
         "editorconfig.editorconfig",
         "GitHub.copilot",
         "GitHub.copilot-chat",
+        "anthropic.claude-code",
         "streetsidesoftware.code-spell-checker",
         "DavidAnson.vscode-markdownlint"
       ],

@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Tests.DataStructures
@@ -11,6 +11,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
     using NUnit.Framework;
     using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class WGuidTests
     {
         private const string NonVersionFourGuid = "00000000-0000-1000-8000-000000000000";

@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2023 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Core.Extension
@@ -199,9 +199,9 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 return;
             }
 
-            Reverse(list, 0, count - 1);
-            Reverse(list, 0, amount - 1);
-            Reverse(list, amount, count - 1);
+            list.Reverse(0, count - 1);
+            list.Reverse(0, amount - 1);
+            list.Reverse(amount, count - 1);
         }
 
         /// <summary>
@@ -308,87 +308,87 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             {
                 case SortAlgorithm.Ghost:
                 {
-                    GhostSort(array, comparer);
+                    array.GhostSort(comparer);
                     return;
                 }
                 case SortAlgorithm.Insertion:
                 {
-                    InsertionSort(array, comparer);
+                    array.InsertionSort(comparer);
                     return;
                 }
                 case SortAlgorithm.Meteor:
                 {
-                    MeteorSort(array, comparer);
+                    array.MeteorSort(comparer);
                     return;
                 }
                 case SortAlgorithm.PatternDefeatingQuickSort:
                 {
-                    PatternDefeatingQuickSort(array, comparer);
+                    array.PatternDefeatingQuickSort(comparer);
                     return;
                 }
                 case SortAlgorithm.Grail:
                 {
-                    GrailSort(array, comparer);
+                    array.GrailSort(comparer);
                     return;
                 }
                 case SortAlgorithm.Power:
                 {
-                    PowerSort(array, comparer);
+                    array.PowerSort(comparer);
                     return;
                 }
                 case SortAlgorithm.Tim:
                 {
-                    TimSort(array, comparer);
+                    array.TimSort(comparer);
                     return;
                 }
                 case SortAlgorithm.Jesse:
                 {
-                    JesseSort(array, comparer);
+                    array.JesseSort(comparer);
                     return;
                 }
                 case SortAlgorithm.Green:
                 {
-                    GreenSort(array, comparer);
+                    array.GreenSort(comparer);
                     return;
                 }
                 case SortAlgorithm.Ska:
                 {
-                    SkaSort(array, comparer);
+                    array.SkaSort(comparer);
                     return;
                 }
                 case SortAlgorithm.Ipn:
                 {
-                    IpnSort(array, comparer);
+                    array.IpnSort(comparer);
                     return;
                 }
                 case SortAlgorithm.Smooth:
                 {
-                    SmoothSort(array, comparer);
+                    array.SmoothSort(comparer);
                     return;
                 }
                 case SortAlgorithm.Block:
                 {
-                    BlockMergeSort(array, comparer);
+                    array.BlockMergeSort(comparer);
                     return;
                 }
                 case SortAlgorithm.Ips4o:
                 {
-                    Ips4oSort(array, comparer);
+                    array.Ips4oSort(comparer);
                     return;
                 }
                 case SortAlgorithm.PowerPlus:
                 {
-                    PowerSortPlus(array, comparer);
+                    array.PowerSortPlus(comparer);
                     return;
                 }
                 case SortAlgorithm.Glide:
                 {
-                    GlideSort(array, comparer);
+                    array.GlideSort(comparer);
                     return;
                 }
                 case SortAlgorithm.Flux:
                 {
-                    FluxSort(array, comparer);
+                    array.FluxSort(comparer);
                     return;
                 }
                 default:
@@ -2320,7 +2320,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 int end = index - 1;
                 if (!ascending && start < end)
                 {
-                    Reverse(array, start, end);
+                    array.Reverse(start, end);
                 }
 
                 runs.Add((start, end - start + 1));
@@ -2504,7 +2504,8 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
                 {
                     runEnd++;
                 }
-                Reverse(array, start, runEnd - 1);
+
+                array.Reverse(start, runEnd - 1);
             }
 
             return runEnd - start;
@@ -3455,7 +3456,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         /// </remarks>
         public static void RotateLeft<T>(this IList<T> list, int positions = 1)
         {
-            Shift(list, -positions);
+            list.Shift(-positions);
         }
 
         /// <summary>
@@ -3473,7 +3474,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         /// </remarks>
         public static void RotateRight<T>(this IList<T> list, int positions = 1)
         {
-            Shift(list, positions);
+            list.Shift(positions);
         }
 
         /// <summary>

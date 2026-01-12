@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 #if UNITY_EDITOR
@@ -21,7 +21,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Utils.WButton
     using Object = UnityEngine.Object;
 
     [TestFixture]
-    public sealed class WButtonRenderingTests : CommonTestBase
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
+    public sealed class WButtonRenderingTests : BatchedEditorTestBase
     {
         [SetUp]
         public override void BaseSetUp()

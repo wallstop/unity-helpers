@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2024 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Core.Helper
@@ -217,7 +217,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             for (int i = 0; i < transform.childCount; ++i)
             {
                 Transform child = transform.GetChild(i);
-                EnableRecursively(child, enabled, exclude);
+                child.EnableRecursively(enabled, exclude);
             }
         }
 
@@ -255,7 +255,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             for (int i = 0; i < transform.childCount; ++i)
             {
                 Transform child = transform.GetChild(i);
-                EnableRendererRecursively(child, enabled, exclude);
+                child.EnableRendererRecursively(enabled, exclude);
             }
         }
 
@@ -267,12 +267,12 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 #if UNITY_EDITOR
             if (Application.isEditor)
             {
-                EditorDestroyAllChildrenGameObjects(gameObject);
+                gameObject.EditorDestroyAllChildrenGameObjects();
             }
             else
 #endif
             {
-                PlayDestroyAllChildrenGameObjects(gameObject);
+                gameObject.PlayDestroyAllChildrenGameObjects();
             }
         }
 
@@ -288,7 +288,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             gameObject.GetComponents(components);
             foreach (T component in components)
             {
-                SmartDestroy(component);
+                component.SmartDestroy();
             }
         }
 
@@ -337,18 +337,15 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             Func<GameObject, bool> acceptancePredicate
         )
         {
-            InternalDestroyAllChildrenGameObjects(
-                gameObject,
-                toDestroy =>
+            gameObject.InternalDestroyAllChildrenGameObjects(toDestroy =>
+            {
+                if (!acceptancePredicate(toDestroy))
                 {
-                    if (!acceptancePredicate(toDestroy))
-                    {
-                        return;
-                    }
-
-                    Object.DestroyImmediate(toDestroy);
+                    return;
                 }
-            );
+
+                Object.DestroyImmediate(toDestroy);
+            });
         }
 
         /// <summary>
@@ -359,37 +356,34 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             Func<GameObject, bool> acceptancePredicate
         )
         {
-            InternalDestroyAllChildrenGameObjects(
-                gameObject,
-                toDestroy =>
+            gameObject.InternalDestroyAllChildrenGameObjects(toDestroy =>
+            {
+                if (!acceptancePredicate(toDestroy))
                 {
-                    if (!acceptancePredicate(toDestroy))
-                    {
-                        return;
-                    }
-
-                    toDestroy.Destroy();
+                    return;
                 }
-            );
+
+                toDestroy.Destroy();
+            });
         }
 
         /// <summary>
         /// Immediately destroys all direct child GameObjects.
         /// </summary>
         public static void DestroyAllChildrenGameObjectsImmediately(this GameObject gameObject) =>
-            InternalDestroyAllChildrenGameObjects(gameObject, go => Object.DestroyImmediate(go));
+            gameObject.InternalDestroyAllChildrenGameObjects(go => Object.DestroyImmediate(go));
 
         /// <summary>
         /// Destroys all direct child GameObjects using Destroy (play mode safe).
         /// </summary>
         public static void PlayDestroyAllChildrenGameObjects(this GameObject gameObject) =>
-            InternalDestroyAllChildrenGameObjects(gameObject, go => go.Destroy());
+            gameObject.InternalDestroyAllChildrenGameObjects(go => go.Destroy());
 
         /// <summary>
         /// Destroys all direct child GameObjects using Destroy (editor utility).
         /// </summary>
         public static void EditorDestroyAllChildrenGameObjects(this GameObject gameObject) =>
-            InternalDestroyAllChildrenGameObjects(gameObject, go => go.Destroy());
+            gameObject.InternalDestroyAllChildrenGameObjects(go => go.Destroy());
 
         private static void InternalDestroyAllChildrenGameObjects(
             this GameObject gameObject,
@@ -443,7 +437,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 return false;
             }
 
-            return IsPrefab(component.gameObject);
+            return component.gameObject.IsPrefab();
         }
 
         /// <summary>

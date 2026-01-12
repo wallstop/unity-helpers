@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 #if UNITY_EDITOR
@@ -13,6 +13,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Core.Attributes
     using WallstopStudios.UnityHelpers.Tests.Core;
     using WallstopStudios.UnityHelpers.Tests.Core.TestTypes;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class RelationalComponentAssignerTests : CommonTestBase
     {
         private AttributeMetadataCache CreateCacheWithSiblingSelfInclusionMetadata()
@@ -77,7 +80,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Core.Attributes
             RelationalComponentAssigner assigner = new(cache);
 
             GameObject go1 = NewGameObject("Relational");
-            Assert.IsNotNull(go1, "Failed to create Relational GameObject");
+            Assert.IsTrue(go1 != null, "Failed to create Relational GameObject");
 
             SpriteRenderer sr1 = go1.AddComponent<SpriteRenderer>();
             Assert.IsTrue(sr1 != null, "Failed to add SpriteRenderer to Relational GameObject");
@@ -89,7 +92,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Core.Attributes
             );
 
             GameObject go2 = NewGameObject("NonRelational");
-            Assert.IsNotNull(go2, "Failed to create NonRelational GameObject");
+            Assert.IsTrue(go2 != null, "Failed to create NonRelational GameObject");
 
             EnabledProbe non = go2.AddComponent<EnabledProbe>();
             Assert.IsTrue(non != null, "Failed to add EnabledProbe to NonRelational GameObject");

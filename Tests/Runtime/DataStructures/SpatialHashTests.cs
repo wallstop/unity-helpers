@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Tests.DataStructures
@@ -10,6 +10,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.DataStructure;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class SpatialHashTests
     {
         private readonly List<IDisposable> _trackedResources = new();
@@ -121,7 +123,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             hash.Query(new Vector2(0, 0), 1.0f, results);
 
             Assert.AreEqual(1, results.Count);
-            Assert.IsNull(results[0]);
+            Assert.IsTrue(results[0] == null, "Queried item should be null as inserted");
         }
 
         [Test]

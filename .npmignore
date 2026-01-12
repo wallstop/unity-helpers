@@ -2,6 +2,17 @@
 # This file explicitly controls what gets excluded from npm pack/publish
 # to ensure Unity .meta files and package assets are properly included.
 
+# Python virtual environment and cache (synced with .gitignore)
+.venv/**
+.venv/
+.venv
+.venv.meta
+__pycache__/
+**/__pycache__/
+*.pyc
+**__pycache__.meta
+scripts/wiki/__pycache__.meta
+
 # Development/CI files
 .github/
 .devcontainer/
@@ -89,6 +100,7 @@ Editor/Analyzers/*.pdb
 *.tmp
 *.tmp_proj
 *.log
+*.log.meta
 method-analysis-*
 TestProjects.meta
 TestProjects/

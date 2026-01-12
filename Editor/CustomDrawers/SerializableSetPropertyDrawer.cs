@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
@@ -20,6 +20,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
     using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
     using WallstopStudios.UnityHelpers.Core.Extension;
     using WallstopStudios.UnityHelpers.Core.Helper;
+    using WallstopStudios.UnityHelpers.Editor.Core.Helper;
     using WallstopStudios.UnityHelpers.Editor.Settings;
     using WallstopStudios.UnityHelpers.Editor.Utils;
     using WallstopStudios.UnityHelpers.Utils;
@@ -57,7 +58,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         private static readonly GUIContent PaginationPageLabelContent = new();
         private static readonly GUIContent RangeLabelGUIContent = new();
         private static readonly object NullComparable = new();
-        private static readonly Dictionary<(int, int), string> PaginationLabelCache = new();
         private static readonly Dictionary<(int, int, int), string> RangeLabelCache = new();
 
         private static readonly GUIStyle AddButtonStyle = CreateSolidButtonStyle(
@@ -94,14 +94,22 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         private const float ManualEntryFoldoutValueLeftShiftReduction = 6f;
         private const float ManualEntryFoldoutValueRightShift = 3f;
         private const float ManualEntryExpandableValueFoldoutGutter = 7f;
-        private static readonly GUIContent ManualEntryFoldoutContent =
-            EditorGUIUtility.TrTextContent("New Entry");
-        private static readonly GUIContent ManualEntryValueContent = EditorGUIUtility.TrTextContent(
-            "Value"
-        );
-        private static readonly GUIContent ManualEntryAddContent = EditorGUIUtility.TrTextContent(
-            "Add"
-        );
+
+        // Lazy initialization to avoid calling EditorGUIUtility during static class loading,
+        // which can hang Unity during "Open Project: Open Scene" if the class is accessed
+        // before EditorGUIUtility is fully initialized.
+        private static GUIContent _manualEntryFoldoutContent;
+        private static GUIContent _manualEntryValueContent;
+        private static GUIContent _manualEntryAddContent;
+
+        private static GUIContent ManualEntryFoldoutContent =>
+            _manualEntryFoldoutContent ??= EditorGUIUtility.TrTextContent("New Entry");
+
+        private static GUIContent ManualEntryValueContent =>
+            _manualEntryValueContent ??= EditorGUIUtility.TrTextContent("Value");
+
+        private static GUIContent ManualEntryAddContent =>
+            _manualEntryAddContent ??= EditorGUIUtility.TrTextContent("Add");
         private static readonly GUIContent ManualEntryResetContent = new("Reset");
         private static GUIStyle _manualEntryFoldoutLabelStyle;
         private const float DuplicateShakeAmplitude = 2f;
@@ -7167,31 +7175,13 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             return FoldoutLabelContent;
         }
 
+        /// <summary>
+        /// Gets a cached pagination label in the format "Page X / Y".
+        /// Delegates to <see cref="EditorCacheHelper.GetPaginationLabel"/> for shared LRU caching.
+        /// </summary>
         private static string GetPaginationLabel(int currentPage, int pageCount)
         {
-            (int, int) key = (currentPage, pageCount);
-            if (PaginationLabelCache.TryGetValue(key, out string cached))
-            {
-                return cached;
-            }
-
-            using PooledResource<StringBuilder> lease = Buffers.GetStringBuilder(
-                24,
-                out StringBuilder builder
-            );
-            builder.Clear();
-            builder.Append("Page ");
-            builder.Append(currentPage);
-            builder.Append('/');
-            builder.Append(pageCount);
-            string result = builder.ToString();
-
-            if (PaginationLabelCache.Count < 10000)
-            {
-                PaginationLabelCache[key] = result;
-            }
-
-            return result;
+            return EditorCacheHelper.GetPaginationLabel(currentPage, pageCount);
         }
 
         private static string GetRangeLabel(int start, int end, int total)

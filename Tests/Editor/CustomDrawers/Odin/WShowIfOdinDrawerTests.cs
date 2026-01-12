@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
@@ -24,6 +24,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
     /// Tests for WShowIfOdinDrawer ensuring WShowIf attributes work correctly with Odin Inspector.
     /// </summary>
     [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class WShowIfOdinDrawerTests : CommonTestBase
     {
         [Test]

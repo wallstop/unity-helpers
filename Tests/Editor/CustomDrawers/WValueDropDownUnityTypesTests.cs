@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
@@ -20,6 +20,8 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
     /// to verify the generic reflection-based approach works for any serializable type.
     /// </summary>
     [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class WValueDropDownUnityTypesTests : CommonTestBase
     {
         [TearDown]
@@ -45,7 +47,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializedProperty property = serializedObject.FindProperty(
                 nameof(WValueDropDownUnityTypesAsset.selectedVector2)
             );
-            Assert.IsNotNull(property, "Failed to locate Vector2 property.");
+            Assert.IsTrue(property != null, "Failed to locate Vector2 property.");
 
             WValueDropDownDrawer.ApplyOption(property, target);
             serializedObject.ApplyModifiedProperties();
@@ -69,7 +71,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializedProperty property = serializedObject.FindProperty(
                 nameof(WValueDropDownUnityTypesAsset.selectedVector3)
             );
-            Assert.IsNotNull(property, "Failed to locate Vector3 property.");
+            Assert.IsTrue(property != null, "Failed to locate Vector3 property.");
 
             WValueDropDownDrawer.ApplyOption(property, target);
             serializedObject.ApplyModifiedProperties();
@@ -93,7 +95,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializedProperty property = serializedObject.FindProperty(
                 nameof(WValueDropDownUnityTypesAsset.selectedColor)
             );
-            Assert.IsNotNull(property, "Failed to locate Color property.");
+            Assert.IsTrue(property != null, "Failed to locate Color property.");
 
             WValueDropDownDrawer.ApplyOption(property, target);
             serializedObject.ApplyModifiedProperties();
@@ -117,7 +119,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializedProperty property = serializedObject.FindProperty(
                 nameof(WValueDropDownUnityTypesAsset.selectedRect)
             );
-            Assert.IsNotNull(property, "Failed to locate Rect property.");
+            Assert.IsTrue(property != null, "Failed to locate Rect property.");
 
             WValueDropDownDrawer.ApplyOption(property, target);
             serializedObject.ApplyModifiedProperties();
@@ -141,7 +143,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializedProperty property = serializedObject.FindProperty(
                 nameof(WValueDropDownUnityTypesAsset.selectedVector2Int)
             );
-            Assert.IsNotNull(property, "Failed to locate Vector2Int property.");
+            Assert.IsTrue(property != null, "Failed to locate Vector2Int property.");
 
             WValueDropDownDrawer.ApplyOption(property, target);
             serializedObject.ApplyModifiedProperties();
@@ -165,7 +167,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializedProperty property = serializedObject.FindProperty(
                 nameof(WValueDropDownUnityTypesAsset.selectedBounds)
             );
-            Assert.IsNotNull(property, "Failed to locate Bounds property.");
+            Assert.IsTrue(property != null, "Failed to locate Bounds property.");
 
             WValueDropDownDrawer.ApplyOption(property, target);
             serializedObject.ApplyModifiedProperties();
@@ -192,7 +194,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializedProperty property = serializedObject.FindProperty(
                 nameof(WValueDropDownUnityTypesAsset.selectedVector2)
             );
-            Assert.IsNotNull(property, "Failed to locate Vector2 property.");
+            Assert.IsTrue(property != null, "Failed to locate Vector2 property.");
 
             WValueDropDownDrawer drawer = new();
             WValueDropDownAttribute attribute = new(
@@ -206,8 +208,8 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             BaseField<string> selector = (BaseField<string>)element;
             WDropDownSelectorBase<string> dropDownSelector =
                 selector as WDropDownSelectorBase<string>;
-            Assert.IsNotNull(
-                dropDownSelector,
+            Assert.IsTrue(
+                dropDownSelector != null,
                 "Expected selector to derive from WDropDownSelectorBase<string>."
             );
             dropDownSelector.ApplySelection(2);
@@ -231,7 +233,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializedProperty property = serializedObject.FindProperty(
                 nameof(WValueDropDownUnityTypesAsset.selectedColor)
             );
-            Assert.IsNotNull(property, "Failed to locate Color property.");
+            Assert.IsTrue(property != null, "Failed to locate Color property.");
 
             WValueDropDownDrawer drawer = new();
             WValueDropDownAttribute attribute = new(
@@ -245,8 +247,8 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             BaseField<string> selector = (BaseField<string>)element;
             WDropDownSelectorBase<string> dropDownSelector =
                 selector as WDropDownSelectorBase<string>;
-            Assert.IsNotNull(
-                dropDownSelector,
+            Assert.IsTrue(
+                dropDownSelector != null,
                 "Expected selector to derive from WDropDownSelectorBase<string>."
             );
             dropDownSelector.ApplySelection(1);
@@ -266,7 +268,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializedProperty property = serializedObject.FindProperty(
                 nameof(WValueDropDownUnityTypesAsset.selectedVector2)
             );
-            Assert.IsNotNull(property, "Failed to locate Vector2 property.");
+            Assert.IsTrue(property != null, "Failed to locate Vector2 property.");
             Assert.That(property.propertyType, Is.EqualTo(SerializedPropertyType.Vector2));
         }
 
@@ -282,7 +284,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializedProperty property = serializedObject.FindProperty(
                 nameof(WValueDropDownUnityTypesAsset.selectedVector3)
             );
-            Assert.IsNotNull(property, "Failed to locate Vector3 property.");
+            Assert.IsTrue(property != null, "Failed to locate Vector3 property.");
             Assert.That(property.propertyType, Is.EqualTo(SerializedPropertyType.Vector3));
         }
 
@@ -298,7 +300,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializedProperty property = serializedObject.FindProperty(
                 nameof(WValueDropDownUnityTypesAsset.selectedColor)
             );
-            Assert.IsNotNull(property, "Failed to locate Color property.");
+            Assert.IsTrue(property != null, "Failed to locate Color property.");
             Assert.That(property.propertyType, Is.EqualTo(SerializedPropertyType.Color));
         }
 
@@ -314,7 +316,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializedProperty property = serializedObject.FindProperty(
                 nameof(WValueDropDownUnityTypesAsset.selectedRect)
             );
-            Assert.IsNotNull(property, "Failed to locate Rect property.");
+            Assert.IsTrue(property != null, "Failed to locate Rect property.");
             Assert.That(property.propertyType, Is.EqualTo(SerializedPropertyType.Rect));
         }
 
@@ -330,7 +332,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializedProperty property = serializedObject.FindProperty(
                 nameof(WValueDropDownUnityTypesAsset.selectedBounds)
             );
-            Assert.IsNotNull(property, "Failed to locate Bounds property.");
+            Assert.IsTrue(property != null, "Failed to locate Bounds property.");
             Assert.That(property.propertyType, Is.EqualTo(SerializedPropertyType.Bounds));
         }
 
@@ -385,13 +387,13 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializedProperty property = serializedObject.FindProperty(
                 nameof(WValueDropDownUnityTypesAsset.selectedVector2)
             );
-            Assert.IsNotNull(property, "Failed to locate Vector2 property.");
+            Assert.IsTrue(property != null, "Failed to locate Vector2 property.");
 
             WValueDropDownAttribute attribute =
                 PropertyDrawerTestHelper.GetAttributeFromProperty<WValueDropDownAttribute>(
                     property
                 );
-            Assert.IsNotNull(attribute, "Failed to retrieve attribute.");
+            Assert.IsTrue(attribute != null, "Failed to retrieve attribute.");
 
             object[] options = attribute.GetOptions(asset);
             Assert.That(options.Length, Is.EqualTo(2));
@@ -414,7 +416,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializedProperty property = serializedObject.FindProperty(
                 nameof(WValueDropDownUnityTypesAsset.selectedVector2)
             );
-            Assert.IsNotNull(property, "Failed to locate Vector2 property.");
+            Assert.IsTrue(property != null, "Failed to locate Vector2 property.");
 
             WValueDropDownDrawer drawer = new();
             WValueDropDownAttribute attribute = new(
@@ -427,7 +429,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 
             BaseField<string> selector = (BaseField<string>)element;
             DropdownField dropdown = selector.Q<DropdownField>();
-            Assert.IsNotNull(dropdown, "Dropdown field was not created.");
+            Assert.IsTrue(dropdown != null, "Dropdown field was not created.");
 
             Assert.That(
                 dropdown.value,

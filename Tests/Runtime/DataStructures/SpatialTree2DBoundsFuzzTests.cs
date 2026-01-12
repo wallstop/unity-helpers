@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Tests.DataStructures
@@ -11,6 +11,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
     using WallstopStudios.UnityHelpers.Tests.TestUtils;
     using Vector2 = UnityEngine.Vector2;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class SpatialTree2DBoundsFuzzTests
     {
         private static Vector2[] CreateGridPoints(Vector2Int gridSize)

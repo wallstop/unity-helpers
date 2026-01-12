@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Tests.Sprites
@@ -11,8 +11,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
     using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Editor.AssetProcessors;
     using WallstopStudios.UnityHelpers.Editor.Sprites;
+    using WallstopStudios.UnityHelpers.Editor.Utils;
     using WallstopStudios.UnityHelpers.Tests.Core;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class SpriteCropperTests : CommonTestBase
     {
         private const string Root = "Assets/Temp/SpriteCropperTests";
@@ -34,13 +38,26 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
             CleanupTrackedFoldersAndAssets();
         }
 
+        public override void CommonOneTimeSetUp()
+        {
+            base.CommonOneTimeSetUp();
+            DeferAssetCleanupToOneTimeTearDown = true;
+        }
+
+        [OneTimeTearDown]
+        public override void OneTimeTearDown()
+        {
+            CleanupDeferredAssetsAndFolders();
+            base.OneTimeTearDown();
+        }
+
         [Test]
         public void CropsTransparentMarginsAndPreservesPivot()
         {
             string src = Path.Combine(Root, "src.png").SanitizePath();
             // 16x16 with an opaque 10x10 square starting at (3,3)
             CreatePngWithOpaqueRect(src, 16, 16, 3, 3, 10, 10, Color.white);
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             // Ensure sprite importer single + readable
             TextureImporter imp = AssetImporter.GetAtPath(src) as TextureImporter;
@@ -60,7 +77,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
             window.FindFilesToProcess();
             window.ProcessFoundSprites();
 
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             // Source should be overwritten and cropped to 10x10
             Texture2D tex = AssetDatabase.LoadAssetAtPath<Texture2D>(src);
@@ -84,7 +101,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
             string outDir = Path.Combine(Root, "Out").SanitizePath();
             EnsureFolder(outDir);
             CreatePngWithOpaqueRect(src, 8, 8, 2, 2, 4, 4, Color.green);
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             TextureImporter imp = AssetImporter.GetAtPath(src) as TextureImporter;
             imp.textureType = TextureImporterType.Sprite;
@@ -102,7 +119,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
             window.FindFilesToProcess();
             window.ProcessFoundSprites();
 
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             string dst = Path.Combine(outDir, "Cropped_src2.png").SanitizePath();
             Assert.That(File.Exists(RelToFull(dst)), Is.True, "Cropped output should exist");

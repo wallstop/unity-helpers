@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Tests.Core.Threading
@@ -10,6 +10,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Core.Threading
     using UnityEngine.TestTools;
     using WallstopStudios.UnityHelpers.Core.Threading;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class SingleThreadedThreadPoolTests
     {
         [Test]

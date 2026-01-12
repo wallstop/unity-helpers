@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Tests.DataStructures
@@ -7,6 +7,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
     using NUnit.Framework;
     using WallstopStudios.UnityHelpers.Core.DataStructure;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class SparseSetTests
     {
         [Test]
@@ -531,7 +533,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             int count = set.ToArray(ref array);
 
             Assert.AreEqual(2, count);
-            Assert.IsNotNull(array);
+            Assert.IsTrue(array != null);
             Assert.AreEqual(2, array.Length);
         }
 
@@ -914,9 +916,9 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             set.TryAdd("test");
 
             Assert.IsFalse(set.TryGet(1, out string value));
-            Assert.IsNull(value);
+            Assert.IsTrue(value == null);
             Assert.IsFalse(set.TryGet(-1, out value));
-            Assert.IsNull(value);
+            Assert.IsTrue(value == null);
         }
 
         [Test]
@@ -930,7 +932,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             string[] array = new string[5];
             set.CopyTo(array, 1);
 
-            Assert.IsNull(array[0]);
+            Assert.IsTrue(array[0] == null);
             Assert.AreEqual("a", array[1]);
             Assert.AreEqual("b", array[2]);
             Assert.AreEqual("c", array[3]);

@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Tests.Tools
@@ -14,8 +14,22 @@ namespace WallstopStudios.UnityHelpers.Tests.Tools
     using WallstopStudios.UnityHelpers.Utils;
 
     [TestFixture]
-    public sealed class AnimationEventEditorViewModelTests : CommonTestBase
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
+    public sealed class AnimationEventEditorViewModelTests : BatchedEditorTestBase
     {
+        [SetUp]
+        public void SetUp()
+        {
+            base.BaseSetUp();
+        }
+
+        [TearDown]
+        public override void TearDown()
+        {
+            base.TearDown();
+        }
+
         [Test]
         public void LoadClipCopiesEventsAndBaseline()
         {
@@ -222,7 +236,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Tools
 
             viewModel.LoadClip(null);
 
-            Assert.IsNull(viewModel.CurrentClip);
+            Assert.IsTrue(
+                viewModel.CurrentClip == null,
+                "CurrentClip should be null after loading null clip"
+            );
             Assert.AreEqual(0f, viewModel.FrameRate);
             Assert.AreEqual(0, viewModel.Count);
             Assert.AreEqual(0, viewModel.ReferenceCurve.Count);
@@ -452,7 +469,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Tools
 
             AnimationEvent[] arr = viewModel.BuildEventArray();
 
-            Assert.IsNotNull(arr);
+            Assert.IsTrue(
+                arr != null,
+                "BuildEventArray should return non-null array even for null clip"
+            );
             Assert.AreEqual(0, arr.Length);
         }
 

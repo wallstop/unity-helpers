@@ -1,5 +1,7 @@
 # Skill: Debug IL2CPP
 
+<!-- trigger: il2cpp, aot, build, platform, webgl | IL2CPP build issues or AOT errors | Feature -->
+
 **Trigger**: When debugging IL2CPP build issues, platform-specific problems, or AOT compilation errors.
 
 ---

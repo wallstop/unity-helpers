@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Tests
@@ -9,6 +9,9 @@ namespace WallstopStudios.UnityHelpers.Tests
     using WallstopStudios.UnityHelpers.Editor;
     using WallstopStudios.UnityHelpers.Tests.Core;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class PersistentDirectorySettingsTests : CommonTestBase
     {
         [Test]
@@ -32,7 +35,7 @@ namespace WallstopStudios.UnityHelpers.Tests
             settings.RecordPath(tool, ctx, "Assets/B");
 
             DirectoryUsageData[] paths = settings.GetPaths(tool, ctx);
-            Assert.IsNotNull(paths);
+            Assert.IsTrue(paths != null);
             Assert.GreaterOrEqual(paths.Length, 3);
             Assert.AreEqual("Assets/A", paths[0].path);
             Assert.AreEqual("Assets/C", paths[1].path);
@@ -55,7 +58,7 @@ namespace WallstopStudios.UnityHelpers.Tests
             settings.RecordPath(tool, ctx, "Assets/Three");
 
             DirectoryUsageData[] top2 = settings.GetPaths(tool, ctx, topOnly: true, topN: 2);
-            Assert.IsNotNull(top2);
+            Assert.IsTrue(top2 != null);
             Assert.AreEqual(2, top2.Length);
             Assert.AreEqual("Assets/One", top2[0].path);
         }

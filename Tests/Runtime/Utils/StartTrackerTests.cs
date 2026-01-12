@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Tests.Utils
@@ -10,6 +10,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
     using WallstopStudios.UnityHelpers.Tests.Core;
     using WallstopStudios.UnityHelpers.Utils;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class StartTrackerTests : CommonTestBase
     {
         /// <summary>
@@ -141,7 +143,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             GameObject go = Track(new GameObject("Tracker", typeof(StartTracker)));
             StartTracker first = go.GetComponent<StartTracker>();
 
-            Assert.IsNotNull(first, "First StartTracker should exist");
+            Assert.IsTrue(first != null, "First StartTracker should exist");
             Assert.AreEqual(
                 1,
                 go.GetComponents<StartTracker>().Length,
@@ -154,8 +156,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             LogAssert.ignoreFailingMessages = false;
 
             // Verify the actual behavior: second component was not added
-            Assert.IsNull(
-                second,
+            Assert.IsTrue(
+                second == null,
                 "AddComponent should return null when DisallowMultipleComponent prevents addition"
             );
             Assert.AreEqual(

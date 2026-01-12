@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 #if !((UNITY_WEBGL && !UNITY_EDITOR) || ENABLE_IL2CPP)
@@ -11,10 +11,10 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
     using System;
     using System.Collections;
     using System.Collections.Generic;
-    using System.Linq;
     using System.Linq.Expressions;
     using System.Reflection;
     using System.Runtime.CompilerServices;
+    using WallstopStudios.UnityHelpers.Utils;
 #if UNITY_EDITOR
 #endif
 #if EMIT_DYNAMIC_IL
@@ -131,6 +131,11 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
     /// </threadsafety>
     public static partial class ReflectionHelpers
     {
+        /// <summary>
+        /// The standard property name for Unity's Behaviour.enabled property.
+        /// </summary>
+        private const string EnabledPropertyName = "enabled";
+
         // Cache for type resolution by name
 #if !SINGLE_THREADED
         private static readonly ConcurrentDictionary<string, Type> TypeResolutionCache = new(
@@ -262,23 +267,23 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 
         private static readonly bool CanCompileExpressions = CheckExpressionCompilationSupport();
         private static readonly bool DynamicIlSupported = CheckDynamicIlSupport();
-        private static bool? _ExpressionCapabilityOverride;
-        private static bool? _DynamicIlCapabilityOverride;
+        private static bool? _expressionCapabilityOverride;
+        private static bool? _dynamicIlCapabilityOverride;
 
         internal static bool ExpressionsEnabled =>
-            _ExpressionCapabilityOverride ?? CanCompileExpressions;
+            _expressionCapabilityOverride ?? CanCompileExpressions;
 
-        internal static bool DynamicIlEnabled => _DynamicIlCapabilityOverride ?? DynamicIlSupported;
+        internal static bool DynamicIlEnabled => _dynamicIlCapabilityOverride ?? DynamicIlSupported;
 
         internal static IDisposable OverrideReflectionCapabilities(
             bool? expressions,
             bool? dynamicIl
         )
         {
-            bool? previousExpressions = _ExpressionCapabilityOverride;
-            bool? previousDynamicIl = _DynamicIlCapabilityOverride;
-            _ExpressionCapabilityOverride = expressions;
-            _DynamicIlCapabilityOverride = dynamicIl;
+            bool? previousExpressions = _expressionCapabilityOverride;
+            bool? previousDynamicIl = _dynamicIlCapabilityOverride;
+            _expressionCapabilityOverride = expressions;
+            _dynamicIlCapabilityOverride = dynamicIl;
             return new CapabilityOverrideScope(previousExpressions, previousDynamicIl);
         }
 
@@ -301,8 +306,8 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                     return;
                 }
 
-                _ExpressionCapabilityOverride = _previousExpressions;
-                _DynamicIlCapabilityOverride = _previousDynamicIl;
+                _expressionCapabilityOverride = _previousExpressions;
+                _dynamicIlCapabilityOverride = _previousDynamicIl;
                 _disposed = true;
             }
         }
@@ -464,13 +469,22 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         public static Dictionary<string, PropertyInfo> LoadStaticPropertiesForType<T>()
         {
             Type type = typeof(T);
-            return type.GetProperties(BindingFlags.Static | BindingFlags.Public)
-                .Where(property => property.PropertyType == type)
-                .ToDictionary(
-                    property => property.Name,
-                    property => property,
-                    StringComparer.OrdinalIgnoreCase
-                );
+            PropertyInfo[] properties = type.GetProperties(
+                BindingFlags.Static | BindingFlags.Public
+            );
+            Dictionary<string, PropertyInfo> result = new(
+                properties.Length,
+                StringComparer.OrdinalIgnoreCase
+            );
+            for (int i = 0; i < properties.Length; i++)
+            {
+                PropertyInfo property = properties[i];
+                if (property.PropertyType == type)
+                {
+                    result[property.Name] = property;
+                }
+            }
+            return result;
         }
 
         /// <summary>
@@ -489,13 +503,20 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         public static Dictionary<string, FieldInfo> LoadStaticFieldsForType<T>()
         {
             Type type = typeof(T);
-            return type.GetFields(BindingFlags.Static | BindingFlags.Public)
-                .Where(field => field.FieldType == type)
-                .ToDictionary(
-                    field => field.Name,
-                    field => field,
-                    StringComparer.OrdinalIgnoreCase
-                );
+            FieldInfo[] fields = type.GetFields(BindingFlags.Static | BindingFlags.Public);
+            Dictionary<string, FieldInfo> result = new(
+                fields.Length,
+                StringComparer.OrdinalIgnoreCase
+            );
+            for (int i = 0; i < fields.Length; i++)
+            {
+                FieldInfo field = fields[i];
+                if (field.FieldType == type)
+                {
+                    result[field.Name] = field;
+                }
+            }
+            return result;
         }
 
         /// <summary>
@@ -1436,8 +1457,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         public static T CreateInstance<T>(params object[] parameters)
         {
             Type type = typeof(T);
-            Type[] parameterTypes =
-                parameters?.Select(p => p?.GetType()).ToArray() ?? Type.EmptyTypes;
+            Type[] parameterTypes = GetParameterTypes(parameters);
             ConstructorInfo constructor = type.GetConstructor(parameterTypes);
             if (constructor == null)
             {
@@ -1457,8 +1477,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         )
         {
             Type constructedType = genericTypeDefinition.MakeGenericType(genericArguments);
-            Type[] parameterTypes =
-                parameters?.Select(p => p?.GetType()).ToArray() ?? Type.EmptyTypes;
+            Type[] parameterTypes = GetParameterTypes(parameters);
             ConstructorInfo constructor = constructedType.GetConstructor(parameterTypes);
             if (constructor == null)
             {
@@ -1467,6 +1486,50 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 );
             }
             return (T)CreateInstance(constructor, parameters);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static Type[] GetParameterTypes(object[] parameters)
+        {
+            if (parameters == null || parameters.Length == 0)
+            {
+                return Type.EmptyTypes;
+            }
+            Type[] types = new Type[parameters.Length];
+            for (int i = 0; i < parameters.Length; i++)
+            {
+                types[i] = parameters[i]?.GetType();
+            }
+            return types;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static bool HasByRefParameter(ParameterInfo[] parameters)
+        {
+            for (int i = 0; i < parameters.Length; i++)
+            {
+                if (parameters[i].ParameterType.IsByRef)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static bool HasParameterTypeMismatch(
+            ParameterInfo[] parameters,
+            Type[] expectedTypes
+        )
+        {
+            for (int i = 0; i < parameters.Length; i++)
+            {
+                if (parameters[i].ParameterType != expectedTypes[i])
+                {
+                    return true;
+                }
+            }
+            return false;
         }
 
         /// <summary>
@@ -1534,6 +1597,12 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             )
             {
                 throw new ArgumentException("Method signature does not match <T1,T2,TReturn>.");
+            }
+            if (HasByRefParameter(ps))
+            {
+                throw new NotSupportedException(
+                    "ref/out parameters are not supported in typed invokers"
+                );
             }
 
             return DelegateFactory.GetStaticMethodInvokerTyped<T1, T2, TReturn>(method);
@@ -1669,7 +1738,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             {
                 throw new ArgumentException("Method signature does not match <T1,TReturn>.");
             }
-            if (ps.Any(p => p.ParameterType.IsByRef))
+            if (HasByRefParameter(ps))
             {
                 throw new NotSupportedException(
                     "ref/out parameters are not supported in typed invokers"
@@ -1700,7 +1769,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             {
                 throw new ArgumentException("Method signature does not match <T1,T2,T3,TReturn>.");
             }
-            if (ps.Any(p => p.ParameterType.IsByRef))
+            if (HasByRefParameter(ps))
             {
                 throw new NotSupportedException(
                     "ref/out parameters are not supported in typed invokers"
@@ -1734,7 +1803,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                     "Method signature does not match <T1,T2,T3,T4,TReturn>."
                 );
             }
-            if (ps.Any(p => p.ParameterType.IsByRef))
+            if (HasByRefParameter(ps))
             {
                 throw new NotSupportedException(
                     "ref/out parameters are not supported in typed invokers"
@@ -2293,16 +2362,13 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 throw new ArgumentException("Action invoker requires void return type");
             }
             ParameterInfo[] ps = method.GetParameters();
-            if (ps.Any(p => p.ParameterType.IsByRef))
+            if (HasByRefParameter(ps))
             {
                 throw new NotSupportedException(
                     "ref/out parameters are not supported in typed invokers"
                 );
             }
-            if (
-                ps.Length != parameters.Length
-                || ps.Where((t, i) => t.ParameterType != parameters[i]).Any()
-            )
+            if (ps.Length != parameters.Length || HasParameterTypeMismatch(ps, parameters))
             {
                 throw new ArgumentException("Method signature does not match Action parameters");
             }
@@ -2330,16 +2396,13 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 throw new ArgumentException("Instance type mismatch");
             }
             ParameterInfo[] ps = method.GetParameters();
-            if (ps.Any(p => p.ParameterType.IsByRef))
+            if (HasByRefParameter(ps))
             {
                 throw new NotSupportedException(
                     "ref/out parameters are not supported in typed invokers"
                 );
             }
-            if (
-                ps.Length != parameterTypes.Length
-                || ps.Where((t, i) => t.ParameterType != parameterTypes[i]).Any()
-            )
+            if (ps.Length != parameterTypes.Length || HasParameterTypeMismatch(ps, parameterTypes))
             {
                 throw new ArgumentException("Method parameters mismatch");
             }
@@ -2367,16 +2430,13 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 throw new ArgumentException("Instance type mismatch");
             }
             ParameterInfo[] ps = method.GetParameters();
-            if (ps.Any(p => p.ParameterType.IsByRef))
+            if (HasByRefParameter(ps))
             {
                 throw new NotSupportedException(
                     "ref/out parameters are not supported in typed invokers"
                 );
             }
-            if (
-                ps.Length != parameterTypes.Length
-                || ps.Where((t, i) => t.ParameterType != parameterTypes[i]).Any()
-            )
+            if (ps.Length != parameterTypes.Length || HasParameterTypeMismatch(ps, parameterTypes))
             {
                 throw new ArgumentException("Method parameters mismatch");
             }
@@ -2973,7 +3033,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             try
             {
                 PropertyInfo property = type.GetProperty(
-                    "enabled",
+                    EnabledPropertyName,
                     BindingFlags.Instance | BindingFlags.Public
                 );
 
@@ -3279,10 +3339,18 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             {
                 if (provider.IsDefined(typeof(TAttribute), inherit))
                 {
-                    return provider
-                        .GetCustomAttributes(typeof(TAttribute), inherit)
-                        .OfType<TAttribute>()
-                        .ToArray();
+                    object[] attributes = provider.GetCustomAttributes(typeof(TAttribute), inherit);
+                    using PooledResource<List<TAttribute>> lease = Buffers<TAttribute>.List.Get(
+                        out List<TAttribute> result
+                    );
+                    for (int i = 0; i < attributes.Length; i++)
+                    {
+                        if (attributes[i] is TAttribute attr)
+                        {
+                            result.Add(attr);
+                        }
+                    }
+                    return result.ToArray();
                 }
                 return Array.Empty<TAttribute>();
             }
@@ -3304,7 +3372,18 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 
             try
             {
-                return provider.GetCustomAttributes(inherit).OfType<Attribute>().ToArray();
+                object[] attributes = provider.GetCustomAttributes(inherit);
+                using PooledResource<List<Attribute>> lease = Buffers<Attribute>.List.Get(
+                    out List<Attribute> result
+                );
+                for (int i = 0; i < attributes.Length; i++)
+                {
+                    if (attributes[i] is Attribute attr)
+                    {
+                        result.Add(attr);
+                    }
+                }
+                return result.ToArray();
             }
             catch
             {
@@ -3327,10 +3406,18 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             {
                 if (provider.IsDefined(attributeType, inherit))
                 {
-                    return provider
-                        .GetCustomAttributes(attributeType, inherit)
-                        .OfType<Attribute>()
-                        .ToArray();
+                    object[] attributes = provider.GetCustomAttributes(attributeType, inherit);
+                    using PooledResource<List<Attribute>> lease = Buffers<Attribute>.List.Get(
+                        out List<Attribute> result
+                    );
+                    for (int i = 0; i < attributes.Length; i++)
+                    {
+                        if (attributes[i] is Attribute attr)
+                        {
+                            result.Add(attr);
+                        }
+                    }
+                    return result.ToArray();
                 }
                 return Array.Empty<Attribute>();
             }
@@ -3347,7 +3434,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
         {
             Dictionary<string, object> result = new();
 
-            foreach (Attribute attr in GetAllAttributesSafe(provider, inherit))
+            foreach (Attribute attr in provider.GetAllAttributesSafe(inherit))
             {
                 try
                 {
@@ -3383,15 +3470,24 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 
             try
             {
-                bool localInherit = inherit;
-                return type.GetMethods(
-                        BindingFlags.Public
-                            | BindingFlags.NonPublic
-                            | BindingFlags.Instance
-                            | BindingFlags.Static
-                    )
-                    .Where(method => HasAttributeSafe<TAttribute>(method, localInherit))
-                    .ToArray();
+                MethodInfo[] methods = type.GetMethods(
+                    BindingFlags.Public
+                        | BindingFlags.NonPublic
+                        | BindingFlags.Instance
+                        | BindingFlags.Static
+                );
+                using PooledResource<List<MethodInfo>> lease = Buffers<MethodInfo>.List.Get(
+                    out List<MethodInfo> result
+                );
+                for (int i = 0; i < methods.Length; i++)
+                {
+                    MethodInfo method = methods[i];
+                    if (HasAttributeSafe<TAttribute>(method, inherit))
+                    {
+                        result.Add(method);
+                    }
+                }
+                return result.ToArray();
             }
             catch
             {
@@ -3412,15 +3508,24 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 
             try
             {
-                bool localInherit = inherit;
-                return type.GetProperties(
-                        BindingFlags.Public
-                            | BindingFlags.NonPublic
-                            | BindingFlags.Instance
-                            | BindingFlags.Static
-                    )
-                    .Where(property => HasAttributeSafe<TAttribute>(property, localInherit))
-                    .ToArray();
+                PropertyInfo[] properties = type.GetProperties(
+                    BindingFlags.Public
+                        | BindingFlags.NonPublic
+                        | BindingFlags.Instance
+                        | BindingFlags.Static
+                );
+                using PooledResource<List<PropertyInfo>> lease = Buffers<PropertyInfo>.List.Get(
+                    out List<PropertyInfo> result
+                );
+                for (int i = 0; i < properties.Length; i++)
+                {
+                    PropertyInfo property = properties[i];
+                    if (HasAttributeSafe<TAttribute>(property, inherit))
+                    {
+                        result.Add(property);
+                    }
+                }
+                return result.ToArray();
             }
             catch
             {
@@ -3441,15 +3546,24 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
 
             try
             {
-                bool localInherit = inherit;
-                return type.GetFields(
-                        BindingFlags.Public
-                            | BindingFlags.NonPublic
-                            | BindingFlags.Instance
-                            | BindingFlags.Static
-                    )
-                    .Where(field => HasAttributeSafe<TAttribute>(field, localInherit))
-                    .ToArray();
+                FieldInfo[] fields = type.GetFields(
+                    BindingFlags.Public
+                        | BindingFlags.NonPublic
+                        | BindingFlags.Instance
+                        | BindingFlags.Static
+                );
+                using PooledResource<List<FieldInfo>> lease = Buffers<FieldInfo>.List.Get(
+                    out List<FieldInfo> result
+                );
+                for (int i = 0; i < fields.Length; i++)
+                {
+                    FieldInfo field = fields[i];
+                    if (HasAttributeSafe<TAttribute>(field, inherit))
+                    {
+                        result.Add(field);
+                    }
+                }
+                return result.ToArray();
             }
             catch
             {
@@ -4084,9 +4198,12 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                     ? Expression.Unbox(valueParam, property.PropertyType)
                     : Expression.Convert(valueParam, property.PropertyType);
 
-                IEnumerable<Expression> arguments = indexExpressions.Concat(
-                    new[] { valueExpression }
-                );
+                Expression[] arguments = new Expression[indexExpressions.Length + 1];
+                for (int i = 0; i < indexExpressions.Length; i++)
+                {
+                    arguments[i] = indexExpressions[i];
+                }
+                arguments[indexExpressions.Length] = valueExpression;
                 Expression callExpression = setMethod.IsStatic
                     ? Expression.Call(setMethod, arguments)
                     : Expression.Call(targetExpression, setMethod, arguments);

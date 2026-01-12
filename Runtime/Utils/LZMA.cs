@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Utils
@@ -99,9 +99,9 @@ namespace WallstopStudios.UnityHelpers.Utils
                         null
                     );
                 }
-                catch (Exception ex)
+                catch (Exception e)
                 {
-                    throw new Exception("Failed to decompress LZMA data.", ex);
+                    throw new Exception("Failed to decompress LZMA data.", e);
                 }
 
                 if (outStream.Length != fileLength)
@@ -198,9 +198,9 @@ namespace WallstopStudios.UnityHelpers.Utils
                         null
                     );
                 }
-                catch (Exception ex)
+                catch (Exception e)
                 {
-                    throw new Exception("Failed to decompress LZMA data.", ex);
+                    throw new Exception("Failed to decompress LZMA data.", e);
                 }
 
                 if (inStream.Position != inStream.Length)

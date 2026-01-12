@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
@@ -17,6 +17,9 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
     /// Validates detection and UI warnings for potentially problematic values like
     /// null Unity objects, empty strings, and whitespace-only strings.
     /// </summary>
+    [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class SerializableSetDangerWarningTests : CommonTestBase
     {
         [Test]

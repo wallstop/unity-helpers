@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Tags
@@ -446,10 +446,10 @@ namespace WallstopStudios.UnityHelpers.Tags
                     );
                 }
             }
-            catch (Exception ex)
+            catch (Exception e)
             {
                 Debug.LogError(
-                    $"AttributeMetadataCache: Exception during relational prewarm on load: {ex.Message}\n{ex}"
+                    $"AttributeMetadataCache: Exception during relational prewarm on load: {e.Message}\n{e}"
                 );
             }
         }

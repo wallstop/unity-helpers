@@ -17,27 +17,38 @@ The script executes the benchmark test in batch mode, captures the markdown tabl
 
 <!-- RELATIONAL_COMPONENTS_WINDOWS_START -->
 
-_Last updated 2025-12-28 04:08 UTC on Windows 11 (10.0.26200) 64bit_
+_Last updated 2026-01-12 01:51 UTC on Windows 11 (10.0.26200) 64bit_
 
 Numbers capture repeated `Assign*Components` calls for one second per scenario.
 Higher operations per second are better.
 
 ### Operations per second (higher is better)
 
-| Scenario          | Relational Ops/s | Manual Ops/s | Rel/Manual | Iterations |
-| ----------------- | ---------------: | -----------: | ---------: | ---------: |
-| Parent - Single   |          969,815 |    5,595,619 |      0.17x |    970,000 |
-| Parent - Array    |          658,178 |    3,295,832 |      0.20x |    660,000 |
-| Parent - List     |          725,457 |    4,218,240 |      0.17x |    730,000 |
-| Parent - HashSet  |          711,530 |    2,891,677 |      0.25x |    720,000 |
-| Child - Single    |          966,474 |    3,563,710 |      0.27x |    970,000 |
-| Child - Array     |          252,799 |    2,435,614 |      0.10x |    260,000 |
-| Child - List      |          238,846 |    2,548,281 |      0.09x |    240,000 |
-| Child - HashSet   |          237,971 |    1,703,023 |      0.14x |    240,000 |
-| Sibling - Single  |        3,794,146 |   14,356,432 |      0.26x |  3,800,000 |
-| Sibling - Array   |          900,523 |    2,587,384 |      0.35x |    910,000 |
-| Sibling - List    |        1,158,435 |    3,339,996 |      0.35x |  1,160,000 |
-| Sibling - HashSet |        1,119,343 |    1,819,796 |      0.62x |  1,120,000 |
+<table data-sortable>
+  <thead>
+    <tr>
+      <th align="left">Scenario</th>
+      <th align="right">Relational Ops/s</th>
+      <th align="right">Manual Ops/s</th>
+      <th align="right">Rel/Manual</th>
+      <th align="right">Iterations</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td align="left">Parent - Single</td><td align="right">9,767</td><td align="right">5,654,126</td><td align="right">0.00x</td><td align="right">10,000</td></tr>
+    <tr><td align="left">Parent - Array</td><td align="right">2,916</td><td align="right">3,311,542</td><td align="right">0.00x</td><td align="right">10,000</td></tr>
+    <tr><td align="left">Parent - List</td><td align="right">2,899</td><td align="right">4,236,790</td><td align="right">0.00x</td><td align="right">10,000</td></tr>
+    <tr><td align="left">Parent - HashSet</td><td align="right">2,934</td><td align="right">2,871,959</td><td align="right">0.00x</td><td align="right">10,000</td></tr>
+    <tr><td align="left">Child - Single</td><td align="right">2,672</td><td align="right">3,554,134</td><td align="right">0.00x</td><td align="right">10,000</td></tr>
+    <tr><td align="left">Child - Array</td><td align="right">1,452</td><td align="right">2,312,928</td><td align="right">0.00x</td><td align="right">10,000</td></tr>
+    <tr><td align="left">Child - List</td><td align="right">1,907</td><td align="right">2,576,993</td><td align="right">0.00x</td><td align="right">10,000</td></tr>
+    <tr><td align="left">Child - HashSet</td><td align="right">1,914</td><td align="right">1,705,880</td><td align="right">0.00x</td><td align="right">10,000</td></tr>
+    <tr><td align="left">Sibling - Single</td><td align="right">3,687,340</td><td align="right">14,312,500</td><td align="right">0.26x</td><td align="right">3,690,000</td></tr>
+    <tr><td align="left">Sibling - Array</td><td align="right">5,831</td><td align="right">2,491,710</td><td align="right">0.00x</td><td align="right">10,000</td></tr>
+    <tr><td align="left">Sibling - List</td><td align="right">5,761</td><td align="right">3,383,640</td><td align="right">0.00x</td><td align="right">10,000</td></tr>
+    <tr><td align="left">Sibling - HashSet</td><td align="right">5,827</td><td align="right">1,829,998</td><td align="right">0.00x</td><td align="right">10,000</td></tr>
+  </tbody>
+</table>
 
 <!-- RELATIONAL_COMPONENTS_WINDOWS_END -->
 

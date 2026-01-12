@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Editor.Tools.UnityMethodAnalyzer
@@ -14,6 +14,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools.UnityMethodAnalyzer
     using UnityEditor;
     using UnityEditor.IMGUI.Controls;
     using UnityEngine;
+    using WallstopStudios.UnityHelpers.Core.Extension;
     using WallstopStudios.UnityHelpers.Core.Serialization;
     using WallstopStudios.UnityHelpers.Editor.Utils;
     using WallstopStudios.UnityHelpers.Editor.Utils.WButton;
@@ -983,14 +984,16 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools.UnityMethodAnalyzer
         {
             try
             {
-                if (task.IsCanceled || _cancellationTokenSource.IsCancellationRequested)
+                // Capture to local variable to avoid TOCTOU race, since OnDisable() may null the field
+                CancellationTokenSource cts = _cancellationTokenSource;
+                if (task.IsCanceled || (cts?.IsCancellationRequested ?? false))
                 {
                     _statusMessage = "Analysis cancelled";
                 }
                 else if (task.IsFaulted)
                 {
-                    Exception ex = task.Exception?.GetBaseException() ?? task.Exception;
-                    _statusMessage = $"Analysis failed: {ex?.Message ?? "Unknown error"}";
+                    Exception e = task.Exception?.GetBaseException() ?? task.Exception;
+                    _statusMessage = $"Analysis failed: {e?.Message ?? "Unknown error"}";
                 }
                 else
                 {
@@ -1000,9 +1003,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools.UnityMethodAnalyzer
                     _statusMessage = $"Analysis complete: {_totalCount} issues found";
                 }
             }
-            catch (Exception ex)
+            catch (Exception e)
             {
-                _statusMessage = $"Analysis failed: {ex.Message}";
+                _statusMessage = $"Analysis failed";
+                this.LogError($"Analysis failed", e);
             }
             finally
             {
@@ -1070,9 +1074,9 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools.UnityMethodAnalyzer
                 {
                     action();
                 }
-                catch (Exception ex)
+                catch (Exception e)
                 {
-                    Debug.LogException(ex);
+                    Debug.LogException(e);
                 }
             }
         }
@@ -1101,9 +1105,9 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools.UnityMethodAnalyzer
                 {
                     action();
                 }
-                catch (Exception ex)
+                catch (Exception e)
                 {
-                    Debug.LogException(ex);
+                    Debug.LogException(e);
                 }
             }
         }
@@ -1268,7 +1272,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools.UnityMethodAnalyzer
             }
             else
             {
-                Debug.LogWarning($"Could not find file: {filePath}");
+                this.LogWarn($"Could not find file: {filePath}");
             }
         }
 
@@ -1418,7 +1422,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools.UnityMethodAnalyzer
             }
             else
             {
-                Debug.LogWarning($"Could not find file to reveal: {filePath}");
+                this.LogWarn($"Could not find file to reveal: {filePath}");
             }
         }
 
@@ -1444,10 +1448,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools.UnityMethodAnalyzer
                 _statusMessage = $"Report exported to: {Path.GetFileName(path)}";
                 EditorUtility.RevealInFinder(path);
             }
-            catch (Exception ex)
+            catch (Exception e)
             {
-                _statusMessage = $"Export failed: {ex.Message}";
-                Debug.LogException(ex);
+                _statusMessage = $"Export failed";
+                this.LogError($"Export failed", e);
             }
         }
 
@@ -1577,10 +1581,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools.UnityMethodAnalyzer
                 GUIUtility.systemCopyBuffer = json;
                 _statusMessage = "Issue copied to clipboard as JSON";
             }
-            catch (Exception ex)
+            catch (Exception e)
             {
-                _statusMessage = $"Copy failed: {ex.Message}";
-                Debug.LogException(ex);
+                _statusMessage = $"Copy failed";
+                this.LogError($"Copy failed", e);
             }
         }
 
@@ -1597,10 +1601,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools.UnityMethodAnalyzer
                 GUIUtility.systemCopyBuffer = markdown;
                 _statusMessage = "Issue copied to clipboard as Markdown";
             }
-            catch (Exception ex)
+            catch (Exception e)
             {
-                _statusMessage = $"Copy failed: {ex.Message}";
-                Debug.LogException(ex);
+                _statusMessage = $"Copy failed";
+                this.LogError($"Copy failed", e);
             }
         }
 
@@ -1618,10 +1622,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools.UnityMethodAnalyzer
                 GUIUtility.systemCopyBuffer = json;
                 _statusMessage = $"Copied {_analyzer.Issues.Count} issues to clipboard as JSON";
             }
-            catch (Exception ex)
+            catch (Exception e)
             {
-                _statusMessage = $"Copy failed: {ex.Message}";
-                Debug.LogException(ex);
+                _statusMessage = $"Copy failed";
+                this.LogError($"Copy failed", e);
             }
         }
 
@@ -1639,10 +1643,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools.UnityMethodAnalyzer
                 GUIUtility.systemCopyBuffer = markdown;
                 _statusMessage = $"Copied {_analyzer.Issues.Count} issues to clipboard as Markdown";
             }
-            catch (Exception ex)
+            catch (Exception e)
             {
-                _statusMessage = $"Copy failed: {ex.Message}";
-                Debug.LogException(ex);
+                _statusMessage = $"Copy failed";
+                this.LogError($"Copy failed", e);
             }
         }
 
@@ -1668,10 +1672,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Tools.UnityMethodAnalyzer
                 _statusMessage = $"Report exported to: {Path.GetFileName(path)}";
                 EditorUtility.RevealInFinder(path);
             }
-            catch (Exception ex)
+            catch (Exception e)
             {
-                _statusMessage = $"Export failed: {ex.Message}";
-                Debug.LogException(ex);
+                _statusMessage = $"Export failed";
+                this.LogError($"Export failed", e);
             }
         }
 

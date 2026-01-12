@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Editor.Utils
@@ -67,30 +67,27 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
 
             ScriptableObjectSingletonMetadata created =
                 ScriptableObject.CreateInstance<ScriptableObjectSingletonMetadata>();
-            bool editingInterrupted = TryStopAssetEditing();
-            try
+
+            // If we're inside a batch scope, temporarily exit to allow asset creation
+            using (AssetDatabaseBatchHelper.PauseBatch())
             {
-                AssetDatabase.CreateAsset(created, ScriptableObjectSingletonMetadata.AssetPath);
-                AssetDatabase.SaveAssets();
-                AssetDatabase.ImportAsset(ScriptableObjectSingletonMetadata.AssetPath);
-                return created;
-            }
-            catch (Exception ex)
-            {
-                Debug.LogWarning(
-                    $"ScriptableObjectSingletonMetadataUtility: Failed to create metadata asset: {ex.Message}"
-                );
-                if (created != null)
+                try
                 {
-                    Object.DestroyImmediate(created);
+                    AssetDatabase.CreateAsset(created, ScriptableObjectSingletonMetadata.AssetPath);
+                    AssetDatabase.SaveAssets();
+                    AssetDatabase.ImportAsset(ScriptableObjectSingletonMetadata.AssetPath);
+                    return created;
                 }
-                return null;
-            }
-            finally
-            {
-                if (editingInterrupted)
+                catch (Exception ex)
                 {
-                    AssetDatabase.StartAssetEditing();
+                    Debug.LogWarning(
+                        $"ScriptableObjectSingletonMetadataUtility: Failed to create metadata asset: {ex.Message}"
+                    );
+                    if (created != null)
+                    {
+                        Object.DestroyImmediate(created);
+                    }
+                    return null;
                 }
             }
         }
@@ -99,8 +96,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
             ScriptableObjectSingletonMetadata legacyMetadata
         )
         {
-            bool editingInterrupted = TryStopAssetEditing();
-            try
+            // If we're inside a batch scope, temporarily exit to allow asset operations
+            using (AssetDatabaseBatchHelper.PauseBatch())
             {
                 if (!EnsureResourcesFolder())
                 {
@@ -157,13 +154,6 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
                 AssetDatabase.SaveAssets();
                 AssetDatabase.Refresh();
                 return created;
-            }
-            finally
-            {
-                if (editingInterrupted)
-                {
-                    AssetDatabase.StartAssetEditing();
-                }
             }
         }
 
@@ -388,10 +378,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
                 return true;
             }
 
-            // Stop any asset editing batch to ensure folder creation is immediate
-            bool wasEditing = TryStopAssetEditing();
-
-            try
+            // If we're inside a batch scope, temporarily exit to ensure folder creation is immediate
+            using (AssetDatabaseBatchHelper.PauseBatch())
             {
                 string[] segments = directory.Split('/', StringSplitOptions.RemoveEmptyEntries);
                 string current = segments[0];
@@ -417,71 +405,21 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
                 // The folders are immediately available after CreateFolder.
                 return true;
             }
-            finally
-            {
-                if (wasEditing)
-                {
-                    AssetDatabase.StartAssetEditing();
-                }
-            }
         }
 
         /// <summary>
-        /// Internal counter to track StartAssetEditing calls.
-        /// Unity's AssetDatabase doesn't expose this, so we track it ourselves.
-        /// </summary>
-        private static int _assetEditingDepth;
-
-        /// <summary>
-        /// Tries to stop asset editing if we're in a batch operation.
-        /// Returns true if we were editing and successfully stopped.
+        /// Resets legacy state for testing. AssetDatabase batch cleanup is now handled
+        /// by the unified <see cref="AssetDatabaseBatchHelper"/>.
         /// </summary>
         /// <remarks>
-        /// Unity's StopAssetEditing will throw an assertion error if called without
-        /// a corresponding StartAssetEditing. We avoid calling it unconditionally
-        /// to prevent these assertion errors.
+        /// This method is kept for backward compatibility with test cleanup code.
+        /// The actual AssetDatabase state cleanup is handled by AssetDatabaseBatchHelper.ResetBatchDepth().
         /// </remarks>
-        private static bool TryStopAssetEditing()
-        {
-            // Only try to stop if we know we started editing
-            if (_assetEditingDepth <= 0)
-            {
-                return false;
-            }
-
-            try
-            {
-                AssetDatabase.StopAssetEditing();
-                _assetEditingDepth--;
-                return true;
-            }
-            catch (InvalidOperationException)
-            {
-                // Reset depth if Unity says we're not in a batch
-                _assetEditingDepth = 0;
-                return false;
-            }
-            catch
-            {
-                return false;
-            }
-        }
-
-        /// <summary>
-        /// Starts asset editing batch operation and tracks the depth.
-        /// </summary>
-        internal static void StartAssetEditingTracked()
-        {
-            AssetDatabase.StartAssetEditing();
-            _assetEditingDepth++;
-        }
-
-        /// <summary>
-        /// Resets the asset editing depth counter. Use with caution, only for test cleanup.
-        /// </summary>
         internal static void ResetAssetEditingDepthForTesting()
         {
-            _assetEditingDepth = 0;
+            // AssetDatabase batch cleanup is now handled by AssetDatabaseBatchHelper.ResetBatchDepth()
+            // which is called by CommonTestBase in setUp/tearDown.
+            // This method is a no-op kept for backward compatibility.
         }
     }
 #endif

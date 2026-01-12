@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 #if UNITY_EDITOR
@@ -17,6 +17,8 @@ namespace WallstopStudios.UnityHelpers.Tests.WGroup
     /// within WGroups. This is critical for proper indent handling.
     /// </summary>
     [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class WGroupHasVisibleChildrenTests : CommonTestBase
     {
         private UnityHelpersSettings.WGroupAutoIncludeConfiguration _previousConfiguration;
@@ -54,7 +56,9 @@ namespace WallstopStudios.UnityHelpers.Tests.WGroup
             SimpleFieldsTarget target = CreateScriptableObject<SimpleFieldsTarget>();
             using SerializedObject serializedObject = new(target);
 
-            SerializedProperty property = serializedObject.FindProperty("intField");
+            SerializedProperty property = serializedObject.FindProperty(
+                nameof(SimpleFieldsTarget.intField)
+            );
 
             Assert.That(
                 property.hasVisibleChildren,
@@ -69,7 +73,9 @@ namespace WallstopStudios.UnityHelpers.Tests.WGroup
             SimpleFieldsTarget target = CreateScriptableObject<SimpleFieldsTarget>();
             using SerializedObject serializedObject = new(target);
 
-            SerializedProperty property = serializedObject.FindProperty("floatField");
+            SerializedProperty property = serializedObject.FindProperty(
+                nameof(SimpleFieldsTarget.floatField)
+            );
 
             Assert.That(
                 property.hasVisibleChildren,
@@ -84,7 +90,9 @@ namespace WallstopStudios.UnityHelpers.Tests.WGroup
             SimpleFieldsTarget target = CreateScriptableObject<SimpleFieldsTarget>();
             using SerializedObject serializedObject = new(target);
 
-            SerializedProperty property = serializedObject.FindProperty("stringField");
+            SerializedProperty property = serializedObject.FindProperty(
+                nameof(SimpleFieldsTarget.stringField)
+            );
 
             Assert.That(
                 property.hasVisibleChildren,
@@ -99,7 +107,9 @@ namespace WallstopStudios.UnityHelpers.Tests.WGroup
             SimpleFieldsTarget target = CreateScriptableObject<SimpleFieldsTarget>();
             using SerializedObject serializedObject = new(target);
 
-            SerializedProperty property = serializedObject.FindProperty("boolField");
+            SerializedProperty property = serializedObject.FindProperty(
+                nameof(SimpleFieldsTarget.boolField)
+            );
 
             Assert.That(
                 property.hasVisibleChildren,
@@ -115,7 +125,9 @@ namespace WallstopStudios.UnityHelpers.Tests.WGroup
             target.intList = new List<int>();
             using SerializedObject serializedObject = new(target);
 
-            SerializedProperty property = serializedObject.FindProperty("intList");
+            SerializedProperty property = serializedObject.FindProperty(
+                nameof(ListFieldsTarget.intList)
+            );
 
             Assert.That(
                 property.hasVisibleChildren,
@@ -131,7 +143,9 @@ namespace WallstopStudios.UnityHelpers.Tests.WGroup
             target.intList = new List<int> { 1, 2, 3, 4, 5 };
             using SerializedObject serializedObject = new(target);
 
-            SerializedProperty property = serializedObject.FindProperty("intList");
+            SerializedProperty property = serializedObject.FindProperty(
+                nameof(ListFieldsTarget.intList)
+            );
 
             Assert.That(
                 property.hasVisibleChildren,
@@ -146,7 +160,9 @@ namespace WallstopStudios.UnityHelpers.Tests.WGroup
             SingleElementTarget target = CreateScriptableObject<SingleElementTarget>();
             using SerializedObject serializedObject = new(target);
 
-            SerializedProperty property = serializedObject.FindProperty("singleItemList");
+            SerializedProperty property = serializedObject.FindProperty(
+                nameof(SingleElementTarget.singleItemList)
+            );
 
             Assert.That(
                 property.hasVisibleChildren,
@@ -162,7 +178,9 @@ namespace WallstopStudios.UnityHelpers.Tests.WGroup
             target.intArray = Array.Empty<int>();
             using SerializedObject serializedObject = new(target);
 
-            SerializedProperty property = serializedObject.FindProperty("intArray");
+            SerializedProperty property = serializedObject.FindProperty(
+                nameof(ArrayFieldsTarget.intArray)
+            );
 
             Assert.That(
                 property.hasVisibleChildren,
@@ -178,7 +196,9 @@ namespace WallstopStudios.UnityHelpers.Tests.WGroup
             target.intArray = new[] { 1, 2, 3 };
             using SerializedObject serializedObject = new(target);
 
-            SerializedProperty property = serializedObject.FindProperty("intArray");
+            SerializedProperty property = serializedObject.FindProperty(
+                nameof(ArrayFieldsTarget.intArray)
+            );
 
             Assert.That(
                 property.hasVisibleChildren,
@@ -193,7 +213,9 @@ namespace WallstopStudios.UnityHelpers.Tests.WGroup
             SingleElementTarget target = CreateScriptableObject<SingleElementTarget>();
             using SerializedObject serializedObject = new(target);
 
-            SerializedProperty property = serializedObject.FindProperty("singleItemArray");
+            SerializedProperty property = serializedObject.FindProperty(
+                nameof(SingleElementTarget.singleItemArray)
+            );
 
             Assert.That(
                 property.hasVisibleChildren,
@@ -209,7 +231,9 @@ namespace WallstopStudios.UnityHelpers.Tests.WGroup
             target.stringList = new List<string> { "a", "b", "c" };
             using SerializedObject serializedObject = new(target);
 
-            SerializedProperty property = serializedObject.FindProperty("stringList");
+            SerializedProperty property = serializedObject.FindProperty(
+                nameof(ListFieldsTarget.stringList)
+            );
 
             Assert.That(
                 property.hasVisibleChildren,
@@ -225,7 +249,9 @@ namespace WallstopStudios.UnityHelpers.Tests.WGroup
             target.floatArray = new[] { 1.0f, 2.0f };
             using SerializedObject serializedObject = new(target);
 
-            SerializedProperty property = serializedObject.FindProperty("floatArray");
+            SerializedProperty property = serializedObject.FindProperty(
+                nameof(ArrayFieldsTarget.floatArray)
+            );
 
             Assert.That(
                 property.hasVisibleChildren,
@@ -241,7 +267,9 @@ namespace WallstopStudios.UnityHelpers.Tests.WGroup
             target.nestedData = new NestedData { value = 10, name = "Test" };
             using SerializedObject serializedObject = new(target);
 
-            SerializedProperty property = serializedObject.FindProperty("nestedData");
+            SerializedProperty property = serializedObject.FindProperty(
+                nameof(SerializableClassTarget.nestedData)
+            );
 
             Assert.That(
                 property.hasVisibleChildren,
@@ -257,7 +285,9 @@ namespace WallstopStudios.UnityHelpers.Tests.WGroup
             target.nestedData = new NestedData();
             using SerializedObject serializedObject = new(target);
 
-            SerializedProperty property = serializedObject.FindProperty("nestedData");
+            SerializedProperty property = serializedObject.FindProperty(
+                nameof(SerializableClassTarget.nestedData)
+            );
 
             Assert.That(
                 property.hasVisibleChildren,
@@ -277,7 +307,9 @@ namespace WallstopStudios.UnityHelpers.Tests.WGroup
             };
             using SerializedObject serializedObject = new(target);
 
-            SerializedProperty property = serializedObject.FindProperty("deepData");
+            SerializedProperty property = serializedObject.FindProperty(
+                nameof(DeepNestingTarget.deepData)
+            );
 
             Assert.That(
                 property.hasVisibleChildren,
@@ -292,8 +324,12 @@ namespace WallstopStudios.UnityHelpers.Tests.WGroup
             DeepNestingTarget target = CreateScriptableObject<DeepNestingTarget>();
             using SerializedObject serializedObject = new(target);
 
-            SerializedProperty deepDataProperty = serializedObject.FindProperty("deepData");
-            SerializedProperty childProperty = deepDataProperty.FindPropertyRelative("child");
+            SerializedProperty deepDataProperty = serializedObject.FindProperty(
+                nameof(DeepNestingTarget.deepData)
+            );
+            SerializedProperty childProperty = deepDataProperty.FindPropertyRelative(
+                nameof(DeepNestedData.child)
+            );
 
             Assert.That(
                 childProperty.hasVisibleChildren,
@@ -315,7 +351,9 @@ namespace WallstopStudios.UnityHelpers.Tests.WGroup
             };
             using SerializedObject serializedObject = new(target);
 
-            SerializedProperty property = serializedObject.FindProperty("wrappedLists");
+            SerializedProperty property = serializedObject.FindProperty(
+                nameof(WrappedNestedListTarget.wrappedLists)
+            );
 
             Assert.That(
                 property.hasVisibleChildren,
@@ -331,7 +369,9 @@ namespace WallstopStudios.UnityHelpers.Tests.WGroup
             target.wrappedLists = new List<IntListWrapper>();
             using SerializedObject serializedObject = new(target);
 
-            SerializedProperty property = serializedObject.FindProperty("wrappedLists");
+            SerializedProperty property = serializedObject.FindProperty(
+                nameof(WrappedNestedListTarget.wrappedLists)
+            );
 
             Assert.That(
                 property.hasVisibleChildren,
@@ -353,7 +393,9 @@ namespace WallstopStudios.UnityHelpers.Tests.WGroup
             };
             using SerializedObject serializedObject = new(target);
 
-            SerializedProperty listProperty = serializedObject.FindProperty("wrappedLists");
+            SerializedProperty listProperty = serializedObject.FindProperty(
+                nameof(WrappedNestedListTarget.wrappedLists)
+            );
             SerializedProperty elementProperty = listProperty.GetArrayElementAtIndex(0);
 
             Assert.That(
@@ -373,8 +415,12 @@ namespace WallstopStudios.UnityHelpers.Tests.WGroup
             };
             using SerializedObject serializedObject = new(target);
 
-            SerializedProperty nestedProperty = serializedObject.FindProperty("nestedData");
-            SerializedProperty numbersProperty = nestedProperty.FindPropertyRelative("numbers");
+            SerializedProperty nestedProperty = serializedObject.FindProperty(
+                nameof(SerializableClassTarget.nestedData)
+            );
+            SerializedProperty numbersProperty = nestedProperty.FindPropertyRelative(
+                nameof(NestedData.numbers)
+            );
 
             Assert.That(
                 numbersProperty.hasVisibleChildren,
@@ -395,27 +441,37 @@ namespace WallstopStudios.UnityHelpers.Tests.WGroup
             using SerializedObject serializedObject = new(target);
 
             Assert.That(
-                serializedObject.FindProperty("simpleInt").hasVisibleChildren,
+                serializedObject
+                    .FindProperty(nameof(MixedFieldsTarget.simpleInt))
+                    .hasVisibleChildren,
                 Is.False,
                 "simpleInt should not have visible children."
             );
             Assert.That(
-                serializedObject.FindProperty("listField").hasVisibleChildren,
+                serializedObject
+                    .FindProperty(nameof(MixedFieldsTarget.listField))
+                    .hasVisibleChildren,
                 Is.True,
                 "listField should have visible children."
             );
             Assert.That(
-                serializedObject.FindProperty("simpleString").hasVisibleChildren,
+                serializedObject
+                    .FindProperty(nameof(MixedFieldsTarget.simpleString))
+                    .hasVisibleChildren,
                 Is.False,
                 "simpleString should not have visible children."
             );
             Assert.That(
-                serializedObject.FindProperty("nestedField").hasVisibleChildren,
+                serializedObject
+                    .FindProperty(nameof(MixedFieldsTarget.nestedField))
+                    .hasVisibleChildren,
                 Is.True,
                 "nestedField should have visible children."
             );
             Assert.That(
-                serializedObject.FindProperty("simpleFloat").hasVisibleChildren,
+                serializedObject
+                    .FindProperty(nameof(MixedFieldsTarget.simpleFloat))
+                    .hasVisibleChildren,
                 Is.False,
                 "simpleFloat should not have visible children."
             );
@@ -428,17 +484,23 @@ namespace WallstopStudios.UnityHelpers.Tests.WGroup
             using SerializedObject serializedObject = new(target);
 
             Assert.That(
-                serializedObject.FindProperty("emptyList").hasVisibleChildren,
+                serializedObject
+                    .FindProperty(nameof(EmptyCollectionsTarget.emptyList))
+                    .hasVisibleChildren,
                 Is.True,
                 "emptyList should have visible children."
             );
             Assert.That(
-                serializedObject.FindProperty("emptyArray").hasVisibleChildren,
+                serializedObject
+                    .FindProperty(nameof(EmptyCollectionsTarget.emptyArray))
+                    .hasVisibleChildren,
                 Is.True,
                 "emptyArray should have visible children."
             );
             Assert.That(
-                serializedObject.FindProperty("emptyNestedList").hasVisibleChildren,
+                serializedObject
+                    .FindProperty(nameof(EmptyCollectionsTarget.emptyNestedList))
+                    .hasVisibleChildren,
                 Is.True,
                 "emptyNestedList should have visible children."
             );
@@ -451,7 +513,9 @@ namespace WallstopStudios.UnityHelpers.Tests.WGroup
             target.innerList = new List<int> { 1, 2, 3 };
             using SerializedObject serializedObject = new(target);
 
-            SerializedProperty innerListProperty = serializedObject.FindProperty("innerList");
+            SerializedProperty innerListProperty = serializedObject.FindProperty(
+                nameof(NestedGroupsTarget.innerList)
+            );
 
             Assert.That(
                 innerListProperty.hasVisibleChildren,
@@ -467,7 +531,9 @@ namespace WallstopStudios.UnityHelpers.Tests.WGroup
             target.level3List = new List<int> { 1, 2 };
             using SerializedObject serializedObject = new(target);
 
-            SerializedProperty level3ListProperty = serializedObject.FindProperty("level3List");
+            SerializedProperty level3ListProperty = serializedObject.FindProperty(
+                nameof(ThreeLevelGroupsTarget.level3List)
+            );
 
             Assert.That(
                 level3ListProperty.hasVisibleChildren,
@@ -483,7 +549,9 @@ namespace WallstopStudios.UnityHelpers.Tests.WGroup
             target.deepestArray = new[] { 1, 2, 3 };
             using SerializedObject serializedObject = new(target);
 
-            SerializedProperty deepestArrayProperty = serializedObject.FindProperty("deepestArray");
+            SerializedProperty deepestArrayProperty = serializedObject.FindProperty(
+                nameof(ComplexCombinedTarget.deepestArray)
+            );
 
             Assert.That(
                 deepestArrayProperty.hasVisibleChildren,
@@ -504,7 +572,7 @@ namespace WallstopStudios.UnityHelpers.Tests.WGroup
             using SerializedObject serializedObject = new(target);
 
             SerializedProperty middleNestedListProperty = serializedObject.FindProperty(
-                "middleNestedList"
+                nameof(ComplexCombinedTarget.middleNestedList)
             );
 
             Assert.That(

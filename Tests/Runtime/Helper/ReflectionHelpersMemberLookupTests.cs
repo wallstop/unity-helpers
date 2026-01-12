@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Tests.Helper
@@ -41,6 +41,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
     public sealed class RuntimeScriptableObjectTarget : ScriptableObject { }
 
     [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class ReflectionHelpersMemberLookupTests : CommonTestBase
     {
         [Test]
@@ -66,7 +67,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             FieldInfo fi = fields.FirstOrDefault(f =>
                 f.Name == nameof(RuntimeMarkerTarget.markedField)
             );
-            Assert.IsNotNull(fi, "Expected MarkedField to be discovered.");
+            Assert.IsTrue(fi != null, "Expected MarkedField to be discovered.");
         }
 
         [Test]
@@ -79,7 +80,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             MethodInfo mi = methods.FirstOrDefault(m =>
                 m.Name == nameof(RuntimeMarkerTarget.MarkedMethod)
             );
-            Assert.IsNotNull(mi, "Expected MarkedMethod to be discovered.");
+            Assert.IsTrue(mi != null, "Expected MarkedMethod to be discovered.");
         }
 
         [Test]
@@ -92,7 +93,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             PropertyInfo pi = props.FirstOrDefault(p =>
                 p.Name == nameof(RuntimeMarkerTarget.MarkedProperty)
             );
-            Assert.IsNotNull(pi, "Expected MarkedProperty to be discovered.");
+            Assert.IsTrue(pi != null, "Expected MarkedProperty to be discovered.");
         }
 
         [Test]
@@ -104,7 +105,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
                 out FieldInfo fi
             );
             Assert.IsTrue(ok, "TryGetField should succeed.");
-            Assert.IsNotNull(fi);
+            Assert.IsTrue(fi != null);
             bool ok2 = ReflectionHelpers.TryGetField(
                 typeof(RuntimeMarkerTarget),
                 nameof(RuntimeMarkerTarget.markedField),
@@ -123,7 +124,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
                 out PropertyInfo pi
             );
             Assert.IsTrue(ok, "TryGetProperty should succeed.");
-            Assert.IsNotNull(pi);
+            Assert.IsTrue(pi != null);
             bool ok2 = ReflectionHelpers.TryGetProperty(
                 typeof(RuntimeMarkerTarget),
                 nameof(RuntimeMarkerTarget.MarkedProperty),
@@ -209,7 +210,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             );
 
             Assert.IsTrue(found, "Should find the generic Dictionary indexer.");
-            Assert.IsNotNull(indexer, "Indexer should not be null.");
+            Assert.IsTrue(indexer != null, "Indexer should not be null.");
             Assert.AreEqual(typeof(int), indexer.PropertyType, "Return type should be int.");
             Assert.AreEqual("Item", indexer.Name, "Indexer should be named 'Item'.");
 
@@ -234,7 +235,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             );
 
             Assert.IsFalse(found, "Should not find indexer on non-indexed type.");
-            Assert.IsNull(indexer, "Indexer should be null.");
+            Assert.IsTrue(indexer == null, "Indexer should be null.");
         }
 
         [Test]
@@ -396,8 +397,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
 
             if (expectedFound)
             {
-                Assert.IsNotNull(
-                    indexer,
+                Assert.IsTrue(
+                    indexer != null,
                     $"Indexer should not be null when found is true.{diagnosticInfo}"
                 );
                 Assert.AreEqual(
@@ -413,7 +414,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
             }
             else
             {
-                Assert.IsNull(indexer, $"Indexer should be null when not found.{diagnosticInfo}");
+                Assert.IsTrue(
+                    indexer == null,
+                    $"Indexer should be null when not found.{diagnosticInfo}"
+                );
             }
         }
     }

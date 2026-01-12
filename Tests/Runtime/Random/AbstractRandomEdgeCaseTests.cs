@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Tests.Runtime.Random
@@ -9,6 +9,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Random
     using NUnit.Framework;
     using WallstopStudios.UnityHelpers.Core.Random;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class AbstractRandomEdgeCaseTests
     {
         private static readonly Guid DeterministicGuid = Guid.Parse(
@@ -144,7 +146,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Random
             IllusionFlow flow = new(DeterministicGuid, extraSeed);
 
             RandomState state = flow.InternalState;
-            Assert.IsNotNull(state.PayloadBytes);
+            Assert.IsTrue(
+                state.PayloadBytes != null,
+                "PayloadBytes should not be null for IllusionFlow state"
+            );
             Assert.GreaterOrEqual(state.PayloadBytes.Count, sizeof(uint));
 
             Span<byte> buffer = stackalloc byte[sizeof(uint)];

@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Tests.DataStructures
@@ -14,6 +14,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
     using WallstopStudios.UnityHelpers.Tests.Core.TestTypes;
     using Serializer = WallstopStudios.UnityHelpers.Core.Serialization.Serializer;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class SerializableHashSetTests : CommonTestBase
     {
         [Test]
@@ -87,7 +89,10 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             string[] stored = set._items;
             bool preserve = set.PreserveSerializedEntries;
 
-            Assert.IsNotNull(stored, "Serialized items should remain when null entries exist.");
+            Assert.IsTrue(
+                stored != null,
+                "Serialized items should remain when null entries exist."
+            );
             CollectionAssert.AreEqual(source, stored);
             Assert.IsTrue(preserve, "Null entries should preserve serialized cache.");
 
@@ -147,7 +152,10 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             set.OnAfterDeserialize();
 
             object preservedItems = set._items;
-            Assert.IsNotNull(preservedItems, "Duplicate entries should keep serialized cache.");
+            Assert.IsTrue(
+                preservedItems != null,
+                "Duplicate entries should keep serialized cache."
+            );
             Assert.AreSame(
                 duplicateSource,
                 preservedItems,
@@ -214,8 +222,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
                 "HasDuplicatesOrNulls should be cleared after mutation (MarkSerializationCacheDirty)."
             );
             // Arrays are preserved for order maintenance, not nulled
-            Assert.IsNotNull(
-                storedItemsAfterAdd,
+            Assert.IsTrue(
+                storedItemsAfterAdd != null,
                 "Serialized items should be preserved for order maintenance after mutation."
             );
 
@@ -637,14 +645,14 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             set.OnBeforeSerialize();
 
             int[] serializedBefore = set._items;
-            Assert.IsNotNull(serializedBefore);
+            Assert.IsTrue(serializedBefore != null);
             CollectionAssert.AreEquivalent(new[] { 5, 10 }, serializedBefore);
 
             set.OnAfterDeserialize();
             object cachedAfterDeserialize = set._items;
             // Arrays are now preserved to maintain user-defined order
-            Assert.IsNotNull(
-                cachedAfterDeserialize,
+            Assert.IsTrue(
+                cachedAfterDeserialize != null,
                 "Serialized cache should be preserved to maintain user-defined order."
             );
             Assert.IsTrue(set.PreserveSerializedEntries);
@@ -654,7 +662,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
 
             set.OnBeforeSerialize();
             int[] serializedAfterMutation = set._items;
-            Assert.IsNotNull(serializedAfterMutation);
+            Assert.IsTrue(serializedAfterMutation != null);
             CollectionAssert.AreEquivalent(new[] { 5, 10, 20 }, serializedAfterMutation);
         }
 
@@ -702,8 +710,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
 
             object cachedItems = original._items;
             // After proto serialization, arrays are preserved
-            Assert.IsNotNull(
-                cachedItems,
+            Assert.IsTrue(
+                cachedItems != null,
                 "Proto serialization should preserve cached arrays for order stability."
             );
 
@@ -772,8 +780,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             Assert.AreEqual(2, set.Count);
             // After deserialization, arrays are always preserved to maintain order
             Assert.IsTrue(set.PreserveSerializedEntries);
-            Assert.IsNotNull(
-                set.SerializedItems,
+            Assert.IsTrue(
+                set.SerializedItems != null,
                 "Serialized cache should be preserved to maintain user-defined order."
             );
             Assert.IsTrue(set.Contains(7));
@@ -820,8 +828,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             Assert.IsTrue(inspector.RemoveElement(10));
             Assert.AreEqual(0, set.Count);
             // Arrays are preserved for order maintenance, but preserve flag is cleared
-            Assert.IsNotNull(
-                set.SerializedItems,
+            Assert.IsTrue(
+                set.SerializedItems != null,
                 "Serialized items should be preserved for order maintenance."
             );
             Assert.IsFalse(
@@ -843,7 +851,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             inspector.ClearElements();
 
             Assert.AreEqual(0, set.Count);
-            Assert.IsNull(set.SerializedItems);
+            Assert.IsTrue(set.SerializedItems == null);
             Assert.IsFalse(set.PreserveSerializedEntries);
         }
 
@@ -869,13 +877,13 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
 
             Assert.AreEqual(original.Count, roundTrip.Count);
             // After JSON deserialization, arrays are preserved for order
-            Assert.IsNotNull(roundTrip.SerializedItems);
+            Assert.IsTrue(roundTrip.SerializedItems != null);
             Assert.IsTrue(roundTrip.PreserveSerializedEntries);
 
             roundTrip.OnBeforeSerialize();
 
             int[] rebuiltItems = roundTrip.SerializedItems;
-            Assert.IsNotNull(rebuiltItems);
+            Assert.IsTrue(rebuiltItems != null);
             CollectionAssert.AreEquivalent(new[] { 4, 7, 9 }, rebuiltItems);
         }
 
@@ -1061,7 +1069,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
 
             string[] result = set.ToArray();
 
-            Assert.IsNotNull(result);
+            Assert.IsTrue(result != null);
             Assert.AreEqual(0, result.Length);
             Assert.AreSame(Array.Empty<string>(), result);
         }
@@ -1073,7 +1081,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
 
             string[] result = set.ToPersistedOrderArray();
 
-            Assert.IsNotNull(result);
+            Assert.IsTrue(result != null);
             Assert.AreEqual(0, result.Length);
             Assert.AreSame(Array.Empty<string>(), result);
         }

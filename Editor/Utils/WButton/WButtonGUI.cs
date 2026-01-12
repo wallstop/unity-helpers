@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
@@ -13,6 +13,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Core.Extension;
     using WallstopStudios.UnityHelpers.Core.Helper;
+    using WallstopStudios.UnityHelpers.Editor.Core.Helper;
     using WallstopStudios.UnityHelpers.Editor.Settings;
     using WallstopStudios.UnityHelpers.Utils;
 
@@ -118,29 +119,29 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
         private static readonly Dictionary<string, GUIContent> ButtonDisplayNameCache = new(
             StringComparer.Ordinal
         );
-        private static readonly Dictionary<int, string> IntToStringCache = new();
-        private static readonly Dictionary<(int, int), string> PaginationLabelCache = new();
         private const string RunningLabel = "Running...";
 
         private const float ClearHistoryButtonPadding = 12f;
         private const float ClearHistoryMinWidth = 96f;
         private const float ClearHistorySpacing = 6f;
 
-        private static string GetCachedIntString(int value)
-        {
-            return IntToStringCache.GetOrAdd(value, v => v.ToString());
-        }
-
+        /// <summary>
+        /// Gets a cached pagination label. Delegates to <see cref="EditorCacheHelper.GetPaginationLabel"/>.
+        /// </summary>
         private static string GetPaginationLabel(int page, int totalPages)
         {
-            (int, int) key = (page, totalPages);
-            if (!PaginationLabelCache.TryGetValue(key, out string cached))
-            {
-                cached =
-                    "Page " + GetCachedIntString(page) + " / " + GetCachedIntString(totalPages);
-                PaginationLabelCache[key] = cached;
-            }
-            return cached;
+            return EditorCacheHelper.GetPaginationLabel(page, totalPages);
+        }
+
+        /// <summary>
+        /// Gets a cached string representation of an integer.
+        /// Delegates to <see cref="EditorCacheHelper.GetCachedIntString"/>.
+        /// </summary>
+        /// <param name="value">The integer value to convert.</param>
+        /// <returns>A cached string representation of the integer.</returns>
+        private static string GetCachedIntString(int value)
+        {
+            return EditorCacheHelper.GetCachedIntString(value);
         }
 
         private static readonly Dictionary<int, string> RunningLabelByCountCache = new();
@@ -1600,17 +1601,15 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
             {
                 return 0;
             }
-            unchecked
+
+            Span<int> instanceIds = stackalloc int[targets.Length];
+            for (int i = 0; i < targets.Length; i++)
             {
-                int hash = 17;
-                for (int i = 0; i < targets.Length; i++)
-                {
-                    UnityEngine.Object target = targets[i];
-                    int instanceId = target != null ? target.GetInstanceID() : 0;
-                    hash = hash * 31 + instanceId;
-                }
-                return hash;
+                UnityEngine.Object target = targets[i];
+                instanceIds[i] = target != null ? target.GetInstanceID() : 0;
             }
+
+            return Objects.SpanHashCode<int>(instanceIds);
         }
 
         public bool Equals(ContextCacheKey other)

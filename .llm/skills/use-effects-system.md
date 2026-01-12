@@ -1,5 +1,7 @@
 # Skill: Use Effects System
 
+<!-- trigger: buff, debuff, effect, stat, modifier | Buffs, debuffs, stat modifications | Feature -->
+
 **Trigger**: When implementing buffs, debuffs, status effects, or stat modifications.
 
 ---

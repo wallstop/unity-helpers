@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Tests.Editor.Utils.WButton
@@ -22,7 +22,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Utils.WButton
     /// Verifies that users can integrate WButton functionality in their custom inspectors.
     /// </summary>
     [TestFixture]
-    public sealed class WButtonEditorHelperTests : CommonTestBase
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
+    public sealed class WButtonEditorHelperTests : BatchedEditorTestBase
     {
         [SetUp]
         public override void BaseSetUp()

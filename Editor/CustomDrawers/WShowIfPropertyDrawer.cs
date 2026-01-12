@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
@@ -14,6 +14,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Core.Extension;
     using WallstopStudios.UnityHelpers.Core.Helper;
+    using WallstopStudios.UnityHelpers.Editor.Core.Helper;
     using WallstopStudios.UnityHelpers.Editor.CustomDrawers.Utils;
     using WallstopStudios.UnityHelpers.Utils;
 
@@ -21,6 +22,43 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
     public sealed class WShowIfPropertyDrawer : PropertyDrawer
     {
         private const string ArrayDataMarker = ".Array.data[";
+
+        /// <summary>
+        /// The standard property name for C# indexers ("Item").
+        /// </summary>
+        private const string IndexerPropertyName = "Item";
+
+        /// <summary>
+        /// Maximum number of types to cache accessor dictionaries for.
+        /// This prevents unbounded memory growth in large projects with many types.
+        /// </summary>
+        private const int MaxCachedAccessorTypes = 500;
+
+        /// <summary>
+        /// Maximum number of accessors to cache per type.
+        /// This prevents unbounded growth for types with many conditional fields.
+        /// </summary>
+        private const int MaxAccessorsPerType = 100;
+
+        /// <summary>
+        /// Maximum number of condition property cache entries.
+        /// While this cache is cleared every frame, this limit prevents runaway growth
+        /// within a single frame when many properties are evaluated.
+        /// </summary>
+        private const int MaxConditionPropertyCacheSize = 10000;
+
+        /// <summary>
+        /// Maximum number of field info cache entries.
+        /// This cache stores FieldInfo lookups to avoid repeated reflection.
+        /// </summary>
+        private const int MaxFieldInfoCacheSize = 2000;
+
+        /// <summary>
+        /// Maximum number of member info cache entries.
+        /// This cache stores MemberInfo (FieldInfo, PropertyInfo, MethodInfo) lookups
+        /// to avoid repeated reflection in ResolveMemberAccessor.
+        /// </summary>
+        private const int MaxMemberInfoCacheSize = 2000;
 
         private static readonly Dictionary<
             Type,
@@ -36,11 +74,33 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             FieldInfo
         > FieldInfoCache = new();
 
+        /// <summary>
+        /// Cache for MemberInfo lookups (FieldInfo, PropertyInfo, MethodInfo) keyed by type and member name.
+        /// Uses LRU eviction when <see cref="MaxMemberInfoCacheSize"/> is reached.
+        /// </summary>
+        private static readonly Dictionary<
+            (Type type, string memberName),
+            MemberInfo
+        > MemberInfoCache = new();
+
         [ThreadStatic]
         private static object[] _singleIndexArgs;
 
         private static int _lastConditionCacheFrame = -1;
         private WShowIfAttribute _overrideAttribute;
+
+        /// <summary>
+        /// Clears all caches used by WShowIfPropertyDrawer.
+        /// Called during domain reload to prevent stale references.
+        /// </summary>
+        internal static void ClearCache()
+        {
+            CachedAccessors.Clear();
+            ConditionPropertyCache.Clear();
+            FieldInfoCache.Clear();
+            MemberInfoCache.Clear();
+            _lastConditionCacheFrame = -1;
+        }
 
         /// <summary>
         /// Checks whether a property with [WShowIf] attribute should be visible.
@@ -271,7 +331,13 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 conditionField
             );
 
-            if (ConditionPropertyCache.TryGetValue(cacheKey, out conditionProperty))
+            if (
+                EditorCacheHelper.TryGetFromBoundedLRUCache(
+                    ConditionPropertyCache,
+                    cacheKey,
+                    out conditionProperty
+                )
+            )
             {
                 return conditionProperty != null;
             }
@@ -279,7 +345,12 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             conditionProperty = serializedObject.FindProperty(conditionField);
             if (conditionProperty != null)
             {
-                ConditionPropertyCache[cacheKey] = conditionProperty;
+                EditorCacheHelper.AddToBoundedCache(
+                    ConditionPropertyCache,
+                    cacheKey,
+                    conditionProperty,
+                    MaxConditionPropertyCacheSize
+                );
                 return true;
             }
 
@@ -293,25 +364,53 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 conditionProperty = serializedObject.FindProperty(siblingPath);
                 if (conditionProperty != null)
                 {
-                    ConditionPropertyCache[cacheKey] = conditionProperty;
+                    EditorCacheHelper.AddToBoundedCache(
+                        ConditionPropertyCache,
+                        cacheKey,
+                        conditionProperty,
+                        MaxConditionPropertyCacheSize
+                    );
                     return true;
                 }
             }
 
-            ConditionPropertyCache[cacheKey] = null;
+            EditorCacheHelper.AddToBoundedCache(
+                ConditionPropertyCache,
+                cacheKey,
+                (SerializedProperty)null,
+                MaxConditionPropertyCacheSize
+            );
             conditionProperty = null;
             return false;
         }
 
         private static Func<object, object> GetAccessor(Type ownerType, string memberPath)
         {
-            Dictionary<string, Func<object, object>> cachedForType = CachedAccessors.GetOrAdd(
-                ownerType
-            );
+            if (
+                !CachedAccessors.TryGetValue(
+                    ownerType,
+                    out Dictionary<string, Func<object, object>> cachedForType
+                )
+            )
+            {
+                if (CachedAccessors.Count >= MaxCachedAccessorTypes)
+                {
+                    return BuildAccessor(ownerType, memberPath);
+                }
+
+                cachedForType = new Dictionary<string, Func<object, object>>(
+                    StringComparer.Ordinal
+                );
+                CachedAccessors[ownerType] = cachedForType;
+            }
+
             if (!cachedForType.TryGetValue(memberPath, out Func<object, object> accessor))
             {
                 accessor = BuildAccessor(ownerType, memberPath);
-                cachedForType[memberPath] = accessor;
+                if (cachedForType.Count < MaxAccessorsPerType)
+                {
+                    cachedForType[memberPath] = accessor;
+                }
             }
 
             return accessor;
@@ -399,6 +498,56 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             };
         }
 
+        /// <summary>
+        /// Gets a cached MemberInfo (FieldInfo, PropertyInfo, or MethodInfo) for the specified type and member name.
+        /// Uses LRU eviction when cache capacity is reached.
+        /// </summary>
+        /// <param name="type">The type to search for the member.</param>
+        /// <param name="memberName">The name of the member to find.</param>
+        /// <param name="flags">The binding flags for the member lookup.</param>
+        /// <returns>The cached or newly resolved MemberInfo, or null if not found.</returns>
+        private static MemberInfo GetCachedMemberInfo(
+            Type type,
+            string memberName,
+            BindingFlags flags
+        )
+        {
+            (Type, string) key = (type, memberName);
+            if (
+                EditorCacheHelper.TryGetFromBoundedLRUCache(
+                    MemberInfoCache,
+                    key,
+                    out MemberInfo cached
+                )
+            )
+            {
+                return cached;
+            }
+
+            MemberInfo memberInfo = type.GetField(memberName, flags);
+            if (memberInfo == null)
+            {
+                memberInfo = type.GetProperty(memberName, flags);
+            }
+
+            if (memberInfo == null)
+            {
+                memberInfo = type.GetMethod(memberName, flags, null, Type.EmptyTypes, null);
+            }
+
+            if (memberInfo != null)
+            {
+                EditorCacheHelper.AddToBoundedCache(
+                    MemberInfoCache,
+                    key,
+                    memberInfo,
+                    MaxMemberInfoCacheSize
+                );
+            }
+
+            return memberInfo;
+        }
+
         private static MemberAccessor ResolveMemberAccessor(Type type, string memberName)
         {
             BindingFlags flags =
@@ -407,14 +556,18 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 | BindingFlags.NonPublic
                 | BindingFlags.FlattenHierarchy;
 
-            FieldInfo field = type.GetField(memberName, flags);
-            if (field != null)
+            MemberInfo memberInfo = GetCachedMemberInfo(type, memberName, flags);
+            if (memberInfo == null)
+            {
+                return MemberAccessor.Invalid;
+            }
+
+            if (memberInfo is FieldInfo field)
             {
                 return new MemberAccessor(ReflectionHelpers.GetFieldGetter(field), field.FieldType);
             }
 
-            PropertyInfo propertyInfo = type.GetProperty(memberName, flags);
-            if (propertyInfo != null && propertyInfo.CanRead)
+            if (memberInfo is PropertyInfo propertyInfo && propertyInfo.CanRead)
             {
                 return new MemberAccessor(
                     ReflectionHelpers.GetPropertyGetter(propertyInfo),
@@ -422,8 +575,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 );
             }
 
-            MethodInfo methodInfo = type.GetMethod(memberName, flags, null, Type.EmptyTypes, null);
-            if (methodInfo != null)
+            if (memberInfo is MethodInfo methodInfo)
             {
                 if (methodInfo.ReturnType == typeof(void))
                 {
@@ -503,7 +655,9 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                             return null;
                         }
 
-                        PropertyInfo indexer = readOnlyListInterface.GetProperty("Item");
+                        PropertyInfo indexer = readOnlyListInterface.GetProperty(
+                            IndexerPropertyName
+                        );
                         if (indexer == null)
                         {
                             return null;

@@ -1,5 +1,7 @@
 # Skill: Avoid Reflection
 
+<!-- trigger: reflection, gettype, getfield, internal | ALL code - never reflect on our own types | Core -->
+
 **Trigger**: Any code that would normally use reflection to access types, fields, properties, or methods within our own codebase.
 
 ---

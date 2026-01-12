@@ -45,39 +45,108 @@ Run the `IListSortingPerformanceTests.Benchmark` test inside Unity’s Test Runn
 
 <!-- ILIST_SORT_WINDOWS_START -->
 
-_Last updated 2025-12-28 04:03 UTC on Windows 11 (10.0.26200) 64bit_
+_Last updated 2026-01-12 01:17 UTC on Windows 11 (10.0.26200) 64bit_
 
 Times are single-pass measurements in milliseconds (lower is better). `n/a` indicates the algorithm was skipped for the dataset size.
 
 ### Sorted
 
-| List Size | Ghost    | Meteor   | Pattern-Defeating QuickSort | Grail    | Power    | Insertion | Tim      | Jesse    | Green    | Ska      | Ipn      | Smooth   | Block    | IPS4o    | Power+   | Glide    | Flux     |
-| --------- | -------- | -------- | --------------------------- | -------- | -------- | --------- | -------- | -------- | -------- | -------- | -------- | -------- | -------- | -------- | -------- | -------- | -------- |
-| 100       | 0.030 ms | 0.002 ms | 0.001 ms                    | 0.001 ms | 0.001 ms | 0.001 ms  | 0.001 ms | 0.059 ms | 0.001 ms | 0.006 ms | 0.001 ms | 0.002 ms | 0.001 ms | 0.001 ms | 0.001 ms | 0.001 ms | 0.002 ms |
-| 1,000     | 0.021 ms | 0.026 ms | 0.007 ms                    | 0.006 ms | 0.005 ms | 0.006 ms  | 0.004 ms | 0.842 ms | 0.006 ms | 0.098 ms | 0.007 ms | 0.017 ms | 0.005 ms | 0.032 ms | 0.005 ms | 0.005 ms | 0.027 ms |
-| 10,000    | 0.269 ms | 0.364 ms | 0.074 ms                    | 0.063 ms | 0.043 ms | 0.056 ms  | 0.042 ms | 11.5 ms  | 0.060 ms | 1.40 ms  | 0.069 ms | 0.168 ms | 0.048 ms | 0.505 ms | 0.043 ms | 0.042 ms | 0.355 ms |
-| 100,000   | 3.27 ms  | 4.85 ms  | 0.691 ms                    | 0.599 ms | 0.441 ms | n/a       | 0.421 ms | 197 ms   | 0.600 ms | 18.4 ms  | 0.690 ms | 1.65 ms  | 0.479 ms | 6.23 ms  | 0.428 ms | 0.420 ms | 4.59 ms  |
-| 1,000,000 | 38.5 ms  | 60.5 ms  | 6.96 ms                     | 6.46 ms  | 4.27 ms  | n/a       | 4.20 ms  | 2.13 s   | 6.00 ms  | 225 ms   | 7.01 ms  | 17.5 ms  | 5.43 ms  | 88.4 ms  | 4.27 ms  | 4.45 ms  | 54.8 ms  |
+<table data-sortable>
+  <thead>
+    <tr>
+      <th align="left">List Size</th>
+      <th align="right">Ghost</th>
+      <th align="right">Meteor</th>
+      <th align="right">Pattern-Defeating QuickSort</th>
+      <th align="right">Grail</th>
+      <th align="right">Power</th>
+      <th align="right">Insertion</th>
+      <th align="right">Tim</th>
+      <th align="right">Jesse</th>
+      <th align="right">Green</th>
+      <th align="right">Ska</th>
+      <th align="right">Ipn</th>
+      <th align="right">Smooth</th>
+      <th align="right">Block</th>
+      <th align="right">IPS4o</th>
+      <th align="right">Power+</th>
+      <th align="right">Glide</th>
+      <th align="right">Flux</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td align="left">100</td><td align="right">0.029 ms</td><td align="right">0.002 ms</td><td align="right">0.001 ms</td><td align="right">0.001 ms</td><td align="right">0.002 ms</td><td align="right">0.001 ms</td><td align="right">0.001 ms</td><td align="right">0.624 ms</td><td align="right">0.001 ms</td><td align="right">0.007 ms</td><td align="right">0.001 ms</td><td align="right">0.002 ms</td><td align="right">0.001 ms</td><td align="right">0.001 ms</td><td align="right">0.001 ms</td><td align="right">0.002 ms</td><td align="right">0.002 ms</td></tr>
+    <tr><td align="left">1,000</td><td align="right">0.023 ms</td><td align="right">0.027 ms</td><td align="right">0.008 ms</td><td align="right">0.007 ms</td><td align="right">0.007 ms</td><td align="right">0.006 ms</td><td align="right">0.006 ms</td><td align="right">54.3 ms</td><td align="right">0.007 ms</td><td align="right">0.112 ms</td><td align="right">0.009 ms</td><td align="right">0.018 ms</td><td align="right">0.005 ms</td><td align="right">0.040 ms</td><td align="right">0.007 ms</td><td align="right">0.007 ms</td><td align="right">0.029 ms</td></tr>
+    <tr><td align="left">10,000</td><td align="right">0.305 ms</td><td align="right">0.394 ms</td><td align="right">0.077 ms</td><td align="right">0.066 ms</td><td align="right">0.049 ms</td><td align="right">0.066 ms</td><td align="right">0.047 ms</td><td align="right">3.24 s</td><td align="right">0.071 ms</td><td align="right">1.45 ms</td><td align="right">0.083 ms</td><td align="right">0.175 ms</td><td align="right">0.056 ms</td><td align="right">0.571 ms</td><td align="right">0.048 ms</td><td align="right">0.048 ms</td><td align="right">0.386 ms</td></tr>
+    <tr><td align="left">100,000</td><td align="right">3.51 ms</td><td align="right">5.14 ms</td><td align="right">0.764 ms</td><td align="right">0.658 ms</td><td align="right">0.469 ms</td><td align="right">n/a</td><td align="right">0.459 ms</td><td align="right">136.86 s</td><td align="right">0.670 ms</td><td align="right">18.5 ms</td><td align="right">0.773 ms</td><td align="right">1.80 ms</td><td align="right">0.512 ms</td><td align="right">7.57 ms</td><td align="right">0.473 ms</td><td align="right">0.479 ms</td><td align="right">4.93 ms</td></tr>
+  </tbody>
+</table>
 
 ### Nearly Sorted (2% swaps)
 
-| List Size | Ghost    | Meteor   | Pattern-Defeating QuickSort | Grail    | Power    | Insertion | Tim      | Jesse    | Green    | Ska      | Ipn      | Smooth   | Block    | IPS4o    | Power+   | Glide    | Flux     |
-| --------- | -------- | -------- | --------------------------- | -------- | -------- | --------- | -------- | -------- | -------- | -------- | -------- | -------- | -------- | -------- | -------- | -------- | -------- |
-| 100       | 0.001 ms | 0.002 ms | 0.002 ms                    | 0.001 ms | 0.001 ms | 0.001 ms  | 0.001 ms | 0.058 ms | 0.001 ms | 0.006 ms | 0.001 ms | 0.002 ms | 0.001 ms | 0.002 ms | 0.002 ms | 0.001 ms | 0.002 ms |
-| 1,000     | 0.022 ms | 0.026 ms | 0.029 ms                    | 0.126 ms | 0.030 ms | 0.007 ms  | 0.014 ms | 0.832 ms | 0.006 ms | 0.099 ms | 0.026 ms | 0.017 ms | 0.006 ms | 0.041 ms | 0.022 ms | 0.014 ms | 0.028 ms |
-| 10,000    | 0.318 ms | 0.371 ms | 0.402 ms                    | 0.069 ms | 0.246 ms | 0.058 ms  | 0.179 ms | 11.7 ms  | 0.070 ms | 1.65 ms  | 0.365 ms | 0.173 ms | 0.065 ms | 0.616 ms | 0.387 ms | 0.158 ms | 0.364 ms |
-| 100,000   | 3.28 ms  | 4.86 ms  | 5.04 ms                     | 0.711 ms | 3.75 ms  | n/a       | 2.61 ms  | 191 ms   | 0.679 ms | 18.4 ms  | 4.42 ms  | 1.73 ms  | 0.586 ms | 7.53 ms  | 5.61 ms  | 2.24 ms  | 4.61 ms  |
-| 1,000,000 | 40.0 ms  | 60.7 ms  | 55.0 ms                     | 7.57 ms  | 47.8 ms  | n/a       | 25.1 ms  | 2.10 s   | 7.32 ms  | 226 ms   | 52.3 ms  | 17.6 ms  | 7.20 ms  | 93.4 ms  | 75.9 ms  | 18.7 ms  | 56.2 ms  |
+<table data-sortable>
+  <thead>
+    <tr>
+      <th align="left">List Size</th>
+      <th align="right">Ghost</th>
+      <th align="right">Meteor</th>
+      <th align="right">Pattern-Defeating QuickSort</th>
+      <th align="right">Grail</th>
+      <th align="right">Power</th>
+      <th align="right">Insertion</th>
+      <th align="right">Tim</th>
+      <th align="right">Jesse</th>
+      <th align="right">Green</th>
+      <th align="right">Ska</th>
+      <th align="right">Ipn</th>
+      <th align="right">Smooth</th>
+      <th align="right">Block</th>
+      <th align="right">IPS4o</th>
+      <th align="right">Power+</th>
+      <th align="right">Glide</th>
+      <th align="right">Flux</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td align="left">100</td><td align="right">0.001 ms</td><td align="right">0.002 ms</td><td align="right">0.002 ms</td><td align="right">0.001 ms</td><td align="right">0.003 ms</td><td align="right">0.001 ms</td><td align="right">0.002 ms</td><td align="right">241 ms</td><td align="right">0.001 ms</td><td align="right">0.007 ms</td><td align="right">0.002 ms</td><td align="right">0.002 ms</td><td align="right">0.001 ms</td><td align="right">0.002 ms</td><td align="right">0.004 ms</td><td align="right">0.003 ms</td><td align="right">0.002 ms</td></tr>
+    <tr><td align="left">1,000</td><td align="right">0.023 ms</td><td align="right">0.031 ms</td><td align="right">0.033 ms</td><td align="right">0.007 ms</td><td align="right">0.018 ms</td><td align="right">0.007 ms</td><td align="right">0.014 ms</td><td align="right">2.43 s</td><td align="right">0.007 ms</td><td align="right">0.100 ms</td><td align="right">0.030 ms</td><td align="right">0.018 ms</td><td align="right">0.007 ms</td><td align="right">0.045 ms</td><td align="right">0.025 ms</td><td align="right">0.016 ms</td><td align="right">0.030 ms</td></tr>
+    <tr><td align="left">10,000</td><td align="right">0.293 ms</td><td align="right">0.395 ms</td><td align="right">0.443 ms</td><td align="right">0.073 ms</td><td align="right">0.232 ms</td><td align="right">0.063 ms</td><td align="right">0.173 ms</td><td align="right">23.44 s</td><td align="right">0.071 ms</td><td align="right">1.44 ms</td><td align="right">0.405 ms</td><td align="right">0.189 ms</td><td align="right">0.069 ms</td><td align="right">0.674 ms</td><td align="right">0.433 ms</td><td align="right">0.166 ms</td><td align="right">0.390 ms</td></tr>
+    <tr><td align="left">100,000</td><td align="right">3.60 ms</td><td align="right">5.19 ms</td><td align="right">5.30 ms</td><td align="right">0.843 ms</td><td align="right">3.53 ms</td><td align="right">n/a</td><td align="right">2.43 ms</td><td align="right">137.09 s</td><td align="right">0.727 ms</td><td align="right">18.8 ms</td><td align="right">4.98 ms</td><td align="right">1.95 ms</td><td align="right">0.633 ms</td><td align="right">8.46 ms</td><td align="right">5.37 ms</td><td align="right">2.28 ms</td><td align="right">4.96 ms</td></tr>
+  </tbody>
+</table>
 
 ### Shuffled (deterministic)
 
-| List Size | Ghost    | Meteor   | Pattern-Defeating QuickSort | Grail    | Power    | Insertion | Tim      | Jesse    | Green    | Ska      | Ipn      | Smooth   | Block    | IPS4o    | Power+   | Glide    | Flux     |
-| --------- | -------- | -------- | --------------------------- | -------- | -------- | --------- | -------- | -------- | -------- | -------- | -------- | -------- | -------- | -------- | -------- | -------- | -------- |
-| 100       | 0.008 ms | 0.006 ms | 0.005 ms                    | 0.007 ms | 0.007 ms | 0.015 ms  | 0.009 ms | 0.030 ms | 0.007 ms | 0.008 ms | 0.007 ms | 0.010 ms | 0.005 ms | 0.005 ms | 0.029 ms | 0.010 ms | 0.006 ms |
-| 1,000     | 0.144 ms | 0.122 ms | 0.087 ms                    | 0.102 ms | 0.103 ms | 1.37 ms   | 0.136 ms | 0.403 ms | 0.105 ms | 0.141 ms | 0.093 ms | 0.182 ms | 0.091 ms | 0.101 ms | 0.422 ms | 0.150 ms | 0.095 ms |
-| 10,000    | 2.00 ms  | 1.78 ms  | 1.18 ms                     | 1.42 ms  | 1.46 ms  | 137 ms    | 1.54 ms  | 5.47 ms  | 1.35 ms  | 1.83 ms  | 1.26 ms  | 2.78 ms  | 1.14 ms  | 1.46 ms  | 6.16 ms  | 1.71 ms  | 1.43 ms  |
-| 100,000   | 29.2 ms  | 24.6 ms  | 14.9 ms                     | 17.7 ms  | 18.0 ms  | n/a       | 19.8 ms  | 70.0 ms  | 17.6 ms  | 24.4 ms  | 15.6 ms  | 34.3 ms  | 14.5 ms  | 18.3 ms  | 77.9 ms  | 22.5 ms  | 17.4 ms  |
-| 1,000,000 | 411 ms   | 305 ms   | 180 ms                      | 212 ms   | 213 ms   | n/a       | 246 ms   | 896 ms   | 215 ms   | 289 ms   | 186 ms   | 448 ms   | 180 ms   | 227 ms   | 1.12 s   | 289 ms   | 214 ms   |
+<table data-sortable>
+  <thead>
+    <tr>
+      <th align="left">List Size</th>
+      <th align="right">Ghost</th>
+      <th align="right">Meteor</th>
+      <th align="right">Pattern-Defeating QuickSort</th>
+      <th align="right">Grail</th>
+      <th align="right">Power</th>
+      <th align="right">Insertion</th>
+      <th align="right">Tim</th>
+      <th align="right">Jesse</th>
+      <th align="right">Green</th>
+      <th align="right">Ska</th>
+      <th align="right">Ipn</th>
+      <th align="right">Smooth</th>
+      <th align="right">Block</th>
+      <th align="right">IPS4o</th>
+      <th align="right">Power+</th>
+      <th align="right">Glide</th>
+      <th align="right">Flux</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td align="left">100</td><td align="right">0.008 ms</td><td align="right">0.007 ms</td><td align="right">0.006 ms</td><td align="right">0.007 ms</td><td align="right">0.008 ms</td><td align="right">0.017 ms</td><td align="right">0.011 ms</td><td align="right">61.7 ms</td><td align="right">0.008 ms</td><td align="right">0.011 ms</td><td align="right">0.008 ms</td><td align="right">0.012 ms</td><td align="right">0.005 ms</td><td align="right">0.006 ms</td><td align="right">0.025 ms</td><td align="right">0.012 ms</td><td align="right">0.007 ms</td></tr>
+    <tr><td align="left">1,000</td><td align="right">0.156 ms</td><td align="right">0.132 ms</td><td align="right">0.088 ms</td><td align="right">0.105 ms</td><td align="right">0.152 ms</td><td align="right">1.49 ms</td><td align="right">0.160 ms</td><td align="right">216 ms</td><td align="right">0.121 ms</td><td align="right">0.133 ms</td><td align="right">0.097 ms</td><td align="right">0.200 ms</td><td align="right">0.089 ms</td><td align="right">0.107 ms</td><td align="right">0.434 ms</td><td align="right">0.159 ms</td><td align="right">0.098 ms</td></tr>
+    <tr><td align="left">10,000</td><td align="right">2.50 ms</td><td align="right">1.95 ms</td><td align="right">1.22 ms</td><td align="right">1.46 ms</td><td align="right">1.49 ms</td><td align="right">147 ms</td><td align="right">1.57 ms</td><td align="right">669 ms</td><td align="right">1.38 ms</td><td align="right">1.78 ms</td><td align="right">1.33 ms</td><td align="right">2.76 ms</td><td align="right">1.20 ms</td><td align="right">1.57 ms</td><td align="right">5.98 ms</td><td align="right">1.80 ms</td><td align="right">1.44 ms</td></tr>
+    <tr><td align="left">100,000</td><td align="right">31.9 ms</td><td align="right">26.0 ms</td><td align="right">15.3 ms</td><td align="right">18.2 ms</td><td align="right">18.3 ms</td><td align="right">n/a</td><td align="right">20.4 ms</td><td align="right">2.21 s</td><td align="right">18.3 ms</td><td align="right">23.0 ms</td><td align="right">15.9 ms</td><td align="right">35.5 ms</td><td align="right">15.2 ms</td><td align="right">20.2 ms</td><td align="right">77.1 ms</td><td align="right">23.6 ms</td><td align="right">17.6 ms</td></tr>
+  </tbody>
+</table>
 
 <!-- ILIST_SORT_WINDOWS_END -->
 

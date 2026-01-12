@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Tests.Runtime.Random
@@ -8,6 +8,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Random
     using WallstopStudios.UnityHelpers.Core.Random;
     using Serializer = WallstopStudios.UnityHelpers.Core.Serialization.Serializer;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class RandomProtoSerializationTests
     {
         private const int NumGenerations = 1000;
@@ -16,11 +18,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Random
             where T : IRandom
         {
             byte[] serialized = Serializer.ProtoSerialize(original);
-            Assert.IsNotNull(serialized, "Serialization should produce non-null bytes");
+            Assert.IsTrue(serialized != null, "Serialization should produce non-null bytes");
             Assert.Greater(serialized.Length, 0, "Serialization should produce non-empty bytes");
 
             T deserialized = Serializer.ProtoDeserialize<T>(serialized);
-            Assert.IsNotNull(deserialized, "Deserialization should produce non-null instance");
+            Assert.IsTrue(deserialized != null, "Deserialization should produce non-null instance");
 
             return deserialized;
         }
@@ -395,7 +397,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Random
 
                 // Serialize
                 byte[] serialized = Serializer.ProtoSerialize(random);
-                Assert.IsNotNull(serialized, $"{random.GetType().Name} serialization failed");
+                Assert.IsTrue(serialized != null, $"{random.GetType().Name} serialization failed");
                 Assert.Greater(
                     serialized.Length,
                     0,
@@ -404,7 +406,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Random
 
                 // Deserialize
                 IRandom deserialized = Serializer.ProtoDeserialize<IRandom>(serialized);
-                Assert.IsNotNull(deserialized, $"{random.GetType().Name} deserialization failed");
+                Assert.IsTrue(
+                    deserialized != null,
+                    $"{random.GetType().Name} deserialization failed"
+                );
 
                 // Verify state
                 Assert.AreEqual(

@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Editor.CustomEditors
@@ -441,7 +441,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomEditors
                 if (useLabels)
                 {
                     SerializedProperty labelModeProp = property.FindPropertyRelative(
-                        "labelSelectionMode"
+                        nameof(SourceFolderEntry.labelSelectionMode)
                     );
                     Rect rectLabelMode = new(
                         startX,

@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Tests.DataStructures
@@ -9,6 +9,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
     using WallstopStudios.UnityHelpers.Core.OneOf;
 
     [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class FastOneOf3Tests
     {
         [Test]
@@ -409,7 +410,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             FastOneOf<int?, string, bool> oneOf = (int?)null;
 
             Assert.IsTrue(oneOf.IsT0);
-            Assert.IsNull(oneOf.AsT0);
+            Assert.IsTrue(oneOf.AsT0 == null);
         }
 
         [Test]
@@ -439,6 +440,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
     }
 
     [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class FastOneOf2Tests
     {
         [Test]
@@ -646,6 +648,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
     }
 
     [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class FastOneOf4Tests
     {
         [Test]
@@ -811,20 +814,21 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
     }
 
     [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class NoneTests
     {
         [Test]
         public void DefaultNoneIsValid()
         {
             None none = default;
-            Assert.IsNotNull(none);
+            Assert.IsTrue(none != null);
         }
 
         [Test]
         public void NoneDefaultSingletonIsValid()
         {
             None none = None.Default;
-            Assert.IsNotNull(none);
+            Assert.IsTrue(none != null);
         }
 
         [Test]

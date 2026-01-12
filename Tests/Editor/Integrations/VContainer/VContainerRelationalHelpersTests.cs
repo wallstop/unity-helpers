@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 #if VCONTAINER_PRESENT
@@ -12,6 +12,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Integrations.VContainer
     using WallstopStudios.UnityHelpers.Tags;
     using WallstopStudios.UnityHelpers.Tests.Core;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class VContainerRelationalHelpersTests : CommonTestBase
     {
         private sealed class TestComponent : MonoBehaviour

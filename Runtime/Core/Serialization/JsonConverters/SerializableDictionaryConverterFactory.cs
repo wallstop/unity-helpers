@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Core.Serialization.JsonConverters
@@ -61,8 +61,10 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization.JsonConverters
         private sealed class SerializableDictionaryConverter<TKey, TValue>
             : JsonConverter<SerializableDictionary<TKey, TValue>>
         {
-            private const string KeysPropertyName = "_keys";
-            private const string ValuesPropertyName = "_values";
+            private const string KeysPropertyName =
+                SerializableDictionarySerializedPropertyNames.Keys;
+            private const string ValuesPropertyName =
+                SerializableDictionarySerializedPropertyNames.Values;
 
             public override SerializableDictionary<TKey, TValue> Read(
                 ref Utf8JsonReader reader,
@@ -169,11 +171,11 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization.JsonConverters
                 Type baseType = typeof(SerializableDictionaryBase<TKey, TValue, TValue>);
 
                 FieldInfo keysField = baseType.GetField(
-                    "_keys",
+                    KeysPropertyName,
                     BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public
                 );
                 FieldInfo valuesField = baseType.GetField(
-                    "_values",
+                    ValuesPropertyName,
                     BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public
                 );
 
@@ -186,8 +188,10 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization.JsonConverters
             : JsonConverter<SerializableDictionary<TKey, TValue, TValueCache>>
             where TValueCache : SerializableDictionary.Cache<TValue>, new()
         {
-            private const string KeysPropertyName = "_keys";
-            private const string ValuesPropertyName = "_values";
+            private const string KeysPropertyName =
+                SerializableDictionarySerializedPropertyNames.Keys;
+            private const string ValuesPropertyName =
+                SerializableDictionarySerializedPropertyNames.Values;
 
             public override SerializableDictionary<TKey, TValue, TValueCache> Read(
                 ref Utf8JsonReader reader,
@@ -297,11 +301,11 @@ namespace WallstopStudios.UnityHelpers.Core.Serialization.JsonConverters
                 Type baseType = typeof(SerializableDictionaryBase<TKey, TValue, TValueCache>);
 
                 FieldInfo keysField = baseType.GetField(
-                    "_keys",
+                    KeysPropertyName,
                     BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public
                 );
                 FieldInfo valuesField = baseType.GetField(
-                    "_values",
+                    ValuesPropertyName,
                     BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public
                 );
 

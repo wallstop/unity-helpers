@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Tests.Extensions
@@ -13,6 +13,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
     using WallstopStudios.UnityHelpers.Tests.Core;
     using WallstopStudios.UnityHelpers.Utils;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class IEnumerableExtensionsTests : CommonTestBase
     {
         [Test]
@@ -281,7 +283,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
                 }
             }
 
-            Assert.IsNotNull(capturedBuffer);
+            Assert.IsTrue(capturedBuffer != null);
             Assert.AreEqual(0, capturedBuffer.Count);
 
             using IEnumerator<PooledResource<List<int>>> enumerator = values
@@ -381,7 +383,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
             }
 
             Assert.IsTrue(exceptionObserved, "The simulated failure should be observed.");
-            Assert.IsNotNull(leakedBuffer);
+            Assert.IsTrue(leakedBuffer != null);
             Assert.AreEqual(
                 0,
                 leakedBuffer.Count,

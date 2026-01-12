@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Tests.DataStructures
@@ -17,6 +17,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
     /// These tests validate that user-defined element ordering in the Unity inspector is maintained
     /// and not reordered by the underlying data structure's natural ordering.
     /// </summary>
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class SerializationOrderPreservationTests : CommonTestBase
     {
         [Test]
@@ -506,8 +508,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             dictionary.OnBeforeSerialize();
 
             // Assert
-            Assert.IsNotNull(dictionary._keys);
-            Assert.IsNotNull(dictionary._values);
+            Assert.IsTrue(dictionary._keys != null);
+            Assert.IsTrue(dictionary._values != null);
             Assert.AreEqual(0, dictionary._keys.Length);
             Assert.AreEqual(0, dictionary._values.Length);
         }
@@ -522,7 +524,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             set.OnBeforeSerialize();
 
             // Assert
-            Assert.IsNotNull(set._items);
+            Assert.IsTrue(set._items != null);
             Assert.AreEqual(0, set._items.Length);
         }
 
@@ -536,7 +538,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             set.OnBeforeSerialize();
 
             // Assert
-            Assert.IsNotNull(set._items);
+            Assert.IsTrue(set._items != null);
             Assert.AreEqual(0, set._items.Length);
         }
 
@@ -803,7 +805,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
 
             // Act: Protobuf round-trip
             byte[] bytes = Serializer.ProtoSerialize(original);
-            Assert.IsNotNull(bytes, "Serialized bytes should not be null");
+            Assert.IsTrue(bytes != null, "Serialized bytes should not be null");
             Assert.Greater(bytes.Length, 0, "Serialized bytes should not be empty");
 
             SerializableSortedDictionary<int, string> restored = Serializer.ProtoDeserialize<
@@ -811,13 +813,13 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             >(bytes);
 
             // Assert: Order preserved after round-trip
-            Assert.IsNotNull(restored, "Restored object should not be null");
-            Assert.IsNotNull(
-                restored._keys,
+            Assert.IsTrue(restored != null, "Restored object should not be null");
+            Assert.IsTrue(
+                restored._keys != null,
                 $"Restored _keys should not be null. Serialized {bytes.Length} bytes."
             );
-            Assert.IsNotNull(
-                restored._values,
+            Assert.IsTrue(
+                restored._values != null,
                 $"Restored _values should not be null. Serialized {bytes.Length} bytes."
             );
             string actualKeys = string.Join(", ", restored._keys);
@@ -843,7 +845,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
 
             // Act: Protobuf round-trip
             byte[] bytes = Serializer.ProtoSerialize(original);
-            Assert.IsNotNull(bytes, "Serialized bytes should not be null");
+            Assert.IsTrue(bytes != null, "Serialized bytes should not be null");
             Assert.Greater(bytes.Length, 0, "Serialized bytes should not be empty");
 
             SerializableSortedSet<int> restored = Serializer.ProtoDeserialize<
@@ -851,9 +853,9 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             >(bytes);
 
             // Assert: Order preserved after round-trip
-            Assert.IsNotNull(restored, "Restored object should not be null");
-            Assert.IsNotNull(
-                restored._items,
+            Assert.IsTrue(restored != null, "Restored object should not be null");
+            Assert.IsTrue(
+                restored._items != null,
                 $"Restored _items should not be null. Serialized {bytes.Length} bytes."
             );
             string actualItems = string.Join(", ", restored._items);
@@ -873,7 +875,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
 
             // Act: Protobuf round-trip
             byte[] bytes = Serializer.ProtoSerialize(original);
-            Assert.IsNotNull(bytes, "Serialized bytes should not be null");
+            Assert.IsTrue(bytes != null, "Serialized bytes should not be null");
             Assert.Greater(bytes.Length, 0, "Serialized bytes should not be empty");
 
             SerializableHashSet<int> restored = Serializer.ProtoDeserialize<
@@ -881,9 +883,9 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             >(bytes);
 
             // Assert: Order preserved after round-trip
-            Assert.IsNotNull(restored, "Restored object should not be null");
-            Assert.IsNotNull(
-                restored._items,
+            Assert.IsTrue(restored != null, "Restored object should not be null");
+            Assert.IsTrue(
+                restored._items != null,
                 $"Restored _items should not be null. Serialized {bytes.Length} bytes."
             );
             string restoredItems = string.Join(", ", restored._items);
@@ -942,7 +944,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
 
             // Act: JSON round-trip
             string json = Serializer.JsonStringify(original);
-            Assert.IsNotNull(json, "Serialized JSON should not be null");
+            Assert.IsTrue(json != null, "Serialized JSON should not be null");
             Assert.IsNotEmpty(json, "Serialized JSON should not be empty");
 
             SerializableHashSet<int> restored = Serializer.JsonDeserialize<
@@ -950,8 +952,11 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             >(json);
 
             // Assert: Order preserved after round-trip
-            Assert.IsNotNull(restored, "Restored object should not be null");
-            Assert.IsNotNull(restored._items, $"Restored _items should not be null. JSON: {json}");
+            Assert.IsTrue(restored != null, "Restored object should not be null");
+            Assert.IsTrue(
+                restored._items != null,
+                $"Restored _items should not be null. JSON: {json}"
+            );
             string restoredItems = string.Join(", ", restored._items);
             CollectionAssert.AreEqual(
                 new[] { 7, 3, 9, 1 },
@@ -1254,7 +1259,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             byte[] bytes = Serializer.ProtoSerialize(set);
 
             // Assert: Bytes were serialized
-            Assert.IsNotNull(bytes, "Serialized bytes should not be null");
+            Assert.IsTrue(bytes != null, "Serialized bytes should not be null");
             Assert.Greater(bytes.Length, 0, "Serialized bytes should not be empty");
 
             SerializableHashSet<int> restored = Serializer.ProtoDeserialize<
@@ -1262,9 +1267,9 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             >(bytes);
 
             // Assert: Restored correctly
-            Assert.IsNotNull(restored, "Restored object should not be null");
-            Assert.IsNotNull(
-                restored._items,
+            Assert.IsTrue(restored != null, "Restored object should not be null");
+            Assert.IsTrue(
+                restored._items != null,
                 $"Restored _items should not be null. Serialized {bytes.Length} bytes."
             );
             int[] expected = { 10, 30, 50, 25 };
@@ -1293,7 +1298,10 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             >(json);
 
             // Assert
-            Assert.IsNotNull(restored._items, $"Restored _items should not be null. JSON: {json}");
+            Assert.IsTrue(
+                restored._items != null,
+                $"Restored _items should not be null. JSON: {json}"
+            );
             int[] expected = { 10, 30, 50, 25 };
             string actualItems = string.Join(", ", restored._items);
             CollectionAssert.AreEqual(
@@ -1348,7 +1356,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             byte[] bytes = Serializer.ProtoSerialize(dict);
 
             // Assert: Bytes were serialized
-            Assert.IsNotNull(bytes, "Serialized bytes should not be null");
+            Assert.IsTrue(bytes != null, "Serialized bytes should not be null");
             Assert.Greater(bytes.Length, 0, "Serialized bytes should not be empty");
 
             SerializableSortedDictionary<int, string> restored = Serializer.ProtoDeserialize<
@@ -1356,13 +1364,13 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             >(bytes);
 
             // Assert: Restored correctly
-            Assert.IsNotNull(restored, "Restored object should not be null");
-            Assert.IsNotNull(
-                restored._keys,
+            Assert.IsTrue(restored != null, "Restored object should not be null");
+            Assert.IsTrue(
+                restored._keys != null,
                 $"Restored _keys should not be null. Serialized {bytes.Length} bytes."
             );
-            Assert.IsNotNull(
-                restored._values,
+            Assert.IsTrue(
+                restored._values != null,
                 $"Restored _values should not be null. Serialized {bytes.Length} bytes."
             );
             int[] expected = { 30, 20, 40, 15 };
@@ -1394,7 +1402,10 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             >(json);
 
             // Assert
-            Assert.IsNotNull(restored._keys, $"Restored _keys should not be null. JSON: {json}");
+            Assert.IsTrue(
+                restored._keys != null,
+                $"Restored _keys should not be null. JSON: {json}"
+            );
             int[] expected = { 30, 20, 40, 15 };
             string actualKeys = string.Join(", ", restored._keys);
             CollectionAssert.AreEqual(
@@ -1638,8 +1649,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             // Diagnostic: Verify original state
             string originalItemsStr =
                 original._items != null ? string.Join(", ", original._items) : "null";
-            Assert.IsNotNull(
-                original._items,
+            Assert.IsTrue(
+                original._items != null,
                 $"Original _items should not be null before serialization"
             );
 
@@ -1647,7 +1658,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             byte[] bytes = Serializer.ProtoSerialize(original);
 
             // Assert: Bytes were serialized
-            Assert.IsNotNull(bytes, "Serialized bytes should not be null");
+            Assert.IsTrue(bytes != null, "Serialized bytes should not be null");
             Assert.Greater(
                 bytes.Length,
                 0,
@@ -1665,9 +1676,9 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             >(bytes);
 
             // Assert: Restored correctly
-            Assert.IsNotNull(restored, "Restored object should not be null");
-            Assert.IsNotNull(
-                restored._items,
+            Assert.IsTrue(restored != null, "Restored object should not be null");
+            Assert.IsTrue(
+                restored._items != null,
                 $"Restored _items should not be null. Serialized {bytes.Length} bytes for {items.Length} items. "
                     + $"Original=[{originalItemsStr}]. Hex={hexDump}"
             );
@@ -1708,7 +1719,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             byte[] bytes = Serializer.ProtoSerialize(original);
 
             // Assert: Bytes were serialized
-            Assert.IsNotNull(bytes, "Serialized bytes should not be null");
+            Assert.IsTrue(bytes != null, "Serialized bytes should not be null");
             Assert.Greater(
                 bytes.Length,
                 0,
@@ -1720,9 +1731,9 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             >(bytes);
 
             // Assert: Restored correctly
-            Assert.IsNotNull(restored, "Restored object should not be null");
-            Assert.IsNotNull(
-                restored._items,
+            Assert.IsTrue(restored != null, "Restored object should not be null");
+            Assert.IsTrue(
+                restored._items != null,
                 $"Restored _items should not be null. Serialized {bytes.Length} bytes for {items.Length} items."
             );
             string expectedStr = string.Join(", ", items);
@@ -1773,7 +1784,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             byte[] bytes = Serializer.ProtoSerialize(original);
 
             // Assert: Bytes were serialized
-            Assert.IsNotNull(bytes, "Serialized bytes should not be null");
+            Assert.IsTrue(bytes != null, "Serialized bytes should not be null");
             Assert.Greater(
                 bytes.Length,
                 0,
@@ -1785,13 +1796,13 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             >(bytes);
 
             // Assert: Restored correctly
-            Assert.IsNotNull(restored, "Restored object should not be null");
-            Assert.IsNotNull(
-                restored._keys,
+            Assert.IsTrue(restored != null, "Restored object should not be null");
+            Assert.IsTrue(
+                restored._keys != null,
                 $"Restored _keys should not be null. Serialized {bytes.Length} bytes for {keys.Length} entries."
             );
-            Assert.IsNotNull(
-                restored._values,
+            Assert.IsTrue(
+                restored._values != null,
                 $"Restored _values should not be null. Serialized {bytes.Length} bytes for {keys.Length} entries."
             );
             string expectedKeys = string.Join(", ", keys);
@@ -1824,7 +1835,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             >(bytes);
 
             // Assert
-            Assert.IsNotNull(restored, "Restored object should not be null");
+            Assert.IsTrue(restored != null, "Restored object should not be null");
             Assert.AreEqual(0, restored.Count, "Restored set should be empty");
         }
 
@@ -1842,7 +1853,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             >(bytes);
 
             // Assert
-            Assert.IsNotNull(restored, "Restored object should not be null");
+            Assert.IsTrue(restored != null, "Restored object should not be null");
             Assert.AreEqual(0, restored.Count, "Restored set should be empty");
         }
 
@@ -1860,7 +1871,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             >(bytes);
 
             // Assert
-            Assert.IsNotNull(restored, "Restored object should not be null");
+            Assert.IsTrue(restored != null, "Restored object should not be null");
             Assert.AreEqual(0, restored.Count, "Restored dictionary should be empty");
         }
 
@@ -1883,8 +1894,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             original.OnAfterDeserialize();
 
             // Verify pre-serialization state
-            Assert.IsNotNull(
-                original._items,
+            Assert.IsTrue(
+                original._items != null,
                 $"Original _items should not be null before serialization. Count={original.Count}"
             );
             Assert.AreEqual(
@@ -1897,7 +1908,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             byte[] bytes = Serializer.ProtoSerialize(original);
 
             // Diagnostic: Verify bytes were produced
-            Assert.IsNotNull(bytes, "Serialized bytes should not be null");
+            Assert.IsTrue(bytes != null, "Serialized bytes should not be null");
             Assert.Greater(
                 bytes.Length,
                 0,
@@ -1910,9 +1921,9 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             >(bytes);
 
             // Assert: Verify restored state with comprehensive diagnostics
-            Assert.IsNotNull(restored, "Restored object should not be null");
-            Assert.IsNotNull(
-                restored._items,
+            Assert.IsTrue(restored != null, "Restored object should not be null");
+            Assert.IsTrue(
+                restored._items != null,
                 $"Restored _items should not be null. Serialized {bytes.Length} bytes for {items.Length} items. "
                     + $"Original._items was [{string.Join(", ", original._items)}]"
             );
@@ -1937,8 +1948,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             original.OnAfterDeserialize();
 
             // Verify pre-serialization state
-            Assert.IsNotNull(
-                original._items,
+            Assert.IsTrue(
+                original._items != null,
                 $"Original _items should not be null before serialization. Count={original.Count}"
             );
             Assert.AreEqual(
@@ -1951,7 +1962,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             byte[] bytes = Serializer.ProtoSerialize(original);
 
             // Diagnostic: Verify bytes were produced
-            Assert.IsNotNull(bytes, "Serialized bytes should not be null");
+            Assert.IsTrue(bytes != null, "Serialized bytes should not be null");
             Assert.Greater(
                 bytes.Length,
                 0,
@@ -1964,9 +1975,9 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             >(bytes);
 
             // Assert: Verify restored state with comprehensive diagnostics
-            Assert.IsNotNull(restored, "Restored object should not be null");
-            Assert.IsNotNull(
-                restored._items,
+            Assert.IsTrue(restored != null, "Restored object should not be null");
+            Assert.IsTrue(
+                restored._items != null,
                 $"Restored _items should not be null. Serialized {bytes.Length} bytes for {items.Length} items. "
                     + $"Original._items was [{string.Join(", ", original._items)}]"
             );
@@ -2208,8 +2219,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             dictionary.OnBeforeSerialize();
 
             // Assert
-            Assert.IsNotNull(dictionary._keys);
-            Assert.IsNotNull(dictionary._values);
+            Assert.IsTrue(dictionary._keys != null);
+            Assert.IsTrue(dictionary._values != null);
             Assert.AreEqual(0, dictionary._keys.Length);
             Assert.AreEqual(0, dictionary._values.Length);
         }
@@ -2372,7 +2383,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
 
             // Act: Protobuf round-trip
             byte[] bytes = Serializer.ProtoSerialize(original);
-            Assert.IsNotNull(bytes, "Serialized bytes should not be null");
+            Assert.IsTrue(bytes != null, "Serialized bytes should not be null");
             Assert.Greater(bytes.Length, 0, "Serialized bytes should not be empty");
 
             SerializableDictionary<int, string> restored = Serializer.ProtoDeserialize<
@@ -2380,13 +2391,13 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             >(bytes);
 
             // Assert: Order preserved after round-trip
-            Assert.IsNotNull(restored, "Restored object should not be null");
-            Assert.IsNotNull(
-                restored._keys,
+            Assert.IsTrue(restored != null, "Restored object should not be null");
+            Assert.IsTrue(
+                restored._keys != null,
                 $"Restored _keys should not be null. Serialized {bytes.Length} bytes."
             );
-            Assert.IsNotNull(
-                restored._values,
+            Assert.IsTrue(
+                restored._values != null,
                 $"Restored _values should not be null. Serialized {bytes.Length} bytes."
             );
             string actualKeys = string.Join(", ", restored._keys);
@@ -2594,7 +2605,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             byte[] bytes = Serializer.ProtoSerialize(dict);
 
             // Assert: Bytes were serialized
-            Assert.IsNotNull(bytes, "Serialized bytes should not be null");
+            Assert.IsTrue(bytes != null, "Serialized bytes should not be null");
             Assert.Greater(bytes.Length, 0, "Serialized bytes should not be empty");
 
             SerializableDictionary<int, string> restored = Serializer.ProtoDeserialize<
@@ -2602,13 +2613,13 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             >(bytes);
 
             // Assert: Restored correctly
-            Assert.IsNotNull(restored, "Restored object should not be null");
-            Assert.IsNotNull(
-                restored._keys,
+            Assert.IsTrue(restored != null, "Restored object should not be null");
+            Assert.IsTrue(
+                restored._keys != null,
                 $"Restored _keys should not be null. Serialized {bytes.Length} bytes."
             );
-            Assert.IsNotNull(
-                restored._values,
+            Assert.IsTrue(
+                restored._values != null,
                 $"Restored _values should not be null. Serialized {bytes.Length} bytes."
             );
             int[] expected = { 30, 20, 40, 15 };
@@ -2640,7 +2651,10 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             >(json);
 
             // Assert
-            Assert.IsNotNull(restored._keys, $"Restored _keys should not be null. JSON: {json}");
+            Assert.IsTrue(
+                restored._keys != null,
+                $"Restored _keys should not be null. JSON: {json}"
+            );
             int[] expected = { 30, 20, 40, 15 };
             string actualKeys = string.Join(", ", restored._keys);
             CollectionAssert.AreEqual(
@@ -2780,8 +2794,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             // Diagnostic: Verify original state
             string originalKeysStr =
                 original._keys != null ? string.Join(", ", original._keys) : "null";
-            Assert.IsNotNull(
-                original._keys,
+            Assert.IsTrue(
+                original._keys != null,
                 "Original _keys should not be null before serialization"
             );
 
@@ -2789,7 +2803,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             byte[] bytes = Serializer.ProtoSerialize(original);
 
             // Assert: Bytes were serialized
-            Assert.IsNotNull(bytes, "Serialized bytes should not be null");
+            Assert.IsTrue(bytes != null, "Serialized bytes should not be null");
             Assert.Greater(
                 bytes.Length,
                 0,
@@ -2801,14 +2815,14 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             >(bytes);
 
             // Assert: Restored correctly
-            Assert.IsNotNull(restored, "Restored object should not be null");
-            Assert.IsNotNull(
-                restored._keys,
+            Assert.IsTrue(restored != null, "Restored object should not be null");
+            Assert.IsTrue(
+                restored._keys != null,
                 $"Restored _keys should not be null. Serialized {bytes.Length} bytes for {keys.Length} entries. "
                     + $"Original=[{originalKeysStr}]"
             );
-            Assert.IsNotNull(
-                restored._values,
+            Assert.IsTrue(
+                restored._values != null,
                 $"Restored _values should not be null. Serialized {bytes.Length} bytes."
             );
             string expectedStr = string.Join(", ", keys);
@@ -2839,7 +2853,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             >(bytes);
 
             // Assert
-            Assert.IsNotNull(restored, "Restored object should not be null");
+            Assert.IsTrue(restored != null, "Restored object should not be null");
             Assert.AreEqual(0, restored.Count, "Restored dictionary should be empty");
         }
 
@@ -2965,12 +2979,12 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             original.OnAfterDeserialize();
 
             // Verify pre-serialization state
-            Assert.IsNotNull(
-                original._keys,
+            Assert.IsTrue(
+                original._keys != null,
                 $"Original _keys should not be null before serialization. Count={original.Count}"
             );
-            Assert.IsNotNull(
-                original._values,
+            Assert.IsTrue(
+                original._values != null,
                 $"Original _values should not be null before serialization. Count={original.Count}"
             );
             Assert.AreEqual(
@@ -2983,7 +2997,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             byte[] bytes = Serializer.ProtoSerialize(original);
 
             // Diagnostic: Verify bytes were produced
-            Assert.IsNotNull(bytes, "Serialized bytes should not be null");
+            Assert.IsTrue(bytes != null, "Serialized bytes should not be null");
             Assert.Greater(
                 bytes.Length,
                 0,
@@ -2996,14 +3010,14 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             >(bytes);
 
             // Assert: Verify restored state with comprehensive diagnostics
-            Assert.IsNotNull(restored, "Restored object should not be null");
-            Assert.IsNotNull(
-                restored._keys,
+            Assert.IsTrue(restored != null, "Restored object should not be null");
+            Assert.IsTrue(
+                restored._keys != null,
                 $"Restored _keys should not be null. Serialized {bytes.Length} bytes for {keys.Length} entries. "
                     + $"Original._keys was [{string.Join(", ", original._keys)}]"
             );
-            Assert.IsNotNull(
-                restored._values,
+            Assert.IsTrue(
+                restored._values != null,
                 $"Restored _values should not be null. Serialized {bytes.Length} bytes for {values.Length} entries. "
                     + $"Original._values was [{string.Join(", ", original._values)}]"
             );
@@ -3040,12 +3054,12 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             original.OnAfterDeserialize();
 
             // Verify pre-serialization state
-            Assert.IsNotNull(
-                original._keys,
+            Assert.IsTrue(
+                original._keys != null,
                 $"Original _keys should not be null before serialization. Count={original.Count}"
             );
-            Assert.IsNotNull(
-                original._values,
+            Assert.IsTrue(
+                original._values != null,
                 $"Original _values should not be null before serialization. Count={original.Count}"
             );
             Assert.AreEqual(
@@ -3058,7 +3072,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             byte[] bytes = Serializer.ProtoSerialize(original);
 
             // Diagnostic: Verify bytes were produced
-            Assert.IsNotNull(bytes, "Serialized bytes should not be null");
+            Assert.IsTrue(bytes != null, "Serialized bytes should not be null");
             Assert.Greater(
                 bytes.Length,
                 0,
@@ -3071,14 +3085,14 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             >(bytes);
 
             // Assert: Verify restored state with comprehensive diagnostics
-            Assert.IsNotNull(restored, "Restored object should not be null");
-            Assert.IsNotNull(
-                restored._keys,
+            Assert.IsTrue(restored != null, "Restored object should not be null");
+            Assert.IsTrue(
+                restored._keys != null,
                 $"Restored _keys should not be null. Serialized {bytes.Length} bytes for {keys.Length} entries. "
                     + $"Original._keys was [{string.Join(", ", original._keys)}]"
             );
-            Assert.IsNotNull(
-                restored._values,
+            Assert.IsTrue(
+                restored._values != null,
                 $"Restored _values should not be null. Serialized {bytes.Length} bytes for {values.Length} entries. "
                     + $"Original._values was [{string.Join(", ", original._values)}]"
             );
@@ -3117,9 +3131,9 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             >(bytes);
 
             // Assert
-            Assert.IsNotNull(restored, "Restored object should not be null");
-            Assert.IsNotNull(
-                restored._items,
+            Assert.IsTrue(restored != null, "Restored object should not be null");
+            Assert.IsTrue(
+                restored._items != null,
                 $"Restored _items should not be null. Serialized {bytes.Length} bytes."
             );
             Assert.AreEqual(
@@ -3154,13 +3168,13 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             >(bytes);
 
             // Assert
-            Assert.IsNotNull(restored, "Restored object should not be null");
-            Assert.IsNotNull(
-                restored._keys,
+            Assert.IsTrue(restored != null, "Restored object should not be null");
+            Assert.IsTrue(
+                restored._keys != null,
                 $"Restored _keys should not be null. Serialized {bytes.Length} bytes."
             );
-            Assert.IsNotNull(
-                restored._values,
+            Assert.IsTrue(
+                restored._values != null,
                 $"Restored _values should not be null. Serialized {bytes.Length} bytes."
             );
             Assert.AreEqual(
@@ -3201,9 +3215,9 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             >(bytes);
 
             // Assert
-            Assert.IsNotNull(restored, "Restored object should not be null");
-            Assert.IsNotNull(
-                restored._items,
+            Assert.IsTrue(restored != null, "Restored object should not be null");
+            Assert.IsTrue(
+                restored._items != null,
                 $"Restored _items should not be null. Serialized {bytes.Length} bytes."
             );
             CollectionAssert.AreEqual(
@@ -3230,9 +3244,9 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             >(bytes);
 
             // Assert
-            Assert.IsNotNull(restored, "Restored object should not be null");
-            Assert.IsNotNull(
-                restored._items,
+            Assert.IsTrue(restored != null, "Restored object should not be null");
+            Assert.IsTrue(
+                restored._items != null,
                 $"Restored _items should not be null. Serialized {bytes.Length} bytes."
             );
             CollectionAssert.AreEqual(
@@ -3260,13 +3274,13 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             >(bytes);
 
             // Assert
-            Assert.IsNotNull(restored, "Restored object should not be null");
-            Assert.IsNotNull(
-                restored._keys,
+            Assert.IsTrue(restored != null, "Restored object should not be null");
+            Assert.IsTrue(
+                restored._keys != null,
                 $"Restored _keys should not be null. Serialized {bytes.Length} bytes."
             );
-            Assert.IsNotNull(
-                restored._values,
+            Assert.IsTrue(
+                restored._values != null,
                 $"Restored _values should not be null. Serialized {bytes.Length} bytes."
             );
             CollectionAssert.AreEqual(
@@ -3425,10 +3439,13 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             >(json);
 
             // Assert
-            Assert.IsNotNull(restored, $"Restored object should not be null. JSON: {json}");
-            Assert.IsNotNull(restored._keys, $"Restored _keys should not be null. JSON: {json}");
-            Assert.IsNotNull(
-                restored._values,
+            Assert.IsTrue(restored != null, $"Restored object should not be null. JSON: {json}");
+            Assert.IsTrue(
+                restored._keys != null,
+                $"Restored _keys should not be null. JSON: {json}"
+            );
+            Assert.IsTrue(
+                restored._values != null,
                 $"Restored _values should not be null. JSON: {json}"
             );
 
@@ -3466,13 +3483,13 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             >(bytes);
 
             // Assert
-            Assert.IsNotNull(restored, "Restored object should not be null");
-            Assert.IsNotNull(
-                restored._keys,
+            Assert.IsTrue(restored != null, "Restored object should not be null");
+            Assert.IsTrue(
+                restored._keys != null,
                 $"Restored _keys should not be null. Serialized {bytes.Length} bytes."
             );
-            Assert.IsNotNull(
-                restored._values,
+            Assert.IsTrue(
+                restored._values != null,
                 $"Restored _values should not be null. Serialized {bytes.Length} bytes."
             );
 

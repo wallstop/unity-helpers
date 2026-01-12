@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Tests.Helper
@@ -12,6 +12,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
     using WallstopStudios.UnityHelpers.Tests.Core;
 
     [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class ReflectionHelperCapabilityMatrixTests : CommonTestBase
     {
         public enum CapabilityMode
@@ -2592,7 +2593,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
                     Func<TestConstructorClass> creator =
                         ReflectionHelpers.GetParameterlessConstructor<TestConstructorClass>();
                     TestConstructorClass instance = creator();
-                    Assert.IsNotNull(instance);
+                    Assert.IsTrue(instance != null);
                     Assert.AreEqual("default", instance.Value2);
                 }
             );
@@ -2609,7 +2610,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
                         List<int>
                     >(typeof(List<>), typeof(int));
                     List<int> list = creator();
-                    Assert.IsNotNull(list);
+                    Assert.IsTrue(list != null);
                     Assert.AreEqual(0, list.Count);
                 }
             );
@@ -2734,7 +2735,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
                     Func<int, HashSet<string>> creator =
                         ReflectionHelpers.GetHashSetWithCapacityCreator<string>();
                     HashSet<string> set = creator(6);
-                    Assert.IsNotNull(set);
+                    Assert.IsTrue(set != null);
                 }
             );
         }
@@ -2918,7 +2919,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
                         typeof(List<>),
                         new[] { typeof(string) }
                     );
-                    Assert.IsNotNull(list);
+                    Assert.IsTrue(list != null);
                 }
             );
         }

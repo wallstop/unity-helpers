@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
@@ -25,6 +25,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
     /// with Odin Inspector for SerializedMonoBehaviour and SerializedScriptableObject types.
     /// </summary>
     [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class WReadOnlyOdinDrawerTests : CommonTestBase
     {
         [Test]

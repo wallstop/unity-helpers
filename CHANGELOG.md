@@ -7,6 +7,117 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+See [the roadmap](./docs/overview/roadmap.md) for details
+
+## [3.1.0]
+
+### Added
+
+- **Pool Access Frequency Tracking**: Intelligent purge decisions based on pool usage patterns
+- **Memory Pressure Detection**: Proactive memory monitoring for intelligent pool purging
+- **Cross-Pool Global Memory Budget**: Prevents aggregate memory bloat across all pools
+- **Size-Aware Purge Policies**: Large objects (above LOH threshold) get stricter purge policies
+  - `WallstopGenericPool<T>` automatically uses size-aware options during construction
+- **SpriteSheetExtractor**: New editor tool for extracting individual sprites from sprite sheet textures.
+  - This is an ALPHA feature, much functionality is currently broken.
+- **Cache Data Structure**: New high-performance, configurable `Cache<TKey, TValue>` with fluent builder API
+  - Multiple eviction policies: LRU, Segmented LRU (SLRU), LFU, FIFO, and Random
+  - Time-based expiration with `ExpireAfterWrite` and `ExpireAfterAccess`
+  - Weight-based sizing for entries of varying cost
+  - Dynamic growth with configurable thrash detection
+  - Loading cache support with `GetOrAdd` and custom loader functions
+  - Thread-safe by default (single-threaded mode via `SINGLE_THREADED` define)
+  - Eviction, get, and set callbacks for monitoring cache behavior
+  - Statistics tracking with hit/miss counts
+- **CachePresets**: Factory methods for creating pre-configured caches optimized for common gamedev scenarios
+- **AnimationCreator Variable Framerate**: AnimationCreatorWindow now supports variable framerate animations using AnimationCurve
+  - New `FramerateMode` enum (`Constant` or `Curve`) for choosing timing mode
+  - Per-animation `framesPerSecondCurve` allows custom timing across animation progress
+  - Curve presets: Flat, Ease In, Ease Out, and Sync with constant FPS
+  - Frame timing preview shows per-frame durations before generation
+- **AnimationCreator Live Preview**: Real-time animation preview panel
+  - Play/pause/stop transport controls for preview playback
+  - Frame scrubber for manual frame navigation
+  - Respects variable framerate curves during preview
+  - Shows current frame index and FPS in preview panel
+- **AnimationData Cycle Offset**: New `cycleOffset` property (0-1) sets animation loop start point
+- **Pool Auto-Purging**: `WallstopGenericPool<T>` now supports configurable auto-purging and eviction
+  - New `PoolOptions<T>` class for configuring pool behavior at construction
+  - `MaxPoolSize` limits pool capacity with automatic eviction of excess items
+  - `IdleTimeoutSeconds` purges items that have been idle too long
+  - `PurgeTrigger` flags control when purging occurs: `OnRent`, `OnReturn`, `Periodic`, or `Explicit`
+  - `OnPurge` callback with `PurgeReason` (IdleTimeout, CapacityExceeded, Explicit) for monitoring
+  - Intelligent purging mode tracks usage patterns to avoid purge-allocate cycles
+  - `MinRetainCount` ensures a minimum number of items are always kept
+- **Application Lifecycle Hooks for Pool Purging**: Automatic pool purging in response to system events
+  - `Application.lowMemory` triggers emergency purge (ignores hysteresis, purges to `MinRetainCount`)
+  - `Application.focusChanged` triggers purge when app backgrounds (mobile platforms)
+  - New `PurgeReason` values: `MemoryPressure`, `AppBackgrounded`, `SceneUnloaded` (reserved)
+  - Configurable via `PoolPurgeSettings.PurgeOnLowMemory` and `PoolPurgeSettings.PurgeOnAppBackground`
+  - `GlobalPoolRegistry` tracks all pool instances for cross-pool operations
+  - `PoolPurgeSettings.PurgeAllPools()` method for manual global purge
+  - Lifecycle hooks automatically registered via `RuntimeInitializeOnLoadMethod`
+- **RandomExtensions `NextOfExcept`**: New extension methods for selecting random elements with exclusions
+  - `NextOfExcept(values)` - no exclusions (convenience overload)
+  - `NextOfExcept(values, exception1...)` - exclude values
+  - Zero-allocation using pooled collections internally
+
+### Changed
+
+- **BREAKING:** Pool purging now enabled by default with conservative settings
+  - `GlobalEnabled` defaults to `true` (was `false`)
+  - `DefaultBufferMultiplier` defaults to `2.0` (was `1.5`)
+  - `DefaultHysteresisSeconds` defaults to `120` (was `60`)
+  - `DefaultSpikeThresholdMultiplier` defaults to `2.5` (was `2.0`)
+  - Use `PoolPurgeSettings.DisableGlobally()` to restore previous behavior
+  - `UnityMainThreadDispatcher` auto-load behavior has changed from auto-loading to not auto-loading.
+  - `UnityMainThreadDispatcher` hide flags have been changed to `None`.
+
+- **DictionaryExtensions `ToDictionary`**: Now uses last-wins semantics for duplicate keys instead of throwing `ArgumentException`
+  - Aligns with common dictionary initialization patterns
+  - Applies to both `KeyValuePair<K,V>` and tuple `(K, V)` overloads
+
+- **IEnumerableExtensions return types**: `OrderBy`, `Ordered`, and `Shuffled` methods now return `List<T>` instead of `IEnumerable<T>` for improved usability (indexable, known count)
+  - **Note**: These methods now use eager evaluation (execute immediately) instead of deferred evaluation
+  - Source code remains compatible—`List<T>` is assignable to `IEnumerable<T>`
+
+### Improved
+
+- **LRU cache eviction**: Bounded editor caches now use LRU (Least Recently Used) eviction instead of FIFO
+  - Frequently-accessed cache entries are retained longer, improving cache hit rates
+  - Both reads and writes update an item's "recency", preventing hot items from being evicted
+  - Affects `EditorCacheHelper.AddToBoundedCache` and new `TryGetFromBoundedLRUCache` method
+  - Applied to `InLineEditorShared`, `WShowIfPropertyDrawer`, and other bounded editor caches
+- **Shuffled performance**: `IEnumerableExtensions.Shuffled` now uses O(n) Fisher-Yates shuffle instead of O(n log n) sort-based approach
+- **LINQ elimination**: Removed LINQ usage across runtime code for reduced allocations and improved performance
+  - Affects `Trie`, `Geometry`, `Serializer`, `ValidateAssignmentAttribute`, `WShowIfAttribute`, relational component attributes, and more
+  - Uses pooled collections and explicit loops instead of LINQ methods
+  - Zero-allocation patterns applied throughout
+- **GlobalPoolRegistry.EnforceBudget() zero-allocation**: Replaced per-call `List<IPoolStatistics>` allocation with static reusable list protected by existing lock
+
+### Fixed
+
+- **Cache pre-allocation OutOfMemoryException**: Fixed production bug where `Cache<TKey, TValue>` would pre-allocate internal storage to `MaximumSize` instead of using a small initial capacity
+  - Creating a cache with `MaximumSize = int.MaxValue` now works correctly instead of throwing `OutOfMemoryException`
+  - New `InitialCapacity` option allows explicit control over starting allocation size (default 16)
+  - Cache grows dynamically from `InitialCapacity` toward `MaximumSize` as items are added
+  - `CacheBuilder<TKey, TValue>.InitialCapacity(int)` method for fluent configuration
+  - `Cache<TKey, TValue>.MaximumSize` property added to expose configured maximum (distinct from `Capacity`)
+  - Large `InitialCapacity` values are clamped to `MaxReasonableInitialCapacity` (65536) to prevent excessive allocations
+- **Pool MinRetainCount not respected during gradual explicit purges**: Fixed `MinRetainCount` being ignored when using `MaxPurgesPerOperation` with explicit purges
+  - Gradual purges now correctly stop when pool size reaches `MinRetainCount`
+  - Added `_pool.Count > effectiveMinRetain` check to the purge loop condition in both thread-safe and non-thread-safe pool implementations
+- **Pool idle timeout purges blocked by comfortable size**: Fixed idle timeout purges not occurring when pool size was at or below comfortable size
+  - Idle timeout purges now proceed regardless of comfortable size, as they represent essential pool hygiene
+  - Added `hasIdleTimeout` to loop entry condition to allow idle timeout evaluation independent of size
+- **Pool hysteresis incorrectly blocking idle timeout purges**: Fixed hysteresis protection blocking all purge types including idle timeout
+  - Idle timeout purges now proceed during hysteresis since they only remove items unused for extended periods
+  - Capacity and explicit purges remain blocked during hysteresis to prevent thrashing
+- **ScriptableObjectSingletonCreator race condition creating numbered duplicate folders**: Fixed race condition where parallel operations could cause Unity to create numbered duplicate folders like "Resources 1", "Resources 2", etc.
+  - Added detection for Unity's numbered duplicate folder creation pattern
+  - Automatically deletes duplicate folders and uses the intended folder path
+  - Logs warning if duplicate folder deletion fails, alerting user to manual cleanup needed
+
 ## [3.0.5]
 
 ### Added
@@ -34,11 +145,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Sprite Sheet Auto-Detection Preferring Non-Transparent Boundaries**: Fixed an issue where the "Auto Best" algorithm and other detection methods could select grid boundaries that pass through non-transparent pixels when transparent alternatives existed
+  - Changed scoring system from linear to non-linear, heavily favoring fully transparent grid lines (10x higher score) over partially transparent ones
+  - Adjusted boundary comparison to only prefer alternatives when transparency score differs by more than 5%, preventing minor variations from overriding better transparent boundaries
+  - When scores are similar, the algorithm now prefers divisors closer to the originally detected cell size
+  - This fix affects `ScoreDivisorByTransparency`, `ScoreCellSizeForDimension`, and `FindBestTransparencyAlignedDivisor` methods
 - **Manual Recompile Silent Failure After Build**: Fixed an issue where the "Request Script Recompilation" menu item and shortcut would stop responding after building a project (particularly on Linux)
   - Added defensive null check in compilation pending evaluator to prevent silent `NullReferenceException`
   - The null evaluator scenario could occur when static field initialization failed or was corrupted during build operations without a domain reload
-
-See [the roadmap](./docs/overview/roadmap.md) for details
 
 ## [3.0.4]
 

@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Tests.Sprites
@@ -11,8 +11,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
     using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Editor.AssetProcessors;
     using WallstopStudios.UnityHelpers.Editor.Sprites;
+    using WallstopStudios.UnityHelpers.Editor.Utils;
     using WallstopStudios.UnityHelpers.Tests.Core;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class TextureSettingsApplierAPITests : CommonTestBase
     {
         private const string Root = "Assets/Temp/TextureSettingsApplierAPITests";
@@ -34,12 +38,25 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
             CleanupTrackedFoldersAndAssets();
         }
 
+        public override void CommonOneTimeSetUp()
+        {
+            base.CommonOneTimeSetUp();
+            DeferAssetCleanupToOneTimeTearDown = true;
+        }
+
+        [OneTimeTearDown]
+        public override void OneTimeTearDown()
+        {
+            CleanupDeferredAssetsAndFolders();
+            base.OneTimeTearDown();
+        }
+
         [Test]
         public void AppliesDefaultPlatformSettingsViaAPI()
         {
             string texPath = (Root + "/api_tex.png").SanitizePath();
             CreatePng(texPath, 16, 16, Color.white);
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             TextureSettingsApplierAPI.Config config = new()
             {
@@ -74,7 +91,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
         {
             string texPath = (Root + "/api_tex_platform.png").SanitizePath();
             CreatePng(texPath, 32, 32, Color.white);
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             TextureSettingsApplierAPI.PlatformOverride platform = new()
             {
@@ -106,7 +123,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
         {
             string texPath = (Root + "/api_tex_unknown.png").SanitizePath();
             CreatePng(texPath, 32, 32, Color.white);
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             TextureSettingsApplierAPI.PlatformOverride platform = new()
             {

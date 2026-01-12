@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
@@ -24,6 +24,15 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
     public sealed class WShowIfOdinDrawer : OdinAttributeDrawer<WShowIfAttribute>
     {
         private static readonly Dictionary<(Type, string), MemberInfo> MemberCache = new();
+
+        /// <summary>
+        /// Clears all cached state. Called during domain reload via
+        /// <see cref="Internal.EditorCacheManager.ClearAllCaches"/>.
+        /// </summary>
+        internal static void ClearCache()
+        {
+            MemberCache.Clear();
+        }
 
         protected override void DrawPropertyLayout(GUIContent label)
         {

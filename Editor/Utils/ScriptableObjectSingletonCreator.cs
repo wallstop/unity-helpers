@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Editor.Utils
@@ -28,7 +28,6 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
 
         // Prevents re-entrant execution during domain reloads/asset refreshes
         private static bool _isEnsuring;
-        private static int _assetEditingScopeDepth;
         private static bool _ensureScheduled;
         private static int _retryAttempts;
         private static bool? _assetImportWorkerEnvCachedValue;
@@ -122,270 +121,293 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
             }
 
             _isEnsuring = true;
-            AssetDatabase.StartAssetEditing();
-            _assetEditingScopeDepth++;
             bool anyChanges = false;
             bool retryRequested = false;
             List<string> emptyFolderCandidates = null;
-            try
-            {
-                // Clean up stale metadata entries that point to non-existent assets
-                int staleCount = ScriptableObjectSingletonMetadataUtility.CleanupStaleEntries();
-                if (staleCount > 0)
-                {
-                    LogVerbose(
-                        $"ScriptableObjectSingletonCreator: Removed {staleCount} stale metadata entries."
-                    );
-                    anyChanges = true;
-                }
 
-                // Collect candidate types once and detect simple name collisions (same class name, different namespaces)
-                List<Type> allCandidates = new();
-                foreach (
-                    Type t in ReflectionHelpers.GetTypesDerivedFrom(
-                        typeof(UnityHelpers.Utils.ScriptableObjectSingleton<>),
-                        includeAbstract: false
-                    )
-                )
+            // Use unified batch helper - disable auto-refresh since we handle it manually
+            using (AssetDatabaseBatchHelper.BeginBatch(refreshOnDispose: false))
+            {
+                try
                 {
-                    if (
-                        !t.IsGenericType
-                        && (IncludeTestAssemblies || !TestAssemblyHelper.IsTestType(t))
-                        && (TypeFilter == null || TypeFilter(t))
-                        && (
-                            IgnoreExclusionAttribute
-                            || !ReflectionHelpers.TryGetAttributeSafe<ExcludeFromSingletonCreationAttribute>(
-                                t,
-                                out _,
-                                inherit: false
-                            )
+                    // Clean up stale metadata entries that point to non-existent assets
+                    int staleCount = ScriptableObjectSingletonMetadataUtility.CleanupStaleEntries();
+                    if (staleCount > 0)
+                    {
+                        LogVerbose(
+                            $"ScriptableObjectSingletonCreator: Removed {staleCount} stale metadata entries."
+                        );
+                        anyChanges = true;
+                    }
+
+                    // Collect candidate types once and detect simple name collisions (same class name, different namespaces)
+                    List<Type> allCandidates = new();
+                    foreach (
+                        Type t in ReflectionHelpers.GetTypesDerivedFrom(
+                            typeof(UnityHelpers.Utils.ScriptableObjectSingleton<>),
+                            includeAbstract: false
                         )
                     )
                     {
-                        allCandidates.Add(t);
-                    }
-                }
-
-                // Build collision map by simple type name
-                Dictionary<string, List<Type>> byName = new(StringComparer.OrdinalIgnoreCase);
-                foreach (Type t in allCandidates)
-                {
-                    List<Type> list = byName.GetOrAdd(t.Name);
-                    list.Add(t);
-                }
-
-                HashSet<string> collisionLogged = new(StringComparer.OrdinalIgnoreCase);
-
-                foreach (Type derivedType in allCandidates)
-                {
-                    // Skip name-collision types to avoid creating overlapping assets like TypeName.asset
-                    if (
-                        byName.TryGetValue(derivedType.Name, out List<Type> group)
-                        && group.Count > 1
-                    )
-                    {
-                        if (collisionLogged.Add(derivedType.Name))
+                        if (
+                            !t.IsGenericType
+                            && (IncludeTestAssemblies || !TestAssemblyHelper.IsTestType(t))
+                            && (TypeFilter == null || TypeFilter(t))
+                            && (
+                                IgnoreExclusionAttribute
+                                || !ReflectionHelpers.TryGetAttributeSafe<ExcludeFromSingletonCreationAttribute>(
+                                    t,
+                                    out _,
+                                    inherit: false
+                                )
+                            )
+                        )
                         {
-                            Debug.LogWarning(
-                                $"ScriptableObjectSingletonCreator: Type name collision detected for '{derivedType.Name}'. Conflicting types: {string.Join(", ", group.ConvertAll(x => x.FullName))}. Skipping auto-creation. Consider adding [ScriptableSingletonPath] to disambiguate."
+                            allCandidates.Add(t);
+                        }
+                    }
+
+                    // Build collision map by simple type name
+                    Dictionary<string, List<Type>> byName = new(StringComparer.OrdinalIgnoreCase);
+                    foreach (Type t in allCandidates)
+                    {
+                        List<Type> list = byName.GetOrAdd(t.Name);
+                        list.Add(t);
+                    }
+
+                    HashSet<string> collisionLogged = new(StringComparer.OrdinalIgnoreCase);
+
+                    foreach (Type derivedType in allCandidates)
+                    {
+                        // Skip name-collision types to avoid creating overlapping assets like TypeName.asset
+                        if (
+                            byName.TryGetValue(derivedType.Name, out List<Type> group)
+                            && group.Count > 1
+                        )
+                        {
+                            if (collisionLogged.Add(derivedType.Name))
+                            {
+                                Debug.LogWarning(
+                                    $"ScriptableObjectSingletonCreator: Type name collision detected for '{derivedType.Name}'. Conflicting types: {string.Join(", ", group.ConvertAll(x => x.FullName))}. Skipping auto-creation. Consider adding [ScriptableSingletonPath] to disambiguate."
+                                );
+                            }
+                            continue;
+                        }
+
+                        string resolvedResourcesRoot = EnsureAndResolveFolderPath(ResourcesRoot);
+                        if (string.IsNullOrWhiteSpace(resolvedResourcesRoot))
+                        {
+                            Debug.LogError(
+                                "ScriptableObjectSingletonCreator: Unable to resolve required Resources root folder. Aborting singleton auto-creation."
+                            );
+                            retryRequested = true;
+                            break;
+                        }
+
+                        string resourcesSubFolder = GetResourcesSubFolder(derivedType);
+                        string targetFolderRequested = CombinePaths(
+                            ResourcesRoot,
+                            resourcesSubFolder
+                        );
+                        string targetFolder = EnsureAndResolveFolderPath(targetFolderRequested);
+                        if (string.IsNullOrWhiteSpace(targetFolder))
+                        {
+                            Debug.LogError(
+                                $"ScriptableObjectSingletonCreator: Unable to ensure folder '{targetFolderRequested}' for singleton {derivedType.FullName}. Skipping asset creation."
+                            );
+                            retryRequested = true;
+                            continue;
+                        }
+
+                        string targetAssetPath = CombinePaths(
+                            targetFolder,
+                            derivedType.Name + ".asset"
+                        );
+
+                        // Extra safety: if any asset exists at the exact path, do not create a duplicate.
+                        // Prefer to use/move existing assets rather than generating unique names.
+                        Object assetAtTarget = AssetDatabase.LoadAssetAtPath(
+                            targetAssetPath,
+                            derivedType
+                        );
+
+                        string existingGuid = AssetDatabase.AssetPathToGUID(targetAssetPath);
+                        bool fileExistsOnDisk = DoesAssetFileExistOnDisk(targetAssetPath);
+                        if (
+                            !string.IsNullOrEmpty(existingGuid)
+                            && assetAtTarget == null
+                            && !fileExistsOnDisk
+                        )
+                        {
+                            TryRemoveStaleAssetArtifacts(targetAssetPath);
+                            // Note: Removed intermediate Refresh here - we defer all refreshes to the end
+                            // to avoid domain reload loops during processing
+
+                            assetAtTarget = AssetDatabase.LoadAssetAtPath(
+                                targetAssetPath,
+                                derivedType
+                            );
+                            fileExistsOnDisk = DoesAssetFileExistOnDisk(targetAssetPath);
+                            string refreshedGuid = AssetDatabase.AssetPathToGUID(targetAssetPath);
+
+                            existingGuid =
+                                assetAtTarget == null && !fileExistsOnDisk
+                                    ? string.Empty
+                                    : refreshedGuid;
+                        }
+
+                        if (assetAtTarget == null)
+                        {
+                            assetAtTarget = MoveExistingAssetIfNeeded(
+                                derivedType,
+                                targetAssetPath,
+                                ref anyChanges
                             );
                         }
-                        continue;
-                    }
 
-                    string resolvedResourcesRoot = EnsureAndResolveFolderPath(ResourcesRoot);
-                    if (string.IsNullOrWhiteSpace(resolvedResourcesRoot))
-                    {
-                        Debug.LogError(
-                            "ScriptableObjectSingletonCreator: Unable to resolve required Resources root folder. Aborting singleton auto-creation."
-                        );
-                        retryRequested = true;
-                        break;
-                    }
+                        if (assetAtTarget != null)
+                        {
+                            if (UpdateSingletonMetadataEntry(derivedType, targetAssetPath))
+                            {
+                                anyChanges = true;
+                            }
+                            continue;
+                        }
 
-                    string resourcesSubFolder = GetResourcesSubFolder(derivedType);
-                    string targetFolderRequested = CombinePaths(ResourcesRoot, resourcesSubFolder);
-                    string targetFolder = EnsureAndResolveFolderPath(targetFolderRequested);
-                    if (string.IsNullOrWhiteSpace(targetFolder))
-                    {
-                        Debug.LogError(
-                            $"ScriptableObjectSingletonCreator: Unable to ensure folder '{targetFolderRequested}' for singleton {derivedType.FullName}. Skipping asset creation."
-                        );
-                        retryRequested = true;
-                        continue;
-                    }
+                        if (!string.IsNullOrEmpty(existingGuid))
+                        {
+                            Debug.LogWarning(
+                                $"ScriptableObjectSingletonCreator: Singleton target path already occupied at {targetAssetPath}. Skipping creation for {derivedType.FullName}."
+                            );
+                            continue;
+                        }
 
-                    string targetAssetPath = CombinePaths(
-                        targetFolder,
-                        derivedType.Name + ".asset"
-                    );
+                        if (fileExistsOnDisk)
+                        {
+                            Debug.LogWarning(
+                                $"ScriptableObjectSingletonCreator: Detected on-disk asset at {targetAssetPath} while ensuring {derivedType.FullName}. Unity has not imported it yet; deferring creation until the asset database picks it up."
+                            );
+                            retryRequested = true;
+                            continue;
+                        }
 
-                    // Extra safety: if any asset exists at the exact path, do not create a duplicate.
-                    // Prefer to use/move existing assets rather than generating unique names.
-                    Object assetAtTarget = AssetDatabase.LoadAssetAtPath(
-                        targetAssetPath,
-                        derivedType
-                    );
+                        ScriptableObject instance = ScriptableObject.CreateInstance(derivedType);
+                        try
+                        {
+                            AssetDatabase.CreateAsset(instance, targetAssetPath);
+                        }
+                        catch (Exception ex)
+                        {
+                            Debug.LogError(
+                                $"ScriptableObjectSingletonCreator: Failed to create singleton for type {derivedType.FullName} at {targetAssetPath}. {ex.Message}"
+                            );
+                            // Use allowDestroyingAssets=true because CreateAsset may have partially succeeded,
+                            // associating the instance with an asset before throwing the exception.
+                            SafeDestroyInstance(instance, targetAssetPath);
+                            retryRequested = true;
+                            continue;
+                        }
 
-                    string existingGuid = AssetDatabase.AssetPathToGUID(targetAssetPath);
-                    bool fileExistsOnDisk = DoesAssetFileExistOnDisk(targetAssetPath);
-                    if (
-                        !string.IsNullOrEmpty(existingGuid)
-                        && assetAtTarget == null
-                        && !fileExistsOnDisk
-                    )
-                    {
-                        TryRemoveStaleAssetArtifacts(targetAssetPath);
-                        AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
-
-                        assetAtTarget = AssetDatabase.LoadAssetAtPath(targetAssetPath, derivedType);
-                        fileExistsOnDisk = DoesAssetFileExistOnDisk(targetAssetPath);
-                        string refreshedGuid = AssetDatabase.AssetPathToGUID(targetAssetPath);
-
-                        existingGuid =
-                            assetAtTarget == null && !fileExistsOnDisk
-                                ? string.Empty
-                                : refreshedGuid;
-                    }
-
-                    if (assetAtTarget == null)
-                    {
-                        assetAtTarget = MoveExistingAssetIfNeeded(
-                            derivedType,
+                        // Verify the asset was actually created - CreateAsset can fail silently
+                        Object createdAsset = AssetDatabase.LoadAssetAtPath(
                             targetAssetPath,
-                            ref anyChanges
+                            derivedType
                         );
-                    }
+                        if (createdAsset == null)
+                        {
+                            // Check if file exists on disk but Unity hasn't imported it yet
+                            if (DoesAssetFileExistOnDisk(targetAssetPath))
+                            {
+                                LogVerbose(
+                                    $"ScriptableObjectSingletonCreator: Asset file created at {targetAssetPath} but not yet visible to AssetDatabase. Will retry."
+                                );
+                            }
+                            else
+                            {
+                                Debug.LogError(
+                                    $"ScriptableObjectSingletonCreator: CreateAsset appeared to succeed but asset not found at {targetAssetPath}. This may indicate a stale asset database state."
+                                );
+                            }
+                            // Use allowDestroyingAssets=true because CreateAsset may have partially succeeded,
+                            // associating the instance with an asset even though LoadAssetAtPath returns null.
+                            SafeDestroyInstance(instance, targetAssetPath);
+                            retryRequested = true;
+                            continue;
+                        }
 
-                    if (assetAtTarget != null)
-                    {
+                        LogVerbose(
+                            $"ScriptableObjectSingletonCreator: Created missing singleton for type {derivedType.FullName} at {targetAssetPath}."
+                        );
                         if (UpdateSingletonMetadataEntry(derivedType, targetAssetPath))
                         {
                             anyChanges = true;
                         }
-                        continue;
-                    }
-
-                    if (!string.IsNullOrEmpty(existingGuid))
-                    {
-                        Debug.LogWarning(
-                            $"ScriptableObjectSingletonCreator: Singleton target path already occupied at {targetAssetPath}. Skipping creation for {derivedType.FullName}."
-                        );
-                        continue;
-                    }
-
-                    if (fileExistsOnDisk)
-                    {
-                        Debug.LogWarning(
-                            $"ScriptableObjectSingletonCreator: Detected on-disk asset at {targetAssetPath} while ensuring {derivedType.FullName}. Unity has not imported it yet; deferring creation until the asset database picks it up."
-                        );
-                        retryRequested = true;
-                        continue;
-                    }
-
-                    ScriptableObject instance = ScriptableObject.CreateInstance(derivedType);
-                    try
-                    {
-                        AssetDatabase.CreateAsset(instance, targetAssetPath);
-                    }
-                    catch (Exception ex)
-                    {
-                        Debug.LogError(
-                            $"ScriptableObjectSingletonCreator: Failed to create singleton for type {derivedType.FullName} at {targetAssetPath}. {ex.Message}"
-                        );
-                        // Use allowDestroyingAssets=true because CreateAsset may have partially succeeded,
-                        // associating the instance with an asset before throwing the exception.
-                        SafeDestroyInstance(instance, targetAssetPath);
-                        retryRequested = true;
-                        continue;
-                    }
-
-                    // Verify the asset was actually created - CreateAsset can fail silently
-                    Object createdAsset = AssetDatabase.LoadAssetAtPath(
-                        targetAssetPath,
-                        derivedType
-                    );
-                    if (createdAsset == null)
-                    {
-                        // Check if file exists on disk but Unity hasn't imported it yet
-                        if (DoesAssetFileExistOnDisk(targetAssetPath))
-                        {
-                            LogVerbose(
-                                $"ScriptableObjectSingletonCreator: Asset file created at {targetAssetPath} but not yet visible to AssetDatabase. Will retry."
-                            );
-                        }
-                        else
-                        {
-                            Debug.LogError(
-                                $"ScriptableObjectSingletonCreator: CreateAsset appeared to succeed but asset not found at {targetAssetPath}. This may indicate a stale asset database state."
-                            );
-                        }
-                        // Use allowDestroyingAssets=true because CreateAsset may have partially succeeded,
-                        // associating the instance with an asset even though LoadAssetAtPath returns null.
-                        SafeDestroyInstance(instance, targetAssetPath);
-                        retryRequested = true;
-                        continue;
-                    }
-
-                    LogVerbose(
-                        $"ScriptableObjectSingletonCreator: Created missing singleton for type {derivedType.FullName} at {targetAssetPath}."
-                    );
-                    if (UpdateSingletonMetadataEntry(derivedType, targetAssetPath))
-                    {
                         anyChanges = true;
                     }
-                    anyChanges = true;
-                }
 
-                // Cleanup duplicate singleton assets for types that have opted in
-                // Folder cleanup is deferred to after StopAssetEditing() for proper AssetDatabase sync
-                int duplicatesRemoved = CleanupDuplicateSingletonAssets(
-                    allCandidates,
-                    out emptyFolderCandidates
-                );
-                if (duplicatesRemoved > 0)
-                {
-                    LogVerbose(
-                        $"ScriptableObjectSingletonCreator: Removed {duplicatesRemoved} duplicate singleton assets."
+                    // Cleanup duplicate singleton assets for types that have opted in
+                    // Folder cleanup is deferred to after StopAssetEditing() for proper AssetDatabase sync
+                    int duplicatesRemoved = CleanupDuplicateSingletonAssets(
+                        allCandidates,
+                        out emptyFolderCandidates
                     );
-                    anyChanges = true;
+                    if (duplicatesRemoved > 0)
+                    {
+                        LogVerbose(
+                            $"ScriptableObjectSingletonCreator: Removed {duplicatesRemoved} duplicate singleton assets."
+                        );
+                        anyChanges = true;
+                    }
                 }
-            }
-            finally
+                finally
+                {
+                    // Note: AssetDatabase.StopAssetEditing() is handled by the using block's Dispose
+                }
+            } // End of using block - AssetDatabase batch operations are now complete
+
+            // Post-batch cleanup - these operations must happen AFTER StopAssetEditing
+            _isEnsuring = false;
+
+            // Clean up empty folders AFTER StopAssetEditing
+            // Track if cleanup actually deleted anything
+            bool foldersDeleted = false;
+            if (emptyFolderCandidates is { Count: > 0 })
             {
-                AssetDatabase.StopAssetEditing();
-                if (_assetEditingScopeDepth > 0)
-                {
-                    _assetEditingScopeDepth--;
-                }
-                _isEnsuring = false;
+                foldersDeleted = CleanupEmptyFolders(emptyFolderCandidates);
+            }
 
-                if (anyChanges)
+            // Only do ONE SaveAssets/Refresh at the very end to avoid re-serialization loops
+            if (anyChanges || foldersDeleted)
+            {
+                AssetDatabase.SaveAssets();
+                // Defer Refresh if Unity is in a state where it could cause a deadlock
+                // (e.g., during scene loading which triggers "Open Project: Open Scene" hang)
+                if (
+                    EditorApplication.isCompiling
+                    || EditorApplication.isUpdating
+                    || EditorApplication.isPlayingOrWillChangePlaymode
+                )
                 {
-                    AssetDatabase.SaveAssets();
-                    AssetDatabase.Refresh();
-                }
-
-                // Clean up empty folders AFTER StopAssetEditing and Refresh
-                // This ensures AssetDatabase operations from duplicate deletion are fully committed
-                if (emptyFolderCandidates is { Count: > 0 })
-                {
-                    CleanupEmptyFolders(emptyFolderCandidates);
-                    AssetDatabase.SaveAssets();
-                    AssetDatabase.Refresh();
-                }
-
-                if (retryRequested && !DisableAutomaticRetries)
-                {
-                    ScheduleEnsureSingletonAssets();
+                    // Defer the refresh to avoid blocking during critical operations
+                    EditorApplication.delayCall += () =>
+                        AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
                 }
                 else
                 {
-                    _retryAttempts = 0;
-                    // Mark initial ensure as completed - this enables metadata-related warnings
-                    // that were suppressed during early initialization
-                    MarkInitialEnsureCompleted();
+                    AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
                 }
+            }
+
+            if (retryRequested && !DisableAutomaticRetries)
+            {
+                ScheduleEnsureSingletonAssets();
+            }
+            else
+            {
+                _retryAttempts = 0;
+                // Mark initial ensure as completed - this enables metadata-related warnings
+                // that were suppressed during early initialization
+                MarkInitialEnsureCompleted();
             }
         }
 
@@ -593,39 +615,45 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
             return removed;
         }
 
-        private static void CleanupEmptyFolders(List<string> folderPaths)
+        private static bool CleanupEmptyFolders(List<string> folderPaths)
         {
             if (folderPaths == null || folderPaths.Count == 0)
             {
-                return;
+                return false;
             }
 
             // Sort by depth (deepest first) to clean up bottom-up
             folderPaths.Sort((a, b) => b.Split('/').Length.CompareTo(a.Split('/').Length));
 
             HashSet<string> processed = new(StringComparer.OrdinalIgnoreCase);
+            bool anyDeleted = false;
 
             foreach (string folderPath in folderPaths)
             {
-                CleanupEmptyFolderRecursive(folderPath, processed);
+                if (CleanupEmptyFolderRecursive(folderPath, processed))
+                {
+                    anyDeleted = true;
+                }
             }
+
+            return anyDeleted;
         }
 
-        private static void CleanupEmptyFolderRecursive(
+        private static bool CleanupEmptyFolderRecursive(
             string folderPath,
             HashSet<string> processed
         )
         {
             if (string.IsNullOrWhiteSpace(folderPath))
             {
-                return;
+                return false;
             }
 
             // Normalize and check if already processed
             string normalized = NormalizePath(folderPath);
             if (!processed.Add(normalized))
             {
-                return;
+                return false;
             }
 
             // Don't delete the Resources root or above
@@ -634,21 +662,23 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
                 || !normalized.StartsWith(ResourcesRoot + "/", StringComparison.OrdinalIgnoreCase)
             )
             {
-                return;
+                return false;
             }
 
             // CRITICAL: Never delete the Wallstop Studios root folder - this is production data
             const string WallstopStudiosRoot = "Assets/Resources/Wallstop Studios";
             if (string.Equals(normalized, WallstopStudiosRoot, StringComparison.OrdinalIgnoreCase))
             {
-                return;
+                return false;
             }
 
             // Check if folder exists and is valid
             if (!AssetDatabase.IsValidFolder(normalized))
             {
-                return;
+                return false;
             }
+
+            bool anyDeleted = false;
 
             // First, recursively clean up any empty subfolders
             string[] subfolders = AssetDatabase.GetSubFolders(normalized);
@@ -656,7 +686,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
             {
                 foreach (string subfolder in subfolders)
                 {
-                    CleanupEmptyFolderRecursive(subfolder, processed);
+                    if (CleanupEmptyFolderRecursive(subfolder, processed))
+                    {
+                        anyDeleted = true;
+                    }
                 }
 
                 // Re-check subfolders after recursive cleanup - some may have been deleted
@@ -666,7 +699,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
             // Re-check folder validity after subfolder cleanup
             if (!AssetDatabase.IsValidFolder(normalized))
             {
-                return;
+                return anyDeleted;
             }
 
             // Check if folder has any direct asset contents (not subfolders)
@@ -679,13 +712,13 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
             catch
             {
                 // Folder may have been deleted between check and FindAssets
-                return;
+                return anyDeleted;
             }
 
             // Re-check folder validity in case it was deleted during FindAssets
             if (!AssetDatabase.IsValidFolder(normalized))
             {
-                return;
+                return anyDeleted;
             }
 
             if (contents is { Length: > 0 })
@@ -716,7 +749,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
 
                 if (hasDirectContents)
                 {
-                    return;
+                    return anyDeleted;
                 }
             }
 
@@ -724,7 +757,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
             subfolders = AssetDatabase.GetSubFolders(normalized);
             if (subfolders is { Length: > 0 })
             {
-                return;
+                return anyDeleted;
             }
 
             // Folder is empty - try to delete it
@@ -733,14 +766,20 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
                 LogVerbose(
                     $"ScriptableObjectSingletonCreator: Deleted empty folder '{normalized}'."
                 );
+                anyDeleted = true;
 
                 // Try to clean up parent folder
                 string parentFolder = Path.GetDirectoryName(normalized)?.SanitizePath();
                 if (!string.IsNullOrWhiteSpace(parentFolder))
                 {
-                    CleanupEmptyFolderRecursive(parentFolder, processed);
+                    if (CleanupEmptyFolderRecursive(parentFolder, processed))
+                    {
+                        anyDeleted = true;
+                    }
                 }
             }
+
+            return anyDeleted;
         }
 
         private static string GetResourcesSubFolder(Type type)
@@ -884,7 +923,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
                     return asset;
                 }
 
-                // Retry after ensuring parent and performing save/refresh if parent folder may not yet be registered
+                // Retry after ensuring parent folder exists (without intermediate Refresh to avoid domain reload loops)
                 string parentDir = Path.GetDirectoryName(normalizedTarget)?.SanitizePath();
                 bool retried = false;
                 if (!string.IsNullOrWhiteSpace(parentDir))
@@ -897,17 +936,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
                         parentDir = resolvedParent;
                     }
 
-                    // Temporarily stop asset editing to save and refresh
-                    AssetDatabase.StopAssetEditing();
-                    try
-                    {
-                        AssetDatabase.SaveAssets();
-                        AssetDatabase.Refresh();
-                    }
-                    finally
-                    {
-                        AssetDatabase.StartAssetEditing();
-                    }
+                    // Note: Removed intermediate SaveAssets/Refresh here - we defer all refreshes to the end
+                    // to avoid domain reload loops during processing. The folder should be registered via ImportAsset.
 
                     // Verify parent folder is now valid in AssetDatabase
                     if (AssetDatabase.IsValidFolder(parentDir))
@@ -1255,7 +1285,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
 
             if (removed)
             {
-                AssetDatabase.Refresh();
+                // Note: Removed intermediate Refresh here - we defer all refreshes to the end
+                // to avoid domain reload loops during processing
                 LogVerbose(
                     $"ScriptableObjectSingletonCreator: Cleared stale artifacts blocking singleton creation at '{assetsRelativePath}'."
                 );
@@ -1304,38 +1335,29 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
                 return true;
             }
 
-            bool restartEditing = false;
-            if (_assetEditingScopeDepth > 0)
+            // If we're inside a batch scope, we need to temporarily exit to allow ImportAsset to work
+            using (AssetDatabaseBatchHelper.PauseBatch())
             {
-                AssetDatabase.StopAssetEditing();
-                restartEditing = true;
-            }
-
-            try
-            {
-                AssetDatabase.ImportAsset(normalized, ImportAssetOptions.ForceUpdate);
-                if (AssetDatabase.IsValidFolder(normalized))
+                try
                 {
-                    return true;
+                    AssetDatabase.ImportAsset(normalized, ImportAssetOptions.ForceUpdate);
+                    if (AssetDatabase.IsValidFolder(normalized))
+                    {
+                        return true;
+                    }
+
+                    // Note: Removed intermediate Refresh here - we defer all refreshes to the end
+                    // to avoid domain reload loops during processing. ImportAsset should be sufficient.
+                }
+                catch (Exception ex)
+                {
+                    Debug.LogWarning(
+                        $"ScriptableObjectSingletonCreator: Failed to register folder '{normalized}' with AssetDatabase: {ex.Message}"
+                    );
                 }
 
-                AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
+                return AssetDatabase.IsValidFolder(normalized);
             }
-            catch (Exception ex)
-            {
-                Debug.LogWarning(
-                    $"ScriptableObjectSingletonCreator: Failed to register folder '{normalized}' with AssetDatabase: {ex.Message}"
-                );
-            }
-            finally
-            {
-                if (restartEditing)
-                {
-                    AssetDatabase.StartAssetEditing();
-                }
-            }
-
-            return AssetDatabase.IsValidFolder(normalized);
         }
 
         private static string EnsureAndResolveFolderPath(string folderPath)
@@ -1390,6 +1412,15 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
                         }
                     }
 
+                    // Final check before CreateFolder: the folder may now exist in AssetDatabase
+                    // (e.g., after a refresh or import) even though FindMatchingSubfolder missed it.
+                    // This prevents Unity from creating numbered duplicates like "Resources 1".
+                    if (AssetDatabase.IsValidFolder(intendedPath))
+                    {
+                        current = ResolveExistingFolderPath(intendedPath);
+                        continue;
+                    }
+
                     string createdGuid = string.Empty;
                     string createdPath = string.Empty;
                     try
@@ -1406,6 +1437,62 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
                     if (!string.IsNullOrEmpty(createdGuid))
                     {
                         createdPath = NormalizePath(AssetDatabase.GUIDToAssetPath(createdGuid));
+
+                        // Race condition detection: Unity may create numbered duplicates like "Resources 1"
+                        // when parallel tests try to create the same folder simultaneously.
+                        // Check if createdPath differs from intendedPath and matches the pattern "Name N".
+                        if (
+                            !string.IsNullOrEmpty(createdPath)
+                            && !string.Equals(
+                                createdPath,
+                                intendedPath,
+                                StringComparison.OrdinalIgnoreCase
+                            )
+                        )
+                        {
+                            string createdName = Path.GetFileName(createdPath);
+                            if (IsNumberedDuplicate(createdName, desiredName))
+                            {
+                                // This is a numbered duplicate created due to race condition.
+                                // Delete it and check if the intended folder now exists.
+                                LogVerbose(
+                                    $"ScriptableObjectSingletonCreator: Detected numbered duplicate folder '{createdPath}' (intended: '{intendedPath}'). Deleting duplicate."
+                                );
+                                bool duplicateDeleted = AssetDatabase.DeleteAsset(createdPath);
+                                if (!duplicateDeleted)
+                                {
+                                    Debug.LogWarning(
+                                        $"ScriptableObjectSingletonCreator: Failed to delete numbered duplicate folder '{createdPath}'. Manual cleanup may be required."
+                                    );
+                                }
+                                createdGuid = string.Empty;
+                                createdPath = string.Empty;
+
+                                // Re-check if intended folder now exists (created by concurrent operation)
+                                string matchAfterDelete = FindMatchingSubfolder(
+                                    current,
+                                    desiredName
+                                );
+                                if (!string.IsNullOrEmpty(matchAfterDelete))
+                                {
+                                    current = matchAfterDelete;
+                                    continue;
+                                }
+
+                                // Also check via IsValidFolder in case FindMatchingSubfolder missed it
+                                if (AssetDatabase.IsValidFolder(intendedPath))
+                                {
+                                    current = ResolveExistingFolderPath(intendedPath);
+                                    continue;
+                                }
+
+                                // Folder still doesn't exist - try disk creation fallback
+                                if (EnsureFolderExistsOnDisk(intendedPath))
+                                {
+                                    createdPath = intendedPath;
+                                }
+                            }
+                        }
                     }
                     else if (EnsureFolderExistsOnDisk(intendedPath))
                     {
@@ -1686,7 +1773,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
 
                                 // Try to ensure it's registered in AssetDatabase (outside of editing scope)
                                 if (
-                                    _assetEditingScopeDepth == 0
+                                    !AssetDatabaseBatchHelper.IsCurrentlyBatching
                                     && !AssetDatabase.IsValidFolder(matchedPath)
                                 )
                                 {
@@ -1818,20 +1905,14 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
 
         private static void ForceAssetDatabaseSync()
         {
-            if (_assetEditingScopeDepth > 0)
+            // Skip if we're in the ensure scope to avoid domain reload loops
+            // The final Refresh in EnsureSingletonAssets will sync everything
+            if (_isEnsuring)
             {
-                AssetDatabase.StopAssetEditing();
-                try
-                {
-                    AssetDatabase.SaveAssets();
-                    AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
-                }
-                finally
-                {
-                    AssetDatabase.StartAssetEditing();
-                }
+                return;
             }
-            else
+
+            using (AssetDatabaseBatchHelper.PauseBatch())
             {
                 AssetDatabase.SaveAssets();
                 AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
@@ -1862,6 +1943,45 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
                     $"ScriptableObjectSingletonCreator: Temporary folder '{path}' was created while attempting to ensure a target path, but it could not be removed."
                 );
             }
+        }
+
+        /// <summary>
+        /// Checks if a folder name is a numbered duplicate of the desired name.
+        /// Unity creates numbered duplicates like "Resources 1", "Resources 2" when
+        /// parallel operations try to create the same folder simultaneously.
+        /// </summary>
+        /// <param name="actualName">The actual folder name that was created.</param>
+        /// <param name="desiredName">The intended folder name.</param>
+        /// <returns>True if actualName matches the pattern "desiredName N" where N is a number.</returns>
+        internal static bool IsNumberedDuplicate(string actualName, string desiredName)
+        {
+            if (
+                string.IsNullOrEmpty(actualName)
+                || string.IsNullOrEmpty(desiredName)
+                || actualName.Length <= desiredName.Length
+            )
+            {
+                return false;
+            }
+
+            // Check if actualName starts with desiredName followed by a space
+            if (!actualName.StartsWith(desiredName + " ", StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+
+            // Extract the suffix after "desiredName "
+            string suffix = actualName.Substring(desiredName.Length + 1);
+
+            // Reject if suffix starts with whitespace (handles double-space like "Folder  1")
+            // int.TryParse would otherwise accept " 1" as valid since it trims whitespace
+            if (suffix.Length == 0 || char.IsWhiteSpace(suffix[0]))
+            {
+                return false;
+            }
+
+            // Check if the suffix is a positive integer
+            return int.TryParse(suffix, out int number) && number > 0;
         }
 
         private static bool IsRunningInsideAssetImportWorkerProcess()
@@ -2025,6 +2145,22 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
         internal static void ResetInitialEnsureStateForTests()
         {
             UnityHelpers.Utils.ScriptableObjectSingletonInitState.InitialEnsureCompleted = false;
+        }
+
+        /// <summary>
+        /// Resets state for testing. Cleanup of AssetDatabase batch state is now handled
+        /// by the unified <see cref="AssetDatabaseBatchHelper"/>.
+        /// </summary>
+        internal static void ResetAssetEditingScopeDepthForTesting()
+        {
+            _isEnsuring = false;
+
+            // Also reset related state that could affect subsequent tests
+            CancelScheduledEnsureInvocation();
+            _retryAttempts = 0;
+
+            // AssetDatabase batch cleanup is now handled by AssetDatabaseBatchHelper.ResetBatchDepth()
+            // which is called by CommonTestBase in setUp/tearDown
         }
     }
 #endif

@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Tests.Helper
@@ -7,13 +7,15 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
     using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Tests.Core;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class PathHelperTests : CommonTestBase
     {
         [Test]
         public void SanitizePathWithNullReturnsNull()
         {
             string result = PathHelper.SanitizePath(null);
-            Assert.IsNull(result);
+            Assert.IsTrue(result == null);
         }
 
         [Test]

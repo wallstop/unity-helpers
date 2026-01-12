@@ -1,5 +1,7 @@
 # Skill: Avoid Magic Strings
 
+<!-- trigger: string, nameof, magic, identifier | ALL code - use nameof() not strings | Core -->
+
 **Trigger**: Any code that references identifiers (field names, method names, property names, type names, class names).
 
 ---
@@ -86,20 +88,175 @@ dictionary[PlayerDataKey] = value;
 
 ---
 
+## Editor Test Patterns
+
+### SerializedProperty in Tests
+
+When tests need to access serialized properties, always use `nameof()` with the fully qualified type:
+
+```csharp
+// ❌ FORBIDDEN - Magic string in test
+SerializedProperty property = serializedObject.FindProperty("playerHealth");
+
+// ✅ CORRECT - nameof() with target type
+SerializedProperty property = serializedObject.FindProperty(
+    nameof(PlayerController.playerHealth)
+);
+```
+
+### FindPropertyRelative in Tests
+
+The same rule applies to `FindPropertyRelative()` for nested properties:
+
+```csharp
+// ❌ FORBIDDEN - Magic strings for nested properties
+SerializedProperty config = property.FindPropertyRelative("_typeName");
+SerializedProperty child = parentProperty.FindPropertyRelative("numbers");
+
+// ✅ CORRECT - nameof() with the nested type
+SerializedProperty config = property.FindPropertyRelative(
+    nameof(PoolTypeConfiguration._typeName)
+);
+SerializedProperty child = parentProperty.FindPropertyRelative(
+    nameof(NestedData.numbers)
+);
+```
+
+For generic types like `SerializableDictionary<TKey, TValue>`, use `object` as the type parameter:
+
+```csharp
+// ✅ CORRECT - Generic type with object placeholders
+property.FindPropertyRelative(nameof(SerializableDictionary<object, object>._keys));
+property.FindPropertyRelative(nameof(SerializableDictionary<object, object>._values));
+```
+
+### Visibility for Test Access
+
+If a field is private but tests need to access it via `FindProperty()`, promote the field to `internal`:
+
+```csharp
+// In production code (UnityHelpersSettings.cs)
+// ❌ BEFORE: Private field - tests cannot use nameof()
+[SerializeField]
+private float _poolIdleTimeoutSeconds = 30f;
+
+// ✅ AFTER: Internal field - tests can use nameof()
+[SerializeField]
+internal float _poolIdleTimeoutSeconds = 30f;
+
+// In test code
+SerializedProperty timeout = _serializedSettings.FindProperty(
+    nameof(UnityHelpersSettings._poolIdleTimeoutSeconds)
+);
+```
+
+### SerializedPropertyNames Pattern (Recommended)
+
+For types with serialized fields accessed via `FindProperty()` or `FindPropertyRelative()`, define a nested `SerializedPropertyNames` class that exposes field names as constants using `nameof()`. This pattern provides:
+
+- Compile-time safety for field name references
+- IDE refactoring support
+- Single source of truth for property names
+- Clear documentation of which fields are accessed via serialization
+
+```csharp
+// ❌ BAD - Magic strings scattered throughout codebase
+public class MySettings : ScriptableObject
+{
+    [SerializeField]
+    private float _timeout = 30f;
+
+    [SerializeField]
+    private bool _enabled = true;
+}
+
+// Elsewhere in editor code:
+serializedObject.FindProperty("_timeout");  // Magic string!
+serializedObject.FindProperty("_enabled");  // Magic string!
+
+// ✅ CORRECT - Centralized SerializedPropertyNames pattern
+public class MySettings : ScriptableObject
+{
+    [SerializeField]
+    internal float _timeout = 30f;
+
+    [SerializeField]
+    internal bool _enabled = true;
+
+    /// <summary>
+    /// Compile-time safe property names for SerializedProperty access.
+    /// </summary>
+    internal static class SerializedPropertyNames
+    {
+        internal const string Timeout = nameof(_timeout);
+        internal const string Enabled = nameof(_enabled);
+    }
+}
+
+// Usage in editor code:
+serializedObject.FindProperty(MySettings.SerializedPropertyNames.Timeout);
+serializedObject.FindProperty(MySettings.SerializedPropertyNames.Enabled);
+```
+
+This pattern is used throughout the codebase for types like:
+
+- `SerializableDictionary<TKey, TValue>` → `SerializableDictionarySerializedPropertyNames`
+- `SerializableHashSet<T>` → `SerializableHashSetSerializedPropertyNames`
+- `UnityHelpersSettings` → `UnityHelpersSettings.SerializedPropertyNames`
+
+### Nested Types and GetNestedType
+
+When using `GetNestedType()` to access nested classes, use `nameof()` for our types:
+
+```csharp
+// ❌ BAD - Magic string for nested type name
+Type nestedType = containerType.GetNestedType("WEnumToggleButtonsCustomColor", BindingFlags.NonPublic);
+
+// ✅ CORRECT - nameof() for our nested type
+Type nestedType = containerType.GetNestedType(
+    nameof(UnityHelpersSettings.WEnumToggleButtonsCustomColor),
+    BindingFlags.NonPublic
+);
+
+// Note: The nested type must be internal or public for nameof() to work
+[Serializable]
+internal sealed class WEnumToggleButtonsCustomColor { ... }
+```
+
+---
+
 ## Acceptable Magic Strings
 
 The following cases are **exceptions** where string literals are acceptable:
 
 ### 1. Unity Internal Properties
 
-Unity's internal serialized property names cannot be referenced via `nameof()`:
+Unity's internal serialized property names cannot be referenced via `nameof()`. **However**, define them as constants for consistency:
 
 ```csharp
-// ✅ ACCEPTABLE - Unity internal property paths
-serializedObject.FindProperty("m_Script");
+// ✅ BEST - Define constant for Unity internals
+private const string ScriptPropertyPath = "m_Script";
+
+SerializedProperty scriptProperty = serializedConfig.FindProperty(ScriptPropertyPath);
+if (string.Equals(property.name, ScriptPropertyPath, StringComparison.Ordinal))
+{
+    continue;
+}
+
+// ✅ ACCEPTABLE - Direct string for one-off usage
 serializedObject.FindProperty("m_LocalPosition");
-serializedObject.FindProperty("m_Name");
 serializedObject.FindProperty("Array.size");  // Unity array syntax
+```
+
+### 1a. Collection Size Field Names
+
+When checking collection sizes via reflection (for unknown collection types), these patterns are acceptable:
+
+```csharp
+// ✅ ACCEPTABLE - Unity/generic collection size field names
+property.FindPropertyRelative("Array.size");  // Unity array syntax
+property.FindPropertyRelative("_size");       // Generic collection pattern
+property.FindPropertyRelative("m_Size");      // Unity internal pattern
 ```
 
 ### 2. External Library Member Names
@@ -112,7 +269,50 @@ When accessing members of third-party libraries with no public API:
 var odinField = typeof(SirenixType).GetField("m_InternalValue", BindingFlags.NonPublic | BindingFlags.Instance);
 ```
 
-### 3. User-Facing Display Strings
+### 3. Dynamically Constructed Types
+
+When reflecting on types constructed at runtime (e.g., via `MakeGenericType()`), `nameof()` cannot be used:
+
+```csharp
+// ✅ ACCEPTABLE - Dynamically constructed type
+Type hashSetType = typeof(HashSet<>).MakeGenericType(elementType);
+MethodInfo addMethod = hashSetType.GetMethod("Add", ...);  // Cannot use nameof() here
+MethodInfo clearMethod = hashSetType.GetMethod("Clear", ...);
+```
+
+### 3a. .NET BCL Type Members
+
+When accessing well-known .NET BCL type members that we don't control:
+
+```csharp
+// ✅ ACCEPTABLE - .NET Framework/BCL internal fields (document why)
+// System.Random internal state fields (varies by .NET version)
+typeof(System.Random).GetField("SeedArray", BindingFlags.NonPublic | BindingFlags.Instance);
+typeof(System.Random).GetField("_seedArray", BindingFlags.NonPublic | BindingFlags.Instance);
+
+// ✅ ACCEPTABLE - Standard BCL interface methods
+typeof(IComparable<T>).GetMethod("CompareTo", ...);
+
+// ✅ ACCEPTABLE - Task/ValueTask members
+taskType.GetMethod("AsTask", ...);  // ValueTask.AsTask()
+taskType.GetProperty("Result", ...);  // Task<T>.Result
+```
+
+### 4. Standard CLR Names (Indexers)
+
+For standard CLR property names like "Item" (the indexer property), define a constant:
+
+```csharp
+// ✅ BEST - Define constant for CLR standard names
+/// <summary>
+/// The standard property name for C# indexers ("Item").
+/// </summary>
+private const string IndexerPropertyName = "Item";
+
+PropertyInfo found = type.GetProperty(IndexerPropertyName, returnType, indexParameterTypes);
+```
+
+### 5. User-Facing Display Strings
 
 Strings shown to users, not referencing code:
 
@@ -123,7 +323,7 @@ Debug.Log("Operation completed successfully");
 button.text = "Click Me";
 ```
 
-### 4. Configuration and Data Keys
+### 6. Configuration and Data Keys
 
 JSON property names, config keys, PlayerPrefs keys, etc.:
 
@@ -134,7 +334,7 @@ PlayerPrefs.GetInt("high_score");
 config["api_endpoint"];
 ```
 
-### 5. File Paths and Resource Names
+### 7. File Paths and Resource Names
 
 Unity resource paths, file names, etc.:
 
@@ -191,12 +391,42 @@ var type = Type.GetType("WallstopStudios.UnityHelpers.MyClass");
 
 // ❌ ANTI-PATTERN: String in exception without nameof
 throw new ArgumentException("Invalid input", "parameterName");
+throw new ArgumentNullException("value");
 
 // ❌ ANTI-PATTERN: Logging with hardcoded member names
 Debug.Log("MyClass.ProcessData failed");
 
 // ❌ ANTI-PATTERN: SerializedProperty with our field names as strings
 serializedObject.FindProperty("_ourPrivateField");
+```
+
+### Exception Parameter Names (Critical)
+
+All exception constructors that accept a parameter name MUST use `nameof()`:
+
+```csharp
+// ❌ FORBIDDEN - Magic string parameter names
+public void Process(IReadOnlyList<T> source, T[] exceptions)
+{
+    if (source.Count == 0)
+        throw new ArgumentException("Collection cannot be empty", "values");  // Wrong!
+    if (n == 0)
+        throw new ArgumentException("All values excluded", "exceptions");  // Wrong!
+}
+
+// ✅ CORRECT - nameof() with actual parameter names
+public void Process(IReadOnlyList<T> source, T[] exceptions)
+{
+    if (source.Count == 0)
+        throw new ArgumentException("Collection cannot be empty", nameof(source));
+    if (n == 0)
+        throw new ArgumentException("All values excluded", nameof(exceptions));
+}
+
+// ✅ CORRECT - All exception types
+throw new ArgumentNullException(nameof(value));
+throw new ArgumentException("Invalid format", nameof(input));
+throw new ArgumentOutOfRangeException(nameof(index), "Must be non-negative");
 ```
 
 ---

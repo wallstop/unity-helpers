@@ -287,6 +287,9 @@ public SerializableSortedDictionary<int, string> sortedDict;
 
 ---
 
+<a id="serializablehashset--serializablesortedset"></a>
+<a id="serializablehashset-serializablesortedset"></a>
+
 ## SerializableHashSet & SerializableSortedSet
 
 Unity-friendly set collections with duplicate detection and custom drawers.

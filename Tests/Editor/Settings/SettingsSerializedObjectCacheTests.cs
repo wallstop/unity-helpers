@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 #if UNITY_EDITOR
@@ -15,6 +15,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
     /// Tests for verifying SerializedObject caching and foldout state persistence
     /// in the UnityHelpersSettings panel.
     /// </summary>
+    [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class SettingsSerializedObjectCacheTests
     {
         private bool _originalDictionaryTweenEnabled;
@@ -57,7 +60,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
             SerializedProperty property = firstAccess.FindProperty(
                 UnityHelpersSettings.SerializedPropertyNames.WButtonCustomColors
             );
-            Assert.IsNotNull(property, "WButtonCustomColors property should exist.");
+            Assert.IsTrue(property != null, "WButtonCustomColors property should exist.");
 
             bool originalExpanded = property.isExpanded;
             property.isExpanded = false;
@@ -90,7 +93,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
             SerializedProperty property = firstAccess.FindProperty(
                 UnityHelpersSettings.SerializedPropertyNames.WEnumToggleButtonsCustomColors
             );
-            Assert.IsNotNull(property, "WEnumToggleButtonsCustomColors property should exist.");
+            Assert.IsTrue(
+                property != null,
+                "WEnumToggleButtonsCustomColors property should exist."
+            );
 
             bool originalExpanded = property.isExpanded;
             property.isExpanded = false;
@@ -178,7 +184,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
 
             // Note: using is safe here since result is expected to be null
             SerializedObject result = GetCachedSerializedObjectWithNull();
-            Assert.IsNull(result, "GetCachedSerializedObject should return null for null input.");
+            Assert.IsTrue(
+                result == null,
+                "GetCachedSerializedObject should return null for null input."
+            );
         }
 
         [Test]
@@ -188,23 +197,23 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
 
             // Note: Do NOT use 'using' with cached SerializedObjects - the cache manages its own lifecycle
             SerializedObject cached = GetCachedSerializedObject(settings);
-            Assert.IsNotNull(cached, "Cached SerializedObject should not be null.");
-            Assert.IsNotNull(
-                cached.targetObject,
+            Assert.IsTrue(cached != null, "Cached SerializedObject should not be null.");
+            Assert.IsTrue(
+                cached.targetObject != null,
                 "Cached SerializedObject target should not be null."
             );
 
             cached.UpdateIfRequiredOrScript();
 
-            Assert.IsNotNull(
-                cached.targetObject,
+            Assert.IsTrue(
+                cached.targetObject != null,
                 "Target object should remain valid after update."
             );
 
             SerializedProperty property = cached.FindProperty(
                 UnityHelpersSettings.SerializedPropertyNames.WButtonCustomColors
             );
-            Assert.IsNotNull(property, "Should be able to find properties after update.");
+            Assert.IsTrue(property != null, "Should be able to find properties after update.");
         }
 
         [Test]
@@ -222,8 +231,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
                 UnityHelpersSettings.SerializedPropertyNames.WEnumToggleButtonsCustomColors
             );
 
-            Assert.IsNotNull(wButtonColors, "WButtonCustomColors property should exist.");
-            Assert.IsNotNull(wEnumColors, "WEnumToggleButtonsCustomColors property should exist.");
+            Assert.IsTrue(wButtonColors != null, "WButtonCustomColors property should exist.");
+            Assert.IsTrue(
+                wEnumColors != null,
+                "WEnumToggleButtonsCustomColors property should exist."
+            );
 
             bool originalWButtonState = wButtonColors.isExpanded;
             bool originalWEnumState = wEnumColors.isExpanded;
@@ -268,7 +280,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
             SerializedProperty property = cached.FindProperty(
                 UnityHelpersSettings.SerializedPropertyNames.WButtonCustomColors
             );
-            Assert.IsNotNull(property, "WButtonCustomColors property should exist.");
+            Assert.IsTrue(property != null, "WButtonCustomColors property should exist.");
 
             bool originalState = property.isExpanded;
 
@@ -307,7 +319,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
             SerializedProperty property = cached.FindProperty(
                 UnityHelpersSettings.SerializedPropertyNames.WButtonCustomColors
             );
-            Assert.IsNotNull(property, "WButtonCustomColors property should exist.");
+            Assert.IsTrue(property != null, "WButtonCustomColors property should exist.");
 
             bool originalState = property.isExpanded;
 
@@ -369,7 +381,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
             SerializedProperty property = cached.FindProperty(
                 UnityHelpersSettings.SerializedPropertyNames.WButtonCustomColors
             );
-            Assert.IsNotNull(property, "WButtonCustomColors property should exist.");
+            Assert.IsTrue(property != null, "WButtonCustomColors property should exist.");
 
             bool originalState = property.isExpanded;
 
@@ -410,7 +422,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
             SerializedProperty wButtonColors = cached.FindProperty(
                 UnityHelpersSettings.SerializedPropertyNames.WButtonCustomColors
             );
-            Assert.IsNotNull(wButtonColors, "WButtonCustomColors property should exist.");
+            Assert.IsTrue(wButtonColors != null, "WButtonCustomColors property should exist.");
 
             bool originalState = wButtonColors.isExpanded;
 
@@ -495,13 +507,16 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
 
             // Note: Do NOT use 'using' with cached SerializedObjects - the cache manages its own lifecycle
             SerializedObject firstCall = GetCachedSerializedObject(settings);
-            Assert.IsNotNull(firstCall, "First call should return a valid SerializedObject.");
+            Assert.IsTrue(firstCall != null, "First call should return a valid SerializedObject.");
 
             SerializedObject secondCall = GetCachedSerializedObject(settings);
-            Assert.IsNotNull(secondCall, "Second call should return a valid SerializedObject.");
+            Assert.IsTrue(
+                secondCall != null,
+                "Second call should return a valid SerializedObject."
+            );
 
             SerializedObject thirdCall = GetCachedSerializedObject(settings);
-            Assert.IsNotNull(thirdCall, "Third call should return a valid SerializedObject.");
+            Assert.IsTrue(thirdCall != null, "Third call should return a valid SerializedObject.");
 
             Assert.AreSame(
                 firstCall,
@@ -533,8 +548,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
 
             // Note: Do NOT use 'using' with cached SerializedObjects - the cache manages its own lifecycle
             SerializedObject beforeInvalidation = GetCachedSerializedObject(settings);
-            Assert.IsNotNull(
-                beforeInvalidation,
+            Assert.IsTrue(
+                beforeInvalidation != null,
                 "SerializedObject before invalidation should not be null."
             );
 
@@ -551,8 +566,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
 
             // Get new cached object after invalidation
             SerializedObject afterInvalidation = GetCachedSerializedObject(settings);
-            Assert.IsNotNull(
-                afterInvalidation,
+            Assert.IsTrue(
+                afterInvalidation != null,
                 "SerializedObject after invalidation should not be null."
             );
 
@@ -571,8 +586,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
             SerializedProperty property = afterInvalidation.FindProperty(
                 UnityHelpersSettings.SerializedPropertyNames.WButtonCustomColors
             );
-            Assert.IsNotNull(
-                property,
+            Assert.IsTrue(
+                property != null,
                 "New SerializedObject after invalidation should have valid properties."
             );
         }
@@ -599,8 +614,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
             SerializedProperty propertyBeforeDispose = disposableObject.FindProperty(
                 UnityHelpersSettings.SerializedPropertyNames.WButtonCustomColors
             );
-            Assert.IsNotNull(
-                propertyBeforeDispose,
+            Assert.IsTrue(
+                propertyBeforeDispose != null,
                 "Property should be accessible before SerializedObject disposal."
             );
 
@@ -655,12 +670,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
 
             // Note: Do NOT use 'using' with cached SerializedObjects - the cache manages its own lifecycle
             SerializedObject cached = GetCachedSerializedObject(settings);
-            Assert.IsNotNull(cached, "Cached SerializedObject should not be null.");
+            Assert.IsTrue(cached != null, "Cached SerializedObject should not be null.");
 
             SerializedProperty property = cached.FindProperty(
                 UnityHelpersSettings.SerializedPropertyNames.WButtonCustomColors
             );
-            Assert.IsNotNull(property, "WButtonCustomColors property should exist.");
+            Assert.IsTrue(property != null, "WButtonCustomColors property should exist.");
 
             bool originalState = property.isExpanded;
 
@@ -673,12 +688,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
                     property.isExpanded = !property.isExpanded;
 
                     // Verify the property is still valid and accessible
-                    Assert.IsNotNull(
-                        property.serializedObject,
+                    Assert.IsTrue(
+                        property.serializedObject != null,
                         $"Frame {frame}: Property's serializedObject reference should remain valid."
                     );
-                    Assert.IsNotNull(
-                        property.propertyPath,
+                    Assert.IsTrue(
+                        property.propertyPath != null,
                         $"Frame {frame}: Property's propertyPath should remain valid."
                     );
 
@@ -694,8 +709,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
                     cached.UpdateIfRequiredOrScript();
 
                     // Property should still be valid after update
-                    Assert.IsNotNull(
-                        property.propertyPath,
+                    Assert.IsTrue(
+                        property.propertyPath != null,
                         $"Frame {frame}: Property should remain valid after UpdateIfRequiredOrScript."
                     );
                 }
@@ -713,7 +728,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
 
             // Note: Do NOT use 'using' with cached SerializedObjects - the cache manages its own lifecycle
             SerializedObject cached = GetCachedSerializedObject(settings);
-            Assert.IsNotNull(cached, "Cached SerializedObject should not be null.");
+            Assert.IsTrue(cached != null, "Cached SerializedObject should not be null.");
 
             // Retrieve multiple different properties from the same cached object
             SerializedProperty wButtonColors = cached.FindProperty(
@@ -733,14 +748,17 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
                     .SerializableSortedDictionaryFoldoutTweenEnabled
             );
 
-            Assert.IsNotNull(wButtonColors, "WButtonCustomColors property should exist.");
-            Assert.IsNotNull(wEnumColors, "WEnumToggleButtonsCustomColors property should exist.");
-            Assert.IsNotNull(
-                dictionaryTween,
+            Assert.IsTrue(wButtonColors != null, "WButtonCustomColors property should exist.");
+            Assert.IsTrue(
+                wEnumColors != null,
+                "WEnumToggleButtonsCustomColors property should exist."
+            );
+            Assert.IsTrue(
+                dictionaryTween != null,
                 "TweenSerializableDictionaryFoldouts property should exist."
             );
-            Assert.IsNotNull(
-                sortedDictionaryTween,
+            Assert.IsTrue(
+                sortedDictionaryTween != null,
                 "TweenSerializableSortedDictionaryFoldouts property should exist."
             );
 
@@ -774,20 +792,20 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
                 // Verify all properties remain valid after multiple access
                 cached.UpdateIfRequiredOrScript();
 
-                Assert.IsNotNull(
-                    wButtonColors.propertyPath,
+                Assert.IsTrue(
+                    wButtonColors.propertyPath != null,
                     "WButtonColors should remain valid after update."
                 );
-                Assert.IsNotNull(
-                    wEnumColors.propertyPath,
+                Assert.IsTrue(
+                    wEnumColors.propertyPath != null,
                     "WEnumColors should remain valid after update."
                 );
-                Assert.IsNotNull(
-                    dictionaryTween.propertyPath,
+                Assert.IsTrue(
+                    dictionaryTween.propertyPath != null,
                     "DictionaryTween should remain valid after update."
                 );
-                Assert.IsNotNull(
-                    sortedDictionaryTween.propertyPath,
+                Assert.IsTrue(
+                    sortedDictionaryTween.propertyPath != null,
                     "SortedDictionaryTween should remain valid after update."
                 );
 
@@ -815,7 +833,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
 
             // Note: Do NOT use 'using' with cached SerializedObjects - the cache manages its own lifecycle
             SerializedObject firstCached = GetCachedSerializedObject(settings);
-            Assert.IsNotNull(firstCached, "First cached SerializedObject should not be null.");
+            Assert.IsTrue(firstCached != null, "First cached SerializedObject should not be null.");
 
             int originalTargetInstanceId = firstCached.targetObject.GetInstanceID();
             Assert.AreNotEqual(
@@ -832,7 +850,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
 
             // Get new cached object
             SerializedObject secondCached = GetCachedSerializedObject(sameSettings);
-            Assert.IsNotNull(secondCached, "Second cached SerializedObject should not be null.");
+            Assert.IsTrue(
+                secondCached != null,
+                "Second cached SerializedObject should not be null."
+            );
 
             // Verify cache created a new SerializedObject
             Assert.AreNotSame(
@@ -853,7 +874,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
             SerializedProperty property = secondCached.FindProperty(
                 UnityHelpersSettings.SerializedPropertyNames.WButtonCustomColors
             );
-            Assert.IsNotNull(property, "New SerializedObject should have functional properties.");
+            Assert.IsTrue(
+                property != null,
+                "New SerializedObject should have functional properties."
+            );
 
             // Verify subsequent calls return the same new cached object
             SerializedObject thirdCached = GetCachedSerializedObject(sameSettings);

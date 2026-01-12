@@ -1,5 +1,7 @@
 # Skill: Search Codebase
 
+<!-- trigger: search, find, grep, ripgrep, fd | Finding code, files, or patterns | Core -->
+
 **Trigger**: When searching for code, files, or patterns in this repository.
 
 ---

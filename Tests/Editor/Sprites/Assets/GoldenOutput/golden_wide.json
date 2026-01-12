@@ -1,0 +1,16 @@
+{
+  "sourceFile": "test_wide.png",
+  "spriteCount": 8,
+  "expectedNames": [
+    "test_wide_0",
+    "test_wide_1",
+    "test_wide_2",
+    "test_wide_3",
+    "test_wide_4",
+    "test_wide_5",
+    "test_wide_6",
+    "test_wide_7"
+  ],
+  "spriteDimensions": [32, 32],
+  "gridSize": [4, 2]
+}

@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Tests.Helper
@@ -11,6 +11,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
     using WallstopStudios.UnityHelpers.Tests.Core;
     using WallstopStudios.UnityHelpers.Tests.Core.TestTypes;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class TransformHelpersTests : CommonTestBase
     {
         [TestCase(true, "Leaf,Middle,Root")]

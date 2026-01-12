@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Tests.Attributes
@@ -12,6 +12,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
     using WallstopStudios.UnityHelpers.Tests.Core.TestTypes;
 
     [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class RelationalComponentExtensionsTests : CommonTestBase
     {
         // Tracking handled by CommonTestBase

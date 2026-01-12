@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2023 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Core.Extension
@@ -94,7 +94,7 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
             float alphaCutoff = 0.01f
         )
         {
-            return GetAverageColor(Enumerables.Of(sprite), method, alphaCutoff);
+            return Enumerables.Of(sprite).GetAverageColor(method, alphaCutoff);
         }
 
         /// <summary>

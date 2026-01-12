@@ -1,0 +1,7 @@
+{
+  "sourceFile": "test_2x2_grid.png",
+  "spriteCount": 4,
+  "expectedNames": ["test_2x2_grid_0", "test_2x2_grid_1", "test_2x2_grid_2", "test_2x2_grid_3"],
+  "spriteDimensions": [32, 32],
+  "gridSize": [2, 2]
+}

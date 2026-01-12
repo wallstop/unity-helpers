@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Tests.Tools
@@ -13,8 +13,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Tools
     using UnityEngine.TestTools;
     using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Editor.Tools;
+    using WallstopStudios.UnityHelpers.Editor.Utils;
 
     [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class ManualRecompileTests
     {
         private static readonly string TempFolderRelativePath = ResolveTempFolderRelativePath();
@@ -85,7 +88,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Tools
 
                     try
                     {
-                        AssetDatabase.Refresh();
+                        AssetDatabaseBatchHelper.RefreshIfNotBatching();
                     }
                     catch (Exception ex)
                     {
@@ -163,7 +166,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Tools
                 if (scriptAfterRefresh == null)
                 {
                     AssetDatabase.AllowAutoRefresh();
-                    AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
+                    AssetDatabaseBatchHelper.RefreshIfNotBatching(
+                        ImportAssetOptions.ForceSynchronousImport
+                    );
                     scriptAfterRefresh = AssetDatabase.LoadAssetAtPath<MonoScript>(
                         assetRelativePath
                     );

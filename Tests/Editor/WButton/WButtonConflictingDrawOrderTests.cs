@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 #if UNITY_EDITOR
@@ -25,11 +25,14 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
     /// - All buttons are always displayed (the original bug was that nothing was rendered)
     /// </summary>
     [TestFixture]
-    public sealed class WButtonConflictingDrawOrderTests : CommonTestBase
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
+    public sealed class WButtonConflictingDrawOrderTests : BatchedEditorTestBase
     {
         [SetUp]
         public void SetUp()
         {
+            base.BaseSetUp();
             WButtonGUI.ClearGroupDataForTesting();
             WButtonGUI.ClearConflictingDrawOrderWarningsForTesting();
             WButtonGUI.ClearConflictWarningContentCacheForTesting();
@@ -39,11 +42,11 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
         [TearDown]
         public override void TearDown()
         {
-            base.TearDown();
             WButtonGUI.ClearGroupDataForTesting();
             WButtonGUI.ClearConflictingDrawOrderWarningsForTesting();
             WButtonGUI.ClearConflictWarningContentCacheForTesting();
             WButtonGUI.ClearContextCache();
+            base.TearDown();
         }
 
         [Test]
@@ -72,6 +75,11 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
                 .Keys.Where(k => k._groupName == "Setup")
                 .ToList();
 
+            Assert.That(
+                setupGroups,
+                Is.Not.Empty,
+                $"Expected to find 'Setup' group but found: [{string.Join(", ", groupCounts.Keys.Select(k => $"'{k._groupName}'"))}]"
+            );
             Assert.That(setupGroups, Has.Count.EqualTo(1), "Should have exactly one 'Setup' group");
             Assert.That(
                 groupCounts[setupGroups[0]],

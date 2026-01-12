@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Tests.Windows
@@ -12,8 +12,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Windows
     using UnityEngine.TestTools;
     using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Editor;
+    using WallstopStudios.UnityHelpers.Editor.Utils;
     using WallstopStudios.UnityHelpers.Tests.Core;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class PrefabCheckerFolderAdditionTests : CommonTestBase
     {
         private const string Root = "Assets/Temp/PrefabCheckerFolderAdditionTests";
@@ -33,7 +37,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Windows
             base.BaseSetUp();
             EnsureFolder(Root);
             // Ensure root folder is visible to AssetDatabase
-            UnityEditor.AssetDatabase.Refresh(
+            AssetDatabaseBatchHelper.RefreshIfNotBatching(
                 UnityEditor.ImportAssetOptions.ForceSynchronousImport
             );
         }
@@ -158,8 +162,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Windows
                 }
             }
 
-            UnityEditor.AssetDatabase.SaveAssets();
-            UnityEditor.AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.SaveAndRefreshIfNotBatching();
         }
 
         /// <summary>
@@ -260,7 +263,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Windows
             string sub = Path.Combine(Root, "Sub").SanitizePath();
             EnsureFolder(sub);
             // Ensure the folder is visible to AssetDatabase after creation
-            UnityEditor.AssetDatabase.Refresh(
+            AssetDatabaseBatchHelper.RefreshIfNotBatching(
                 UnityEditor.ImportAssetOptions.ForceSynchronousImport
             );
 
@@ -284,7 +287,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Windows
             string sub = Path.Combine(Root, "Dup").SanitizePath();
             EnsureFolder(sub);
             // Ensure the folder is visible to AssetDatabase after creation
-            UnityEditor.AssetDatabase.Refresh(
+            AssetDatabaseBatchHelper.RefreshIfNotBatching(
                 UnityEditor.ImportAssetOptions.ForceSynchronousImport
             );
 
@@ -356,7 +359,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Windows
             string level3 = Path.Combine(level2, "Level3").SanitizePath();
 
             EnsureFolder(level3);
-            UnityEditor.AssetDatabase.Refresh(
+            AssetDatabaseBatchHelper.RefreshIfNotBatching(
                 UnityEditor.ImportAssetOptions.ForceSynchronousImport
             );
 
@@ -582,7 +585,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Windows
             // Create a subfolder inside Assets
             string sub = Path.Combine(Root, "AbsolutePathTest").SanitizePath();
             EnsureFolder(sub);
-            UnityEditor.AssetDatabase.Refresh(
+            AssetDatabaseBatchHelper.RefreshIfNotBatching(
                 UnityEditor.ImportAssetOptions.ForceSynchronousImport
             );
 
@@ -674,7 +677,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Windows
             EnsureFolder(folder1);
             EnsureFolder(folder2);
             EnsureFolder(folder3);
-            UnityEditor.AssetDatabase.Refresh(
+            AssetDatabaseBatchHelper.RefreshIfNotBatching(
                 UnityEditor.ImportAssetOptions.ForceSynchronousImport
             );
 
@@ -887,7 +890,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Windows
             // Create a subfolder inside Assets
             string sub = Path.Combine(Root, "TrailingSlashSubTest").SanitizePath();
             EnsureFolder(sub);
-            UnityEditor.AssetDatabase.Refresh(
+            AssetDatabaseBatchHelper.RefreshIfNotBatching(
                 UnityEditor.ImportAssetOptions.ForceSynchronousImport
             );
 

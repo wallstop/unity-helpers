@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 // Portions of this file are adapted from Unity Editor Toolbox (InlineEditorAttributeDrawer)
@@ -31,6 +31,12 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         // Inspired by the Unity Editor Toolbox inline editor drawer (MIT):
         // https://github.com/arimger/Unity-Editor-Toolbox
         private const float FoldoutOffset = 6.5f;
+
+        /// <summary>
+        /// Ratio of the total content width allocated to field widths in inline editor UI.
+        /// Fields display property values/controls on the right side of the inspector.
+        /// </summary>
+        private const float DefaultFieldWidthRatio = 0.6f;
 
         private static readonly Dictionary<string, float> PropertyWidths = new Dictionary<
             string,
@@ -744,8 +750,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             // Set labelWidth based on our rect width
             float contentWidth = rect.width;
-            EditorGUIUtility.labelWidth = contentWidth * 0.4f;
-            EditorGUIUtility.fieldWidth = contentWidth * 0.6f;
+            EditorGUIUtility.labelWidth = contentWidth * InLineEditorShared.DefaultLabelWidthRatio;
+            EditorGUIUtility.fieldWidth = contentWidth * DefaultFieldWidthRatio;
 
             try
             {
@@ -1586,7 +1592,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         /// </summary>
         internal static float CalculateLabelWidthForTesting(float availableWidth)
         {
-            return availableWidth * 0.4f;
+            return availableWidth * InLineEditorShared.DefaultLabelWidthRatio;
         }
     }
 }

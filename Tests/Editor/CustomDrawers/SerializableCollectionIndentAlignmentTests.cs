@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
@@ -19,6 +19,9 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
     /// Tests for precise pixel-level indent alignment of SerializableDictionary and SerializableSet
     /// when rendered in various contexts (WGroup, SettingsProvider, nested groups, etc.).
     /// </summary>
+    [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class SerializableCollectionIndentAlignmentTests : CommonTestBase
     {
         private const float PixelTolerance = 0.01f;
@@ -954,73 +957,73 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             4f,
             400f,
             0,
-            TestName = "CollectionWGroupPropertyContextAlignmentOffset_X4_Width400_Indent0"
+            TestName = "CollectionWGroupPropertyContextAlignmentOffset.X4.Width400.Indent0"
         )]
         [TestCase(
             8f,
             400f,
             0,
-            TestName = "CollectionWGroupPropertyContextAlignmentOffset_X8_Width400_Indent0"
+            TestName = "CollectionWGroupPropertyContextAlignmentOffset.X8.Width400.Indent0"
         )]
         [TestCase(
             12f,
             400f,
             0,
-            TestName = "CollectionWGroupPropertyContextAlignmentOffset_X12_Width400_Indent0"
+            TestName = "CollectionWGroupPropertyContextAlignmentOffset.X12.Width400.Indent0"
         )]
         [TestCase(
             20f,
             400f,
             0,
-            TestName = "CollectionWGroupPropertyContextAlignmentOffset_X20_Width400_Indent0"
+            TestName = "CollectionWGroupPropertyContextAlignmentOffset.X20.Width400.Indent0"
         )]
         [TestCase(
             50f,
             400f,
             0,
-            TestName = "CollectionWGroupPropertyContextAlignmentOffset_X50_Width400_Indent0"
+            TestName = "CollectionWGroupPropertyContextAlignmentOffset.X50.Width400.Indent0"
         )]
         [TestCase(
             0f,
             400f,
             0,
-            TestName = "CollectionWGroupPropertyContextAlignmentOffset_X0_Width400_Indent0"
+            TestName = "CollectionWGroupPropertyContextAlignmentOffset.X0.Width400.Indent0"
         )]
         [TestCase(
             100f,
             400f,
             0,
-            TestName = "CollectionWGroupPropertyContextAlignmentOffset_X100_Width400_Indent0"
+            TestName = "CollectionWGroupPropertyContextAlignmentOffset.X100.Width400.Indent0"
         )]
         [TestCase(
             4f,
             400f,
             1,
-            TestName = "CollectionWGroupPropertyContextAlignmentOffset_X4_Width400_Indent1"
+            TestName = "CollectionWGroupPropertyContextAlignmentOffset.X4.Width400.Indent1"
         )]
         [TestCase(
             4f,
             400f,
             2,
-            TestName = "CollectionWGroupPropertyContextAlignmentOffset_X4_Width400_Indent2"
+            TestName = "CollectionWGroupPropertyContextAlignmentOffset.X4.Width400.Indent2"
         )]
         [TestCase(
             4f,
             400f,
             5,
-            TestName = "CollectionWGroupPropertyContextAlignmentOffset_X4_Width400_Indent5"
+            TestName = "CollectionWGroupPropertyContextAlignmentOffset.X4.Width400.Indent5"
         )]
         [TestCase(
             20f,
             200f,
             3,
-            TestName = "CollectionWGroupPropertyContextAlignmentOffset_X20_Width200_Indent3"
+            TestName = "CollectionWGroupPropertyContextAlignmentOffset.X20.Width200.Indent3"
         )]
         [TestCase(
             50f,
             600f,
             4,
-            TestName = "CollectionWGroupPropertyContextAlignmentOffset_X50_Width600_Indent4"
+            TestName = "CollectionWGroupPropertyContextAlignmentOffset.X50.Width600.Indent4"
         )]
         public void WGroupPropertyContextAlignmentOffsetBothCollections(
             float startX,
@@ -1112,10 +1115,10 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         /// <summary>
         /// Tests WGroupPropertyContext with very small widths for both Dictionary and Set.
         /// </summary>
-        [TestCase(1f, TestName = "CollectionWGroupPropertyContextSmallWidth_1")]
-        [TestCase(2f, TestName = "CollectionWGroupPropertyContextSmallWidth_2")]
-        [TestCase(5f, TestName = "CollectionWGroupPropertyContextSmallWidth_5")]
-        [TestCase(10f, TestName = "CollectionWGroupPropertyContextSmallWidth_10")]
+        [TestCase(1f, TestName = "CollectionWGroupPropertyContextSmallWidth.1")]
+        [TestCase(2f, TestName = "CollectionWGroupPropertyContextSmallWidth.2")]
+        [TestCase(5f, TestName = "CollectionWGroupPropertyContextSmallWidth.5")]
+        [TestCase(10f, TestName = "CollectionWGroupPropertyContextSmallWidth.10")]
         public void WGroupPropertyContextSmallWidthBothCollections(float smallWidth)
         {
             Rect controlRect = new(20f, 0f, smallWidth, 300f);
@@ -1183,10 +1186,10 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         /// <summary>
         /// Tests WGroupPropertyContext with very large widths for both Dictionary and Set.
         /// </summary>
-        [TestCase(1000f, TestName = "CollectionWGroupPropertyContextLargeWidth_1000")]
-        [TestCase(2000f, TestName = "CollectionWGroupPropertyContextLargeWidth_2000")]
-        [TestCase(5000f, TestName = "CollectionWGroupPropertyContextLargeWidth_5000")]
-        [TestCase(10000f, TestName = "CollectionWGroupPropertyContextLargeWidth_10000")]
+        [TestCase(1000f, TestName = "CollectionWGroupPropertyContextLargeWidth.1000")]
+        [TestCase(2000f, TestName = "CollectionWGroupPropertyContextLargeWidth.2000")]
+        [TestCase(5000f, TestName = "CollectionWGroupPropertyContextLargeWidth.5000")]
+        [TestCase(10000f, TestName = "CollectionWGroupPropertyContextLargeWidth.10000")]
         public void WGroupPropertyContextLargeWidthBothCollections(float largeWidth)
         {
             Rect controlRect = new(100f, 0f, largeWidth, 300f);

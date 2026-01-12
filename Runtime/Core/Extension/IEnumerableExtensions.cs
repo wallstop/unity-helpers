@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2023 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Core.Extension
@@ -69,22 +69,29 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         /// <typeparam name="T">The type of the elements of enumeration.</typeparam>
         /// <param name="enumeration">A sequence of values to order.</param>
         /// <param name="comparer">A comparison function that returns negative if first is less than second, 0 if equal, positive if greater.</param>
-        /// <returns>An IEnumerable whose elements are sorted according to the comparer.</returns>
+        /// <returns>A new List containing the sorted elements.</returns>
         /// <remarks>
         /// <para>Null handling: Comparer can be invoked with null elements depending on enumeration content.</para>
         /// <para>Thread safety: Not thread-safe. No Unity main thread requirement.</para>
-        /// <para>Performance: O(n log n) where n is the number of elements (uses LINQ OrderBy).</para>
-        /// <para>Allocations: Allocates a FuncBasedComparer wrapper and LINQ sorting structures.</para>
+        /// <para>Performance: O(n log n) where n is the number of elements (uses List.Sort).</para>
+        /// <para>Allocations: Allocates a result List. Uses pooled buffer for intermediate work.</para>
         /// <para>Edge cases: Empty or single element collections return without sorting.</para>
         /// </remarks>
         /// <exception cref="ArgumentNullException">Thrown when comparer is null (propagated from FuncBasedComparer).</exception>
-        public static IEnumerable<T> OrderBy<T>(
-            this IEnumerable<T> enumeration,
-            Func<T, T, int> comparer
-        )
+        public static List<T> OrderBy<T>(this IEnumerable<T> enumeration, Func<T, T, int> comparer)
         {
             FuncBasedComparer<T> typedComparer = new(comparer);
-            return enumeration.OrderBy(x => x, typedComparer);
+            using PooledResource<List<T>> lease = Buffers<T>.List.Get(out List<T> buffer);
+
+            buffer.AddRange(enumeration);
+
+            if (buffer.Count <= 1)
+            {
+                return new List<T>(buffer);
+            }
+
+            buffer.Sort(typedComparer);
+            return new List<T>(buffer);
         }
 
         /// <summary>
@@ -92,18 +99,28 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         /// </summary>
         /// <typeparam name="T">The type of the elements of enumerable. Must implement IComparable.</typeparam>
         /// <param name="enumerable">A sequence of values to order.</param>
-        /// <returns>An IEnumerable whose elements are sorted in ascending order.</returns>
+        /// <returns>A new List containing the sorted elements in ascending order.</returns>
         /// <remarks>
         /// <para>Null handling: Behavior with null elements depends on T's CompareTo implementation.</para>
         /// <para>Thread safety: Not thread-safe. No Unity main thread requirement.</para>
-        /// <para>Performance: O(n log n) where n is the number of elements (uses LINQ OrderBy).</para>
-        /// <para>Allocations: Allocates LINQ sorting structures.</para>
+        /// <para>Performance: O(n log n) where n is the number of elements (uses List.Sort).</para>
+        /// <para>Allocations: Allocates a result List. Uses pooled buffer for intermediate work.</para>
         /// <para>Edge cases: Empty or single element collections return without sorting.</para>
         /// </remarks>
-        public static IEnumerable<T> Ordered<T>(this IEnumerable<T> enumerable)
+        public static List<T> Ordered<T>(this IEnumerable<T> enumerable)
             where T : IComparable
         {
-            return enumerable.OrderBy(x => x);
+            using PooledResource<List<T>> lease = Buffers<T>.List.Get(out List<T> buffer);
+
+            buffer.AddRange(enumerable);
+
+            if (buffer.Count <= 1)
+            {
+                return new List<T>(buffer);
+            }
+
+            buffer.Sort();
+            return new List<T>(buffer);
         }
 
         /// <summary>
@@ -112,21 +129,20 @@ namespace WallstopStudios.UnityHelpers.Core.Extension
         /// <typeparam name="T">The type of the elements of enumerable.</typeparam>
         /// <param name="enumerable">A sequence of values to shuffle.</param>
         /// <param name="random">The random number generator to use. If null, uses PRNG.Instance.</param>
-        /// <returns>An IEnumerable containing the same elements in random order.</returns>
+        /// <returns>A new List containing the same elements in random order.</returns>
         /// <remarks>
         /// <para>Null handling: If enumerable is null, will throw when enumerated. If random is null, uses PRNG.Instance.</para>
         /// <para>Thread safety: Not thread-safe if random is shared. No Unity main thread requirement.</para>
-        /// <para>Performance: O(n log n) where n is the number of elements (uses LINQ OrderBy with random comparisons).</para>
-        /// <para>Allocations: Allocates a RandomComparer and LINQ sorting structures.</para>
+        /// <para>Performance: O(n) where n is the number of elements (uses Fisher-Yates shuffle via IListExtensions.Shuffle).</para>
+        /// <para>Allocations: Allocates a result List. Uses pooled buffer for intermediate work.</para>
         /// <para>Edge cases: Empty or single element collections return unchanged. Shuffle quality depends on random implementation.</para>
         /// </remarks>
-        public static IEnumerable<T> Shuffled<T>(
-            this IEnumerable<T> enumerable,
-            IRandom random = null
-        )
+        public static List<T> Shuffled<T>(this IEnumerable<T> enumerable, IRandom random = null)
         {
-            random ??= PRNG.Instance;
-            return enumerable.OrderBy(x => x, new RandomComparer<T>(random));
+            using PooledResource<List<T>> lease = Buffers<T>.List.Get(out List<T> buffer);
+            buffer.AddRange(enumerable);
+            buffer.Shuffle(random);
+            return new List<T>(buffer);
         }
 
         /// <summary>

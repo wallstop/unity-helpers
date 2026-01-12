@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
@@ -20,6 +20,9 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
     /// Tests for ensuring correct indentation behavior of SerializableDictionary and
     /// SerializableSet property drawers in various contexts (normal inspector vs SettingsProvider).
     /// </summary>
+    [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class SerializableDictionaryIndentationTests : CommonTestBase
     {
         [SetUp]
@@ -1098,10 +1101,10 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         private static IEnumerable<TestCaseData> SettingsContextWithPaddingTestCases()
         {
             // Test case: (leftPadding, rightPadding, inputX, inputWidth)
-            yield return new TestCaseData(10f, 5f, 0f, 400f).SetName("SmallPadding_ZeroStart");
-            yield return new TestCaseData(20f, 15f, 5f, 500f).SetName("LargePadding_SmallOffset");
-            yield return new TestCaseData(0f, 0f, 10f, 300f).SetName("NoPadding_NonZeroStart");
-            yield return new TestCaseData(12f, 8f, 0f, 450f).SetName("MixedPadding_ZeroStart");
+            yield return new TestCaseData(10f, 5f, 0f, 400f).SetName("SmallPadding.ZeroStart");
+            yield return new TestCaseData(20f, 15f, 5f, 500f).SetName("LargePadding.SmallOffset");
+            yield return new TestCaseData(0f, 0f, 10f, 300f).SetName("NoPadding.NonZeroStart");
+            yield return new TestCaseData(12f, 8f, 0f, 450f).SetName("MixedPadding.ZeroStart");
         }
 
         [TestCaseSource(nameof(SettingsContextWithPaddingTestCases))]
@@ -2607,73 +2610,73 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             4f,
             400f,
             0,
-            TestName = "WGroupPropertyContextAlignmentOffset_X4_Width400_Indent0"
+            TestName = "WGroupPropertyContextAlignmentOffset.X4.Width400.Indent0"
         )]
         [TestCase(
             8f,
             400f,
             0,
-            TestName = "WGroupPropertyContextAlignmentOffset_X8_Width400_Indent0"
+            TestName = "WGroupPropertyContextAlignmentOffset.X8.Width400.Indent0"
         )]
         [TestCase(
             12f,
             400f,
             0,
-            TestName = "WGroupPropertyContextAlignmentOffset_X12_Width400_Indent0"
+            TestName = "WGroupPropertyContextAlignmentOffset.X12.Width400.Indent0"
         )]
         [TestCase(
             20f,
             400f,
             0,
-            TestName = "WGroupPropertyContextAlignmentOffset_X20_Width400_Indent0"
+            TestName = "WGroupPropertyContextAlignmentOffset.X20.Width400.Indent0"
         )]
         [TestCase(
             50f,
             400f,
             0,
-            TestName = "WGroupPropertyContextAlignmentOffset_X50_Width400_Indent0"
+            TestName = "WGroupPropertyContextAlignmentOffset.X50.Width400.Indent0"
         )]
         [TestCase(
             0f,
             400f,
             0,
-            TestName = "WGroupPropertyContextAlignmentOffset_X0_Width400_Indent0"
+            TestName = "WGroupPropertyContextAlignmentOffset.X0.Width400.Indent0"
         )]
         [TestCase(
             100f,
             400f,
             0,
-            TestName = "WGroupPropertyContextAlignmentOffset_X100_Width400_Indent0"
+            TestName = "WGroupPropertyContextAlignmentOffset.X100.Width400.Indent0"
         )]
         [TestCase(
             4f,
             400f,
             1,
-            TestName = "WGroupPropertyContextAlignmentOffset_X4_Width400_Indent1"
+            TestName = "WGroupPropertyContextAlignmentOffset.X4.Width400.Indent1"
         )]
         [TestCase(
             4f,
             400f,
             2,
-            TestName = "WGroupPropertyContextAlignmentOffset_X4_Width400_Indent2"
+            TestName = "WGroupPropertyContextAlignmentOffset.X4.Width400.Indent2"
         )]
         [TestCase(
             4f,
             400f,
             5,
-            TestName = "WGroupPropertyContextAlignmentOffset_X4_Width400_Indent5"
+            TestName = "WGroupPropertyContextAlignmentOffset.X4.Width400.Indent5"
         )]
         [TestCase(
             20f,
             200f,
             3,
-            TestName = "WGroupPropertyContextAlignmentOffset_X20_Width200_Indent3"
+            TestName = "WGroupPropertyContextAlignmentOffset.X20.Width200.Indent3"
         )]
         [TestCase(
             50f,
             600f,
             4,
-            TestName = "WGroupPropertyContextAlignmentOffset_X50_Width600_Indent4"
+            TestName = "WGroupPropertyContextAlignmentOffset.X50.Width600.Indent4"
         )]
         public void WGroupPropertyContextAlignmentOffsetDataDriven(
             float startX,
@@ -2731,10 +2734,10 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         /// <summary>
         /// Tests WGroupPropertyContext with very small widths to ensure width increases by 4f without issues.
         /// </summary>
-        [TestCase(1f, TestName = "WGroupPropertyContextSmallWidth_1")]
-        [TestCase(2f, TestName = "WGroupPropertyContextSmallWidth_2")]
-        [TestCase(5f, TestName = "WGroupPropertyContextSmallWidth_5")]
-        [TestCase(10f, TestName = "WGroupPropertyContextSmallWidth_10")]
+        [TestCase(1f, TestName = "WGroupPropertyContextSmallWidth.1")]
+        [TestCase(2f, TestName = "WGroupPropertyContextSmallWidth.2")]
+        [TestCase(5f, TestName = "WGroupPropertyContextSmallWidth.5")]
+        [TestCase(10f, TestName = "WGroupPropertyContextSmallWidth.10")]
         public void WGroupPropertyContextSmallWidthHandling(float smallWidth)
         {
             Rect controlRect = new(20f, 0f, smallWidth, 300f);
@@ -2794,10 +2797,10 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         /// <summary>
         /// Tests WGroupPropertyContext with very large rects to ensure no overflow issues.
         /// </summary>
-        [TestCase(1000f, TestName = "WGroupPropertyContextLargeWidth_1000")]
-        [TestCase(2000f, TestName = "WGroupPropertyContextLargeWidth_2000")]
-        [TestCase(5000f, TestName = "WGroupPropertyContextLargeWidth_5000")]
-        [TestCase(10000f, TestName = "WGroupPropertyContextLargeWidth_10000")]
+        [TestCase(1000f, TestName = "WGroupPropertyContextLargeWidth.1000")]
+        [TestCase(2000f, TestName = "WGroupPropertyContextLargeWidth.2000")]
+        [TestCase(5000f, TestName = "WGroupPropertyContextLargeWidth.5000")]
+        [TestCase(10000f, TestName = "WGroupPropertyContextLargeWidth.10000")]
         public void WGroupPropertyContextLargeWidthHandling(float largeWidth)
         {
             Rect controlRect = new(100f, 0f, largeWidth, 300f);
@@ -3059,26 +3062,26 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         private static IEnumerable<TestCaseData> WGroupPropertyContextEdgeCases()
         {
             // Standard cases
-            yield return new TestCaseData(0f, 400f, 0).SetName("X0_Width400_Indent0");
-            yield return new TestCaseData(4f, 400f, 0).SetName("X4_Width400_Indent0_XBecomesZero");
+            yield return new TestCaseData(0f, 400f, 0).SetName("X0.Width400.Indent0");
+            yield return new TestCaseData(4f, 400f, 0).SetName("X4.Width400.Indent0.XBecomesZero");
             yield return new TestCaseData(2f, 400f, 0).SetName(
-                "X2_Width400_Indent0_XBecomesNegative"
+                "X2.Width400.Indent0.XBecomesNegative"
             );
 
             // Various widths
-            yield return new TestCaseData(10f, 100f, 0).SetName("X10_Width100_Indent0");
-            yield return new TestCaseData(10f, 200f, 0).SetName("X10_Width200_Indent0");
-            yield return new TestCaseData(10f, 500f, 0).SetName("X10_Width500_Indent0");
+            yield return new TestCaseData(10f, 100f, 0).SetName("X10.Width100.Indent0");
+            yield return new TestCaseData(10f, 200f, 0).SetName("X10.Width200.Indent0");
+            yield return new TestCaseData(10f, 500f, 0).SetName("X10.Width500.Indent0");
 
             // Different indent levels (indent level shouldn't matter in WGroupPropertyContext)
-            yield return new TestCaseData(10f, 400f, 1).SetName("X10_Width400_Indent1");
-            yield return new TestCaseData(10f, 400f, 2).SetName("X10_Width400_Indent2");
+            yield return new TestCaseData(10f, 400f, 1).SetName("X10.Width400.Indent1");
+            yield return new TestCaseData(10f, 400f, 2).SetName("X10.Width400.Indent2");
 
             // Edge case: very small rect
-            yield return new TestCaseData(4f, 10f, 0).SetName("SmallRect_X4_Width10");
+            yield return new TestCaseData(4f, 10f, 0).SetName("SmallRect.X4.Width10");
 
             // Edge case: large x offset
-            yield return new TestCaseData(100f, 400f, 0).SetName("LargeX_100_Width400");
+            yield return new TestCaseData(100f, 400f, 0).SetName("LargeX.100.Width400");
         }
 
         [TestCaseSource(nameof(WGroupPropertyContextEdgeCases))]
@@ -3140,13 +3143,15 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             const float UnityListAlignmentOffset = -1.25f;
 
             // Case: x starts at 0, gets clamped
-            yield return new TestCaseData(0f, 400f, 0f, 400f).SetName("X0_ClampedToZero");
+            yield return new TestCaseData(0f, 400f, 0f, 400f).SetName("X0.ClampedToZero");
 
             // Case: x starts at 0.5, would go negative, gets clamped
-            yield return new TestCaseData(0.5f, 400f, 0f, 400.5f).SetName("X0_5_ClampedToZero");
+            yield return new TestCaseData(0.5f, 400f, 0f, 400.5f).SetName("X0Point5.ClampedToZero");
 
             // Case: x starts at 1.25, goes exactly to 0
-            yield return new TestCaseData(1.25f, 400f, 0f, 401.25f).SetName("X1_25_ExactlyZero");
+            yield return new TestCaseData(1.25f, 400f, 0f, 401.25f).SetName(
+                "X1Point25.ExactlyZero"
+            );
 
             // Case: x starts above 1.25, normal shift
             yield return new TestCaseData(
@@ -3154,7 +3159,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 300f,
                 50f + UnityListAlignmentOffset,
                 300f - UnityListAlignmentOffset
-            ).SetName("X50_NormalShift");
+            ).SetName("X50.NormalShift");
 
             // Case: large x, normal shift
             yield return new TestCaseData(
@@ -3162,7 +3167,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 500f,
                 100f + UnityListAlignmentOffset,
                 500f - UnityListAlignmentOffset
-            ).SetName("X100_LargeRect");
+            ).SetName("X100.LargeRect");
         }
 
         [TestCaseSource(nameof(UnityListAlignmentOffsetEdgeCases))]
@@ -3465,19 +3470,19 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         {
             // Indent level 0: production code skips IndentedRect entirely
             yield return new TestCaseData(0, 0f, 400f).SetName(
-                "IndentLevel0_ZeroStart_ProductionSkipsCall"
+                "IndentLevel0.ZeroStart.ProductionSkipsCall"
             );
             yield return new TestCaseData(0, 50f, 400f).SetName(
-                "IndentLevel0_NonZeroStart_ProductionSkipsCall"
+                "IndentLevel0.NonZeroStart.ProductionSkipsCall"
             );
             yield return new TestCaseData(0, 0f, 200f).SetName(
-                "IndentLevel0_SmallWidth_ProductionSkipsCall"
+                "IndentLevel0.SmallWidth.ProductionSkipsCall"
             );
 
             // Higher indent levels: IndentedRect is called normally
-            yield return new TestCaseData(1, 0f, 400f).SetName("IndentLevel1_NormalIndentation");
-            yield return new TestCaseData(2, 0f, 400f).SetName("IndentLevel2_NormalIndentation");
-            yield return new TestCaseData(3, 50f, 300f).SetName("IndentLevel3_OffsetStart");
+            yield return new TestCaseData(1, 0f, 400f).SetName("IndentLevel1.NormalIndentation");
+            yield return new TestCaseData(2, 0f, 400f).SetName("IndentLevel2.NormalIndentation");
+            yield return new TestCaseData(3, 50f, 300f).SetName("IndentLevel3.OffsetStart");
         }
 
         [TestCaseSource(nameof(IndentedRectBehaviorTestCases))]
@@ -3732,9 +3737,9 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         /// <summary>
         /// Tests ResolveContentRect with very large width input.
         /// </summary>
-        [TestCase(10000f, TestName = "VeryLargeWidth_10000")]
-        [TestCase(100000f, TestName = "VeryLargeWidth_100000")]
-        [TestCase(1000000f, TestName = "VeryLargeWidth_1000000")]
+        [TestCase(10000f, TestName = "VeryLargeWidth.10000")]
+        [TestCase(100000f, TestName = "VeryLargeWidth.100000")]
+        [TestCase(1000000f, TestName = "VeryLargeWidth.1000000")]
         public void ResolveContentRectVeryLargeWidthInput(float largeWidth)
         {
             Rect controlRect = new(10f, 0f, largeWidth, 300f);
@@ -3855,11 +3860,11 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         /// <summary>
         /// Tests ResolveContentRect with fractional X values close to the alignment threshold.
         /// </summary>
-        [TestCase(0.5f, TestName = "FractionalX_0_5")]
-        [TestCase(1.0f, TestName = "FractionalX_1_0")]
-        [TestCase(1.24f, TestName = "FractionalX_1_24_JustBelowThreshold")]
-        [TestCase(1.26f, TestName = "FractionalX_1_26_JustAboveThreshold")]
-        [TestCase(2.5f, TestName = "FractionalX_2_5")]
+        [TestCase(0.5f, TestName = "FractionalX.0.5")]
+        [TestCase(1.0f, TestName = "FractionalX.1.0")]
+        [TestCase(1.24f, TestName = "FractionalX.1.24.JustBelowThreshold")]
+        [TestCase(1.26f, TestName = "FractionalX.1.26.JustAboveThreshold")]
+        [TestCase(2.5f, TestName = "FractionalX.2.5")]
         public void ResolveContentRectFractionalXValues(float inputX)
         {
             const float UnityListAlignmentOffset = -1.25f;
@@ -4023,11 +4028,11 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         /// <summary>
         /// Tests the clamping behavior when X is small and alignment offset would make it negative.
         /// </summary>
-        [TestCase(0f, 0f, TestName = "XStartsAt0_ClampedTo0")]
-        [TestCase(0.5f, 0f, TestName = "XStartsAt0_5_ClampedTo0")]
-        [TestCase(1.0f, 0f, TestName = "XStartsAt1_0_ClampedTo0")]
-        [TestCase(1.25f, 0f, TestName = "XStartsAt1_25_BecomesExactly0")]
-        [TestCase(2.0f, 0.75f, TestName = "XStartsAt2_0_Becomes0_75")]
+        [TestCase(0f, 0f, TestName = "XStartsAt0.ClampedTo0")]
+        [TestCase(0.5f, 0f, TestName = "XStartsAt0.5.ClampedTo0")]
+        [TestCase(1.0f, 0f, TestName = "XStartsAt1.0.ClampedTo0")]
+        [TestCase(1.25f, 0f, TestName = "XStartsAt1.25.BecomesExactly0")]
+        [TestCase(2.0f, 0.75f, TestName = "XStartsAt2.0.Becomes0.75")]
         public void UnityListAlignmentOffsetClampingBehavior(float inputX, float expectedX)
         {
             Rect controlRect = new(inputX, 0f, 400f, 300f);

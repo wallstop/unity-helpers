@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Editor.Sprites
@@ -16,6 +16,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
     using WallstopStudios.UnityHelpers.Core.Extension;
     using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Editor.Extensions;
+    using WallstopStudios.UnityHelpers.Editor.Utils;
     using WallstopStudios.UnityHelpers.Utils;
     using Object = UnityEngine.Object;
 
@@ -44,6 +45,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
     /// </remarks>
     public sealed class ScriptableSpriteAtlasEditor : EditorWindow
     {
+        private const string ScriptPropertyPath = "m_Script";
+
         private static bool SuppressUserPrompts { get; set; }
 
         static ScriptableSpriteAtlasEditor()
@@ -284,7 +287,9 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                         }
                     }
 
-                    SerializedProperty scriptProperty = serializedConfig.FindProperty("m_Script");
+                    SerializedProperty scriptProperty = serializedConfig.FindProperty(
+                        ScriptPropertyPath
+                    );
                     if (scriptProperty != null)
                     {
                         GUI.enabled = false;
@@ -297,7 +302,13 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                     while (property.NextVisible(enterChildren))
                     {
                         enterChildren = false;
-                        if (string.Equals(property.name, "m_Script", StringComparison.Ordinal))
+                        if (
+                            string.Equals(
+                                property.name,
+                                ScriptPropertyPath,
+                                StringComparison.Ordinal
+                            )
+                        )
                         {
                             continue;
                         }
@@ -1085,10 +1096,11 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                         )
                     );
                 }
-                catch (ArgumentException ex)
+                catch (ArgumentException e)
                 {
                     this.LogError(
-                        $"'{config.name}', Folder '{entry.folderPath}': Invalid {description} pattern '{pattern}': {ex.Message}. This pattern will be ignored."
+                        $"'{config.name}', Folder '{entry.folderPath}': Invalid {description} pattern '{pattern}'. This pattern will be ignored.",
+                        e
                     );
                 }
             }
@@ -1326,8 +1338,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             int totalConfigs = _atlasConfigs.Count;
             int currentConfig = 0;
 
-            AssetDatabase.StartAssetEditing();
-            try
+            using (AssetDatabaseBatchHelper.BeginBatch(refreshOnDispose: false))
             {
                 foreach (ScriptableSpriteAtlas config in _atlasConfigs)
                 {
@@ -1346,13 +1357,9 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                     GenerateSingleAtlas(config, false);
                 }
             }
-            finally
-            {
-                AssetDatabase.StopAssetEditing();
-                Utils.EditorUi.ClearProgress();
-                AssetDatabase.SaveAssets();
-                AssetDatabase.Refresh();
-            }
+            Utils.EditorUi.ClearProgress();
+            AssetDatabase.SaveAssets();
+            AssetDatabase.Refresh();
         }
 
         private void GenerateSingleAtlas(
@@ -1580,8 +1587,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             using PooledResource<List<TextureImporter>> importersLease =
                 Buffers<TextureImporter>.List.Get(out List<TextureImporter> importers);
             {
-                AssetDatabase.StartAssetEditing();
-                try
+                using (AssetDatabaseBatchHelper.BeginBatch(refreshOnDispose: false))
                 {
                     for (int i = 0; i < spritesToProcess.Count; ++i)
                     {
@@ -1673,11 +1679,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                         }
                     }
                 }
-                finally
-                {
-                    AssetDatabase.StopAssetEditing();
-                    Utils.EditorUi.ClearProgress();
-                }
+                Utils.EditorUi.ClearProgress();
 
                 foreach (TextureImporter importer in importers)
                 {

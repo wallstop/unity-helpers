@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 // ReSharper disable HeapView.CanAvoidClosure
@@ -1422,9 +1422,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             }
             catch (Exception e)
             {
-                this.LogError(
-                    $"Exception during OnFrameItemPointerDown before StartDrag: {e.Message}\n{e.StackTrace}"
-                );
+                this.LogError($"Exception during OnFrameItemPointerDown before StartDrag", e);
 
                 if (_draggedFrameElement != null)
                 {

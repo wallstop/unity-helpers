@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Tests.Tags
@@ -12,6 +12,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Tags
     using WallstopStudios.UnityHelpers.Tests.Tags.Helpers;
 
     [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class TagHandlerTests : TagsTestBase
     {
         [SetUp]
@@ -192,7 +193,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Tags
             handler.ApplyTag("Shield");
 
             List<string> firstCall = handler.GetActiveTags();
-            Assert.IsNotNull(firstCall);
+            Assert.IsTrue(firstCall != null, "GetActiveTags should return non-null list");
             CollectionAssert.AreEquivalent(new[] { "Buff", "Shield" }, firstCall);
 
             List<string> reusable = new() { "Sentinel" };
@@ -227,7 +228,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Tags
             Assert.AreEqual(0, handler.GetHandlesWithTag("Buff").Count);
 
             List<EffectHandle> empty = handler.RemoveTag("Missing");
-            Assert.IsNotNull(empty);
+            Assert.IsTrue(
+                empty != null,
+                "RemoveTag should return non-null list even for missing tag"
+            );
             Assert.AreEqual(0, empty.Count);
             yield return null;
         }

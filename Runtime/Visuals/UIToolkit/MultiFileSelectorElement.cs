@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Visuals.UIToolkit
@@ -491,9 +491,9 @@ namespace WallstopStudios.UnityHelpers.Visuals.UIToolkit
                     }
                 }
             }
-            catch (Exception ex)
+            catch (Exception e)
             {
-                Debug.LogError($"Error accessing path {_currentDirectory}: {ex.Message}");
+                Debug.LogError($"Error accessing path {_currentDirectory}: {e.Message}");
             }
 
             _listView.RefreshItems();
@@ -789,9 +789,9 @@ namespace WallstopStudios.UnityHelpers.Visuals.UIToolkit
             {
                 UnityEditor.EditorUtility.RevealInFinder(_currentDirectory);
             }
-            catch (Exception ex)
+            catch (Exception e)
             {
-                Debug.LogError($"Failed to open in Explorer/Finder: {ex.Message}");
+                Debug.LogError($"Failed to open in Explorer/Finder: {e.Message}");
             }
         }
 #endif

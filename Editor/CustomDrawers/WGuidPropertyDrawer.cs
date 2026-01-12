@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 #if UNITY_EDITOR
@@ -287,10 +287,10 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 state.hasPendingInvalid = false;
                 state.warningMessage = string.Empty;
             }
-            catch (FormatException exception)
+            catch (FormatException e)
             {
                 state.hasPendingInvalid = true;
-                state.warningMessage = exception.Message;
+                state.warningMessage = e.Message;
             }
         }
 

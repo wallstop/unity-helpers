@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 #if UNITY_EDITOR
@@ -18,6 +18,8 @@ namespace WallstopStudios.UnityHelpers.Tests.WGroup
     /// fields are included in groups, making assertions predictable.
     /// </summary>
     [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class WGroupLayoutTests : CommonTestBase
     {
         private UnityHelpersSettings.WGroupAutoIncludeConfiguration _previousConfiguration;
@@ -995,16 +997,16 @@ namespace WallstopStudios.UnityHelpers.Tests.WGroup
 
             // Should NOT contain hidden fields
             Assert.That(
-                group.PropertyPaths.Contains("_hiddenField1"),
+                group.PropertyPaths.Contains(nameof(WGroupHideInInspectorTestTarget._hiddenField1)),
                 Is.False,
                 () =>
-                    $"_hiddenField1 should NOT be auto-included.\n{FormatLayoutDiagnostics(layout)}"
+                    $"{nameof(WGroupHideInInspectorTestTarget._hiddenField1)} should NOT be auto-included.\n{FormatLayoutDiagnostics(layout)}"
             );
             Assert.That(
-                group.PropertyPaths.Contains("_hiddenField2"),
+                group.PropertyPaths.Contains(nameof(WGroupHideInInspectorTestTarget._hiddenField2)),
                 Is.False,
                 () =>
-                    $"_hiddenField2 should NOT be auto-included.\n{FormatLayoutDiagnostics(layout)}"
+                    $"{nameof(WGroupHideInInspectorTestTarget._hiddenField2)} should NOT be auto-included.\n{FormatLayoutDiagnostics(layout)}"
             );
 
             // Should contain visible fields
@@ -1065,10 +1067,12 @@ namespace WallstopStudios.UnityHelpers.Tests.WGroup
 
             // Should contain the explicitly grouped hidden field
             Assert.That(
-                group.PropertyPaths.Contains("_explicitlyGroupedHiddenField"),
+                group.PropertyPaths.Contains(
+                    nameof(WGroupExplicitHiddenFieldTestTarget._explicitlyGroupedHiddenField)
+                ),
                 Is.True,
                 () =>
-                    $"_explicitlyGroupedHiddenField should be explicitly included.\n{FormatLayoutDiagnostics(layout)}"
+                    $"{nameof(WGroupExplicitHiddenFieldTestTarget._explicitlyGroupedHiddenField)} should be explicitly included.\n{FormatLayoutDiagnostics(layout)}"
             );
 
             // Should also contain the anchor
@@ -1120,10 +1124,12 @@ namespace WallstopStudios.UnityHelpers.Tests.WGroup
 
             // Should NOT contain hidden field even in infinite mode
             Assert.That(
-                group.PropertyPaths.Contains("_hiddenField"),
+                group.PropertyPaths.Contains(
+                    nameof(WGroupHideInInspectorInfiniteTestTarget._hiddenField)
+                ),
                 Is.False,
                 () =>
-                    $"_hiddenField should NOT be auto-included even in infinite mode.\n{FormatLayoutDiagnostics(layout)}"
+                    $"{nameof(WGroupHideInInspectorInfiniteTestTarget._hiddenField)} should NOT be auto-included even in infinite mode.\n{FormatLayoutDiagnostics(layout)}"
             );
 
             // Should contain visible fields

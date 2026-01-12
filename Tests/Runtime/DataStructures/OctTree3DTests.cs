@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Tests.DataStructures
@@ -14,6 +14,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
     using Vector3 = UnityEngine.Vector3;
 
     [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class OctTree3DTests : SpatialTree3DTests<OctTree3D<Vector3>>
     {
         private IRandom Random => PRNG.Instance;
@@ -47,7 +48,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         {
             List<Vector3> points = new();
             OctTree3D<Vector3> tree = CreateTree(points);
-            Assert.IsNotNull(tree);
+            Assert.IsTrue(tree != null);
 
             List<Vector3> results = new();
             tree.GetElementsInRange(Vector3.zero, 100f, results);

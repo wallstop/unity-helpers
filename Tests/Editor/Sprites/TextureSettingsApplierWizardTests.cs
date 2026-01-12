@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Tests.Sprites
@@ -11,8 +11,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
     using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Editor.AssetProcessors;
     using WallstopStudios.UnityHelpers.Editor.Sprites;
+    using WallstopStudios.UnityHelpers.Editor.Utils;
     using WallstopStudios.UnityHelpers.Tests.Core;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class TextureSettingsApplierWizardTests : CommonTestBase
     {
         private const string Root = "Assets/Temp/TextureSettingsApplierWizardTests";
@@ -34,6 +38,19 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
             CleanupTrackedFoldersAndAssets();
         }
 
+        public override void CommonOneTimeSetUp()
+        {
+            base.CommonOneTimeSetUp();
+            DeferAssetCleanupToOneTimeTearDown = true;
+        }
+
+        [OneTimeTearDown]
+        public override void OneTimeTearDown()
+        {
+            CleanupDeferredAssetsAndFolders();
+            base.OneTimeTearDown();
+        }
+
         [Test]
         public void AppliesImporterSettingsToTexturesAndDirectories()
         {
@@ -43,7 +60,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
             EnsureFolder(bdir);
             CreatePng(a, 16, 16, Color.white);
             CreatePng(b, 32, 32, Color.white);
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             TextureSettingsApplierWindow window = Track(
                 ScriptableObject.CreateInstance<TextureSettingsApplierWindow>()
@@ -74,7 +91,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
 
             window.ApplySettings();
 
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
             TextureImporter impA = AssetImporter.GetAtPath(a) as TextureImporter;
             TextureImporter impB = AssetImporter.GetAtPath(b) as TextureImporter;
             Assert.IsTrue(impA != null);
@@ -100,7 +117,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
             // This tests the edge case where directories is empty
             string a = Path.Combine(Root, "solo.png").SanitizePath();
             CreatePng(a, 16, 16, Color.white);
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             TextureSettingsApplierWindow window = Track(
                 ScriptableObject.CreateInstance<TextureSettingsApplierWindow>()
@@ -118,7 +135,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
             // This should not throw
             Assert.DoesNotThrow(() => window.ApplySettings());
 
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
             TextureImporter imp = AssetImporter.GetAtPath(a) as TextureImporter;
             Assert.IsTrue(imp != null, $"Expected importer at path '{a}' to not be null");
             Assert.That(imp.wrapMode, Is.EqualTo(TextureWrapMode.Clamp));
@@ -143,7 +160,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
             CreatePng(texA, 8, 8, Color.red);
             CreatePng(texB, 8, 8, Color.green);
             CreatePng(texNested, 8, 8, Color.blue);
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             TextureSettingsApplierWindow window = Track(
                 ScriptableObject.CreateInstance<TextureSettingsApplierWindow>()
@@ -165,7 +182,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
                 "ApplySettings with multiple directories should not throw"
             );
 
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             TextureImporter impA = AssetImporter.GetAtPath(texA) as TextureImporter;
             TextureImporter impB = AssetImporter.GetAtPath(texB) as TextureImporter;
@@ -189,7 +206,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
             // Tests a directory that contains no textures
             string emptyDir = Path.Combine(Root, "EmptyDir").SanitizePath();
             EnsureFolder(emptyDir);
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             TextureSettingsApplierWindow window = Track(
                 ScriptableObject.CreateInstance<TextureSettingsApplierWindow>()
@@ -219,7 +236,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
             EnsureFolder(validDir);
             string tex = Path.Combine(validDir, "valid.png").SanitizePath();
             CreatePng(tex, 8, 8, Color.white);
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
 
             TextureSettingsApplierWindow window = Track(
                 ScriptableObject.CreateInstance<TextureSettingsApplierWindow>()
@@ -242,7 +259,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
                 "ApplySettings with null directory entries should not throw"
             );
 
-            AssetDatabase.Refresh();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
             TextureImporter imp = AssetImporter.GetAtPath(tex) as TextureImporter;
             Assert.IsTrue(imp != null, $"Expected importer at path '{tex}' to not be null");
             Assert.That(imp.wrapMode, Is.EqualTo(TextureWrapMode.MirrorOnce));

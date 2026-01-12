@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
@@ -13,8 +13,9 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Editor.Settings;
+    using WallstopStudios.UnityHelpers.Utils;
     using EnumShared = WallstopStudios.UnityHelpers.Editor.CustomDrawers.Utils.EnumToggleButtonsShared;
-    using CacheHelper = WallstopStudios.UnityHelpers.Editor.CustomDrawers.Utils.EditorDrawerCacheHelper;
+    using CacheHelper = WallstopStudios.UnityHelpers.Editor.Core.Helper.EditorCacheHelper;
 
     /// <summary>
     /// Odin Inspector attribute drawer for <see cref="WEnumToggleButtonsAttribute"/>.
@@ -39,6 +40,19 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         private static readonly Dictionary<string, EnumShared.PaginationState> PaginationStates =
             new(StringComparer.Ordinal);
 
+        /// <summary>
+        /// Clears all cached state. Called during domain reload to prevent stale references.
+        /// </summary>
+        /// <remarks>
+        /// This method is called by <see cref="Internal.EditorCacheManager.ClearAllCaches"/>
+        /// when the Unity domain reloads (after script compilation, entering/exiting play mode, etc.).
+        /// </remarks>
+        internal static void ClearCache()
+        {
+            EnumOptionsCache.Clear();
+            PaginationStates.Clear();
+        }
+
         protected override void DrawPropertyLayout(GUIContent label)
         {
             WEnumToggleButtonsAttribute toggleAttribute = Attribute;
@@ -48,7 +62,13 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return;
             }
 
-            Type valueType = Property.ValueEntry?.TypeOfValue;
+            if (Property == null || Property.ValueEntry == null)
+            {
+                CallNextDrawer(label);
+                return;
+            }
+
+            Type valueType = Property.ValueEntry.TypeOfValue;
             if (valueType == null || !valueType.IsEnum)
             {
                 CallNextDrawer(label);
@@ -89,7 +109,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return;
             }
 
-            object currentValue = Property.ValueEntry?.WeakSmartValue;
+            object currentValue = Property.ValueEntry.WeakSmartValue;
             ulong currentMask = EnumShared.ConvertToUInt64(currentValue);
 
             EnumShared.SelectionSummary summary = BuildSelectionSummary(
@@ -274,7 +294,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 float availableWidth = rect.width - EnumShared.ToolbarButtonGap;
                 float buttonWidth = Mathf.Max(
                     EnumShared.ToolbarButtonMinWidth,
-                    Mathf.Floor(availableWidth * 0.5f)
+                    Mathf.Floor(availableWidth * EnumShared.EqualSplitRatio)
                 );
 
                 Rect selectAllRect = new(rect.x, rect.y, buttonWidth, rect.height);
@@ -356,7 +376,10 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
 
             float spacing = EnumShared.ToolbarSpacing;
-            float buttonWidth = Mathf.Min(EnumShared.PaginationButtonWidth, rect.width * 0.2f);
+            float buttonWidth = Mathf.Min(
+                EnumShared.PaginationButtonWidth,
+                rect.width * EnumShared.MaxPaginationButtonWidthRatio
+            );
             float labelWidth = Mathf.Max(
                 EnumShared.PaginationLabelMinWidth,
                 rect.width - (buttonWidth * 4f) - spacing * 4f
@@ -371,11 +394,11 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             if (lastRect.xMax > rect.xMax)
             {
                 float overflow = lastRect.xMax - rect.xMax;
-                firstRect.x -= overflow * 0.5f;
-                prevRect.x -= overflow * 0.5f;
-                labelRect.x -= overflow * 0.5f;
-                nextRect.x -= overflow * 0.5f;
-                lastRect.x -= overflow * 0.5f;
+                firstRect.x -= overflow * EnumShared.OverflowCenteringRatio;
+                prevRect.x -= overflow * EnumShared.OverflowCenteringRatio;
+                labelRect.x -= overflow * EnumShared.OverflowCenteringRatio;
+                nextRect.x -= overflow * EnumShared.OverflowCenteringRatio;
+                lastRect.x -= overflow * EnumShared.OverflowCenteringRatio;
             }
 
             bool originalEnabled = GUI.enabled;
@@ -571,7 +594,10 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
 
             int endIndex = startIndex + visibleCount;
-            List<string> outOfView = null;
+            using PooledResource<List<string>> lease = Buffers<string>.GetList(
+                4,
+                out List<string> outOfView
+            );
 
             for (int index = 0; index < options.Length; index += 1)
             {
@@ -586,15 +612,10 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     continue;
                 }
 
-                if (outOfView == null)
-                {
-                    outOfView = new List<string>(4);
-                }
-
                 outOfView.Add(option.Label);
             }
 
-            if (outOfView == null || outOfView.Count == 0)
+            if (outOfView.Count == 0)
             {
                 return EnumShared.SelectionSummary.None;
             }
@@ -643,7 +664,11 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         internal static EnumShared.ToggleOption[] BuildEnumOptions(Type enumType, bool isFlags)
         {
             Array values = Enum.GetValues(enumType);
-            List<EnumShared.ToggleOption> options = new(values.Length);
+            using PooledResource<List<EnumShared.ToggleOption>> optionsLease =
+                Buffers<EnumShared.ToggleOption>.GetList(
+                    values.Length,
+                    out List<EnumShared.ToggleOption> options
+                );
 
             for (int index = 0; index < values.Length; index += 1)
             {
@@ -662,6 +687,10 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 ulong numericValue = EnumShared.ConvertToUInt64(value);
                 if (isFlags && numericValue != 0UL && !EnumShared.IsPowerOfTwo(numericValue))
                 {
+                    Debug.LogWarning(
+                        $"[{nameof(WEnumToggleButtonsOdinDrawer)}] Skipping composite flag value {name} "
+                            + $"in {enumType.Name} (value: {numericValue})"
+                    );
                     continue;
                 }
 

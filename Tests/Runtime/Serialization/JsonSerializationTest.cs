@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2024 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Tests.Serialization
@@ -17,6 +17,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
     using WallstopStudios.UnityHelpers.Core.Serialization;
     using WallstopStudios.UnityHelpers.Tests.Core;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     [DataContract]
     public sealed class TestDataObject
     {
@@ -33,6 +35,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Serialization
         public List<Type> TypeProperties { get; set; } = new();
     }
 
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class JsonSerializationTest : CommonTestBase
     {
         [Test]

@@ -1,0 +1,17 @@
+{
+  "sourceFile": "test_odd.png",
+  "spriteCount": 9,
+  "expectedNames": [
+    "test_odd_0",
+    "test_odd_1",
+    "test_odd_2",
+    "test_odd_3",
+    "test_odd_4",
+    "test_odd_5",
+    "test_odd_6",
+    "test_odd_7",
+    "test_odd_8"
+  ],
+  "spriteDimensions": [21, 21],
+  "gridSize": [3, 3]
+}

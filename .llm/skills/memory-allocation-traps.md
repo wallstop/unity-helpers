@@ -1,5 +1,7 @@
 # Skill: Memory Allocation Traps
 
+<!-- trigger: allocation, hidden, boxing, closure, trap | Finding hidden allocation sources | Performance -->
+
 **Trigger**: When reviewing code for hidden allocations or when code unexpectedly causes GC pressure. This skill catalogs non-obvious allocation sources in Unity/C#.
 
 ---

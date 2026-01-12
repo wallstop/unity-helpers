@@ -1,5 +1,7 @@
 # Skill: Performance Audit
 
+<!-- trigger: audit, review, optimize, sensitive | Reviewing performance-sensitive code | Performance -->
+
 **Trigger**: When reviewing or writing performance-sensitive code, or when asked to optimize.
 
 ---

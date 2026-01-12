@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2024 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Tests.Runtime.Random
@@ -6,6 +6,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Random
     using NUnit.Framework;
     using WallstopStudios.UnityHelpers.Core.Random;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class DotNetRandomTests : RandomTestBase
     {
         protected override IRandom NewRandom() => new DotNetRandom(DeterministicGuid);
@@ -20,7 +22,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Random
             }
 
             RandomState snapshot = original.InternalState;
-            Assert.IsNotNull(snapshot.PayloadBytes);
+            Assert.IsTrue(
+                snapshot.PayloadBytes != null,
+                "PayloadBytes should not be null for DotNetRandom snapshot"
+            );
             Assert.GreaterOrEqual(snapshot.PayloadBytes.Count, 12);
 
             DotNetRandom restored = new(snapshot);

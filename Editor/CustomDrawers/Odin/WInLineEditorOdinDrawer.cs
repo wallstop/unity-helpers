@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
@@ -9,6 +9,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
     using UnityEditor;
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Attributes;
+    using WallstopStudios.UnityHelpers.Core.Extension;
     using WallstopStudios.UnityHelpers.Editor.CustomDrawers.Utils;
     using WallstopStudios.UnityHelpers.Editor.Internal;
     using Object = UnityEngine.Object;
@@ -33,14 +34,20 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return;
             }
 
-            Type valueType = Property.ValueEntry?.TypeOfValue;
+            if (Property == null || Property.ValueEntry == null)
+            {
+                CallNextDrawer(label);
+                return;
+            }
+
+            Type valueType = Property.ValueEntry.TypeOfValue;
             if (valueType == null || !typeof(Object).IsAssignableFrom(valueType))
             {
                 CallNextDrawer(label);
                 return;
             }
 
-            object weakValue = Property.ValueEntry?.WeakSmartValue;
+            object weakValue = Property.ValueEntry.WeakSmartValue;
             Object objectValue = weakValue as Object;
 
             if (inlineAttribute.DrawObjectField)
@@ -213,30 +220,56 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             Vector2 scrollPosition = InLineEditorShared.GetScrollPosition(scrollKey);
 
             bool enableScrolling = inlineAttribute.EnableScrolling;
+            bool scrollViewStarted = false;
+            bool verticalGroupStarted = false;
 
-            EditorGUILayout.BeginVertical(EditorStyles.helpBox);
-
-            if (enableScrolling)
+            try
             {
-                scrollPosition = EditorGUILayout.BeginScrollView(
-                    scrollPosition,
-                    GUILayout.Height(inspectorHeight)
-                );
-            }
+                EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+                verticalGroupStarted = true;
 
-            using (InlineInspectorContext.Enter())
+                if (enableScrolling)
+                {
+                    scrollPosition = EditorGUILayout.BeginScrollView(
+                        scrollPosition,
+                        GUILayout.Height(inspectorHeight)
+                    );
+                    scrollViewStarted = true;
+                }
+
+                using (InlineInspectorContext.Enter())
+                {
+                    editor.serializedObject.UpdateIfRequiredOrScript();
+                    InLineEditorShared.DrawSerializedObject(editor.serializedObject);
+                }
+
+                if (scrollViewStarted)
+                {
+                    EditorGUILayout.EndScrollView();
+                    InLineEditorShared.SetScrollPosition(scrollKey, scrollPosition);
+                    scrollViewStarted = false;
+                }
+
+                EditorGUILayout.EndVertical();
+                verticalGroupStarted = false;
+            }
+            catch (Exception e)
             {
-                editor.serializedObject.UpdateIfRequiredOrScript();
-                InLineEditorShared.DrawSerializedObject(editor.serializedObject);
+                this.LogError($"Exception drawing inline inspector", e);
             }
-
-            if (enableScrolling)
+            finally
             {
-                EditorGUILayout.EndScrollView();
-                InLineEditorShared.SetScrollPosition(scrollKey, scrollPosition);
-            }
+                if (scrollViewStarted)
+                {
+                    EditorGUILayout.EndScrollView();
+                    InLineEditorShared.SetScrollPosition(scrollKey, scrollPosition);
+                }
 
-            EditorGUILayout.EndVertical();
+                if (verticalGroupStarted)
+                {
+                    EditorGUILayout.EndVertical();
+                }
+            }
         }
 
         private static void DrawPreview(Object value, float previewHeight)

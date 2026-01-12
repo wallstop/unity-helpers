@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 #if UNITY_EDITOR || UNITY_INCLUDE_TESTS || WALLSTOP_CONCAVE_HULL_STATS
@@ -15,6 +15,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
     using WallstopStudios.UnityHelpers.Core.Extension;
     using WallstopStudios.UnityHelpers.Core.Random;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class UnityExtensionsGridConcaveHullTests : GridTestBase
     {
         private static FastVector3Int FV(int x, int y)
@@ -722,7 +724,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
                 "Repair must stay within the original point budget for multi-cavity datasets."
             );
 #else
-            Assert.IsNotNull(hull);
+            Assert.IsTrue(hull != null);
 #endif
         }
 
@@ -822,7 +824,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
                 new[] { FV(14, 14), FV(14, 46), FV(46, 14), FV(46, 46) },
                 32, // bucketSize
                 220f // angleThreshold
-            ).SetName("ConcaveHullCavityShape_SingleRectangular");
+            ).SetName("ConcaveHullCavityShape.SingleRectangular");
 
             // Multiple disjoint cavities
             yield return new TestCaseData(
@@ -845,7 +847,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
                 },
                 48,
                 240f
-            ).SetName("ConcaveHullCavityShape_MultipleDisjoint");
+            ).SetName("ConcaveHullCavityShape.MultipleDisjoint");
 
             // L-shaped cavity (two overlapping rectangles forming an L)
             yield return new TestCaseData(
@@ -869,7 +871,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
                 },
                 32,
                 230f
-            ).SetName("ConcaveHullCavityShape_LShaped");
+            ).SetName("ConcaveHullCavityShape.LShaped");
 
             // U-shaped cavity (three rectangles forming a U)
             yield return new TestCaseData(
@@ -896,7 +898,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
                 },
                 40,
                 235f
-            ).SetName("ConcaveHullCavityShape_UShaped");
+            ).SetName("ConcaveHullCavityShape.UShaped");
 
             // Irregular cavity boundary (staircase pattern via multiple small rectangles)
             yield return new TestCaseData(
@@ -926,7 +928,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
                 },
                 32,
                 225f
-            ).SetName("ConcaveHullCavityShape_IrregularStaircase");
+            ).SetName("ConcaveHullCavityShape.IrregularStaircase");
 
             // Concentric frame (outer rectangle with inner rectangle, like a picture frame)
             yield return new TestCaseData(
@@ -937,7 +939,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
                 new[] { FV(19, 19), FV(19, 51), FV(51, 19), FV(51, 51) },
                 40,
                 220f
-            ).SetName("ConcaveHullCavityShape_ConcentricFrame");
+            ).SetName("ConcaveHullCavityShape.ConcentricFrame");
 
             // T-shaped cavity
             yield return new TestCaseData(
@@ -963,7 +965,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
                 },
                 36,
                 230f
-            ).SetName("ConcaveHullCavityShape_TShaped");
+            ).SetName("ConcaveHullCavityShape.TShaped");
 
             // Cross/Plus-shaped cavity
             yield return new TestCaseData(
@@ -993,7 +995,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Extensions
                 },
                 40,
                 235f
-            ).SetName("ConcaveHullCavityShape_CrossShaped");
+            ).SetName("ConcaveHullCavityShape.CrossShaped");
         }
 
         [TestCaseSource(nameof(CavityShapeCases))]

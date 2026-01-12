@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 #if UNITY_EDITOR
@@ -15,6 +15,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Utils
     /// Validates fade group animation integration, tween enable/disable behavior,
     /// and edge cases for collapsible group animations.
     /// </summary>
+    [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class WGroupGUITweenTests
     {
         private bool _originalTweenEnabled;
@@ -55,8 +58,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Utils
 
             AnimBool anim = WGroupAnimationState.GetOrCreateAnim(definition, expanded: true);
 
-            Assert.IsNotNull(
-                anim,
+            Assert.IsTrue(
+                anim != null,
                 "AnimBool should be created for collapsible group when tweening is enabled."
             );
             Assert.IsTrue(anim.target, "AnimBool target should match expanded state.");
@@ -406,7 +409,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Utils
                 );
             }
 
-            Assert.IsNotNull(anim, "AnimBool should remain valid after rapid toggling.");
+            Assert.IsTrue(anim != null, "AnimBool should remain valid after rapid toggling.");
         }
 
         [Test]
@@ -461,7 +464,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Utils
             );
 
             AnimBool anim = WGroupAnimationState.GetOrCreateAnim(definition, expanded: true);
-            Assert.IsNotNull(anim, "AnimBool should be created when tweening is enabled.");
+            Assert.IsTrue(anim != null, "AnimBool should be created when tweening is enabled.");
 
             settings.WGroupFoldoutTweenEnabled = false;
             float disabledProgress = WGroupAnimationState.GetFadeProgress(
@@ -532,12 +535,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Utils
             );
 
             AnimBool animBefore = WGroupAnimationState.GetOrCreateAnim(definition, expanded: true);
-            Assert.IsNotNull(animBefore, "AnimBool should exist before clearing cache.");
+            Assert.IsTrue(animBefore != null, "AnimBool should exist before clearing cache.");
 
             WGroupAnimationState.ClearCache();
 
             AnimBool animAfter = WGroupAnimationState.GetOrCreateAnim(definition, expanded: true);
-            Assert.IsNotNull(animAfter, "AnimBool should be recreated after clearing cache.");
+            Assert.IsTrue(animAfter != null, "AnimBool should be recreated after clearing cache.");
             Assert.AreNotSame(
                 animBefore,
                 animAfter,
@@ -1056,9 +1059,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Utils
                 targetInstanceId: instance3
             );
 
-            Assert.IsNotNull(anim1Before, "AnimBool 1 should exist before clearing.");
-            Assert.IsNotNull(anim2Before, "AnimBool 2 should exist before clearing.");
-            Assert.IsNotNull(anim3Before, "AnimBool 3 should exist before clearing.");
+            Assert.IsTrue(anim1Before != null, "AnimBool 1 should exist before clearing.");
+            Assert.IsTrue(anim2Before != null, "AnimBool 2 should exist before clearing.");
+            Assert.IsTrue(anim3Before != null, "AnimBool 3 should exist before clearing.");
 
             WGroupAnimationState.ClearCache();
 

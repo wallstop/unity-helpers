@@ -1,5 +1,7 @@
 # Skill: GitHub Pages Best Practices
 
+<!-- trigger: pages, jekyll, docs, documentation, site | GitHub Pages, Jekyll, markdown link format | Feature -->
+
 **Trigger**: When creating, modifying, or troubleshooting GitHub Pages documentation with Jekyll.
 
 ---
@@ -62,124 +64,28 @@ relative_links:
 
 **This is the most common source of broken links on GitHub Pages.**
 
-### The Rule
+For complete link formatting rules, escaping patterns, and validation commands, see [markdown-reference](./markdown-reference.md).
 
-⚠️ **MANDATORY**: ALL internal links to markdown files MUST use explicit relative format with `./` or `../` prefix.
+### Key Requirements
 
-**There are NO exceptions to this rule.** Links without prefixes WILL break on GitHub Pages and CI WILL fail.
+- **ALL internal links MUST use `./` or `../` prefix** — no bare paths
+- **NEVER use backtick-wrapped file references** — use proper markdown links
+- **NEVER use absolute GitHub Pages paths** — no `/unity-helpers/...` paths
+
+### Why This Matters
+
+The `jekyll-relative-links` plugin ONLY recognizes links with explicit relative path prefixes. Without `./` or `../`:
+
+- Plugin ignores the link — no conversion occurs
+- Link renders as raw markdown file download
+- 404 errors on GitHub Pages
+- Links may work locally but break in production
 
 ### Quick Validation
 
 ```bash
-# Run this BEFORE committing any documentation changes:
+# Run IMMEDIATELY after any documentation change:
 npm run lint:docs
-
-# This catches missing ./ prefixes and broken links
-# CI will fail if this command fails locally
-```
-
-**Wrong vs Correct Examples:**
-
-```text
-❌ WRONG: ](docs/file)       →  ✅ CORRECT: ](./docs/file)       (Missing ./ prefix)
-❌ WRONG: ](CHANGELOG)       →  ✅ CORRECT: ](./CHANGELOG)       (Missing ./ prefix)
-❌ WRONG: ](feature)         →  ✅ CORRECT: ](./feature)         (Missing ./ prefix)
-❌ WRONG: ](overview)        →  ✅ CORRECT: ](./overview)        (Missing ./ AND extension)
-❌ WRONG: ](/docs/file)      →  ✅ CORRECT: ](./docs/file)       (Absolute path, needs relative)
-✅ OK:    ](../parent)       →  ✅ CORRECT: ](../parent)         (../ prefix is correct)
-```
-
-> **Note**: All examples above should include the `.md` extension in actual usage.
-
-### Why This Matters
-
-The `jekyll-relative-links` plugin converts markdown links to HTML links during the Jekyll build process. However, the plugin has a critical limitation: **it ONLY recognizes links that use explicit relative path prefixes (`./` or `../`)**.
-
-**Technical Detail**: The plugin's path matching regex specifically looks for relative path indicators. Bare paths are NOT recognized as relative links and are passed through unchanged.
-
-**Without the prefix** (bare paths):
-
-- Plugin ignores the link entirely — no conversion occurs
-- Link renders as raw markdown file download (browser downloads the source)
-- 404 errors on GitHub Pages (the file doesn't exist at the expected URL)
-- Links may appear to work locally but break in production
-
-**With the prefix** (explicit relative paths):
-
-- Plugin recognizes and processes the link
-- Link correctly converts to HTML extension
-- Works consistently both locally and on GitHub Pages
-
-**Validation**: Run `npm run lint:docs` to catch missing `./` prefixes before committing. This command checks all documentation links and will fail if any links are missing the required relative path prefix.
-
-### Escaping Example Links
-
-When documenting link format (showing correct/incorrect examples), the CI workflow and local linter automatically skip content that is properly escaped.
-
-#### What the CI Handles Automatically
-
-The CI workflow (`lint-doc-links.yml`) now properly handles:
-
-- **Fenced code blocks** (` ``` ` or `~~~`) — all content inside is skipped
-- **Inline backticks** — content inside single backticks is skipped
-- **URL-encoded paths** — `%20` and other encodings are properly decoded before validation
-
-This means you can safely show example link syntax in documentation without triggering false positives.
-
-#### Best Practices for Example Links
-
-**For multi-line examples**: Use fenced code blocks with the `text` language specifier:
-
-```text
-❌ WRONG: ]\(file.md)        →  Missing ./ prefix
-✅ CORRECT: ]\(./file.md)    →  Proper relative path
-```
-
-**For brief inline examples**: Use single backticks with escaped brackets:
-
-```text
-Use the format ]\(./file.md) for internal links (shown escaped).
-```
-
-**Legacy escape pattern**: The escaped bracket pattern prevents the linter from parsing it as a link:
-
-```text
-<!-- Still works but less preferred -->
-]\(file.md)  →  Escaped, linter skips this
-```
-
-#### Local vs CI Validation
-
-> **Note**: Local `npm run lint:docs` runs the PowerShell linter (`scripts/lint-doc-links.ps1`) which has similar but not identical logic to the CI bash scripts. Both handle code blocks and backticks, but minor edge cases may differ. Always verify CI passes after local validation.
-
-**Why escaping matters**: Unescaped example links trigger false positive lint errors because:
-
-1. "Wrong" examples intentionally lack `./` prefix
-2. Example paths don't point to real files
-3. The linter cannot distinguish teaching examples from real links
-
-See [update-documentation](./update-documentation.md#escaping-example-links-in-documentation) for detailed escaping methods.
-
-### Examples
-
-```markdown
-<!-- ✅ CORRECT: All internal .md links use explicit relative paths -->
-
-See the [Getting Started Guide](./docs/guides/getting-started.md) for setup instructions.
-
-For API details, check the [Features Overview](./docs/features/overview.md).
-
-Return to the [main README](./README.md) or view the [Changelog](../CHANGELOG.md).
-
-From a nested doc: [Parent Section](../overview/index.md)
-```
-
-```markdown
-<!-- ❌ WRONG: Missing ./ prefix - these will break on GitHub Pages -->
-
-See the [Getting Started Guide](docs/guides/getting-started.md) for setup instructions.
-
-Check the [Changelog](CHANGELOG.md).
 ```
 
 ---
@@ -514,15 +420,6 @@ npx prettier --write "**/*.md"
 
 ## Quick Reference
 
-### Link Format Cheat Sheet
-
-| From Location            | To Location              | Link Format (pattern)   |
-| ------------------------ | ------------------------ | ----------------------- |
-| Root `index` file        | `docs/guide` file        | `]​(./docs/guide)`      |
-| `docs/guide` file        | Root `CHANGELOG` file    | `]​(../CHANGELOG)`      |
-| `docs/features/api` file | `docs/guides/start` file | `]​(../guides/start)`   |
-| `docs/guides/start` file | `docs/guides/next` file  | `]​(./next)` (same dir) |
-
 ### Configuration Checklist
 
 - [ ] `jekyll-relative-links` plugin enabled
@@ -536,5 +433,6 @@ npx prettier --write "**/*.md"
 
 ## Related Skills
 
+- [markdown-reference](./markdown-reference.md) — Link formatting, escaping, linting rules
 - [update-documentation](./update-documentation.md) — Documentation standards and CHANGELOG format
-- [create-csharp-file](./create-csharp-file.md) — C# file creation guidelines
+- [formatting](./formatting.md) — CSharpier, Prettier, markdownlint workflow

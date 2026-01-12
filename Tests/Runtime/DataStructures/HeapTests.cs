@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Tests.DataStructures
@@ -9,6 +9,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
     using NUnit.Framework;
     using WallstopStudios.UnityHelpers.Core.DataStructure;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class MinHeapTests
     {
         [Test]
@@ -526,6 +528,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
     }
 
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class MaxHeapTests
     {
         [Test]
@@ -721,6 +725,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
     }
 
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class CustomComparerHeapTests
     {
         private class Person
@@ -814,6 +820,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
     }
 
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class HeapEdgeCaseTests
     {
         [Test]
@@ -1004,6 +1012,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
     }
 
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class HeapUpdatePriorityTests
     {
         [Test]
@@ -1277,6 +1287,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
     }
 
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class HeapIndexerAndArrayTests
     {
         [Test]
@@ -1342,7 +1354,7 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
             int count = heap.ToArray(ref array);
 
             Assert.AreEqual(4, count);
-            Assert.IsNotNull(array);
+            Assert.IsTrue(array != null);
             Assert.AreEqual(4, array.Length);
             CollectionAssert.AreEquivalent(new[] { 5, 3, 7, 1 }, array);
         }
@@ -1402,6 +1414,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
     }
 
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class HeapEnumeratorTests
     {
         [Test]
@@ -1522,6 +1536,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
     }
 
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class HeapConstructorCollectionTests
     {
         [Test]
@@ -1641,6 +1657,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
     }
 
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class HeapFactoryMethodTests
     {
         [Test]
@@ -1756,6 +1774,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
     }
 
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class HeapCapacityGrowthTests
     {
         [Test]
@@ -1825,6 +1845,8 @@ namespace WallstopStudios.UnityHelpers.Tests.DataStructures
         }
     }
 
+    [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class HeapCombinationTests
     {
         [Test]

@@ -1,5 +1,7 @@
 # Skill: Create Test
 
+<!-- trigger: test, testing, nunit, testcase, coverage | Writing or modifying test files | Core -->
+
 **Trigger**: When creating or modifying test files in this repository.
 
 ---
@@ -15,9 +17,18 @@
 
 ---
 
+## When NOT to Use
+
+- For Odin Inspector drawer testing, see [test-odin-drawers](./test-odin-drawers.md)
+- For Unity object lifecycle management in tests, see [test-unity-lifecycle](./test-unity-lifecycle.md)
+- For data-driven test patterns, see [test-data-driven](./test-data-driven.md)
+- For naming conventions and migration, see [test-naming-conventions](./test-naming-conventions.md)
+
+---
+
 ## Zero-Flaky Test Policy
 
-**This repository enforces a strict zero-flaky test policy.** Every test failure indicates a real bug—either in production code OR in the test itself. Never "just make tests pass" or ignore failing tests.
+**This repository enforces a strict zero-flaky test policy.** Every test failure indicates a real bug—either in production code OR in the test itself.
 
 When any test fails, you MUST:
 
@@ -32,23 +43,19 @@ See [investigate-test-failures](./investigate-test-failures.md) for detailed inv
 
 ## MANDATORY: Exhaustive Testing for All Production Code
 
-**Every new production feature MUST have exhaustive test coverage.** This is NON-NEGOTIABLE. This includes:
-
-- **Runtime code** — New classes, methods, extension methods, data structures
-- **Editor tooling** — Property drawers, custom inspectors, editor windows
-- **Inspector attributes** — All attribute behaviors must be tested
+**Every new production feature MUST have exhaustive test coverage.** This is NON-NEGOTIABLE.
 
 ### Test Coverage Categories (ALL Required)
 
-| Category                  | Requirement                                                                             |
-| ------------------------- | --------------------------------------------------------------------------------------- |
-| **Normal Cases**          | Cover typical/expected usage scenarios (5-20 elements, common inputs)                   |
-| **Negative Cases**        | Invalid inputs, error conditions, exceptions, invalid state transitions                 |
-| **Edge Cases**            | Empty collections, single elements, boundary values (0, -1, int.MaxValue)               |
-| **Extreme Cases**         | Very large inputs (10K+ elements), maximum values, near-overflow                        |
-| **Unexpected Situations** | Null inputs, disposed objects, concurrent access, missing dependencies                  |
-| **"The Impossible"**      | Cases that "should never happen" but might (corrupted state, invalid enum values)       |
-| **Data-Driven**           | PREFER `[TestCase]` / `[TestCaseSource]` for comprehensive variations with minimal code |
+| Category                  | Requirement                                                                              |
+| ------------------------- | ---------------------------------------------------------------------------------------- |
+| **Normal Cases**          | Cover typical/expected usage scenarios (5-20 elements, common inputs)                    |
+| **Negative Cases**        | Invalid inputs, error conditions, exceptions, invalid state transitions                  |
+| **Edge Cases**            | Empty collections, single elements, boundary values (0, -1, int.MaxValue)                |
+| **Extreme Cases**         | Very large inputs (10K+ elements), maximum values, near-overflow                         |
+| **Unexpected Situations** | Null inputs, disposed objects, concurrent access, missing dependencies                   |
+| **"The Impossible"**      | Cases that "should never happen" but might (corrupted state, invalid enum values)        |
+| **Data-Driven**           | PREFER `[TestCase]` / `[TestCaseSource]` — see [test-data-driven](./test-data-driven.md) |
 
 ---
 
@@ -97,980 +104,57 @@ namespace WallstopStudios.UnityHelpers.Tests.{Subsystem}
 
 ---
 
-## Critical Rules
+## Critical Rules Summary
 
-### 1. NO Underscores in Test Method Names
+For complete naming rules, see [test-naming-conventions](./test-naming-conventions.md).
 
-- ✅ `AsyncTaskInvocationCompletesAndRecordsHistory`
-- ❌ `AsyncTask_Invocation_Completes_And_Records_History`
-- ✅ `WhenInputIsEmptyReturnsDefaultValue`
-- ❌ `When_Input_Is_Empty_Returns_Default_Value`
+### Naming
 
-### 2. NEVER Use `#region`
+1. **NO underscores in test method names** — Use PascalCase only
+2. **Data-driven test names use dot notation** — `TestName = "Input.Null.ReturnsFalse"`
 
-- ❌ `#region Test Setup`
-- ❌ `#region Helper Methods`
+### Code Structure
 
-### 3. One File Per MonoBehaviour/ScriptableObject
+1. **NEVER use `#region`**
+2. **One file per MonoBehaviour/ScriptableObject** — Even in tests
+3. **No `async Task` test methods** — Use `IEnumerator` with `[UnityTest]`
+4. **No `Assert.ThrowsAsync`** — Not available in Unity's NUnit
 
-Any class deriving from `MonoBehaviour` or `ScriptableObject` MUST be in its own dedicated `.cs` file—even in tests:
+### Unity-Specific
 
-- ✅ `TestHelperComponent.cs` containing only `class TestHelperComponent : MonoBehaviour`
-- ✅ `TestScriptableObject.cs` containing only `class TestScriptableObject : ScriptableObject`
-- ❌ Test helper MonoBehaviours defined inside test class files
-- ❌ Test helper ScriptableObjects defined inside test class files
-- ❌ Nested classes deriving from MonoBehaviour/ScriptableObject within test classes
+> **WARNING: UNH005 Lint Check Enforced**
+>
+> The pre-commit and pre-push hooks enforce UNH005, which flags `Assert.IsNull` and `Assert.IsNotNull` usage.
+> These assertions use `ReferenceEquals` internally, which bypasses Unity's custom `==` operator and fails to detect Unity's "fake null" (destroyed objects that are not yet garbage collected).
 
-**Why**: Unity's serialization and asset system requires these types to be in files matching their class name. Embedded definitions cause editor errors and serialization failures.
+1. **Unity object null checks** — Use `== null` / `!= null`, never `Assert.IsNull` / `Assert.IsNotNull`
 
-#### Test Type File Location
+**Why this matters:**
 
-Place test helper types in a dedicated `TestTypes/` folder:
-
-```text
-Tests/Editor/
-├── TestTypes/                          # Dedicated folder for test helpers
-│   ├── SharedTestEnums.cs              # Shared enums used across tests
-│   ├── Odin/                           # Optional dependency-specific types
-│   │   ├── OdinEnumToggleButtonsTarget.cs
-│   │   └── OdinShowIfBoolTarget.cs
-│   └── WButton/
-│       ├── WButtonTestMonoBehaviour.cs
-│       └── WButtonTestScriptableObject.cs
-├── CustomDrawers/
-│   └── Odin/
-│       └── WEnumToggleButtonsOdinDrawerTests.cs  # Test class only
-```
-
-#### Shared Test Enums
-
-Extract common test enums to a shared file instead of duplicating:
+- Unity's `==` operator for `UnityEngine.Object` performs special "fake null" checking
+- When a Unity object is destroyed, it becomes a "fake null" — the C# reference still exists, but Unity considers it null
+- `Assert.IsNull` / `Assert.IsNotNull` use `ReferenceEquals`, which bypasses this check entirely
+- This can cause tests to pass when they should fail (or vice versa)
 
 ```csharp
-// Tests/Editor/TestTypes/SharedTestEnums.cs
-namespace WallstopStudios.UnityHelpers.Tests.Editor.TestTypes
-{
-    public enum TestModeEnum { ModeA, ModeB, ModeC }
-
-    [Flags]
-    public enum TestFlagsEnum { None = 0, Flag1 = 1, Flag2 = 2, All = Flag1 | Flag2 }
-}
-```
-
-### 4. No `async Task` Test Methods
-
-Unity Test Runner doesn't support them:
-
-- ❌ `public async Task MyAsyncTest()`
-- ✅ Use `IEnumerator` with `[UnityTest]` attribute
-
-### 5. No `Assert.ThrowsAsync`
-
-It doesn't exist in Unity's NUnit version.
-
-### 6. Unity Object Null Checks
-
-For `UnityEngine.Object`-derived types:
-
-✅ **CORRECT**:
-
-```csharp
+// CORRECT - Uses Unity's == operator
 Assert.IsTrue(gameObject != null);
 Assert.IsFalse(component == null);
+
+// NEVER USE - Bypasses Unity's null check (flagged by UNH005)
+Assert.IsNull(gameObject);
+Assert.IsNotNull(component);
 ```
 
-❌ **NEVER USE**:
-
-```csharp
-Assert.IsNull(gameObject);        // Bypasses Unity's null check
-Assert.IsNotNull(component);      // Bypasses Unity's null check
-Assert.That(obj, Is.Null);        // Bypasses Unity's null check
-Assert.That(obj, Is.Not.Null);    // Bypasses Unity's null check
-```
-
-### 7. Self-Documenting Tests (No Comments)
-
-Tests should be self-documenting through descriptive names. Let code speak for itself:
-
-- ❌ `// Arrange`, `// Act`, `// Assert`
-- ❌ `// Create the object`, `// Call the method`
-- ❌ Line-end comments explaining obvious code
-- ❌ Comments describing what the test does (that's what the method name is for)
-- ✅ Let test method names describe the scenario
-- ✅ Let variable names explain what values represent
-- ✅ Use descriptive constant/variable names instead of magic values with comments
-
-```csharp
-// ❌ BAD - Comments stating the obvious
-[Test]
-public void TestMethod()
-{
-    // Create instance
-    MyClass sut = new MyClass();
-    int input = 5; // Input value
-
-    // Call method and verify
-    int result = sut.Calculate(input);
-    Assert.AreEqual(10, result); // Should double the input
-}
-
-// ✅ GOOD - Self-documenting
-[Test]
-public void CalculateReturnsDoubleOfInput()
-{
-    MyClass sut = new MyClass();
-    int inputValue = 5;
-    int expectedDoubledValue = 10;
-
-    int result = sut.Calculate(inputValue);
-
-    Assert.AreEqual(expectedDoubledValue, result);
-}
-```
-
-### 8. No `[Description]` Annotations
-
-Don't use Description attributes on tests.
-
-### 9. Docstring Best Practices
-
-**NEVER include file paths or file locations in test docstrings.** Test documentation should describe behavior, not file locations.
-
-| ❌ BAD                                                             | ✅ GOOD                                                         |
-| ------------------------------------------------------------------ | --------------------------------------------------------------- |
-| `/// Tests serialization (Tests/Runtime/Utils/SerializerTests.cs)` | `/// Verifies that SerializableDictionary serializes correctly` |
-| `/// Located at Tests/Editor/Tools/SpriteCropperTests.cs`          | `/// Tests sprite cropper handles null inputs gracefully`       |
-| `/// Run with: python -m pytest tests/test_script.py -v`           | `/// Run with: python -m pytest scripts/wiki/test_script.py -v` |
-
-**Why:** File paths in docstrings become outdated when files are moved/renamed, and the file's location is already obvious from its namespace and the IDE's navigation.
-
-**Exception:** Test assertions that verify path resolution or file operations should use actual paths as test data.
-
-### 10. Data-Driven Test Naming (CRITICAL)
-
-All data-driven test names must use `.` (dot) separator or PascalCase—**NEVER underscores**:
-
-#### TestCase with TestName
-
-```csharp
-// ✅ CORRECT - Dot-separated hierarchy
-[TestCase(null, false, TestName = "Input.Null.ReturnsFalse")]
-[TestCase("", false, TestName = "Input.Empty.ReturnsFalse")]
-[TestCase("valid", true, TestName = "Input.Valid.ReturnsTrue")]
-
-// ✅ CORRECT - PascalCase descriptive
-[TestCase(1, TestName = "SingleFolder")]
-[TestCase(5, TestName = "MultipleFolders")]
-
-// ❌ WRONG - Underscores
-[TestCase(null, TestName = "Input_Null")]
-[TestCase("", TestName = "Empty_String_Path")]
-```
-
-#### TestCaseSource with SetName
-
-```csharp
-// ✅ CORRECT - Dot-separated hierarchy for categorization
-private static IEnumerable<TestCaseData> EdgeCasePaths()
-{
-    yield return new TestCaseData(null, false)
-        .SetName("EdgeCase.NullPath.Rejected");
-    yield return new TestCaseData("", false)
-        .SetName("EdgeCase.EmptyPath.Rejected");
-    yield return new TestCaseData("   ", false)
-        .SetName("EdgeCase.WhitespacePath.Rejected");
-}
-
-// ✅ CORRECT - Category.Scenario.Expected pattern
-yield return new TestCaseData("GroupA", "Custom Display A", 3)
-    .SetName("DisplayName.FirstFieldHasCustomName.Preserved");
-yield return new TestCaseData("GroupD", "GroupD", 2)
-    .SetName("DisplayName.NoExplicitName.UsesGroupName");
-
-// ❌ WRONG - Underscores in SetName
-yield return new TestCaseData(null).SetName("Null_Path");
-yield return new TestCaseData("").SetName("Empty_String");
-```
-
-#### Naming Patterns for TestCaseSource
-
-| Pattern                      | Example                                 | When to Use                 |
-| ---------------------------- | --------------------------------------- | --------------------------- |
-| `Category.Scenario.Expected` | `DisplayName.NoExplicit.UsesDefault`    | Testing behavior variations |
-| `Input.Type.Result`          | `Input.Null.ReturnsFalse`               | Input validation tests      |
-| `Feature.Condition.Outcome`  | `Serialization.EmptyList.PreservesType` | Feature behavior tests      |
-| `PascalCaseDescriptive`      | `SingleElement`                         | Simple enumerations         |
-
----
-
-## Data-Driven Testing (PREFERRED)
-
-Data-driven tests using `[TestCase]` and `[TestCaseSource]` are **strongly preferred** over multiple individual test methods. Benefits:
-
-- **DRY** — Consolidate test logic, avoid repetition
-- **Comprehensive Coverage** — Easy to add new test cases
-- **Clear Naming** — SetName makes test intent obvious
-- **Maintainability** — Single test method to update
-
-### When to Use `[TestCase]`
-
-Use for simple inline test cases with primitive values:
-
-```csharp
-[Test]
-[TestCase(null, false, TestName = "Input.Null.ReturnsFalse")]
-[TestCase("", false, TestName = "Input.Empty.ReturnsFalse")]
-[TestCase("   ", false, TestName = "Input.Whitespace.ReturnsFalse")]
-[TestCase("valid", true, TestName = "Input.Valid.ReturnsTrue")]
-[TestCase("VALID", true, TestName = "Input.UpperCase.ReturnsTrue")]
-[TestCase("a", true, TestName = "Input.SingleChar.ReturnsTrue")]
-public void IsValidReturnsExpectedResult(string input, bool expected)
-{
-    bool result = MyValidator.IsValid(input);
-
-    Assert.AreEqual(expected, result);
-}
-```
-
-### When to Use `[TestCaseSource]`
-
-Use for complex test data, computed values, or many test cases:
-
-```csharp
-[Test]
-[TestCaseSource(nameof(EdgeCaseTestData))]
-public void ProcessHandlesEdgeCases(int[] input, int expected)
-{
-    int result = MyProcessor.Process(input);
-
-    Assert.AreEqual(expected, result);
-}
-
-private static IEnumerable<TestCaseData> EdgeCaseTestData()
-{
-    // Empty
-    yield return new TestCaseData(Array.Empty<int>(), 0)
-        .SetName("Input.Empty.ReturnsZero");
-
-    // Single element
-    yield return new TestCaseData(new[] { 42 }, 42)
-        .SetName("Input.SingleElement.ReturnsElement");
-
-    // Boundary values
-    yield return new TestCaseData(new[] { int.MaxValue }, int.MaxValue)
-        .SetName("Input.MaxValue.HandlesCorrectly");
-    yield return new TestCaseData(new[] { int.MinValue }, int.MinValue)
-        .SetName("Input.MinValue.HandlesCorrectly");
-    yield return new TestCaseData(new[] { 0 }, 0)
-        .SetName("Input.Zero.ReturnsZero");
-    yield return new TestCaseData(new[] { -1 }, -1)
-        .SetName("Input.Negative.HandlesCorrectly");
-
-    // Multiple elements
-    yield return new TestCaseData(new[] { 1, 2, 3, 4, 5 }, 15)
-        .SetName("Input.MultipleElements.SumsCorrectly");
-
-    // Large collection
-    yield return new TestCaseData(Enumerable.Range(1, 10000).ToArray(), 50005000)
-        .SetName("Input.LargeCollection.HandlesScale");
-
-    // Duplicates
-    yield return new TestCaseData(new[] { 5, 5, 5, 5 }, 20)
-        .SetName("Input.AllDuplicates.SumsCorrectly");
-}
-```
-
-### Comprehensive Test Case Template
-
-When creating TestCaseSource data, include ALL these categories:
-
-```csharp
-private static IEnumerable<TestCaseData> ComprehensiveTestData()
-{
-    // === NORMAL CASES ===
-    yield return new TestCaseData("normal input", "expected output")
-        .SetName("Normal.TypicalInput.ProducesExpected");
-    yield return new TestCaseData("another normal", "another expected")
-        .SetName("Normal.AlternateInput.ProducesExpected");
-
-    // === EDGE CASES ===
-    // Empty
-    yield return new TestCaseData("", "default")
-        .SetName("Edge.EmptyString.ReturnsDefault");
-
-    // Single element
-    yield return new TestCaseData("a", "a")
-        .SetName("Edge.SingleChar.Preserved");
-
-    // Boundaries
-    yield return new TestCaseData(new string('x', 1), "x")
-        .SetName("Edge.MinLength.Handled");
-    yield return new TestCaseData(new string('x', 10000), "truncated")
-        .SetName("Edge.MaxLength.Truncated");
-
-    // === NEGATIVE CASES ===
-    yield return new TestCaseData(null, null)
-        .SetName("Negative.NullInput.ReturnsNull");
-    yield return new TestCaseData("invalid@#$", "sanitized")
-        .SetName("Negative.SpecialChars.Sanitized");
-
-    // === EXTREME CASES ===
-    yield return new TestCaseData(new string('a', 100000), "handled")
-        .SetName("Extreme.VeryLongInput.Handled");
-
-    // === UNEXPECTED SITUATIONS ===
-    yield return new TestCaseData("\0\0\0", "handled")
-        .SetName("Unexpected.NullChars.Handled");
-    yield return new TestCaseData("   \t\n\r   ", "handled")
-        .SetName("Unexpected.OnlyWhitespace.Handled");
-}
-```
-
----
-
-## Test Coverage Requirements (MANDATORY)
-
-All production code **MUST** have tests covering the following categories.
-
-### Normal Cases (Required)
-
-Verify expected behavior under typical conditions:
-
-- Standard collection sizes (5-20 elements)
-- Common string formats and lengths
-- Representative numeric values within normal ranges
-- Standard user workflows
-- Typical parameter combinations
-
-### Negative Cases (Required)
-
-Verify proper handling of invalid/error conditions:
-
-- Invalid inputs (wrong types, out-of-range values)
-- Error conditions (missing dependencies, failed operations)
-- Failure scenarios (exceptions, null returns)
-- Invalid state transitions
-- Missing or misconfigured dependencies
-
-### Edge Cases (Required)
-
-| Category        | Test Scenarios                                              |
-| --------------- | ----------------------------------------------------------- |
-| Empty inputs    | Empty collections `[]`, empty strings `""`, empty arrays    |
-| Single elements | Single-element collections, single character strings        |
-| Boundaries      | `int.MaxValue`, `int.MinValue`, `0`, `-1`, first/last index |
-| Null values     | Null parameters, null collection elements, null returns     |
-| Special strings | Whitespace-only `"   "`, Unicode characters, special chars  |
-| Concurrency     | Thread-safe code: parallel access, race conditions          |
-| Large inputs    | Stress tests: 10K+ elements, deep nesting                   |
-| Type variations | Different generic type parameters, inheritance hierarchies  |
-
-### Extreme Cases (Required)
-
-Test behavior at the limits:
-
-| Category          | Test Scenarios                                            |
-| ----------------- | --------------------------------------------------------- |
-| Maximum values    | `int.MaxValue`, `float.MaxValue`, `long.MaxValue`         |
-| Minimum values    | `int.MinValue`, `float.MinValue`, `long.MinValue`         |
-| Near overflow     | `int.MaxValue - 1`, values that cause arithmetic overflow |
-| Large collections | 10,000+ elements, deeply nested structures                |
-| Long strings      | 100K+ character strings, strings near `string.MaxLength`  |
-| Deep recursion    | Deeply nested objects, hierarchies near stack limit       |
-
-### Unexpected Situations (Required)
-
-Test "impossible" scenarios that might still occur:
-
-| Category          | Test Scenarios                                          |
-| ----------------- | ------------------------------------------------------- |
-| Null inputs       | `null` for every parameter that accepts reference types |
-| Disposed objects  | Operations on disposed streams, destroyed Unity objects |
-| Invalid state     | Methods called before initialization, after cleanup     |
-| Corrupted data    | Malformed JSON, invalid byte sequences, truncated files |
-| Concurrent access | Thread contention, race conditions, deadlock potential  |
-| Invalid enums     | Cast invalid integers to enum types: `(MyEnum)999`      |
-
-### Inspector/Drawer-Specific Tests (Required for Editor Code)
-
-When testing property drawers, custom inspectors, or editor tools:
-
-| Category             | Test Scenarios                                     |
-| -------------------- | -------------------------------------------------- |
-| Property types       | All supported `SerializedPropertyType` values      |
-| Null targets         | Null `SerializedProperty`, null `SerializedObject` |
-| Missing attributes   | Fields without the target attribute                |
-| Multi-object editing | Multiple selected objects with different values    |
-| Nested properties    | Properties inside arrays, lists, nested classes    |
-| Undo/Redo            | State preservation across undo operations          |
-| Layout calculations  | Height calculations for varying content            |
-
-### Odin Drawer Testing (When ODIN_INSPECTOR is defined)
-
-When testing Odin `OdinAttributeDrawer` implementations, follow these patterns:
-
-#### Test Target Structure
-
-Test targets must be in separate files under `Tests/Editor/TestTypes/Odin/{Feature}/`:
-
-```text
-Tests/Editor/
-├── TestTypes/
-│   ├── SharedEnums/                        # Shared test enums
-│   │   ├── SimpleTestEnum.cs
-│   │   ├── TestFlagsEnum.cs
-│   │   └── TestModeEnum.cs
-│   └── Odin/
-│       ├── EnumToggleButtons/              # Per-feature subfolders
-│       │   ├── OdinEnumToggleButtonsRegularTarget.cs
-│       │   ├── OdinEnumToggleButtonsFlagsTarget.cs
-│       │   ├── OdinEnumToggleButtonsMonoBehaviour.cs
-│       │   └── OdinEnumToggleButtonsPaginated.cs
-│       ├── ShowIf/
-│       │   ├── OdinShowIfBoolTarget.cs
-│       │   └── OdinShowIfEnumTarget.cs
-│       └── InLineEditor/
-│           └── OdinInLineEditorTarget.cs
-├── CustomDrawers/
-│   └── Odin/
-│       ├── WEnumToggleButtonsOdinDrawerTests.cs
-│       └── WShowIfOdinDrawerTests.cs
-```
-
-#### Test Target Template (SerializedScriptableObject)
-
-```csharp
-namespace WallstopStudios.UnityHelpers.Tests.Editor.TestTypes.Odin.MyFeature
-{
-#if UNITY_EDITOR && ODIN_INSPECTOR
-    using Sirenix.OdinInspector;
-    using WallstopStudios.UnityHelpers.Core.Attributes;
-    using WallstopStudios.UnityHelpers.Tests.Editor.TestTypes.SharedEnums;
-
-    /// <summary>
-    /// Test target for MyAttribute with SerializedScriptableObject.
-    /// </summary>
-    internal sealed class OdinMyFeatureTarget : SerializedScriptableObject
-    {
-        [MyAttribute]
-        public SimpleTestEnum myField;
-    }
-#endif
-}
-```
-
-#### Test Target Template (SerializedMonoBehaviour)
-
-```csharp
-namespace WallstopStudios.UnityHelpers.Tests.Editor.TestTypes.Odin.MyFeature
-{
-#if UNITY_EDITOR && ODIN_INSPECTOR
-    using Sirenix.OdinInspector;
-    using WallstopStudios.UnityHelpers.Core.Attributes;
-    using WallstopStudios.UnityHelpers.Tests.Editor.TestTypes.SharedEnums;
-
-    /// <summary>
-    /// Test target for MyAttribute with SerializedMonoBehaviour.
-    /// </summary>
-    internal sealed class OdinMyFeatureMonoBehaviour : SerializedMonoBehaviour
-    {
-        [MyAttribute]
-        public SimpleTestEnum myField;
-    }
-#endif
-}
-```
-
-#### Odin Drawer Test Class Template
-
-```csharp
-namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers
-{
-#if UNITY_EDITOR && ODIN_INSPECTOR
-    using System;
-    using System.Collections.Generic;
-    using NUnit.Framework;
-    using Sirenix.OdinInspector;
-    using UnityEditor;
-    using UnityEngine;
-    using WallstopStudios.UnityHelpers.Tests.Core;
-    using WallstopStudios.UnityHelpers.Tests.Editor.TestTypes.Odin.MyFeature;
-    using WallstopStudios.UnityHelpers.Tests.Editor.TestTypes.SharedEnums;
-
-    /// <summary>
-    /// Tests for MyOdinDrawer ensuring MyAttribute works correctly
-    /// with Odin Inspector for SerializedMonoBehaviour/SerializedScriptableObject.
-    /// </summary>
-    [TestFixture]
-    public sealed class MyOdinDrawerTests : CommonTestBase
-    {
-        [Test]
-        public void DrawerRegistrationCreatesEditorForScriptableObject()
-        {
-            OdinMyFeatureTarget target = CreateScriptableObject<OdinMyFeatureTarget>();
-            Editor editor = Editor.CreateEditor(target);
-            Track(editor);
-
-            Assert.That(editor, Is.Not.Null, "Editor should be created");
-        }
-
-        [Test]
-        public void DrawerRegistrationCreatesEditorForMonoBehaviour()
-        {
-            OdinMyFeatureMonoBehaviour target = NewGameObject("TestMB")
-                .AddComponent<OdinMyFeatureMonoBehaviour>();
-            Editor editor = Editor.CreateEditor(target);
-            Track(editor);
-
-            Assert.That(editor, Is.Not.Null, "Editor should be created for MB");
-        }
-
-        [Test]
-        public void OnInspectorGuiDoesNotThrowForScriptableObject()
-        {
-            OdinMyFeatureTarget target = CreateScriptableObject<OdinMyFeatureTarget>();
-            Editor editor = Editor.CreateEditor(target);
-            Track(editor);
-
-            Assert.DoesNotThrow(() => editor.OnInspectorGUI());
-        }
-
-        [Test]
-        public void OnInspectorGuiDoesNotThrowForMonoBehaviour()
-        {
-            OdinMyFeatureMonoBehaviour target = NewGameObject("TestMB")
-                .AddComponent<OdinMyFeatureMonoBehaviour>();
-            Editor editor = Editor.CreateEditor(target);
-            Track(editor);
-
-            Assert.DoesNotThrow(() => editor.OnInspectorGUI());
-        }
-
-        [Test]
-        public void OnInspectorGuiHandlesMultipleCalls()
-        {
-            OdinMyFeatureTarget target = CreateScriptableObject<OdinMyFeatureTarget>();
-            Editor editor = Editor.CreateEditor(target);
-            Track(editor);
-
-            Assert.DoesNotThrow(() =>
-            {
-                editor.OnInspectorGUI();
-                editor.OnInspectorGUI();
-                editor.OnInspectorGUI();
-            });
-        }
-
-        [Test]
-        [TestCaseSource(nameof(FieldValueTestCases))]
-        public void OnInspectorGuiHandlesVariousFieldValues(SimpleTestEnum value)
-        {
-            OdinMyFeatureTarget target = CreateScriptableObject<OdinMyFeatureTarget>();
-            target.myField = value;
-            Editor editor = Editor.CreateEditor(target);
-            Track(editor);
-
-            Assert.DoesNotThrow(() => editor.OnInspectorGUI());
-        }
-
-        private static IEnumerable<TestCaseData> FieldValueTestCases()
-        {
-            yield return new TestCaseData(SimpleTestEnum.One)
-                .SetName("Value.FirstEnumMember");
-            yield return new TestCaseData(SimpleTestEnum.Two)
-                .SetName("Value.SecondEnumMember");
-            yield return new TestCaseData(SimpleTestEnum.Three)
-                .SetName("Value.ThirdEnumMember");
-            yield return new TestCaseData((SimpleTestEnum)999)
-                .SetName("Value.InvalidEnumValue");
-        }
-    }
-#endif
-}
-```
-
-#### Required Test Categories for Odin Drawers
-
-| Category                 | Test Scenarios                                          |
-| ------------------------ | ------------------------------------------------------- |
-| Editor creation          | `Editor.CreateEditor(target)` returns non-null          |
-| ScriptableObject targets | `SerializedScriptableObject` base class works correctly |
-| MonoBehaviour targets    | `SerializedMonoBehaviour` base class works correctly    |
-| No-throw on GUI          | `OnInspectorGUI()` doesn't throw for valid targets      |
-| Multiple GUI calls       | Repeated `OnInspectorGUI()` calls don't cause issues    |
-| Various field values     | Different enum values, null references, edge cases      |
-| Multiple fields          | Multiple attributes on same target work together        |
-| Attribute configurations | Different attribute constructor parameters              |
-| Caching behavior         | Multiple instances share caches correctly               |
-| Editor cleanup           | `DestroyImmediate(editor)` in finally blocks            |
-
-#### Shared Test Enums
-
-Extract common test enums to `Tests/Editor/TestTypes/SharedEnums/`:
-
-```csharp
-// Tests/Editor/TestTypes/SharedEnums/SimpleTestEnum.cs
-namespace WallstopStudios.UnityHelpers.Tests.Editor.TestTypes.SharedEnums
-{
-#if UNITY_EDITOR && ODIN_INSPECTOR
-    public enum SimpleTestEnum { One, Two, Three }
-#endif
-}
-
-// Tests/Editor/TestTypes/SharedEnums/TestFlagsEnum.cs
-namespace WallstopStudios.UnityHelpers.Tests.Editor.TestTypes.SharedEnums
-{
-#if UNITY_EDITOR && ODIN_INSPECTOR
-    using System;
-
-    [Flags]
-    public enum TestFlagsEnum
-    {
-        None = 0,
-        Flag1 = 1,
-        Flag2 = 2,
-        Flag3 = 4,
-        All = Flag1 | Flag2 | Flag3
-    }
-#endif
-}
-```
-
-#### CommonTestBase Usage for Odin Tests
-
-Always inherit from `CommonTestBase` for automatic cleanup:
-
-```csharp
-public sealed class MyOdinDrawerTests : CommonTestBase
-{
-    // CreateScriptableObject<T>() - Creates and tracks SO for cleanup
-    // NewGameObject(name) - Creates and tracks GO for cleanup
-    // Track(obj) - Manually track any Unity object for cleanup
-}
-```
-
----
-
-## Unity Object Lifecycle Management (CRITICAL)
-
-**MANDATORY**: All Unity objects created in tests MUST be tracked for automatic cleanup. The lint script `scripts/lint-tests.ps1` enforces these rules. Run it after every test change.
-
-### Lint Rules Enforced
-
-| Rule     | Description                                                                                |
-| -------- | ------------------------------------------------------------------------------------------ |
-| `UNH001` | Avoid direct `DestroyImmediate`/`Destroy` in tests; track object and let teardown clean up |
-| `UNH002` | Unity object allocation must be tracked: wrap with `Track()`                               |
-| `UNH003` | Test class creates Unity objects but doesn't inherit from `CommonTestBase`                 |
-
-### ⚠️ MANDATORY: Run Lint After EVERY Test Change
-
-> **CRITICAL**: Run the test lifecycle linter IMMEDIATELY after ANY modification to test files. Do NOT wait until the end of your task.
-
-```bash
-pwsh -NoProfile -File scripts/lint-tests.ps1
-```
-
-This linter is also run by the pre-push git hook. Failing to run it locally will result in rejected pushes.
-
-### Required Pattern: Track All Unity Objects
-
-**ALWAYS** wrap Unity object creation with `Track()`:
-
-```csharp
-// ✅ CORRECT - Objects tracked for automatic cleanup
-public sealed class MyDrawerTests : CommonTestBase
-{
-    [Test]
-    public void DrawerCreatesEditorSuccessfully()
-    {
-        MyTarget target = CreateScriptableObject<MyTarget>();
-        Editor editor = Track(Editor.CreateEditor(target));
-
-        Assert.That(editor, Is.Not.Null);
-    }
-}
-```
-
-### Forbidden Pattern: Manual DestroyImmediate
-
-**NEVER** use try-finally blocks with `DestroyImmediate` for cleanup:
-
-```csharp
-// ❌ FORBIDDEN - Manual cleanup causes UNH001 lint errors
-Editor editor = Editor.CreateEditor(target);
-try
-{
-    editor.OnInspectorGUI();
-}
-finally
-{
-    UnityEngine.Object.DestroyImmediate(editor);  // UNH001 violation!
-}
-
-// ✅ CORRECT - Track() handles cleanup automatically
-Editor editor = Track(Editor.CreateEditor(target));
-editor.OnInspectorGUI();
-```
-
-### Exception: Using `// UNH-SUPPRESS` Comments
-
-The `// UNH-SUPPRESS` comment tells the linter to skip checking that specific line. Use it **ONLY** when:
-
-1. **Testing destroy behavior** — Intentionally destroying objects to verify error handling
-2. **Testing destroyed state** — Verifying code handles destroyed objects gracefully
-3. **Testing cleanup edge cases** — Ensuring cleanup code doesn't double-destroy
-
-#### UNH-SUPPRESS Syntax
-
-Place the comment on the **same line** as the `DestroyImmediate` call:
-
-```csharp
-// ✅ CORRECT - Comment on same line
-UnityEngine.Object.DestroyImmediate(target); // UNH-SUPPRESS: Test verifies behavior after target destroyed
-
-// ✅ CORRECT - With explanation
-Object.DestroyImmediate(target); // UNH-SUPPRESS: Intentionally destroy to test null handling
-
-// ❌ WRONG - Comment on different line (will NOT suppress)
-// UNH-SUPPRESS: This won't work
-UnityEngine.Object.DestroyImmediate(target);
-```
-
-#### Complete Example: Testing Destroyed Object Handling
-
-```csharp
-[Test]
-public void InspectorHandlesDestroyedTargetGracefully()
-{
-    MyTarget target = CreateScriptableObject<MyTarget>();
-    Editor editor = Track(Editor.CreateEditor(target));
-
-    editor.OnInspectorGUI();
-
-    UnityEngine.Object.DestroyImmediate(target); // UNH-SUPPRESS: Test verifies behavior after target destroyed
-    _trackedObjects.Remove(target); // Remove from tracking to prevent double-destroy in teardown
-
-    Assert.DoesNotThrow(() => editor.OnInspectorGUI());
-}
-```
-
-#### When NOT to Use UNH-SUPPRESS
-
-```csharp
-// ❌ WRONG - Don't use suppress for normal cleanup
-try
-{
-    editor.OnInspectorGUI();
-}
-finally
-{
-    UnityEngine.Object.DestroyImmediate(editor); // UNH-SUPPRESS  <-- DON'T DO THIS
-}
-
-// ✅ CORRECT - Use Track() instead
-Editor editor = Track(Editor.CreateEditor(target));
-editor.OnInspectorGUI();
-// Cleanup handled automatically by CommonTestBase
-```
-
-### Track Methods Reference
-
-| Method                        | Use For                                              |
-| ----------------------------- | ---------------------------------------------------- |
-| `CreateScriptableObject<T>()` | Creating test `ScriptableObject` targets             |
-| `NewGameObject(name)`         | Creating test `GameObject` instances                 |
-| `Track(obj)`                  | Any Unity object (`Editor`, `Material`, `Texture2D`) |
-| `TrackDisposable(disposable)` | `IDisposable` resources                              |
-| `TrackAssetPath(path)`        | Created asset files that need deletion               |
-| `_trackedObjects.Remove(obj)` | Remove from tracking after intentional destroy       |
-
-### Async Test Pattern
-
-For `[UnityTest]` with `IEnumerator`, still use `Track()`:
-
-```csharp
-[UnityTest]
-public IEnumerator OnInspectorGuiDoesNotThrowForTarget()
-{
-    MyTarget target = CreateScriptableObject<MyTarget>();
-    Editor editor = Track(Editor.CreateEditor(target));
-    bool completed = false;
-    Exception caught = null;
-
-    yield return TestIMGUIExecutor.Run(() =>
-    {
-        try
-        {
-            editor.OnInspectorGUI();
-            completed = true;
-        }
-        catch (Exception ex)
-        {
-            caught = ex;
-        }
-    });
-
-    Assert.That(caught, Is.Null);
-    Assert.That(completed, Is.True);
-}
-```
-
-### Run Lint After Every Change (MANDATORY)
-
-> **⚠️ CRITICAL**: Run the test lint script **IMMEDIATELY** after any test file modification. Do NOT batch changes or wait until the end of a task.
-
-```bash
-pwsh -NoProfile -File scripts/lint-tests.ps1
-```
-
-**The linter runs automatically on pre-push.** If you skip local linting, your push WILL be rejected.
-
-**Fix workflow:**
-
-1. Make a test file change
-2. Run `pwsh -NoProfile -File scripts/lint-tests.ps1`
-3. Fix any `UNH001`, `UNH002`, or `UNH003` errors
-4. Re-run linter to confirm fix
-5. Only then proceed to next change
-
-**Common fixes:**
-
-| Error    | Fix                                                                                           |
-| -------- | --------------------------------------------------------------------------------------------- |
-| `UNH001` | Remove `DestroyImmediate`; use `Track()` OR add `// UNH-SUPPRESS` if testing destroy behavior |
-| `UNH002` | Wrap object creation with `Track()`: `Track(new GameObject())`                                |
-| `UNH003` | Add `: CommonTestBase` or `: EditorCommonTestBase` to test class                              |
-
----
-
-## Example: Comprehensive Data-Driven Test Class
-
-```csharp
-namespace WallstopStudios.UnityHelpers.Tests.Core.Extension
-{
-    using System;
-    using System.Collections.Generic;
-    using NUnit.Framework;
-    using WallstopStudios.UnityHelpers.Core.Extension;
-
-    [TestFixture]
-    public sealed class DictionaryExtensionsTests
-    {
-        [Test]
-        public void GetOrAddReturnsExistingValueWhenKeyExists()
-        {
-            Dictionary<string, int> dictionary = new Dictionary<string, int> { { "key", 42 } };
-
-            int result = dictionary.GetOrAdd("key", () => 999);
-
-            Assert.AreEqual(42, result);
-        }
-
-        [Test]
-        public void GetOrAddCreatesNewValueWhenKeyMissing()
-        {
-            Dictionary<string, int> dictionary = new Dictionary<string, int>();
-
-            int result = dictionary.GetOrAdd("key", () => 42);
-
-            Assert.AreEqual(42, result);
-            Assert.IsTrue(dictionary.ContainsKey("key"));
-        }
-
-        [Test]
-        public void GetOrAddWithNullKeyThrowsArgumentNullException()
-        {
-            Dictionary<string, int> dictionary = new Dictionary<string, int>();
-
-            Assert.Throws<ArgumentNullException>(() => dictionary.GetOrAdd(null, () => 42));
-        }
-
-        [Test]
-        public void GetOrAddWithNullFactoryThrowsArgumentNullException()
-        {
-            Dictionary<string, int> dictionary = new Dictionary<string, int>();
-
-            Assert.Throws<ArgumentNullException>(() => dictionary.GetOrAdd("key", null));
-        }
-
-        [Test]
-        public void GetOrAddWithEmptyDictionaryAddsEntry()
-        {
-            Dictionary<int, List<string>> dictionary = new Dictionary<int, List<string>>();
-
-            List<string> result = dictionary.GetOrAdd(1);
-
-            Assert.AreEqual(1, dictionary.Count);
-            Assert.IsTrue(result != null);
-        }
-
-        private static IEnumerable<TestCaseData> KeyValueTestCases()
-        {
-            yield return new TestCaseData("", 0)
-                .SetName("Key.EmptyString.AcceptsValue");
-            yield return new TestCaseData("normal", 42)
-                .SetName("Key.NormalString.AcceptsValue");
-            yield return new TestCaseData("   ", 100)
-                .SetName("Key.WhitespaceString.AcceptsValue");
-            yield return new TestCaseData("a", int.MaxValue)
-                .SetName("Value.MaxInt.Stored");
-            yield return new TestCaseData("b", int.MinValue)
-                .SetName("Value.MinInt.Stored");
-        }
-
-        [Test]
-        [TestCaseSource(nameof(KeyValueTestCases))]
-        public void GetOrAddStoresCorrectValue(string key, int value)
-        {
-            Dictionary<string, int> dictionary = new Dictionary<string, int>();
-
-            int result = dictionary.GetOrAdd(key, () => value);
-
-            Assert.AreEqual(value, result);
-            Assert.AreEqual(value, dictionary[key]);
-        }
-
-        private static IEnumerable<TestCaseData> CollectionSizeTestCases()
-        {
-            yield return new TestCaseData(0).SetName("Size.Empty");
-            yield return new TestCaseData(1).SetName("Size.Single");
-            yield return new TestCaseData(10).SetName("Size.Small");
-            yield return new TestCaseData(100).SetName("Size.Medium");
-            yield return new TestCaseData(10000).SetName("Size.Large");
-        }
-
-        [Test]
-        [TestCaseSource(nameof(CollectionSizeTestCases))]
-        public void GetOrAddWorksWithVariousDictionarySizes(int existingCount)
-        {
-            Dictionary<int, int> dictionary = new Dictionary<int, int>();
-            for (int i = 0; i < existingCount; i++)
-            {
-                dictionary[i] = i * 2;
-            }
-
-            int newKey = existingCount;
-            int result = dictionary.GetOrAdd(newKey, () => 999);
-
-            Assert.AreEqual(999, result);
-            Assert.AreEqual(existingCount + 1, dictionary.Count);
-        }
-    }
-}
-```
-
----
-
-## Timeouts
-
-For long-running tests, use timeouts defined in `Tests/Runtime/RuntimeTestTimeouts.cs`.
+### Documentation
+
+1. **Self-documenting tests** — No `// Arrange`, `// Act`, `// Assert` comments
+2. **No `[Description]` annotations**
+3. **No file paths in docstrings**
 
 ---
 
 ## Test Quality Requirements (Prevent Flaky Tests)
-
-All tests MUST be deterministic and isolated. Follow these requirements to prevent flaky tests:
 
 ### Determinism
 
@@ -1080,7 +164,6 @@ All tests MUST be deterministic and isolated. Follow these requirements to preve
 | `Random` without seed             | Use seeded PRNG: `new PcgRandom(fixedSeed)`   |
 | Depending on dictionary/set order | Sort before comparing or use ordered types    |
 | Floating-point exact equality     | Use tolerance: `Assert.AreEqual(a, b, 0.001)` |
-| Timing-dependent assertions       | Use synchronization or callbacks              |
 
 ### Isolation
 
@@ -1089,31 +172,45 @@ All tests MUST be deterministic and isolated. Follow these requirements to preve
 | Static mutable state between tests | Reset in `[TearDown]` or use instance state |
 | Shared fixtures without reset      | `[SetUp]` creates fresh state each test     |
 | Tests affecting each other         | Each test must be completely independent    |
-| External system dependencies       | Mock external systems or use test doubles   |
 
-### Unity-Specific
+---
 
-| Anti-Pattern                        | Required Pattern                          |
-| ----------------------------------- | ----------------------------------------- |
-| Depending on editor selection state | Create test GameObjects in code           |
-| Assuming coroutine timing           | Use `WaitUntil` with completion callbacks |
-| Frame-count assumptions             | Wait for actual completion signals        |
-| Scene-dependent tests               | Create all needed objects in test setup   |
+## Editor Integration Tests
 
-### Cleanup
+### Shared Fixture Pattern
 
-Always clean up created objects:
+For tests requiring Unity assets (textures, prefabs, etc.):
 
-```csharp
-[TearDown]
-public void TearDown()
-{
-    if (_testGameObject != null)
-    {
-        Object.DestroyImmediate(_testGameObject);
-    }
-}
-```
+1. Use `[OneTimeSetUp]`/`[OneTimeTearDown]` for asset lifecycle
+2. Create shared output directory once, delete once at end
+3. Use per-test subdirectories via `TestContext.CurrentContext.Test.Name`
+
+### AssetDatabase Batching
+
+Wrap slow operations in `AssetDatabaseBatchHelper.BeginBatch()`:
+
+- Store scope: `_batchScope = AssetDatabaseBatchHelper.BeginBatch(refreshOnDispose: true)` in `[OneTimeSetUp]`
+- Dispose scope: `_batchScope?.Dispose()` in `[OneTimeTearDown]`
+- Defers ALL imports until scope is disposed
+
+### Golden File Metadata Pattern
+
+For tests that would require slow extraction/generation:
+
+1. Create JSON metadata files with expected outputs
+2. Commit to `Tests/Editor/{Feature}/Assets/GoldenOutput/`
+3. Add `[Explicit]` utility test to regenerate when logic changes
+4. Verification tests read JSON and assert against expected values
+
+### Filesystem vs AssetDatabase Verification
+
+Prefer `System.IO` over `AssetDatabase` for verification:
+
+- `Directory.GetFiles("*.png")` instead of `AssetDatabase.FindAssets`
+- `File.Exists()` instead of `AssetDatabase.LoadAssetAtPath`
+- Only use AssetDatabase when testing actual Unity asset behavior
+
+See also: [test-parallelization-rules](./test-parallelization-rules.md)
 
 ---
 
@@ -1122,140 +219,83 @@ public void TearDown()
 ### Prefer Specific Assertions
 
 ```csharp
-// ✅ GOOD - Specific, clear failure message
+// GOOD - Specific, clear failure message
 Assert.AreEqual(42, result);
 Assert.IsTrue(collection.Contains("key"));
-Assert.IsInstanceOf<MyException>(ex);
 Assert.Throws<ArgumentNullException>(() => Method(null));
 
-// ❌ AVOID - Generic, unclear failure
+// AVOID - Generic, unclear failure
 Assert.That(result == 42);
-Assert.IsTrue(result.Equals(42));
-```
-
-### Use Meaningful Failure Messages
-
-```csharp
-// ✅ GOOD - Helpful failure message
-Assert.AreEqual(expected, actual, $"Expected {expected} but got {actual} for input '{input}'");
-Assert.IsTrue(isValid, $"Validation failed for input: {input}");
-
-// ❌ AVOID - No context on failure
-Assert.AreEqual(expected, actual);
-Assert.IsTrue(isValid);
 ```
 
 ### Collection Assertions
 
 ```csharp
-// ✅ GOOD - Collection-specific assertions
+// GOOD - Collection-specific assertions
 Assert.AreEqual(5, list.Count);
-Assert.Contains("expected", list);
 CollectionAssert.AreEqual(expected, actual);
 CollectionAssert.AreEquivalent(expected, actual); // Order-independent
 CollectionAssert.IsEmpty(collection);
-CollectionAssert.IsNotEmpty(collection);
-
-// ❌ AVOID - Manual iteration
-Assert.IsTrue(list.Count == 5);
-Assert.IsTrue(list.Any(x => x == "expected"));
-```
-
-### Assert.That with Constraints (For Complex Assertions)
-
-```csharp
-// Use for complex or compound assertions
-Assert.That(result, Is.GreaterThan(0).And.LessThan(100));
-Assert.That(text, Does.StartWith("Hello").And.EndWith("World"));
-Assert.That(collection, Has.Count.EqualTo(5));
-Assert.That(dictionary, Contains.Key("myKey"));
 ```
 
 ---
 
-## Test Anti-Patterns to AVOID
+## Concurrent Test Patterns
 
-### ❌ Testing Implementation Details
-
-```csharp
-// ❌ WRONG - Tests private method call order
-Assert.That(mock.ReceivedCalls().Count, Is.EqualTo(3));
-
-// ✅ CORRECT - Tests observable behavior
-Assert.AreEqual("expected output", result);
-```
-
-### ❌ Flaky Tests
+When testing thread-safety, use controlled parallelism:
 
 ```csharp
-// ❌ WRONG - Timing-dependent
-await Task.Delay(100);
-Assert.IsTrue(operationCompleted);
-
-// ✅ CORRECT - Explicit synchronization
-await taskCompletionSource.Task;
-Assert.IsTrue(operationCompleted);
-```
-
-### ❌ Tests Depending on External State
-
-```csharp
-// ❌ WRONG - Depends on file system
-string content = File.ReadAllText("/some/fixed/path");
-
-// ✅ CORRECT - Uses test-controlled data
-string content = CreateTestFile("test content");
-```
-
-### ❌ Overly Complex Test Setup
-
-```csharp
-// ❌ WRONG - 50 lines of setup
-[SetUp]
-public void SetUp()
-{
-    // ... 50 lines of complex setup ...
-}
-
-// ✅ CORRECT - Factory methods, minimal setup
 [Test]
-public void TestMethod()
+[TestCase(4, TestName = "ThreadCount.Four")]
+[TestCase(8, TestName = "ThreadCount.Eight")]
+public void ConcurrentInsertIsThreadSafe(int threadCount)
 {
-    MyClass sut = CreateDefaultSut();
-    // test...
+    var cache = new Cache<int, string>(100);
+    var tasks = new Task[threadCount];
+
+    for (int i = 0; i < threadCount; i++)
+    {
+        int captured = i; // Capture loop variable
+        tasks[i] = Task.Run(() =>
+        {
+            for (int j = 0; j < 100; j++)
+            {
+                cache.Set(captured * 100 + j, $"value_{captured}_{j}");
+            }
+        });
+    }
+
+    Task.WaitAll(tasks);
+    Assert.AreEqual(threadCount * 100, cache.Count);
 }
 ```
 
-### ❌ Missing Edge Cases
+Key points:
+
+- **Capture loop variables** — Always capture `i` to a local variable before using in `Task.Run`
+- **Use `Task.WaitAll`** — Ensures all operations complete before assertions
+- **Parameterize thread counts** — Use `[TestCase]` for different parallelism levels
+
+---
+
+## Diagnostic Output for Debugging
+
+Use `TestContext.WriteLine` to capture diagnostic information:
 
 ```csharp
-// ❌ WRONG - Only tests happy path
 [Test]
-public void ProcessReturnsResult()
+public void CacheEvictionWorks()
 {
-    var result = Process("valid input");
-    Assert.IsNotNull(result);
+    var cache = new Cache<int, string>(2);
+    cache.Set(1, "a");
+    cache.Set(2, "b");
+    cache.Set(3, "c");
+
+    TestContext.WriteLine($"Cache count: {cache.Count}");
+    TestContext.WriteLine($"Contains key 1: {cache.TryGet(1, out _)}");
+
+    Assert.IsFalse(cache.TryGet(1, out _), "Key 1 should have been evicted");
 }
-
-// ✅ CORRECT - Comprehensive coverage
-[Test]
-[TestCase(null, TestName = "Input.Null")]
-[TestCase("", TestName = "Input.Empty")]
-[TestCase("   ", TestName = "Input.Whitespace")]
-[TestCase("valid", TestName = "Input.Valid")]
-[TestCase("very long string...", TestName = "Input.VeryLong")]
-public void ProcessHandlesAllInputTypes(string input) { ... }
-```
-
-### ❌ Magic Numbers Without Context
-
-```csharp
-// ❌ WRONG - What does 42 mean?
-Assert.AreEqual(42, result);
-
-// ✅ CORRECT - Named constant explains intent
-const int ExpectedUserCount = 42;
-Assert.AreEqual(ExpectedUserCount, result);
 ```
 
 ---
@@ -1269,119 +309,61 @@ Every test MUST be completely independent:
 3. **No side effects** — Tests don't modify global state
 4. **Clean teardown** — Dispose all resources created during test
 
-```csharp
-[TestFixture]
-public sealed class IndependentTests
-{
-    private MyClass _sut;
-    private GameObject _testObject;
-
-    [SetUp]
-    public void SetUp()
-    {
-        _sut = new MyClass();
-        _testObject = new GameObject("Test");
-    }
-
-    [TearDown]
-    public void TearDown()
-    {
-        _sut?.Dispose();
-        if (_testObject != null)
-        {
-            Object.DestroyImmediate(_testObject);
-        }
-    }
-}
-```
-
----
-
-## Performance Considerations
-
-- Tests should run **quickly** (<100ms per test ideally)
-- **Mock expensive dependencies** (file I/O, network, databases)
-- Use appropriate **timeouts** for async tests
-- Avoid unnecessary **allocations** in hot test paths
-- Group related tests to share expensive setup via `[OneTimeSetUp]`
-
-```csharp
-[TestFixture]
-public sealed class PerformanceAwareTests
-{
-    private static ExpensiveResource _sharedResource;
-
-    [OneTimeSetUp]
-    public void OneTimeSetUp()
-    {
-        // Expensive setup done once for all tests in class
-        _sharedResource = new ExpensiveResource();
-    }
-
-    [OneTimeTearDown]
-    public void OneTimeTearDown()
-    {
-        _sharedResource?.Dispose();
-    }
-}
-```
-
 ---
 
 ## Test Creation Checklist
 
-Before submitting tests, verify ALL items:
-
 ### Coverage
 
-- [ ] ✅ Normal cases covered (typical usage scenarios)
-- [ ] ✅ Negative/error cases covered (invalid inputs, exceptions)
-- [ ] ✅ Edge cases covered (empty, single, boundary values)
-- [ ] ✅ Extreme cases covered (large inputs, max/min values)
-- [ ] ✅ Unexpected situations covered (null, disposed, concurrent)
-- [ ] ✅ "The impossible" covered (corrupted state, invalid enums)
+- [ ] Normal cases covered (typical usage scenarios)
+- [ ] Negative/error cases covered (invalid inputs, exceptions)
+- [ ] Edge cases covered (empty, single, boundary values)
+- [ ] Extreme cases covered (large inputs, max/min values)
+- [ ] Unexpected situations covered (null, disposed, concurrent)
 
 ### Structure
 
-- [ ] ✅ Data-driven tests used where appropriate (`[TestCase]`/`[TestCaseSource]`)
-- [ ] ✅ Tests are completely independent
-- [ ] ✅ Test method names follow convention (PascalCase, no underscores)
-- [ ] ✅ TestCaseSource names use dot notation (e.g., `Input.Null.ReturnsFalse`)
-- [ ] ✅ No comments in test code (self-documenting)
+- [ ] Data-driven tests used where appropriate — see [test-data-driven](./test-data-driven.md)
+- [ ] Tests are completely independent
+- [ ] Naming follows conventions — see [test-naming-conventions](./test-naming-conventions.md)
+- [ ] No comments in test code (self-documenting)
 
 ### Quality
 
-- [ ] ✅ No flaky tests (deterministic, isolated)
-- [ ] ✅ Meaningful assertion failure messages
-- [ ] ✅ Proper cleanup in TearDown
-- [ ] ✅ Fast execution (<100ms per test)
-- [ ] ✅ No external dependencies
+- [ ] No flaky tests (deterministic, isolated)
+- [ ] Meaningful assertion failure messages
+- [ ] Proper cleanup in TearDown
+- [ ] Fast execution (<100ms per test)
 
 ### Technical
 
-- [ ] ✅ Unity null checks use `== null` / `!= null` (not `Is.Null`)
-- [ ] ✅ No `async Task` test methods (use `IEnumerator` + `[UnityTest]`)
-- [ ] ✅ No `#region` blocks
-- [ ] ✅ No `[Description]` attributes
-- [ ] ✅ MonoBehaviour/ScriptableObject test helpers in separate files
+- [ ] Unity null checks use `== null` / `!= null` (UNH005 enforces this)
+- [ ] No `async Task` test methods
+- [ ] No `#region` blocks
+- [ ] MonoBehaviour/ScriptableObject helpers in separate files
+- [ ] Ran `pwsh -NoProfile -File scripts/lint-tests.ps1` and fixed any issues (checks UNH001-UNH005)
 
 ---
 
 ## Post-Creation Steps
 
-1. Generate meta file for test file:
+1. Generate meta file:
 
    ```bash
-   /workspaces/com.wallstop-studios.unity-helpers/scripts/generate-meta.sh <test-file-path>
+   ./scripts/generate-meta.sh <test-file-path>
    ```
 
-2. Format code with CSharpier:
+2. Format code:
 
    ```bash
    dotnet tool run csharpier format <test-file-path>
    ```
 
-3. Ask user to run tests and provide output (do not run Unity CLI yourself)
+3. Run test lifecycle linter:
+
+   ```bash
+   pwsh -NoProfile -File scripts/lint-tests.ps1
+   ```
 
 ---
 
@@ -1397,3 +379,14 @@ Before submitting tests, verify ALL items:
 | **Large**      | 10K+ elements              | Performance, memory            |
 | **Invalid**    | `"@#$%"`, `(MyEnum)999`    | Graceful error handling        |
 | **Concurrent** | Parallel access            | Thread safety                  |
+
+---
+
+## Related Skills
+
+- [test-data-driven](./test-data-driven.md) — Data-driven testing with TestCase and TestCaseSource
+- [test-naming-conventions](./test-naming-conventions.md) — Naming rules and legacy test migration
+- [test-odin-drawers](./test-odin-drawers.md) — Odin Inspector drawer testing patterns
+- [test-unity-lifecycle](./test-unity-lifecycle.md) — Track(), DestroyImmediate, object management
+- [investigate-test-failures](./investigate-test-failures.md) — Root cause analysis for test failures
+- [validate-before-commit](./validate-before-commit.md) — Pre-commit validation workflow

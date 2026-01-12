@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 // UNH-SUPPRESS UNH003: AttributeEffectTests inherits from AttributeTagsTestBase which inherits from CommonTestBase
@@ -10,6 +10,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Tags
     using WallstopStudios.UnityHelpers.Tags;
 
     [TestFixture]
+    [NUnit.Framework.Category("Fast")]
     public sealed class AttributeEffectTests : AttributeTagsTestBase
     {
         [Test]

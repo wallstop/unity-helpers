@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
@@ -18,6 +18,8 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
     using PropertyAttribute = UnityEngine.PropertyAttribute;
 
     [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class StringInListDrawerTests : CommonTestBase
     {
         [Test]
@@ -30,7 +32,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializedProperty property = serializedObject.FindProperty(
                 nameof(StringInListNoOptionsAsset.unspecified)
             );
-            Assert.IsNotNull(property, "Failed to locate string property.");
+            Assert.IsTrue(property != null, "Failed to locate string property.");
 
             StringInListDrawer drawer = new();
             AssignAttribute(drawer, new StringInListAttribute());
@@ -50,7 +52,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializedProperty property = serializedObject.FindProperty(
                 nameof(StringInListStringOptionsAsset.state)
             );
-            Assert.IsNotNull(property, "Failed to locate state property.");
+            Assert.IsTrue(property != null, "Failed to locate state property.");
 
             StringInListDrawer drawer = new();
             AssignAttribute(drawer, new StringInListAttribute("Idle", "Run", "Jump"));
@@ -59,7 +61,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 
             BaseField<string> selector = (BaseField<string>)element;
             DropdownField dropdown = selector.Q<DropdownField>();
-            Assert.IsNotNull(dropdown, "DropDown field was not created.");
+            Assert.IsTrue(dropdown != null, "DropDown field was not created.");
             Assert.That(dropdown.value, Is.EqualTo("Run"));
 
             InvokeApplySelection(selector, 2);
@@ -79,13 +81,13 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializedProperty property = serializedObject.FindProperty(
                 nameof(StringInListIntegerOptionsAsset.selection)
             );
-            Assert.IsNotNull(property, "Failed to locate integer-backed dropdown.");
+            Assert.IsTrue(property != null, "Failed to locate integer-backed dropdown.");
 
             StringInListDrawer drawer = new();
             AssignAttribute(drawer, new StringInListAttribute("Low", "Medium", "High"));
             VisualElement element = drawer.CreatePropertyGUI(property);
             DropdownField dropdown = element.Q<DropdownField>();
-            Assert.IsNotNull(dropdown, "DropDown field was not created.");
+            Assert.IsTrue(dropdown != null, "DropDown field was not created.");
 
             InvokeApplySelection((BaseField<string>)element, 2);
             serializedObject.Update();
@@ -249,21 +251,21 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         }
 
         // Data-driven test for CalculateRowsOnPage covering various scenarios
-        [TestCase(12, 5, 5, 2, TestName = "CalculateRowsOnPage_LastPage_Returns2")]
-        [TestCase(0, 5, 0, 1, TestName = "CalculateRowsOnPage_EmptyList_Returns1")]
-        [TestCase(6, 0, 0, 1, TestName = "CalculateRowsOnPage_ZeroPageSize_Returns1")]
-        [TestCase(3, 2, -2, 2, TestName = "CalculateRowsOnPage_NegativePage_ClampsToFirst")]
-        [TestCase(10, 5, 0, 5, TestName = "CalculateRowsOnPage_FirstFullPage_ReturnsPageSize")]
-        [TestCase(10, 5, 1, 5, TestName = "CalculateRowsOnPage_SecondFullPage_ReturnsPageSize")]
-        [TestCase(7, 5, 1, 2, TestName = "CalculateRowsOnPage_PartialLastPage_ReturnsRemaining")]
-        [TestCase(5, 5, 0, 5, TestName = "CalculateRowsOnPage_ExactlyOnePage_ReturnsPageSize")]
-        [TestCase(1, 10, 0, 1, TestName = "CalculateRowsOnPage_SingleItem_Returns1")]
+        [TestCase(12, 5, 5, 2, TestName = "CalculateRowsOnPage.LastPage.Returns2")]
+        [TestCase(0, 5, 0, 1, TestName = "CalculateRowsOnPage.EmptyList.Returns1")]
+        [TestCase(6, 0, 0, 1, TestName = "CalculateRowsOnPage.ZeroPageSize.Returns1")]
+        [TestCase(3, 2, -2, 2, TestName = "CalculateRowsOnPage.NegativePage.ClampsToFirst")]
+        [TestCase(10, 5, 0, 5, TestName = "CalculateRowsOnPage.FirstFullPage.ReturnsPageSize")]
+        [TestCase(10, 5, 1, 5, TestName = "CalculateRowsOnPage.SecondFullPage.ReturnsPageSize")]
+        [TestCase(7, 5, 1, 2, TestName = "CalculateRowsOnPage.PartialLastPage.ReturnsRemaining")]
+        [TestCase(5, 5, 0, 5, TestName = "CalculateRowsOnPage.ExactlyOnePage.ReturnsPageSize")]
+        [TestCase(1, 10, 0, 1, TestName = "CalculateRowsOnPage.SingleItem.Returns1")]
         [TestCase(
             100,
             10,
             9,
             10,
-            TestName = "CalculateRowsOnPage_LastPageExactFit_ReturnsPageSize"
+            TestName = "CalculateRowsOnPage.LastPageExactFit.ReturnsPageSize"
         )]
         public void CalculateRowsOnPageDataDrivenScenarios(
             int filteredCount,
@@ -289,7 +291,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         {
             StringInListAttribute attribute = new("Alpha", "Beta", "Gamma");
             WValueDropDownAttribute backingAttribute = attribute.BackingAttribute;
-            Assert.IsNotNull(backingAttribute);
+            Assert.IsTrue(backingAttribute != null);
             Assert.That(backingAttribute.ValueType, Is.EqualTo(typeof(string)));
         }
 
@@ -330,12 +332,12 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             SerializedProperty property = serializedObject.FindProperty(
                 nameof(StringInListInstanceMethodAsset.selection)
             );
-            Assert.IsNotNull(property, "Failed to locate instance method backed property.");
+            Assert.IsTrue(property != null, "Failed to locate instance method backed property.");
 
             StringInListAttribute attribute = GetAttributeFromProperty<StringInListAttribute>(
                 property
             );
-            Assert.IsNotNull(attribute, "Failed to retrieve attribute.");
+            Assert.IsTrue(attribute != null, "Failed to retrieve attribute.");
 
             string[] options = attribute.GetOptions(asset);
             Assert.That(options.Length, Is.EqualTo(2));
@@ -429,8 +431,8 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         {
             WDropDownSelectorBase<string> dropDownSelector =
                 selector as WDropDownSelectorBase<string>;
-            Assert.IsNotNull(
-                dropDownSelector,
+            Assert.IsTrue(
+                dropDownSelector != null,
                 $"Expected selector to derive from WDropDownSelectorBase<string>, but was {selector?.GetType().FullName ?? "null"}."
             );
             dropDownSelector.ApplySelection(optionIndex);

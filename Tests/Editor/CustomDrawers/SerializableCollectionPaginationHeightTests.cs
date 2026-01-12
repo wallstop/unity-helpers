@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
@@ -17,6 +17,9 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
     /// These tests ensure that when switching between pages with different numbers of items,
     /// the inspector height is recalculated immediately to prevent layout overlap issues.
     /// </summary>
+    [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class SerializableCollectionPaginationHeightTests : CommonTestBase
     {
         private const int SmallPageSize = 5;

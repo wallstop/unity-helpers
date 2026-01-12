@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Tests.Sprites
@@ -13,6 +13,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
     using WallstopStudios.UnityHelpers.Editor.Utils;
     using WallstopStudios.UnityHelpers.Tests.Core;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class AnimationCopierWindowTests : CommonTestBase
     {
         private const string SrcRoot = "Assets/Temp/AnimationCopierTests/Src";
@@ -42,6 +45,19 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
             EditorUi.Suppress = _previousEditorUiSuppress;
         }
 
+        public override void CommonOneTimeSetUp()
+        {
+            base.CommonOneTimeSetUp();
+            DeferAssetCleanupToOneTimeTearDown = true;
+        }
+
+        [OneTimeTearDown]
+        public override void OneTimeTearDown()
+        {
+            CleanupDeferredAssetsAndFolders();
+            base.OneTimeTearDown();
+        }
+
         private static void ImportAssetIfExists(string assetPath)
         {
             if (string.IsNullOrEmpty(assetPath))
@@ -54,7 +70,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
                 || AssetDatabase.LoadAssetAtPath<Object>(assetPath) != null
             )
             {
-                AssetDatabase.ImportAsset(assetPath, ImportAssetOptions.ForceUpdate);
+                AssetDatabase.ImportAsset(assetPath, ImportAssetOptions.ForceSynchronousImport);
             }
         }
 

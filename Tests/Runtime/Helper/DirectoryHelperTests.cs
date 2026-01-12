@@ -1,4 +1,4 @@
-// MIT License - Copyright (c) 2023 Eli Pinkerton
+// MIT License - Copyright (c) 2025 wallstop
 // Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 
 namespace WallstopStudios.UnityHelpers.Tests.Helper
@@ -12,8 +12,27 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
     using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Tests.Core;
 
+    [TestFixture]
+    [NUnit.Framework.Category("Slow")]
+    [NUnit.Framework.Category("Integration")]
     public sealed class DirectoryHelperTests : CommonTestBase
     {
+#if UNITY_EDITOR
+        [OneTimeSetUp]
+        public override void CommonOneTimeSetUp()
+        {
+            base.CommonOneTimeSetUp();
+            CleanupAllKnownTestFolders();
+        }
+
+        [OneTimeTearDown]
+        public override void OneTimeTearDown()
+        {
+            CleanupAllKnownTestFolders();
+            base.OneTimeTearDown();
+        }
+#endif
+
         [Test]
         public void EnsureDirectoryExistsWithNullDoesNothing()
         {
@@ -1129,7 +1148,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         public void SanitizePathWithNullReturnsNull()
         {
             string result = PathHelper.Sanitize(null);
-            Assert.IsNull(result);
+            Assert.IsTrue(result == null);
         }
 
         [Test]
@@ -1198,7 +1217,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         {
             string path = null;
             string result = path.SanitizePath();
-            Assert.IsNull(result);
+            Assert.IsTrue(result == null);
         }
 
         [Test]
