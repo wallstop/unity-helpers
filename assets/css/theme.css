@@ -450,13 +450,12 @@ summary:focus-visible,
 }
 
 /* Header section styling */
-/* Issue #127: Sticky header support - ensure solid background and visual separation */
 header {
   background-color: var(--bg-primary) !important;
   border: none !important;
   padding-bottom: 20px;
   margin-bottom: 20px;
-  /* Subtle shadow for visual separation when sticky (works with both themes) */
+  /* Subtle shadow for visual separation (works with both themes) */
   -webkit-box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
 }
@@ -693,19 +692,13 @@ img {
 }
 
 /* Transform header from sidebar to compact top banner */
-/* Issue #127: Using sticky positioning for persistent header during scroll */
 header {
   float: none !important;
   width: 100% !important;
-  position: -webkit-sticky !important;
-  position: sticky !important;
-  top: 0 !important;
-  z-index: 100 !important;
   text-align: center !important;
   padding: 15px 20px !important;
   margin-bottom: 30px !important;
   border-bottom: 1px solid var(--border-color) !important;
-  /* Ensure solid background so content scrolls underneath cleanly */
   background-color: var(--bg-primary) !important;
 }
 
