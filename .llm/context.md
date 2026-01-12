@@ -234,6 +234,8 @@ pwsh -NoProfile -File scripts/lint-tests.ps1   # Lint test lifecycle
 pwsh -NoProfile -File scripts/lint-skill-sizes.ps1  # Skill file sizes
 ```
 
+LLM instructions lint workflow runs `npm run lint:llm` on Node 22. It enables npm cache only when `package-lock.json` is present; otherwise it installs with `npm i --no-audit --no-fund` to avoid lockfile errors.
+
 Tests require Unity 2021.3+. Ask user to run tests and provide output.
 
 ---

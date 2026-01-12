@@ -26,14 +26,27 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6.0.1
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4.4.0
+      - name: Setup Node.js (cached)
+        if: ${{ hashFiles('package-lock.json') != '' }}
+        uses: actions/setup-node@v6.1.0
         with:
-          node-version: "20"
+          node-version: "22"
           cache: "npm"
+          cache-dependency-path: package-lock.json
+
+      - name: Setup Node.js (no cache)
+        if: ${{ hashFiles('package-lock.json') == '' }}
+        uses: actions/setup-node@v6.1.0
+        with:
+          node-version: "22"
 
       - name: Install dependencies
-        run: npm ci
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci
+          else
+            npm i --no-audit --no-fund
+          fi
 
       - name: Lint LLM instructions
         shell: pwsh
