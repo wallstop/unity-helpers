@@ -43,12 +43,13 @@ section {
   outline: none !important;
 }
 
-/* Header - remove bottom line that appears as "random line" */
-/* Note: box-shadow is intentionally NOT removed here to allow Issue #127 sticky header shadow */
+/* Header - hide entirely (content is duplicated from README) */
 header {
-  border: none !important;
-  border-bottom: none !important;
-  outline: none !important;
+  display: none !important;
+  visibility: hidden !important;
+  height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
 }
 
 header ul {

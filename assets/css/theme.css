@@ -947,12 +947,6 @@ pre code {
     padding: 15px 10px !important;
     margin-top: 30px !important;
   }
-
-  /* Issue #127: Adjust scroll margin for smaller header on tablet */
-  h1, h2, h3, h4, h5, h6,
-  section h1, section h2, section h3, section h4, section h5, section h6 {
-    scroll-margin-top: 90px;
-  }
 }
 
 /* Mobile screens (320px - 480px) */
@@ -1037,12 +1031,6 @@ pre code {
     inset-inline-end: 6px !important;
     padding: 5px 8px !important;
   }
-
-  /* Issue #127: Adjust scroll margin for smaller header on mobile */
-  h1, h2, h3, h4, h5, h6,
-  section h1, section h2, section h3, section h4, section h5, section h6 {
-    scroll-margin-top: 80px;
-  }
 }
 
 /* Very small screens (below 320px) */
@@ -1080,7 +1068,6 @@ section img {
 }
 
 /* Improve heading spacing */
-/* Issue #127: scroll-margin-top ensures anchor links don't hide content under sticky header */
 section h1,
 section h2,
 section h3,
@@ -1089,7 +1076,6 @@ section h5,
 section h6 {
   margin-top: 1.5em !important;
   margin-bottom: 0.5em !important;
-  scroll-margin-top: 100px;
 }
 
 section h1:first-child,
