@@ -14,19 +14,6 @@ ul.downloads,
   display: none !important;
 }
 
-/* Remove borders between download list items (backup if shown) */
-.downloads li {
-  border: none !important;
-  border-right: none !important;
-  border-left: none !important;
-  border-top: none !important;
-  border-bottom: none !important;
-}
-
-.downloads a {
-  border: none !important;
-}
-
 /* Section - remove ALL borders in all states */
 section {
   border: none !important;
@@ -40,23 +27,6 @@ section {
 /* Header - hide entirely (content is duplicated from README) */
 header {
   display: none !important;
-}
-
-header ul {
-  border: none !important;
-  background: transparent !important;
-  box-shadow: none !important;
-}
-
-header li {
-  border: none !important;
-  border-right: none !important;
-}
-
-header p,
-header h1,
-header a {
-  border: none !important;
 }
 
 /* Footer - remove top line and any borders around "Hosted on GitHub Pages" */
