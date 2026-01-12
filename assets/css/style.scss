@@ -12,12 +12,6 @@
 ul.downloads,
 .downloads {
   display: none !important;
-  visibility: hidden !important;
-  height: 0 !important;
-  margin: 0 !important;
-  padding: 0 !important;
-  border: none !important;
-  background: transparent !important;
 }
 
 /* Remove borders between download list items (backup if shown) */
@@ -46,10 +40,6 @@ section {
 /* Header - hide entirely (content is duplicated from README) */
 header {
   display: none !important;
-  visibility: hidden !important;
-  height: 0 !important;
-  margin: 0 !important;
-  padding: 0 !important;
 }
 
 header ul {
