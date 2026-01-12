@@ -1155,7 +1155,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
         /// is accessible via <see cref="AssetDatabase.IsValidFolder"/>.
         /// </remarks>
         [Test]
-        public void EnsureDirectoryWithinBatch_CreatesAndRegistersDirectory()
+        public void EnsureDirectoryWithinBatchCreatesAndRegistersDirectory()
         {
             // Arrange: Create a unique directory path for this test
             string uniqueDirName =
@@ -1213,7 +1213,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
         /// both on disk and in AssetDatabase, ensuring idempotent behavior for repeated calls.
         /// </remarks>
         [Test]
-        public void EnsureDirectoryWithinBatch_IsIdempotent()
+        public void EnsureDirectoryWithinBatchIsIdempotent()
         {
             // Arrange: Create a unique directory path for this test
             string uniqueDirName =
@@ -1279,7 +1279,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
         /// any directory creation operations.
         /// </remarks>
         [Test]
-        public void EnsureDirectoryWithinBatch_ThrowsArgumentNullException_WhenPathIsNullOrEmpty()
+        public void EnsureDirectoryWithinBatchThrowsArgumentNullExceptionWhenPathIsNullOrEmpty()
         {
             // Act & Assert: Null path should throw ArgumentNullException
             ArgumentNullException nullException = Assert.Throws<ArgumentNullException>(

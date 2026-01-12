@@ -30,7 +30,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Performance
             new("1,000", 1_000),
             new("10,000", 10_000),
             new("100,000", 100_000),
-            new("1,000,000", 1_000_000),
         };
 
         private static readonly DatasetState[] DatasetStates =

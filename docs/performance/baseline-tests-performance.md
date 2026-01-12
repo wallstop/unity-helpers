@@ -22,53 +22,105 @@ Baselines are set generously (2-3x expected typical performance) to account for 
 
 ## Performance Baseline Report
 
-Run `PerformanceBaselineTests.GeneratePerformanceBaselineReport` explicitly to generate results.
+Generated: 2026-01-12 01:36:55 UTC
 
 ### Spatial Trees
 
-| Test                    | Iterations | Baseline (ms) | Description                               |
-| ----------------------- | ---------- | ------------- | ----------------------------------------- |
-| QuadTree2DRangeQuery    | 1,000      | 200           | Range queries on 10K elements             |
-| QuadTree2DBoundsQuery   | 1,000      | 200           | Bounds queries on 10K elements            |
-| KdTree2DRangeQuery      | 1,000      | 200           | Range queries on 10K elements             |
-| KdTree2DNearestNeighbor | 1,000      | 200           | Nearest neighbor queries on 10K elements  |
-| RTree2DRangeQuery       | 1,000      | 200           | Range queries on 10K elements             |
-| OctTree3DRangeQuery     | 1,000      | 200           | 3D range queries on 10K elements          |
-| KdTree3DRangeQuery      | 1,000      | 200           | 3D range queries on 10K elements          |
-| QuadTree2DConstruction  | 1          | 500           | Construct tree with 10K elements          |
-| KdTree2DConstruction    | 1          | 500           | Construct balanced tree with 10K elements |
-| RTree2DConstruction     | 1          | 500           | Construct tree with 10K elements          |
+<table data-sortable>
+  <thead>
+    <tr>
+      <th align="left">Test</th>
+      <th align="right">Iterations</th>
+      <th align="right">Time (ms)</th>
+      <th align="right">Baseline (ms)</th>
+      <th align="right">% of Baseline</th>
+      <th align="left">Status</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td align="left">QuadTree2DRangeQuery</td><td align="right">1K</td><td align="right">27</td><td align="right">200</td><td align="right">13.5%</td><td align="left">Pass</td></tr>
+    <tr><td align="left">QuadTree2DBoundsQuery</td><td align="right">1K</td><td align="right">29</td><td align="right">200</td><td align="right">14.5%</td><td align="left">Pass</td></tr>
+    <tr><td align="left">KdTree2DRangeQuery</td><td align="right">1K</td><td align="right">27</td><td align="right">200</td><td align="right">13.5%</td><td align="left">Pass</td></tr>
+    <tr><td align="left">KdTree2DNearestNeighbor</td><td align="right">1K</td><td align="right">32</td><td align="right">200</td><td align="right">16.0%</td><td align="left">Pass</td></tr>
+    <tr><td align="left">RTree2DRangeQuery</td><td align="right">1K</td><td align="right">2479</td><td align="right">200</td><td align="right">1239.5%</td><td align="left">FAIL</td></tr>
+    <tr><td align="left">OctTree3DRangeQuery</td><td align="right">1K</td><td align="right">15</td><td align="right">200</td><td align="right">7.5%</td><td align="left">Pass</td></tr>
+    <tr><td align="left">KdTree3DRangeQuery</td><td align="right">1K</td><td align="right">33</td><td align="right">200</td><td align="right">16.5%</td><td align="left">Pass</td></tr>
+    <tr><td align="left">QuadTree2DConstruction</td><td align="right">1</td><td align="right">2</td><td align="right">500</td><td align="right">0.4%</td><td align="left">Pass</td></tr>
+    <tr><td align="left">KdTree2DConstruction</td><td align="right">1</td><td align="right">2</td><td align="right">500</td><td align="right">0.4%</td><td align="left">Pass</td></tr>
+    <tr><td align="left">RTree2DConstruction</td><td align="right">1</td><td align="right">1</td><td align="right">500</td><td align="right">0.2%</td><td align="left">Pass</td></tr>
+  </tbody>
+</table>
 
 ### PRNG
 
-| Test                   | Iterations | Baseline (ms) | Description                   |
-| ---------------------- | ---------- | ------------- | ----------------------------- |
-| PcgRandomNextInt       | 1,000,000  | 500           | Integer generation throughput |
-| PcgRandomNextFloat     | 1,000,000  | 500           | Float generation throughput   |
-| XoroShiroRandomNextInt | 1,000,000  | 500           | Integer generation throughput |
-| SplitMix64NextInt      | 1,000,000  | 500           | Integer generation throughput |
-| RomuDuoNextInt         | 1,000,000  | 500           | Integer generation throughput |
+<table data-sortable>
+  <thead>
+    <tr>
+      <th align="left">Test</th>
+      <th align="right">Iterations</th>
+      <th align="right">Time (ms)</th>
+      <th align="right">Baseline (ms)</th>
+      <th align="right">% of Baseline</th>
+      <th align="left">Status</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td align="left">PcgRandomNextInt</td><td align="right">1M</td><td align="right">1</td><td align="right">500</td><td align="right">0.2%</td><td align="left">Pass</td></tr>
+    <tr><td align="left">PcgRandomNextFloat</td><td align="right">1M</td><td align="right">5</td><td align="right">500</td><td align="right">1.0%</td><td align="left">Pass</td></tr>
+    <tr><td align="left">XoroShiroRandomNextInt</td><td align="right">1M</td><td align="right">1</td><td align="right">500</td><td align="right">0.2%</td><td align="left">Pass</td></tr>
+    <tr><td align="left">SplitMix64NextInt</td><td align="right">1M</td><td align="right">1</td><td align="right">500</td><td align="right">0.2%</td><td align="left">Pass</td></tr>
+    <tr><td align="left">RomuDuoNextInt</td><td align="right">1M</td><td align="right">1</td><td align="right">500</td><td align="right">0.2%</td><td align="left">Pass</td></tr>
+  </tbody>
+</table>
 
 ### Pooling
 
-| Test                 | Iterations | Baseline (ms) | Description                      |
-| -------------------- | ---------- | ------------- | -------------------------------- |
-| ListPooling          | 100,000    | 200           | List rent/return cycles          |
-| HashSetPooling       | 100,000    | 200           | HashSet rent/return cycles       |
-| DictionaryPooling    | 100,000    | 200           | Dictionary rent/return cycles    |
-| SystemArrayPool      | 100,000    | 200           | Array rent/return cycles         |
-| StringBuilderPooling | 100,000    | 200           | StringBuilder rent/return cycles |
+<table data-sortable>
+  <thead>
+    <tr>
+      <th align="left">Test</th>
+      <th align="right">Iterations</th>
+      <th align="right">Time (ms)</th>
+      <th align="right">Baseline (ms)</th>
+      <th align="right">% of Baseline</th>
+      <th align="left">Status</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td align="left">ListPooling</td><td align="right">100K</td><td align="right">239504</td><td align="right">200</td><td align="right">119752.0%</td><td align="left">FAIL</td></tr>
+    <tr><td align="left">HashSetPooling</td><td align="right">100K</td><td align="right">16503</td><td align="right">200</td><td align="right">8251.5%</td><td align="left">FAIL</td></tr>
+    <tr><td align="left">DictionaryPooling</td><td align="right">100K</td><td align="right">16997</td><td align="right">200</td><td align="right">8498.5%</td><td align="left">FAIL</td></tr>
+    <tr><td align="left">SystemArrayPool</td><td align="right">100K</td><td align="right">8</td><td align="right">200</td><td align="right">4.0%</td><td align="left">Pass</td></tr>
+    <tr><td align="left">StringBuilderPooling</td><td align="right">100K</td><td align="right">16456</td><td align="right">200</td><td align="right">8228.0%</td><td align="left">FAIL</td></tr>
+  </tbody>
+</table>
 
 ### Serialization
 
-| Test                | Iterations | Baseline (ms) | Description                         |
-| ------------------- | ---------- | ------------- | ----------------------------------- |
-| JsonSerialize       | 10,000     | 500           | JSON serialization operations       |
-| JsonDeserialize     | 10,000     | 500           | JSON deserialization operations     |
-| JsonRoundTrip       | 10,000     | 1,000         | JSON serialize + deserialize        |
-| ProtobufSerialize   | 10,000     | 500           | Protobuf serialization operations   |
-| ProtobufDeserialize | 10,000     | 500           | Protobuf deserialization operations |
-| ProtobufRoundTrip   | 10,000     | 1,000         | Protobuf serialize + deserialize    |
+<table data-sortable>
+  <thead>
+    <tr>
+      <th align="left">Test</th>
+      <th align="right">Iterations</th>
+      <th align="right">Time (ms)</th>
+      <th align="right">Baseline (ms)</th>
+      <th align="right">% of Baseline</th>
+      <th align="left">Status</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td align="left">JsonSerialize</td><td align="right">10K</td><td align="right">43</td><td align="right">500</td><td align="right">8.6%</td><td align="left">Pass</td></tr>
+    <tr><td align="left">JsonDeserialize</td><td align="right">10K</td><td align="right">64</td><td align="right">500</td><td align="right">12.8%</td><td align="left">Pass</td></tr>
+    <tr><td align="left">JsonRoundTrip</td><td align="right">10K</td><td align="right">113</td><td align="right">1000</td><td align="right">11.3%</td><td align="left">Pass</td></tr>
+    <tr><td align="left">ProtobufSerialize</td><td align="right">10K</td><td align="right">1169</td><td align="right">500</td><td align="right">233.8%</td><td align="left">FAIL</td></tr>
+    <tr><td align="left">ProtobufDeserialize</td><td align="right">10K</td><td align="right">12</td><td align="right">500</td><td align="right">2.4%</td><td align="left">Pass</td></tr>
+    <tr><td align="left">ProtobufRoundTrip</td><td align="right">10K</td><td align="right">1728</td><td align="right">1000</td><td align="right">172.8%</td><td align="left">FAIL</td></tr>
+  </tbody>
+</table>
+
+### Summary
+
+19 passed, 7 failed out of 26 tests.
 
 <!-- BASELINE_PERFORMANCE_END -->
 
