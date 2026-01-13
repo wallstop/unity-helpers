@@ -255,7 +255,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
             catch (Exception e)
             {
-                this.LogError($"Exception drawing inline inspector", e);
+                Debug.LogError($"Exception drawing inline inspector {e}.");
             }
             finally
             {

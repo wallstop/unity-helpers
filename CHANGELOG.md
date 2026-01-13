@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 See [the roadmap](./docs/overview/roadmap.md) for details
 
+## [3.1.1]
+
+### Fixed
+
+- WInLineEditorOdinDrawer now compiles.
+
 ## [3.1.0]
 
 ### Added
