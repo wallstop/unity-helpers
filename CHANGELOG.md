@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 See [the roadmap](./docs/overview/roadmap.md) for details
 
+## [3.1.2]
+
+### Fixed
+
+- Updated npmignore to align more closely with gitignore. The `scripts/tests` meta file error when sourcing from npm should be gone.
+
 ## [3.1.1]
 
 ### Fixed

@@ -40,36 +40,38 @@ _llm_*.meta
 .npmignore.meta
 
 # Agent/AI instruction files (keep for npm but exclude from published package)
-AGENTS.md
-AGENTS.md.meta
-CLAUDE.md
-CLAUDE.md.meta
-PLAN.md
-PLAN.md.meta
+# Use leading slash to match only root-level files
+/AGENTS.md
+/AGENTS.md.meta
+/CLAUDE.md
+/CLAUDE.md.meta
+/PLAN.md
+/PLAN.md.meta
 
 # Progress tracking folder (development notes - root level only)
 /progress/
 /progress.meta
 
-# Artifacts and build outputs
-artifacts/
-artifacts.meta
+# Artifacts and build outputs (root level only)
+/artifacts/
+/artifacts.meta
 
-# Test failures and logs
-TestFailures.txt
-TestFailures.txt.meta
+# Test failures and logs (root level only)
+/TestFailures.txt
+/TestFailures.txt.meta
 logs_*.zip
 logs_*.zip.meta
 
-# Node.js
-node_modules/
-node_modules.meta
-package-lock.json
-package-lock.json.meta
+# Node.js (root level only)
+/node_modules/
+/node_modules.meta
+/package-lock.json
+/package-lock.json.meta
 
 # Tests (not needed in published Unity package)
-Tests/
-Tests.meta
+# Use leading slash to match only root-level Tests, not scripts/tests
+/Tests/
+/Tests.meta
 
 # Windows reserved device name artifacts
 nul
@@ -86,9 +88,9 @@ nul.meta
 *.userosscache
 *.sln.docstates
 
-# Placeholder files
-PlaceHolderSummary.md
-PlaceHolderSummary.md.meta
+# Placeholder files (root level only)
+/PlaceHolderSummary.md
+/PlaceHolderSummary.md.meta
 
 # Unity Editor Analyzers (built DLLs)
 Editor/Analyzers/*.dll
@@ -102,6 +104,7 @@ Editor/Analyzers/*.pdb
 *.log
 *.log.meta
 method-analysis-*
-TestProjects.meta
-TestProjects/
+# TestProjects (root level only)
+/TestProjects.meta
+/TestProjects/
 scripts/run-unity*
