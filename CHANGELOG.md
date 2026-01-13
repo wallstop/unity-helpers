@@ -12,6 +12,7 @@ See [the roadmap](./docs/overview/roadmap.md) for details
 ## [3.1.1]
 
 ### Fixed
+
 - WInLineEditorOdinDrawer not compiles.
 
 ## [3.1.0]
