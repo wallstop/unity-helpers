@@ -43,7 +43,7 @@ For detailed linter commands, see [linter-reference](./linter-reference.md).
 }
 ```
 
-1. **Inline ignore** for single occurrences:
+3. **Inline ignore** for single occurrences:
 
 ```markdown
 <!-- cspell:ignore someword -->
