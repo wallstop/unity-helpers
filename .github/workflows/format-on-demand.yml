@@ -68,7 +68,7 @@ jobs:
           fetch-depth: 0
 
       - name: Setup Node.js
-        uses: actions/setup-node@v6.1.0
+        uses: actions/setup-node@v6.2.0
         with:
           node-version: "22"
 
@@ -214,7 +214,7 @@ jobs:
           fetch-depth: 0
 
       - name: Setup Node.js
-        uses: actions/setup-node@v6.1.0
+        uses: actions/setup-node@v6.2.0
         with:
           node-version: "22"
 
