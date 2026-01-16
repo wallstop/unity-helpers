@@ -196,14 +196,20 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
         {
             // This test verifies the fix for the bug where copied animations
             // were incorrectly detected as "changed" due to GUID-based hash comparison
-            string srcA = Path.Combine(SrcRoot, "A.anim").SanitizePath();
+            // Use unique subdirectory to avoid conflicts with other tests when cleanup is deferred
+            string testSrc = Path.Combine(SrcRoot, "ReanalysisTest").SanitizePath();
+            string testDst = Path.Combine(DstRoot, "ReanalysisTest").SanitizePath();
+            EnsureFolder(testSrc);
+            EnsureFolder(testDst);
+
+            string srcA = Path.Combine(testSrc, "A.anim").SanitizePath();
             CreateEmptyClip(srcA);
             AssetDatabase.SaveAssets();
             ImportAssetIfExists(srcA);
 
             AnimationCopierWindow window = CreateWindow();
-            window.AnimationSourcePathRelative = SrcRoot;
-            window.AnimationDestinationPathRelative = DstRoot;
+            window.AnimationSourcePathRelative = testSrc;
+            window.AnimationDestinationPathRelative = testDst;
             window.DryRun = false;
 
             // Initial analysis - should detect as new
@@ -215,7 +221,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
             // Copy the animation
             window.CopyNew();
             AssetDatabase.SaveAssets();
-            string dstA = Path.Combine(DstRoot, "A.anim").SanitizePath();
+            string dstA = Path.Combine(testDst, "A.anim").SanitizePath();
             ImportAssetIfExists(dstA);
 
             // Re-analyze - copied animation should be detected as unchanged, not changed
@@ -237,14 +243,20 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
         public void CopiedAnimationsWithSpriteCurvesAreDetectedAsUnchanged()
         {
             // Test that animations with object reference curves (sprites) are correctly detected as unchanged
-            string srcA = Path.Combine(SrcRoot, "SpriteAnim.anim").SanitizePath();
+            // Use unique subdirectory to avoid conflicts with other tests when cleanup is deferred
+            string testSrc = Path.Combine(SrcRoot, "SpriteCurveTest").SanitizePath();
+            string testDst = Path.Combine(DstRoot, "SpriteCurveTest").SanitizePath();
+            EnsureFolder(testSrc);
+            EnsureFolder(testDst);
+
+            string srcA = Path.Combine(testSrc, "SpriteAnim.anim").SanitizePath();
             CreateClipWithSpriteCurve(srcA);
             AssetDatabase.SaveAssets();
             ImportAssetIfExists(srcA);
 
             AnimationCopierWindow window = CreateWindow();
-            window.AnimationSourcePathRelative = SrcRoot;
-            window.AnimationDestinationPathRelative = DstRoot;
+            window.AnimationSourcePathRelative = testSrc;
+            window.AnimationDestinationPathRelative = testDst;
             window.DryRun = false;
 
             // Initial analysis - should detect as new
@@ -254,7 +266,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
             // Copy the animation
             window.CopyNew();
             AssetDatabase.SaveAssets();
-            string dstA = Path.Combine(DstRoot, "SpriteAnim.anim").SanitizePath();
+            string dstA = Path.Combine(testDst, "SpriteAnim.anim").SanitizePath();
             ImportAssetIfExists(dstA);
 
             // Re-analyze - should be unchanged
@@ -276,7 +288,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
         {
             // Test that copying multiple animations to a new nested directory structure
             // does not create duplicate folders like "SubDir 1", "SubDir 2", etc.
-            string srcSubDir = Path.Combine(SrcRoot, "SubDir", "Nested").SanitizePath();
+            // Use unique subdirectory to avoid conflicts with other tests when cleanup is deferred
+            string testSrc = Path.Combine(SrcRoot, "NestedDirTest").SanitizePath();
+            string testDst = Path.Combine(DstRoot, "NestedDirTest").SanitizePath();
+            EnsureFolder(testSrc);
+            EnsureFolder(testDst);
+
+            string srcSubDir = Path.Combine(testSrc, "SubDir", "Nested").SanitizePath();
             EnsureFolder(srcSubDir);
 
             string srcA = Path.Combine(srcSubDir, "AnimA.anim").SanitizePath();
@@ -289,8 +307,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
             ImportAssetIfExists(srcSubDir);
 
             AnimationCopierWindow window = CreateWindow();
-            window.AnimationSourcePathRelative = SrcRoot;
-            window.AnimationDestinationPathRelative = DstRoot;
+            window.AnimationSourcePathRelative = testSrc;
+            window.AnimationDestinationPathRelative = testDst;
             window.DryRun = false;
 
             window.AnalyzeAnimations();
@@ -299,7 +317,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
             window.CopyNew();
             AssetDatabase.SaveAssets();
 
-            string dstSubDir = Path.Combine(DstRoot, "SubDir", "Nested").SanitizePath();
+            string dstSubDir = Path.Combine(testDst, "SubDir", "Nested").SanitizePath();
             ImportAssetIfExists(dstSubDir);
 
             Assert.That(
@@ -328,7 +346,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
             );
 
             // Check that no duplicate folders were created
-            string dstSubDirParent = Path.Combine(DstRoot, "SubDir").SanitizePath();
+            string dstSubDirParent = Path.Combine(testDst, "SubDir").SanitizePath();
             string projectRoot = Path.GetDirectoryName(Application.dataPath);
             string absoluteParent = Path.Combine(projectRoot, dstSubDirParent);
 

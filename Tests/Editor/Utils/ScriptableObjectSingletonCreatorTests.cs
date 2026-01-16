@@ -875,7 +875,17 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             AssetDatabase.ImportAsset(retryFolder, ImportAssetOptions.ForceSynchronousImport);
             yield return null;
 
-            // Expect errors for the blocked folder
+            // Expect errors for the blocked folder (2x because auto-retry triggers)
+            LogAssert.Expect(
+                LogType.Error,
+                new Regex(
+                    "(Failed|Expected) to create folder 'Assets/Resources/CreatorTests/Retry'"
+                )
+            );
+            LogAssert.Expect(
+                LogType.Error,
+                new Regex("Unable to ensure folder 'Assets/Resources/CreatorTests/Retry'")
+            );
             LogAssert.Expect(
                 LogType.Error,
                 new Regex(
