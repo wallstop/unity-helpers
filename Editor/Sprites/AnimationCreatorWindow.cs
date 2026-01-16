@@ -1029,6 +1029,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 }
                 else if (wantsPreview)
                 {
+                    // Pre-load all preview textures only when preview is first enabled
+                    // to avoid redundant texture loading on every frame (performance optimization)
                     foreach (Sprite spriteFrame in data.frames)
                     {
                         _ = GetPreviewTexture(spriteFrame);
