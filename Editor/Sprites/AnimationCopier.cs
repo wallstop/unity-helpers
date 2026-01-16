@@ -640,21 +640,13 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                         }
                         else
                         {
-                            string destHash = GetDependencyHashString(destRelPath);
-                            if (
-                                string.IsNullOrWhiteSpace(sourceInfo.Hash)
-                                || string.IsNullOrWhiteSpace(destHash)
-                            )
-                            {
-                                this.LogWarn(
-                                    $"Could not compare '{sourceInfo.FileName}' due to hashing error. Treating as 'Changed'."
-                                );
-                                sourceInfo.Status = AnimationStatus.Changed;
-                                _changedAnimations.Add(sourceInfo);
-                            }
-                            else if (
-                                sourceInfo.Hash.Equals(destHash, StringComparison.OrdinalIgnoreCase)
-                            )
+                            // Use content-based comparison instead of dependency hash
+                            // to correctly identify unchanged animations after copy
+                            bool contentEqual = AreAnimationClipsContentEqual(
+                                sourceInfo.RelativePath,
+                                destRelPath
+                            );
+                            if (contentEqual)
                             {
                                 sourceInfo.Status = AnimationStatus.Unchanged;
                                 _unchangedAnimations.Add(sourceInfo);
@@ -796,6 +788,13 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
 
             int successCount = 0;
             int errorCount = 0;
+
+            // Collect all unique directories first to avoid creating duplicates
+            // when AssetDatabase.IsValidFolder doesn't immediately reflect newly created folders
+            using PooledResource<HashSet<string>> directoryPooled = Buffers<string>.HashSet.Get(
+                out HashSet<string> directoriesToCreate
+            );
+
             foreach (AnimationFileInfo animInfo in animationsToCopy)
             {
                 string destinationAssetPath = animInfo.DestinationRelativePath;
@@ -809,6 +808,12 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                     continue;
                 }
 
+                _ = directoriesToCreate.Add(destDirectory);
+            }
+
+            // Create all unique directories once
+            foreach (string destDirectory in directoriesToCreate)
+            {
                 try
                 {
                     DirectoryHelper.EnsureDirectoryExists(destDirectory);
@@ -816,7 +821,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 catch (Exception e)
                 {
                     this.LogError(
-                        $"Failed to create destination directory '{destDirectory}' for animation '{animInfo.FileName}'. Skipping.",
+                        $"Failed to create destination directory '{destDirectory}'. Skipping animations targeting this path.",
                         e
                     );
                 }
@@ -1148,6 +1153,499 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                 this.LogError($"Error getting dependency hash for {assetPath}.", e);
                 return string.Empty;
             }
+        }
+
+        /// <summary>
+        /// Compares the content of two animation clips to determine if they are functionally identical.
+        /// This method compares actual animation data rather than relying on Unity's asset dependency hash,
+        /// which includes metadata like GUIDs and timestamps that differ even when content is identical.
+        /// </summary>
+        /// <param name="sourceAssetPath">The asset path of the source animation clip.</param>
+        /// <param name="destinationAssetPath">The asset path of the destination animation clip.</param>
+        /// <returns>True if the animation clips have identical content, false otherwise.</returns>
+        private bool AreAnimationClipsContentEqual(
+            string sourceAssetPath,
+            string destinationAssetPath
+        )
+        {
+            if (string.IsNullOrWhiteSpace(sourceAssetPath))
+            {
+                return false;
+            }
+
+            if (string.IsNullOrWhiteSpace(destinationAssetPath))
+            {
+                return false;
+            }
+
+            try
+            {
+                AnimationClip sourceClip = AssetDatabase.LoadAssetAtPath<AnimationClip>(
+                    sourceAssetPath
+                );
+                AnimationClip destClip = AssetDatabase.LoadAssetAtPath<AnimationClip>(
+                    destinationAssetPath
+                );
+
+                if (sourceClip == null || destClip == null)
+                {
+                    return false;
+                }
+
+                // Compare basic clip properties
+                if (!Mathf.Approximately(sourceClip.frameRate, destClip.frameRate))
+                {
+                    return false;
+                }
+                if (!Mathf.Approximately(sourceClip.length, destClip.length))
+                {
+                    return false;
+                }
+                if (sourceClip.wrapMode != destClip.wrapMode)
+                {
+                    return false;
+                }
+                if (sourceClip.isLooping != destClip.isLooping)
+                {
+                    return false;
+                }
+                if (sourceClip.legacy != destClip.legacy)
+                {
+                    return false;
+                }
+
+                // Compare animation clip settings
+                AnimationClipSettings sourceSettings = AnimationUtility.GetAnimationClipSettings(
+                    sourceClip
+                );
+                AnimationClipSettings destSettings = AnimationUtility.GetAnimationClipSettings(
+                    destClip
+                );
+                if (!AreAnimationClipSettingsEqual(sourceSettings, destSettings))
+                {
+                    return false;
+                }
+
+                // Compare animation events
+                AnimationEvent[] sourceEvents = AnimationUtility.GetAnimationEvents(sourceClip);
+                AnimationEvent[] destEvents = AnimationUtility.GetAnimationEvents(destClip);
+                if (!AreAnimationEventsEqual(sourceEvents, destEvents))
+                {
+                    return false;
+                }
+
+                // Compare float curve bindings
+                EditorCurveBinding[] sourceFloatBindings = AnimationUtility.GetCurveBindings(
+                    sourceClip
+                );
+                EditorCurveBinding[] destFloatBindings = AnimationUtility.GetCurveBindings(
+                    destClip
+                );
+                if (
+                    !AreCurveBindingsEqual(
+                        sourceClip,
+                        destClip,
+                        sourceFloatBindings,
+                        destFloatBindings
+                    )
+                )
+                {
+                    return false;
+                }
+
+                // Compare object reference curve bindings (for sprites, etc.)
+                EditorCurveBinding[] sourceObjBindings =
+                    AnimationUtility.GetObjectReferenceCurveBindings(sourceClip);
+                EditorCurveBinding[] destObjBindings =
+                    AnimationUtility.GetObjectReferenceCurveBindings(destClip);
+                if (
+                    !AreObjectReferenceCurveBindingsEqual(
+                        sourceClip,
+                        destClip,
+                        sourceObjBindings,
+                        destObjBindings
+                    )
+                )
+                {
+                    return false;
+                }
+
+                return true;
+            }
+            catch (Exception e)
+            {
+                this.LogError(
+                    $"Error comparing animation clips '{sourceAssetPath}' and '{destinationAssetPath}'.",
+                    e
+                );
+                return false;
+            }
+        }
+
+        private static bool AreAnimationClipSettingsEqual(
+            AnimationClipSettings a,
+            AnimationClipSettings b
+        )
+        {
+            if (a.loopTime != b.loopTime)
+            {
+                return false;
+            }
+            if (a.loopBlend != b.loopBlend)
+            {
+                return false;
+            }
+            if (a.cycleOffset != b.cycleOffset)
+            {
+                return false;
+            }
+            if (a.keepOriginalOrientation != b.keepOriginalOrientation)
+            {
+                return false;
+            }
+            if (a.keepOriginalPositionXZ != b.keepOriginalPositionXZ)
+            {
+                return false;
+            }
+            if (a.keepOriginalPositionY != b.keepOriginalPositionY)
+            {
+                return false;
+            }
+            if (a.heightFromFeet != b.heightFromFeet)
+            {
+                return false;
+            }
+            if (a.mirror != b.mirror)
+            {
+                return false;
+            }
+            if (!Mathf.Approximately(a.startTime, b.startTime))
+            {
+                return false;
+            }
+            if (!Mathf.Approximately(a.stopTime, b.stopTime))
+            {
+                return false;
+            }
+            return true;
+        }
+
+        private static bool AreAnimationEventsEqual(AnimationEvent[] a, AnimationEvent[] b)
+        {
+            if (a == null && b == null)
+            {
+                return true;
+            }
+            if (a == null || b == null)
+            {
+                return false;
+            }
+            if (a.Length != b.Length)
+            {
+                return false;
+            }
+            for (int i = 0; i < a.Length; i++)
+            {
+                AnimationEvent evtA = a[i];
+                AnimationEvent evtB = b[i];
+                if (!Mathf.Approximately(evtA.time, evtB.time))
+                {
+                    return false;
+                }
+                if (!string.Equals(evtA.functionName, evtB.functionName, StringComparison.Ordinal))
+                {
+                    return false;
+                }
+                if (!Mathf.Approximately(evtA.floatParameter, evtB.floatParameter))
+                {
+                    return false;
+                }
+                if (evtA.intParameter != evtB.intParameter)
+                {
+                    return false;
+                }
+                if (
+                    !string.Equals(
+                        evtA.stringParameter,
+                        evtB.stringParameter,
+                        StringComparison.Ordinal
+                    )
+                )
+                {
+                    return false;
+                }
+                // Object reference comparison: compare by path if both are assets
+                if (
+                    !AreObjectReferencesEqual(
+                        evtA.objectReferenceParameter,
+                        evtB.objectReferenceParameter
+                    )
+                )
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        private static bool AreObjectReferencesEqual(UnityEngine.Object a, UnityEngine.Object b)
+        {
+            if (a == null && b == null)
+            {
+                return true;
+            }
+            if (a == null || b == null)
+            {
+                return false;
+            }
+            // Compare by asset path for consistent comparison across copy operations
+            string pathA = AssetDatabase.GetAssetPath(a);
+            string pathB = AssetDatabase.GetAssetPath(b);
+            if (!string.IsNullOrEmpty(pathA) && !string.IsNullOrEmpty(pathB))
+            {
+                // Extract the relative path from source/dest roots for comparison
+                // If both point to assets, they should have same relative structure
+                string nameA = Path.GetFileName(pathA);
+                string nameB = Path.GetFileName(pathB);
+                return string.Equals(nameA, nameB, StringComparison.Ordinal);
+            }
+            return ReferenceEquals(a, b);
+        }
+
+        private static bool AreCurveBindingsEqual(
+            AnimationClip sourceClip,
+            AnimationClip destClip,
+            EditorCurveBinding[] sourceBindings,
+            EditorCurveBinding[] destBindings
+        )
+        {
+            if (sourceBindings == null && destBindings == null)
+            {
+                return true;
+            }
+            if (sourceBindings == null || destBindings == null)
+            {
+                return false;
+            }
+            if (sourceBindings.Length != destBindings.Length)
+            {
+                return false;
+            }
+
+            // Sort bindings for consistent comparison
+            Array.Sort(sourceBindings, CompareEditorCurveBinding);
+            Array.Sort(destBindings, CompareEditorCurveBinding);
+
+            for (int i = 0; i < sourceBindings.Length; i++)
+            {
+                EditorCurveBinding srcBinding = sourceBindings[i];
+                EditorCurveBinding dstBinding = destBindings[i];
+
+                if (!AreBindingsEqual(srcBinding, dstBinding))
+                {
+                    return false;
+                }
+
+                AnimationCurve srcCurve = AnimationUtility.GetEditorCurve(sourceClip, srcBinding);
+                AnimationCurve dstCurve = AnimationUtility.GetEditorCurve(destClip, dstBinding);
+
+                if (!AreAnimationCurvesEqual(srcCurve, dstCurve))
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        private static bool AreObjectReferenceCurveBindingsEqual(
+            AnimationClip sourceClip,
+            AnimationClip destClip,
+            EditorCurveBinding[] sourceBindings,
+            EditorCurveBinding[] destBindings
+        )
+        {
+            if (sourceBindings == null && destBindings == null)
+            {
+                return true;
+            }
+            if (sourceBindings == null || destBindings == null)
+            {
+                return false;
+            }
+            if (sourceBindings.Length != destBindings.Length)
+            {
+                return false;
+            }
+
+            // Sort bindings for consistent comparison
+            Array.Sort(sourceBindings, CompareEditorCurveBinding);
+            Array.Sort(destBindings, CompareEditorCurveBinding);
+
+            for (int i = 0; i < sourceBindings.Length; i++)
+            {
+                EditorCurveBinding srcBinding = sourceBindings[i];
+                EditorCurveBinding dstBinding = destBindings[i];
+
+                if (!AreBindingsEqual(srcBinding, dstBinding))
+                {
+                    return false;
+                }
+
+                ObjectReferenceKeyframe[] srcKeyframes = AnimationUtility.GetObjectReferenceCurve(
+                    sourceClip,
+                    srcBinding
+                );
+                ObjectReferenceKeyframe[] dstKeyframes = AnimationUtility.GetObjectReferenceCurve(
+                    destClip,
+                    dstBinding
+                );
+
+                if (!AreObjectReferenceKeyframesEqual(srcKeyframes, dstKeyframes))
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        private static bool AreBindingsEqual(EditorCurveBinding a, EditorCurveBinding b)
+        {
+            if (!string.Equals(a.path, b.path, StringComparison.Ordinal))
+            {
+                return false;
+            }
+            if (!string.Equals(a.propertyName, b.propertyName, StringComparison.Ordinal))
+            {
+                return false;
+            }
+            if (a.type != b.type)
+            {
+                return false;
+            }
+            return true;
+        }
+
+        private static int CompareEditorCurveBinding(EditorCurveBinding a, EditorCurveBinding b)
+        {
+            int pathCompare = string.Compare(a.path, b.path, StringComparison.Ordinal);
+            if (pathCompare != 0)
+            {
+                return pathCompare;
+            }
+            int propCompare = string.Compare(
+                a.propertyName,
+                b.propertyName,
+                StringComparison.Ordinal
+            );
+            if (propCompare != 0)
+            {
+                return propCompare;
+            }
+            return string.Compare(
+                a.type?.FullName ?? "",
+                b.type?.FullName ?? "",
+                StringComparison.Ordinal
+            );
+        }
+
+        private static bool AreAnimationCurvesEqual(AnimationCurve a, AnimationCurve b)
+        {
+            if (a == null && b == null)
+            {
+                return true;
+            }
+            if (a == null || b == null)
+            {
+                return false;
+            }
+            if (a.preWrapMode != b.preWrapMode)
+            {
+                return false;
+            }
+            if (a.postWrapMode != b.postWrapMode)
+            {
+                return false;
+            }
+            if (a.length != b.length)
+            {
+                return false;
+            }
+
+            Keyframe[] keysA = a.keys;
+            Keyframe[] keysB = b.keys;
+            if (keysA.Length != keysB.Length)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < keysA.Length; i++)
+            {
+                Keyframe kA = keysA[i];
+                Keyframe kB = keysB[i];
+                if (!Mathf.Approximately(kA.time, kB.time))
+                {
+                    return false;
+                }
+                if (!Mathf.Approximately(kA.value, kB.value))
+                {
+                    return false;
+                }
+                if (!Mathf.Approximately(kA.inTangent, kB.inTangent))
+                {
+                    return false;
+                }
+                if (!Mathf.Approximately(kA.outTangent, kB.outTangent))
+                {
+                    return false;
+                }
+                if (!Mathf.Approximately(kA.inWeight, kB.inWeight))
+                {
+                    return false;
+                }
+                if (!Mathf.Approximately(kA.outWeight, kB.outWeight))
+                {
+                    return false;
+                }
+                if (kA.weightedMode != kB.weightedMode)
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        private static bool AreObjectReferenceKeyframesEqual(
+            ObjectReferenceKeyframe[] a,
+            ObjectReferenceKeyframe[] b
+        )
+        {
+            if (a == null && b == null)
+            {
+                return true;
+            }
+            if (a == null || b == null)
+            {
+                return false;
+            }
+            if (a.Length != b.Length)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < a.Length; i++)
+            {
+                ObjectReferenceKeyframe kA = a[i];
+                ObjectReferenceKeyframe kB = b[i];
+                if (!Mathf.Approximately(kA.time, kB.time))
+                {
+                    return false;
+                }
+                if (!AreObjectReferencesEqual(kA.value, kB.value))
+                {
+                    return false;
+                }
+            }
+            return true;
         }
 
         private void DrawPreviewSection()

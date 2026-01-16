@@ -12,6 +12,7 @@ See [the roadmap](./docs/overview/roadmap.md) for details
 ### Fixed
 
 - **ScriptableObjectSingletonCreator retry exhaustion**: Fixed issue where new singleton assets would fail to create with "Maximum automatic retry attempts reached" even when specifying paths. The retry logic now tracks progress per-invocation and only exhausts after consecutive zero-progress retries, allowing partial success to reset the counter and continue processing remaining singletons.
+- **Animation Copier diff detection**: Fixed issue where copied animations were incorrectly detected as "changed" instead of "unchanged" after copy operations. The tool now uses content-based comparison (frame rate, curves, events, settings) instead of Unity's asset dependency hash, which includes metadata like GUIDs that differ between source and destination files even when animation content is identical.
 
 ## [3.1.2]
 

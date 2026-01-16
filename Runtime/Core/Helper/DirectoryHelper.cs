@@ -56,9 +56,10 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             // "Moving file failed" modal dialog when CreateAsset tries to move a temp file
             // to a destination folder that doesn't exist.
             string projectRoot = Path.GetDirectoryName(Application.dataPath);
+            string absoluteDirectory = null;
             if (!string.IsNullOrEmpty(projectRoot))
             {
-                string absoluteDirectory = Path.Combine(projectRoot, relativeDirectoryPath);
+                absoluteDirectory = Path.Combine(projectRoot, relativeDirectoryPath);
                 try
                 {
                     if (!Directory.Exists(absoluteDirectory))
@@ -74,9 +75,39 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 }
             }
 
+            // Check both AssetDatabase and disk to avoid creating duplicate folders.
+            // AssetDatabase.IsValidFolder may not immediately reflect folders created
+            // via Directory.CreateDirectory until a refresh, but AssetDatabase.CreateFolder
+            // will create a duplicate folder (e.g., "tree 1") if the folder exists on disk.
             if (AssetDatabase.IsValidFolder(relativeDirectoryPath))
             {
                 return;
+            }
+
+            // If the directory already exists on disk, we need to make the AssetDatabase aware
+            // of it to prevent duplicate folder creation (e.g., "tree 1", "tree 2").
+            bool directoryExistsOnDisk =
+                !string.IsNullOrEmpty(absoluteDirectory) && Directory.Exists(absoluteDirectory);
+            if (directoryExistsOnDisk)
+            {
+                // Refresh the parent folder to make Unity aware of the new folder on disk.
+                // This is more targeted than a full AssetDatabase.Refresh().
+                string parentForRefresh = Path.GetDirectoryName(relativeDirectoryPath)
+                    .SanitizePath();
+                if (!string.IsNullOrWhiteSpace(parentForRefresh))
+                {
+                    AssetDatabase.ImportAsset(
+                        parentForRefresh,
+                        ImportAssetOptions.ForceSynchronousImport
+                            | ImportAssetOptions.ImportRecursive
+                    );
+                }
+
+                // Re-check after import
+                if (AssetDatabase.IsValidFolder(relativeDirectoryPath))
+                {
+                    return;
+                }
             }
 
             string parentPath = Path.GetDirectoryName(relativeDirectoryPath).SanitizePath();
@@ -89,6 +120,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
                 if (
                     !string.IsNullOrWhiteSpace(folderNameToCreate)
                     && !AssetDatabase.IsValidFolder(relativeDirectoryPath)
+                    && !directoryExistsOnDisk
                 )
                 {
                     AssetDatabase.CreateFolder("Assets", folderNameToCreate);
@@ -101,6 +133,7 @@ namespace WallstopStudios.UnityHelpers.Core.Helper
             if (
                 !string.IsNullOrWhiteSpace(currentFolderName)
                 && !AssetDatabase.IsValidFolder(relativeDirectoryPath)
+                && !directoryExistsOnDisk
             )
             {
                 AssetDatabase.CreateFolder(parentPath, currentFolderName);
