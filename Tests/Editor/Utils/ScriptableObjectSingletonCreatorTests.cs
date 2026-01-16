@@ -835,6 +835,103 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             );
         }
 
+        /// <summary>
+        /// Verifies that partial success resets the retry counter, allowing more retries
+        /// for remaining singletons that may need additional attempts.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator PartialSuccessResetsRetryCounter()
+        {
+            // This test verifies that when some singletons succeed and others fail,
+            // the retry counter is reset, allowing continued retries for the failures.
+            // Previously, the counter would accumulate globally and exhaust quickly.
+
+            string retryFolder = TestRoot + "/Retry";
+            string retryAsset = retryFolder + "/RetrySingleton.asset";
+            string caseTestFolder = "Assets/Resources/CaseTest";
+            string caseTestAsset = caseTestFolder + "/CaseMismatch.asset";
+
+            // Clean initial state
+            ScriptableObjectSingletonCreator.ResetRetryStateForTests();
+
+            // Delete the retry folder assets but leave CaseTest available for success
+            AssetDatabase.DeleteAsset(retryAsset);
+            if (AssetDatabase.IsValidFolder(retryFolder))
+            {
+                AssetDatabase.DeleteAsset(retryFolder);
+            }
+            // Also clean up any CaseTest variants to ensure clean state
+            TryDeleteFolderAndDuplicates("Assets/Resources", "CaseTest");
+
+            // Ensure base folders exist
+            EnsureFolder(TestRoot);
+            EnsureFolder(caseTestFolder);
+            AssetDatabaseBatchHelper.SaveAndRefreshIfNotBatching();
+            yield return null;
+
+            // Create a blocker file for the Retry singleton
+            string absoluteBlocker = GetAbsolutePath(retryFolder);
+            File.WriteAllText(absoluteBlocker, "block");
+            AssetDatabase.ImportAsset(retryFolder, ImportAssetOptions.ForceSynchronousImport);
+            yield return null;
+
+            // Expect errors for the blocked folder
+            LogAssert.Expect(
+                LogType.Error,
+                new Regex(
+                    "(Failed|Expected) to create folder 'Assets/Resources/CreatorTests/Retry'"
+                )
+            );
+            LogAssert.Expect(
+                LogType.Error,
+                new Regex("Unable to ensure folder 'Assets/Resources/CreatorTests/Retry'")
+            );
+
+            // Run ensure - CaseMismatch should succeed, RetrySingleton should fail
+            ScriptableObjectSingletonCreator.EnsureSingletonAssets();
+            AssetDatabaseBatchHelper.SaveAndRefreshIfNotBatching();
+            yield return null;
+
+            // CaseMismatch should have been created (partial success)
+            Object caseMismatchAsset = AssetDatabase.LoadAssetAtPath<Object>(caseTestAsset);
+            Assert.IsTrue(
+                caseMismatchAsset != null,
+                "CaseMismatch singleton should be created even when RetrySingleton fails"
+            );
+
+            // RetrySingleton should not exist (blocked)
+            Assert.IsTrue(
+                AssetDatabase.LoadAssetAtPath<Object>(retryAsset) == null,
+                "RetrySingleton should not be created while blocker exists"
+            );
+
+            // Remove the blocker
+            AssetDatabase.DeleteAsset(retryFolder);
+            if (File.Exists(absoluteBlocker))
+            {
+                File.Delete(absoluteBlocker);
+            }
+            string blockerMeta = absoluteBlocker + ".meta";
+            if (File.Exists(blockerMeta))
+            {
+                File.Delete(blockerMeta);
+            }
+            AssetDatabaseBatchHelper.SaveAndRefreshIfNotBatching();
+            yield return null;
+
+            // Run ensure again - should succeed now because partial success reset counter
+            ScriptableObjectSingletonCreator.EnsureSingletonAssets();
+            AssetDatabaseBatchHelper.SaveAndRefreshIfNotBatching();
+            yield return null;
+
+            // Both should now exist
+            Object retryAssetObj = AssetDatabase.LoadAssetAtPath<Object>(retryAsset);
+            Assert.IsTrue(
+                retryAssetObj != null,
+                "RetrySingleton should be created after blocker is removed"
+            );
+        }
+
         private static IEnumerable<string> AssetImportWorkerEnvironmentScenarios()
         {
             yield return "UNITY_ASSET_IMPORT_WORKER";

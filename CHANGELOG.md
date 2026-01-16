@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 See [the roadmap](./docs/overview/roadmap.md) for details
 
+### Fixed
+
+- **ScriptableObjectSingletonCreator retry exhaustion**: Fixed issue where new singleton assets would fail to create with "Maximum automatic retry attempts reached" even when specifying paths. The retry logic now tracks progress per-invocation and only exhausts after consecutive zero-progress retries, allowing partial success to reset the counter and continue processing remaining singletons.
+
 ## [3.1.2]
 
 ### Fixed
