@@ -155,7 +155,8 @@ namespace WallstopStudios.UnityHelpers.Utils
         }
 
         /// <summary>
-        /// Clears all metadata entries. Used during sync operations to rebuild from scratch.
+        /// Clears all metadata entries. Available for manual cleanup operations.
+        /// Note: The Sync operation updates entries incrementally and does not use this method.
         /// </summary>
         public void ClearAllEntries()
         {
