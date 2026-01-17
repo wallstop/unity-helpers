@@ -24,12 +24,13 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
         private const string ResourcesRoot = "Assets/Resources";
         private const string AssetImportWorkerEnvVar = "UNITY_ASSET_IMPORT_WORKER";
         private const string LegacyAssetImportWorkerEnvVar = "UNITY_ASSETIMPORT_WORKER";
-        private const int MaxRetryAttempts = 5;
+        private const int MaxRetryAttempts = 10;
 
         // Prevents re-entrant execution during domain reloads/asset refreshes
         private static bool _isEnsuring;
         private static bool _ensureScheduled;
         private static int _retryAttempts;
+        private static int _consecutiveZeroProgressRetries;
         private static bool? _assetImportWorkerEnvCachedValue;
         private static Func<bool> _defaultAssetImportWorkerDetector;
         private static bool _mainThreadConfirmed;
@@ -86,7 +87,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
             {
                 if (_mainThreadConfirmationPending)
                 {
-                    ScheduleEnsureSingletonAssets();
+                    ScheduleEnsureSingletonAssets(false);
                     return;
                 }
 
@@ -116,13 +117,15 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
                 LogVerbose(
                     "ScriptableObjectSingletonCreator: Deferring ensure during compilation/updating."
                 );
-                ScheduleEnsureSingletonAssets();
+                ScheduleEnsureSingletonAssets(madeProgress: false);
                 return;
             }
 
             _isEnsuring = true;
             bool anyChanges = false;
             bool retryRequested = false;
+            int singletonsProcessed = 0;
+            int singletonsSucceeded = 0;
             List<string> emptyFolderCandidates = null;
 
             // Use unified batch helper - disable auto-refresh since we handle it manually
@@ -179,6 +182,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
 
                     foreach (Type derivedType in allCandidates)
                     {
+                        singletonsProcessed++;
+
                         // Skip name-collision types to avoid creating overlapping assets like TypeName.asset
                         if (
                             byName.TryGetValue(derivedType.Name, out List<Type> group)
@@ -191,6 +196,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
                                     $"ScriptableObjectSingletonCreator: Type name collision detected for '{derivedType.Name}'. Conflicting types: {string.Join(", ", group.ConvertAll(x => x.FullName))}. Skipping auto-creation. Consider adding [ScriptableSingletonPath] to disambiguate."
                                 );
                             }
+                            // Name collisions are permanently skipped, count as "success" to avoid retry loops
+                            singletonsSucceeded++;
                             continue;
                         }
 
@@ -271,6 +278,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
                             {
                                 anyChanges = true;
                             }
+                            singletonsSucceeded++;
                             continue;
                         }
 
@@ -279,6 +287,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
                             Debug.LogWarning(
                                 $"ScriptableObjectSingletonCreator: Singleton target path already occupied at {targetAssetPath}. Skipping creation for {derivedType.FullName}."
                             );
+                            // Path is occupied - this is a permanent skip, count as success to avoid retry loops
+                            singletonsSucceeded++;
                             continue;
                         }
 
@@ -343,6 +353,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
                             anyChanges = true;
                         }
                         anyChanges = true;
+                        singletonsSucceeded++;
                     }
 
                     // Cleanup duplicate singleton assets for types that have opted in
@@ -398,16 +409,27 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
                 }
             }
 
+            // Determine if we made progress this run
+            bool madeProgress = singletonsSucceeded > 0 || anyChanges;
+
             if (retryRequested && !DisableAutomaticRetries)
             {
-                ScheduleEnsureSingletonAssets();
+                ScheduleEnsureSingletonAssets(madeProgress);
             }
             else
             {
                 _retryAttempts = 0;
+                _consecutiveZeroProgressRetries = 0;
                 // Mark initial ensure as completed - this enables metadata-related warnings
                 // that were suppressed during early initialization
                 MarkInitialEnsureCompleted();
+            }
+
+            if (VerboseLogging && singletonsProcessed > 0)
+            {
+                LogVerbose(
+                    $"ScriptableObjectSingletonCreator: Processed {singletonsProcessed} singleton types, {singletonsSucceeded} succeeded, retry={retryRequested}, progress={madeProgress}."
+                );
             }
         }
 
@@ -418,17 +440,40 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
             UnityHelpers.Utils.ScriptableObjectSingletonInitState.InitialEnsureCompleted = true;
         }
 
-        private static void ScheduleEnsureSingletonAssets()
+        private static void ScheduleEnsureSingletonAssets(bool madeProgress)
         {
             if (_ensureScheduled)
             {
                 return;
             }
 
+            // If we made progress (created/validated at least one singleton), reset the
+            // zero-progress counter since the system is making forward progress
+            if (madeProgress)
+            {
+                _consecutiveZeroProgressRetries = 0;
+            }
+            else
+            {
+                _consecutiveZeroProgressRetries++;
+            }
+
+            // Use a stricter limit for consecutive zero-progress retries
+            // This prevents infinite loops when all remaining singletons are permanently blocked
+            const int MaxZeroProgressRetries = 3;
+            if (_consecutiveZeroProgressRetries >= MaxZeroProgressRetries)
+            {
+                Debug.LogWarning(
+                    $"ScriptableObjectSingletonCreator: {MaxZeroProgressRetries} consecutive retry attempts made no progress. "
+                        + "Further retries are suppressed. Check for permanent blockers (name collisions, missing folders, etc.)."
+                );
+                return;
+            }
+
             if (_retryAttempts >= MaxRetryAttempts)
             {
                 Debug.LogWarning(
-                    "ScriptableObjectSingletonCreator: Maximum automatic retry attempts reached. Further retries are suppressed to avoid infinite loops."
+                    $"ScriptableObjectSingletonCreator: Maximum automatic retry attempts ({MaxRetryAttempts}) reached. Further retries are suppressed to avoid infinite loops."
                 );
                 return;
             }
@@ -2138,6 +2183,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
         internal static void ResetRetryStateForTests()
         {
             _retryAttempts = 0;
+            _consecutiveZeroProgressRetries = 0;
             CancelScheduledEnsureInvocation();
         }
 
@@ -2158,6 +2204,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
             // Also reset related state that could affect subsequent tests
             CancelScheduledEnsureInvocation();
             _retryAttempts = 0;
+            _consecutiveZeroProgressRetries = 0;
 
             // AssetDatabase batch cleanup is now handled by AssetDatabaseBatchHelper.ResetBatchDepth()
             // which is called by CommonTestBase in setUp/tearDown

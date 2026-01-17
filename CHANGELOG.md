@@ -9,6 +9,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 See [the roadmap](./docs/overview/roadmap.md) for details
 
+## [3.1.3]
+
+### Added
+
+- **AnimationCreator Configuration Persistence**: Save and load AnimationCreator settings to JSON files alongside sprite source folders.
+  - Configurations are automatically saved as `.animation-creator.json` in sprite source directories
+  - Auto-loads existing configurations when source folders are selected
+  - Save individual or all configurations with dedicated UI buttons
+  - Reset to defaults with optional config file deletion
+  - Preserves all settings including animation data, framerate curves, regex patterns, and grouping options
+- **AnimationCreator Pagination**: Animation data list now uses pagination (20 items per page) for better performance with large animation sets
+
+### Fixed
+
+- **AnimationCreator editor performance**: Significantly improved scrolling and editing responsiveness when working with animation data.
+- **ScriptableObjectSingletonCreator retry exhaustion**: Fixed issue where new singleton assets would fail to create with "Maximum automatic retry attempts reached" even when specifying paths.
+- **Animation Copier diff detection**: Fixed issue where copied animations were incorrectly detected as "changed" instead of "unchanged" after copy operations.
+
 ## [3.1.2]
 
 ### Fixed
