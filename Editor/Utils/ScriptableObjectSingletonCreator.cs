@@ -339,18 +339,11 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
                                 LogVerbose(
                                     $"ScriptableObjectSingletonCreator: Asset file created at {targetAssetPath} but not yet visible to AssetDatabase. Will retry without deleting the file."
                                 );
-                                // DON'T call SafeDestroyInstance here - the file is valid, just not imported yet.
-                                // Only destroy the in-memory instance without touching the on-disk file.
-                                try
-                                {
-                                    Object.DestroyImmediate(instance, true);
-                                }
-                                catch (Exception ex)
-                                {
-                                    LogVerbose(
-                                        $"ScriptableObjectSingletonCreator: Failed to destroy in-memory instance: {ex.Message}"
-                                    );
-                                }
+                                // DON'T destroy the instance here - the file is valid, just not imported yet.
+                                // The in-memory instance may be associated with the asset path, and calling
+                                // DestroyImmediate with allowDestroyingAssets=true could potentially delete
+                                // the on-disk file. Let the instance be garbage collected; the retry logic
+                                // will load the asset fresh from disk after AssetDatabase.Refresh().
                                 retryRequested = true;
                                 continue;
                             }
