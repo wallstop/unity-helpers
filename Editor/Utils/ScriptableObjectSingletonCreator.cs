@@ -305,6 +305,13 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
                         try
                         {
                             AssetDatabase.CreateAsset(instance, targetAssetPath);
+                            // Force Unity to import the asset synchronously so LoadAssetAtPath works immediately.
+                            // This avoids the race condition where the file exists on disk but
+                            // AssetDatabase hasn't indexed it yet.
+                            AssetDatabase.ImportAsset(
+                                targetAssetPath,
+                                ImportAssetOptions.ForceSynchronousImport
+                            );
                         }
                         catch (Exception ex)
                         {
@@ -326,20 +333,32 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
                         if (createdAsset == null)
                         {
                             // Check if file exists on disk but Unity hasn't imported it yet
-                            if (DoesAssetFileExistOnDisk(targetAssetPath))
+                            bool assetExistsOnDisk = DoesAssetFileExistOnDisk(targetAssetPath);
+                            if (assetExistsOnDisk)
                             {
                                 LogVerbose(
-                                    $"ScriptableObjectSingletonCreator: Asset file created at {targetAssetPath} but not yet visible to AssetDatabase. Will retry."
+                                    $"ScriptableObjectSingletonCreator: Asset file created at {targetAssetPath} but not yet visible to AssetDatabase. Will retry without deleting the file."
                                 );
+                                // DON'T call SafeDestroyInstance here - the file is valid, just not imported yet.
+                                // Only destroy the in-memory instance without touching the on-disk file.
+                                try
+                                {
+                                    Object.DestroyImmediate(instance, true);
+                                }
+                                catch (Exception ex)
+                                {
+                                    LogVerbose(
+                                        $"ScriptableObjectSingletonCreator: Failed to destroy in-memory instance: {ex.Message}"
+                                    );
+                                }
+                                retryRequested = true;
+                                continue;
                             }
-                            else
-                            {
-                                Debug.LogError(
-                                    $"ScriptableObjectSingletonCreator: CreateAsset appeared to succeed but asset not found at {targetAssetPath}. This may indicate a stale asset database state."
-                                );
-                            }
-                            // Use allowDestroyingAssets=true because CreateAsset may have partially succeeded,
-                            // associating the instance with an asset even though LoadAssetAtPath returns null.
+
+                            Debug.LogError(
+                                $"ScriptableObjectSingletonCreator: CreateAsset appeared to succeed but asset not found at {targetAssetPath}. This may indicate a stale asset database state."
+                            );
+                            // File doesn't exist on disk - this is a real failure, clean up
                             SafeDestroyInstance(instance, targetAssetPath);
                             retryRequested = true;
                             continue;
@@ -348,10 +367,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
                         LogVerbose(
                             $"ScriptableObjectSingletonCreator: Created missing singleton for type {derivedType.FullName} at {targetAssetPath}."
                         );
-                        if (UpdateSingletonMetadataEntry(derivedType, targetAssetPath))
-                        {
-                            anyChanges = true;
-                        }
+                        UpdateSingletonMetadataEntry(derivedType, targetAssetPath);
                         anyChanges = true;
                         singletonsSucceeded++;
                     }
