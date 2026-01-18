@@ -421,6 +421,289 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
             // which is called by CommonTestBase in setUp/tearDown.
             // This method is a no-op kept for backward compatibility.
         }
+
+        /// <summary>
+        /// Registers the sync implementation with the Runtime metadata class.
+        /// Called automatically via InitializeOnLoadMethod.
+        /// </summary>
+        [InitializeOnLoadMethod]
+        private static void RegisterSyncImplementation()
+        {
+            ScriptableObjectSingletonMetadata.SyncImplementation = SyncAllSingletonMetadata;
+        }
+
+        /// <summary>
+        /// Re-scans all assemblies for ScriptableObjectSingleton types and updates their metadata entries.
+        /// This removes stale entries and adds/updates metadata for all existing singleton assets.
+        /// </summary>
+        /// <param name="metadata">The metadata asset to sync. If null, loads or creates the metadata asset.</param>
+        internal static void SyncAllSingletonMetadata(ScriptableObjectSingletonMetadata metadata)
+        {
+            metadata ??= LoadOrCreateMetadataAsset();
+            if (metadata == null)
+            {
+                Debug.LogWarning(
+                    "ScriptableObjectSingletonMetadataUtility.SyncAllSingletonMetadata: "
+                        + "Could not load or create metadata asset."
+                );
+                return;
+            }
+
+            int added = 0;
+            int updated = 0;
+            int removed = 0;
+
+            // Build a set of existing entries for comparison
+            IReadOnlyList<ScriptableObjectSingletonMetadata.Entry> existingEntries =
+                metadata.GetAllEntries();
+            Dictionary<string, ScriptableObjectSingletonMetadata.Entry> existingByTypeName = new(
+                StringComparer.Ordinal
+            );
+            foreach (ScriptableObjectSingletonMetadata.Entry entry in existingEntries)
+            {
+                if (!string.IsNullOrEmpty(entry.assemblyQualifiedTypeName))
+                {
+                    existingByTypeName[entry.assemblyQualifiedTypeName] = entry;
+                }
+            }
+
+            // Track which types we find during scanning
+            HashSet<string> foundTypeNames = new(StringComparer.Ordinal);
+
+            // Scan for all singleton types
+            foreach (
+                Type derivedType in ReflectionHelpers.GetTypesDerivedFrom(
+                    typeof(ScriptableObjectSingleton<>),
+                    includeAbstract: false
+                )
+            )
+            {
+                if (derivedType.IsGenericType)
+                {
+                    continue;
+                }
+
+                // Skip test types unless explicitly included
+                if (TestAssemblyHelper.IsTestType(derivedType))
+                {
+                    continue;
+                }
+
+                string assemblyQualifiedName = derivedType.AssemblyQualifiedName;
+                if (string.IsNullOrEmpty(assemblyQualifiedName))
+                {
+                    continue;
+                }
+
+                foundTypeNames.Add(assemblyQualifiedName);
+
+                // Find the asset for this type
+                string assetPath = FindSingletonAssetPath(derivedType);
+                if (string.IsNullOrEmpty(assetPath))
+                {
+                    // No asset exists - skip (don't create assets, just sync metadata for existing ones)
+                    continue;
+                }
+
+                string loadPath = ToResourcesLoadPath(assetPath);
+                if (string.IsNullOrEmpty(loadPath))
+                {
+                    continue;
+                }
+
+                string resourcesFolder = GetResourcesFolderFromLoadPath(loadPath);
+                string guid = AssetDatabase.AssetPathToGUID(assetPath) ?? string.Empty;
+
+                ScriptableObjectSingletonMetadata.Entry newEntry = new()
+                {
+                    assemblyQualifiedTypeName = assemblyQualifiedName,
+                    resourcesLoadPath = loadPath,
+                    resourcesPath = resourcesFolder,
+                    assetGuid = guid,
+                };
+
+                // Check if entry exists and needs updating
+                if (
+                    existingByTypeName.TryGetValue(
+                        assemblyQualifiedName,
+                        out ScriptableObjectSingletonMetadata.Entry existingEntry
+                    )
+                )
+                {
+                    bool needsUpdate =
+                        !string.Equals(
+                            existingEntry.resourcesLoadPath,
+                            newEntry.resourcesLoadPath,
+                            StringComparison.Ordinal
+                        )
+                        || !string.Equals(
+                            existingEntry.resourcesPath,
+                            newEntry.resourcesPath,
+                            StringComparison.Ordinal
+                        )
+                        || !string.Equals(
+                            existingEntry.assetGuid,
+                            newEntry.assetGuid,
+                            StringComparison.Ordinal
+                        );
+
+                    if (needsUpdate)
+                    {
+                        metadata.SetOrUpdateEntry(newEntry);
+                        updated++;
+                    }
+                }
+                else
+                {
+                    metadata.SetOrUpdateEntry(newEntry);
+                    added++;
+                }
+            }
+
+            // Remove stale entries (types that no longer exist or have no assets)
+            foreach (string existingTypeName in existingByTypeName.Keys)
+            {
+                if (!foundTypeNames.Contains(existingTypeName))
+                {
+                    // Type was not found during scan - could be deleted or renamed
+                    // Also check if the asset still exists
+                    ScriptableObjectSingletonMetadata.Entry staleEntry = existingByTypeName[
+                        existingTypeName
+                    ];
+                    if (!string.IsNullOrEmpty(staleEntry.resourcesLoadPath))
+                    {
+                        string assetPath = $"Assets/Resources/{staleEntry.resourcesLoadPath}.asset";
+                        Object asset = AssetDatabase.LoadAssetAtPath<Object>(assetPath);
+                        if (asset == null && !string.IsNullOrEmpty(staleEntry.assetGuid))
+                        {
+                            string guidPath = AssetDatabase.GUIDToAssetPath(staleEntry.assetGuid);
+                            if (!string.IsNullOrEmpty(guidPath))
+                            {
+                                asset = AssetDatabase.LoadAssetAtPath<Object>(guidPath);
+                            }
+                        }
+
+                        if (asset == null)
+                        {
+                            metadata.RemoveEntry(existingTypeName);
+                            removed++;
+                        }
+                    }
+                    else
+                    {
+                        metadata.RemoveEntry(existingTypeName);
+                        removed++;
+                    }
+                }
+            }
+
+            if (added > 0 || updated > 0 || removed > 0)
+            {
+                EditorUtility.SetDirty(metadata);
+                AssetDatabase.SaveAssets();
+                Debug.Log(
+                    $"ScriptableObjectSingletonMetadata.Sync: Added {added}, updated {updated}, removed {removed} entries."
+                );
+            }
+            else
+            {
+                Debug.Log(
+                    "ScriptableObjectSingletonMetadata.Sync: Metadata is already up to date."
+                );
+            }
+        }
+
+        private static string FindSingletonAssetPath(Type type)
+        {
+            // First try to find by type name in Resources
+            string[] guids = AssetDatabase.FindAssets(
+                $"t:{type.Name}",
+                new[] { "Assets/Resources" }
+            );
+
+            if (guids != null && guids.Length > 0)
+            {
+                foreach (string guid in guids)
+                {
+                    string path = AssetDatabase.GUIDToAssetPath(guid);
+                    if (string.IsNullOrEmpty(path))
+                    {
+                        continue;
+                    }
+
+                    Object asset = AssetDatabase.LoadAssetAtPath(path, type);
+                    if (asset != null)
+                    {
+                        return path;
+                    }
+                }
+            }
+
+            // Try loading from Resources as a fallback
+            Object[] instances = Resources.LoadAll(string.Empty, type);
+            if (instances != null && instances.Length > 0)
+            {
+                foreach (Object instance in instances)
+                {
+                    if (instance == null)
+                    {
+                        continue;
+                    }
+
+                    string path = AssetDatabase.GetAssetPath(instance);
+                    if (!string.IsNullOrEmpty(path))
+                    {
+                        return path;
+                    }
+                }
+            }
+
+            return null;
+        }
+
+        private static string ToResourcesLoadPath(string assetPath)
+        {
+            if (string.IsNullOrWhiteSpace(assetPath))
+            {
+                return null;
+            }
+
+            const string resourcesRoot = "Assets/Resources";
+            string normalized = assetPath.SanitizePath();
+            if (!normalized.StartsWith(resourcesRoot, StringComparison.OrdinalIgnoreCase))
+            {
+                return null;
+            }
+
+            string relative = normalized.Substring(resourcesRoot.Length).TrimStart('/');
+            if (string.IsNullOrWhiteSpace(relative))
+            {
+                return null;
+            }
+
+            if (relative.EndsWith(".asset", StringComparison.OrdinalIgnoreCase))
+            {
+                relative = relative.Substring(0, relative.Length - ".asset".Length);
+            }
+
+            return relative.Replace("\\", "/");
+        }
+
+        private static string GetResourcesFolderFromLoadPath(string loadPath)
+        {
+            if (string.IsNullOrWhiteSpace(loadPath))
+            {
+                return string.Empty;
+            }
+
+            int lastSlash = loadPath.LastIndexOf('/');
+            if (lastSlash <= 0)
+            {
+                return string.Empty;
+            }
+
+            return loadPath.Substring(0, lastSlash);
+        }
     }
 #endif
 }

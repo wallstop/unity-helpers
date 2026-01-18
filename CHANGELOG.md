@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 See [the roadmap](./docs/overview/roadmap.md) for details
 
+## [3.1.4]
+
+### Added
+
+- **ScriptableObjectSingletonMetadata Sync Button**: Added a `Sync` button to `ScriptableObjectSingletonMetadata` inspector that re-scans all assemblies for `ScriptableObjectSingleton<T>` types and updates their metadata entries. This allows manually refreshing singleton metadata when assets are added, moved, or renamed.
+
+### Fixed
+
+- **ScriptableObjectSingletonCreator race condition**: Fixed issue where newly created singleton assets were immediately deleted because `LoadAssetAtPath` returned null before Unity's AssetDatabase had indexed the file. The fix adds a synchronous import after `CreateAsset` and avoids deleting on-disk files when the file exists but isn't visible to the AssetDatabase yet.
+
 ## [3.1.3]
 
 ### Added

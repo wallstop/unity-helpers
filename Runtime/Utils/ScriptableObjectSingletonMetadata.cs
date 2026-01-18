@@ -7,6 +7,7 @@ namespace WallstopStudios.UnityHelpers.Utils
     using System.Collections.Generic;
     using UnityEngine;
     using UnityEngine.Serialization;
+    using WallstopStudios.UnityHelpers.Core.Attributes;
 
     /// <summary>
     /// Non-generic helper for ScriptableObjectSingleton initialization state tracking.
@@ -151,6 +152,40 @@ namespace WallstopStudios.UnityHelpers.Utils
         public IReadOnlyList<Entry> GetAllEntries()
         {
             return _entries ?? (IReadOnlyList<Entry>)Array.Empty<Entry>();
+        }
+
+        /// <summary>
+        /// Clears all metadata entries. Available for manual cleanup operations.
+        /// Note: The Sync operation updates entries incrementally and does not use this method.
+        /// </summary>
+        public void ClearAllEntries()
+        {
+            _entries?.Clear();
+        }
+
+        /// <summary>
+        /// Delegate that performs the actual sync operation. Set by the Editor assembly.
+        /// </summary>
+        internal static Action<ScriptableObjectSingletonMetadata> SyncImplementation { get; set; }
+
+        /// <summary>
+        /// Re-scans all assemblies for ScriptableObjectSingleton types and updates their metadata entries.
+        /// This cleans up stale entries and adds any missing singleton metadata.
+        /// </summary>
+        [WButton]
+        public void Sync()
+        {
+            if (SyncImplementation != null)
+            {
+                SyncImplementation(this);
+            }
+            else
+            {
+                UnityEngine.Debug.LogWarning(
+                    "ScriptableObjectSingletonMetadata.Sync: No sync implementation registered. "
+                        + "This method should only be called from the Unity Editor."
+                );
+            }
         }
 #endif
     }

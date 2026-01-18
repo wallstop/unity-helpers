@@ -94,7 +94,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                 || type == typeof(B.NameCollision)
                 || type == typeof(RetrySingleton)
                 || type == typeof(FileBlockSingleton)
-                || type == typeof(NoRetrySingleton);
+                || type == typeof(NoRetrySingleton)
+                || type == typeof(AssetDatabaseRaceSingleton);
 
             // Batch folder creation operations
             using (AssetDatabaseBatchHelper.BeginBatch())
@@ -143,6 +144,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                 TryDeleteFolder(TestRoot + "/FileBlock 1");
                 TryDeleteFolder(TestRoot + "/NoRetry");
                 TryDeleteFolder(TestRoot + "/NoRetry 1");
+                TryDeleteFolder(TestRoot + "/Race");
+                TryDeleteFolder(TestRoot + "/Race 1");
                 TryDeleteFolder(TestRoot);
                 // Clean up CreatorTests folder and any duplicates (e.g., "CreatorTests 1")
                 TryDeleteFolderAndDuplicates("Assets/Resources", "CreatorTests");
@@ -939,6 +942,69 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             Assert.IsTrue(
                 retryAssetObj != null,
                 "RetrySingleton should be created after blocker is removed"
+            );
+        }
+
+        /// <summary>
+        /// Verifies that the fix for issue #157 (race condition where newly created assets
+        /// were immediately deleted) works correctly. After CreateAsset succeeds and writes
+        /// a file to disk, LoadAssetAtPath should find it because we now call ImportAsset
+        /// with ForceSynchronousImport. Even if LoadAssetAtPath returns null, the fix
+        /// ensures we do NOT delete the file on disk when it exists - we only destroy the
+        /// in-memory instance and retry.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator AssetCreationDoesNotDeleteValidFilesOnDisk()
+        {
+            string raceFolder = TestRoot + "/Race";
+            string raceAsset = raceFolder + "/AssetDatabaseRaceSingleton.asset";
+
+            ScriptableObjectSingletonCreator.ResetRetryStateForTests();
+
+            AssetDatabase.DeleteAsset(raceAsset);
+            if (AssetDatabase.IsValidFolder(raceFolder))
+            {
+                AssetDatabase.DeleteAsset(raceFolder);
+            }
+            AssetDatabaseBatchHelper.SaveAndRefreshIfNotBatching();
+            yield return null;
+
+            EnsureFolder(TestRoot);
+            AssetDatabaseBatchHelper.SaveAndRefreshIfNotBatching();
+            yield return null;
+
+            Assert.IsFalse(
+                AssetDatabase.IsValidFolder(raceFolder),
+                "Race folder should not exist before test"
+            );
+            Assert.IsTrue(
+                AssetDatabase.LoadAssetAtPath<Object>(raceAsset) == null,
+                "Race asset should not exist before test"
+            );
+
+            ScriptableObjectSingletonCreator.EnsureSingletonAssets();
+            AssetDatabaseBatchHelper.SaveAndRefreshIfNotBatching();
+            yield return null;
+
+            bool folderExists = AssetDatabase.IsValidFolder(raceFolder);
+            Object loadedAsset = AssetDatabase.LoadAssetAtPath<Object>(raceAsset);
+            string absoluteAssetPath = GetAbsolutePath(raceAsset);
+            bool fileExistsOnDisk = File.Exists(absoluteAssetPath);
+
+            string diagnostics =
+                $"folderExists={folderExists}, loadedAsset={loadedAsset != null}, fileExistsOnDisk={fileExistsOnDisk}";
+
+            Assert.IsTrue(
+                folderExists,
+                $"Race singleton folder should be created. Diagnostics: {diagnostics}"
+            );
+            Assert.IsTrue(
+                loadedAsset != null,
+                $"Race singleton asset should be loadable via AssetDatabase. Diagnostics: {diagnostics}"
+            );
+            Assert.IsTrue(
+                fileExistsOnDisk,
+                $"Race singleton asset file should exist on disk. Diagnostics: {diagnostics}"
             );
         }
 
