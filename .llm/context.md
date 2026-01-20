@@ -149,6 +149,7 @@ Invoke these skills for specific tasks.
 | [debug-il2cpp](./skills/debug-il2cpp.md)                                       | IL2CPP build issues or AOT errors                      |
 | [github-actions-script-pattern](./skills/github-actions-script-pattern.md)     | Extract GHA logic to testable scripts                  |
 | [github-pages](./skills/github-pages.md)                                       | GitHub Pages, Jekyll, markdown link format             |
+| [github-workflow-permissions](./skills/github-workflow-permissions.md)         | Workflow permissions, automated PRs, debugging         |
 | [integrate-odin-inspector](./skills/integrate-odin-inspector.md)               | Odin Inspector integration patterns                    |
 | [integrate-optional-dependency](./skills/integrate-optional-dependency.md)     | Odin, VContainer, Zenject integration patterns         |
 | [use-algorithmic-structures](./skills/use-algorithmic-structures.md)           | Connectivity, prefix search, bit manipulation, caching |
