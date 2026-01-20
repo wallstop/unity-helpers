@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v6.0.1
+        uses: actions/checkout@v6.0.2
         with:
           fetch-depth: 0
 
@@ -62,9 +62,12 @@ jobs:
 
       - name: Create Pull Request
         if: steps.git_changes.outputs.changed == 'true'
+        id: create_pr
         uses: peter-evans/create-pull-request@v8.0.0
         with:
+          base: main
           branch: chore/update-dotnet-tools
+          delete-branch: true
           title: "chore: update .NET local tools"
           commit-message: "chore(dotnet-tools): update .config/dotnet-tools.json"
           body: |
@@ -73,7 +76,17 @@ jobs:
           assignees: wallstop
           reviewers: wallstop
 
+      - name: PR created summary
+        if: steps.git_changes.outputs.changed == 'true' && steps.create_pr.outputs.pull-request-number
+        run: |
+          {
+            echo "## .NET Tools Update PR Created"
+            echo ""
+            echo "Pull Request: #${{ steps.create_pr.outputs.pull-request-number }}"
+            echo "URL: ${{ steps.create_pr.outputs.pull-request-url }}"
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: No changes summary
-        if: steps.git_changes.outputs.changed != 'true'
+        if: success() && steps.git_changes.outputs.changed != 'true'
         run: |
           echo "## .NET tools are up to date" >> "$GITHUB_STEP_SUMMARY"
