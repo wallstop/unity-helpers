@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 See [the roadmap](./docs/overview/roadmap.md) for details
 
+### Changed
+
+- **Breaking:** Relational component attributes (`[SiblingComponent]`, `[ParentComponent]`, `[ChildComponent]`) now assign `null` to single-component fields when no matching component is found and `SkipIfAssigned=false` (the default). Previously, fields retained their existing values when no component was found. This change makes single-field behavior consistent with collection-field behavior, which already assigned empty collections.
+
 ## [3.1.4]
 
 ### Added

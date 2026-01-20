@@ -590,6 +590,41 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
             }
         }
 
+        /// <summary>
+        /// Assigns null to a single-component field when no matching component was found.
+        /// This ensures the field is explicitly cleared rather than retaining stale references.
+        /// </summary>
+        /// <typeparam name="TAttribute">The relational component attribute type.</typeparam>
+        /// <param name="component">The component whose field will be assigned.</param>
+        /// <param name="metadata">The field metadata containing attribute and accessor information.</param>
+        /// <remarks>
+        /// This method only assigns null if:
+        /// <list type="bullet">
+        /// <item><description><see cref="BaseRelationalComponentAttribute.SkipIfAssigned"/> is false</description></item>
+        /// <item><description>The field is a single-component type (not array, list, or hashset)</description></item>
+        /// </list>
+        /// Call this after <see cref="LogMissingComponentError{TAttribute}"/> to ensure single fields
+        /// are explicitly nulled when no matching component is found.
+        /// </remarks>
+        internal static void AssignNullToSingleField<TAttribute>(
+            Component component,
+            FieldMetadata<TAttribute> metadata
+        )
+            where TAttribute : BaseRelationalComponentAttribute
+        {
+            if (metadata.attribute.SkipIfAssigned)
+            {
+                return;
+            }
+
+            if (metadata.kind != FieldKind.Single)
+            {
+                return;
+            }
+
+            metadata.SetValue(component, null);
+        }
+
         internal static void SetEmptyCollection<TAttribute>(
             Component component,
             FieldMetadata<TAttribute> metadata

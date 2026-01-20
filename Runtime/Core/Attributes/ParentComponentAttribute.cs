@@ -165,6 +165,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                 {
                     SetEmptyCollection(component, field);
                     LogMissingComponentError(component, field, "parent");
+                    AssignNullToSingleField(component, field);
                     continue;
                 }
                 else
@@ -376,6 +377,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                     if (!foundParent)
                     {
                         LogMissingComponentError(component, field, "parent");
+                        AssignNullToSingleField(component, field);
                     }
                 }
             }
