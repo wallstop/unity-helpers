@@ -87,3 +87,19 @@ What does not auto‑fix:
 ## Style and Naming
 
 Please follow the conventions outlined in `.editorconfig` and the repository guidelines (PascalCase types, camelCase fields, explicit types, braces required, no regions).
+
+## Releases and Versioning
+
+This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Key points:
+
+- **Git tags** use the format `3.1.5` (no `v` prefix)
+- **package.json** contains the authoritative version number
+- **SVG banner** displays the version with a `v` prefix (e.g., `v3.1.5`) for visual consistency, synced automatically via pre-commit hook
+
+When installing via Git URL, reference versions without the `v` prefix:
+
+```text
+https://github.com/wallstop/unity-helpers.git#3.1.5
+```
+
+Releases are drafted automatically via [release-drafter](https://github.com/release-drafter/release-drafter). Maintainers review and publish the draft when ready.

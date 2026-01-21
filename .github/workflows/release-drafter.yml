@@ -21,8 +21,71 @@ jobs:
   update_release_draft:
     runs-on: ubuntu-latest
     steps:
-      - uses: release-drafter/release-drafter@v6
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Extract changelog for version
+        id: changelog
+        run: |
+          # Get the version from package.json
+          VERSION=$(jq -r '.version' package.json)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+          # Extract the section for this version from CHANGELOG.md
+          # Matches from ## [X.Y.Z] until the next ## [ or end of file
+          CHANGELOG_SECTION=$(awk -v ver="$VERSION" '
+            BEGIN { found=0; output="" }
+            /^## \[/ {
+              if (found) exit
+              if (index($0, "[" ver "]")) { found=1; next }
+            }
+            found { output = output $0 "\n" }
+            END { print output }
+          ' CHANGELOG.md)
+
+          # Write to file to preserve newlines
+          echo "$CHANGELOG_SECTION" > /tmp/changelog_section.md
+
+          # Set multiline output
+          {
+            echo "content<<EOF"
+            cat /tmp/changelog_section.md
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Draft release
+        uses: release-drafter/release-drafter@v6
         with:
           config-name: release-drafter.yml
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update release with changelog
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CHANGELOG_CONTENT: ${{ steps.changelog.outputs.content }}
+          VERSION: ${{ steps.changelog.outputs.version }}
+        run: |
+          # Get the draft release
+          RELEASE_ID=$(gh api repos/${{ github.repository }}/releases \
+            --jq '.[] | select(.draft == true) | .id' | head -1)
+
+          if [ -z "$RELEASE_ID" ]; then
+            echo "No draft release found"
+            exit 0
+          fi
+
+          # Get current release body
+          CURRENT_BODY=$(gh api "repos/${{ github.repository }}/releases/$RELEASE_ID" --jq '.body')
+
+          # Build new body with changelog at the top
+          NEW_BODY="## Changelog
+
+          $CHANGELOG_CONTENT
+
+          $CURRENT_BODY"
+
+          # Update the release
+          gh api "repos/${{ github.repository }}/releases/$RELEASE_ID" \
+            -X PATCH \
+            -f body="$NEW_BODY"
