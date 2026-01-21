@@ -19,7 +19,8 @@ permissions:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  # Use false for release workflows to prevent incomplete releases from cancellation
+  cancel-in-progress: false
 
 jobs:
   update_release_draft:
@@ -27,9 +28,15 @@ jobs:
     if: github.repository == 'wallstop/unity-helpers'
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    outputs:
+      version: ${{ steps.changelog.outputs.version }}
+      release-id: ${{ steps.release_drafter.outputs.id }}
+      release-url: ${{ steps.release_drafter.outputs.html_url }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 1 # Only need current commit for package.json and CHANGELOG.md
 
       - name: Create changelog extraction script
         run: |
@@ -96,16 +103,19 @@ jobs:
             echo "::warning::No changelog section found for version $VERSION"
           fi
 
-          # Set multiline output using heredoc delimiter
+          # Set multiline output using a random delimiter to prevent injection
+          # Generate unique delimiter using date + random to avoid content collision
+          DELIMITER="__CHANGELOG_EOF_$(date +%s%N)_${RANDOM}__"
           {
-            echo "content<<__CHANGELOG_HEREDOC_DELIMITER__"
+            printf 'content<<%s\n' "$DELIMITER"
             cat "${RUNNER_TEMP}/changelog_section.md"
-            echo "__CHANGELOG_HEREDOC_DELIMITER__"
+            printf '%s\n' "$DELIMITER"
           } >> "$GITHUB_OUTPUT"
 
           echo "Changelog section extracted successfully"
 
       - name: Draft release
+        id: release_drafter
         uses: release-drafter/release-drafter@v6
         with:
           config-name: release-drafter.yml
@@ -118,58 +128,43 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VERSION: ${{ steps.changelog.outputs.version }}
+          CHANGELOG_CONTENT: ${{ steps.changelog.outputs.content }}
+          RELEASE_ID: ${{ steps.release_drafter.outputs.id }}
         run: |
           set -euo pipefail
 
-          # Write changelog content to file (avoids shell escaping issues)
-          cat > "${RUNNER_TEMP}/changelog_content.md" << '__CHANGELOG_CONTENT_HEREDOC_DELIMITER__'
-          ${{ steps.changelog.outputs.content }}
-          __CHANGELOG_CONTENT_HEREDOC_DELIMITER__
+          # Write changelog content to file using printf (avoids heredoc injection)
+          # Using environment variable avoids shell interpolation issues
+          printf '%s\n' "$CHANGELOG_CONTENT" > "${RUNNER_TEMP}/changelog_content.md"
 
-          # Polling mechanism with retries and exponential backoff
-          MAX_RETRIES=10
-          RETRY_DELAY=2
-          RELEASE_ID=""
+          API_STDERR="${RUNNER_TEMP}/gh_api_stderr.log"
 
-          echo "Waiting for draft release for version $VERSION..."
-
-          attempt=1
-          while [ "$attempt" -le "$MAX_RETRIES" ]; do
-            echo "Attempt $attempt of $MAX_RETRIES..."
-
-            # Query for draft releases matching the version tag (with or without 'v' prefix)
-            RELEASE_ID=$(gh api "repos/${{ github.repository }}/releases" \
-              --jq ".[] | select(.draft == true) | select(.tag_name == \"$VERSION\" or .tag_name == \"v$VERSION\") | .id" 2>/dev/null | head -1) || true
-
-            if [ -n "$RELEASE_ID" ]; then
-              echo "Found draft release with ID: $RELEASE_ID"
-              break
-            fi
-
-            if [ "$attempt" -lt "$MAX_RETRIES" ]; then
-              echo "No draft release found yet for version $VERSION, retrying in ${RETRY_DELAY}s..."
-              sleep "$RETRY_DELAY"
-              # Exponential backoff: 2, 4, 8, 16, 32... (capped at 60s)
-              RETRY_DELAY=$((RETRY_DELAY * 2))
-              if [ "$RETRY_DELAY" -gt 60 ]; then
-                RETRY_DELAY=60
-              fi
-            fi
-
-            attempt=$((attempt + 1))
-          done
-
+          # Validate release ID from release-drafter action
           if [ -z "$RELEASE_ID" ]; then
-            echo "::warning::No draft release found for version $VERSION after $MAX_RETRIES attempts"
-            exit 0
+            echo "::error::release-drafter did not return a release ID"
+            exit 1
           fi
 
+          echo "Using release ID $RELEASE_ID from release-drafter action"
+
           # Fetch current release body and write to file for safe handling
+          # Capture stderr to temp file for debugging instead of suppressing
           echo "Fetching current release body..."
           if ! gh api "repos/${{ github.repository }}/releases/$RELEASE_ID" \
-            --jq '.body // ""' > "${RUNNER_TEMP}/current_body.md" 2>/dev/null; then
+            --jq '.body // ""' > "${RUNNER_TEMP}/current_body.md" 2>"$API_STDERR"; then
             echo "::warning::Failed to fetch current release body, using empty body"
+            if [ -s "$API_STDERR" ]; then
+              echo "::debug::gh api stderr: $(cat "$API_STDERR")"
+            fi
             : > "${RUNNER_TEMP}/current_body.md"
+          fi
+
+          # Check if changelog section already exists to prevent duplicate additions
+          # Use -E for extended regex and allow optional leading whitespace
+          if grep -qE '^\s*## Changelog' "${RUNNER_TEMP}/current_body.md"; then
+            echo "::notice::Changelog section already exists in release body, skipping update"
+            echo "Release $RELEASE_ID already contains changelog for version $VERSION"
+            exit 0
           fi
 
           # Build new body using file concatenation (no embedded whitespace issues)
@@ -192,3 +187,14 @@ jobs:
           fi
 
           echo "Release $RELEASE_ID updated successfully with changelog for version $VERSION"
+
+          # Add step summary for workflow run visibility
+          {
+            echo "### ✅ Release Draft Updated"
+            echo ""
+            echo "| Property | Value |"
+            echo "|----------|-------|"
+            echo "| **Version** | \`$VERSION\` |"
+            echo "| **Release ID** | \`$RELEASE_ID\` |"
+            echo "| **Release URL** | ${{ steps.release_drafter.outputs.html_url }} |"
+          } >> "$GITHUB_STEP_SUMMARY"
