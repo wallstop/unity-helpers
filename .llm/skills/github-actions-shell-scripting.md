@@ -2,62 +2,49 @@
 
 <!-- trigger: workflow shell, actions bash, gh api, runner temp, heredoc | Shell scripting best practices for GitHub Actions | Core -->
 
-**Trigger**: When writing inline `run:` steps in GitHub Actions workflows.
+**Trigger**: When you need an entry point for GitHub Actions inline shell best practices, checklists, and cross-links.
 
 ---
 
 ## When to Use
 
-- Writing `run:` steps in GitHub Actions workflows
-- Using `gh api` or `curl` for GitHub API calls
-- Passing multiline content between steps
-- Parsing output from commands with shell tools
-- Working with temporary files in CI environments
+- Starting a new inline `run:` step and want the standard guardrails
+- Auditing existing GitHub Actions shell steps for common risks
+- Looking for the right sub-skill for a specific pattern (outputs, polling, API calls)
 
 ---
 
 ## When NOT to Use
 
-- The logic should be a standalone, testable script
-- A maintained action already covers the behavior
-- Action outputs can replace parsing or polling
+- The logic can be moved into a standalone script (use [github-actions-script-pattern](./github-actions-script-pattern.md))
+- A maintained action already provides the needed behavior
+- The change is pure workflow YAML without shell scripting
 
 ---
 
-## Scope
+## How to Use This Skill
 
-This skill is an overview and checklist. Use the focused skills for implementation details:
-
-- [github-actions-shell-foundations](./github-actions-shell-foundations.md) - Strict mode, temp files, heredocs, quoting, text processing, env vars, and annotations.
-- [github-actions-shell-workflow-patterns](./github-actions-shell-workflow-patterns.md) - Action outputs, polling, GitHub API error handling, idempotency, job outputs, step summaries.
+- Use [github-actions-shell-foundations](./github-actions-shell-foundations.md) for strict mode, heredocs, text parsing, temp files, and safe variable handling
+- Use [github-actions-shell-workflow-patterns](./github-actions-shell-workflow-patterns.md) for outputs, polling, API calls, idempotency, annotations, and step summaries
 
 ---
 
-## Quick Checklist
+## Checklist
 
-- [ ] Every `run:` block starts with `set -euo pipefail`
-- [ ] Use `$RUNNER_TEMP` instead of `/tmp` for temp files
-- [ ] Multiline API bodies use `-F body=@file` not `-f body="..."`
-- [ ] Heredocs use `<<-` with tabs or unindented content
-- [ ] Check action outputs before writing polling code
-- [ ] Polling loops (when necessary) have timeouts and exponential backoff
-- [ ] AWK and sed use exact field matching (`$1 == "value"`)
-- [ ] All variables are quoted (`"$VAR"` not `$VAR`)
-- [ ] File and command existence checked before use
-- [ ] API errors handled with clear messages, stderr captured for debugging
-- [ ] Arithmetic uses `$((x + 1))` not `((x++))`
-- [ ] Multiline `GITHUB_OUTPUT` uses random delimiters (`$(date +%s%N)_${RANDOM}`)
-- [ ] Step-to-step content passed via env vars and `printf`, not heredocs in YAML
-- [ ] Idempotent updates check before modifying (for re-runnable workflows)
-- [ ] Job outputs defined for reusable workflows
-- [ ] Step summaries added for visibility (`$GITHUB_STEP_SUMMARY`)
-- [ ] Sensitive values masked with `::add-mask::`
-- [ ] Run `actionlint` on workflow files before commit
+- [ ] Start every `run:` block with `set -euo pipefail` (see [github-actions-shell-foundations](./github-actions-shell-foundations.md))
+- [ ] Use `$RUNNER_TEMP` for temp files and API payloads (see [github-actions-shell-foundations](./github-actions-shell-foundations.md))
+- [ ] Avoid inline multiline bodies; write to file or use env + `printf` (see [github-actions-shell-foundations](./github-actions-shell-foundations.md))
+- [ ] Prefer action outputs over polling; if polling, use backoff and timeouts (see [github-actions-shell-workflow-patterns](./github-actions-shell-workflow-patterns.md))
+- [ ] Add retry logic for critical API writes (see [github-actions-shell-workflow-patterns](./github-actions-shell-workflow-patterns.md))
+- [ ] Use `GITHUB_OUTPUT`, `GITHUB_ENV`, and `GITHUB_STEP_SUMMARY` correctly (see [github-actions-shell-workflow-patterns](./github-actions-shell-workflow-patterns.md))
+- [ ] Mask secrets and add annotations for visibility (see [github-actions-shell-workflow-patterns](./github-actions-shell-workflow-patterns.md))
+- [ ] Run `actionlint` before commit (see [validate-before-commit](./validate-before-commit.md))
 
 ---
 
 ## Related Skills
 
-- [github-actions-shell-foundations](./github-actions-shell-foundations.md) - Inline shell safety and text handling patterns.
-- [github-actions-shell-workflow-patterns](./github-actions-shell-workflow-patterns.md) - Workflow integration patterns and API handling.
-- [github-actions-script-pattern](./github-actions-script-pattern.md) - Prefer standalone scripts for complex logic.
+- [github-actions-shell-foundations](./github-actions-shell-foundations.md) - Inline shell safety patterns.
+- [github-actions-shell-workflow-patterns](./github-actions-shell-workflow-patterns.md) - Outputs, polling, API calls, summaries.
+- [github-actions-script-pattern](./github-actions-script-pattern.md) - Prefer extracting scripts for complex logic.
+- [validate-before-commit](./validate-before-commit.md) - actionlint and workflow validation.

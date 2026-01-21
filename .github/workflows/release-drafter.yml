@@ -160,8 +160,8 @@ jobs:
           fi
 
           # Check if changelog section already exists to prevent duplicate additions
-          # Use -E for extended regex and allow optional leading whitespace
-          if grep -qE '^\s*## Changelog' "${RUNNER_TEMP}/current_body.md"; then
+          # Use -E for extended regex, -i for case-insensitive, allow optional leading whitespace
+          if grep -qiE '^\s*## Changelog' "${RUNNER_TEMP}/current_body.md"; then
             echo "::notice::Changelog section already exists in release body, skipping update"
             echo "Release $RELEASE_ID already contains changelog for version $VERSION"
             exit 0
@@ -179,12 +179,24 @@ jobs:
           echo "Updating release with changelog..."
 
           # Use file-based body to handle special characters safely
-          if ! gh api "repos/${{ github.repository }}/releases/$RELEASE_ID" \
-            -X PATCH \
-            -F body=@"${RUNNER_TEMP}/new_body.md"; then
-            echo "::error::Failed to update release body for release ID $RELEASE_ID"
-            exit 1
-          fi
+          # Retry with exponential backoff for transient API failures
+          MAX_ATTEMPTS=3
+          DELAY=2
+          for attempt in $(seq 1 $MAX_ATTEMPTS); do
+            if gh api "repos/${{ github.repository }}/releases/$RELEASE_ID" \
+              -X PATCH \
+              -F body=@"${RUNNER_TEMP}/new_body.md"; then
+              echo "Release API update succeeded on attempt $attempt"
+              break
+            fi
+            if [ "$attempt" -eq "$MAX_ATTEMPTS" ]; then
+              echo "::error::Failed to update release body for release ID $RELEASE_ID after $MAX_ATTEMPTS attempts"
+              exit 1
+            fi
+            echo "::warning::Attempt $attempt failed, retrying in ${DELAY}s..."
+            sleep "$DELAY"
+            DELAY=$((DELAY * 2))
+          done
 
           echo "Release $RELEASE_ID updated successfully with changelog for version $VERSION"
 
