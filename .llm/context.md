@@ -83,45 +83,48 @@ Invoke these skills for specific tasks.
 **Regenerate with**: `pwsh -NoProfile -File scripts/generate-skills-index.ps1`
 
 <!-- BEGIN GENERATED SKILLS INDEX -->
-<!-- Generated: 2026-01-09 18:37:57 UTC -->
+<!-- Generated: 2026-01-21 11:38:27 UTC -->
 <!-- Command: pwsh -NoProfile -File scripts/generate-skills-index.ps1 -->
 
 ### Core Skills (Always Consider)
 
-| Skill                                                                    | When to Use                                                      |
-| ------------------------------------------------------------------------ | ---------------------------------------------------------------- |
-| [avoid-magic-strings](./skills/avoid-magic-strings.md)                   | ALL code - use nameof() not strings                              |
-| [avoid-reflection](./skills/avoid-reflection.md)                         | ALL code - never reflect on our own types                        |
-| [create-csharp-file](./skills/create-csharp-file.md)                     | Creating any new .cs file                                        |
-| [create-editor-tool](./skills/create-editor-tool.md)                     | Creating Editor windows and inspectors                           |
-| [create-enum](./skills/create-enum.md)                                   | Creating a new enum type                                         |
-| [create-property-drawer](./skills/create-property-drawer.md)             | Creating PropertyDrawers for custom attributes                   |
-| [create-scriptable-object](./skills/create-scriptable-object.md)         | Creating ScriptableObject data assets                            |
-| [create-test](./skills/create-test.md)                                   | Writing or modifying test files                                  |
-| [create-unity-meta](./skills/create-unity-meta.md)                       | After creating ANY new file or folder                            |
-| [defensive-editor-programming](./skills/defensive-editor-programming.md) | Editor code - handle Unity Editor edge cases                     |
-| [defensive-programming](./skills/defensive-programming.md)               | ALL code - never throw, handle gracefully                        |
-| [editor-caching-patterns](./skills/editor-caching-patterns.md)           | Caching strategies for Editor code                               |
-| [formatting](./skills/formatting.md)                                     | After ANY file change (CSharpier/Prettier)                       |
-| [git-hook-patterns](./skills/git-hook-patterns.md)                       | Pre-commit hook safety and configuration                         |
-| [git-safe-operations](./skills/git-safe-operations.md)                   | Scripts or hooks that interact with git index                    |
-| [git-staging-helpers](./skills/git-staging-helpers.md)                   | PowerShell/Bash helpers for safe git staging                     |
-| [high-performance-csharp](./skills/high-performance-csharp.md)           | ALL code - zero allocation patterns                              |
-| [investigate-test-failures](./skills/investigate-test-failures.md)       | ANY test failure - investigate before fixing                     |
-| [linter-reference](./skills/linter-reference.md)                         | Detailed linter commands, configurations                         |
-| [manage-skills](./skills/manage-skills.md)                               | Creating, updating, splitting, consolidating, or removing skills |
-| [markdown-reference](./skills/markdown-reference.md)                     | Link formatting, escaping, linting rules                         |
-| [no-regions](./skills/no-regions.md)                                     | ALL C# code - never use #region/#endregion                       |
-| [prefer-logging-extensions](./skills/prefer-logging-extensions.md)       | Unity logging in UnityEngine.Object classes                      |
-| [search-codebase](./skills/search-codebase.md)                           | Finding code, files, or patterns                                 |
-| [test-data-driven](./skills/test-data-driven.md)                         | Data-driven testing with TestCase and TestCaseSource             |
-| [test-naming-conventions](./skills/test-naming-conventions.md)           | Test method and TestName naming rules                            |
-| [test-odin-drawers](./skills/test-odin-drawers.md)                       | Odin Inspector drawer testing patterns                           |
-| [test-parallelization-rules](./skills/test-parallelization-rules.md)     | Unity Editor test threading constraints                          |
-| [test-unity-lifecycle](./skills/test-unity-lifecycle.md)                 | Track(), DestroyImmediate, object cleanup                        |
-| [update-documentation](./skills/update-documentation.md)                 | After ANY feature/bug fix/API change                             |
-| [validate-before-commit](./skills/validate-before-commit.md)             | Before completing any task (run linters!)                        |
-| [validation-troubleshooting](./skills/validation-troubleshooting.md)     | Common validation errors, CI failures, fixes                     |
+| Skill                                                                                        | When to Use                                                      |
+| -------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| [avoid-magic-strings](./skills/avoid-magic-strings.md)                                       | ALL code - use nameof() not strings                              |
+| [avoid-reflection](./skills/avoid-reflection.md)                                             | ALL code - never reflect on our own types                        |
+| [create-csharp-file](./skills/create-csharp-file.md)                                         | Creating any new .cs file                                        |
+| [create-editor-tool](./skills/create-editor-tool.md)                                         | Creating Editor windows and inspectors                           |
+| [create-enum](./skills/create-enum.md)                                                       | Creating a new enum type                                         |
+| [create-property-drawer](./skills/create-property-drawer.md)                                 | Creating PropertyDrawers for custom attributes                   |
+| [create-scriptable-object](./skills/create-scriptable-object.md)                             | Creating ScriptableObject data assets                            |
+| [create-test](./skills/create-test.md)                                                       | Writing or modifying test files                                  |
+| [create-unity-meta](./skills/create-unity-meta.md)                                           | After creating ANY new file or folder                            |
+| [defensive-editor-programming](./skills/defensive-editor-programming.md)                     | Editor code - handle Unity Editor edge cases                     |
+| [defensive-programming](./skills/defensive-programming.md)                                   | ALL code - never throw, handle gracefully                        |
+| [editor-caching-patterns](./skills/editor-caching-patterns.md)                               | Caching strategies for Editor code                               |
+| [formatting](./skills/formatting.md)                                                         | After ANY file change (CSharpier/Prettier)                       |
+| [git-hook-patterns](./skills/git-hook-patterns.md)                                           | Pre-commit hook safety and configuration                         |
+| [git-safe-operations](./skills/git-safe-operations.md)                                       | Scripts or hooks that interact with git index                    |
+| [git-staging-helpers](./skills/git-staging-helpers.md)                                       | PowerShell/Bash helpers for safe git staging                     |
+| [github-actions-shell-foundations](./skills/github-actions-shell-foundations.md)             | Core shell scripting safety for GitHub Actions                   |
+| [github-actions-shell-scripting](./skills/github-actions-shell-scripting.md)                 | Shell scripting best practices for GitHub Actions                |
+| [github-actions-shell-workflow-patterns](./skills/github-actions-shell-workflow-patterns.md) | Workflow integration patterns for GitHub Actions shell steps     |
+| [high-performance-csharp](./skills/high-performance-csharp.md)                               | ALL code - zero allocation patterns                              |
+| [investigate-test-failures](./skills/investigate-test-failures.md)                           | ANY test failure - investigate before fixing                     |
+| [linter-reference](./skills/linter-reference.md)                                             | Detailed linter commands, configurations                         |
+| [manage-skills](./skills/manage-skills.md)                                                   | Creating, updating, splitting, consolidating, or removing skills |
+| [markdown-reference](./skills/markdown-reference.md)                                         | Link formatting, escaping, linting rules                         |
+| [no-regions](./skills/no-regions.md)                                                         | ALL C# code - never use #region/#endregion                       |
+| [prefer-logging-extensions](./skills/prefer-logging-extensions.md)                           | Unity logging in UnityEngine.Object classes                      |
+| [search-codebase](./skills/search-codebase.md)                                               | Finding code, files, or patterns                                 |
+| [test-data-driven](./skills/test-data-driven.md)                                             | Data-driven testing with TestCase and TestCaseSource             |
+| [test-naming-conventions](./skills/test-naming-conventions.md)                               | Test method and TestName naming rules                            |
+| [test-odin-drawers](./skills/test-odin-drawers.md)                                           | Odin Inspector drawer testing patterns                           |
+| [test-parallelization-rules](./skills/test-parallelization-rules.md)                         | Unity Editor test threading constraints                          |
+| [test-unity-lifecycle](./skills/test-unity-lifecycle.md)                                     | Track(), DestroyImmediate, object cleanup                        |
+| [update-documentation](./skills/update-documentation.md)                                     | After ANY feature/bug fix/API change                             |
+| [validate-before-commit](./skills/validate-before-commit.md)                                 | Before completing any task (run linters!)                        |
+| [validation-troubleshooting](./skills/validation-troubleshooting.md)                         | Common validation errors, CI failures, fixes                     |
 
 ### Performance Skills
 

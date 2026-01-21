@@ -179,6 +179,7 @@ If you answered "yes" to any of these, create a standalone script.
 
 ## Related Skills
 
+- [github-actions-shell-scripting](./github-actions-shell-scripting.md) — Inline shell safety and workflow patterns
 - [validate-before-commit](./validate-before-commit.md) — Ensure scripts pass linting
 - [create-test](./create-test.md) — Write comprehensive tests for scripts
 - [search-codebase](./search-codebase.md) — Find existing scripts to extend

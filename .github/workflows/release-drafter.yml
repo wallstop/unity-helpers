@@ -17,12 +17,196 @@ permissions:
   contents: write
   pull-requests: write
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  # Use false for release workflows to prevent incomplete releases from cancellation
+  cancel-in-progress: false
+
 jobs:
   update_release_draft:
+    # Only run on the main repository, not forks
+    if: github.repository == 'wallstop/unity-helpers'
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      version: ${{ steps.changelog.outputs.version }}
+      release-id: ${{ steps.release_drafter.outputs.id }}
+      release-url: ${{ steps.release_drafter.outputs.html_url }}
     steps:
-      - uses: release-drafter/release-drafter@v6
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1 # Only need current commit for package.json and CHANGELOG.md
+
+      - name: Create changelog extraction script
+        run: |
+          set -euo pipefail
+          cat > "${RUNNER_TEMP}/extract-changelog.awk" << '__AWKSCRIPT_HEREDOC_DELIMITER__'
+          BEGIN { found = 0 }
+          /^## \[/ {
+            if (found) exit
+            # Extract version from header: ## [X.Y.Z] or ## [X.Y.Z-prerelease+build]
+            if (match($0, /\[[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?\]/)) {
+              header_ver = substr($0, RSTART + 1, RLENGTH - 2)
+              if (header_ver == target_ver) {
+                found = 1
+                next
+              }
+            }
+          }
+          found { print }
+          __AWKSCRIPT_HEREDOC_DELIMITER__
+
+      - name: Extract changelog for version
+        id: changelog
+        run: |
+          set -euo pipefail
+
+          # Validate required files exist
+          if [ ! -f "package.json" ]; then
+            echo "::error::package.json not found"
+            exit 1
+          fi
+
+          if [ ! -f "CHANGELOG.md" ]; then
+            echo "::error::CHANGELOG.md not found"
+            exit 1
+          fi
+
+          if [ ! -f "${RUNNER_TEMP}/extract-changelog.awk" ]; then
+            echo "::error::AWK script not found at ${RUNNER_TEMP}/extract-changelog.awk"
+            exit 1
+          fi
+
+          # Get the version from package.json with validation
+          VERSION=$(jq -r '.version // empty' package.json)
+
+          if [ -z "$VERSION" ]; then
+            echo "::error::Version field missing or empty in package.json"
+            exit 1
+          fi
+
+          # Validate semver format (X.Y.Z with optional prerelease/build metadata)
+          if ! printf '%s' "$VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$'; then
+            echo "::error::Invalid semver format: $VERSION (expected X.Y.Z)"
+            exit 1
+          fi
+
+          echo "Extracting changelog for version: $VERSION"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+          # Extract changelog section using external AWK script with exact version matching
+          awk -v target_ver="$VERSION" -f "${RUNNER_TEMP}/extract-changelog.awk" CHANGELOG.md > "${RUNNER_TEMP}/changelog_section.md"
+
+          # Check if we extracted any content
+          if [ ! -s "${RUNNER_TEMP}/changelog_section.md" ]; then
+            echo "::warning::No changelog section found for version $VERSION"
+          fi
+
+          # Set multiline output using a random delimiter to prevent injection
+          # Generate unique delimiter using date + random to avoid content collision
+          DELIMITER="__CHANGELOG_EOF_$(date +%s%N)_${RANDOM}__"
+          {
+            printf 'content<<%s\n' "$DELIMITER"
+            cat "${RUNNER_TEMP}/changelog_section.md"
+            printf '%s\n' "$DELIMITER"
+          } >> "$GITHUB_OUTPUT"
+
+          echo "Changelog section extracted successfully"
+
+      - name: Draft release
+        id: release_drafter
+        uses: release-drafter/release-drafter@v6
         with:
           config-name: release-drafter.yml
+          version: ${{ steps.changelog.outputs.version }}
+          tag: ${{ steps.changelog.outputs.version }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update release with changelog
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.changelog.outputs.version }}
+          CHANGELOG_CONTENT: ${{ steps.changelog.outputs.content }}
+          RELEASE_ID: ${{ steps.release_drafter.outputs.id }}
+        run: |
+          set -euo pipefail
+
+          # Write changelog content to file using printf (avoids heredoc injection)
+          # Using environment variable avoids shell interpolation issues
+          printf '%s\n' "$CHANGELOG_CONTENT" > "${RUNNER_TEMP}/changelog_content.md"
+
+          API_STDERR="${RUNNER_TEMP}/gh_api_stderr.log"
+
+          # Validate release ID from release-drafter action
+          if [ -z "$RELEASE_ID" ]; then
+            echo "::error::release-drafter did not return a release ID"
+            exit 1
+          fi
+
+          echo "Using release ID $RELEASE_ID from release-drafter action"
+
+          # Fetch current release body and write to file for safe handling
+          # Capture stderr to temp file for debugging instead of suppressing
+          echo "Fetching current release body..."
+          if ! gh api "repos/${{ github.repository }}/releases/$RELEASE_ID" \
+            --jq '.body // ""' > "${RUNNER_TEMP}/current_body.md" 2>"$API_STDERR"; then
+            echo "::warning::Failed to fetch current release body, using empty body"
+            if [ -s "$API_STDERR" ]; then
+              echo "::debug::gh api stderr: $(cat "$API_STDERR")"
+            fi
+            : > "${RUNNER_TEMP}/current_body.md"
+          fi
+
+          # Check if changelog section already exists to prevent duplicate additions
+          # Use -E for extended regex, -i for case-insensitive, allow optional leading whitespace
+          if grep -qiE '^\s*## Changelog' "${RUNNER_TEMP}/current_body.md"; then
+            echo "::notice::Changelog section already exists in release body, skipping update"
+            echo "Release $RELEASE_ID already contains changelog for version $VERSION"
+            exit 0
+          fi
+
+          # Build new body using file concatenation (no embedded whitespace issues)
+          {
+            echo "## Changelog"
+            echo ""
+            cat "${RUNNER_TEMP}/changelog_content.md"
+            echo ""
+            cat "${RUNNER_TEMP}/current_body.md"
+          } > "${RUNNER_TEMP}/new_body.md"
+
+          echo "Updating release with changelog..."
+
+          # Use file-based body to handle special characters safely
+          # Retry with exponential backoff for transient API failures
+          MAX_ATTEMPTS=3
+          DELAY=2
+          for attempt in $(seq 1 $MAX_ATTEMPTS); do
+            if gh api "repos/${{ github.repository }}/releases/$RELEASE_ID" \
+              -X PATCH \
+              -F body=@"${RUNNER_TEMP}/new_body.md"; then
+              echo "Release API update succeeded on attempt $attempt"
+              break
+            fi
+            if [ "$attempt" -eq "$MAX_ATTEMPTS" ]; then
+              echo "::error::Failed to update release body for release ID $RELEASE_ID after $MAX_ATTEMPTS attempts"
+              exit 1
+            fi
+            echo "::warning::Attempt $attempt failed, retrying in ${DELAY}s..."
+            sleep "$DELAY"
+            DELAY=$((DELAY * 2))
+          done
+
+          echo "Release $RELEASE_ID updated successfully with changelog for version $VERSION"
+
+          # Add step summary for workflow run visibility
+          {
+            echo "### ✅ Release Draft Updated"
+            echo ""
+            echo "| Property | Value |"
+            echo "|----------|-------|"
+            echo "| **Version** | \`$VERSION\` |"
+            echo "| **Release ID** | \`$RELEASE_ID\` |"
+            echo "| **Release URL** | ${{ steps.release_drafter.outputs.html_url }} |"
+          } >> "$GITHUB_STEP_SUMMARY"
