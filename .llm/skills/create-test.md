@@ -128,6 +128,7 @@ For complete naming rules, see [test-naming-conventions](./test-naming-conventio
 > These assertions use `ReferenceEquals` internally, which bypasses Unity's custom `==` operator and fails to detect Unity's "fake null" (destroyed objects that are not yet garbage collected).
 
 1. **Unity object null checks** — Use `== null` / `!= null`, never `Assert.IsNull` / `Assert.IsNotNull`
+2. **Interface/base types still use Unity null checks** — If the static type is an interface, `Component`, or `object`, still use Unity's `==` operator
 
 **Why this matters:**
 
@@ -141,10 +142,16 @@ For complete naming rules, see [test-naming-conventions](./test-naming-conventio
 Assert.IsTrue(gameObject != null);
 Assert.IsFalse(component == null);
 
+// CORRECT - Interface/base typed UnityEngine.Object
+ITestInterface interfaceField = gameObject.GetComponent<TestInterfaceComponent>();
+Assert.IsTrue(interfaceField != null);
+
 // NEVER USE - Bypasses Unity's null check (flagged by UNH005)
 Assert.IsNull(gameObject);
 Assert.IsNotNull(component);
 ```
+
+**Auto-fix**: `pwsh -NoProfile -File scripts/lint-tests.ps1 -FixNullChecks -Paths <changed-test-files>`
 
 ### Documentation
 

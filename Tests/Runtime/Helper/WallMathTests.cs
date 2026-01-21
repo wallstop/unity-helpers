@@ -728,6 +728,15 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
         [Test]
         public void ClampRectInsideRandom()
         {
+            const float minimumDimension = 0.1f;
+            const float boundaryMargin = 0.001f;
+
+            Assert.Less(
+                boundaryMargin * 2,
+                minimumDimension,
+                "Test precondition: boundaryMargin * 2 must be less than minimumDimension to ensure valid sampling range."
+            );
+
             for (int i = 0; i < TestIterations; ++i)
             {
                 Vector2 position = PRNG.Instance.NextVector2InRange(10f);
@@ -736,17 +745,26 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
                 do
                 {
                     size = PRNG.Instance.NextVector2InRange(10f);
-                } while (size.x < 0 || size.y < 0);
+                } while (size.x < minimumDimension || size.y < minimumDimension);
 
                 Rect rect = new(position, size);
 
+                float minX = rect.min.x + boundaryMargin;
+                float maxX = rect.max.x - boundaryMargin;
+                float minY = rect.min.y + boundaryMargin;
+                float maxY = rect.max.y - boundaryMargin;
+
                 Vector2 inside = new(
-                    PRNG.Instance.NextFloat(rect.min.x, rect.max.x),
-                    PRNG.Instance.NextFloat(rect.min.y, rect.max.y)
+                    PRNG.Instance.NextFloat(minX, maxX),
+                    PRNG.Instance.NextFloat(minY, maxY)
                 );
                 Assert.IsTrue(rect.Contains(inside), $"Rect {rect} does not contain {inside}.");
                 Vector2 clamped = rect.Clamp(inside);
-                Assert.AreEqual(inside, clamped);
+                Assert.AreEqual(
+                    inside,
+                    clamped,
+                    $"Iteration {i}: Expected clamped value {clamped} to equal inside value {inside} for rect {rect}."
+                );
             }
         }
 
@@ -764,8 +782,16 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
 
                 Vector2 originalOutside = outside;
                 Vector2 clamped = rect.Clamp(ref outside);
-                Assert.AreNotEqual(originalOutside, clamped);
-                Assert.AreEqual(clamped, outside);
+                Assert.AreNotEqual(
+                    originalOutside,
+                    clamped,
+                    $"Iteration {i}: Clamped value {clamped} should differ from original outside value {originalOutside} for rect {rect}."
+                );
+                Assert.AreEqual(
+                    clamped,
+                    outside,
+                    $"Iteration {i}: Clamp should modify the ref parameter to match the returned value. Expected {clamped}, got {outside}."
+                );
 
                 const float shrinkScaleToAccountForPrecision = 0.99f;
                 Vector2 delta = rect.center - clamped;
@@ -776,6 +802,166 @@ namespace WallstopStudios.UnityHelpers.Tests.Helper
                     $"Expected rect {rect} to contain {clamped}, but it did not."
                 );
             }
+        }
+
+        [Test]
+        [TestCase(0f, 0f, TestName = "ClampRectZeroDimensionsBoth")]
+        [TestCase(0f, 1f, TestName = "ClampRectZeroDimensionsWidth")]
+        [TestCase(1f, 0f, TestName = "ClampRectZeroDimensionsHeight")]
+        public void ClampRectZeroDimensions(float width, float height)
+        {
+            Rect rect = new(Vector2.one, new Vector2(width, height));
+            Vector2 outside = new(10f, 10f);
+            Vector2 clamped = rect.Clamp(outside);
+            Assert.LessOrEqual(
+                clamped.x,
+                rect.max.x + Epsilon,
+                $"Clamped x {clamped.x} should be <= max x {rect.max.x} + epsilon for rect {rect}."
+            );
+            Assert.LessOrEqual(
+                clamped.y,
+                rect.max.y + Epsilon,
+                $"Clamped y {clamped.y} should be <= max y {rect.max.y} + epsilon for rect {rect}."
+            );
+            Assert.GreaterOrEqual(
+                clamped.x,
+                rect.min.x - Epsilon,
+                $"Clamped x {clamped.x} should be >= min x {rect.min.x} - epsilon for rect {rect}."
+            );
+            Assert.GreaterOrEqual(
+                clamped.y,
+                rect.min.y - Epsilon,
+                $"Clamped y {clamped.y} should be >= min y {rect.min.y} - epsilon for rect {rect}."
+            );
+        }
+
+        [Test]
+        [TestCase(0.0001f, 0.0001f, TestName = "ClampRectVerySmallDimensionsTiny")]
+        [TestCase(0.001f, 0.001f, TestName = "ClampRectVerySmallDimensionsSmall")]
+        [TestCase(0.01f, 0.01f, TestName = "ClampRectVerySmallDimensionsMedium")]
+        public void ClampRectVerySmallDimensions(float width, float height)
+        {
+            Rect rect = new(Vector2.zero, new Vector2(width, height));
+            Vector2 outside = new(10f, 10f);
+            Vector2 clamped = rect.Clamp(outside);
+            Assert.LessOrEqual(
+                clamped.x,
+                rect.max.x,
+                $"Clamped x {clamped.x} should be <= max x {rect.max.x} for rect {rect}."
+            );
+            Assert.LessOrEqual(
+                clamped.y,
+                rect.max.y,
+                $"Clamped y {clamped.y} should be <= max y {rect.max.y} for rect {rect}."
+            );
+            Assert.GreaterOrEqual(
+                clamped.x,
+                rect.min.x,
+                $"Clamped x {clamped.x} should be >= min x {rect.min.x} for rect {rect}."
+            );
+            Assert.GreaterOrEqual(
+                clamped.y,
+                rect.min.y,
+                $"Clamped y {clamped.y} should be >= min y {rect.min.y} for rect {rect}."
+            );
+        }
+
+        [Test]
+        public void ClampRectBoundaryPointsAreClampedCorrectly()
+        {
+            Rect rect = new(Vector2.zero, new Vector2(2f, 2f));
+
+            Vector2 minCorner = rect.min;
+            Vector2 clampedMin = rect.Clamp(minCorner);
+            Assert.AreEqual(minCorner, clampedMin, "Min corner should clamp to itself.");
+
+            Vector2 maxCorner = rect.max;
+            Vector2 clampedMax = rect.Clamp(maxCorner);
+            Assert.AreEqual(maxCorner, clampedMax, "Max corner should clamp to itself.");
+
+            Vector2 topLeft = new(rect.min.x, rect.max.y);
+            Vector2 clampedTopLeft = rect.Clamp(topLeft);
+            Assert.AreEqual(topLeft, clampedTopLeft, "Top-left corner should clamp to itself.");
+
+            Vector2 bottomRight = new(rect.max.x, rect.min.y);
+            Vector2 clampedBottomRight = rect.Clamp(bottomRight);
+            Assert.AreEqual(
+                bottomRight,
+                clampedBottomRight,
+                "Bottom-right corner should clamp to itself."
+            );
+        }
+
+        [Test]
+        public void ClampRectEdgeMidpointsAreClampedCorrectly()
+        {
+            Rect rect = new(Vector2.zero, new Vector2(4f, 4f));
+
+            Vector2 topEdge = new(rect.center.x, rect.max.y);
+            Vector2 clampedTop = rect.Clamp(topEdge);
+            Assert.AreEqual(topEdge, clampedTop, "Top edge midpoint should clamp to itself.");
+
+            Vector2 bottomEdge = new(rect.center.x, rect.min.y);
+            Vector2 clampedBottom = rect.Clamp(bottomEdge);
+            Assert.AreEqual(
+                bottomEdge,
+                clampedBottom,
+                "Bottom edge midpoint should clamp to itself."
+            );
+
+            Vector2 leftEdge = new(rect.min.x, rect.center.y);
+            Vector2 clampedLeft = rect.Clamp(leftEdge);
+            Assert.AreEqual(leftEdge, clampedLeft, "Left edge midpoint should clamp to itself.");
+
+            Vector2 rightEdge = new(rect.max.x, rect.center.y);
+            Vector2 clampedRight = rect.Clamp(rightEdge);
+            Assert.AreEqual(rightEdge, clampedRight, "Right edge midpoint should clamp to itself.");
+        }
+
+        [Test]
+        [TestCase(-2f, -2f, TestName = "ClampRectNegativeSizeBothNegative")]
+        [TestCase(-2f, 2f, TestName = "ClampRectNegativeSizeWidthNegative")]
+        [TestCase(2f, -2f, TestName = "ClampRectNegativeSizeHeightNegative")]
+        public void ClampRectNegativeDimensions(float width, float height)
+        {
+            Rect rect = new(new Vector2(5f, 5f), new Vector2(width, height));
+            Vector2 outsideFar = new(100f, 100f);
+            Vector2 clamped = rect.Clamp(outsideFar);
+
+            float expectedMinX = Mathf.Min(rect.xMin, rect.xMax);
+            float expectedMaxX = Mathf.Max(rect.xMin, rect.xMax);
+            float expectedMinY = Mathf.Min(rect.yMin, rect.yMax);
+            float expectedMaxY = Mathf.Max(rect.yMin, rect.yMax);
+
+            Assert.GreaterOrEqual(
+                clamped.x,
+                expectedMinX - Epsilon,
+                $"Clamped x {clamped.x} should be >= expected min x {expectedMinX} - epsilon for rect {rect}."
+            );
+            Assert.LessOrEqual(
+                clamped.x,
+                expectedMaxX + Epsilon,
+                $"Clamped x {clamped.x} should be <= expected max x {expectedMaxX} + epsilon for rect {rect}."
+            );
+            Assert.GreaterOrEqual(
+                clamped.y,
+                expectedMinY - Epsilon,
+                $"Clamped y {clamped.y} should be >= expected min y {expectedMinY} - epsilon for rect {rect}."
+            );
+            Assert.LessOrEqual(
+                clamped.y,
+                expectedMaxY + Epsilon,
+                $"Clamped y {clamped.y} should be <= expected max y {expectedMaxY} + epsilon for rect {rect}."
+            );
+        }
+
+        [Test]
+        public void ClampRectCenterPointRemainsUnchanged()
+        {
+            Rect rect = new(Vector2.zero, new Vector2(10f, 10f));
+            Vector2 center = rect.center;
+            Vector2 clamped = rect.Clamp(center);
+            Assert.AreEqual(center, clamped, "Center point should not be modified.");
         }
 
         [Test]

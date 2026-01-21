@@ -488,7 +488,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
 
             tester.AssignParentComponents();
 
-            Assert.IsNull(tester.concreteField);
+            Assert.IsTrue(tester.concreteField == null);
 
             yield break;
         }
@@ -509,7 +509,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
 
             tester.AssignParentComponents();
 
-            Assert.IsNull(tester.interfaceField);
+            Assert.IsTrue(tester.interfaceField == null);
 
             yield break;
         }

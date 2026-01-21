@@ -555,11 +555,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
             BoxCollider otherCollider = other.AddComponent<BoxCollider>();
 
             tester.concreteField = otherCollider;
-            Assert.IsNotNull(tester.concreteField);
+            Assert.IsTrue(tester.concreteField != null);
 
             tester.AssignSiblingComponents();
 
-            Assert.IsNull(tester.concreteField);
+            Assert.IsTrue(tester.concreteField == null);
 
             yield break;
         }
@@ -574,11 +574,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
             TestInterfaceComponent otherInterface = other.AddComponent<TestInterfaceComponent>();
 
             tester.interfaceField = otherInterface;
-            Assert.IsNotNull(tester.interfaceField);
+            Assert.IsTrue(tester.interfaceField != null);
 
             tester.AssignSiblingComponents();
 
-            Assert.IsNull(tester.interfaceField);
+            Assert.IsTrue(tester.interfaceField == null);
 
             yield break;
         }
