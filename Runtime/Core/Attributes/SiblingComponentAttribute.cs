@@ -266,6 +266,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                 if (!foundSibling)
                 {
                     LogMissingComponentError(component, metadata, "sibling");
+                    AssignNullToSingleField(component, metadata);
                 }
             }
         }

@@ -11,6 +11,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
     using UnityEngine;
     using UnityEngine.TestTools;
     using WallstopStudios.UnityHelpers.Core.Attributes;
+    using WallstopStudios.UnityHelpers.Tests.Attributes.Components;
     using WallstopStudios.UnityHelpers.Tests.Core;
     using WallstopStudios.UnityHelpers.Tests.Core.TestTypes;
 
@@ -540,6 +541,44 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
             CollectionAssert.Contains(tester.activeBehaviours, first);
             CollectionAssert.Contains(tester.activeBehaviours, third);
             CollectionAssert.DoesNotContain(tester.activeBehaviours, second);
+
+            yield break;
+        }
+
+        [UnityTest]
+        public IEnumerator AssignSiblingComponentsNullsPreAssignedConcreteFieldWhenNoSiblingFound()
+        {
+            GameObject root = Track(new GameObject("SiblingNullConcrete"));
+            SiblingOverwriteNullTester tester = root.AddComponent<SiblingOverwriteNullTester>();
+
+            GameObject other = Track(new GameObject("OtherObject"));
+            BoxCollider otherCollider = other.AddComponent<BoxCollider>();
+
+            tester.concreteField = otherCollider;
+            Assert.IsTrue(tester.concreteField != null);
+
+            tester.AssignSiblingComponents();
+
+            Assert.IsTrue(tester.concreteField == null);
+
+            yield break;
+        }
+
+        [UnityTest]
+        public IEnumerator AssignSiblingComponentsNullsPreAssignedInterfaceFieldWhenNoSiblingFound()
+        {
+            GameObject root = Track(new GameObject("SiblingNullInterface"));
+            SiblingOverwriteNullTester tester = root.AddComponent<SiblingOverwriteNullTester>();
+
+            GameObject other = Track(new GameObject("OtherObject"));
+            TestInterfaceComponent otherInterface = other.AddComponent<TestInterfaceComponent>();
+
+            tester.interfaceField = otherInterface;
+            Assert.IsTrue(tester.interfaceField != null);
+
+            tester.AssignSiblingComponents();
+
+            Assert.IsTrue(tester.interfaceField == null);
 
             yield break;
         }

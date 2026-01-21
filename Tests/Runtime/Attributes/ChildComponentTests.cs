@@ -644,5 +644,45 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
             Assert.IsTrue(tester.optionalRenderer == null);
             yield break;
         }
+
+        [UnityTest]
+        public IEnumerator AssignChildComponentsNullsPreAssignedConcreteFieldWhenNoChildFound()
+        {
+            GameObject root = Track(
+                new GameObject("ChildOverwriteNull", typeof(ChildOverwriteNullTester))
+            );
+            ChildOverwriteNullTester tester = root.GetComponent<ChildOverwriteNullTester>();
+
+            GameObject other = Track(new GameObject("OtherObject", typeof(BoxCollider)));
+            BoxCollider otherCollider = other.GetComponent<BoxCollider>();
+
+            tester.concreteField = otherCollider;
+            Assert.IsTrue(tester.concreteField != null);
+
+            tester.AssignChildComponents();
+
+            Assert.IsTrue(tester.concreteField == null);
+            yield break;
+        }
+
+        [UnityTest]
+        public IEnumerator AssignChildComponentsNullsPreAssignedInterfaceFieldWhenNoChildFound()
+        {
+            GameObject root = Track(
+                new GameObject("ChildOverwriteNullInterface", typeof(ChildOverwriteNullTester))
+            );
+            ChildOverwriteNullTester tester = root.GetComponent<ChildOverwriteNullTester>();
+
+            GameObject other = Track(new GameObject("OtherObject", typeof(TestInterfaceComponent)));
+            TestInterfaceComponent otherComponent = other.GetComponent<TestInterfaceComponent>();
+
+            tester.interfaceField = otherComponent;
+            Assert.IsTrue(tester.interfaceField != null);
+
+            tester.AssignChildComponents();
+
+            Assert.IsTrue(tester.interfaceField == null);
+            yield break;
+        }
     }
 }

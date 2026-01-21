@@ -471,5 +471,47 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
 
             yield break;
         }
+
+        [UnityTest]
+        public IEnumerator AssignParentComponentsNullsPreAssignedConcreteFieldWhenNoParentFound()
+        {
+            GameObject other = Track(new GameObject("OtherObject", typeof(BoxCollider)));
+            BoxCollider otherCollider = other.GetComponent<BoxCollider>();
+
+            GameObject orphan = Track(
+                new GameObject("OrphanConcrete", typeof(ParentOverwriteNullTester))
+            );
+            ParentOverwriteNullTester tester = orphan.GetComponent<ParentOverwriteNullTester>();
+
+            tester.concreteField = otherCollider;
+            Assert.IsTrue(tester.concreteField != null);
+
+            tester.AssignParentComponents();
+
+            Assert.IsTrue(tester.concreteField == null);
+
+            yield break;
+        }
+
+        [UnityTest]
+        public IEnumerator AssignParentComponentsNullsPreAssignedInterfaceFieldWhenNoParentFound()
+        {
+            GameObject other = Track(new GameObject("OtherObject", typeof(TestInterfaceComponent)));
+            ITestInterface otherInterface = other.GetComponent<TestInterfaceComponent>();
+
+            GameObject orphan = Track(
+                new GameObject("OrphanInterface", typeof(ParentOverwriteNullTester))
+            );
+            ParentOverwriteNullTester tester = orphan.GetComponent<ParentOverwriteNullTester>();
+
+            tester.interfaceField = otherInterface;
+            Assert.IsTrue(tester.interfaceField != null);
+
+            tester.AssignParentComponents();
+
+            Assert.IsTrue(tester.interfaceField == null);
+
+            yield break;
+        }
     }
 }

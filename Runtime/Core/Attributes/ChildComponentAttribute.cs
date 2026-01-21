@@ -302,6 +302,7 @@ namespace WallstopStudios.UnityHelpers.Core.Attributes
                 if (!foundChild)
                 {
                     LogMissingComponentError(component, metadata, "child");
+                    AssignNullToSingleField(component, metadata);
                 }
             }
         }
