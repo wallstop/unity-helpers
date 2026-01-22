@@ -63,7 +63,7 @@ jobs:
       - name: Create Pull Request
         if: steps.git_changes.outputs.changed == 'true'
         id: create_pr
-        uses: peter-evans/create-pull-request@v8.0.0
+        uses: peter-evans/create-pull-request@v8.1.0
         with:
           base: main
           branch: chore/update-dotnet-tools
