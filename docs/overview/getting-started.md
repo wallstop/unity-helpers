@@ -2,15 +2,15 @@
 
 **This guide introduces key features that can help reduce repetitive coding patterns.**
 
-Unity Helpers is a production-tested toolkit that reduces common boilerplate patterns in Unity development. This guide covers the top features and basic usage patterns, whether you're a beginner or a senior engineer.
+Unity Helpers is a toolkit used in commercial games that reduces common boilerplate patterns in Unity development. This guide covers the top features and basic usage patterns, whether you're a beginner or a senior engineer.
 
-## What Makes This Worth Your Time?
+## Core Features
 
 **Three core principles:**
 
 ### 1. 🎯 Reduced Boilerplate
 
-**APIs that handle the tedious stuff:**
+**Common APIs:**
 
 - Random selection with weights? → `random.NextWeightedIndex(weights)`
 - Auto-wire components? → `[SiblingComponent] private Animator animator;`
@@ -24,42 +24,40 @@ Unity Helpers is a production-tested toolkit that reduces common boilerplate pat
 [ChildComponent(MaxDepth = 1)] private Collider2D[] colliders;   // Limited scope
 ```
 
-**Helpful errors that save debugging time:**
+**Error messages:**
 
 - Missing components? → Full GameObject path + component type
 - Invalid queries? → Explanation of what went wrong + how to fix it
 - Schema issues? → Specific guidance for your serialization problem
 
-### 2. ⚡ Performance-Proven
+### 2. ⚡ Performance Characteristics
 
-**Measurable speed improvements:**
+**Speed improvements measured in benchmarks:**
 
-- **10-15x faster** random generation in benchmarks (see performance docs)
-- **Up to 100x faster** reflection in benchmarks (see performance docs)
-- **O(log n)** spatial queries scale to millions of objects
+- **10-15x faster in benchmarks** random generation ([benchmark details](../performance/random-performance.md))
+- **Up to 100x faster in benchmarks** reflection ([benchmark details](../performance/reflection-performance.md))
+- **O(log n)** spatial queries tested with millions of objects ([benchmark details](../performance/spatial-tree-2d-performance.md))
 - **Zero GC** with buffering pattern
 
-**Real-world impact:**
+**Benchmark Results:**
 
-- Stable 60 FPS with 1000+ AI agents querying neighbors
+- Stable 60 FPS with 1000+ AI agents ([benchmark details](../performance/spatial-tree-2d-performance.md))
 - No allocation spikes from pooled collections
 - Deterministic replays with seedable RNG
 
-### 3. ✅ Production-Ready
+### 3. ✅ Testing & Compatibility
 
-**Quality you can trust:**
-
-- ✅ **8,000+ automated tests** - Edge cases covered before you hit them
-- ✅ **Shipped in commercial games** - Battle-tested at scale
+- ✅ **8,000+ automated tests** - Edge cases are handled through test coverage
+- ✅ **Shipped in commercial games** - Used at scale in production
 - ✅ **IL2CPP/WebGL compatible** - Works with aggressive compilers
-- ✅ **Schema evolution** - Player saves never break from updates
+- ✅ **Schema evolution** - Player saves maintain compatibility across updates
 - ✅ **SINGLE_THREADED optimized** - Reduced overhead on WebGL
 
-**What this means for you:**
+**Key capabilities:**
 
-- Ship confidently knowing edge cases are handled
-- No "works in editor but not in build" surprises
-- Update your game without corrupting player data
+- Edge cases are handled through test coverage
+- Consistent behavior in editor and builds
+- Player data compatibility maintained across updates
 
 ---
 
@@ -88,9 +86,9 @@ Jump directly to the solution you need:
 - Need save/load system → [Serialization](../features/serialization/serialization.md)
 - Migrating from Odin Inspector → [Odin Migration Guide](../guides/odin-migration-guide.md)
 
-### 📚 Path 2: "I Want to Understand Everything"
+### 📚 Path 2: "I Want to Understand the Full Picture"
 
-Comprehensive deep-dive (best for team leads and senior developers):
+Full documentation overview (best for team leads and senior developers):
 
 1. Read [Main Documentation](../readme.md) - Full feature overview
 2. Review [Features Documentation](./index.md) - Detailed API documentation
@@ -136,14 +134,14 @@ public class LootDrop : MonoBehaviour
 {
     void Start()
     {
-        // Faster than UnityEngine.Random (see benchmarks)
+        // Performance comparison available in benchmarks
         IRandom rng = PRNG.Instance;
 
         // Basic usage
         int damage = rng.Next(10, 20);
         float chance = rng.NextFloat();
 
-        // Advanced: weighted random selection
+        // Weighted random selection
         string[] loot = { "Common", "Rare", "Epic", "Legendary" };
         float[] weights = { 0.6f, 0.25f, 0.10f, 0.05f };
         int index = rng.NextWeightedIndex(weights);
@@ -185,7 +183,7 @@ public class Player : MonoBehaviour
 
     void Awake()
     {
-        // One call wires everything!
+        // One call wires all attributed components
         this.AssignRelationalComponents();
 
         // Now use them
@@ -274,7 +272,7 @@ Based on your needs:
 
 3. **Learn Serialization** - Save systems and networking
    - Start: [Serialization Guide](../features/serialization/serialization.md)
-   - Why: Robust save/load with Unity types supported
+   - Why: Save/load with Unity types supported
 
 ### For Tools/Editor Programmers
 
@@ -296,9 +294,9 @@ Based on your needs:
    - Start: [Data Structures Guide](../features/utilities/data-structures.md)
    - Why: Heaps, tries, sparse sets, and more with clear trade-offs
 
-2. **Use Advanced Math Helpers** - Avoid common pitfalls
+2. **Use Math Helpers** - Avoid common pitfalls
    - Start: [Math & Extensions](../features/utilities/math-and-extensions.md)
-   - Why: Robust modulo, geometry, color averaging, and more
+   - Why: Modulo, geometry, color averaging, and more
 
 3. **Adopt the Buffering Pattern** - Zero-allocation queries
    - Start: [Buffering Pattern](../readme.md#buffering-pattern)
@@ -326,7 +324,7 @@ No! Unity Helpers:
 
 - ✅ Uses namespaces (`WallstopStudios.UnityHelpers.*`)
 - ✅ Doesn't modify Unity types or global state
-- ✅ Opt-in for all features - use what you need
+- ✅ Opt-in design - use what you need
 
 ### "How do I get help?"
 
@@ -348,13 +346,13 @@ Pick one feature that solves your immediate problem:
 
 | Your Need             | Start Here                                                                          | Time to Learn |
 | --------------------- | ----------------------------------------------------------------------------------- | ------------- |
-| Faster random numbers | [Random Performance](../performance/random-performance.md)                          | 5 min         |
-| Auto-wire components  | [Relational Components](../features/relational-components/relational-components.md) | 10 min        |
-| Spatial queries       | [2D Spatial Trees](../features/spatial/spatial-trees-2d-guide.md)                   | 15 min        |
-| Buff/debuff system    | [Effects System](../features/effects/effects-system.md)                             | 20 min        |
-| Save/load data        | [Serialization](../features/serialization/serialization.md)                         | 20 min        |
-| Editor automation     | [Editor Tools](../features/editor-tools/editor-tools-guide.md)                      | 30 min        |
-| Global settings       | [Singletons](../features/utilities/singletons.md)                                   | 10 min        |
+| Faster random numbers | [Random Performance](../performance/random-performance.md)                          | ~5 min        |
+| Auto-wire components  | [Relational Components](../features/relational-components/relational-components.md) | ~10 min       |
+| Spatial queries       | [2D Spatial Trees](../features/spatial/spatial-trees-2d-guide.md)                   | ~15 min       |
+| Buff/debuff system    | [Effects System](../features/effects/effects-system.md)                             | ~20 min       |
+| Save/load data        | [Serialization](../features/serialization/serialization.md)                         | ~20 min       |
+| Editor automation     | [Editor Tools](../features/editor-tools/editor-tools-guide.md)                      | ~30 min       |
+| Global settings       | [Singletons](../features/utilities/singletons.md)                                   | ~10 min       |
 
 ---
 

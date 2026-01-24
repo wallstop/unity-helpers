@@ -3,7 +3,7 @@
 
 # Odin Inspector to Unity Helpers Migration Guide
 
-A practical guide for migrating from Odin Inspector to Unity Helpers. All examples are verified against the actual source code.
+A practical guide for migrating from Odin Inspector to Unity Helpers. Examples are verified against the actual source code.
 
 ---
 
@@ -124,11 +124,11 @@ private void PrintDebugInfo() { }
 private void GenerateIds() { }
 ```
 
-**✅ Automatic Odin Inspector Support:**
+**Odin Inspector Support:**
 
-WButton works automatically with Odin's `SerializedMonoBehaviour` and `SerializedScriptableObject` - no setup required! Just use `[WButton]` on your methods.
+WButton works with Odin's `SerializedMonoBehaviour` and `SerializedScriptableObject` without additional setup. Use `[WButton]` on your methods.
 
-**Only need manual integration if:**
+**Manual integration may be needed if:**
 
 - You create a custom `OdinEditor` for a specific type
 - See [Inspector Buttons - Custom Editors](../features/inspector/inspector-button.md#integration-with-custom-odin-editors) for details
@@ -544,7 +544,7 @@ using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
 
 1. **No special base class** - Use standard `MonoBehaviour` / `ScriptableObject`
 2. **Use `nameof()`** - Unity Helpers uses `nameof()` for condition fields (type-safe)
-3. **Initialize collections** - Always initialize `new SerializableDictionary<K,V>()` etc.
+3. **Initialize collections** - Initialize `new SerializableDictionary<K,V>()` etc. to avoid null references
 4. **[HideIf] becomes inverse** - Use `[WShowIf(..., inverse: true)]` instead of `[HideIf]`
 5. **Numeric conditions** - Use `WShowIfComparison` enum instead of expression strings
 6. **Groups auto-include** - `[WGroup]` can auto-include subsequent fields with `autoIncludeCount`

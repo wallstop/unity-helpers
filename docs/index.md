@@ -1,6 +1,6 @@
 ---
 title: Unity Helpers
-description: Production-ready Unity utilities - 10-15x faster PRNGs, O(log n) spatial queries, zero-allocation pooling, Odin-level inspector tooling, and data-driven effects.
+description: Production-ready Unity utilities - 10-15x faster PRNGs, O(log n) spatial queries, zero-allocation pooling, inspector tooling, and data-driven effects.
 ---
 
 <div class="md-banner" markdown>
@@ -15,9 +15,9 @@ description: Production-ready Unity utilities - 10-15x faster PRNGs, O(log n) sp
 
 ---
 
-**Stop writing boilerplate. Start shipping features.**
+**Utilities tested in commercial releases**
 
-Unity Helpers eliminates entire categories of repetitive work with production-ready utilities that are 10-100x faster than writing it yourself. From auto-wiring components to blazing-fast spatial queries, this is the toolkit that pays for itself in the first hour.
+Unity Helpers reduces repetitive work with utilities tested in commercial releases. Benchmarks show 10-15x faster random generation than Unity.Random and significant speedups for common reflection operations. From auto-wiring components to fast spatial queries, this toolkit provides common utilities for Unity development.
 
 ---
 
@@ -68,9 +68,9 @@ Unity Helpers eliminates entire categories of repetitive work with production-re
 
 <div class="feature-card" markdown>
 
-### Professional Inspector Tooling
+### Inspector Tooling
 
-Grouping, buttons, conditional display, toggle grids - all the features you love from Odin Inspector, completely free.
+Grouping, buttons, conditional display, toggle grids for Unity inspectors, free and open source.
 
 [Learn more :material-arrow-right:](./features/inspector/inspector-overview.md){ .md-button }
 
@@ -80,7 +80,7 @@ Grouping, buttons, conditional display, toggle grids - all the features you love
 
 ### 10-15x Faster Random
 
-`PRNG.Instance` provides blazing-fast random generation with extensive API including weighted selection, Gaussian distribution, and Perlin noise.
+`PRNG.Instance` provides high-performance random generation with API including weighted selection, Gaussian distribution, and Perlin noise.
 
 [Learn more :material-arrow-right:](./features/utilities/random-generators.md){ .md-button }
 
@@ -100,7 +100,7 @@ Auto-wire components with attributes like `[SiblingComponent]`, `[ParentComponen
 
 ### Data-Driven Effects System
 
-Designer-friendly buffs and debuffs as ScriptableObjects. No code changes needed to add new effects.
+Designer-friendly buffs and debuffs as ScriptableObjects. Add new effects via data instead of code changes.
 
 [Learn more :material-arrow-right:](./features/effects/effects-system.md){ .md-button }
 
@@ -110,7 +110,7 @@ Designer-friendly buffs and debuffs as ScriptableObjects. No code changes needed
 
 ### O(log n) Spatial Queries
 
-QuadTree, KdTree, RTree, OctTree, and SpatialHash for 2D and 3D. Stop iterating through all objects.
+QuadTree, KdTree, RTree, OctTree, and SpatialHash for 2D and 3D. Efficient spatial queries without linear iteration.
 
 [Learn more :material-arrow-right:](./features/spatial/spatial-trees-2d-guide.md){ .md-button }
 
@@ -120,7 +120,7 @@ QuadTree, KdTree, RTree, OctTree, and SpatialHash for 2D and 3D. Stop iterating 
 
 ### 20+ Editor Tools
 
-Automate sprite, animation, texture, and prefab workflows. Save hours of manual work.
+Automate sprite, animation, texture, and prefab workflows. Reduces manual repetitive tasks.
 
 [Learn more :material-arrow-right:](./features/editor-tools/editor-tools-guide.md){ .md-button }
 
@@ -134,19 +134,19 @@ Automate sprite, animation, texture, and prefab workflows. Save hours of manual 
 
 Pick your starting point based on your biggest pain point:
 
-| Your Problem                      | Your Solution                                                                                                      | Time to Value |
-| --------------------------------- | ------------------------------------------------------------------------------------------------------------------ | ------------- |
-| Writing custom editors            | [**Inspector Tooling**](./features/inspector/inspector-overview.md) - Odin-level features, FREE                    | 2 minutes     |
-| Writing `GetComponent` everywhere | [**Relational Components**](./features/relational-components/relational-components.md) - Auto-wire with attributes | 2 minutes     |
-| Need buffs/debuffs system         | [**Effects System**](./features/effects/effects-system.md) - Designer-friendly ScriptableObjects                   | 5 minutes     |
-| Slow spatial searches             | [**Spatial Trees**](./features/spatial/spatial-trees-2d-guide.md) - O(log n) queries                               | 5 minutes     |
-| Random is too slow/limited        | [**Random Generators**](./features/utilities/random-generators.md) - 10-15x faster, extensive API                  | 1 minute      |
-| Need save/load system             | [**Serialization**](./features/serialization/serialization.md) - Unity types just work                             | 10 minutes    |
-| Manual sprite workflows           | [**Editor Tools**](./features/editor-tools/editor-tools-guide.md) - 20+ automation tools                           | 3 minutes     |
+| Your Problem                      | Your Solution                                                                                                                      | Time to Value |
+| --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- | ------------- |
+| Writing custom editors            | [**Inspector Tooling**](./features/inspector/inspector-overview.md) - Inspector attributes, free                                   | ~2 minutes    |
+| Writing `GetComponent` everywhere | [**Relational Components**](./features/relational-components/relational-components.md) - Auto-wire with attributes                 | ~2 minutes    |
+| Need buffs/debuffs system         | [**Effects System**](./features/effects/effects-system.md) - Designer-friendly ScriptableObjects                                   | ~5 minutes    |
+| Slow spatial searches             | [**Spatial Trees**](./features/spatial/spatial-trees-2d-guide.md) - O(log n) queries                                               | ~5 minutes    |
+| Random is too slow/limited        | [**Random Generators**](./features/utilities/random-generators.md) - 10-15x faster with weighted selection, Gaussian, Perlin noise | ~1 minute     |
+| Need save/load system             | [**Serialization**](./features/serialization/serialization.md) - Unity types supported                                             | ~10 minutes   |
+| Manual sprite workflows           | [**Editor Tools**](./features/editor-tools/editor-tools-guide.md) - 20+ automation tools                                           | ~3 minutes    |
 
 !!! tip "Not sure where to start?"
 
-    The [Getting Started Guide](./overview/getting-started.md) walks through the top 3 features in just 5 minutes.
+    The [Getting Started Guide](./overview/getting-started.md) walks through the top 3 features in 5 minutes.
 
 ---
 
@@ -171,7 +171,7 @@ public class Player : MonoBehaviour
 
     void Awake()
     {
-        this.AssignRelationalComponents(); // One call wires everything!
+        this.AssignRelationalComponents(); // One call wires all marked fields
     }
 }
 ```
@@ -236,7 +236,7 @@ public class CharacterStats : MonoBehaviour
 
 ### 8,000+ Tests
 
-Extensive test coverage ensures edge cases are handled before you hit them.
+8,000+ automated tests.
 
 </div>
 
@@ -244,7 +244,7 @@ Extensive test coverage ensures edge cases are handled before you hit them.
 
 ### Shipped in Commercial Games
 
-Battle-tested at scale in real-world production environments.
+Used in commercial game releases.
 
 </div>
 
@@ -252,7 +252,7 @@ Battle-tested at scale in real-world production environments.
 
 ### IL2CPP & WebGL Compatible
 
-Works with aggressive AOT compilers. No "works in editor but not in build" surprises.
+Compatible with IL2CPP and WebGL. Includes optimizations for AOT compilation.
 
 </div>
 
@@ -260,7 +260,7 @@ Works with aggressive AOT compilers. No "works in editor but not in build" surpr
 
 ### Schema Evolution
 
-Player saves never break from updates. Forward and backward compatible serialization.
+Schema evolution support for backward-compatible serialization. Forward and backward compatible serialization.
 
 </div>
 

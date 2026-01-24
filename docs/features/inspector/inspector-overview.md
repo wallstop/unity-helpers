@@ -1,8 +1,6 @@
 # Inspector & Serialization Features Overview
 
-**Stop writing boilerplate. Start designing in the inspector.**
-
-Unity Helpers includes a powerful suite of inspector attributes and serialization types that transform how you author components and data. These features eliminate repetitive code, provide designer-friendly workflows, and make your inspector experience rival commercial tools like Odin Inspector.
+Unity Helpers includes a suite of inspector attributes and serialization types that change how you author components and data. These features eliminate repetitive code and provide designer-friendly workflows.
 
 ---
 
@@ -10,13 +8,13 @@ Unity Helpers includes a powerful suite of inspector attributes and serializatio
 
 **Time Savings:**
 
-- **Grouping & Organization**: Replace 50+ lines of custom editor code with a single `[WGroup]` attribute
+- **Grouping & Organization**: Can replace 50+ lines of custom editor code with a single `[WGroup]` attribute
 - **Method Buttons**: Expose test methods in the inspector without writing custom editors
 - **Conditional Display**: Show/hide fields based on values without PropertyDrawer boilerplate
 - **Selection Controls**: Turn enums into toggle buttons, primitives into dropdowns - all declaratively
 - **Serialization**: Store GUIDs, dictionaries, sets, and types with built-in Unity support
 
-**Professional Quality:**
+**Features:**
 
 - Designer-friendly interfaces reduce programmer bottlenecks
 - Project-wide settings ensure consistent styling and behavior
@@ -257,7 +255,7 @@ Protect data integrity with validation attributes:
 
 Unity-friendly wrappers for complex data:
 
-- **[WGuid](../serialization/serialization-types.md#wguid)** - Immutable GUID using two longs (faster than System.Guid for Unity)
+- **[WGuid](../serialization/serialization-types.md#wguid)** - Immutable GUID using two longs (optimized for Unity serialization)
 - **[SerializableDictionary](../serialization/serialization-types.md#serializabledictionary)** - Key/value pairs with custom drawer
 - **[SerializableSet](../serialization/serialization-types.md#serializablehashset--serializablesortedset)** - HashSet and SortedSet with duplicate detection, pagination, reordering
 - **[SerializableType](../serialization/serialization-types.md#serializabletype)** - Type references that survive refactoring
@@ -384,9 +382,9 @@ For individual feature examples, see the detailed guides linked above.
 
 **Performance-Conscious:**
 
-- Cached reflection delegates
-- Pooled buffers for UI rendering
-- Minimal GC allocations
+- Uses cached reflection delegates to reduce overhead
+- Uses pooled buffers for UI rendering to reduce allocations
+- Aims to minimize GC allocations
 
 **Project-Consistent:**
 

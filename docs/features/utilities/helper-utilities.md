@@ -25,7 +25,7 @@ Static helper classes and utilities that solve common programming problems witho
 
 ## Coroutine Wait Pools
 
-Unity allocates a new `WaitForSeconds`/`WaitForSecondsRealtime` every time you yield with a literal. `Buffers.GetWaitForSeconds(...)` and `Buffers.GetWaitForSecondsRealTime(...)` pool those instructions so coroutines stay allocation free, but each distinct duration used to stick around forever. Large ranges (randomized cooldowns, tweens, etc.) could leak thousands of instances.
+Unity allocates a new `WaitForSeconds`/`WaitForSecondsRealtime` every time you yield with a literal. `Buffers.GetWaitForSeconds(...)` and `Buffers.GetWaitForSecondsRealTime(...)` pool those instructions to reduce coroutine allocations, but each distinct duration used to stick around forever. Large ranges (randomized cooldowns, tweens, etc.) could leak thousands of instances.
 
 **New pooling policy knobs (Runtime 2.2.1+):**
 
@@ -286,7 +286,7 @@ Helpers.UpdateShapeToSprite(renderer, collider);
 
 ### Cached Component Lookup
 
-**Fast tag-based component finding with caching:**
+**Tag-based component finding with caching:**
 
 ```csharp
 using WallstopStudios.UnityHelpers.Core.Helper;
@@ -301,7 +301,7 @@ Helpers.ClearInstance<Player>();
 Helpers.SetInstance(playerInstance);
 ```
 
-**Performance:** First call = GameObject.FindWithTag, subsequent calls = O(1) dictionary lookup.
+**Performance:** First call searches the scene using GameObject.FindWithTag; subsequent calls use a cached O(1) dictionary lookup. The cache persists until manually cleared.
 
 ---
 
@@ -425,7 +425,7 @@ Helpers.IterateOverAllChildrenRecursively<SpriteRenderer>(rootTransform, rendere
     renderer.color = Color.red;
 });
 
-// Buffered version (zero allocation)
+// Buffered version (reduces allocations)
 using (var buffer = Buffers<Transform>.List.Get())
 {
     Helpers.IterateOverAllChildrenRecursively(rootTransform, buffer.Value);
@@ -859,7 +859,7 @@ foreach (var (x, y) in IterationHelpers.IndexOver(grid))
     grid[x, y] = x + y;
 }
 
-// Buffered (zero allocation)
+// Buffered (reduces allocations)
 using (var buffer = Buffers<(int, int)>.List.Get())
 {
     IterationHelpers.IndexOver(grid, buffer.Value);
@@ -876,7 +876,7 @@ Also supports 3D arrays with `(int, int, int)` tuples.
 
 ### Binary Array Conversion
 
-**Fast marshalling between int[] and byte[]:**
+**Marshalling between int[] and byte[]:**
 
 ```csharp
 using WallstopStudios.UnityHelpers.Core.Helper;
@@ -897,7 +897,7 @@ int[] restored = ArrayConverter.ByteArrayToIntArrayBlockCopy(bytes);
 - Save game data
 - High-performance data conversion
 
-**Performance:** O(n) native memory copy, much faster than element-by-element loops.
+**Performance:** Uses native memory copy (Buffer.BlockCopy) which is faster than element-by-element loops due to optimized native implementation, though both are O(n).
 
 ---
 
@@ -1017,7 +1017,7 @@ foreach (string varName in Helpers.CiEnvironmentVariables.All)
 
 - **Main thread rule**: Only Unity APIs need main thread, pure C# can stay on background threads
 - **Avoid blocking**: Don't wait for main thread results in tight loops
-- **CancellationToken**: Always support cancellation for long operations
+- **CancellationToken**: Support cancellation for long operations
 
 ### Architecture
 
