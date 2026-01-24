@@ -1,6 +1,6 @@
 # Unity Helpers
 
-> Unity Helpers is a comprehensive Unity package (2021.3+) providing professional inspector tooling, spatial data structures, PRNGs, serialization utilities, effects systems, relational components, and 20+ editor tools. It eliminates boilerplate code and provides production-ready utilities that are 10-100x faster than writing from scratch. Production-ready with 8,000+ tests, IL2CPP/WebGL compatible, shipped in commercial games.
+> Unity Helpers is a comprehensive Unity package (2021.3+) providing professional inspector tooling, spatial data structures, PRNGs, serialization utilities, effects systems, relational components, and 20+ editor tools. It provides production-ready utilities designed to reduce boilerplate code and improve runtime performance in many common scenarios. Production-ready with 8,000+ tests, IL2CPP/WebGL compatible, shipped in commercial games.
 
 ## Key Information
 
@@ -56,7 +56,7 @@ Professional inspector attributes eliminating custom PropertyDrawer code:
 
 ### Relational Components (Auto-Wiring)
 
-Eliminate GetComponent boilerplate with hierarchy-aware attributes:
+Reduce GetComponent boilerplate with hierarchy-aware attributes:
 
 ```csharp
 [SiblingComponent] private Animator animator;           // Same GameObject
@@ -97,7 +97,7 @@ tree.GetApproximateNearestNeighbors(position, count: 5, resultsBuffer);
 
 ### Random Number Generators
 
-20+ high-quality PRNGs (10-15x faster than Unity.Random):
+20+ high-quality PRNGs (10-15x faster than Unity.Random in benchmarks):
 
 - `PRNG.Instance` - Thread-local default (IllusionFlow)
 - `IllusionFlow`, `PcgRandom`, `XorShiftRandom`, `XoroShiroRandom`, `SplitMix64`, `RomuDuo`, `WyRandom`
@@ -274,7 +274,7 @@ builder.RegisterRelationalComponents();
 - [Random Performance](https://github.com/wallstop/unity-helpers/blob/main/docs/performance/random-performance.md): PRNG benchmarks (10-15x faster than Unity.Random)
 - [Spatial Tree 2D Performance](https://github.com/wallstop/unity-helpers/blob/main/docs/performance/spatial-tree-2d-performance.md): 2D tree benchmarks
 - [Spatial Tree 3D Performance](https://github.com/wallstop/unity-helpers/blob/main/docs/performance/spatial-tree-3d-performance.md): 3D tree benchmarks
-- [Reflection Performance](https://github.com/wallstop/unity-helpers/blob/main/docs/performance/reflection-performance.md): Cached reflection benchmarks (100x faster)
+- [Reflection Performance](https://github.com/wallstop/unity-helpers/blob/main/docs/performance/reflection-performance.md): Cached reflection benchmarks (up to 100x faster in tested scenarios)
 - [Relational Components Performance](https://github.com/wallstop/unity-helpers/blob/main/docs/performance/relational-components-performance.md): Component wiring benchmarks
 - [IList Sorting Performance](https://github.com/wallstop/unity-helpers/blob/main/docs/performance/ilist-sorting-performance.md): Sorting algorithm benchmarks
 

@@ -1,14 +1,14 @@
 # Getting Started with Unity Helpers
 
-**Welcome! You're about to save yourself weeks of repetitive work.**
+**This guide introduces key features that can help reduce repetitive coding patterns.**
 
-Unity Helpers is a battle-tested toolkit that eliminates the boring, repetitive code you're tired of writing. This guide gets you productive in 5 minutes, whether you're a beginner or a senior engineer.
+Unity Helpers is a production-tested toolkit that reduces common boilerplate patterns in Unity development. This guide covers the top features and basic usage patterns, whether you're a beginner or a senior engineer.
 
 ## What Makes This Worth Your Time?
 
-**Three core principles that save you actual hours:**
+**Three core principles:**
 
-### 1. 🎯 Zero Boilerplate
+### 1. 🎯 Reduced Boilerplate
 
 **APIs that handle the tedious stuff:**
 
@@ -34,8 +34,8 @@ Unity Helpers is a battle-tested toolkit that eliminates the boring, repetitive 
 
 **Measurable speed improvements:**
 
-- **10-15x faster** random generation (655M ops/sec vs 65M ops/sec)
-- **100x faster** reflection (2ns vs 200ns field access)
+- **10-15x faster** random generation in benchmarks (see performance docs)
+- **Up to 100x faster** reflection in benchmarks (see performance docs)
 - **O(log n)** spatial queries scale to millions of objects
 - **Zero GC** with buffering pattern
 
@@ -53,7 +53,7 @@ Unity Helpers is a battle-tested toolkit that eliminates the boring, repetitive 
 - ✅ **Shipped in commercial games** - Battle-tested at scale
 - ✅ **IL2CPP/WebGL compatible** - Works with aggressive compilers
 - ✅ **Schema evolution** - Player saves never break from updates
-- ✅ **SINGLE_THREADED optimized** - 10-20% faster on WebGL
+- ✅ **SINGLE_THREADED optimized** - Reduced overhead on WebGL
 
 **What this means for you:**
 
@@ -71,13 +71,13 @@ Jump directly to the solution you need:
 
 **Performance Issues?**
 
-- Slow random number generation → [Random Generators](#1-random-in-60-seconds--beginner)
-- Too many objects to search → [Spatial Queries](#3-spatial-queries-in-60-seconds--intermediate)
+- Slow random number generation → [Random Generators](#example-1-random-generation-beginner)
+- Too many objects to search → [Spatial Queries](#example-3-spatial-queries-intermediate)
 - Frame drops from allocations → [Buffering Pattern](../readme.md#buffering-pattern)
 
 **Workflow Issues?**
 
-- Writing too much GetComponent → [Auto Component Wiring](#2-component-wiring-in-60-seconds--beginner)
+- Writing too much GetComponent → [Auto Component Wiring](#example-2-component-wiring-beginner)
 - Manual sprite animation setup → [Editor Tools](../features/editor-tools/editor-tools-guide.md)
 - Prefab validation problems → [Prefab Checker](../features/editor-tools/editor-tools-guide.md#prefab-checker)
 
@@ -100,7 +100,7 @@ Comprehensive deep-dive (best for team leads and senior developers):
 
 See it working first, understand the theory later:
 
-1. Follow the [3 Quick Wins](#three-quick-wins-5-minutes) below
+1. Follow the [3 Quick Examples](#three-quick-examples) below
 2. Explore the Samples~ folder (see sample README files in the repo) for DI integration examples
 3. Modify examples for your specific needs
 4. Read the detailed guides when you need to go deeper
@@ -120,9 +120,9 @@ After installation, verify the package appears in **Window → Package Manager**
 
 ---
 
-## Three Quick Wins (5 Minutes)
+## Three Quick Examples
 
-### 1. Random in 60 Seconds 🟢 Beginner
+### Example 1: Random Generation (Beginner)
 
 **Problem:** Unity's `UnityEngine.Random` is slow and not seedable.
 
@@ -136,7 +136,7 @@ public class LootDrop : MonoBehaviour
 {
     void Start()
     {
-        // 10-15x faster than UnityEngine.Random
+        // Faster than UnityEngine.Random (see benchmarks)
         IRandom rng = PRNG.Instance;
 
         // Basic usage
@@ -159,7 +159,7 @@ public class LootDrop : MonoBehaviour
 
 ---
 
-### 2. Component Wiring in 60 Seconds 🟢 Beginner
+### Example 2: Component Wiring (Beginner)
 
 **Problem:** Writing `GetComponent` calls everywhere is tedious and error-prone.
 
@@ -213,7 +213,7 @@ public class Player : MonoBehaviour
 - Samples: See sample folders in the repository for VContainer, Zenject, and Reflex integration examples
 - Full guide with scenarios and testing tips: [Dependency Injection Integrations](../features/relational-components/relational-components.md#dependency-injection-integrations)
 
-### 3. Spatial Queries in 60 Seconds 🟡 Intermediate
+### Example 3: Spatial Queries (Intermediate)
 
 **Problem:** Finding nearby objects with `FindObjectsOfType` and distance checks is O(n) and slow.
 

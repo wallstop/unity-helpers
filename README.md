@@ -33,9 +33,9 @@
   <a href="https://github.com/wallstop/unity-helpers/releases"><img alt="GitHub downloads" src="https://img.shields.io/github/downloads/wallstop/unity-helpers/total" /></a>
 </p>
 
-**Stop writing boilerplate. Start shipping features.**
+**Reduce time spent on boilerplate and focus more on features.**
 
-Unity Helpers eliminates entire categories of repetitive work with production-ready utilities that are 10-100x faster than writing it yourself. From auto-wiring components to blazing-fast spatial queries, this is the toolkit that pays for itself in the first hour.
+Unity Helpers provides production-ready utilities designed to improve development speed. Random generation is 10-15x faster than Unity.Random (see benchmarks), spatial queries use O(log n) algorithms for efficient large dataset handling, and declarative inspector attributes can reduce custom editor code.
 
 ---
 
@@ -54,9 +54,9 @@ Unity Helpers eliminates entire categories of repetitive work with production-re
 
 **What makes this different:**
 
-- 🎨 **Professional inspector tooling** - Grouping, buttons, conditional display, toggle grids (consider as an Odin alternative) — [Migration Guide](./docs/guides/odin-migration-guide.md)
-- ⚡ **10-15x faster** random generation than Unity.Random
-- 🔌 **Zero boilerplate** component wiring with attributes
+- 🎨 **Inspector tooling** — Grouping, buttons, conditional display, toggle grids. Covers common use cases similar to Odin Inspector; for advanced scenarios, see the [feature comparison](./docs/guides/odin-migration-guide.md)
+- ⚡ **10-15x faster** random generation than Unity.Random in benchmarks (see performance docs for details)
+- 🔌 **Reduced boilerplate** component wiring with attributes
 - 🎮 **Designer-friendly** effects system (buffs/debuffs as ScriptableObjects)
 - 🌳 **O(log n)** spatial queries instead of O(n) loops
 - 🛠️ **20+ editor tools** that automate sprite/animation workflows
@@ -90,15 +90,15 @@ Unity Helpers eliminates entire categories of repetitive work with production-re
 
 **Pick your starting point based on your biggest pain point:**
 
-| Your Problem                         | Your Solution                                                                           | Time to Value |
-| ------------------------------------ | --------------------------------------------------------------------------------------- | ------------- |
-| 🎨 Writing custom editors            | [**Inspector Tooling**](#1--professional-inspector-tooling) - Odin-level features, FREE | 2 minutes     |
-| 🐌 Writing `GetComponent` everywhere | [**Relational Components**](#2--auto-wire-components) - Auto-wire with attributes       | 2 minutes     |
-| 🎮 Need buffs/debuffs system         | [**Effects System**](#3--data-driven-effects) - Designer-friendly ScriptableObjects     | 5 minutes     |
-| 🔍 Slow spatial searches             | [**Spatial Trees**](#spatial-trees) - O(log n) queries                                  | 5 minutes     |
-| 🎲 Random is too slow/limited        | [**PRNG.Instance**](#random-number-generators) - 10-15x faster, extensive API           | 1 minute      |
-| 💾 Need save/load system             | [**Serialization**](#4--unity-aware-serialization) - Unity types just work              | 10 minutes    |
-| 🛠️ Manual sprite workflows           | [**Editor Tools**](#editor-tools) - 20+ automation tools                                | 3 minutes     |
+| Your Problem                         | Your Solution                                                                                        | Time to Value |
+| ------------------------------------ | ---------------------------------------------------------------------------------------------------- | ------------- |
+| 🎨 Writing custom editors            | [**Inspector Tooling**](#1--professional-inspector-tooling) - Inspector tooling for common use cases | 2 minutes     |
+| 🐌 Writing `GetComponent` everywhere | [**Relational Components**](#2--auto-wire-components) - Auto-wire with attributes                    | 2 minutes     |
+| 🎮 Need buffs/debuffs system         | [**Effects System**](#3--data-driven-effects) - Designer-friendly ScriptableObjects                  | 5 minutes     |
+| 🔍 Slow spatial searches             | [**Spatial Trees**](#spatial-trees) - O(log n) queries                                               | 5 minutes     |
+| 🎲 Random is too slow/limited        | [**PRNG.Instance**](#random-number-generators) - 10-15x faster, extensive API                        | 1 minute      |
+| 💾 Need save/load system             | [**Serialization**](#4--unity-aware-serialization) - Unity types just work                           | 10 minutes    |
+| 🛠️ Manual sprite workflows           | [**Editor Tools**](#editor-tools) - 20+ automation tools                                             | 3 minutes     |
 
 **Not sure where to start?** → [Getting Started Guide](./docs/overview/getting-started.md) walks through the top 3 features in 5 minutes.
 
@@ -106,13 +106,11 @@ Unity Helpers eliminates entire categories of repetitive work with production-re
 
 ## ⚡ Top Time-Savers
 
-These features eliminate entire categories of repetitive work. Pick one that solves your immediate pain:
+These features address common categories of repetitive work. Pick one that solves your immediate pain:
 
 ### 1. 🎨 Professional Inspector Tooling
 
-#### ⏱️ 5-10 min/script × 200 scripts = 20+ hours saved on custom editors
-
-Stop writing custom PropertyDrawers and EditorGUI code. Get Odin Inspector-level features for free:
+Reduce custom PropertyDrawer and EditorGUI code with declarative attributes:
 
 ```csharp
 // ❌ OLD WAY: 100+ lines of custom editor code
@@ -164,9 +162,7 @@ public class CharacterStats : MonoBehaviour
 
 ### 2. 🔌 Auto-Wire Components
 
-#### ⏱️ 10-20 min/script × 100 scripts = 20+ hours saved
-
-Stop writing GetComponent boilerplate forever. Replace 20+ lines with 3 attributes:
+Reduce GetComponent boilerplate with declarative attributes. Replace 20+ lines with 3 attributes:
 
 ```csharp
 // ❌ OLD WAY: 20+ lines per script
@@ -196,9 +192,7 @@ void Awake() => this.AssignRelationalComponents();
 
 ### 3. 🎮 Data-Driven Effects
 
-#### ⏱️ 2-4 hours/effect × 50 effects = 150+ hours saved
-
-Designers create buffs/debuffs as ScriptableObjects. Zero programmer time after 20-minute setup:
+Designers create buffs/debuffs as ScriptableObjects. Minimal programmer involvement after initial setup:
 
 ```csharp
 // Create once (ScriptableObject in editor):
@@ -225,7 +219,7 @@ player.RemoveEffects(player.GetHandlesWithTag("Haste")); // Batch removal
 
 ### 4. 💾 Unity-Aware Serialization
 
-#### ⏱️ 40+ hours on initial implementation + prevents player data loss
+#### Handles Unity type serialization and helps prevent player data loss
 
 JSON/Protobuf that understands `Vector3`, `GameObject`, `Color` - no custom converters needed:
 
@@ -255,9 +249,7 @@ byte[] data = Serializer.JsonSerialize(saveData);
 
 ### 5. 🎱 Professional Pooling
 
-#### ⏱️ Eliminates GC spikes = 5-10 FPS in complex scenes
-
-Zero-allocation queries with automatic cleanup. Thread-safe pooling in one line:
+Reduces GC pressure in allocation-heavy scenarios. Zero-allocation queries with automatic cleanup. Thread-safe pooling in one line:
 
 ```csharp
 // Get pooled buffer - automatically returned on scope exit
@@ -288,8 +280,6 @@ void ProcessEnemies(QuadTree2D<Enemy> enemyTree) {
 
 ### 6. 🛠️ Editor Tools Suite
 
-#### ⏱️ 1-2 hours/operation × weekly use = 100+ hours/year
-
 20+ tools that automate sprite cropping, animation creation, atlas generation, prefab validation:
 
 **Common workflows:**
@@ -305,9 +295,9 @@ void ProcessEnemies(QuadTree2D<Enemy> enemyTree) {
 
 ## 🎁 Batteries-Included Extensions
 
-**Stop Googling "Unity how to..." for the 100th time.**
+**Common operations available as extension methods.**
 
-Unity Helpers includes 200+ extension methods that handle the tedious stuff you're tired of writing:
+Unity Helpers includes 200+ extension methods that handle common repetitive patterns:
 
 ### Unity Type Extensions
 
@@ -372,20 +362,20 @@ string apiKey = "user_name".ToPascalCase();  // "UserName"
 
 These powerful utilities solve specific problems that waste hours if you implement them yourself:
 
-| Feature                                                                                     | What It Does                                          | Time Saved                           |
-| ------------------------------------------------------------------------------------------- | ----------------------------------------------------- | ------------------------------------ |
-| **[Predictive Targeting](./docs/features/utilities/helper-utilities.md#predictive-aiming)** | Perfect ballistics for turrets/missiles in one call   | 2-3 hours per shooting system        |
-| **[Coroutine Jitter](./docs/features/utilities/math-and-extensions.md#unity-extensions)**   | Prevents 100 enemies polling on same frame            | Eliminates frame spikes              |
-| **[IL-Emitted Reflection](./docs/features/utilities/reflection-helpers.md)**                | 100x faster than System.Reflection, IL2CPP safe       | Critical for serialization/modding   |
-| **[SmartDestroy()](./docs/features/utilities/helper-utilities.md#smart-destruction)**       | Editor/runtime safe destruction (no scene corruption) | Prevents countless debugging hours   |
-| **[Convex/Concave Hulls](./docs/features/spatial/hulls.md)**                                | Generate territory borders from point clouds          | 4-6 hours per hull algorithm         |
-| **[Logging Extensions](./docs/features/logging/logging-extensions.md)**                     | Rich tags, thread-aware logs, per-object toggles      | Keeps consoles readable + actionable |
+| Feature                                                                                     | What It Does                                          | Benefit                            |
+| ------------------------------------------------------------------------------------------- | ----------------------------------------------------- | ---------------------------------- |
+| **[Predictive Targeting](./docs/features/utilities/helper-utilities.md#predictive-aiming)** | Perfect ballistics for turrets/missiles in one call   | Simplifies implementation          |
+| **[Coroutine Jitter](./docs/features/utilities/math-and-extensions.md#unity-extensions)**   | Prevents 100 enemies polling on same frame            | Reduces frame spikes               |
+| **[IL-Emitted Reflection](./docs/features/utilities/reflection-helpers.md)**                | 100x faster than System.Reflection, IL2CPP safe       | Improves serialization performance |
+| **[SmartDestroy()](./docs/features/utilities/helper-utilities.md#smart-destruction)**       | Editor/runtime safe destruction (no scene corruption) | Works across editor/runtime        |
+| **[Convex/Concave Hulls](./docs/features/spatial/hulls.md)**                                | Generate territory borders from point clouds          | Avoids manual hull calculation     |
+| **[Logging Extensions](./docs/features/logging/logging-extensions.md)**                     | Rich tags, thread-aware logs, per-object toggles      | Improves debugging                 |
 
 ---
 
 ## Why Teams Choose Unity Helpers
 
-**The Reality:** You're spending 30-40% of your time writing the same GetComponent boilerplate, spatial query loops, and save/load plumbing over and over. Unity Helpers gives you that time back.
+Common Unity development patterns like GetComponent calls, spatial queries, and serialization often involve repetitive code. Unity Helpers provides utilities for these patterns.
 
 **Built for Real Projects:**
 
@@ -1257,14 +1247,14 @@ Unity Helpers is built with performance as a top priority:
 
 **Random Number Generation:**
 
-- 10-15x faster than Unity.Random (655-885M ops/sec vs 65-85M ops/sec)
+- Benchmarks show 10-15x faster generation than Unity.Random. Results vary by generator and operation; see performance documentation for details.
 - Zero GC pressure with thread-local instances
 - [📊 Full Random Performance Benchmarks](./docs/performance/random-performance.md)
 
 **Spatial Queries:**
 
 - O(log n) tree queries vs O(n) linear search
-- 100-1000x faster for large datasets
+- Significant speedup for large datasets due to O(log n) complexity
 - QuadTree2D: 10,000 objects = ~13 checks vs 10,000 checks
 - [📊 2D Performance Benchmarks](./docs/performance/spatial-tree-2d-performance.md)
 - [📊 3D Performance Benchmarks](./docs/performance/spatial-tree-3d-performance.md)
@@ -1273,7 +1263,7 @@ Unity Helpers is built with performance as a top priority:
 
 - Zero-allocation buffering pattern eliminates GC spikes
 - Professional-grade pooling for List, HashSet, Stack, Queue, Arrays
-- 5-10 FPS improvement in complex scenes from stable GC
+- Reduces GC pressure in allocation-heavy scenarios
 
 **Reflection:**
 

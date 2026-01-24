@@ -7,10 +7,10 @@
 
 - **⭐ Build buff/debuff systems without writing custom code for every effect.**
 - Data‑driven ScriptableObjects: designers create 100s of effects, programmers build the system once.
-- **Time saved: Weeks of boilerplate eliminated + designers empowered to iterate freely.**
+- **Reduces boilerplate with data-driven effect definitions; designers can iterate without code changes.**
 - **✨ Attributes are NOT required!** Use the system purely for tag-based state management and timed cosmetic effects.
 
-### ⭐ The Designer Empowerment Killer Feature
+### Data-Driven Effect Authoring
 
 **The Problem - Hardcoded Effects:**
 
@@ -66,16 +66,16 @@ target.ApplyEffect(hasteEffect);
 
 **Designer Workflow:**
 
-1. Create the effect asset in 30 seconds (no code)
+1. Create the effect asset in the editor (no code)
 2. Test in-game immediately
 3. Tweak values and iterate freely
 4. Create variations (Haste II, Haste III) by duplicating assets
 
 **Impact:**
 
-- **Programmer time saved**: Weeks of boilerplate → system built once
-- **Designer empowerment**: Create 100s of effects instantly
-- **Iteration speed**: Change values without code changes/recompiles
+- **Reduced boilerplate**: Centralizes effect logic in a reusable system
+- **Designer workflow**: Create and modify effects without code changes
+- **Faster iteration**: Adjust values without recompiling
 - **Maintainability**: All effects in one system vs. scattered scripts
 
 Data‑driven gameplay effects that modify stats, apply tags, and drive cosmetic presentation.
@@ -998,7 +998,7 @@ void UpdateEffectTooltip(EffectType effectType)
 ✅ **Type safety** - Compiler catches typos and missing effects
 ✅ **Refactoring** - Rename effects across the entire codebase reliably
 ✅ **Autocomplete** - IDE suggests all available effects
-✅ **Performance** - Dictionary lookup faster than Resources.Load
+✅ **Performance** - Dictionary lookup avoids Resources.Load overhead
 ✅ **No magic strings** - Effect references are code symbols, not brittle strings
 
 **Drawbacks:**
