@@ -1,9 +1,6 @@
----
----
-
 # Unity Helpers Roadmap
 
-This roadmap outlines planned enhancements to Unity Helpers. All "Currently shipping" features are production-ready and available now. See the main [README](../../README.md) for current capabilities.
+This roadmap outlines planned enhancements to Unity Helpers. All "Currently shipping" features are production-ready and available now. See the main [README](../readme.md) for current capabilities.
 
 ## 1. Comprehensive Inspector Tooling
 

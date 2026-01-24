@@ -1,6 +1,3 @@
----
----
-
 # 3D Spatial Trees — Concepts and Usage
 
 This approachable guide shows when to use OctTree3D, KdTree3D, and RTree3D, with quick code you can copy.
@@ -110,7 +107,7 @@ void Update()
 > 📖 For the complete buffering guide including pooled buffers and GC impact analysis, see:
 >
 > - [Zero-Allocation Queries (2D Guide)](./spatial-trees-2d-guide.md#-zero-allocation-queries-the-performance-killer-feature) — detailed examples
-> - [Buffering Pattern](../../../README.md#buffering-pattern) — project-wide pooling utilities
+> - [Buffering Pattern](../../readme.md#buffering-pattern) — project-wide pooling utilities
 
 ## Structures
 

@@ -23,9 +23,6 @@ concurrency:
   group: pages
   cancel-in-progress: false
 
-env:
-  JEKYLL_ENV: production
-
 jobs:
   build:
     name: Build documentation
@@ -36,44 +33,40 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Setup Ruby
-        uses: ruby/setup-ruby@v1
+      - name: Setup Python
+        uses: actions/setup-python@v5
         with:
-          ruby-version: "3.2"
-          bundler-cache: true
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: requirements-docs.txt
 
       - name: Setup Pages
         id: pages
         uses: actions/configure-pages@v5
 
       - name: Install dependencies
-        run: bundle install
+        run: pip install -r requirements-docs.txt
 
-      - name: Build with Jekyll
-        run: |
-          bundle exec jekyll build \
-            --baseurl "${{ steps.pages.outputs.base_path }}" \
-            --destination ./_site
-        env:
-          JEKYLL_ENV: production
+      - name: Build with MkDocs
+        run: mkdocs build --strict
 
       - name: Validate build output
         run: |
           set -euo pipefail
 
-          echo "Validating Jekyll build output..."
+          echo "Validating MkDocs build output..."
 
-          # Check that _site directory exists and has content
-          if [ ! -d "_site" ]; then
-            echo "::error::Build failed - _site directory not found"
+          # Check that site directory exists and has content
+          if [ ! -d "site" ]; then
+            echo "::error::Build failed - site directory not found"
             exit 1
           fi
 
           # Count generated files
-          html_count=$(find _site -name "*.html" -type f | wc -l)
-          total_count=$(find _site -type f | wc -l)
+          html_count=$(find site -name "*.html" -type f | wc -l)
+          total_count=$(find site -type f | wc -l)
 
-          echo "📊 Build Statistics:"
+          echo "Build Statistics:"
           echo "   HTML files: $html_count"
           echo "   Total files: $total_count"
 
@@ -83,37 +76,37 @@ jobs:
           fi
 
           # Check for index.html
-          if [ ! -f "_site/index.html" ]; then
+          if [ ! -f "site/index.html" ]; then
             echo "::error::Build missing index.html"
             exit 1
           fi
 
-          echo "✅ Build validation passed"
+          echo "Build validation passed"
 
       - name: Debug build output
         if: github.event.inputs.debug_enabled == 'true'
         run: |
-          echo "📁 Site structure:"
-          find _site -type f | head -50
+          echo "Site structure:"
+          find site -type f | head -50
           echo ""
-          echo "📄 Index.html preview:"
-          head -30 _site/index.html || true
+          echo "Index.html preview:"
+          head -30 site/index.html || true
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v4
         with:
-          path: ./_site
+          path: ./site
 
       - name: Build summary
         run: |
           {
-            echo "## 🏗️ Build Summary"
+            echo "## Build Summary"
             echo ""
             echo "| Metric | Value |"
             echo "|--------|-------|"
-            echo "| HTML Files | $(find _site -name '*.html' -type f | wc -l) |"
-            echo "| Total Files | $(find _site -type f | wc -l) |"
-            echo "| Total Size | $(du -sh _site | cut -f1) |"
+            echo "| HTML Files | $(find site -name '*.html' -type f | wc -l) |"
+            echo "| Total Files | $(find site -type f | wc -l) |"
+            echo "| Total Size | $(du -sh site | cut -f1) |"
             echo "| Base Path | \`${{ steps.pages.outputs.base_path }}\` |"
           } >> "$GITHUB_STEP_SUMMARY"
 
@@ -132,11 +125,11 @@ jobs:
       - name: Deployment summary
         run: |
           {
-            echo "## 🚀 Deployment Summary"
+            echo "## Deployment Summary"
             echo ""
-            echo "✅ **Successfully deployed to GitHub Pages**"
+            echo "**Successfully deployed to GitHub Pages**"
             echo ""
-            echo "🔗 **Live URL**: ${{ steps.deployment.outputs.page_url }}"
+            echo "**Live URL**: ${{ steps.deployment.outputs.page_url }}"
             echo ""
             echo "| Metric | Value |"
             echo "|--------|-------|"

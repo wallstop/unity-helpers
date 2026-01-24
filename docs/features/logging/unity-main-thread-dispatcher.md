@@ -1,7 +1,6 @@
 ---
 ---
 
-````markdown
 # Unity Main Thread Dispatcher & Guard
 
 `UnityMainThreadDispatcher` and `UnityMainThreadGuard` provide thread-safe access to Unity's main thread from background workers, ensuring callbacks execute correctly and preventing common threading errors.
@@ -99,7 +98,7 @@ Task.Run(() => ComputeData())
 The `UnityMainThreadGuard` is a **guard/assertion** that throws an exception if called from a background thread. Use it to protect Unity API access points that must never be called off-thread.
 
 > ⚠️ **Important:** `EnsureMainThread()` does NOT dispatch work to the main thread. It throws `InvalidOperationException` if called from a background thread. To dispatch work, use `UnityMainThreadDispatcher.Instance.RunOnMainThread()`.
-
+>
 > 📦 **Internal API:** `UnityMainThreadGuard` is an `internal` class, accessible only within the Unity Helpers assembly or via `[InternalsVisibleTo]`. For most use cases, prefer using `UnityMainThreadDispatcher` directly which is `public`.
 
 ### Basic Usage
@@ -240,4 +239,3 @@ Downstream packages can copy the exact pattern:
 3. When a single test needs to temporarily disable the dispatcher, wrap the custom logic in `using var scope = UnityMainThreadDispatcher.AutoCreationScope.Disabled(...)` so cleanup always runs.
 
 Following this workflow keeps Unity from warning about hidden GameObjects during test teardown, prevents worker threads from instantiating the dispatcher off-thread, and documents exactly when auto-creation is in effect for your package.
-````

@@ -1,0 +1,235 @@
+# yaml-language-server: $schema=https://squidfunk.github.io/mkdocs-material/schema.json
+site_name: Unity Helpers
+
+validation:
+  nav:
+    omitted_files: info
+  links:
+    absolute_links: info
+    unrecognized_links: info
+
+not_in_nav: |
+  404.md
+  readme.md
+  includes/abbreviations.md
+site_url: https://wallstop.github.io/unity-helpers/
+site_description: >-
+  Production-ready Unity utilities: 10-15x faster PRNGs, O(log n) spatial queries,
+  zero-allocation pooling, Odin-level inspector tooling, and data-driven effects.
+site_author: Wallstop Studios
+repo_url: https://github.com/wallstop/unity-helpers
+repo_name: wallstop/unity-helpers
+edit_uri: edit/main/docs/
+
+copyright: Copyright &copy; 2024-2026 Wallstop Studios - MIT License
+
+theme:
+  name: material
+  features:
+    # Navigation
+    - navigation.instant
+    - navigation.instant.prefetch
+    - navigation.instant.progress
+    - navigation.tracking
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.sections
+    - navigation.expand
+    - navigation.path
+    - navigation.indexes
+    - navigation.top
+    - navigation.footer
+    # Table of contents
+    - toc.follow
+    - toc.integrate
+    # Search
+    - search.suggest
+    - search.highlight
+    - search.share
+    # Header
+    - header.autohide
+    # Content
+    - content.code.copy
+    - content.code.annotate
+    - content.tabs.link
+    - content.tooltips
+    - content.action.edit
+    - content.action.view
+  palette:
+    # Dark mode (default) - Unity Editor inspired
+    - scheme: slate
+      primary: teal
+      accent: deep orange
+      toggle:
+        icon: material/weather-night
+        name: Switch to light mode
+    # Light mode
+    - scheme: default
+      primary: teal
+      accent: deep orange
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to dark mode
+  font:
+    text: Inter
+    code: JetBrains Mono
+  icon:
+    repo: fontawesome/brands/github
+    edit: material/pencil
+    view: material/eye
+    admonition:
+      note: fontawesome/solid/note-sticky
+      abstract: fontawesome/solid/book
+      info: fontawesome/solid/circle-info
+      tip: fontawesome/solid/lightbulb
+      success: fontawesome/solid/check
+      question: fontawesome/solid/circle-question
+      warning: fontawesome/solid/triangle-exclamation
+      failure: fontawesome/solid/xmark
+      danger: fontawesome/solid/skull
+      bug: fontawesome/solid/bug
+      example: fontawesome/solid/flask
+      quote: fontawesome/solid/quote-left
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/wallstop/unity-helpers
+      name: Unity Helpers on GitHub
+  generator: false
+
+extra_css:
+  - stylesheets/custom.css
+
+extra_javascript:
+  - https://unpkg.com/mermaid@10/dist/mermaid.min.js
+
+plugins:
+  - search:
+      separator: '[\s\-,:!=\[\]()"/]+|(?!\b)(?=[A-Z][a-z])|\.(?!\d)|&[lg]t;'
+      lang: en
+  - minify:
+      minify_html: true
+  - git-revision-date-localized:
+      enable_creation_date: true
+      type: timeago
+      fallback_to_build_date: true
+      strict: false
+
+markdown_extensions:
+  # Python Markdown
+  - abbr
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+      toc_depth: 3
+
+  # Python Markdown Extensions
+  - pymdownx.arithmatex:
+      generic: true
+  - pymdownx.betterem:
+      smart_enable: all
+  - pymdownx.caret
+  - pymdownx.critic
+  - pymdownx.details
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+      auto_title: true
+      linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.keys
+  - pymdownx.magiclink:
+      repo_url_shorthand: true
+      user: wallstop
+      repo: unity-helpers
+  - pymdownx.mark
+  - pymdownx.smartsymbols
+  - pymdownx.snippets
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+      slugify: !!python/object/apply:pymdownx.slugs.slugify
+        kwds:
+          case: lower
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.tilde
+
+nav:
+  - Home: index.md
+  - Getting Started:
+      - Quick Start: overview/getting-started.md
+      - Feature Index: overview/index.md
+      - Glossary: overview/glossary.md
+      - Roadmap: overview/roadmap.md
+  - Features:
+      - Inspector:
+          - Overview: features/inspector/inspector-overview.md
+          - Buttons: features/inspector/inspector-button.md
+          - Grouping Attributes: features/inspector/inspector-grouping-attributes.md
+          - Selection Attributes: features/inspector/inspector-selection-attributes.md
+          - Conditional Display: features/inspector/inspector-conditional-display.md
+          - Validation Attributes: features/inspector/inspector-validation-attributes.md
+          - Inline Editor: features/inspector/inspector-inline-editor.md
+          - Inspector Settings: features/inspector/inspector-settings.md
+          - Utility Components: features/inspector/utility-components.md
+          - Visual Components: features/inspector/visual-components.md
+      - Relational Components:
+          - Overview: features/relational-components/relational-components.md
+      - Spatial Data Structures:
+          - 2D Spatial Trees: features/spatial/spatial-trees-2d-guide.md
+          - 3D Spatial Trees: features/spatial/spatial-trees-3d-guide.md
+          - Hull Algorithms: features/spatial/hulls.md
+          - Spatial Tree Semantics: features/spatial/spatial-tree-semantics.md
+      - Effects System:
+          - Overview: features/effects/effects-system.md
+          - Tutorial: features/effects/effects-system-tutorial.md
+      - Serialization:
+          - Overview: features/serialization/serialization.md
+          - Serializable Types: features/serialization/serialization-types.md
+      - Utilities:
+          - Math & Extensions: features/utilities/math-and-extensions.md
+          - Data Structures: features/utilities/data-structures.md
+          - Random Generators: features/utilities/random-generators.md
+          - Singletons: features/utilities/singletons.md
+          - Reflection Helpers: features/utilities/reflection-helpers.md
+          - Helper Utilities: features/utilities/helper-utilities.md
+          - Pooling Guide: features/utilities/pooling-guide.md
+      - Logging:
+          - Logging Extensions: features/logging/logging-extensions.md
+          - Main Thread Dispatcher: features/logging/unity-main-thread-dispatcher.md
+      - Editor Tools:
+          - Tools Guide: features/editor-tools/editor-tools-guide.md
+          - Unity Method Analyzer: features/editor-tools/unity-method-analyzer.md
+          - Asset Change Detection: features/editor-tools/asset-change-detection.md
+  - Performance:
+      - Random Generators: performance/random-performance.md
+      - Spatial Trees 2D: performance/spatial-tree-2d-performance.md
+      - Spatial Trees 3D: performance/spatial-tree-3d-performance.md
+      - Relational Components: performance/relational-components-performance.md
+      - Reflection Helpers: performance/reflection-performance.md
+      - IList Sorting: performance/ilist-sorting-performance.md
+      - Baseline Tests: performance/baseline-tests-performance.md
+  - Guides:
+      - Odin Migration: guides/odin-migration-guide.md
+  - Contributing:
+      - Overview: project/contributing.md
+      - Testing Patterns: contributing/testing-patterns.md
+  - Project:
+      - License: project/license.md
+      - Third-Party Notices: project/third-party-notices.md
+      - LLMs.txt: project/llms-txt.md

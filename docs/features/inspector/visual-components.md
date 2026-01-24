@@ -1,6 +1,3 @@
----
----
-
 # Visual Components Guide
 
 ## TL;DR — Why Use These
@@ -332,7 +329,7 @@ image.shapeMask = myMaskTexture; // Black areas are transparent
 ## Related Documentation
 
 - [Editor Tools Guide](../editor-tools/editor-tools-guide.md) - EnhancedImage editor integration
-- [Samples](../../../Samples~/) - Example projects for each component
+- Samples - Example projects in `Samples~` folder in the repository
 - [Math & Extensions](../utilities/math-and-extensions.md) - Color utilities used internally
 
 ---

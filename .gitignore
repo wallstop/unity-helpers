@@ -376,3 +376,6 @@ artifacts.meta
 .claude*.meta
 .codex*/
 .codex*.meta
+
+# MkDocs build output
+site/
