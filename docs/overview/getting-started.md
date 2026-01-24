@@ -35,7 +35,7 @@ Unity Helpers is a toolkit used in commercial games that reduces common boilerpl
 **Speed improvements measured in benchmarks:**
 
 - **10-15x faster in benchmarks** random generation ([benchmark details](../performance/random-performance.md))
-- **Up to 100x faster in benchmarks** reflection ([benchmark details](../performance/reflection-performance.md))
+- **10-100x faster in benchmarks** reflection (varies by operation; see [benchmark details](../performance/reflection-performance.md))
 - **O(log n)** spatial queries tested with millions of objects ([benchmark details](../performance/spatial-tree-2d-performance.md))
 - **Zero GC** with buffering pattern
 
@@ -313,7 +313,7 @@ Yes! Unity Helpers is:
 - ✅ Used in shipped commercial games
 - ✅ 8,000+ automated test cases
 - ✅ Compatible with Unity 2022, 2023, and Unity 6
-- ✅ Zero external dependencies
+- ✅ Zero external dependencies — protobuf-net is bundled
 - ✅ **Fully WebGL/IL2CPP compatible** with optimized SINGLE_THREADED hot paths
 - ✅ **Multiplatform support** - Desktop, Mobile, Web, and Consoles
 - ⚠️ Requires .NET Standard 2.1

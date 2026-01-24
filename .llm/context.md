@@ -83,7 +83,7 @@ Invoke these skills for specific tasks.
 **Regenerate with**: `pwsh -NoProfile -File scripts/generate-skills-index.ps1`
 
 <!-- BEGIN GENERATED SKILLS INDEX -->
-<!-- Generated: 2026-01-21 11:38:27 UTC -->
+<!-- Generated: 2026-01-24 15:34:43 UTC -->
 <!-- Command: pwsh -NoProfile -File scripts/generate-skills-index.ps1 -->
 
 ### Core Skills (Always Consider)
@@ -101,6 +101,7 @@ Invoke these skills for specific tasks.
 | [create-unity-meta](./skills/create-unity-meta.md)                                           | After creating ANY new file or folder                            |
 | [defensive-editor-programming](./skills/defensive-editor-programming.md)                     | Editor code - handle Unity Editor edge cases                     |
 | [defensive-programming](./skills/defensive-programming.md)                                   | ALL code - never throw, handle gracefully                        |
+| [documentation-consistency](./skills/documentation-consistency.md)                           | When writing or reviewing documentation                          |
 | [editor-caching-patterns](./skills/editor-caching-patterns.md)                               | Caching strategies for Editor code                               |
 | [formatting](./skills/formatting.md)                                                         | After ANY file change (CSharpier/Prettier)                       |
 | [git-hook-patterns](./skills/git-hook-patterns.md)                                           | Pre-commit hook safety and configuration                         |

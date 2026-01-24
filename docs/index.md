@@ -17,7 +17,7 @@ description: Production-ready Unity utilities - 10-15x faster PRNGs, O(log n) sp
 
 **Utilities tested in commercial releases**
 
-Unity Helpers reduces repetitive work with utilities tested in commercial releases. Benchmarks show 10-15x faster random generation than Unity.Random and significant speedups for common reflection operations. From auto-wiring components to fast spatial queries, this toolkit provides common utilities for Unity development.
+Unity Helpers reduces repetitive work with utilities tested in commercial releases. Benchmarks demonstrate 10-15x faster random generation compared to Unity.Random and significant speedups for common reflection operations. From auto-wiring components to fast spatial queries, this toolkit provides common utilities for Unity development.
 
 ---
 
@@ -260,7 +260,7 @@ Compatible with IL2CPP and WebGL. Includes optimizations for AOT compilation.
 
 ### Schema Evolution
 
-Schema evolution support for backward-compatible serialization. Forward and backward compatible serialization.
+Forward and backward compatible serialization — add new fields without breaking existing saves.
 
 </div>
 
