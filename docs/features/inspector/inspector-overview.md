@@ -1,6 +1,3 @@
----
----
-
 # Inspector & Serialization Features Overview
 
 **Stop writing boilerplate. Start designing in the inspector.**
@@ -400,7 +397,7 @@ For individual feature examples, see the detailed guides linked above.
 
 ## Getting Started
 
-1. **Install Unity Helpers** - See [Installation Guide](../../../README.md#installation)
+1. **Install Unity Helpers** - See [Installation Guide](../../readme.md#installation)
 
 2. **Explore Examples** - Check the guides linked above
 
@@ -439,7 +436,7 @@ For individual feature examples, see the detailed guides linked above.
 - **[Editor Tools Guide](../editor-tools/editor-tools-guide.md)** - 20+ automation tools for sprites, animations, validation
 - **[Relational Components](../relational-components/relational-components.md)** - Auto-wire components with attributes
 - **[Effects System](../effects/effects-system.md)** - Data-driven buffs/debuffs
-- **[Main Documentation](../../../README.md)** - Complete feature list
+- **[Main Documentation](../../readme.md)** - Complete feature list
 
 ---
 

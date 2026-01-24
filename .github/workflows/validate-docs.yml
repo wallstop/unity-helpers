@@ -7,14 +7,14 @@ on:
     paths:
       - "docs/**"
       - "*.md"
-      - "_config.yml"
-      - "assets/**"
+      - "mkdocs.yml"
+      - "requirements-docs.txt"
   pull_request:
     paths:
       - "docs/**"
       - "*.md"
-      - "_config.yml"
-      - "assets/**"
+      - "mkdocs.yml"
+      - "requirements-docs.txt"
   workflow_dispatch:
 
 jobs:
@@ -30,7 +30,7 @@ jobs:
           #!/bin/bash
           set -euo pipefail
 
-          echo "🔍 Validating that internal markdown links point to existing files..."
+          echo "Validating that internal markdown links point to existing files..."
 
           errors=0
 
@@ -138,7 +138,7 @@ jobs:
 
                 # Check if target exists
                 if [[ ! -e "$target_path" ]]; then
-                  echo "❌ Broken link in $mdfile: $link -> $target_path (file not found)"
+                  echo "Broken link in $mdfile: $link -> $target_path (file not found)"
                   errors=$((errors + 1))
                 fi
               done < <(echo "$stripped_line" | grep -oE '\]\([^)]+\)' 2>/dev/null | sed 's/^](//;s/)$//' || true)
@@ -147,11 +147,11 @@ jobs:
 
           if [[ $errors -gt 0 ]]; then
             echo ""
-            echo "❌ Found $errors broken internal link(s)"
+            echo "Found $errors broken internal link(s)"
             exit 1
           fi
 
-          echo "✅ All internal links are valid"
+          echo "All internal links are valid"
 
   validate-link-format:
     name: Validate Link Format
@@ -165,7 +165,7 @@ jobs:
           #!/bin/bash
           set -euo pipefail
 
-          echo "🔍 Checking that internal markdown links use proper relative format (./ or ../)..."
+          echo "Checking that internal markdown links use proper relative format (./ or ../)..."
 
           # Find links that don't start with ./, ../, http, https, #, or mailto
           # These are internal links that should have a relative prefix
@@ -220,7 +220,7 @@ jobs:
           done < <(find . -name "*.md" -type f -not -path "./node_modules/*" -print0)
 
           if [[ -n "$violations" ]]; then
-            echo "❌ Found markdown links missing relative prefix (./ or ../):"
+            echo "Found markdown links missing relative prefix (./ or ../):"
             echo ""
             echo "$violations"
             echo ""
@@ -231,47 +231,38 @@ jobs:
             exit 1
           fi
 
-          echo "✅ All internal links use proper relative format"
+          echo "All internal links use proper relative format"
 
-  build-jekyll-test:
-    name: Build Jekyll Site
+  build-mkdocs-test:
+    name: Build MkDocs Site
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
-      - name: Setup Ruby
-        uses: ruby/setup-ruby@v1
         with:
-          ruby-version: "3.2"
-          bundler-cache: true
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: requirements-docs.txt
 
       - name: Install dependencies
-        run: |
-          if [[ -f Gemfile ]]; then
-            bundle install
-          else
-            gem install jekyll bundler
-          fi
+        run: pip install -r requirements-docs.txt
 
-      - name: Build Jekyll site
-        run: |
-          if [[ -f Gemfile ]]; then
-            bundle exec jekyll build --strict_front_matter
-          else
-            jekyll build --strict_front_matter
-          fi
-        env:
-          JEKYLL_ENV: production
+      - name: Build MkDocs site
+        run: mkdocs build --strict
 
       - name: Verify build output
         run: |
-          if [[ -d "_site" ]]; then
-            echo "✅ Jekyll site built successfully"
-            echo "📁 Site contents:"
-            find _site -type f | head -20
+          if [[ -d "site" ]]; then
+            echo "MkDocs site built successfully"
+            echo "Site contents:"
+            find site -type f | head -20
           else
-            echo "❌ Jekyll build did not produce _site directory"
+            echo "MkDocs build did not produce site directory"
             exit 1
           fi
 
@@ -286,3 +277,43 @@ jobs:
         run: |
           chmod +x ./scripts/validate-github-pages-css.sh
           ./scripts/validate-github-pages-css.sh
+
+  code-fence-syntax:
+    name: Code Fence Syntax
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Check code fence syntax
+        id: check-fences
+        run: |
+          chmod +x ./scripts/check-code-fence-syntax.sh
+          if ./scripts/check-code-fence-syntax.sh 2>&1 | tee /tmp/fence-output.txt; then
+            echo "status=success" >> "$GITHUB_OUTPUT"
+          else
+            echo "status=failure" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Report to GitHub Step Summary
+        if: always()
+        run: |
+          {
+            echo "## Code Fence Syntax Check"
+            echo ""
+            if [ "${{ steps.check-fences.outputs.status }}" = "success" ]; then
+              echo ":white_check_mark: **All code fences have valid syntax**"
+            else
+              echo ":x: **Code fence syntax issues found**"
+              echo ""
+              echo "MkDocs/GitHub Pages does not support comma-separated attributes in code fences."
+              echo ""
+              echo "\`\`\`"
+              cat /tmp/fence-output.txt
+              echo "\`\`\`"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Fail if issues found
+        if: steps.check-fences.outputs.status == 'failure'
+        run: exit 1

@@ -8,3 +8,6 @@ Samples~/
 artifacts/
 progress/
 
+# MkDocs Material files with tabbed content syntax (===) that markdownlint doesn't support
+docs/index.md
+

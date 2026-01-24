@@ -1,0 +1,12 @@
+# MkDocs Documentation Dependencies
+# Install with: pip install -r requirements-docs.txt
+
+mkdocs~=1.6.1
+mkdocs-material~=9.6.0
+pymdown-extensions~=10.15.0
+mkdocs-minify-plugin~=0.8.0
+mkdocs-git-revision-date-localized-plugin~=1.2.0
+
+# Required for social cards feature
+pillow>=10.0.0
+cairosvg>=2.7.0

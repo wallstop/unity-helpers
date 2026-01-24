@@ -1,6 +1,3 @@
----
----
-
 # 2D Spatial Trees — Concepts and Usage
 
 This practical guide complements performance and semantics pages with diagrams and actionable selection advice.
@@ -183,7 +180,7 @@ void Update()
 }
 ```
 
-See [Buffering Pattern](../../../README.md#buffering-pattern) for the complete guide and [Pooling Utilities](../../../README.md#pooling-utilities) for more pooling options.
+See [Buffering Pattern](../../readme.md#buffering-pattern) for the complete guide and [Pooling Utilities](../../readme.md#pooling-utilities) for more pooling options.
 
 ## Structures
 
@@ -253,7 +250,7 @@ START: Do your objects move frequently?
 - **Nearest neighbors on static points:** KDTree2D (Balanced)
 - **Fast builds with good-enough queries:** KDTree2D (Unbalanced)
 - **Objects with area; bounds queries primary:** RTree2D
-- **Very frequent movement (every frame):** SpatialHash2D (see [README](../../../README.md#when-to-use-spatial-trees))
+- **Very frequent movement (every frame):** SpatialHash2D (see [README](../../readme.md#when-to-use-spatial-trees))
 
 ## Query Semantics
 
