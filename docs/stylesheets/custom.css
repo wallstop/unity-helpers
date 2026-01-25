@@ -677,3 +677,29 @@ textarea:focus {
     border: 1px solid CanvasText;
   }
 }
+
+/* ============================================
+   Banner Image Styles
+   ============================================ */
+
+/* Banner container for proper centering and sizing */
+.md-typeset .md-banner {
+  display: block;
+  max-width: 800px;
+  width: 100%;
+  margin: 1rem auto 2rem;
+  text-align: center;
+}
+
+.md-typeset .md-banner img,
+.md-typeset .md-banner svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 0 auto;
+}
+
+/* Ensure banner looks good on both light and dark backgrounds */
+.md-typeset .md-banner img {
+  border-radius: 12px;
+}

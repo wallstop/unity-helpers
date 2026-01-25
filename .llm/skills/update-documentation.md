@@ -142,6 +142,22 @@ The CHANGELOG follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) f
 
 ### Required Format
 
+**CRITICAL**: Every CHANGELOG entry MUST follow this exact format:
+
+```text
+- **Title**: Description text here
+        ^
+        └── REQUIRED colon after the bold title
+```
+
+| ✅ Correct                             | ❌ Wrong                              |
+| -------------------------------------- | ------------------------------------- |
+| `- **WButton Odin Support**: Added...` | `- **WButton Odin Support** Added...` |
+| `- **Cache API**: New cache with...`   | `- **Cache API** New cache with...`   |
+| `- **Breaking:** Relational...`        | `- **Breaking** Relational...`        |
+
+**Why this matters**: Consistent formatting makes the CHANGELOG scannable and parseable. The colon separates the feature name from its description.
+
 ```markdown
 ## [Unreleased]
 

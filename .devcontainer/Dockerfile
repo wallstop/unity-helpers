@@ -7,6 +7,15 @@ ARG TARGETARCH=amd64
 # Set non-interactive frontend for apt to avoid prompts
 ENV DEBIAN_FRONTEND=noninteractive
 
+# Fix: Remove the Yarn repository with expired GPG key
+# The base image includes yarn repo, but the GPG key (23E7166788B63E1E) expired.
+# This causes apt-get update to fail with "EXPKEYSIG" error.
+# We don't need Yarn for this project, so simply remove the problematic source.
+# If Yarn is needed later, use corepack (bundled with Node.js) or npm instead.
+RUN rm -f /etc/apt/sources.list.d/yarn.list \
+    && rm -f /etc/apt/keyrings/yarn.gpg \
+    && rm -f /usr/share/keyrings/yarn-archive-keyring.gpg
+
 # Install additional tools from apt repositories
 # - ripgrep: Fast regex search (10x faster than grep)
 # - jq: JSON processor
