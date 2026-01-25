@@ -1,16 +1,16 @@
 # Getting Started with Unity Helpers
 
-**Welcome! You're about to save yourself weeks of repetitive work.**
+**This guide introduces key features that can help reduce repetitive coding patterns.**
 
-Unity Helpers is a battle-tested toolkit that eliminates the boring, repetitive code you're tired of writing. This guide gets you productive in 5 minutes, whether you're a beginner or a senior engineer.
+Unity Helpers is a toolkit used in commercial games that reduces common boilerplate patterns in Unity development. This guide covers the top features and basic usage patterns, whether you're a beginner or a senior engineer.
 
-## What Makes This Worth Your Time?
+## Core Features
 
-**Three core principles that save you actual hours:**
+**Three core principles:**
 
-### 1. 🎯 Zero Boilerplate
+### 1. 🎯 Reduced Boilerplate
 
-**APIs that handle the tedious stuff:**
+**Common APIs:**
 
 - Random selection with weights? → `random.NextWeightedIndex(weights)`
 - Auto-wire components? → `[SiblingComponent] private Animator animator;`
@@ -24,42 +24,40 @@ Unity Helpers is a battle-tested toolkit that eliminates the boring, repetitive 
 [ChildComponent(MaxDepth = 1)] private Collider2D[] colliders;   // Limited scope
 ```
 
-**Helpful errors that save debugging time:**
+**Error messages:**
 
 - Missing components? → Full GameObject path + component type
 - Invalid queries? → Explanation of what went wrong + how to fix it
 - Schema issues? → Specific guidance for your serialization problem
 
-### 2. ⚡ Performance-Proven
+### 2. ⚡ Performance Characteristics
 
-**Measurable speed improvements:**
+**Speed improvements measured in benchmarks:**
 
-- **10-15x faster** random generation (655M ops/sec vs 65M ops/sec)
-- **100x faster** reflection (2ns vs 200ns field access)
-- **O(log n)** spatial queries scale to millions of objects
+- **10-15x faster in benchmarks** random generation ([benchmark details](../performance/random-performance.md))
+- **10-100x faster in benchmarks** reflection (varies by operation; see [benchmark details](../performance/reflection-performance.md))
+- **O(log n)** spatial queries tested with millions of objects ([benchmark details](../performance/spatial-tree-2d-performance.md))
 - **Zero GC** with buffering pattern
 
-**Real-world impact:**
+**Benchmark Results:**
 
-- Stable 60 FPS with 1000+ AI agents querying neighbors
+- Stable 60 FPS with 1000+ AI agents ([benchmark details](../performance/spatial-tree-2d-performance.md))
 - No allocation spikes from pooled collections
 - Deterministic replays with seedable RNG
 
-### 3. ✅ Production-Ready
+### 3. ✅ Testing & Compatibility
 
-**Quality you can trust:**
-
-- ✅ **8,000+ automated tests** - Edge cases covered before you hit them
-- ✅ **Shipped in commercial games** - Battle-tested at scale
+- ✅ **8,000+ automated tests** - Edge cases are handled through test coverage
+- ✅ **Shipped in commercial games** - Used at scale in production
 - ✅ **IL2CPP/WebGL compatible** - Works with aggressive compilers
-- ✅ **Schema evolution** - Player saves never break from updates
-- ✅ **SINGLE_THREADED optimized** - 10-20% faster on WebGL
+- ✅ **Schema evolution** - Player saves maintain compatibility across updates
+- ✅ **SINGLE_THREADED optimized** - Reduced overhead on WebGL
 
-**What this means for you:**
+**Key capabilities:**
 
-- Ship confidently knowing edge cases are handled
-- No "works in editor but not in build" surprises
-- Update your game without corrupting player data
+- Edge cases are handled through test coverage
+- Consistent behavior in editor and builds
+- Player data compatibility maintained across updates
 
 ---
 
@@ -71,13 +69,13 @@ Jump directly to the solution you need:
 
 **Performance Issues?**
 
-- Slow random number generation → [Random Generators](#1-random-in-60-seconds--beginner)
-- Too many objects to search → [Spatial Queries](#3-spatial-queries-in-60-seconds--intermediate)
+- Slow random number generation → [Random Generators](#example-1-random-generation-beginner)
+- Too many objects to search → [Spatial Queries](#example-3-spatial-queries-intermediate)
 - Frame drops from allocations → [Buffering Pattern](../readme.md#buffering-pattern)
 
 **Workflow Issues?**
 
-- Writing too much GetComponent → [Auto Component Wiring](#2-component-wiring-in-60-seconds--beginner)
+- Writing too much GetComponent → [Auto Component Wiring](#example-2-component-wiring-beginner)
 - Manual sprite animation setup → [Editor Tools](../features/editor-tools/editor-tools-guide.md)
 - Prefab validation problems → [Prefab Checker](../features/editor-tools/editor-tools-guide.md#prefab-checker)
 
@@ -88,9 +86,9 @@ Jump directly to the solution you need:
 - Need save/load system → [Serialization](../features/serialization/serialization.md)
 - Migrating from Odin Inspector → [Odin Migration Guide](../guides/odin-migration-guide.md)
 
-### 📚 Path 2: "I Want to Understand Everything"
+### 📚 Path 2: "I Want to Understand the Full Picture"
 
-Comprehensive deep-dive (best for team leads and senior developers):
+Full documentation overview (best for team leads and senior developers):
 
 1. Read [Main Documentation](../readme.md) - Full feature overview
 2. Review [Features Documentation](./index.md) - Detailed API documentation
@@ -100,7 +98,7 @@ Comprehensive deep-dive (best for team leads and senior developers):
 
 See it working first, understand the theory later:
 
-1. Follow the [3 Quick Wins](#three-quick-wins-5-minutes) below
+1. Follow the [3 Quick Examples](#three-quick-examples) below
 2. Explore the Samples~ folder (see sample README files in the repo) for DI integration examples
 3. Modify examples for your specific needs
 4. Read the detailed guides when you need to go deeper
@@ -120,9 +118,9 @@ After installation, verify the package appears in **Window → Package Manager**
 
 ---
 
-## Three Quick Wins (5 Minutes)
+## Three Quick Examples
 
-### 1. Random in 60 Seconds 🟢 Beginner
+### Example 1: Random Generation (Beginner)
 
 **Problem:** Unity's `UnityEngine.Random` is slow and not seedable.
 
@@ -136,14 +134,14 @@ public class LootDrop : MonoBehaviour
 {
     void Start()
     {
-        // 10-15x faster than UnityEngine.Random
+        // Performance comparison available in benchmarks
         IRandom rng = PRNG.Instance;
 
         // Basic usage
         int damage = rng.Next(10, 20);
         float chance = rng.NextFloat();
 
-        // Advanced: weighted random selection
+        // Weighted random selection
         string[] loot = { "Common", "Rare", "Epic", "Legendary" };
         float[] weights = { 0.6f, 0.25f, 0.10f, 0.05f };
         int index = rng.NextWeightedIndex(weights);
@@ -159,7 +157,7 @@ public class LootDrop : MonoBehaviour
 
 ---
 
-### 2. Component Wiring in 60 Seconds 🟢 Beginner
+### Example 2: Component Wiring (Beginner)
 
 **Problem:** Writing `GetComponent` calls everywhere is tedious and error-prone.
 
@@ -185,7 +183,7 @@ public class Player : MonoBehaviour
 
     void Awake()
     {
-        // One call wires everything!
+        // One call wires all attributed components
         this.AssignRelationalComponents();
 
         // Now use them
@@ -213,7 +211,7 @@ public class Player : MonoBehaviour
 - Samples: See sample folders in the repository for VContainer, Zenject, and Reflex integration examples
 - Full guide with scenarios and testing tips: [Dependency Injection Integrations](../features/relational-components/relational-components.md#dependency-injection-integrations)
 
-### 3. Spatial Queries in 60 Seconds 🟡 Intermediate
+### Example 3: Spatial Queries (Intermediate)
 
 **Problem:** Finding nearby objects with `FindObjectsOfType` and distance checks is O(n) and slow.
 
@@ -274,7 +272,7 @@ Based on your needs:
 
 3. **Learn Serialization** - Save systems and networking
    - Start: [Serialization Guide](../features/serialization/serialization.md)
-   - Why: Robust save/load with Unity types supported
+   - Why: Save/load with Unity types supported
 
 ### For Tools/Editor Programmers
 
@@ -296,9 +294,9 @@ Based on your needs:
    - Start: [Data Structures Guide](../features/utilities/data-structures.md)
    - Why: Heaps, tries, sparse sets, and more with clear trade-offs
 
-2. **Use Advanced Math Helpers** - Avoid common pitfalls
+2. **Use Math Helpers** - Avoid common pitfalls
    - Start: [Math & Extensions](../features/utilities/math-and-extensions.md)
-   - Why: Robust modulo, geometry, color averaging, and more
+   - Why: Modulo, geometry, color averaging, and more
 
 3. **Adopt the Buffering Pattern** - Zero-allocation queries
    - Start: [Buffering Pattern](../readme.md#buffering-pattern)
@@ -315,7 +313,7 @@ Yes! Unity Helpers is:
 - ✅ Used in shipped commercial games
 - ✅ 8,000+ automated test cases
 - ✅ Compatible with Unity 2022, 2023, and Unity 6
-- ✅ Zero external dependencies
+- ✅ Zero external dependencies — protobuf-net is bundled
 - ✅ **Fully WebGL/IL2CPP compatible** with optimized SINGLE_THREADED hot paths
 - ✅ **Multiplatform support** - Desktop, Mobile, Web, and Consoles
 - ⚠️ Requires .NET Standard 2.1
@@ -326,7 +324,7 @@ No! Unity Helpers:
 
 - ✅ Uses namespaces (`WallstopStudios.UnityHelpers.*`)
 - ✅ Doesn't modify Unity types or global state
-- ✅ Opt-in for all features - use what you need
+- ✅ Opt-in design - use what you need
 
 ### "How do I get help?"
 
@@ -348,13 +346,13 @@ Pick one feature that solves your immediate problem:
 
 | Your Need             | Start Here                                                                          | Time to Learn |
 | --------------------- | ----------------------------------------------------------------------------------- | ------------- |
-| Faster random numbers | [Random Performance](../performance/random-performance.md)                          | 5 min         |
-| Auto-wire components  | [Relational Components](../features/relational-components/relational-components.md) | 10 min        |
-| Spatial queries       | [2D Spatial Trees](../features/spatial/spatial-trees-2d-guide.md)                   | 15 min        |
-| Buff/debuff system    | [Effects System](../features/effects/effects-system.md)                             | 20 min        |
-| Save/load data        | [Serialization](../features/serialization/serialization.md)                         | 20 min        |
-| Editor automation     | [Editor Tools](../features/editor-tools/editor-tools-guide.md)                      | 30 min        |
-| Global settings       | [Singletons](../features/utilities/singletons.md)                                   | 10 min        |
+| Faster random numbers | [Random Performance](../performance/random-performance.md)                          | ~5 min        |
+| Auto-wire components  | [Relational Components](../features/relational-components/relational-components.md) | ~10 min       |
+| Spatial queries       | [2D Spatial Trees](../features/spatial/spatial-trees-2d-guide.md)                   | ~15 min       |
+| Buff/debuff system    | [Effects System](../features/effects/effects-system.md)                             | ~20 min       |
+| Save/load data        | [Serialization](../features/serialization/serialization.md)                         | ~20 min       |
+| Editor automation     | [Editor Tools](../features/editor-tools/editor-tools-guide.md)                      | ~30 min       |
+| Global settings       | [Singletons](../features/utilities/singletons.md)                                   | ~10 min       |
 
 ---
 

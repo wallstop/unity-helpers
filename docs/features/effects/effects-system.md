@@ -7,10 +7,10 @@
 
 - **⭐ Build buff/debuff systems without writing custom code for every effect.**
 - Data‑driven ScriptableObjects: designers create 100s of effects, programmers build the system once.
-- **Time saved: Weeks of boilerplate eliminated + designers empowered to iterate freely.**
-- **✨ Attributes are NOT required!** Use the system purely for tag-based state management and timed cosmetic effects.
+- **Reduces boilerplate with data-driven effect definitions; designers can iterate without code changes.**
+- **Note:** Attributes are optional - use the system purely for tag-based state management and timed cosmetic effects.
 
-### ⭐ The Designer Empowerment Killer Feature
+### Data-Driven Effect Authoring
 
 **The Problem - Hardcoded Effects:**
 
@@ -66,16 +66,16 @@ target.ApplyEffect(hasteEffect);
 
 **Designer Workflow:**
 
-1. Create the effect asset in 30 seconds (no code)
+1. Create the effect asset in the editor (no code)
 2. Test in-game immediately
 3. Tweak values and iterate freely
 4. Create variations (Haste II, Haste III) by duplicating assets
 
 **Impact:**
 
-- **Programmer time saved**: Weeks of boilerplate → system built once
-- **Designer empowerment**: Create 100s of effects instantly
-- **Iteration speed**: Change values without code changes/recompiles
+- **Reduced boilerplate**: Centralizes effect logic in a reusable system
+- **Designer workflow**: Create and modify effects without code changes
+- **Faster iteration**: Adjust values without recompiling
 - **Maintainability**: All effects in one system vs. scattered scripts
 
 Data‑driven gameplay effects that modify stats, apply tags, and drive cosmetic presentation.
@@ -158,7 +158,7 @@ if (player.HasTag("Stunned"))
 
 ## Understanding Attributes: What to Model and What to Avoid
 
-**Important: Attributes are NOT required!** The Effects System is extremely powerful even when used solely for tag-based state management and cosmetic effects.
+**Important: Attributes are NOT required!** The Effects System works well when used solely for tag-based state management and cosmetic effects.
 
 ### What Makes a Good Attribute?
 
@@ -290,7 +290,7 @@ When you use Attributes for frequently mutated "current" values:
 
 ## Using Tags WITHOUT Attributes
 
-Even without any Attributes, the Effects System is extremely powerful for tag-based state management and cosmetic effects.
+Even without any Attributes, the Effects System is useful for tag-based state management and cosmetic effects.
 
 ### When to Use Tags Without Attributes
 
@@ -998,7 +998,7 @@ void UpdateEffectTooltip(EffectType effectType)
 ✅ **Type safety** - Compiler catches typos and missing effects
 ✅ **Refactoring** - Rename effects across the entire codebase reliably
 ✅ **Autocomplete** - IDE suggests all available effects
-✅ **Performance** - Dictionary lookup faster than Resources.Load
+✅ **Performance** - Dictionary lookup avoids Resources.Load overhead
 ✅ **No magic strings** - Effect references are code symbols, not brittle strings
 
 **Drawbacks:**
@@ -1026,7 +1026,7 @@ void UpdateEffectTooltip(EffectType effectType)
 
 **Integration with Unity Helpers' Built-in Enum Utilities:**
 
-This package already includes high-performance `EnumDisplayNameAttribute` and `ToCachedName()` extensions (see `EnumExtensions.cs:437-478`). You can leverage these for optimal performance:
+This package already includes high-performance `EnumDisplayNameAttribute` and `ToCachedName()` extensions (see `EnumExtensions.cs:437-478`). You can use these for better performance:
 
 ```csharp
 using WallstopStudios.UnityHelpers.Core.Attributes;
@@ -1253,7 +1253,7 @@ Q: How do I query tag counts or check multiple tags at once?
 
 ## Advanced Scenarios: Beyond Buffs and Debuffs
 
-While the Effects System excels at traditional buff/debuff mechanics, its true power lies in building **robust capability systems** that drive complex gameplay decisions across your entire codebase. This section explores advanced patterns that transform tags from "nice-to-have" into mission-critical architecture.
+While the Effects System handles traditional buff/debuff mechanics well, it can also be used to build **robust capability systems** that drive complex gameplay decisions across your entire codebase. This section explores advanced patterns that use tags extensively for architectural purposes.
 
 ### Understanding the Capability Pattern
 
@@ -1323,7 +1323,7 @@ public class PlayerController : MonoBehaviour
 
 ### When to Use This Pattern
 
-✅ **Perfect for:**
+✅ **Well-suited for:**
 
 - **State management** - "Stunned", "Invisible", "Invulnerable", "Flying"
 - **Capability gating** - "CanDash", "CanDoubleJump", "CanCastSpells"

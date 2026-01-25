@@ -342,6 +342,7 @@ The following skills involve customer-visible changes and MUST be followed by do
 
 ## Related Skills
 
+- [documentation-consistency](./documentation-consistency.md) — Performance claims, time estimates, emoji prefixes, bullet lists
 - [markdown-reference](./markdown-reference.md) — Link formatting, escaping, linting rules
 - [validate-before-commit](./validate-before-commit.md) — Pre-commit validation workflow
 - [create-csharp-file](./create-csharp-file.md) — New files need XML docs

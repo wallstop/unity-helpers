@@ -5,7 +5,7 @@
 
 ## TL;DR — Why Use These
 
-- Small helpers that fix everyday math and Unity annoyances: safe modulo, wrapped indices, robust equality, fast bounds math, color utilities, and more.
+- Small helpers that fix everyday math and Unity annoyances: safe modulo, wrapped indices, approximate equality, bounds math, color utilities, and more.
 - Copy/paste examples and diagrams show intent; use as building blocks in hot paths.
 
 This guide summarizes the math primitives and extension helpers in this package and shows how to apply them effectively, with examples, performance notes, and practical scenarios.
@@ -73,7 +73,7 @@ bool close = 0.1f.Approximately(0.10001f, 0.0001f); // true
 
 ### Line2D — 2D line segment operations
 
-**Why it exists:** Provides fast, battle-tested 2D line segment math for collision detection, ray-casting, and geometric queries.
+**Why it exists:** Provides 2D line segment math for collision detection, ray-casting, and geometric queries.
 
 **When to use:**
 
@@ -159,7 +159,7 @@ if (distSq < thresholdSquared)
 
 ### Line3D — 3D line segment operations
 
-**Why it exists:** Extends Line2D concepts to 3D space with sophisticated algorithms for sphere intersection, bounding box clipping, and skew line distance.
+**Why it exists:** Extends Line2D concepts to 3D space for sphere intersection, bounding box clipping, and skew line distance.
 
 **When to use:**
 
@@ -170,7 +170,7 @@ if (distSq < thresholdSquared)
 
 **When NOT to use:**
 
-- For 2D games (use Line2D for better performance)
+- For 2D games (use Line2D instead)
 - For complex curved paths (lines are always straight)
 
 Basic operations:
@@ -293,7 +293,7 @@ if (january.Contains(someDate))
 
 ### Parabola — Projectile trajectories and smooth curves
 
-**Why it exists:** Provides easy-to-use parabolic math for projectile motion, jump arcs, and smooth animation curves without writing quadratic equations by hand.
+**Why it exists:** Provides parabolic math for projectile motion, jump arcs, and smooth animation curves without writing quadratic equations by hand.
 
 **When to use:**
 
@@ -434,7 +434,7 @@ Span<Vector2> vertices = stackalloc Vector2[4]
 };
 
 bool inside = PointPolygonCheck.IsPointInsidePolygon(clickPos, vertices);
-// No GC allocations, great for per-frame checks
+// No GC allocations when using ReadOnlySpan
 ```
 
 **Edge cases to know:**
@@ -571,7 +571,7 @@ RGB space buckets → counts
 ```csharp
 using WallstopStudios.UnityHelpers.Core.Extension;
 
-// Cycle through elements endlessly (great for repeating patterns)
+// Cycle through elements endlessly for repeating patterns
 var colors = new[] { Color.red, Color.blue, Color.green };
 foreach (var color in colors.Infinite())
 {
@@ -617,7 +617,7 @@ var shuffled = items.Shuffled();
 // Fast removal when order doesn't matter (particle systems, entity lists)
 List<Enemy> enemies = GetActiveEnemies();
 enemies.RemoveAtSwapBack(3); // Swaps enemy[3] with last enemy, then removes
-// Much faster than List.RemoveAt which shifts all elements
+// Avoids O(n) shift operation of List.RemoveAt by swapping with last element
 ```
 
 **Partition (split by predicate):**
@@ -632,7 +632,7 @@ var (evens, odds) = numbers.Partition(n => n % 2 == 0);
 **Custom sorting:**
 
 ```csharp
-// GhostSort: Faster hybrid sort for medium-sized lists
+// GhostSort: Hybrid sort algorithm for medium-sized lists
 largeList.GhostSort(); // Uses IComparable<T>
 
 // Custom comparison function
@@ -758,7 +758,7 @@ string short = long.Truncate(10); // "This is a..."
 ### Encoding Helpers
 
 ```csharp
-// Quick UTF-8 conversions
+// UTF-8 conversions
 byte[] bytes = "Hello".GetBytes();
 string text = bytes.GetString();
 ```
@@ -831,7 +831,7 @@ string cached = state.ToCachedName();
 // Subsequent calls are O(1) lookups with zero allocation
 ```
 
-Performance: ToCachedName is ~100x faster after the first call.
+Performance: ToCachedName uses cached lookups to avoid repeated allocations and string conversions after the first call.
 
 ### Display Names for UI
 
@@ -867,7 +867,7 @@ Use for:
 
 ## Random Generators
 
-**Why it exists:** Unity's `Random` class is limited and not suitable for all scenarios. These extensions provide rich random generation.
+**Why it exists:** Unity's `Random` class is limited and not suitable for all scenarios. These extensions provide additional random generation capabilities.
 
 ![Random Generators Overview](../../images/utilities/random/random-generators.svg)
 
@@ -964,7 +964,7 @@ using UnityEngine.SceneManagement;
 async Task LoadGameScene()
 {
     var operation = SceneManager.LoadSceneAsync("GameLevel");
-    await operation; // Just works!
+    await operation;
 
     Debug.Log("Scene loaded!");
 }
@@ -979,7 +979,7 @@ async Task LoadGameScene()
 Task task = asyncOperation.AsTask();
 await task;
 
-// As ValueTask (better performance for short operations)
+// As ValueTask (reduces allocations for short operations)
 ValueTask valueTask = asyncOperation.AsValueTask();
 await valueTask;
 ```
