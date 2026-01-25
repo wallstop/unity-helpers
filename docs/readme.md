@@ -1275,7 +1275,7 @@ Unity Helpers is built with performance as a top priority:
 
 **Reflection:**
 
-- Cached delegates are up to 12x faster than raw `System.Reflection` for method invocations
+- Cached delegates are 10–100x faster than raw `System.Reflection` (method invocations ~12x; boxed scenarios up to 100x)
 - Safe for IL2CPP and AOT platforms; capability overrides (`ReflectionHelpers.OverrideReflectionCapabilities`) let tests force expression/IL fallbacks
 - Run the benchmarks via **ReflectionPerformanceTests.Benchmark** (EditMode Test Runner) and commit the updated markdown section
 - [📘 Reflection Helpers Guide](./features/utilities/reflection-helpers.md) and [📊 Benchmarks](./performance/reflection-performance.md)
