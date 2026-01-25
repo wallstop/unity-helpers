@@ -303,6 +303,43 @@ footer {
 - `0.01ms` was a legacy workaround for old browser bugs that is now obsolete
 - Semantically clearer: `0s` means "no animation" while `0.01ms` implies "very fast animation"
 
+### CSS Selector Scoping Consistency
+
+**CRITICAL**: When styling components in a framework (MkDocs, Jekyll themes, etc.), use consistent scoping for related rules. Inconsistent prefixes cause specificity bugs.
+
+```css
+/* ❌ WRONG: Inconsistent scoping - some rules use .md-typeset, some don't */
+.md-typeset table {
+  width: 100%;
+}
+.md-typeset th {
+  background: var(--bg-secondary);
+}
+td {
+  /* Missing .md-typeset prefix! */
+  padding: 0.5rem;
+}
+
+/* ✅ CORRECT: All related rules use same scoping */
+.md-typeset table {
+  width: 100%;
+}
+.md-typeset th {
+  background: var(--bg-secondary);
+}
+.md-typeset td {
+  padding: 0.5rem;
+}
+```
+
+**Why this matters:**
+
+1. **Specificity consistency** — All rules have same weight, predictable cascade
+2. **Scope isolation** — Styles only affect intended context, don't leak
+3. **Maintainability** — Easy to identify which rules belong together
+
+**Rule**: If one rule in a group uses a parent scope (`.md-typeset`, `.markdown-body`, etc.), ALL related rules must use the same scope.
+
 ---
 
 ## Testing Links Locally

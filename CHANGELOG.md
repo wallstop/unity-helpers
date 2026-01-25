@@ -11,7 +11,7 @@ See [the roadmap](./docs/overview/roadmap.md) for details
 
 ### Fixed
 
-- **Banner SVG Issues** Various issues relating to Unity Helpers banner SVG rendering
+- **Banner SVG Issues**: Various issues relating to Unity Helpers banner SVG rendering
 
 ## [3.1.5]
 

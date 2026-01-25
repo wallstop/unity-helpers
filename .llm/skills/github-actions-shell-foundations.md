@@ -263,6 +263,43 @@ When passing multiline content between steps, use environment variables with pri
 
 **Key insight**: GitHub Actions expressions (`${{ }}`) are expanded before the shell runs, so even single-quoted heredocs do not protect against content containing the delimiter. Always use environment variables with `printf` for user-controlled or file-derived content.
 
+### Pattern 10: Avoid Redundant Error Suppression
+
+Commands with built-in error handling should NOT have `|| true` appended.
+
+```bash
+# BAD: rm -f already suppresses "file not found" errors
+# || true masks REAL errors like permission denied
+run: |
+  set -euo pipefail
+  rm -f "$TEMP_FILE" || true  # WRONG - hides permission errors!
+  rm -rf "$TEMP_DIR" || true  # WRONG - hides permission errors!
+
+# GOOD: -f flag handles missing files, real errors should fail
+run: |
+  set -euo pipefail
+  rm -f "$TEMP_FILE"   # Fails on permission errors (correct behavior)
+  rm -rf "$TEMP_DIR"   # Fails on permission errors (correct behavior)
+```
+
+**Commands where `|| true` is redundant:**
+
+| Command         | Why `\|\| true` is Wrong                                        |
+| --------------- | --------------------------------------------------------------- |
+| `rm -f file`    | `-f` = "ignore nonexistent"; masks permission/filesystem errors |
+| `rm -rf dir`    | `-f` = "ignore nonexistent"; masks permission/filesystem errors |
+| `mkdir -p path` | `-p` = "no error if exists"; masks permission errors            |
+
+**When `|| true` IS appropriate:**
+
+| Pattern                       | Why It's Correct                                           |
+| ----------------------------- | ---------------------------------------------------------- |
+| `grep pattern file \|\| true` | `grep` exits 1 when no match; that's not an error          |
+| `diff file1 file2 \|\| true`  | `diff` exits 1 when files differ; that's not an error      |
+| `((count++)) \|\| true`       | Bash arithmetic returns 1 when result is 0 (see Pattern 8) |
+
+**Key insight**: Error suppression flags (`-f`, `-p`) exist to handle _expected_ conditions (file doesn't exist). Adding `|| true` after them suppresses _unexpected_ errors that indicate real problems.
+
 ---
 
 ## GitHub Actions Annotations

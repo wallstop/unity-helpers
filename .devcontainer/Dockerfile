@@ -14,7 +14,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 # If Yarn is needed later, use corepack (bundled with Node.js) or npm instead.
 RUN rm -f /etc/apt/sources.list.d/yarn.list \
     && rm -f /etc/apt/keyrings/yarn.gpg \
-    && rm -f /usr/share/keyrings/yarn-archive-keyring.gpg 2>/dev/null || true
+    && rm -f /usr/share/keyrings/yarn-archive-keyring.gpg
 
 # Install additional tools from apt repositories
 # - ripgrep: Fast regex search (10x faster than grep)

@@ -683,7 +683,7 @@ textarea:focus {
    ============================================ */
 
 /* Banner container for proper centering and sizing */
-.md-banner {
+.md-typeset .md-banner {
   display: block;
   max-width: 800px;
   width: 100%;
@@ -691,8 +691,8 @@ textarea:focus {
   text-align: center;
 }
 
-.md-banner img,
-.md-banner svg {
+.md-typeset .md-banner img,
+.md-typeset .md-banner svg {
   display: block;
   max-width: 100%;
   height: auto;
