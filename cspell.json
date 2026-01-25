@@ -590,6 +590,8 @@
         "bsp",
         "PRNG",
         "prng",
+        "PRNGs",
+        "prngs",
         "PVRTC",
         "RNG",
         "rng",

@@ -1,6 +1,10 @@
 # Unity Helpers
 
-> Unity Helpers is a comprehensive Unity package (2021.3+) providing professional inspector tooling, spatial data structures, PRNGs, serialization utilities, effects systems, relational components, and 20+ editor tools. It provides production-ready utilities designed to reduce boilerplate code and improve runtime performance in many common scenarios. Production-ready with 8,000+ tests, IL2CPP/WebGL compatible, shipped in commercial games.
+> Unity Helpers is a comprehensive Unity package (2021.3+) providing production-ready utilities that reduce boilerplate and improve runtime performance:
+>
+> - Professional inspector tooling, spatial data structures, PRNGs, serialization utilities
+> - Effects systems, relational components, and 20+ editor tools
+> - 8,000+ tests, IL2CPP/WebGL compatible, shipped in commercial games
 
 ## Key Information
 
