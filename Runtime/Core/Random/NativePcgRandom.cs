@@ -91,7 +91,7 @@ namespace WallstopStudios.UnityHelpers.Core.Random
             /*
                 https://github.com/libevent/libevent/blob/3807a30b03ab42f2f503f2db62b1ef5876e2be80/arc4random.c#L531
 
-                http://cs.stackexchange.com/questions/570/generating-uniformly-distributed-random-numbers-using-a-coin
+                https://cs.stackexchange.com/questions/570/generating-uniformly-distributed-random-numbers-using-a-coin
                 Generates a uniform random number within the bound, avoiding modulo bias
             */
             uint threshold = unchecked((uint)((0x100000000UL - max) % max));

@@ -104,7 +104,7 @@ The following PRNG implementations in `Runtime/Core/Random/` are adapted from or
 
 - Description: Fast, high-quality PRNGs with small state.
 - Authors: David Blackman, Sebastiano Vigna
-- Upstream: [xoshiro/xoroshiro website](http://xoshiro.di.unimi.it/)
+- Upstream: [xoshiro/xoroshiro website](https://prng.di.unimi.it/)
 - License: CC0 1.0 Universal (Public Domain)
 - Notes: Implements xoroshiro128\*\* and SplitMix64 variants.
 

@@ -1,6 +1,6 @@
 # Skill: Validation Troubleshooting
 
-<!-- trigger: error, ci, failure, troubleshoot, fix | Common validation errors, CI failures, fixes | Core -->
+<!-- trigger: error, ci, failure, troubleshoot, fix, dead link, lychee, broken link | Common validation errors, CI failures, fixes | Core -->
 
 **Trigger**: When you encounter validation errors, CI failures, or linting issues.
 
@@ -13,7 +13,7 @@ Use this guide when you encounter:
 - CI/CD pipeline failures
 - Linter error messages you need to fix
 - Spelling or formatting issues
-- Link validation failures
+- Link validation failures (internal or external/dead links)
 - Test lifecycle violations
 
 For the quick validation workflow, see [validate-before-commit](./validate-before-commit.md).
@@ -30,18 +30,18 @@ For detailed linter commands, see [linter-reference](./linter-reference.md).
 **Fix Options**:
 
 1. **Correct the spelling** if it's actually wrong
-2. **Add to dictionary** if it's a valid technical term
+2. **Add to dictionary** if it's a valid technical term:
 
-```bash
-# Add to cspell.json
-{
-  "words": [
-    "PRNG",
-    "Sirenix",
-    "MonoBehaviour"
-  ]
-}
-```
+   ```bash
+   # Add to cspell.json
+   {
+     "words": [
+       "PRNG",
+       "Sirenix",
+       "MonoBehaviour"
+     ]
+   }
+   ```
 
 3. **Inline ignore** for single occurrences:
 
@@ -171,6 +171,88 @@ private int _count;
 ```bash
 npm run eol:fix
 ```
+
+### 10. Dead Link Failures (External URLs)
+
+**Symptom**: `Check dead links (lychee)` step fails in CI
+
+**Cause**: External URL in a `.md` file is broken, redirects, or times out.
+
+**Important**: Lychee only scans `.md` files. URLs in `.cs` source files are NOT checked.
+
+#### Investigation Process
+
+1. **Check the CI output** — Lychee reports which file and URL failed
+2. **Verify the URL manually** — Open in browser, check for redirects
+3. **Identify the failure type** and apply the appropriate fix:
+
+| Failure Type             | Example                                                 | Fix                                                             |
+| ------------------------ | ------------------------------------------------------- | --------------------------------------------------------------- |
+| HTTP to HTTPS redirect   | `http://example.com` redirects to `https://example.com` | Update URL to use `https://`                                    |
+| Domain migration         | `xoshiro.di.unimi.it` moved to `prng.di.unimi.it`       | Update to new domain                                            |
+| Permanently defunct site | Academic site went offline                              | Add regex to `.lychee.toml` exclude list                        |
+| GitHub repo deleted      | Third-party repo removed                                | Add to `.lychee.toml` exclude list                              |
+| Transient server error   | 5xx errors                                              | Already handled — `.lychee.toml` accepts 5xx                    |
+| Bot protection           | Site returns 403 for automated requests                 | Add to `.lychee.toml` exclude list                              |
+| URL in source code only  | URL in `.cs` file metadata but not in docs              | No action needed for CI (but consider updating for consistency) |
+
+#### Common Fix Patterns
+
+**HTTP to HTTPS upgrade:**
+
+```markdown
+<!-- Before -->
+
+<http://example.com/resource>
+
+<!-- After -->
+
+<https://example.com/resource>
+```
+
+**Domain migration:**
+
+```markdown
+<!-- Before (old domain) -->
+
+<https://xoshiro.di.unimi.it>
+
+<!-- After (new domain) -->
+
+<https://prng.di.unimi.it>
+```
+
+**Add permanently defunct site to `.lychee.toml`:**
+
+```toml
+exclude = [
+  # ... existing exclusions ...
+  # Site permanently offline (reason)
+  "^https?://defunct-site\\.example\\.com"
+]
+```
+
+#### Source Code and Documentation Consistency
+
+When updating URLs, check for consistency between:
+
+1. **Source code metadata** — Attribution comments, XML docs in `.cs` files
+2. **Documentation** — References in `.md` files
+3. **Auto-generated docs** — Files in `docs/features/` that are generated from source metadata
+
+URLs in source code are not checked by lychee, but inconsistent URLs between source and docs create confusion.
+
+#### Quick Reference: `.lychee.toml` Location
+
+The lychee configuration is at the repository root: `.lychee.toml`
+
+Current exclusion categories:
+
+- Local/test URLs (localhost, 127.0.0.1)
+- Sites with bot protection (npmjs.com, doi.org)
+- Known flaky sites (bugs.python.org)
+- Defunct sites (wiki.unity3d.com, grepcode.com)
+- Offline GitHub repositories
 
 ---
 

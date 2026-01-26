@@ -54,9 +54,9 @@ namespace WallstopStudios.UnityHelpers.Core.Random
     /// </example>
     [RandomGeneratorMetadata(
         RandomQuality.Excellent,
-        "Hybrid Xoshiro/PCG variant tuned for all-around use; passes TestU01 BigCrush per upstream reference implementation.",
-        "Blackman & Vigna 2019",
-        "http://xoshiro.di.unimi.it"
+        "Six-word ARX-style generator tuned for all-around use; passes TestU01 BigCrush per upstream reference implementation.",
+        "Will Stafford Parsons (wileylooper)",
+        "https://github.com/wileylooper/flurryburst"
     )]
     [Serializable]
     [DataContract]

@@ -9,10 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 See [the roadmap](./docs/overview/roadmap.md) for details
 
+## [3.1.6]
+
 ### Fixed
 
 - **Banner SVG Issues**: Various issues relating to Unity Helpers banner SVG rendering
 - **Documentation nested list rendering**: Fixed GitHub Pages rendering where nested bullet lists appeared flat without proper indentation ([#175](https://github.com/wallstop/unity-helpers/issues/175))
+- **Documentation too self-congratulatory**: Toned down the documentation to be more realistic and less LLM-speak
 
 ## [3.1.5]
 
