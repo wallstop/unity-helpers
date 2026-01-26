@@ -1,6 +1,3 @@
----
----
-
 ## ReflectionHelpers — Fast, Safe Reflection for Hot Paths
 
 ### TL;DR — When To Use

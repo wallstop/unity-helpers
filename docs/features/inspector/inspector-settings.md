@@ -1,6 +1,3 @@
----
----
-
 # Inspector Settings Reference
 
 **Centralized configuration for all inspector features.**

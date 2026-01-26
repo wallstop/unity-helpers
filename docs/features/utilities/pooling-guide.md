@@ -1,6 +1,3 @@
----
----
-
 # Intelligent Pooling System
 
 ## TL;DR — Why Use This

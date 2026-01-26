@@ -1,6 +1,3 @@
----
----
-
 # Spatial Tree Semantics
 
 ## TL;DR — Why Semantics Matter

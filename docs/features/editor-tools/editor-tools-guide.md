@@ -1,6 +1,3 @@
----
----
-
 # Wallstop Studios Unity Helpers - Editor Tools Guide
 
 ## TL;DR — What You Get

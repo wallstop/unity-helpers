@@ -1,6 +1,3 @@
----
----
-
 # Utility Components Guide
 
 ## TL;DR — Why Use These

@@ -1,6 +1,3 @@
----
----
-
 # Odin Inspector to Unity Helpers Migration Guide
 
 A practical guide for migrating from Odin Inspector to Unity Helpers. Examples are verified against the actual source code.

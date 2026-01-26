@@ -1,6 +1,3 @@
----
----
-
 # Inspector Grouping Attributes
 
 **Organize your inspector without writing custom editors.**

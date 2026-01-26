@@ -1,6 +1,3 @@
----
----
-
 # Serialization Guide
 
 ## TL;DR — What Problem This Solves
@@ -23,26 +20,34 @@ All formats are exposed via `WallstopStudios.UnityHelpers.Core.Serialization.Ser
 
 ## Formats Provided
 
-- Json
-  - Human-readable; ideal for settings, debug, modding, and Git diffs.
-  - Includes converters for Unity types (ignores cycles, includes fields by default, case-insensitive by default; enums as strings in Normal/Pretty):
-    - Vector2, Vector3, Vector4, Vector2Int, Vector3Int
-    - Color, Color32, ColorBlock
-    - Quaternion, Matrix4x4, Pose, Plane, SphericalHarmonicsL2
-    - Bounds, BoundsInt, Rect, RectInt, RectOffset, RangeInt
-    - Ray, Ray2D, RaycastHit, BoundingSphere
-    - Resolution, RenderTextureDescriptor, LayerMask, Hash128, Scene
-    - AnimationCurve, Gradient, Touch, GameObject
-    - ParticleSystem.MinMaxCurve, ParticleSystem.MinMaxGradient
-    - System.Type (type metadata)
-  - Profiles: Normal, Pretty, Fast, FastPOCO (see below)
-- Protobuf (protobuf-net)
-  - **⭐ Killer Feature: Schema Evolution** — Players can load saves from older game versions without breaking! Add new fields, remove old ones, rename types—all while maintaining compatibility.
-  - Small and fast; best for networking and large save payloads.
-  - Forward/backward compatible message evolution (see the Schema Evolution guide below).
-- SystemBinary (BinaryFormatter)
-  - Only for legacy or trusted, same-version, local data. Avoid for long-term persistence or untrusted input.
-  - ⚠️ **Cannot handle version changes** - a single field addition breaks all existing saves.
+### Json
+
+Human-readable; ideal for settings, debug, modding, and Git diffs.
+
+- Includes converters for Unity types (ignores cycles, includes fields by default, case-insensitive by default; enums as strings in Normal/Pretty):
+  - Vector2, Vector3, Vector4, Vector2Int, Vector3Int
+  - Color, Color32, ColorBlock
+  - Quaternion, Matrix4x4, Pose, Plane, SphericalHarmonicsL2
+  - Bounds, BoundsInt, Rect, RectInt, RectOffset, RangeInt
+  - Ray, Ray2D, RaycastHit, BoundingSphere
+  - Resolution, RenderTextureDescriptor, LayerMask, Hash128, Scene
+  - AnimationCurve, Gradient, Touch, GameObject
+  - ParticleSystem.MinMaxCurve, ParticleSystem.MinMaxGradient
+  - System.Type (type metadata)
+- Profiles: Normal, Pretty, Fast, FastPOCO (see below)
+
+### Protobuf (protobuf-net)
+
+**⭐ Killer Feature: Schema Evolution** — Players can load saves from older game versions without breaking! Add new fields, remove old ones, rename types—all while maintaining compatibility.
+
+- Small and fast; best for networking and large save payloads.
+- Forward/backward compatible message evolution (see the Schema Evolution guide below).
+
+### SystemBinary (BinaryFormatter)
+
+Only for legacy or trusted, same-version, local data. Avoid for long-term persistence or untrusted input.
+
+- ⚠️ **Cannot handle version changes** - a single field addition breaks all existing saves.
 
 ## When To Use What
 
@@ -360,7 +365,7 @@ Protobuf uses reflection internally to serialize/deserialize types. Unity's IL2C
 - Works perfectly in Editor/Development builds, fails in Release/IL2CPP builds
 - "Type not found" or "Method not found" errors at runtime
 
-#### Solution: Create a link.xml file
+### Solution: Create a link.xml file
 
 In your `Assets` folder (or any subfolder), create `link.xml` to preserve your Protobuf types:
 
@@ -405,7 +410,7 @@ In your `Assets` folder (or any subfolder), create `link.xml` to preserve your P
 - Already preserving entire assembly with `preserve="all"`
 - Using a custom IL2CPP link file that preserves everything
 
-#### Advanced: Preserve only what's needed
+### Advanced: Preserve only what's needed
 
 Instead of `preserve="all"`, you can be more selective:
 
@@ -709,25 +714,26 @@ byte[] bytes = Serializer.ProtoSerialize(new Envelope { payload = new Ping { id 
 Envelope again = Serializer.ProtoDeserialize<Envelope>(bytes);
 ```
 
-- Interfaces require a root mapping
-  - Protobuf cannot deserialize directly to an interface because it needs a concrete root. You have three options:
-    - Use an abstract base with `[ProtoInclude]` and declare fields as that base (preferred).
-    - Register a mapping from the interface to a concrete root type at startup:
+- **Interfaces require a root mapping** — Protobuf cannot deserialize directly to an interface because it needs a concrete root. You have three options:
 
-```csharp
-Serializer.RegisterProtobufRoot<IMsg, Ping>();
-IMsg msg = Serializer.ProtoDeserialize<IMsg>(bytes);
-```
+1. Use an abstract base with `[ProtoInclude]` and declare fields as that base (preferred).
 
-- Or specify the concrete type with the overload:
+2. Register a mapping from the interface to a concrete root type at startup:
 
-```csharp
-IMsg msg = Serializer.ProtoDeserialize<IMsg>(bytes, typeof(Ping));
-```
+   ```csharp
+   Serializer.RegisterProtobufRoot<IMsg, Ping>();
+   IMsg msg = Serializer.ProtoDeserialize<IMsg>(bytes);
+   ```
 
-- Random system example
-  - All PRNGs derive from `AbstractRandom`, which is `[ProtoContract]` and declares each implementation via `[ProtoInclude]`.
-  - Do this in your models:
+3. Specify the concrete type with the overload:
+
+   ```csharp
+   IMsg msg = Serializer.ProtoDeserialize<IMsg>(bytes, typeof(Ping));
+   ```
+
+### Random System Example
+
+All PRNGs derive from `AbstractRandom`, which is `[ProtoContract]` and declares each implementation via `[ProtoInclude]`. Use this pattern in your models:
 
 ```csharp
 [ProtoContract]
@@ -748,8 +754,9 @@ IRandom r = Serializer.ProtoDeserialize<IRandom>(bytes);
 IRandom r2 = Serializer.ProtoDeserialize<IRandom>(bytes, typeof(PcgRandom));
 ```
 
-- Tag numbers are API surface
-  - Tags in `[ProtoInclude(tag, ...)]` and `[ProtoMember(tag)]` are part of your schema. Add new numbers for new types/fields; never reuse or renumber existing tags once shipped.
+### Tag Numbers Are API Surface
+
+Tags in `[ProtoInclude(tag, ...)]` and `[ProtoMember(tag)]` are part of your schema. Add new numbers for new types/fields; never reuse or renumber existing tags once shipped.
 
 ## SystemBinary Examples (Legacy/Trusted Only)
 

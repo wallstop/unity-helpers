@@ -1,6 +1,3 @@
----
----
-
 # 2D Spatial Tree Performance Benchmarks
 
 ## TL;DR — What Problem This Solves

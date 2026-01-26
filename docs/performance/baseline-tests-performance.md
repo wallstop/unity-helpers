@@ -1,6 +1,3 @@
----
----
-
 # Performance Baseline Tests
 
 > Auto-generated via PerformanceBaselineTests.GeneratePerformanceBaselineReport. Run the test explicitly to refresh these tables.

@@ -1,6 +1,3 @@
----
----
-
 # Asset Change Detection
 
 **Automatically respond to asset creation and deletion events.**

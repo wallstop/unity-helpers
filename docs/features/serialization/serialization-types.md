@@ -1,6 +1,3 @@
----
----
-
 # Serialization Types
 
 **Unity-friendly wrappers for complex data.**

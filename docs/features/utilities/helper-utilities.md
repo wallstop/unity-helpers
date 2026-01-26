@@ -1,6 +1,3 @@
----
----
-
 # Helper Utilities Guide
 
 ## TL;DR — Why Use These

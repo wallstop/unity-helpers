@@ -1,6 +1,3 @@
----
----
-
 # Contributing
 
 Thanks for helping make Unity Helpers better! This project uses a few automated checks and formatters to keep the codebase consistent and easy to review.

@@ -12,6 +12,7 @@ See [the roadmap](./docs/overview/roadmap.md) for details
 ### Fixed
 
 - **Banner SVG Issues**: Various issues relating to Unity Helpers banner SVG rendering
+- **Documentation nested list rendering**: Fixed GitHub Pages rendering where nested bullet lists appeared flat without proper indentation ([#175](https://github.com/wallstop/unity-helpers/issues/175))
 
 ## [3.1.5]
 
