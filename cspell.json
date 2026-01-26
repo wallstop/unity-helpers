@@ -796,7 +796,10 @@
         "fallbacks",
         "lacunarity",
         "reentrancy",
-        "unsubscription"
+        "unsubscription",
+        "unimi",
+        "npmjs",
+        "doi"
       ]
     }
   ],

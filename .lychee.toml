@@ -29,7 +29,13 @@ exclude = [
   "^https?://www\\.npmjs\\.com",
   "^https?://doi\\.org",
   # Known flaky/unreliable sites that cause intermittent CI failures
-  "^https?://bugs\\.python\\.org"
+  "^https?://bugs\\.python\\.org",
+  # Defunct or permanently unavailable sites
+  "^https?://wiki\\.unity3d\\.com",
+  "^https?://grepcode\\.com",
+  # Will Stafford Parsons repositories (offline)
+  "^https?://github\\.com/wileylooper",
+  "^https?://github\\.com/wstaffordp"
 ]
 
 # Exclude file paths (regex patterns) - avoid scanning third-party code
