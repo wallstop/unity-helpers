@@ -83,7 +83,7 @@ Invoke these skills for specific tasks.
 **Regenerate with**: `pwsh -NoProfile -File scripts/generate-skills-index.ps1`
 
 <!-- BEGIN GENERATED SKILLS INDEX -->
-<!-- Generated: 2026-01-24 15:34:43 UTC -->
+<!-- Generated: 2026-01-25 19:56:30 UTC -->
 <!-- Command: pwsh -NoProfile -File scripts/generate-skills-index.ps1 -->
 
 ### Core Skills (Always Consider)
@@ -153,6 +153,7 @@ Invoke these skills for specific tasks.
 | [debug-il2cpp](./skills/debug-il2cpp.md)                                       | IL2CPP build issues or AOT errors                      |
 | [github-actions-script-pattern](./skills/github-actions-script-pattern.md)     | Extract GHA logic to testable scripts                  |
 | [github-pages](./skills/github-pages.md)                                       | GitHub Pages, Jekyll, markdown link format             |
+| [github-pages-theming](./skills/github-pages-theming.md)                       | GitHub Pages CSS theming, Jekyll theme customization   |
 | [github-workflow-permissions](./skills/github-workflow-permissions.md)         | Workflow permissions, automated PRs, debugging         |
 | [integrate-odin-inspector](./skills/integrate-odin-inspector.md)               | Odin Inspector integration patterns                    |
 | [integrate-optional-dependency](./skills/integrate-optional-dependency.md)     | Odin, VContainer, Zenject integration patterns         |
@@ -176,10 +177,6 @@ Invoke these skills for specific tasks.
 <!-- END GENERATED SKILLS INDEX -->
 
 <!-- [skills-index] Generated skills index -->
-
----
-
-## Documentation Is a Deliverable (MANDATORY)
 
 **Documentation is NOT optional.** Every customer-visible change MUST include documentation updates. Incomplete documentation = incomplete work.
 
