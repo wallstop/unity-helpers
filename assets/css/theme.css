@@ -581,16 +581,16 @@ img[alt*="Banner"] {
  * Banner container centering for Jekyll pages
  * Note: HTML uses <p align="center"> which handles centering natively.
  * These styles provide additional sizing constraints.
- * Avoiding :has() selector due to poor browser support (Safari 15.3-, Firefox 120-).
+ * Using :first-of-type to target only the banner, not other centered paragraphs (e.g., badges).
  */
-section p[align="center"] {
+section p[align="center"]:first-of-type {
   margin: 1rem auto 2rem;
   max-width: 800px;
 }
 
 /* Responsive banner sizing - tablet */
 @media (max-width: 960px) {
-  section p[align="center"] {
+  section p[align="center"]:first-of-type {
     max-width: 100%;
     margin: 0.75rem auto 1.5rem;
     padding: 0 1rem;
@@ -599,7 +599,7 @@ section p[align="center"] {
 
 /* Responsive banner sizing - small tablet */
 @media (max-width: 768px) {
-  section p[align="center"] {
+  section p[align="center"]:first-of-type {
     margin: 0.5rem auto 1.25rem;
     padding: 0 0.75rem;
   }
@@ -612,7 +612,7 @@ section p[align="center"] {
 
 /* Responsive banner sizing - mobile */
 @media (max-width: 600px) {
-  section p[align="center"] {
+  section p[align="center"]:first-of-type {
     margin: 0.5rem auto 1rem;
     padding: 0 0.5rem;
   }
@@ -625,7 +625,7 @@ section p[align="center"] {
 
 /* Print media query - hide banner for cleaner print output */
 @media print {
-  section p[align="center"],
+  section p[align="center"]:first-of-type,
   img[src*="banner.svg"],
   img[alt*="Banner"] {
     display: none !important;

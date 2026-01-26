@@ -340,6 +340,50 @@ td {
 
 **Rule**: If one rule in a group uses a parent scope (`.md-typeset`, `.markdown-body`, etc.), ALL related rules must use the same scope.
 
+### Avoid Overly Broad Structural Selectors
+
+When targeting specific page elements (banners, hero sections, featured content), use pseudo-classes to prevent unintended side effects on similar elements:
+
+```css
+/* ❌ WRONG: Affects ALL centered paragraphs including badges */
+section p[align="center"] {
+  margin: 1rem auto;
+  max-width: 800px;
+}
+
+/* ✅ CORRECT: Only affects the first centered paragraph (banner) */
+section p[align="center"]:first-of-type {
+  margin: 1rem auto;
+  max-width: 800px;
+}
+```
+
+**Why this matters:**
+
+1. **Unintended cascade** — Multiple elements may match broad selectors
+2. **Structural precision** — `:first-of-type`, `:last-of-type`, `:nth-of-type()` target specific positions
+3. **Future-proofing** — Prevents CSS conflicts when page content structure changes
+
+**Related pattern - Use ARIA attributes for JavaScript-controlled states:**
+
+```css
+/* ❌ WRONG: CSS class never applied by JavaScript */
+table[data-sortable] th.sort-indicator-active::after {
+  display: none;
+}
+
+/* ✅ CORRECT: Use ARIA attributes that JavaScript already manages */
+table[data-sortable] th[aria-sort]:not([aria-sort="none"])::after {
+  display: none;
+}
+```
+
+**Why ARIA over custom classes:**
+
+1. **Single source of truth** — JavaScript sets ARIA for accessibility; CSS uses same attributes
+2. **No orphaned classes** — Can't have CSS targeting a class that JavaScript never applies
+3. **Accessibility alignment** — Visual presentation matches what screen readers see
+
 ---
 
 ## Testing Links Locally
