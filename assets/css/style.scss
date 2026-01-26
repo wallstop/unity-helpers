@@ -175,8 +175,12 @@ table[data-sortable] th::after {
   color: var(--text-muted);
 }
 
-/* Hide default indicator when sort indicator is present */
-table[data-sortable] th:has(.sort-indicator)::after {
+/*
+ * Hide default indicator when sort indicator is present
+ * Note: Using .sort-indicator-active class instead of :has() for browser compatibility
+ * (Safari 15.3 and below, Firefox 120 and below don't support :has())
+ */
+table[data-sortable] th.sort-indicator-active::after {
   display: none;
 }
 

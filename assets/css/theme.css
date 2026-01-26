@@ -556,6 +556,82 @@ img {
   border-radius: 6px;
 }
 
+/* SVG banner styling - ensure transparency and proper blending */
+img[src*="banner.svg"],
+img[alt*="Banner"] {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  border-radius: 12px;
+}
+
+/* Light mode banner - subtle shadow for depth on light backgrounds */
+[data-theme="light"] img[src*="banner.svg"],
+[data-theme="light"] img[alt*="Banner"] {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Dark mode banner - no shadow needed */
+[data-theme="dark"] img[src*="banner.svg"],
+[data-theme="dark"] img[alt*="Banner"] {
+  box-shadow: none !important;
+}
+
+/*
+ * Banner container centering for Jekyll pages
+ * Note: HTML uses <p align="center"> which handles centering natively.
+ * These styles provide additional sizing constraints.
+ * Avoiding :has() selector due to poor browser support (Safari 15.3-, Firefox 120-).
+ */
+section p[align="center"] {
+  margin: 1rem auto 2rem;
+  max-width: 800px;
+}
+
+/* Responsive banner sizing - tablet */
+@media (max-width: 960px) {
+  section p[align="center"] {
+    max-width: 100%;
+    margin: 0.75rem auto 1.5rem;
+    padding: 0 1rem;
+  }
+}
+
+/* Responsive banner sizing - small tablet */
+@media (max-width: 768px) {
+  section p[align="center"] {
+    margin: 0.5rem auto 1.25rem;
+    padding: 0 0.75rem;
+  }
+
+  img[src*="banner.svg"],
+  img[alt*="Banner"] {
+    border-radius: 10px;
+  }
+}
+
+/* Responsive banner sizing - mobile */
+@media (max-width: 600px) {
+  section p[align="center"] {
+    margin: 0.5rem auto 1rem;
+    padding: 0 0.5rem;
+  }
+
+  img[src*="banner.svg"],
+  img[alt*="Banner"] {
+    border-radius: 8px;
+  }
+}
+
+/* Print media query - hide banner for cleaner print output */
+@media print {
+  section p[align="center"],
+  img[src*="banner.svg"],
+  img[alt*="Banner"] {
+    display: none !important;
+  }
+}
+
 /* Ensure mermaid diagrams respect theme */
 .mermaid {
   background-color: transparent !important;
