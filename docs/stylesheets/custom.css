@@ -689,6 +689,7 @@ textarea:focus {
   width: 100%;
   margin: 1rem auto 2rem;
   text-align: center;
+  background: transparent;
 }
 
 .md-typeset .md-banner img,
@@ -697,9 +698,81 @@ textarea:focus {
   max-width: 100%;
   height: auto;
   margin: 0 auto;
+  background: transparent;
 }
 
-/* Ensure banner looks good on both light and dark backgrounds */
+/* Base banner styles - works on any background */
 .md-typeset .md-banner img {
   border-radius: 12px;
+  box-shadow: none;
+  border: none;
+}
+
+/* SVG banners - ensure full transparency
+   Note: img[src*="banner.svg"] catches all banner SVGs regardless of container */
+.md-typeset img[src*="banner.svg"],
+.md-typeset img[alt*="Banner"] {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  border-radius: 12px;
+}
+
+/* Light mode banner adjustments */
+[data-md-color-scheme="default"] .md-typeset .md-banner img,
+[data-md-color-scheme="default"] .md-typeset img[src*="banner.svg"] {
+  /* Subtle shadow for depth on light backgrounds */
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Dark mode banner - no shadow needed */
+[data-md-color-scheme="slate"] .md-typeset .md-banner img,
+[data-md-color-scheme="slate"] .md-typeset img[src*="banner.svg"] {
+  box-shadow: none;
+}
+
+/* Responsive banner styles - tablet */
+@media (max-width: 960px) {
+  .md-typeset .md-banner {
+    max-width: 100%;
+    margin: 0.75rem auto 1.5rem;
+    padding: 0 1rem;
+  }
+}
+
+/* Responsive banner styles - small tablet (768px breakpoint) */
+@media (max-width: 768px) {
+  .md-typeset .md-banner {
+    margin: 0.5rem auto 1.25rem;
+    padding: 0 0.75rem;
+  }
+
+  .md-typeset .md-banner img {
+    border-radius: 10px;
+  }
+}
+
+/* Responsive banner styles - mobile */
+@media (max-width: 600px) {
+  .md-typeset .md-banner {
+    margin: 0.5rem auto 1rem;
+    padding: 0 0.5rem;
+  }
+
+  .md-typeset .md-banner img {
+    border-radius: 8px;
+  }
+
+  .md-typeset img[src*="banner.svg"],
+  .md-typeset img[alt*="Banner"] {
+    border-radius: 8px;
+  }
+}
+
+/* Print media query - hide colorful banner since embedded colors don't print well */
+@media print {
+  .md-typeset .md-banner,
+  .md-typeset img[src*="banner.svg"] {
+    display: none;
+  }
 }

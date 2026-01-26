@@ -175,8 +175,11 @@ table[data-sortable] th::after {
   color: var(--text-muted);
 }
 
-/* Hide default indicator when sort indicator is present */
-table[data-sortable] th:has(.sort-indicator)::after {
+/*
+ * Hide default indicator when column is actively sorted
+ * Uses aria-sort attribute which is set by the JavaScript sorting logic
+ */
+table[data-sortable] th[aria-sort]:not([aria-sort="none"])::after {
   display: none;
 }
 
