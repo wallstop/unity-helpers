@@ -1,6 +1,3 @@
----
----
-
 # llms.txt - LLM-Friendly Documentation
 
 Unity Helpers includes an `llms.txt` file following the [llmstxt.org](https://llmstxt.org/) specification. This file provides structured, LLM-optimized documentation that enables AI assistants to quickly understand and work with the package.

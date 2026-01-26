@@ -1,6 +1,3 @@
----
----
-
 # Inspector Selection Attributes
 
 **Transform selection controls from dropdowns to designer-friendly interfaces.**

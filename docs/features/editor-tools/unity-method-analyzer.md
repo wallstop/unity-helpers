@@ -1,6 +1,3 @@
----
----
-
 # Unity Method Analyzer
 
 **Detect C# inheritance issues and Unity lifecycle errors across your entire codebase.**

@@ -1,6 +1,3 @@
----
----
-
 # Unity Main Thread Dispatcher & Guard
 
 `UnityMainThreadDispatcher` and `UnityMainThreadGuard` provide thread-safe access to Unity's main thread from background workers, ensuring callbacks execute correctly and preventing common threading errors.

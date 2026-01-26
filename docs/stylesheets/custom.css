@@ -776,3 +776,37 @@ textarea:focus {
     display: none;
   }
 }
+
+/* ============================================
+   Nested List Styling
+   ============================================ */
+
+/* Nested list indentation */
+.md-typeset ul ul,
+.md-typeset ol ul,
+.md-typeset ul ol,
+.md-typeset ol ol {
+  margin-left: 1em;
+}
+
+/* Distinct bullet styles for each nesting level */
+.md-typeset ul ul {
+  list-style-type: circle;
+}
+
+.md-typeset ul ul ul {
+  list-style-type: square;
+}
+
+.md-typeset ul ul ul ul {
+  list-style-type: disc;
+}
+
+/* Spacing for nested lists */
+.md-typeset ul > li > ul,
+.md-typeset ul > li > ol,
+.md-typeset ol > li > ul,
+.md-typeset ol > li > ol {
+  margin-top: 0.25em;
+  margin-bottom: 0.25em;
+}

@@ -1,6 +1,3 @@
----
----
-
 # IList Sorting Performance Benchmarks
 
 Unity Helpers ships several custom sorting algorithms for `IList<T>` that cover different trade-offs between adaptability, allocation patterns, and stability. This page gathers context and benchmark snapshots so you can choose the right algorithm for your workload and compare results across operating systems.

@@ -1,6 +1,3 @@
----
----
-
 # Core Math & Extensions
 
 ## TL;DR — Why Use These

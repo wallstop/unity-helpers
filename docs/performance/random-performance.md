@@ -1,6 +1,3 @@
----
----
-
 # Random Number Generator Performance Benchmarks
 
 > Auto-generated via RandomPerformanceTests.Benchmark. Run the test to refresh these summary and detail tables.

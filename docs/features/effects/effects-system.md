@@ -1,6 +1,3 @@
----
----
-
 # Effects, Attributes, and Tags — Deep Dive
 
 ## TL;DR — What Problem This Solves

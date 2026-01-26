@@ -1,6 +1,3 @@
----
----
-
 # Core Data Structures — Concepts, Usage, and Trade-offs
 
 ## TL;DR — What Problem This Solves

@@ -1,6 +1,3 @@
----
----
-
 # Singleton Utilities (Runtime + ScriptableObject)
 
 Visual
