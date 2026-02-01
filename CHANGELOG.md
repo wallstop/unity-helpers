@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **DetectAssetChanged scene file crash**: Fixed Unity crash ("Do not use ReadObjectThreaded on scene objects!") when `.unity` or `.scenetemplate` files were processed by the asset change detection system
+
 See [the roadmap](./docs/overview/roadmap.md) for details
 
 ## [3.1.6]

@@ -1,8 +1,8 @@
 {
   "name": "com.wallstop-studios.unity-helpers",
-  "version": "3.1.6",
+  "version": "3.1.7",
   "displayName": "Unity Helpers",
-  "description": "Treasure chest of Unity developer tools ",
+  "description": "Treasure chest of Unity developer tools",
   "unity": "2021.3",
   "keywords": [
     "inspector-attributes",
@@ -40,8 +40,10 @@
     "url": "https://github.com/wallstop/unity-helpers/issues"
   },
   "author": "wallstop studios <wallstop@wallstopstudios.com> (https://wallstopstudios.com)",
-  "homepage": "https://github.com/wallstop/unity-helpers#readme",
-  "main": "README.md",
+  "homepage": "https://wallstop.github.io/unity-helpers",
+  "documentationUrl": "https://wallstop.github.io/unity-helpers",
+  "changelogUrl": "https://github.com/wallstop/unity-helpers/blob/main/CHANGELOG.md",
+  "licensesUrl": "https://wallstop.github.io/unity-helpers/project/license/",
   "samples": [
     {
       "displayName": "DI – VContainer",
