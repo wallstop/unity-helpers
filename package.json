@@ -1,6 +1,6 @@
 {
   "name": "com.wallstop-studios.unity-helpers",
-  "version": "3.1.6",
+  "version": "3.1.7",
   "displayName": "Unity Helpers",
   "description": "Treasure chest of Unity developer tools ",
   "unity": "2021.3",
@@ -40,7 +40,8 @@
     "url": "https://github.com/wallstop/unity-helpers/issues"
   },
   "author": "wallstop studios <wallstop@wallstopstudios.com> (https://wallstopstudios.com)",
-  "homepage": "https://github.com/wallstop/unity-helpers#readme",
+  "homepage": "https://wallstop.github.io/unity-helpers",
+  "documentationUrl": "https://wallstop.github.io/unity-helpers",
   "main": "README.md",
   "samples": [
     {

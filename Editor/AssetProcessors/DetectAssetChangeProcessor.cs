@@ -554,15 +554,19 @@ namespace WallstopStudios.UnityHelpers.Editor.AssetProcessors
                 }
 
                 // If main asset doesn't match, check sub-assets (e.g., Sprites in a Texture2D)
-                UnityEngine.Object[] allAssets = AssetDatabase.LoadAllAssetsAtPath(path);
-                if (allAssets != null)
+                // Scene files crash LoadAllAssetsAtPath (ReadObjectThreaded not allowed)
+                if (!IsScenePath(path))
                 {
-                    for (int j = 0; j < allAssets.Length; j++)
+                    UnityEngine.Object[] allAssets = AssetDatabase.LoadAllAssetsAtPath(path);
+                    if (allAssets != null)
                     {
-                        UnityEngine.Object subAsset = allAssets[j];
-                        if (subAsset != null && assetType.IsInstanceOfType(subAsset))
+                        for (int j = 0; j < allAssets.Length; j++)
                         {
-                            instances.Add(subAsset);
+                            UnityEngine.Object subAsset = allAssets[j];
+                            if (subAsset != null && assetType.IsInstanceOfType(subAsset))
+                            {
+                                instances.Add(subAsset);
+                            }
                         }
                     }
                 }
@@ -974,6 +978,12 @@ namespace WallstopStudios.UnityHelpers.Editor.AssetProcessors
 
         private static bool HasMatchingSubAsset(string path, Type assetType)
         {
+            // Scene files crash LoadAllAssetsAtPath (ReadObjectThreaded not allowed)
+            if (IsScenePath(path))
+            {
+                return false;
+            }
+
             UnityEngine.Object[] allAssets = AssetDatabase.LoadAllAssetsAtPath(path);
             if (allAssets == null || allAssets.Length <= 1)
             {
@@ -1491,6 +1501,15 @@ namespace WallstopStudios.UnityHelpers.Editor.AssetProcessors
             }
 
             return false;
+        }
+
+        private static bool IsScenePath(string assetPath)
+        {
+            return assetPath != null
+                && (
+                    assetPath.EndsWith(".unity", StringComparison.OrdinalIgnoreCase)
+                    || assetPath.EndsWith(".scenetemplate", StringComparison.OrdinalIgnoreCase)
+                );
         }
     }
 }

@@ -826,6 +826,74 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
             );
         }
 
+        [TestCase(".unity", TestName = "SceneFile.LowerCase.DoesNotCrash")]
+        [TestCase(".Unity", TestName = "SceneFile.PascalCase.DoesNotCrash")]
+        [TestCase(".UNITY", TestName = "SceneFile.UpperCase.DoesNotCrash")]
+        [TestCase(".scenetemplate", TestName = "SceneFile.SceneTemplate.DoesNotCrash")]
+        public void SceneFileImportDoesNotCrash(string extension)
+        {
+            // Regression test: Importing a .unity scene file should not crash.
+            // Previously, HasMatchingSubAsset called AssetDatabase.LoadAllAssetsAtPath on
+            // scene files, which triggers Unity's "Do not use ReadObjectThreaded on scene objects!" error.
+            string fakeScenePath = TestRoot + "/TestScene" + extension;
+
+            ClearTestState();
+
+            Assert.DoesNotThrow(
+                () =>
+                    DetectAssetChangeProcessor.ProcessChangesForTesting(
+                        new[] { fakeScenePath },
+                        null,
+                        null,
+                        null
+                    ),
+                $"Processing a '{extension}' scene file as an imported asset should not throw or crash"
+            );
+
+            // Scene files are not TestDetectableAsset, so no handler should fire for created assets
+            foreach (AssetChangeContext context in TestDetectAssetChangeHandler.RecordedContexts)
+            {
+                CollectionAssert.DoesNotContain(
+                    context.CreatedAssetPaths,
+                    fakeScenePath,
+                    $"Scene file '{fakeScenePath}' should not appear in created asset paths for a ScriptableObject watcher"
+                );
+            }
+        }
+
+        [Test]
+        public void SceneFileInMixedBatchDoesNotInterfereWithNormalAssets()
+        {
+            // Verify that a scene file in the same import batch does not prevent normal asset processing.
+            string fakeScenePath = TestRoot + "/TestScene.unity";
+
+            CreatePayloadAssetAt(PayloadPath);
+            ClearTestState();
+
+            DetectAssetChangeProcessor.ProcessChangesForTesting(
+                new[] { PayloadPath, fakeScenePath },
+                null,
+                null,
+                null
+            );
+
+            Assert.GreaterOrEqual(
+                TestDetectAssetChangeHandler.RecordedContexts.Count,
+                1,
+                $"Expected at least 1 handler invocation for valid asset '{PayloadPath}' in mixed batch with scene file, "
+                    + $"but got {TestDetectAssetChangeHandler.RecordedContexts.Count}"
+            );
+
+            foreach (AssetChangeContext context in TestDetectAssetChangeHandler.RecordedContexts)
+            {
+                CollectionAssert.DoesNotContain(
+                    context.CreatedAssetPaths,
+                    fakeScenePath,
+                    $"Scene file '{fakeScenePath}' should not appear in created asset paths when mixed with normal assets"
+                );
+            }
+        }
+
         [TestCase(false, false, true, true, TestName = "ChangeFlags.MovedOnly.HandlesMovedAsset")]
         public void MovedAssetFlagsDataDriven(
             bool hasCreated,
