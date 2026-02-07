@@ -14,8 +14,7 @@ namespace WallstopStudios.UnityHelpers.Utils
     /// </summary>
     internal static class RuntimeSingletonRegistry
     {
-        private static readonly List<Action> _clearActions = new();
-        private static readonly object _lock = new();
+        private static readonly HashSet<Action> _clearActions = new();
 
         /// <summary>
         /// Registers a clear action for a singleton type.
@@ -27,7 +26,7 @@ namespace WallstopStudios.UnityHelpers.Utils
                 return;
             }
 
-            lock (_lock)
+            lock (_clearActions)
             {
                 _clearActions.Add(clearAction);
             }
@@ -36,7 +35,7 @@ namespace WallstopStudios.UnityHelpers.Utils
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
         private static void ClearAllInstances()
         {
-            lock (_lock)
+            lock (_clearActions)
             {
                 foreach (Action clearAction in _clearActions)
                 {
