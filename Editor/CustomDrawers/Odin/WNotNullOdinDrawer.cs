@@ -23,8 +23,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
     {
         protected override void DrawPropertyLayout(GUIContent label)
         {
-            CallNextDrawer(label);
-
             object value = Property.ValueEntry?.WeakSmartValue;
             if (ValidationShared.IsValueNull(value))
             {
@@ -32,6 +30,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 MessageType messageType = ValidationShared.GetMessageType(Attribute);
                 EditorGUILayout.HelpBox(message, messageType);
             }
+
+            CallNextDrawer(label);
         }
     }
 #endif
