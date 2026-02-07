@@ -60,7 +60,7 @@ jobs:
                 found = 1
                 next
               }
-            } else if (match($0, /\[Unreleased\]/i) && target_ver == "Unreleased") {
+            } else if (match($0, /\[Unreleased\]/i) && tolower(target_ver) == "unreleased") {
               found = 1
               next
             }
@@ -102,7 +102,7 @@ jobs:
           if [ ! -s "${RUNNER_TEMP}/changelog_section.md" ]; then
             echo "::notice::No changelog section found for version $VERSION, trying Unreleased section"
             awk -v target_ver="Unreleased" -f "${RUNNER_TEMP}/extract-changelog.awk" CHANGELOG.md > "${RUNNER_TEMP}/changelog_section.md"
-            
+
             if [ ! -s "${RUNNER_TEMP}/changelog_section.md" ]; then
               echo "::warning::No changelog section found for version $VERSION or Unreleased"
             fi
