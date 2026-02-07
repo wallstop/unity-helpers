@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Unity 6.3 unsigned package warning**: Added `"signature": "unsigned"` field to package.json to explicitly mark the package as unsigned for Unity 6.3+. This prevents Unity from showing a warning that the package is missing a signature. The change is backwards compatible with older Unity versions and works with OpenUPM, npm, and git URL installations.
 - **WGroup not working in Unity 6000.x**: Fixed WGroup attributes not rendering in Unity 6 by using named parameter syntax for `CustomEditor` attribute's `editorForChildClasses` parameter. This change is backward compatible with Unity 2022 and earlier versions.
 - **DetectAssetChanged scene file crash**: Fixed Unity crash ("Do not use ReadObjectThreaded on scene objects!") when `.unity` or `.scenetemplate` files were processed by the asset change detection system
 
