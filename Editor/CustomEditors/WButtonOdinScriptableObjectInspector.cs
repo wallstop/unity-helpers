@@ -13,7 +13,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomEditors
     /// Custom editor for Odin Inspector's SerializedScriptableObject that adds WButton and WGroup support.
     /// This editor takes precedence over Odin's default editor when ODIN_INSPECTOR is defined.
     /// </summary>
-    [CustomEditor(typeof(SerializedScriptableObject), true)]
+    [CustomEditor(typeof(SerializedScriptableObject), editorForChildClasses: true)]
     [CanEditMultipleObjects]
     public sealed class WButtonOdinScriptableObjectInspector : Editor
     {
