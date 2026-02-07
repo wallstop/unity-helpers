@@ -17,7 +17,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomEditors
     using WallstopStudios.UnityHelpers.Editor.Utils.WGroup;
     using WallstopStudios.UnityHelpers.Utils;
 
-    [CustomEditor(typeof(UnityEngine.Object), true)]
+    [CustomEditor(typeof(UnityEngine.Object), editorForChildClasses: true)]
     [CanEditMultipleObjects]
     public sealed class WButtonInspector : Editor
     {
