@@ -42,7 +42,7 @@ namespace WallstopStudios.UnityHelpers.Utils
                 {
                     try
                     {
-                        clearAction?.Invoke();
+                        clearAction.Invoke();
                     }
                     catch (Exception ex)
                     {
