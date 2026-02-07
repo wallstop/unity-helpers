@@ -98,6 +98,8 @@
     }
   ],
   "scripts": {
+    "sign:package": "node scripts/sign-package.js",
+    "sign:package:dry-run": "node scripts/sign-package.js --dry-run",
     "docs:serve": "bundle exec jekyll serve --baseurl \"\" --livereload",
     "docs:build": "bundle exec jekyll build --baseurl \"\"",
     "lint:docs": "node ./scripts/run-doc-link-lint.js",
@@ -128,6 +130,7 @@
     "lint:unity-file-naming": "pwsh -NoProfile -File scripts/lint-unity-file-naming.ps1 -VerboseOutput",
     "test:lint-unity-file-naming": "pwsh -NoProfile -File scripts/tests/test-lint-unity-file-naming.ps1 -VerboseOutput",
     "test:wiki-generation": "bash scripts/tests/test-wiki-generation.sh",
+    "test:package-signing": "bash scripts/tests/test-package-signing.sh",
     "verify:tools": "bash scripts/verify-devcontainer-tools.sh"
   },
   "devDependencies": {

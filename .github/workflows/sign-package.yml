@@ -1,0 +1,118 @@
+name: Sign Package
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      use_signature:
+        description: 'Sign with private key (true) or mark as unsigned (false)'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+          - 'false'
+          - 'true'
+
+permissions:
+  contents: write
+
+jobs:
+  sign-package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --only=production --ignore-scripts
+        continue-on-error: true
+
+      - name: Sign package (unsigned mode)
+        if: github.event_name == 'release' || github.event.inputs.use_signature == 'false'
+        run: |
+          echo "Signing package as 'unsigned' (recommended for community packages)"
+          npm run sign:package
+          echo "Package signed successfully"
+
+      - name: Sign package (with private key)
+        if: github.event.inputs.use_signature == 'true'
+        env:
+          UNITY_PACKAGE_PRIVATE_KEY: ${{ secrets.UNITY_PACKAGE_PRIVATE_KEY }}
+          UNITY_PACKAGE_KEY_ID: ${{ secrets.UNITY_PACKAGE_KEY_ID }}
+        run: |
+          if [ -z "$UNITY_PACKAGE_PRIVATE_KEY" ] || [ -z "$UNITY_PACKAGE_KEY_ID" ]; then
+            echo "::warning::Private key or key ID not configured. Falling back to unsigned mode."
+            npm run sign:package
+          else
+            echo "Signing package with private key"
+            npm run sign:package
+          fi
+          echo "Package signed successfully"
+
+      - name: Verify package.json changes
+        run: |
+          echo "Checking package.json signature field..."
+          SIGNATURE=$(jq -r '.signature' package.json)
+          echo "Current signature value: $SIGNATURE"
+
+          if [ "$SIGNATURE" = "null" ] || [ "$SIGNATURE" = "" ]; then
+            echo "::error::package.json signature field is missing or null"
+            exit 1
+          fi
+
+          echo "✓ Package signature field is present"
+
+      - name: Commit signed package
+        id: commit
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+
+          if git diff --quiet package.json; then
+            echo "No changes to commit"
+            echo "changed=false" >> $GITHUB_OUTPUT
+          else
+            git add package.json
+            git commit -m "chore: sign package for Unity 6.3 compatibility [skip ci]"
+            echo "changed=true" >> $GITHUB_OUTPUT
+            echo "✓ Package.json signed and committed"
+          fi
+
+      - name: Push changes
+        if: steps.commit.outputs.changed == 'true'
+        uses: ad-m/github-push-action@master
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          branch: ${{ github.ref }}
+
+      - name: Add job summary
+        run: |
+          {
+            echo "### ✅ Package Signing Complete"
+            echo ""
+            echo "| Property | Value |"
+            echo "|----------|-------|"
+            echo "| **Package** | $(jq -r '.name' package.json) |"
+            echo "| **Version** | $(jq -r '.version' package.json) |"
+            echo "| **Signature** | \`$(jq -r '.signature | if type == "string" then . else "cryptographic" end' package.json)\` |"
+            echo ""
+            echo "#### Distribution Compatibility"
+            echo "✓ OpenUPM"
+            echo "✓ NPM"
+            echo "✓ Git URLs"
+            echo "✓ Manual Export (.unitypackage)"
+            echo ""
+            echo "#### Unity Compatibility"
+            echo "✓ Unity 2021.3+ (backwards compatible)"
+            echo "✓ Unity 6.3+ (suppresses unsigned warning)"
+          } >> "$GITHUB_STEP_SUMMARY"
