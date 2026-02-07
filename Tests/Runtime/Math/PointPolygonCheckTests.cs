@@ -212,13 +212,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Math
         public void IsPointInsidePolygonSpanPointInsideSquareReturnsTrue()
         {
             Vector2 point = new(5f, 5f);
-            Span<Vector2> square =
-                stackalloc Vector2[] {
-                    new Vector2(0f, 0f),
-                    new Vector2(10f, 0f),
-                    new Vector2(10f, 10f),
-                    new Vector2(0f, 10f),
-                };
+            Span<Vector2> square = stackalloc Vector2[]
+            {
+                new Vector2(0f, 0f),
+                new Vector2(10f, 0f),
+                new Vector2(10f, 10f),
+                new Vector2(0f, 10f),
+            };
 
             bool result = PointPolygonCheck.IsPointInsidePolygon(point, square);
 
@@ -229,13 +229,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Math
         public void IsPointInsidePolygonSpanPointOutsideSquareReturnsFalse()
         {
             Vector2 point = new(15f, 5f);
-            Span<Vector2> square =
-                stackalloc Vector2[] {
-                    new Vector2(0f, 0f),
-                    new Vector2(10f, 0f),
-                    new Vector2(10f, 10f),
-                    new Vector2(0f, 10f),
-                };
+            Span<Vector2> square = stackalloc Vector2[]
+            {
+                new Vector2(0f, 0f),
+                new Vector2(10f, 0f),
+                new Vector2(10f, 10f),
+                new Vector2(0f, 10f),
+            };
 
             bool result = PointPolygonCheck.IsPointInsidePolygon(point, square);
 
@@ -442,13 +442,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Math
         public void IsPointInsidePolygonVector3SpanPointInsideSquareReturnsTrue()
         {
             Vector3 point = new(5f, 5f, 0f);
-            Span<Vector3> square =
-                stackalloc Vector3[] {
-                    new Vector3(0f, 0f, 0f),
-                    new Vector3(10f, 0f, 0f),
-                    new Vector3(10f, 10f, 0f),
-                    new Vector3(0f, 10f, 0f),
-                };
+            Span<Vector3> square = stackalloc Vector3[]
+            {
+                new Vector3(0f, 0f, 0f),
+                new Vector3(10f, 0f, 0f),
+                new Vector3(10f, 10f, 0f),
+                new Vector3(0f, 10f, 0f),
+            };
             Vector3 planeNormal = Vector3.forward;
 
             bool result = PointPolygonCheck.IsPointInsidePolygon(point, square, planeNormal);
@@ -460,13 +460,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Math
         public void IsPointInsidePolygonVector3SpanPointOutsideSquareReturnsFalse()
         {
             Vector3 point = new(15f, 5f, 0f);
-            Span<Vector3> square =
-                stackalloc Vector3[] {
-                    new Vector3(0f, 0f, 0f),
-                    new Vector3(10f, 0f, 0f),
-                    new Vector3(10f, 10f, 0f),
-                    new Vector3(0f, 10f, 0f),
-                };
+            Span<Vector3> square = stackalloc Vector3[]
+            {
+                new Vector3(0f, 0f, 0f),
+                new Vector3(10f, 0f, 0f),
+                new Vector3(10f, 10f, 0f),
+                new Vector3(0f, 10f, 0f),
+            };
             Vector3 planeNormal = Vector3.forward;
 
             bool result = PointPolygonCheck.IsPointInsidePolygon(point, square, planeNormal);
