@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **WGroup not working in Unity 6000.x**: Fixed WGroup attributes not rendering in Unity 6 by using named parameter syntax for `CustomEditor` attribute's `editorForChildClasses` parameter. This change is backward compatible with Unity 2022 and earlier versions.
 - **DetectAssetChanged scene file crash**: Fixed Unity crash ("Do not use ReadObjectThreaded on scene objects!") when `.unity` or `.scenetemplate` files were processed by the asset change detection system
 
 See [the roadmap](./docs/overview/roadmap.md) for details
