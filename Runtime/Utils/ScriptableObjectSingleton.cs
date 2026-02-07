@@ -69,6 +69,11 @@ namespace WallstopStudios.UnityHelpers.Utils
         private static bool _duplicateMetadataWarningLogged;
 #endif
 
+        static ScriptableObjectSingleton()
+        {
+            ScriptableObjectSingletonRegistry.Register(ClearInstance);
+        }
+
         private static string GetResourcesPath()
         {
             Type type = typeof(T);
@@ -87,7 +92,6 @@ namespace WallstopStudios.UnityHelpers.Utils
             return string.Empty;
         }
 
-        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
         internal static void ClearInstance()
         {
             if (!_lazyInstance.IsValueCreated)

@@ -54,6 +54,11 @@ namespace WallstopStudios.UnityHelpers.Utils
 
         protected internal static T _instance;
 
+        static RuntimeSingleton()
+        {
+            RuntimeSingletonRegistry.Register(ClearInstance);
+        }
+
         /// <summary>
         /// Gets a value that controls whether the instance persists across scene loads.
         /// Defaults to <c>true</c>. Override and return <c>false</c> to keep the instance
@@ -106,7 +111,6 @@ namespace WallstopStudios.UnityHelpers.Utils
             }
         }
 
-        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
         internal static void ClearInstance()
         {
             _instance.Destroy();
