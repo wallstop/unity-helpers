@@ -1,4 +1,5 @@
 param(
+    [string[]]$Paths,
     [switch]$DryRun,
     [switch]$VerboseOutput
 )
@@ -67,6 +68,33 @@ function Get-TrackedFiles {
     }
 }
 
+function Get-TargetFiles([string[]]$paths, [string[]]$trackedFiles) {
+    if (-not $paths -or $paths.Count -eq 0) {
+        return $trackedFiles
+    }
+
+    $repoRoot = (Get-Location).Path
+    $trackedSet = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
+    foreach ($file in $trackedFiles) { $trackedSet.Add($file) | Out-Null }
+
+    $targets = New-Object System.Collections.Generic.List[string]
+    foreach ($path in $paths) {
+        if ([string]::IsNullOrWhiteSpace($path)) { continue }
+        $resolved = Resolve-Path -LiteralPath $path -ErrorAction SilentlyContinue
+        if (-not $resolved) { continue }
+
+        $fullPath = $resolved.Path
+        $relative = [System.IO.Path]::GetRelativePath($repoRoot, $fullPath)
+        $normalized = $relative -replace '\\', '/'
+
+        if ($trackedSet.Contains($normalized)) {
+            $targets.Add($normalized) | Out-Null
+        }
+    }
+
+    return $targets
+}
+
 function To-CrLf([string]$text) {
     $tmp = $text -replace "`r`n", "`n" -replace "`r", "`n"
     return $tmp -replace "`n", "`r`n"
@@ -82,7 +110,8 @@ $bomRemoved = 0
 $modified = New-Object System.Collections.Generic.List[string]
 
 $tracked = Get-TrackedFiles
-foreach ($path in $tracked) {
+$targets = Get-TargetFiles $Paths $tracked
+foreach ($path in $targets) {
     try { $bytes = [System.IO.File]::ReadAllBytes($path) } catch { continue }
 
     $hasBom = $false

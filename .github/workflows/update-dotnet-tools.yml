@@ -51,6 +51,10 @@ jobs:
             dotnet tool update $id --local
           }
 
+      - name: Normalize EOL (dotnet tools manifest)
+        shell: pwsh
+        run: ./scripts/normalize-eol.ps1 -Paths ".config/dotnet-tools.json" -VerboseOutput
+
       - name: Detect manifest changes
         id: git_changes
         run: |

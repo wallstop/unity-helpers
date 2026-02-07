@@ -62,6 +62,18 @@ npx prettier --write <file>
 npx prettier --write .
 ```
 
+**Common gotcha (dotnet tools manifest)**: If `format:json:check` fails on `.config/dotnet-tools.json`, the file usually has LF line endings from a Linux update step. Fix with:
+
+```bash
+npm run format:json -- .config/dotnet-tools.json
+```
+
+If the issue persists, normalize line endings:
+
+```bash
+pwsh -NoProfile -File scripts/normalize-eol.ps1 -VerboseOutput
+```
+
 ### 3. Markdownlint Violations
 
 **Symptom**: `npm run lint:markdown` fails
