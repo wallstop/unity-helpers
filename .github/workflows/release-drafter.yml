@@ -38,6 +38,14 @@ jobs:
         with:
           fetch-depth: 1 # Only need current commit for package.json and CHANGELOG.md
 
+      - name: Draft release
+        id: release_drafter
+        uses: release-drafter/release-drafter@v6
+        with:
+          config-name: release-drafter.yml
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Create changelog extraction script
         run: |
           set -euo pipefail
@@ -45,13 +53,16 @@ jobs:
           BEGIN { found = 0 }
           /^## \[/ {
             if (found) exit
-            # Extract version from header: ## [X.Y.Z] or ## [X.Y.Z-prerelease+build]
+            # Extract version from header: ## [X.Y.Z], ## [X.Y.Z-prerelease+build], or ## [Unreleased]
             if (match($0, /\[[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?\]/)) {
               header_ver = substr($0, RSTART + 1, RLENGTH - 2)
               if (header_ver == target_ver) {
                 found = 1
                 next
               }
+            } else if (match($0, /\[Unreleased\]/i) && target_ver == "Unreleased") {
+              found = 1
+              next
             }
           }
           found { print }
@@ -63,11 +74,6 @@ jobs:
           set -euo pipefail
 
           # Validate required files exist
-          if [ ! -f "package.json" ]; then
-            echo "::error::package.json not found"
-            exit 1
-          fi
-
           if [ ! -f "CHANGELOG.md" ]; then
             echo "::error::CHANGELOG.md not found"
             exit 1
@@ -78,17 +84,11 @@ jobs:
             exit 1
           fi
 
-          # Get the version from package.json with validation
-          VERSION=$(jq -r '.version // empty' package.json)
+          # Get the version from release-drafter output
+          VERSION="${{ steps.release_drafter.outputs.tag_name }}"
 
           if [ -z "$VERSION" ]; then
-            echo "::error::Version field missing or empty in package.json"
-            exit 1
-          fi
-
-          # Validate semver format (X.Y.Z with optional prerelease/build metadata)
-          if ! printf '%s' "$VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$'; then
-            echo "::error::Invalid semver format: $VERSION (expected X.Y.Z)"
+            echo "::error::release-drafter did not return a tag_name"
             exit 1
           fi
 
@@ -98,9 +98,14 @@ jobs:
           # Extract changelog section using external AWK script with exact version matching
           awk -v target_ver="$VERSION" -f "${RUNNER_TEMP}/extract-changelog.awk" CHANGELOG.md > "${RUNNER_TEMP}/changelog_section.md"
 
-          # Check if we extracted any content
+          # Check if we extracted any content - if not, try Unreleased section
           if [ ! -s "${RUNNER_TEMP}/changelog_section.md" ]; then
-            echo "::warning::No changelog section found for version $VERSION"
+            echo "::notice::No changelog section found for version $VERSION, trying Unreleased section"
+            awk -v target_ver="Unreleased" -f "${RUNNER_TEMP}/extract-changelog.awk" CHANGELOG.md > "${RUNNER_TEMP}/changelog_section.md"
+            
+            if [ ! -s "${RUNNER_TEMP}/changelog_section.md" ]; then
+              echo "::warning::No changelog section found for version $VERSION or Unreleased"
+            fi
           fi
 
           # Set multiline output using a random delimiter to prevent injection
@@ -113,16 +118,6 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
           echo "Changelog section extracted successfully"
-
-      - name: Draft release
-        id: release_drafter
-        uses: release-drafter/release-drafter@v6
-        with:
-          config-name: release-drafter.yml
-          version: ${{ steps.changelog.outputs.version }}
-          tag: ${{ steps.changelog.outputs.version }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Update release with changelog
         env:
