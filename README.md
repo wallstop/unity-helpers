@@ -504,6 +504,8 @@ Install directly from GitHub for the latest version:
 | 2023          | ✅ Compatible        | ✅ Compatible        | ✅ Compatible        |
 | Unity 6       | ✅ Compatible        | ✅ Compatible        | ✅ Compatible        |
 
+> **Unity 6.3+ Package Signing:** This package is properly signed for Unity 6.3+ to suppress "unsigned package" warnings. The package is marked as "unsigned" which is the recommended approach for community packages. See [Package Signing Documentation](docs/package-signing.md) for details about the automatic signing system.
+
 ### Platform Support
 
 Unity Helpers is **fully multiplatform compatible** including:

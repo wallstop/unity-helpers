@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 See [the roadmap](./docs/overview/roadmap.md) for details
 
+### Added
+
+- **Package signing infrastructure**: Added automatic package signing system for Unity 6.3+ compatibility via CI/CD. Includes `scripts/sign-package.js` CLI tool that can mark packages as "unsigned" (default, recommended) or sign with cryptographic keys. Works with all distribution methods (OpenUPM, NPM, Git URLs, manual export) and is backwards compatible with Unity 2021.3+. See [Package Signing Documentation](docs/package-signing.md) for details.
+
 ## [3.1.8]
 
 ### Fixed

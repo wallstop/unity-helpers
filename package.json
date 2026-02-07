@@ -98,6 +98,8 @@
     }
   ],
   "scripts": {
+    "sign:package": "node scripts/sign-package.js",
+    "sign:package:dry-run": "node scripts/sign-package.js --dry-run",
     "docs:serve": "bundle exec jekyll serve --baseurl \"\" --livereload",
     "docs:build": "bundle exec jekyll build --baseurl \"\"",
     "lint:docs": "node ./scripts/run-doc-link-lint.js",
