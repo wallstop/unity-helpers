@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 See [the roadmap](./docs/overview/roadmap.md) for details
 
+## [3.1.9]
+
+### Fixes
+
+- "Destroying assets is not permitted to avoid data loss" on Asset Domain Reload issue
+
 ## [3.1.8]
 
 ### Fixed

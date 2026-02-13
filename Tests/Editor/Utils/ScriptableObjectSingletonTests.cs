@@ -422,7 +422,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             {
                 singleton.Destroy();
             }
-            LifecycleScriptableSingleton.DisableCount = 0;
+            LifecycleScriptableSingleton.ClearedCount = 0;
 
             MissingResourceSingleton[] missing =
                 Resources.FindObjectsOfTypeAll<MissingResourceSingleton>();
@@ -1240,7 +1240,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         [UnityTest]
         public IEnumerator ClearInstanceDestroysLoadedAsset()
         {
-            LifecycleScriptableSingleton.DisableCount = 0;
+            LifecycleScriptableSingleton.ClearedCount = 0;
             CreateResourceAsset<LifecycleScriptableSingleton>(
                 "Lifecycle/LifecycleScriptableSingleton.asset"
             );
@@ -1250,14 +1250,14 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             LifecycleScriptableSingleton instance = LifecycleScriptableSingleton.Instance;
 
             Assert.IsTrue(instance != null);
-            Assert.AreEqual(0, LifecycleScriptableSingleton.DisableCount);
+            Assert.AreEqual(0, LifecycleScriptableSingleton.ClearedCount);
 
             LifecycleScriptableSingleton.ClearInstance();
             yield return null;
 
             Assert.IsFalse(LifecycleScriptableSingleton.HasInstance);
             Assert.IsFalse(LifecycleScriptableSingleton._lazyInstance.IsValueCreated);
-            Assert.GreaterOrEqual(LifecycleScriptableSingleton.DisableCount, 1);
+            Assert.GreaterOrEqual(LifecycleScriptableSingleton.ClearedCount, 1);
             yield break;
         }
 

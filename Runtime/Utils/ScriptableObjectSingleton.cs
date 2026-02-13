@@ -92,6 +92,10 @@ namespace WallstopStudios.UnityHelpers.Utils
             return string.Empty;
         }
 
+        /// <summary>
+        /// Clears the cached singleton instance, allowing a fresh load on next access.
+        /// If an instance was loaded, <see cref="OnInstanceCleared"/> is invoked before clearing.
+        /// </summary>
         internal static void ClearInstance()
         {
             if (!_lazyInstance.IsValueCreated)
@@ -102,10 +106,26 @@ namespace WallstopStudios.UnityHelpers.Utils
             T value = _lazyInstance.Value;
             if (value != null)
             {
-                value.Destroy();
+                value.OnInstanceCleared();
             }
 
             _lazyInstance = CreateLazy();
+        }
+
+        /// <summary>
+        /// Called when the singleton instance is being cleared via <see cref="ClearInstance"/>.
+        /// Override in derived classes to handle cleanup when the instance is cleared.
+        /// Called automatically by <see cref="OnInstanceCleared"/>.
+        /// </summary>
+        /// <remarks>
+        /// This method is intentionally named differently from Unity's <c>OnDisable()</c> magic method
+        /// to avoid confusion. Unity's <c>OnDisable()</c> is called by the engine when a ScriptableObject
+        /// is disabled or destroyed, whereas this method is only called when explicitly clearing the
+        /// singleton instance via the registry.
+        /// </remarks>
+        protected virtual void OnInstanceCleared()
+        {
+            // Default no-op; derived classes may override
         }
 
         protected internal static Lazy<T> _lazyInstance = CreateLazy();

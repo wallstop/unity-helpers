@@ -11,11 +11,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
     internal sealed class LifecycleScriptableSingleton
         : ScriptableObjectSingleton<LifecycleScriptableSingleton>
     {
-        public static int DisableCount;
+        public static int ClearedCount;
 
-        private void OnDisable()
+        protected override void OnInstanceCleared()
         {
-            DisableCount++;
+            base.OnInstanceCleared();
+            ClearedCount++;
         }
     }
 }
