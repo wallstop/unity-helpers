@@ -170,8 +170,8 @@ try {
   if ($errors.Count -gt 0) {
     Write-Error-Custom "`nValidation failed with $($errors.Count) error(s):"
     Write-Host ""
-    foreach ($error in $errors | Sort-Object) {
-      Write-Host "  ✗ $error" -ForegroundColor Yellow
+    foreach ($errorMessage in $errors | Sort-Object) {
+      Write-Host "  ✗ $errorMessage" -ForegroundColor Yellow
     }
     Write-Host ""
     Write-Error-Custom "NPM package validation failed."
