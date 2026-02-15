@@ -1783,11 +1783,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
 
             AnimationClip clip = new() { frameRate = baseFrameRate };
 
-            using PooledArray<ObjectReferenceKeyframe> keyframesResource =
-                SystemArrayPool<ObjectReferenceKeyframe>.Get(
-                    validFrames.Count,
-                    out ObjectReferenceKeyframe[] keyframes
-                );
+            // Use exact-size array for Unity API. SystemArrayPool returns arrays rounded up to
+            // the next power-of-2, and AnimationUtility.SetObjectReferenceCurve uses the array's
+            // Length property, causing broken animations from null trailing elements.
+            ObjectReferenceKeyframe[] keyframes = new ObjectReferenceKeyframe[validFrames.Count];
 
             float currentTime = 0f;
 
