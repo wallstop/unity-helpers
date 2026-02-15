@@ -1149,7 +1149,11 @@
     "pytest",
     "GHA",
     "venv",
-    "rcs"
+    "rcs",
+    "tgz",
+    "buildalon",
+    "nographics",
+    "tzf"
   ],
   "flagWords": [],
   "minWordLength": 3,

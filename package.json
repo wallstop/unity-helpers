@@ -1,6 +1,6 @@
 {
   "name": "com.wallstop-studios.unity-helpers",
-  "version": "3.1.9",
+  "version": "3.2.0",
   "displayName": "Unity Helpers",
   "description": "Treasure chest of Unity developer tools",
   "unity": "2021.3",
@@ -44,7 +44,6 @@
   "documentationUrl": "https://wallstop.github.io/unity-helpers",
   "changelogUrl": "https://github.com/wallstop/unity-helpers/blob/main/CHANGELOG.md",
   "licensesUrl": "https://wallstop.github.io/unity-helpers/project/license/",
-  "signature": "unsigned",
   "samples": [
     {
       "displayName": "DI – VContainer",
