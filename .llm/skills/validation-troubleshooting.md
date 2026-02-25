@@ -62,6 +62,12 @@ npx prettier --write <file>
 npx prettier --write .
 ```
 
+**Common gotcha (devcontainer.json)**: If `format:json:check` fails on `.devcontainer/devcontainer.json`, the file was likely edited (e.g., adding extensions, features, or updating settings) without running prettier. Arrays that fit within `printWidth: 100` get collapsed to single lines. Fix with:
+
+```bash
+npx prettier --write .devcontainer/devcontainer.json
+```
+
 **Common gotcha (dotnet tools manifest)**: If `format:json:check` fails on `.config/dotnet-tools.json`, the file usually has LF line endings from a Linux update step. Fix with:
 
 ```bash

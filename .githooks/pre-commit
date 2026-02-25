@@ -103,6 +103,7 @@ done < <(git diff --cached --name-only --diff-filter=ACM -z)
 MD_FILES_ARRAY=()
 JSON_FILES_ARRAY=()
 YAML_FILES_ARRAY=()
+JS_FILES_ARRAY=()
 CS_FILES_ARRAY=()
 SPELL_FILES_ARRAY=()
 
@@ -112,12 +113,16 @@ for file in "${STAGED_FILES_ARRAY[@]}"; do
             MD_FILES_ARRAY+=("$file")
             SPELL_FILES_ARRAY+=("$file")
             ;;
-        *.json|*.asmdef|*.asmref)
+        *.json|*.jsonc|*.asmdef|*.asmref)
             JSON_FILES_ARRAY+=("$file")
             SPELL_FILES_ARRAY+=("$file")
             ;;
         *.yml|*.yaml)
             YAML_FILES_ARRAY+=("$file")
+            SPELL_FILES_ARRAY+=("$file")
+            ;;
+        *.js)
+            JS_FILES_ARRAY+=("$file")
             SPELL_FILES_ARRAY+=("$file")
             ;;
         *.cs)
@@ -175,6 +180,17 @@ if [ ${#YAML_FILES_ARRAY[@]} -gt 0 ]; then
   fi
   # Use git_add_with_retry to handle concurrent git operations safely
   git_add_with_retry "${YAML_FILES_ARRAY[@]}"
+fi
+
+if [ ${#JS_FILES_ARRAY[@]} -gt 0 ]; then
+  npx --no-install prettier --write --log-level warn "${JS_FILES_ARRAY[@]}"
+  # Verify formatting was successful before re-staging
+  if ! npx --no-install prettier --check "${JS_FILES_ARRAY[@]}" >/dev/null 2>&1; then
+    echo "Error: Prettier formatting verification failed for JS files." >&2
+    exit 1
+  fi
+  # Use git_add_with_retry to handle concurrent git operations safely
+  git_add_with_retry "${JS_FILES_ARRAY[@]}"
 fi
 
 # 5) Format staged C# files with CSharpier (if available) and re-stage

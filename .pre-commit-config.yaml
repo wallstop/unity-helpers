@@ -71,7 +71,7 @@ repos:
         name: Prettier (Markdown, JSON, asmdef, asmref, YAML)
         entry: pwsh -NoProfile -File scripts/format-staged-prettier.ps1
         language: system
-        files: '(?i)\.(md|markdown|json|asmdef|asmref|ya?ml)$'
+        files: '(?i)\.(md|markdown|jsonc?|asmdef|asmref|ya?ml|js)$'
         description: Use the repo's Prettier version from package.json.
         require_serial: true
       - id: markdownlint

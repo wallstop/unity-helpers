@@ -81,6 +81,7 @@ Run **IMMEDIATELY** after editing:
 - `.css`, `.scss` - Stylesheets
 - `.html` - HTML files
 - Config files (`.prettierrc`, `.eslintrc`)
+- **`.devcontainer/devcontainer.json`** - Dev container configuration (often missed!)
 
 ### Commands
 
@@ -244,6 +245,10 @@ npm run validate:prepush
 ### Wrong: Only Formatting One Type
 
 Prettier formats JSON, YAML, and JavaScript too, not just markdown.
+
+### Wrong: Forgetting Config Files
+
+Files like `.devcontainer/devcontainer.json`, `.config/dotnet-tools.json`, and `package.json` are all checked by prettier. When these files are updated (by tooling, CI, or manual edits), they must be formatted before committing.
 
 ### Wrong: Skipping Verification
 

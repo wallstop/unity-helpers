@@ -41,6 +41,7 @@ jobs:
           npm run format:md
           npm run format:json
           npm run format:yaml
+          npm run format:js
 
       - name: Markdownlint (auto-fix)
         if: ${{ github.event.pull_request.user.login == 'dependabot[bot]' }}
@@ -56,6 +57,8 @@ jobs:
             **/*.md
             **/*.markdown
             **/*.json
+            **/*.jsonc
+            **/*.js
             **/*.asmdef
             **/*.asmref
             **/*.yml
@@ -69,6 +72,9 @@ jobs:
 
       - name: Prettier check (YAML)
         run: npm run format:yaml:check
+
+      - name: Prettier check (JS)
+        run: npm run format:js:check
 
       - name: Markdown lint (CI gate)
         run: npm run lint:markdown
@@ -110,6 +116,7 @@ jobs:
           npm run format:md
           npm run format:json
           npm run format:yaml
+          npm run format:js
 
       - name: Markdownlint (auto-fix)
         run: npx markdownlint "**/*.md" "**/*.markdown" --config .markdownlint.json --ignore-path .markdownlintignore --fix
@@ -137,7 +144,7 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git checkout -B "$BRANCH"
           # Stage only files we format; avoid workflows to prevent permission issues
-          git add '**/*.md' '**/*.markdown' '**/*.json' '**/*.asmdef' '**/*.asmref' '**/*.yml' '**/*.yaml'
+          git add '**/*.md' '**/*.markdown' '**/*.json' '**/*.jsonc' '**/*.js' '**/*.asmdef' '**/*.asmref' '**/*.yml' '**/*.yaml'
           git commit -m "chore(format): apply Prettier/markdownlint fixes for PR #${{ github.event.pull_request.number }}"
           git remote add upstream "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git"
           git fetch upstream

@@ -184,6 +184,7 @@ Before completing ANY task:
 
 - [ ] Did I run `npx prettier --write <file>` IMMEDIATELY after EVERY non-C# file?
 - [ ] Did I verify each file with `npx prettier --check <file>`?
+- [ ] Did I check config files too? (`.devcontainer/devcontainer.json`, `package.json`, etc.)
 - [ ] Final check: `npx prettier --check .` passes?
 
 ### For New Features

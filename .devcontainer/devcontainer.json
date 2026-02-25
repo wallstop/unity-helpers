@@ -195,14 +195,7 @@
         "errorLens.delay": 500,
 
         // ── TODO Tree ──
-        "todo-tree.general.tags": [
-          "TODO",
-          "FIXME",
-          "HACK",
-          "BUG",
-          "NOTE",
-          "PERF"
-        ],
+        "todo-tree.general.tags": ["TODO", "FIXME", "HACK", "BUG", "NOTE", "PERF"],
         "todo-tree.highlights.defaultHighlight": {
           "gutterIcon": true
         },
@@ -221,13 +214,7 @@
         "yaml.format.enable": false,
 
         // ── Spell Checker ──
-        "cSpell.enableFiletypes": [
-          "csharp",
-          "markdown",
-          "yaml",
-          "json",
-          "jsonc"
-        ],
+        "cSpell.enableFiletypes": ["csharp", "markdown", "yaml", "json", "jsonc"],
 
         // ── PowerShell ──
         "powershell.integratedConsole.showOnStartup": false,

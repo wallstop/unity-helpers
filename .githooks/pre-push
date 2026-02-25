@@ -38,17 +38,17 @@ else
   else
     # 1) Prettier checks (Markdown, JSON, asmdef/asmref, YAML, JS)
     # File patterns match CI workflows:
-    #   - markdown-json.yml: **/*.{md,markdown} and **/*.{json,asmdef,asmref}
+    #   - markdown-json.yml: **/*.{md,markdown} and **/*.{json,jsonc,asmdef,asmref}
     #   - yaml-format-lint.yml: **/*.{yml,yaml}
     # Auto-fix first, then verify. If verification fails, the user needs to commit the fixes.
     if npx --no-install prettier --version >/dev/null 2>&1; then
       echo "Checking formatting with patterns matching CI..."
-      echo "  Patterns: **/*.{md,markdown,json,asmdef,asmref,yml,yaml,js}"
-      if ! npx --no-install prettier --check "**/*.{md,markdown,json,asmdef,asmref,yml,yaml,js}" 2>/dev/null; then
+      echo "  Patterns: **/*.{md,markdown,json,jsonc,asmdef,asmref,yml,yaml,js}"
+      if ! npx --no-install prettier --check "**/*.{md,markdown,json,jsonc,asmdef,asmref,yml,yaml,js}" 2>/dev/null; then
         echo ""
         echo "=== Prettier formatting issues detected ==="
         echo "Auto-fixing formatting..."
-        npx --no-install prettier --write "**/*.{md,markdown,json,asmdef,asmref,yml,yaml,js}" --log-level warn
+        npx --no-install prettier --write "**/*.{md,markdown,json,jsonc,asmdef,asmref,yml,yaml,js}" --log-level warn
         echo ""
         echo "Files have been auto-formatted. Please:"
         echo "  1. Review the changes: git diff"
