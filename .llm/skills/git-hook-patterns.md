@@ -201,6 +201,24 @@ git diff --name-only -- "path/to/dir/"
 
 ---
 
+## CLI Argument Safety: End-of-Options Separator
+
+When passing staged file lists to CLI tools in hooks, ALWAYS place `--` between options and file arguments:
+
+```bash
+# WRONG - filenames can be interpreted as options
+npx --no-install prettier --write "${FILES[@]}"
+
+# CORRECT - `--` prevents option injection from filenames
+npx --no-install prettier --write -- "${FILES[@]}"
+markdownlint --fix --config .markdownlint.json -- "${FILES[@]}"
+yamllint -c .yamllint.yaml -- "${FILES[@]}"
+```
+
+**Why**: A staged filename like `--plugin=./evil.js` would be parsed as a CLI flag without `--`. This is an option injection vulnerability.
+
+---
+
 ## Error Handling in Hooks
 
 Always handle git command failures:

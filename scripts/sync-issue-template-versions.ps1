@@ -104,7 +104,9 @@ if (Test-Path $changelogPath) {
 if ($gitAvailable) {
     try {
         $tags = & git tag --list 2>$null
-        if ($LASTEXITCODE -eq 0 -and $tags) {
+        if ($LASTEXITCODE -ne 0) {
+            Write-Warning "git tag --list failed with exit code $LASTEXITCODE"
+        } elseif ($tags -and $tags.Count -gt 0) {
             foreach ($tag in $tags) {
                 $cleaned = $tag.Trim().TrimStart('v', 'V')
                 if ($cleaned -match $semverPattern) {
@@ -160,7 +162,7 @@ $unparseable.Reverse()
 
 $sortedVersions = [System.Collections.Generic.List[string]]::new()
 foreach ($sv in $parseable) {
-    [void]$sortedVersions.Add($sv.ToString())
+    [void]$sortedVersions.Add($sv.ToString(3))
 }
 foreach ($uv in $unparseable) {
     [void]$sortedVersions.Add($uv)

@@ -150,9 +150,9 @@ done
 
 # Prettier format and re-add using retry logic to handle index.lock contention
 if [ ${#MD_FILES_ARRAY[@]} -gt 0 ]; then
-  npx --no-install prettier --write --log-level warn "${MD_FILES_ARRAY[@]}"
+  npx --no-install prettier --write --log-level warn -- "${MD_FILES_ARRAY[@]}"
   # Verify formatting was successful before re-staging
-  if ! npx --no-install prettier --check "${MD_FILES_ARRAY[@]}" >/dev/null 2>&1; then
+  if ! npx --no-install prettier --check -- "${MD_FILES_ARRAY[@]}" >/dev/null 2>&1; then
     echo "Error: Prettier formatting verification failed for Markdown files." >&2
     exit 1
   fi
@@ -161,9 +161,9 @@ if [ ${#MD_FILES_ARRAY[@]} -gt 0 ]; then
 fi
 
 if [ ${#JSON_FILES_ARRAY[@]} -gt 0 ]; then
-  npx --no-install prettier --write --log-level warn "${JSON_FILES_ARRAY[@]}"
+  npx --no-install prettier --write --log-level warn -- "${JSON_FILES_ARRAY[@]}"
   # Verify formatting was successful before re-staging
-  if ! npx --no-install prettier --check "${JSON_FILES_ARRAY[@]}" >/dev/null 2>&1; then
+  if ! npx --no-install prettier --check -- "${JSON_FILES_ARRAY[@]}" >/dev/null 2>&1; then
     echo "Error: Prettier formatting verification failed for JSON files." >&2
     exit 1
   fi
@@ -172,9 +172,9 @@ if [ ${#JSON_FILES_ARRAY[@]} -gt 0 ]; then
 fi
 
 if [ ${#YAML_FILES_ARRAY[@]} -gt 0 ]; then
-  npx --no-install prettier --write --log-level warn "${YAML_FILES_ARRAY[@]}"
+  npx --no-install prettier --write --log-level warn -- "${YAML_FILES_ARRAY[@]}"
   # Verify formatting was successful before re-staging
-  if ! npx --no-install prettier --check "${YAML_FILES_ARRAY[@]}" >/dev/null 2>&1; then
+  if ! npx --no-install prettier --check -- "${YAML_FILES_ARRAY[@]}" >/dev/null 2>&1; then
     echo "Error: Prettier formatting verification failed for YAML files." >&2
     exit 1
   fi
@@ -183,9 +183,9 @@ if [ ${#YAML_FILES_ARRAY[@]} -gt 0 ]; then
 fi
 
 if [ ${#JS_FILES_ARRAY[@]} -gt 0 ]; then
-  npx --no-install prettier --write --log-level warn "${JS_FILES_ARRAY[@]}"
+  npx --no-install prettier --write --log-level warn -- "${JS_FILES_ARRAY[@]}"
   # Verify formatting was successful before re-staging
-  if ! npx --no-install prettier --check "${JS_FILES_ARRAY[@]}" >/dev/null 2>&1; then
+  if ! npx --no-install prettier --check -- "${JS_FILES_ARRAY[@]}" >/dev/null 2>&1; then
     echo "Error: Prettier formatting verification failed for JS files." >&2
     exit 1
   fi
@@ -207,17 +207,17 @@ fi
 # 6) Markdown lint for staged Markdown files
 if [ ${#MD_FILES_ARRAY[@]} -gt 0 ]; then
   # First, auto-fix what can be fixed
-  npx --no-install markdownlint --fix "${MD_FILES_ARRAY[@]}" --config .markdownlint.json --ignore-path .markdownlintignore || true
+  npx --no-install markdownlint --fix --config .markdownlint.json --ignore-path .markdownlintignore -- "${MD_FILES_ARRAY[@]}" || true
   # Re-stage the fixed files
   git_add_with_retry "${MD_FILES_ARRAY[@]}"
   # Then run markdownlint again to catch any remaining unfixable issues
-  npx --no-install markdownlint "${MD_FILES_ARRAY[@]}" --config .markdownlint.json --ignore-path .markdownlintignore
+  npx --no-install markdownlint --config .markdownlint.json --ignore-path .markdownlintignore -- "${MD_FILES_ARRAY[@]}"
 fi
 
 # 7) YAML lint on staged YAML files
 if [ ${#YAML_FILES_ARRAY[@]} -gt 0 ]; then
   if command -v yamllint >/dev/null 2>&1; then
-    yamllint -c .yamllint.yaml "${YAML_FILES_ARRAY[@]}"
+    yamllint -c .yamllint.yaml -- "${YAML_FILES_ARRAY[@]}"
   else
     echo "yamllint not found; skipping YAML lint (run 'npm run verify:tools' to check setup)." >&2
   fi

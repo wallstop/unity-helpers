@@ -302,6 +302,28 @@ run: |
 
 ---
 
+### Pattern 11: End-of-Options Separator for File Arguments
+
+When passing file lists to CLI tools, ALWAYS insert `--` before the file arguments to prevent option injection.
+
+```bash
+# BAD: A filename like '--plugin=evil.js' is treated as a flag
+run: |
+  set -euo pipefail
+  npx prettier --write "${FILES[@]}"
+
+# GOOD: `--` stops option parsing; everything after is a filename
+run: |
+  set -euo pipefail
+  npx prettier --write -- "${FILES[@]}"
+  markdownlint --fix --config .markdownlint.json -- "${FILES[@]}"
+  yamllint -c .yamllint.yaml -- "${FILES[@]}"
+```
+
+**Applies to**: `prettier`, `markdownlint`, `yamllint`, `eslint`, `csharpier`, and any tool that accepts a file list. Without `--`, an attacker-controlled filename like `--config=malicious.yml` becomes a CLI flag, enabling option injection.
+
+---
+
 ## GitHub Actions Annotations
 
 Use workflow commands for structured output:

@@ -66,6 +66,9 @@ jobs:
           & ./scripts/sync-issue-template-versions.ps1 `
             -AdditionalVersions $env:ADDITIONAL_VERSIONS
 
+      # NOTE: This diff check only examines .github/ISSUE_TEMPLATE/.
+      # If templateFiles in sync-issue-template-versions.ps1 is expanded to
+      # include files outside that directory, update this path accordingly.
       - name: Check for changes
         id: diff
         run: |
@@ -85,6 +88,7 @@ jobs:
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # Must match the directories containing $templateFiles in sync-issue-template-versions.ps1
           git add .github/ISSUE_TEMPLATE/
           git commit -m "chore: sync issue template package versions [skip ci]"
           git push origin main

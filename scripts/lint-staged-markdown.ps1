@@ -41,6 +41,7 @@ $npxArgs = @(
   '.markdownlintignore',
   '--fix'
 )
+$npxArgs += '--'
 $npxArgs += $existingPaths
 & npx @npxArgs
 if ($LASTEXITCODE -ne 0) {

@@ -220,6 +220,38 @@ If `validate:content` and `lint:csharp-naming` pass, your changes are ready.
 
 ---
 
+## CLI Argument Safety
+
+When passing file lists to CLI tools (prettier, markdownlint, yamllint, etc.), ALWAYS use a `--` end-of-options separator before the file arguments.
+
+### Why
+
+Without `--`, a staged filename like `--plugin=./evil.js` or `--config=malicious.yml` would be interpreted as a CLI option, not a filename. This is an option injection vulnerability.
+
+### Pattern
+
+```bash
+# WRONG - filenames can be interpreted as options
+npx --no-install prettier --write "${FILES[@]}"
+
+# CORRECT - `--` prevents filenames from being treated as options
+npx --no-install prettier --write -- "${FILES[@]}"
+```
+
+This applies to ALL tools that accept file arguments:
+
+- `prettier --write -- "${FILES[@]}"`
+- `markdownlint --fix --config X -- "${FILES[@]}"`
+- `yamllint -c config.yaml -- "${FILES[@]}"`
+
+In PowerShell scripts, add `'--'` to argument arrays before file paths:
+
+```powershell
+$cmdArgs = @('--yes', 'prettier', '--write', '--') + $filePaths
+```
+
+---
+
 ## Related Skills
 
 - [linter-reference](./linter-reference.md) — Detailed linter commands and configurations
