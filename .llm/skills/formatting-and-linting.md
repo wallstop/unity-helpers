@@ -37,7 +37,7 @@ bash scripts/install-hooks.sh
 
 ### What the Hook Does
 
-1. Syncs banner version from `package.json`
+1. Syncs versions (banner SVG + `.llm/context.md` from `package.json`; issue template dropdowns from `package.json`, `CHANGELOG.md`, and git tags)
 2. Normalizes line endings (CRLF/LF per file type)
 3. Formats staged files with Prettier (Markdown, JSON, YAML, JS)
 4. Formats staged C# files with CSharpier

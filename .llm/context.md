@@ -313,6 +313,8 @@ See [formatting](./skills/formatting.md) and [validate-before-commit](./skills/v
 - Never use `((var++))` in bash with `set -e`; use `var=$((var + 1))`
 - Line endings must be synchronized across `.gitattributes`, `.prettierrc.json`, `.yamllint.yaml`, `.editorconfig`
 - Git hook regex patterns use single backslashes, not double-escaped
+- When adding formatter support for a new language, add explicit `[language]` entry in `devcontainer.json` formatter assignments even if the global default would cover it
+- When adding new script calls to git hooks, update the hook's step comments AND the "What the Hook Does" list in [formatting-and-linting](./skills/formatting-and-linting.md)
 
 ---
 

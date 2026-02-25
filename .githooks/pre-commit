@@ -28,14 +28,17 @@ ensure_no_index_lock || {
     echo "Warning: index.lock still held after waiting. Proceeding anyway, but operations may fail." >&2
 }
 
-# 0) Sync banner version from package.json (runs on every commit)
-# This ensures the SVG banner always displays the correct version
+# 0) Sync version references (runs on every commit)
+#    a) Syncs banner version and .llm/context.md from package.json
+#    b) Syncs issue template package versions from package.json, CHANGELOG.md, and git tags
 if command -v pwsh >/dev/null 2>&1; then
   pwsh -NoProfile -File scripts/sync-banner-version.ps1
+  pwsh -NoProfile -File scripts/sync-issue-template-versions.ps1
 elif command -v powershell >/dev/null 2>&1; then
   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/sync-banner-version.ps1
+  powershell -NoProfile -ExecutionPolicy Bypass -File scripts/sync-issue-template-versions.ps1
 else
-  echo "PowerShell not found. Skipping banner version sync." >&2
+  echo "PowerShell not found. Skipping version sync." >&2
 fi
 
 # 1) Normalize line endings (LF -> CRLF for most files, LF for .sh)

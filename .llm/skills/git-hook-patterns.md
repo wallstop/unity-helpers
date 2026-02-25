@@ -325,6 +325,30 @@ exit 0
 
 ---
 
+## Hook Description Accuracy
+
+**CRITICAL**: When adding or removing script invocations from hooks, ALWAYS update
+the corresponding comments/descriptions in the hook file AND in related documentation
+(skill files, README, etc.). Stale descriptions mislead developers and AI agents.
+
+### Checklist for Hook Changes
+
+1. Update the step comment in the hook file itself
+2. Update [formatting-and-linting](./formatting-and-linting.md) "What the Hook Does" list
+3. Update any other skill files that describe the hook steps
+4. Verify the hook description matches all script calls in that step
+
+### Current Pre-Commit Step 0: Version Syncing
+
+Step 0 runs two PowerShell scripts on every commit:
+
+- `scripts/sync-banner-version.ps1` — Syncs banner SVG + `.llm/context.md` from `package.json`
+- `scripts/sync-issue-template-versions.ps1` — Syncs issue template dropdowns from `package.json`, `CHANGELOG.md`, and git tags
+
+Both scripts auto-stage modified files.
+
+---
+
 ## Related Skills
 
 - [git-safe-operations](./git-safe-operations.md) - Core git safety patterns and critical rules
@@ -338,3 +362,5 @@ exit 0
 - [.pre-commit-config.yaml](../../.pre-commit-config.yaml) - Pre-commit framework configuration
 - [scripts/format-staged-csharp.ps1](../../scripts/format-staged-csharp.ps1) - Example formatter script
 - [scripts/lint-csharp-naming.ps1](../../scripts/lint-csharp-naming.ps1) - Example linter with auto-fix
+- [scripts/sync-banner-version.ps1](../../scripts/sync-banner-version.ps1) - Banner and context.md version sync
+- [scripts/sync-issue-template-versions.ps1](../../scripts/sync-issue-template-versions.ps1) - Issue template version sync
