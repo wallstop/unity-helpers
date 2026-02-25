@@ -105,6 +105,33 @@ if [ ${#STAGED_FILES_ARRAY[@]} -eq 0 ]; then
     exit 0
 fi
 
+# 5) Ensure staged text files end with a final newline
+# This MUST run before Prettier formatting to prevent missing-newline diffs
+FINAL_NEWLINE_PATTERNS=('*.json' '*.jsonc' '*.asmdef' '*.asmref' '*.md' '*.markdown'
+    '*.yml' '*.yaml' '*.js' '*.ts' '*.cs' '*.sh' '*.ps1' '*.txt' '*.html' '*.css' '*.xml')
+NEWLINE_FIXED=()
+for file in "${STAGED_FILES_ARRAY[@]}"; do
+    # Check if file matches any of the text patterns
+    matched=0
+    for pat in "${FINAL_NEWLINE_PATTERNS[@]}"; do
+        # shellcheck disable=SC2254
+        case "$file" in
+            ${pat}) matched=1; break ;;
+        esac
+    done
+    if [[ $matched -eq 1 ]] && [[ -s "$file" ]] && [[ "$(tail -c 1 "$file" | wc -l)" -eq 0 ]]; then
+        printf '\n' >> "$file"
+        NEWLINE_FIXED+=("$file")
+    fi
+done
+if [[ ${#NEWLINE_FIXED[@]} -gt 0 ]]; then
+    echo "Added final newline to ${#NEWLINE_FIXED[@]} file(s):"
+    for f in "${NEWLINE_FIXED[@]}"; do
+        echo "  $f"
+    done
+    git_add_with_retry "${NEWLINE_FIXED[@]}"
+fi
+
 # Filter files into type-specific arrays
 MD_FILES_ARRAY=()
 JSON_FILES_ARRAY=()
@@ -199,7 +226,7 @@ if [ ${#JS_FILES_ARRAY[@]} -gt 0 ]; then
   git_add_with_retry "${JS_FILES_ARRAY[@]}"
 fi
 
-# 5) Format staged C# files with CSharpier (if available) and re-stage
+# 6) Format staged C# files with CSharpier (if available) and re-stage
 if [ ${#CS_FILES_ARRAY[@]} -gt 0 ]; then
   if command -v pwsh >/dev/null 2>&1; then
     pwsh -NoProfile -File scripts/format-staged-csharp.ps1
@@ -210,7 +237,7 @@ if [ ${#CS_FILES_ARRAY[@]} -gt 0 ]; then
   fi
 fi
 
-# 6) Markdown lint for staged Markdown files
+# 7) Markdown lint for staged Markdown files
 if [ ${#MD_FILES_ARRAY[@]} -gt 0 ]; then
   # First, auto-fix what can be fixed
   npx --no-install markdownlint --fix --config .markdownlint.json --ignore-path .markdownlintignore -- "${MD_FILES_ARRAY[@]}" || true
@@ -220,7 +247,7 @@ if [ ${#MD_FILES_ARRAY[@]} -gt 0 ]; then
   npx --no-install markdownlint --config .markdownlint.json --ignore-path .markdownlintignore -- "${MD_FILES_ARRAY[@]}"
 fi
 
-# 7) YAML lint on staged YAML files
+# 8) YAML lint on staged YAML files
 if [ ${#YAML_FILES_ARRAY[@]} -gt 0 ]; then
   if command -v yamllint >/dev/null 2>&1; then
     yamllint -c .yamllint.yaml -- "${YAML_FILES_ARRAY[@]}"
@@ -229,7 +256,7 @@ if [ ${#YAML_FILES_ARRAY[@]} -gt 0 ]; then
   fi
 fi
 
-# 8) Spell check staged files with cspell
+# 9) Spell check staged files with cspell
 # Runs on markdown, code, and config files
 if [ ${#SPELL_FILES_ARRAY[@]} -gt 0 ]; then
   if npx --no-install cspell --version >/dev/null 2>&1; then
@@ -253,7 +280,7 @@ if [ ${#SPELL_FILES_ARRAY[@]} -gt 0 ]; then
   fi
 fi
 
-# 9) Validate LLM instructions if .llm/ files are staged
+# 10) Validate LLM instructions if .llm/ files are staged
 LLM_FILES_ARRAY=()
 for file in "${STAGED_FILES_ARRAY[@]}"; do
     case "$file" in
@@ -280,7 +307,7 @@ if [ ${#LLM_FILES_ARRAY[@]} -gt 0 ]; then
   fi
 fi
 
-# 10) Check skill file sizes if .llm/skills/*.md files are staged
+# 11) Check skill file sizes if .llm/skills/*.md files are staged
 LLM_SKILLS_ARRAY=()
 for file in "${STAGED_FILES_ARRAY[@]}"; do
     case "$file" in
@@ -307,7 +334,7 @@ if [ ${#LLM_SKILLS_ARRAY[@]} -gt 0 ]; then
   fi
 fi
 
-# 11) Run test linter on staged test files
+# 12) Run test linter on staged test files
 # Checks for Unity object lifecycle issues (UNH001-UNH003), naming conventions (UNH004), null checks (UNH005)
 TEST_FILES_ARRAY=()
 for file in "${STAGED_FILES_ARRAY[@]}"; do
@@ -376,7 +403,7 @@ if [ ${#TEST_FILES_ARRAY[@]} -gt 0 ]; then
   fi
 fi
 
-# 12) Check for forbidden #region/#endregion directives in C# files
+# 13) Check for forbidden #region/#endregion directives in C# files
 # Regions are forbidden in this codebase - see .llm/skills/no-regions.md
 if [ ${#CS_FILES_ARRAY[@]} -gt 0 ]; then
   echo "Checking for forbidden #region directives..."

@@ -131,6 +131,7 @@
     "lint:unity-file-naming": "pwsh -NoProfile -File scripts/lint-unity-file-naming.ps1 -VerboseOutput",
     "validate:npm-package": "pwsh -NoProfile -File scripts/validate-npm-package.ps1 -VerboseOutput",
     "test:lint-unity-file-naming": "pwsh -NoProfile -File scripts/tests/test-lint-unity-file-naming.ps1 -VerboseOutput",
+    "test:final-newline": "bash scripts/tests/test-final-newline.sh",
     "test:wiki-generation": "bash scripts/tests/test-wiki-generation.sh",
     "verify:tools": "bash scripts/verify-devcontainer-tools.sh"
   },

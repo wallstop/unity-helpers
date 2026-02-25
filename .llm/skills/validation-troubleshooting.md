@@ -62,6 +62,21 @@ npx prettier --write -- <file>
 npx prettier --write -- .
 ```
 
+**Common gotcha (missing final newline)**: If `format:json:check` fails on `package.json` or another file with a diff showing only `\ No newline at end of file`, the file is missing a trailing newline. Prettier requires files to end with a newline character. Fix with:
+
+```bash
+# Auto-fix with Prettier
+npx prettier --write -- <file>
+
+# Or use the validate-formatting script with --fix
+./scripts/validate-formatting.sh --fix
+
+# Or manually add a newline
+printf '\n' >> <file>
+```
+
+**Prevention**: The pre-commit hook (step 5) auto-fixes missing final newlines on staged text files. Run `npm run test:final-newline` to check all tracked files. Editors with `insert_final_newline = true` in `.editorconfig` also help (though this repo currently sets it to `false` for most files).
+
 **Common gotcha (devcontainer.json)**: If `format:json:check` fails on `.devcontainer/devcontainer.json`, the file was likely edited (e.g., adding extensions, features, or updating settings) without running prettier. Arrays that fit within `printWidth: 100` get collapsed to single lines. Fix with:
 
 ```bash

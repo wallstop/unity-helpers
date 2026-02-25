@@ -225,6 +225,21 @@ npm run validate:prepush
 
 ## Common Mistakes
 
+### Wrong: Missing Final Newline
+
+Files must end with a newline character. Prettier will reject files without one. The pre-commit hook (step 5) auto-fixes this, but if you're editing files outside of git hooks:
+
+```bash
+# Check for missing final newlines
+npm run test:final-newline
+
+# Or use validate-formatting.sh
+./scripts/validate-formatting.sh
+
+# Auto-fix all missing newlines
+./scripts/validate-formatting.sh --fix
+```
+
 ### Wrong: Batching Formatting Until End
 
 ```text

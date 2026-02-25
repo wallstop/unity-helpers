@@ -63,6 +63,7 @@ show_help() {
     echo "  2. JSON formatting        (*.json, *.jsonc, *.asmdef, *.asmref)"
     echo "  3. YAML formatting        (*.yml, *.yaml)"
     echo "  4. JavaScript formatting  (*.js)"
+    echo "  5. Final newline          (tracked text files)"
     echo ""
     echo "This script mirrors the CI formatting checks so you can"
     echo "catch issues before pushing."
@@ -94,6 +95,61 @@ run_check() {
                 echo -e "           ${RED}-${NC} $file"
             done
             echo -e "         Fix with: ${YELLOW}npx prettier --write -- \"$pattern\"${NC}"
+            FAILED=1
+        fi
+    fi
+}
+
+# Check that tracked text files end with a final newline
+run_final_newline_check() {
+    local label="Final newline (tracked text files)"
+    CHECKS_RUN=$((CHECKS_RUN + 1))
+
+    # Text file extensions to check for final newline
+    local -a patterns=(
+        '*.json' '*.jsonc' '*.asmdef' '*.asmref'
+        '*.md' '*.markdown'
+        '*.yml' '*.yaml'
+        '*.js' '*.ts'
+        '*.cs'
+        '*.sh' '*.ps1'
+        '*.txt' '*.html' '*.css' '*.xml'
+    )
+
+    local missing_newline_files=()
+
+    # Gather all tracked files matching the patterns
+    for pat in "${patterns[@]}"; do
+        while IFS= read -r -d '' file; do
+            # Skip files in node_modules, site, or other generated directories
+            case "$file" in
+                node_modules/*|site/*|.git/*) continue ;;
+            esac
+            # Check if file is non-empty and missing final newline
+            if [[ -s "$file" ]] && [[ "$(tail -c 1 "$file" | wc -l)" -eq 0 ]]; then
+                missing_newline_files+=("$file")
+            fi
+        done < <(git ls-files -z -- "$pat" 2>/dev/null)
+    done
+
+    if [[ ${#missing_newline_files[@]} -eq 0 ]]; then
+        print_success "$label"
+        CHECKS_PASSED=$((CHECKS_PASSED + 1))
+    else
+        if [[ $FIX_MODE -eq 1 ]]; then
+            print_info "$label: auto-fixing..."
+            for file in "${missing_newline_files[@]}"; do
+                printf '\n' >> "$file"
+            done
+            print_success "$label (fixed ${#missing_newline_files[@]} file(s))"
+            CHECKS_PASSED=$((CHECKS_PASSED + 1))
+        else
+            print_fail "$label"
+            echo -e "         Files missing final newline:"
+            for file in "${missing_newline_files[@]}"; do
+                echo -e "           ${RED}-${NC} $file"
+            done
+            echo -e "         Fix with: ${YELLOW}$0 --fix${NC} or add a newline at end of file"
             FAILED=1
         fi
     fi
@@ -147,6 +203,9 @@ run_check "Markdown (*.md, *.markdown)"          "**/*.{md,markdown}"
 run_check "JSON (*.json, *.jsonc, *.asmdef, *.asmref)" "**/*.{json,jsonc,asmdef,asmref}"
 run_check "YAML (*.yml, *.yaml)"                 "**/*.{yml,yaml}"
 run_check "JavaScript (*.js)"                     "**/*.js"
+
+# Final newline check on tracked text files
+run_final_newline_check
 
 # Summary
 echo ""
