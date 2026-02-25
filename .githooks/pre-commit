@@ -99,6 +99,12 @@ while IFS= read -r -d '' file; do
     STAGED_FILES_ARRAY+=("$file")
 done < <(git diff --cached --name-only --diff-filter=ACM -z)
 
+# Early exit if no staged files (e.g., amend with no changes, or merge commit)
+if [ ${#STAGED_FILES_ARRAY[@]} -eq 0 ]; then
+    echo "No staged files to check. Skipping pre-commit hooks."
+    exit 0
+fi
+
 # Filter files into type-specific arrays
 MD_FILES_ARRAY=()
 JSON_FILES_ARRAY=()

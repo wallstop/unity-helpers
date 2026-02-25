@@ -83,7 +83,7 @@ Invoke these skills for specific tasks.
 **Regenerate with**: `pwsh -NoProfile -File scripts/generate-skills-index.ps1`
 
 <!-- BEGIN GENERATED SKILLS INDEX -->
-<!-- Generated: 2026-01-25 19:56:30 UTC -->
+<!-- Generated: 2026-02-25 22:17:59 UTC -->
 <!-- Command: pwsh -NoProfile -File scripts/generate-skills-index.ps1 -->
 
 ### Core Skills (Always Consider)
@@ -104,6 +104,7 @@ Invoke these skills for specific tasks.
 | [documentation-consistency](./skills/documentation-consistency.md)                           | When writing or reviewing documentation                          |
 | [editor-caching-patterns](./skills/editor-caching-patterns.md)                               | Caching strategies for Editor code                               |
 | [formatting](./skills/formatting.md)                                                         | After ANY file change (CSharpier/Prettier)                       |
+| [formatting-and-linting](./skills/formatting-and-linting.md)                                 | Before committing, after editing files                           |
 | [git-hook-patterns](./skills/git-hook-patterns.md)                                           | Pre-commit hook safety and configuration                         |
 | [git-safe-operations](./skills/git-safe-operations.md)                                       | Scripts or hooks that interact with git index                    |
 | [git-staging-helpers](./skills/git-staging-helpers.md)                                       | PowerShell/Bash helpers for safe git staging                     |
