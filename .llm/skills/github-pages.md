@@ -282,7 +282,7 @@ When CI fails on documentation PRs, here are the most common causes and fixes:
 | Broken internal link             | `Link target does not exist`              | Fix the path or create missing file → run `npm run lint:docs` |
 | Unescaped example links          | `Link target does not exist` (for demos)  | Wrap example links in code blocks → run `npm run lint:docs`   |
 | Unknown words in spelling check  | `Unknown word: someWord`                  | Add word to `cspell.json` words array                         |
-| Trailing spaces in YAML          | `Delete trailing whitespace`              | Run `npx prettier --write <file>`                             |
+| Trailing spaces in YAML          | `Delete trailing whitespace`              | Run `npx prettier --write -- <file>`                          |
 | Markdown formatting issues       | Various markdownlint errors               | Run `npm run lint:markdown`                                   |
 | Backtick-wrapped file references | `File reference should not use backticks` | Use markdown links instead of backticks for file references   |
 
@@ -296,7 +296,7 @@ npm run lint:markdown      # Check markdown formatting
 npm run format:md:check    # Check Prettier formatting
 
 # Step 2: Auto-fix what can be fixed
-npx prettier --write "**/*.md"
+npx prettier --write -- "**/*.md"
 
 # Step 3: Manual fixes for remaining issues
 # - Add ./  to internal links

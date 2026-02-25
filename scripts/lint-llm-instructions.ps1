@@ -194,7 +194,7 @@ if ($normalizedExpected -ne $normalizedCurrent) {
         Write-Info "Running prettier to format context.md..."
         Push-Location $repoRoot
         try {
-            npx --no-install prettier --write .llm/context.md 2>$null
+            npx --no-install prettier --write -- .llm/context.md 2>$null
         }
         finally {
             Pop-Location

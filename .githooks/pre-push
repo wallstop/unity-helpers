@@ -44,11 +44,11 @@ else
     if npx --no-install prettier --version >/dev/null 2>&1; then
       echo "Checking formatting with patterns matching CI..."
       echo "  Patterns: **/*.{md,markdown,json,jsonc,asmdef,asmref,yml,yaml,js}"
-      if ! npx --no-install prettier --check "**/*.{md,markdown,json,jsonc,asmdef,asmref,yml,yaml,js}" 2>/dev/null; then
+      if ! npx --no-install prettier --check -- "**/*.{md,markdown,json,jsonc,asmdef,asmref,yml,yaml,js}" 2>/dev/null; then
         echo ""
         echo "=== Prettier formatting issues detected ==="
         echo "Auto-fixing formatting..."
-        npx --no-install prettier --write "**/*.{md,markdown,json,jsonc,asmdef,asmref,yml,yaml,js}" --log-level warn
+        npx --no-install prettier --write --log-level warn -- "**/*.{md,markdown,json,jsonc,asmdef,asmref,yml,yaml,js}"
         echo ""
         echo "Files have been auto-formatted. Please:"
         echo "  1. Review the changes: git diff"
@@ -64,7 +64,7 @@ else
 
     # 2) Markdownlint (uses repo config and ignore list)
     if npx --no-install markdownlint --version >/dev/null 2>&1; then
-      npx --no-install markdownlint "**/*.md" "**/*.markdown" --config .markdownlint.json --ignore-path .markdownlintignore || exit 1
+      npx --no-install markdownlint --config .markdownlint.json --ignore-path .markdownlintignore -- "**/*.md" "**/*.markdown" || exit 1
     else
       echo "markdownlint not installed; skipping markdown lint. Run 'npm install' or CI will validate." >&2
     fi
@@ -110,7 +110,7 @@ fi
 # Optional YAML lint (if yamllint installed)
 if command -v yamllint >/dev/null 2>&1; then
   echo "Running yamllint..."
-  yamllint -c .yamllint.yaml .
+  yamllint -c .yamllint.yaml -- .
   echo "✓ yamllint OK"
 else
   echo "yamllint not found; skipping YAML lint. CI will catch issues." >&2
@@ -119,7 +119,7 @@ fi
 # Optional external link check (if lychee installed)
 if command -v lychee >/dev/null 2>&1; then
   # Exclude node_modules to avoid scanning hundreds of third-party markdown files
-  lychee -c .lychee.toml --no-progress --verbose --exclude-path node_modules --exclude-path .git "**/*.md"
+  lychee -c .lychee.toml --no-progress --verbose --exclude-path node_modules --exclude-path .git -- "**/*.md"
 else
   echo "lychee not found; skipping external link check. CI will run lychee." >&2
 fi

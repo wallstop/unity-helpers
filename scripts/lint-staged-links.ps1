@@ -57,6 +57,7 @@ $lycheeArgs += @(
   '--include-fragments'
 )
 
+$lycheeArgs += @('--')
 $lycheeArgs += $existingPaths
 
 Write-Host "Checking links in $($existingPaths.Count) staged markdown file(s)..."

@@ -40,7 +40,7 @@ This single command runs ALL CI/CD checks locally, ensuring your changes will pa
 | File Type       | Formatter | Command                              |
 | --------------- | --------- | ------------------------------------ |
 | C# (`.cs`)      | CSharpier | `dotnet tool run csharpier format .` |
-| Everything else | Prettier  | `npx prettier --write <file>`        |
+| Everything else | Prettier  | `npx prettier --write -- <file>`     |
 
 ### Rule 2: Run Linters IMMEDIATELY After Every Change
 
@@ -67,9 +67,9 @@ This single command runs ALL CI/CD checks locally, ensuring your changes will pa
 
 **Correct** (format immediately after each):
 
-1. Edit markdown -> `npx prettier --write <file>` -> `npm run lint:markdown`
+1. Edit markdown -> `npx prettier --write -- <file>` -> `npm run lint:markdown`
 2. Edit C# -> `dotnet tool run csharpier format .`
-3. Edit YAML -> `npx prettier --write <file>` -> `npm run lint:yaml`
+3. Edit YAML -> `npx prettier --write -- <file>` -> `npm run lint:yaml`
 4. Edit test file -> `pwsh -NoProfile -File scripts/lint-tests.ps1` -> `dotnet tool run csharpier format .`
 
 For detailed workflow patterns and more examples, see [formatting](./formatting.md).
@@ -90,7 +90,7 @@ npm run lint:csharp-naming
 
 ```bash
 # After EVERY .md file modification:
-npx prettier --write <file>
+npx prettier --write -- <file>
 npm run lint:spelling    # 🚨 #1 CI failure cause!
 npm run lint:docs         # Validates links
 npm run lint:markdown     # Structural rules
@@ -100,7 +100,7 @@ npm run lint:markdown     # Structural rules
 
 ```bash
 # After EVERY .yml/.yaml file modification:
-npx prettier --write <file>
+npx prettier --write -- <file>
 npm run lint:yaml
 
 # For workflow files (.github/workflows/*.yml), also run:
@@ -129,7 +129,7 @@ npm run lint:csharp-naming
 pwsh -NoProfile -File scripts/lint-skill-sizes.ps1
 
 # Also run standard markdown formatting:
-npx prettier --write <file>
+npx prettier --write -- <file>
 npm run lint:markdown
 ```
 
@@ -182,10 +182,10 @@ Before completing ANY task:
 
 ### Prettier Self-Check (MANDATORY)
 
-- [ ] Did I run `npx prettier --write <file>` IMMEDIATELY after EVERY non-C# file?
-- [ ] Did I verify each file with `npx prettier --check <file>`?
+- [ ] Did I run `npx prettier --write -- <file>` IMMEDIATELY after EVERY non-C# file?
+- [ ] Did I verify each file with `npx prettier --check -- <file>`?
 - [ ] Did I check config files too? (`.devcontainer/devcontainer.json`, `package.json`, etc.)
-- [ ] Final check: `npx prettier --check .` passes?
+- [ ] Final check: `npx prettier --check -- .` passes?
 
 ### For New Features
 

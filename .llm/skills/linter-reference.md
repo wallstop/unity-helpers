@@ -157,12 +157,12 @@ npm run lint:docs
 
 ```bash
 # Check formatting
-npx prettier --check .
-npx prettier --check <file>
+npx prettier --check -- .
+npx prettier --check -- <file>
 
 # Fix formatting
-npx prettier --write .
-npx prettier --write <file>
+npx prettier --write -- .
+npx prettier --write -- <file>
 ```
 
 ### Configuration

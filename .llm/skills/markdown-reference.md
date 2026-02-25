@@ -183,7 +183,7 @@ In GitHub Flavored Markdown tables, the pipe character `|` is the column separat
 
 ```bash
 # STEP 1: Format with Prettier
-npx prettier --write <file>
+npx prettier --write -- <file>
 
 # STEP 2: Check structural rules with markdownlint
 npm run lint:markdown

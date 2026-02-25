@@ -207,6 +207,213 @@ function Run-PowerShellScriptEndOfOptionsTests {
   } else {
     Write-Host "  [SKIP] lint-yaml.ps1 not found at: $yamlScript" -ForegroundColor Yellow
   }
+
+  # Check lint-staged-links.ps1 for '--' before file paths
+  $linksScript = Join-Path $repoRoot 'scripts' 'lint-staged-links.ps1'
+  if (Test-Path $linksScript) {
+    $linksContent = Get-Content $linksScript -Raw
+    # Look for '--' in the lychee args array construction
+    $linksHasSeparator = $linksContent -match "'--'" -and $linksContent -match 'lychee'
+    Write-TestResult -TestName "lint-staged-links.ps1 uses '--' before file paths" `
+      -Passed $linksHasSeparator `
+      -Message "Missing '--' separator in lychee argument construction"
+  } else {
+    Write-Host "  [SKIP] lint-staged-links.ps1 not found at: $linksScript" -ForegroundColor Yellow
+  }
+}
+
+# ── Pre-push End-of-Options Tests ──────────────────────────────────────────
+
+function Run-PrePushEndOfOptionsTests {
+  Write-Host ""
+  Write-Host "Pre-push hook end-of-options (--) safety:" -ForegroundColor Magenta
+  Write-Host ""
+
+  $repoRoot = Get-RepoRoot
+  $prePushPath = Join-Path $repoRoot '.githooks' 'pre-push'
+
+  if (-not (Test-Path $prePushPath)) {
+    Write-Host "  [SKIP] Pre-push hook not found at: $prePushPath" -ForegroundColor Yellow
+    return
+  }
+
+  $lines = @(Get-Content $prePushPath)
+
+  # All prettier invocations should have -- before file arguments
+  $prettierLines = @($lines | Where-Object { $_ -match 'npx\s+--no-install\s+prettier' -and $_ -notmatch '--version' })
+  Write-Info "Found $($prettierLines.Count) prettier invocation(s) in pre-push"
+
+  $allPrettierSafe = $true
+  $unsafePrettierLines = @()
+  foreach ($line in $prettierLines) {
+    if ($line -notmatch '--\s+"') {
+      $allPrettierSafe = $false
+      $unsafePrettierLines += $line.Trim()
+    }
+  }
+  Write-TestResult -TestName "Pre-push: all prettier invocations use -- before file args" `
+    -Passed $allPrettierSafe `
+    -Message "Unsafe lines: $($unsafePrettierLines -join '; ')"
+
+  # All markdownlint invocations should have -- before file arguments
+  $markdownlintLines = @($lines | Where-Object { $_ -match 'npx\s+--no-install\s+markdownlint' -and $_ -notmatch '--version' })
+  Write-Info "Found $($markdownlintLines.Count) markdownlint invocation(s) in pre-push"
+
+  $allMarkdownlintSafe = $true
+  $unsafeMarkdownlintLines = @()
+  foreach ($line in $markdownlintLines) {
+    if ($line -notmatch '--\s+"') {
+      $allMarkdownlintSafe = $false
+      $unsafeMarkdownlintLines += $line.Trim()
+    }
+  }
+  Write-TestResult -TestName "Pre-push: all markdownlint invocations use -- before file args" `
+    -Passed $allMarkdownlintSafe `
+    -Message "Unsafe lines: $($unsafeMarkdownlintLines -join '; ')"
+
+  # All lychee invocations should have -- before file arguments
+  $lycheeLines = @($lines | Where-Object { $_ -match 'lychee\s+' -and $_ -notmatch '^\s*#' -and $_ -notmatch 'command -v' -and $_ -notmatch '^\s*echo\s' })
+  Write-Info "Found $($lycheeLines.Count) lychee invocation(s) in pre-push"
+
+  $allLycheeSafe = $true
+  $unsafeLycheeLines = @()
+  foreach ($line in $lycheeLines) {
+    if ($line -notmatch '--\s+"') {
+      $allLycheeSafe = $false
+      $unsafeLycheeLines += $line.Trim()
+    }
+  }
+  Write-TestResult -TestName "Pre-push: all lychee invocations use -- before file args" `
+    -Passed $allLycheeSafe `
+    -Message "Unsafe lines: $($unsafeLycheeLines -join '; ')"
+
+  # All yamllint invocations should have -- before file arguments
+  $yamllintLines = @($lines | Where-Object { $_ -match 'yamllint\s+' -and $_ -notmatch '^\s*#' -and $_ -notmatch 'command -v' -and $_ -notmatch '^\s*echo\s' })
+  Write-Info "Found $($yamllintLines.Count) yamllint invocation(s) in pre-push"
+
+  $allYamllintSafe = $true
+  $unsafeYamllintLines = @()
+  foreach ($line in $yamllintLines) {
+    if ($line -notmatch '--\s+') {
+      $allYamllintSafe = $false
+      $unsafeYamllintLines += $line.Trim()
+    }
+  }
+  Write-TestResult -TestName "Pre-push: all yamllint invocations use -- before file args" `
+    -Passed $allYamllintSafe `
+    -Message "Unsafe lines: $($unsafeYamllintLines -join '; ')"
+}
+
+# ── Workflow End-of-Options Tests ──────────────────────────────────────────
+
+function Run-WorkflowEndOfOptionsTests {
+  Write-Host ""
+  Write-Host "GitHub Actions workflow end-of-options (--) safety:" -ForegroundColor Magenta
+  Write-Host ""
+
+  $repoRoot = Get-RepoRoot
+  $workflowDir = Join-Path $repoRoot '.github' 'workflows'
+
+  if (-not (Test-Path $workflowDir)) {
+    Write-Host "  [SKIP] Workflows directory not found at: $workflowDir" -ForegroundColor Yellow
+    return
+  }
+
+  $ymlFiles = @(Get-ChildItem -Path $workflowDir -Filter '*.yml' -File)
+  Write-Info "Found $($ymlFiles.Count) workflow file(s)"
+
+  $allSafe = $true
+  $unsafeEntries = @()
+
+  foreach ($file in $ymlFiles) {
+    $lines = @(Get-Content $file.FullName)
+    foreach ($line in $lines) {
+      # Skip comments and lines that are just echoing or checking versions
+      if ($line -match '^\s*#') { continue }
+      if ($line -match '--version') { continue }
+
+      # Check prettier invocations (npx prettier or npx --yes prettier@...)
+      if ($line -match 'prettier\S*\s+--(?:write|check)') {
+        if ($line -notmatch '--\s+"' -and $line -notmatch '--\s+\.') {
+          $allSafe = $false
+          $unsafeEntries += "$($file.Name): $($line.Trim())"
+        }
+      }
+
+      # Check markdownlint invocations
+      if ($line -match 'markdownlint.*--(?:config|fix)') {
+        if ($line -notmatch '--\s+"') {
+          $allSafe = $false
+          $unsafeEntries += "$($file.Name): $($line.Trim())"
+        }
+      }
+    }
+  }
+
+  Write-TestResult -TestName "Workflows: all prettier/markdownlint invocations use -- before file args" `
+    -Passed $allSafe `
+    -Message "Unsafe entries: $($unsafeEntries -join '; ')"
+}
+
+# ── Package.json End-of-Options Tests ──────────────────────────────────────
+
+function Run-PackageJsonEndOfOptionsTests {
+  Write-Host ""
+  Write-Host "package.json npm scripts end-of-options (--) safety:" -ForegroundColor Magenta
+  Write-Host ""
+
+  $repoRoot = Get-RepoRoot
+  $packageJsonPath = Join-Path $repoRoot 'package.json'
+
+  if (-not (Test-Path $packageJsonPath)) {
+    Write-Host "  [SKIP] package.json not found at: $packageJsonPath" -ForegroundColor Yellow
+    return
+  }
+
+  $packageJson = Get-Content $packageJsonPath -Raw | ConvertFrom-Json
+  $scripts = $packageJson.scripts
+
+  if (-not $scripts) {
+    Write-Host "  [SKIP] No scripts section found in package.json" -ForegroundColor Yellow
+    return
+  }
+
+  $allSafe = $true
+  $unsafeEntries = @()
+
+  # Iterate over all script entries
+  $scripts.PSObject.Properties | ForEach-Object {
+    $scriptName = $_.Name
+    $scriptCmd = $_.Value
+
+    # Check prettier invocations with file arguments
+    if ($scriptCmd -match 'prettier\S*\s+--(?:write|check)') {
+      if ($scriptCmd -notmatch '--\s+"' -and $scriptCmd -notmatch '--\s+\.') {
+        $allSafe = $false
+        $unsafeEntries += "$scriptName`: $scriptCmd"
+      }
+    }
+
+    # Check markdownlint invocations with file arguments
+    if ($scriptCmd -match 'markdownlint.*--(?:config|fix)') {
+      if ($scriptCmd -notmatch '--\s+"') {
+        $allSafe = $false
+        $unsafeEntries += "$scriptName`: $scriptCmd"
+      }
+    }
+
+    # Check standalone markdownlint with file globs (no --config but has file args)
+    if ($scriptCmd -match 'markdownlint\s+' -and $scriptCmd -match '"\*\*') {
+      if ($scriptCmd -notmatch '--\s+"') {
+        $allSafe = $false
+        $unsafeEntries += "$scriptName`: $scriptCmd"
+      }
+    }
+  }
+
+  Write-TestResult -TestName "package.json: all prettier/markdownlint scripts use -- before file args" `
+    -Passed $allSafe `
+    -Message "Unsafe entries: $($unsafeEntries -join '; ')"
 }
 
 # ── Main Execution ─────────────────────────────────────────────────────────
@@ -218,6 +425,9 @@ Write-Host "========================================" -ForegroundColor White
 
 Run-VersionToStringTests
 Run-PreCommitEndOfOptionsTests
+Run-PrePushEndOfOptionsTests
+Run-WorkflowEndOfOptionsTests
+Run-PackageJsonEndOfOptionsTests
 Run-PowerShellScriptEndOfOptionsTests
 
 # Summary

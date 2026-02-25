@@ -290,7 +290,7 @@ See [create-csharp-file](./skills/create-csharp-file.md) for detailed rules. Key
 Run formatters and linters **immediately after each file change**, not batched at task end:
 
 - **C# files**: `dotnet tool run csharpier format .`
-- **Non-C# files** (`.md`, `.json`, `.yaml`, `.yml`): `npx prettier --write <file>`
+- **Non-C# files** (`.md`, `.json`, `.yaml`, `.yml`): `npx prettier --write -- <file>`
 - **Markdown**: `npm run lint:docs` + `npm run lint:markdown`
 - **YAML**: `npm run lint:yaml` (then `actionlint` for workflows)
 - **Spelling**: `npm run lint:spelling` (add valid terms to `cspell.json`)

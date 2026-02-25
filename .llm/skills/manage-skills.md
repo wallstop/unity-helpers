@@ -226,7 +226,7 @@ Skills should work with GitHub Copilot, Claude, Codex, and similar tools.
 5. Add "When NOT to Use" section (recommended)
 6. Add main content sections
 7. Add "Related Skills" section
-8. Format: `npx prettier --write .llm/skills/<skill-name>`
+8. Format: `npx prettier --write -- .llm/skills/<skill-name>`
 9. Lint: `npm run lint:markdown` and `npm run lint:docs`
 10. Regenerate index: `pwsh -NoProfile -File scripts/generate-skills-index.ps1`
 
@@ -271,7 +271,7 @@ Example split:
 2. Run size linter IMMEDIATELY: pwsh -NoProfile -File scripts/lint-skill-sizes.ps1
 3. If >300 lines: Consider splitting now (easier than at commit time)
 4. If >500 lines: STOP — must split before any other work
-5. Format: npx prettier --write <file>
+5. Format: npx prettier --write -- <file>
 6. Lint: npm run lint:markdown && npm run lint:docs
 7. Regenerate index: pwsh -NoProfile -File scripts/generate-skills-index.ps1
 8. Move to next file
