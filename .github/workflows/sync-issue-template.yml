@@ -1,0 +1,115 @@
+name: Sync Issue Template Versions
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "package.json"
+      - "CHANGELOG.md"
+  release:
+    types:
+      - published
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sync-issue-template
+  cancel-in-progress: true
+
+jobs:
+  sync-versions:
+    # Only run on the main repository, not forks
+    if: github.repository == 'wallstop/unity-helpers'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout main branch
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0 # Full history for git tags
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Fetch all tags
+        run: |
+          set -euo pipefail
+          git fetch --tags --force
+
+      - name: Collect GitHub Release versions
+        id: releases
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          API_STDERR="${RUNNER_TEMP}/gh_releases_stderr.log"
+
+          VERSIONS=$(gh release list \
+            --json tagName \
+            --limit 100 \
+            --jq '[.[].tagName] | join(",")' 2>"$API_STDERR") || VERSIONS=""
+
+          if [ -s "$API_STDERR" ]; then
+            echo "::debug::gh release list stderr: $(cat "$API_STDERR")"
+          fi
+
+          echo "versions=$VERSIONS" >> "$GITHUB_OUTPUT"
+          echo "Collected release versions: ${VERSIONS:-<none>}"
+
+      - name: Run sync script
+        shell: pwsh
+        env:
+          ADDITIONAL_VERSIONS: ${{ steps.releases.outputs.versions }}
+        run: |
+          & ./scripts/sync-issue-template-versions.ps1 `
+            -AdditionalVersions $env:ADDITIONAL_VERSIONS
+
+      - name: Check for changes
+        id: diff
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- '.github/ISSUE_TEMPLATE/'; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "No changes detected in issue templates."
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "Changes detected in issue templates:"
+            git diff --stat -- '.github/ISSUE_TEMPLATE/'
+          fi
+
+      - name: Commit and push
+        if: steps.diff.outputs.changed == 'true'
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .github/ISSUE_TEMPLATE/
+          git commit -m "chore: sync issue template package versions [skip ci]"
+          git push origin main
+
+      - name: Step summary
+        if: always()
+        env:
+          CHANGED: ${{ steps.diff.outputs.changed }}
+          VERSIONS: ${{ steps.releases.outputs.versions }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          set -euo pipefail
+          # Count versions (comma-separated)
+          if [ -n "$VERSIONS" ]; then
+            VERSION_COUNT=$(echo "$VERSIONS" | tr ',' '\n' | wc -l)
+          else
+            VERSION_COUNT=0
+          fi
+
+          {
+            echo "### Sync Issue Template Versions"
+            echo ""
+            echo "| Property | Value |"
+            echo "|----------|-------|"
+            echo "| **Templates Changed** | \`${CHANGED:-false}\` |"
+            echo "| **Release Versions Found** | \`$VERSION_COUNT\` |"
+            echo "| **Trigger** | \`$EVENT_NAME\` |"
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -9,6 +9,16 @@ repos:
         pass_filenames: false
         require_serial: true
         description: Updates the version in the SVG banner when package.json version changes.
+      - id: sync-issue-template-versions
+        name: Sync issue template package versions
+        entry: pwsh -NoProfile -File scripts/sync-issue-template-versions.ps1
+        language: system
+        always_run: true
+        pass_filenames: false
+        require_serial: true
+        description: >
+          Updates the package version dropdown in issue templates from
+          package.json, CHANGELOG.md, and git tags. Runs on every commit.
       - id: dotnet-tool-restore
         name: Install .NET tools
         entry: dotnet tool restore
