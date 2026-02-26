@@ -563,6 +563,125 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             );
         }
 
+        [Test]
+        public void ResolveSelectedIndexReturnsNegativeOneForUnmatchedValue()
+        {
+            WValueDropDownIntOptionsAsset asset =
+                CreateScriptableObject<WValueDropDownIntOptionsAsset>();
+            asset.selection = 99;
+            using SerializedObject serializedObject = new(asset);
+            serializedObject.Update();
+
+            SerializedProperty property = serializedObject.FindProperty(
+                nameof(WValueDropDownIntOptionsAsset.selection)
+            );
+            Assert.IsTrue(property != null, "Failed to locate selection property.");
+
+            int index = WValueDropDownDrawer.TestHooks.ResolveSelectedIndex(
+                property,
+                typeof(int),
+                new object[] { 10, 20, 30 }
+            );
+            Assert.That(index, Is.EqualTo(-1));
+        }
+
+        [Test]
+        public void ResolveSelectedIndexReturnsCorrectIndexForMatchedValue()
+        {
+            WValueDropDownIntOptionsAsset asset =
+                CreateScriptableObject<WValueDropDownIntOptionsAsset>();
+            asset.selection = 20;
+            using SerializedObject serializedObject = new(asset);
+            serializedObject.Update();
+
+            SerializedProperty property = serializedObject.FindProperty(
+                nameof(WValueDropDownIntOptionsAsset.selection)
+            );
+            Assert.IsTrue(property != null, "Failed to locate selection property.");
+
+            int index = WValueDropDownDrawer.TestHooks.ResolveSelectedIndex(
+                property,
+                typeof(int),
+                new object[] { 10, 20, 30 }
+            );
+            Assert.That(index, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void FormatOptionCachedReturnsTypeNameForEmptyToString()
+        {
+            EmptyToStringHelper instance = new();
+            string result = WValueDropDownDrawer.TestHooks.FormatOptionCached(instance);
+            Assert.That(result, Is.Not.Null.And.Not.Empty);
+            Assert.That(result, Does.Contain(nameof(EmptyToStringHelper)));
+        }
+
+        [Test]
+        public void FormatOptionCachedReturnsNonEmptyForNullToString()
+        {
+            NullToStringHelper instance = new();
+            string result = WValueDropDownDrawer.TestHooks.FormatOptionCached(instance);
+            Assert.That(result, Is.Not.Null.And.Not.Empty);
+        }
+
+        [Test]
+        public void FormatOptionCachedHandlesNullOption()
+        {
+            string result = WValueDropDownDrawer.TestHooks.FormatOptionCached(null);
+            Assert.That(result, Is.EqualTo("(null)"));
+        }
+
+        [Test]
+        public void BuildDisplayLabelsProducesNoEmptyStrings()
+        {
+            object[] options = new object[] { 42, null };
+            string[] labels = WValueDropDownDrawer.TestHooks.BuildDisplayLabelsUncached(options);
+            Assert.That(labels.Length, Is.EqualTo(options.Length));
+            foreach (string label in labels)
+            {
+                Assert.That(label, Is.Not.Null.And.Not.Empty);
+            }
+        }
+
+        [Test]
+        public void SelectorWithUnmatchedValueDefaultsToFirstOption()
+        {
+            WValueDropDownStringOptionsAsset asset =
+                CreateScriptableObject<WValueDropDownStringOptionsAsset>();
+            asset.selection = "NonExistent";
+            using SerializedObject serializedObject = new(asset);
+            serializedObject.Update();
+
+            SerializedProperty property = serializedObject.FindProperty(
+                nameof(WValueDropDownStringOptionsAsset.selection)
+            );
+            Assert.IsTrue(property != null, "Failed to locate string selection property.");
+
+            int rawIndex = WValueDropDownDrawer.TestHooks.ResolveSelectedIndex(
+                property,
+                typeof(string),
+                new object[] { "Alpha", "Beta", "Gamma" }
+            );
+            Assert.That(rawIndex, Is.EqualTo(-1));
+            Assert.That(Mathf.Max(0, rawIndex), Is.EqualTo(0));
+        }
+
+        private sealed class EmptyToStringHelper
+        {
+            public override string ToString()
+            {
+                return "";
+            }
+        }
+
+        private sealed class NullToStringHelper
+        {
+            public override string ToString()
+            {
+                return null;
+            }
+        }
+
         private static void InvokeApplyOption(SerializedProperty property, object value)
         {
             WValueDropDownDrawer.ApplyOption(property, value);

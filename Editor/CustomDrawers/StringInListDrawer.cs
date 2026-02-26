@@ -114,7 +114,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             string[] displayOptions = GetOptionDisplayArray(stringInList, options);
             if (property.propertyType == SerializedPropertyType.String)
             {
-                int currentIndex = Array.IndexOf(options, property.stringValue);
+                int currentIndex = Mathf.Max(0, Array.IndexOf(options, property.stringValue));
                 int newIndex = EditorGUI.Popup(position, label.text, currentIndex, displayOptions);
                 if (newIndex >= 0 && newIndex < options.Length)
                 {
@@ -133,7 +133,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     currentString = property.intValue.ToString();
                 }
 
-                int currentIndex = Array.IndexOf(options, currentString);
+                int currentIndex = Mathf.Max(0, Array.IndexOf(options, currentString));
                 int newIndex = EditorGUI.Popup(position, label.text, currentIndex, displayOptions);
                 if (newIndex >= 0 && newIndex < options.Length)
                 {
@@ -146,9 +146,9 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     GetSerializableTypeStringProperty(property);
                 if (assemblyQualifiedNameProperty != null)
                 {
-                    int currentIndex = Array.IndexOf(
-                        options,
-                        assemblyQualifiedNameProperty.stringValue
+                    int currentIndex = Mathf.Max(
+                        0,
+                        Array.IndexOf(options, assemblyQualifiedNameProperty.stringValue)
                     );
                     int newIndex = EditorGUI.Popup(
                         position,

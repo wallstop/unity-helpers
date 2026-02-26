@@ -114,7 +114,11 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             EditorGUI.BeginProperty(position, label, property);
             string cacheKey = property.propertyPath;
             string[] displayOptions = GetOrCreateDisplayLabels(cacheKey, options);
-            int currentIndex = ResolveSelectedIndex(property, dropdownAttribute.ValueType, options);
+            // EditorGUI.Popup renders phantom rows with index -1 on Linux; clamp is display-only (value applied on user selection)
+            int currentIndex = Mathf.Max(
+                0,
+                ResolveSelectedIndex(property, dropdownAttribute.ValueType, options)
+            );
             int newIndex = EditorGUI.Popup(position, label.text, currentIndex, displayOptions);
             if (newIndex >= 0 && newIndex < options.Length)
             {
@@ -892,6 +896,11 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             else
             {
                 formatted = option.ToString();
+            }
+
+            if (string.IsNullOrEmpty(formatted))
+            {
+                formatted = $"({option.GetType().Name})";
             }
 
             FormattedOptionCache[option] = formatted;
@@ -1865,6 +1874,25 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     pageSize,
                     currentPage
                 );
+            }
+
+            public static int ResolveSelectedIndex(
+                SerializedProperty property,
+                Type valueType,
+                object[] options
+            )
+            {
+                return WValueDropDownDrawer.ResolveSelectedIndex(property, valueType, options);
+            }
+
+            public static string FormatOptionCached(object option)
+            {
+                return WValueDropDownDrawer.FormatOptionCached(option);
+            }
+
+            public static string[] BuildDisplayLabelsUncached(object[] options)
+            {
+                return WValueDropDownDrawer.BuildDisplayLabelsUncached(options);
             }
         }
 

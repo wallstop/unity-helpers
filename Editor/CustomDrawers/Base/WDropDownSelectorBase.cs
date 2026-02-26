@@ -550,6 +550,10 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers.Base
             {
                 int optionIndex = hasSearch ? _filteredIndices[i] : i;
                 string displayLabel = GetDisplayLabel(optionIndex);
+                if (string.IsNullOrEmpty(displayLabel))
+                {
+                    displayLabel = $"(Option {optionIndex})";
+                }
                 _pageOptionIndices.Add(optionIndex);
                 _pageChoices.Add(displayLabel);
             }

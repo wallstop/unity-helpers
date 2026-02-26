@@ -879,7 +879,11 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
         private VisualElement CreateOptionRow(int optionIndex)
         {
-            string label = _data.DisplayLabels[optionIndex] ?? string.Empty;
+            string label = _data.DisplayLabels[optionIndex];
+            if (string.IsNullOrEmpty(label))
+            {
+                label = $"(Option {optionIndex})";
+            }
             string tooltip =
                 _data.Tooltips != null && optionIndex < _data.Tooltips.Length
                     ? _data.Tooltips[optionIndex] ?? string.Empty
