@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 See [the roadmap](./docs/overview/roadmap.md) for details
 
+## [3.2.1]
+
 ### Fixed
 
 - **WValueDropDown empty rows in dropdown**: Fixed `WValueDropDown` and `StringInList` dropdowns showing empty/blank rows at the top of the dropdown list, particularly on Linux. Clamped invalid `-1` selected indices to `0` in `WValueDropDownDrawer` and `StringInListDrawer`, and hardened dropdown display logic to replace empty labels with descriptive fallback text ([#209](https://github.com/wallstop/unity-helpers/issues/209))
