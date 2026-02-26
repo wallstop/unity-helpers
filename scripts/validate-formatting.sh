@@ -100,6 +100,26 @@ run_check() {
     fi
 }
 
+# ============================================================================
+# CRLF Detection Helper
+# ============================================================================
+# Detects if a file uses CRLF (Windows) line endings by checking for carriage
+# return characters (0x0d). This is used to preserve the correct line ending
+# style when appending a final newline to files.
+#
+# Returns:
+#   0 (true)  - File uses CRLF line endings
+#   1 (false) - File uses LF line endings (or is empty/binary)
+# ============================================================================
+file_uses_crlf() {
+    local file="$1"
+    # Check if file is non-empty and contains CR characters (part of CRLF)
+    if [[ -s "$file" ]] && grep -q $'\r' "$file" 2>/dev/null; then
+        return 0  # Uses CRLF
+    fi
+    return 1  # Uses LF
+}
+
 # Check that tracked text files end with a final newline
 run_final_newline_check() {
     local label="Final newline (tracked text files)"
@@ -126,7 +146,7 @@ run_final_newline_check() {
                 node_modules/*|site/*|.git/*) continue ;;
             esac
             # Check if file is non-empty and missing final newline
-            if [[ -s "$file" ]] && [[ "$(tail -c 1 "$file" | wc -l)" -eq 0 ]]; then
+            if [[ -s "$file" ]] && [[ "$(tail -c 1 -- "$file" | wc -l)" -eq 0 ]]; then
                 missing_newline_files+=("$file")
             fi
         done < <(git ls-files -z -- "$pat" 2>/dev/null)
@@ -139,7 +159,13 @@ run_final_newline_check() {
         if [[ $FIX_MODE -eq 1 ]]; then
             print_info "$label: auto-fixing..."
             for file in "${missing_newline_files[@]}"; do
-                printf '\n' >> "$file"
+                # Append the correct newline based on the file's line ending style
+                # CRLF files get \r\n, LF files get \n to avoid mixed line endings
+                if file_uses_crlf "$file"; then
+                    printf '\r\n' >> "$file"
+                else
+                    printf '\n' >> "$file"
+                fi
             done
             print_success "$label (fixed ${#missing_newline_files[@]} file(s))"
             CHECKS_PASSED=$((CHECKS_PASSED + 1))

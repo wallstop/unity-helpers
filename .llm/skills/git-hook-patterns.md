@@ -1,6 +1,6 @@
 # Skill: Git Hook Patterns
 
-<!-- trigger: git hook, pre-commit, hook safety, hook patterns | Pre-commit hook safety and configuration | Core -->
+<!-- trigger: git hook, pre-commit, hook safety, hook patterns, hook permissions | Pre-commit hook safety and configuration | Core -->
 
 ## Purpose
 
@@ -217,6 +217,76 @@ yamllint -c .yamllint.yaml -- "${FILES[@]}"
 
 **Why**: A staged filename like `--plugin=./evil.js` would be parsed as a CLI flag without `--`. This is an option injection vulnerability.
 
+### File-Reading Commands Also Need `--`
+
+Commands that read file contents (`tail`, `head`, `cat`, `od`, etc.) are also vulnerable to option injection and must use `--`:
+
+```bash
+# WRONG - filename starting with '-' is interpreted as option
+tail -n 1 "$file"
+head -c 10 "$file"
+cat "$file"
+od -c "$file"
+
+# CORRECT - `--` ensures filename is never parsed as an option
+tail -n 1 -- "$file"
+head -c 10 -- "$file"
+cat -- "$file"
+od -c -- "$file"
+```
+
+**Why**: A file named `-n` or `--help` would cause unexpected behavior or errors without `--`.
+
+---
+
+## CRLF-Aware Newline Handling
+
+When fixing missing final newlines in hook scripts, you MUST detect the file's existing line ending style before appending. Blindly appending `\n` (LF) to a CRLF file creates mixed line endings that fail `eol:check`.
+
+### Detecting Line Endings Before Appending
+
+```bash
+# WRONG - Always appends LF, breaks CRLF files
+if [ "$(tail -c 1 -- "$file" | od -An -tx1 | tr -d ' ')" != "0a" ]; then
+    printf '\n' >> "$file"
+fi
+
+# CORRECT - Detect existing line endings and match them
+if [ "$(tail -c 1 -- "$file" | od -An -tx1 | tr -d ' ')" != "0a" ]; then
+    # Check if file uses CRLF by looking for carriage return characters
+    if grep -q $'\r' "$file" 2>/dev/null; then
+        printf '\r\n' >> "$file"  # CRLF file - append CRLF
+    else
+        printf '\n' >> "$file"    # LF file - append LF
+    fi
+fi
+```
+
+### Why This Matters
+
+1. Windows-style files use CRLF (`\r\n`) line endings
+2. Unix-style files use LF (`\n`) line endings
+3. Appending LF to a CRLF file creates a "mixed" file with both styles
+4. The `eol:check` validation fails on mixed line endings
+5. This is a common cause of CI failures after "fixing" final newlines
+
+### PowerShell Equivalent
+
+```powershell
+# WRONG - -NoNewline then manual newline can create mixed endings
+$content = Get-Content -Raw $file
+# ... process content ...
+Set-Content -NoNewline -Path $file -Value $content
+Add-Content -Path $file -Value ""  # Adds OS-default line ending
+
+# CORRECT - Detect and preserve existing line endings
+$content = Get-Content -Raw $file
+$useCRLF = $content -match "`r`n"
+# ... process content ...
+$newline = if ($useCRLF) { "`r`n" } else { "`n" }
+[System.IO.File]::WriteAllText($file, $content + $newline)
+```
+
 ---
 
 ## Error Handling in Hooks
@@ -281,6 +351,18 @@ However, for consistency, you may still use the helpers in CI scripts. The overh
 
 ---
 
+## Hook File Permissions (Critical)
+
+Git silently skips hook files that are not executable. If `.githooks/*` files are tracked with `100644` (non-executable) permissions, hooks will never run and all pre-commit validation is bypassed.
+
+- The `hooks:install` script sets executable permissions automatically
+- If hooks are not running, check permissions: `git ls-files -s .githooks/`
+- Fix tracked permissions: `git update-index --chmod=+x .githooks/pre-commit .githooks/pre-push`
+- Fix local permissions: `chmod +x .githooks/*`
+- Use `npm run validate:hook-perms` to verify hook file permissions
+
+---
+
 ## Hook Template
 
 Here's a complete template for a safe pre-commit hook:
@@ -342,8 +424,8 @@ the corresponding comments/descriptions in the hook file AND in related document
 
 Step 0 runs two PowerShell scripts on every commit:
 
-- `scripts/sync-banner-version.ps1` — Syncs banner SVG + `.llm/context.md` from `package.json`
-- `scripts/sync-issue-template-versions.ps1` — Syncs issue template dropdowns from `package.json`, `CHANGELOG.md`, and git tags
+- [sync-banner-version.ps1](../../scripts/sync-banner-version.ps1) — Syncs banner SVG + [LLM context](../context.md) from `package.json`
+- [sync-issue-template-versions.ps1](../../scripts/sync-issue-template-versions.ps1) — Syncs issue template dropdowns from `package.json`, the [CHANGELOG](../../CHANGELOG.md), and git tags
 
 Both scripts auto-stage modified files.
 
@@ -362,5 +444,5 @@ Both scripts auto-stage modified files.
 - [.pre-commit-config.yaml](../../.pre-commit-config.yaml) - Pre-commit framework configuration
 - [scripts/format-staged-csharp.ps1](../../scripts/format-staged-csharp.ps1) - Example formatter script
 - [scripts/lint-csharp-naming.ps1](../../scripts/lint-csharp-naming.ps1) - Example linter with auto-fix
-- [scripts/sync-banner-version.ps1](../../scripts/sync-banner-version.ps1) - Banner and context.md version sync
+- [scripts/sync-banner-version.ps1](../../scripts/sync-banner-version.ps1) - Banner and [LLM context](../context.md) version sync
 - [scripts/sync-issue-template-versions.ps1](../../scripts/sync-issue-template-versions.ps1) - Issue template version sync

@@ -4,18 +4,6 @@
 
 **Trigger**: When you encounter validation errors, CI failures, or linting issues.
 
----
-
-## When to Use
-
-Use this guide when you encounter:
-
-- CI/CD pipeline failures
-- Linter error messages you need to fix
-- Spelling or formatting issues
-- Link validation failures (internal or external/dead links)
-- Test lifecycle violations
-
 For the quick validation workflow, see [validate-before-commit](./validate-before-commit.md).
 For detailed linter commands, see [linter-reference](./linter-reference.md).
 
@@ -30,24 +18,8 @@ For detailed linter commands, see [linter-reference](./linter-reference.md).
 **Fix Options**:
 
 1. **Correct the spelling** if it's actually wrong
-2. **Add to dictionary** if it's a valid technical term:
-
-   ```bash
-   # Add to cspell.json
-   {
-     "words": [
-       "PRNG",
-       "Sirenix",
-       "MonoBehaviour"
-     ]
-   }
-   ```
-
-3. **Inline ignore** for single occurrences:
-
-```markdown
-<!-- cspell:ignore someword -->
-```
+2. **Add to dictionary** — add the word to `cspell.json` `"words"` array
+3. **Inline ignore** for single occurrences: `<!-- cspell:ignore someword -->`
 
 ### 2. Prettier Formatting Failures
 
@@ -57,43 +29,15 @@ For detailed linter commands, see [linter-reference](./linter-reference.md).
 
 ```bash
 npx prettier --write -- <file>
-
 # Or fix all:
 npx prettier --write -- .
 ```
 
-**Common gotcha (missing final newline)**: If `format:json:check` fails on `package.json` or another file with a diff showing only `\ No newline at end of file`, the file is missing a trailing newline. Prettier requires files to end with a newline character. Fix with:
+**Common gotchas**:
 
-```bash
-# Auto-fix with Prettier
-npx prettier --write -- <file>
-
-# Or use the validate-formatting script with --fix
-./scripts/validate-formatting.sh --fix
-
-# Or manually add a newline
-printf '\n' >> <file>
-```
-
-**Prevention**: The pre-commit hook (step 5) auto-fixes missing final newlines on staged text files. Run `npm run test:final-newline` to check all tracked files. Editors with `insert_final_newline = true` in `.editorconfig` also help (though this repo currently sets it to `false` for most files).
-
-**Common gotcha (devcontainer.json)**: If `format:json:check` fails on `.devcontainer/devcontainer.json`, the file was likely edited (e.g., adding extensions, features, or updating settings) without running prettier. Arrays that fit within `printWidth: 100` get collapsed to single lines. Fix with:
-
-```bash
-npx prettier --write -- .devcontainer/devcontainer.json
-```
-
-**Common gotcha (dotnet tools manifest)**: If `format:json:check` fails on `.config/dotnet-tools.json`, the file usually has LF line endings from a Linux update step. Fix with:
-
-```bash
-npm run format:json -- .config/dotnet-tools.json
-```
-
-If the issue persists, normalize line endings:
-
-```bash
-pwsh -NoProfile -File scripts/normalize-eol.ps1 -VerboseOutput
-```
+- **Missing final newline**: Prettier requires files to end with a newline. Fix with `npx prettier --write -- <file>` or `printf '\n' >> <file>`
+- **devcontainer.json**: Arrays within `printWidth: 100` get collapsed. Fix with `npx prettier --write -- .devcontainer/devcontainer.json`
+- **dotnet-tools.json**: LF line endings from Linux. Fix with `npm run format:json -- .config/dotnet-tools.json`; if persists, run `pwsh -NoProfile -File scripts/normalize-eol.ps1 -VerboseOutput`
 
 ### 3. Markdownlint Violations
 
@@ -113,18 +57,16 @@ pwsh -NoProfile -File scripts/normalize-eol.ps1 -VerboseOutput
 
 **Symptom**: `npm run lint:docs` fails with backtick reference warning
 
-**Cause**: Using backtick-wrapped filenames instead of proper links
+**Fix**: Use proper links instead of backtick-wrapped filenames:
 
 ```markdown
 <!-- ❌ WRONG -->
 
 See `context.md` for guidelines.
-Update `CHANGELOG.md` with changes.
 
 <!-- ✅ CORRECT -->
 
 See [context](./context.md) for guidelines.
-Update [CHANGELOG](../CHANGELOG.md) with changes.
 ```
 
 ### 5. Link Without Relative Prefix
@@ -135,183 +77,90 @@ Update [CHANGELOG](../CHANGELOG.md) with changes.
 <!-- ❌ WRONG -->
 
 [create-test](create-test.md)
-[context](skills/context.md)
 
 <!-- ✅ CORRECT -->
 
 [create-test](./create-test.md)
-[context](./skills/context.md)
 ```
 
 ### 6. Broken Internal Links
 
 **Symptom**: `npm run lint:docs` fails with "file not found"
 
-**Causes**:
-
-- Typo in filename
-- File was moved or renamed
-- Wrong path prefix
-
-**Fix**: Verify the file exists and path is correct:
-
-```bash
-ls -la <path-to-file>
-```
+**Fix**: Verify file exists and path is correct — check for typos, moved/renamed files, or wrong prefix.
 
 ### 7. Missing Track() in Tests
 
 **Symptom**: `npm run validate:tests` fails
 
-**Cause**: Unity objects created without Track():
-
-```csharp
-// ❌ WRONG
-GameObject obj = new GameObject("Test");
-MyComponent comp = obj.AddComponent<MyComponent>();
-
-// ✅ CORRECT
-GameObject obj = Track(new GameObject("Test"));
-MyComponent comp = Track(obj.AddComponent<MyComponent>());
-```
+**Fix**: Wrap Unity object creation with `Track()`. See [UnityObjectLifecycleTests.cs](../code-samples/testing/UnityObjectLifecycleTests.cs) for complete examples.
 
 ### 8. C# Naming Convention Violations
 
 **Symptom**: `npm run lint:csharp-naming` fails
 
-**Common issues**:
-
-```csharp
-// ❌ WRONG: lowercase method
-public void processData() { }
-
-// ✅ CORRECT
-public void ProcessData() { }
-
-// ❌ WRONG: missing underscore on private field
-private int count;
-
-// ✅ CORRECT
-private int _count;
-```
+**Fix**: Methods use PascalCase (`ProcessData`), private fields use underscore prefix (`_count`), public members use PascalCase without underscore.
 
 ### 9. Line Ending Issues
 
 **Symptom**: `npm run eol:check` fails
 
-**Fix**:
+**Fix**: `npm run eol:fix`
 
-```bash
-npm run eol:fix
-```
+**Mixed endings after newline fix**: If a script appended LF to a CRLF file, detect existing endings first. See [`crlf_aware_append_newline`](../code-samples/patterns/ValidationFixPatterns.sh) and [git-hook-patterns](./git-hook-patterns.md#crlf-aware-newline-handling) for patterns.
 
-### 10. Dead Link Failures (External URLs)
+**PowerShell `-NoNewline`**: Avoid `Set-Content -NoNewline` — it removes the final newline Prettier requires.
+
+### 10. Pre-Commit Hooks Not Catching CI Failures
+
+**Symptom**: CI fails on issues hooks should have caught locally.
+
+**Cause**: Hook files in `.githooks/` are not executable.
+
+**Fix**: See [`fix_hook_permissions`](../code-samples/patterns/ValidationFixPatterns.sh) for the full sequence, or run:
+`chmod +x .githooks/* && git update-index --chmod=+x .githooks/pre-commit .githooks/pre-push`
+
+### 11. Dead Link Failures (External URLs)
 
 **Symptom**: `Check dead links (lychee)` step fails in CI
 
-**Cause**: External URL in a `.md` file is broken, redirects, or times out.
+**Important**: Lychee only scans `.md` files, not `.cs` source files.
 
-**Important**: Lychee only scans `.md` files. URLs in `.cs` source files are NOT checked.
+**Investigation**: Check CI output for the failing URL, verify manually, then apply the fix:
 
-#### Investigation Process
+| Failure Type             | Fix                                          |
+| ------------------------ | -------------------------------------------- |
+| HTTP to HTTPS redirect   | Update URL to use `https://`                 |
+| Domain migration         | Update to new domain                         |
+| Permanently defunct site | Add regex to `.lychee.toml` exclude list     |
+| Bot protection / 403     | Add to `.lychee.toml` exclude list           |
+| Transient 5xx error      | Already handled in `.lychee.toml`            |
+| URL in source code only  | No CI action needed (consider updating docs) |
 
-1. **Check the CI output** — Lychee reports which file and URL failed
-2. **Verify the URL manually** — Open in browser, check for redirects
-3. **Identify the failure type** and apply the appropriate fix:
-
-| Failure Type             | Example                                                 | Fix                                                             |
-| ------------------------ | ------------------------------------------------------- | --------------------------------------------------------------- |
-| HTTP to HTTPS redirect   | `http://example.com` redirects to `https://example.com` | Update URL to use `https://`                                    |
-| Domain migration         | `xoshiro.di.unimi.it` moved to `prng.di.unimi.it`       | Update to new domain                                            |
-| Permanently defunct site | Academic site went offline                              | Add regex to `.lychee.toml` exclude list                        |
-| GitHub repo deleted      | Third-party repo removed                                | Add to `.lychee.toml` exclude list                              |
-| Transient server error   | 5xx errors                                              | Already handled — `.lychee.toml` accepts 5xx                    |
-| Bot protection           | Site returns 403 for automated requests                 | Add to `.lychee.toml` exclude list                              |
-| URL in source code only  | URL in `.cs` file metadata but not in docs              | No action needed for CI (but consider updating for consistency) |
-
-#### Common Fix Patterns
-
-**HTTP to HTTPS upgrade:**
-
-```markdown
-<!-- Before -->
-
-<http://example.com/resource>
-
-<!-- After -->
-
-<https://example.com/resource>
-```
-
-**Domain migration:**
-
-```markdown
-<!-- Before (old domain) -->
-
-<https://xoshiro.di.unimi.it>
-
-<!-- After (new domain) -->
-
-<https://prng.di.unimi.it>
-```
-
-**Add permanently defunct site to `.lychee.toml`:**
+**Adding exclusions to `.lychee.toml`** (at repo root):
 
 ```toml
 exclude = [
-  # ... existing exclusions ...
   # Site permanently offline (reason)
   "^https?://defunct-site\\.example\\.com"
 ]
 ```
 
-#### Source Code and Documentation Consistency
-
-When updating URLs, check for consistency between:
-
-1. **Source code metadata** — Attribution comments, XML docs in `.cs` files
-2. **Documentation** — References in `.md` files
-3. **Auto-generated docs** — Files in `docs/features/` that are generated from source metadata
-
-URLs in source code are not checked by lychee, but inconsistent URLs between source and docs create confusion.
-
-#### Quick Reference: `.lychee.toml` Location
-
-The lychee configuration is at the repository root: `.lychee.toml`
-
-Current exclusion categories:
-
-- Local/test URLs (localhost, 127.0.0.1)
-- Sites with bot protection (npmjs.com, doi.org)
-- Known flaky sites (bugs.python.org)
-- Defunct sites (wiki.unity3d.com, grepcode.com)
-- Offline GitHub repositories
+When updating URLs, check consistency between source code metadata (`.cs` files) and documentation (`.md` files).
 
 ---
 
 ## Debugging Failed CI Runs
 
-### Step 1: Check Which Check Failed
+1. **Check which check failed** in GitHub Actions output:
+   - `validate:content` — Documentation/formatting
+   - `lint:csharp-naming` — C# naming convention
+   - `eol:check` — Line endings
+   - `validate:tests` — Test lifecycle
 
-Look at the GitHub Actions output. Each job has a name indicating what failed:
+2. **Reproduce locally**: `npm run validate:prepush`
 
-- `validate:content` — Documentation/formatting issue
-- `lint:csharp-naming` — C# naming convention
-- `eol:check` — Line endings
-- `validate:tests` — Test lifecycle issue
-
-### Step 2: Reproduce Locally
-
-```bash
-# Run the exact same check locally
-npm run validate:prepush
-```
-
-### Step 3: Fix and Verify
-
-1. Fix the issue
-2. Run the specific failing command
-3. Run full validation: `npm run validate:prepush`
+3. **Fix and verify**: Fix the issue, run the specific command, then run `npm run validate:prepush`
 
 ---
 
@@ -319,101 +168,22 @@ npm run validate:prepush
 
 ### Pre-Existing Warnings
 
-Some warnings may exist in the main branch. To determine if a warning is pre-existing:
-
-```bash
-# Check if warning exists on main
-git stash
-git checkout main
-npm run <failing-command>
-git checkout -
-git stash pop
-```
-
-If the warning exists on main, it's pre-existing and doesn't block your PR.
+Check if a warning exists on main before fixing (see [`check_preexisting`](../code-samples/patterns/ValidationFixPatterns.sh)). If it exists on main, it's pre-existing and doesn't block your PR.
 
 ### Conflicts Between Linters
 
-Occasionally linters may conflict. Resolution priority:
-
-1. **Prettier** for formatting (it wins on spacing, line breaks)
-2. **Markdownlint** for structure (it wins on heading levels, list structure)
-3. **CSpell** for spelling (always fix or add to dictionary)
+Resolution priority: **Prettier** (formatting) > **Markdownlint** (structure) > **CSpell** (spelling — always fix or add to dictionary).
 
 ### Files That Should Be Ignored
 
-If a file shouldn't be linted, check if it should be in:
-
-- `.prettierignore` — Skip Prettier formatting
-- `.markdownlintignore` — Skip markdown linting
-- `cspell.json` ignorePaths — Skip spell checking
-
----
-
-## Error Message Reference
-
-### Prettier Errors
-
-| Message                       | Meaning             | Fix                  |
-| ----------------------------- | ------------------- | -------------------- |
-| "Code style issues found"     | Formatting mismatch | Run `--write`        |
-| "Unexpected identifier"       | Invalid syntax      | Check file syntax    |
-| "No parser could be inferred" | Unknown file type   | Check file extension |
-
-### Markdownlint Errors
-
-| Rule  | Description                   | Quick Fix                           |
-| ----- | ----------------------------- | ----------------------------------- |
-| MD001 | Heading levels increment by 1 | Don't skip heading levels           |
-| MD007 | Unordered list indentation    | Use 2 spaces                        |
-| MD009 | Trailing spaces               | Delete trailing whitespace          |
-| MD010 | Hard tabs                     | Convert to spaces                   |
-| MD011 | Reversed link syntax          | Use `[text](url)` not `(url)[text]` |
-| MD012 | Multiple blank lines          | Reduce to single blank              |
-| MD022 | Headings blank lines          | Add blank before/after heading      |
-| MD023 | Headings start at line start  | Remove leading spaces               |
-| MD031 | Fenced code blank lines       | Add blank before/after fence        |
-| MD032 | Lists blank lines             | Add blank before/after list         |
-| MD034 | Bare URL                      | Use `<url>` or `[text](url)`        |
-| MD037 | Spaces inside emphasis        | Remove `** text **`                 |
-| MD038 | Spaces inside code            | Remove `` ` code ` ``               |
-| MD039 | Spaces inside links           | Remove `[ text ](url)`              |
-| MD040 | Fenced code no language       | Add language after ` ``` `          |
-| MD047 | No newline at end of file     | Add trailing newline                |
-
-### CSpell Errors
-
-| Message           | Meaning              | Fix                               |
-| ----------------- | -------------------- | --------------------------------- |
-| "Unknown word"    | Not in dictionary    | Fix spelling or add to dictionary |
-| "Multiple errors" | Several misspellings | Fix each one individually         |
-
-### C# Naming Errors
-
-| Pattern             | Expected             | Example Fix                   |
-| ------------------- | -------------------- | ----------------------------- |
-| `method_name`       | `MethodName`         | PascalCase                    |
-| `processData`       | `ProcessData`        | Capitalize first letter       |
-| `private int count` | `private int _count` | Add underscore prefix         |
-| `public int _value` | `public int Value`   | Remove underscore, capitalize |
+Add files to `.prettierignore`, `.markdownlintignore`, or `cspell.json` `ignorePaths` as appropriate.
 
 ---
 
 ## Quick Recovery Commands
 
-```bash
-# Fix ALL Prettier formatting
-npx prettier --write -- .
-
-# Fix line endings
-npm run eol:fix
-
-# Format C#
-dotnet tool run csharpier format .
-
-# Full validation
-npm run validate:prepush
-```
+See [`quick_recovery`](../code-samples/patterns/ValidationFixPatterns.sh) for the full script, or run individually:
+`npx prettier --write -- .` | `npm run eol:fix` | `dotnet tool run csharpier format .` | `npm run validate:prepush`
 
 ---
 

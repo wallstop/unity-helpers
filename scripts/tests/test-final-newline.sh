@@ -39,6 +39,26 @@ files_passed=0
 files_failed=0
 failed_files=()
 
+# ============================================================================
+# CRLF Detection Helper
+# ============================================================================
+# Detects if a file uses CRLF (Windows) line endings by checking for carriage
+# return characters (0x0d). This is used to provide the correct fix suggestion
+# when a file is missing its final newline.
+#
+# Returns:
+#   0 (true)  - File uses CRLF line endings
+#   1 (false) - File uses LF line endings (or is empty/binary)
+# ============================================================================
+file_uses_crlf() {
+    local file="$1"
+    # Check if file is non-empty and contains CR characters (part of CRLF)
+    if [[ -s "$file" ]] && grep -q $'\r' "$file" 2>/dev/null; then
+        return 0  # Uses CRLF
+    fi
+    return 1  # Uses LF
+}
+
 # ---------------------------------------------------------------------------
 # check_file: verify a single file ends with a newline
 # ---------------------------------------------------------------------------
@@ -52,10 +72,15 @@ check_file() {
 
     files_checked=$((files_checked + 1))
 
-    if [[ "$(tail -c 1 "$file" | wc -l)" -eq 0 ]]; then
+    if [[ "$(tail -c 1 -- "$file" | wc -l)" -eq 0 ]]; then
         files_failed=$((files_failed + 1))
         failed_files+=("$file")
-        echo -e "  ${RED}FAIL${NC} $file"
+        # Include line ending type in the failure message for clarity
+        if file_uses_crlf "$file"; then
+            echo -e "  ${RED}FAIL${NC} $file (CRLF)"
+        else
+            echo -e "  ${RED}FAIL${NC} $file (LF)"
+        fi
     else
         files_passed=$((files_passed + 1))
         if [[ $VERBOSE -eq 1 ]]; then
@@ -170,8 +195,10 @@ if [[ $files_failed -gt 0 ]]; then
         echo -e "  ${RED}-${NC} $f"
     done
     echo ""
-    echo -e "Fix with: ${YELLOW}printf '\\n' >> <file>${NC}"
-    echo -e "Or run:   ${YELLOW}./scripts/validate-formatting.sh --fix${NC}"
+    echo -e "Fix with (CRLF-aware):"
+    echo -e "  ${YELLOW}For CRLF files: printf '\\r\\n' >> <file>${NC}"
+    echo -e "  ${YELLOW}For LF files:   printf '\\n' >> <file>${NC}"
+    echo -e "Or run:   ${YELLOW}./scripts/validate-formatting.sh --fix${NC} (auto-detects line endings)"
     exit 1
 else
     echo ""

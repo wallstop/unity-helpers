@@ -37,7 +37,7 @@ bash scripts/install-hooks.sh
 
 ### What the Hook Does
 
-1. Syncs versions (banner SVG + `.llm/context.md` from `package.json`; issue template dropdowns from `package.json`, `CHANGELOG.md`, and git tags)
+1. Syncs versions (banner SVG + [LLM context](../context.md) from `package.json`; issue template dropdowns from `package.json`, the [CHANGELOG](../../CHANGELOG.md), and git tags)
 2. Normalizes line endings (CRLF/LF per file type)
 3. Formats staged files with Prettier (Markdown, JSON, YAML, JS)
 4. Formats staged C# files with CSharpier
@@ -55,6 +55,23 @@ npm run format:fix
 
 # Run full validation
 npm run validate:prepush
+```
+
+---
+
+## Markdown File References
+
+When referencing markdown files in documentation, always use proper markdown link syntax with a relative path prefix. Never use bare filenames or inline-code-wrapped filenames. The [lint-doc-links.ps1](../../scripts/lint-doc-links.ps1) script enforces this in CI.
+
+```markdown
+<!-- Wrong: bare or backtick-wrapped references -->
+
+See `formatting-and-linting.md` for details.
+See formatting-and-linting.md for details.
+
+<!-- Correct: proper markdown link with relative prefix -->
+
+See [formatting-and-linting](./formatting-and-linting.md) for details.
 ```
 
 ---

@@ -104,6 +104,8 @@ if (Test-Path $contextMdPath) {
         $currentContextVersion = $Matches[0]
         if ($currentContextVersion -ne $contextReplacement) {
             $updatedContextContent = $contextContent -replace $contextPattern, $contextReplacement
+            # Trim trailing whitespace and add exactly one LF (Markdown files require LF per .editorconfig)
+            $updatedContextContent = $updatedContextContent.TrimEnd() + "`n"
             Set-Content -Path $contextMdPath -Value $updatedContextContent -NoNewline -Encoding UTF8
             Write-Host "Updated .llm/context.md version to: $version"
 

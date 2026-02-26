@@ -5,7 +5,7 @@
 .DESCRIPTION
     Checks that every language/file type formatted or linted in the pre-commit
     hook has a corresponding explicit "[language]" formatter entry in
-    devcontainer.json. Reports missing entries as warnings.
+    devcontainer.json. Reports missing entries as warnings, then exits with error code 1 if any are found.
 
     This prevents drift between the hook's formatting pipeline and the
     editor's formatter assignments.
