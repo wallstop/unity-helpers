@@ -9,7 +9,7 @@ This document provides a comprehensive reference for all formatting and linting 
 | Tool         | File Types                | Check Command                                  | Fix Command                          |
 | ------------ | ------------------------- | ---------------------------------------------- | ------------------------------------ |
 | CSharpier    | `.cs`                     | `dotnet tool run csharpier check .`            | `dotnet tool run csharpier format .` |
-| Prettier     | `.md`, `.json`, `.yml`    | `npx prettier --check .`                       | `npx prettier --write <file>`        |
+| Prettier     | `.md`, `.json`, `.yml`    | `npx prettier --check -- .`                    | `npx prettier --write -- <file>`     |
 | markdownlint | `.md`                     | `npm run lint:markdown`                        | Manual fixes required                |
 | yamllint     | `.yml`, `.yaml`           | `npm run lint:yaml`                            | Manual fixes required                |
 | actionlint   | `.github/workflows/*.yml` | `actionlint`                                   | Manual fixes required                |
@@ -67,24 +67,24 @@ dotnet tool restore
 
 ```bash
 # Format a specific file (RECOMMENDED)
-npx prettier --write <file>
+npx prettier --write -- <file>
 
 # Verify a specific file
-npx prettier --check <file>
+npx prettier --check -- <file>
 
 # Check all files for formatting issues
-npx prettier --check .
+npx prettier --check -- .
 
 # Format all files (use only if needed)
-npx prettier --write .
+npx prettier --write -- .
 ```
 
 ### Examples
 
 ```bash
-npx prettier --write .llm/skills/create-test.md
-npx prettier --write package.json
-npx prettier --write .github/workflows/ci.yml
+npx prettier --write -- .llm/skills/create-test.md
+npx prettier --write -- package.json
+npx prettier --write -- .github/workflows/ci.yml
 ```
 
 ### Line Endings
@@ -168,7 +168,7 @@ npm run lint:yaml
 
 ```bash
 # Step 1: Format with Prettier
-npx prettier --write <file>
+npx prettier --write -- <file>
 
 # Step 2: Run yamllint
 npm run lint:yaml
@@ -250,7 +250,7 @@ npm run lint:spelling
 #    - Add valid terms to cspell.json
 
 # 3. Format cspell.json
-npx prettier --write cspell.json
+npx prettier --write -- cspell.json
 
 # 4. Re-run to verify
 npm run lint:spelling

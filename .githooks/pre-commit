@@ -28,14 +28,17 @@ ensure_no_index_lock || {
     echo "Warning: index.lock still held after waiting. Proceeding anyway, but operations may fail." >&2
 }
 
-# 0) Sync banner version from package.json (runs on every commit)
-# This ensures the SVG banner always displays the correct version
+# 0) Sync version references (runs on every commit)
+#    a) Syncs banner version and .llm/context.md from package.json
+#    b) Syncs issue template package versions from package.json, CHANGELOG.md, and git tags
 if command -v pwsh >/dev/null 2>&1; then
   pwsh -NoProfile -File scripts/sync-banner-version.ps1
+  pwsh -NoProfile -File scripts/sync-issue-template-versions.ps1
 elif command -v powershell >/dev/null 2>&1; then
   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/sync-banner-version.ps1
+  powershell -NoProfile -ExecutionPolicy Bypass -File scripts/sync-issue-template-versions.ps1
 else
-  echo "PowerShell not found. Skipping banner version sync." >&2
+  echo "PowerShell not found. Skipping version sync." >&2
 fi
 
 # 1) Normalize line endings (LF -> CRLF for most files, LF for .sh)
@@ -99,10 +102,71 @@ while IFS= read -r -d '' file; do
     STAGED_FILES_ARRAY+=("$file")
 done < <(git diff --cached --name-only --diff-filter=ACM -z)
 
+# Early exit if no staged files (e.g., amend with no changes, or merge commit)
+if [ ${#STAGED_FILES_ARRAY[@]} -eq 0 ]; then
+    echo "No staged files to check. Skipping pre-commit hooks."
+    exit 0
+fi
+
+# 5) Ensure staged text files end with a final newline
+# This MUST run before Prettier formatting to prevent missing-newline diffs
+
+# ============================================================================
+# CRLF Detection Helper
+# ============================================================================
+# Detects if a file uses CRLF (Windows) line endings by checking for carriage
+# return characters (0x0d). This is used to preserve the correct line ending
+# style when appending a final newline to files.
+#
+# Returns:
+#   0 (true)  - File uses CRLF line endings
+#   1 (false) - File uses LF line endings (or is empty)
+# ============================================================================
+file_uses_crlf() {
+    local file="$1"
+    # Check if file is non-empty and contains CR characters (part of CRLF)
+    if [[ -s "$file" ]] && grep -q $'\r' "$file" 2>/dev/null; then
+        return 0  # Uses CRLF
+    fi
+    return 1  # Uses LF
+}
+
+FINAL_NEWLINE_PATTERNS=('*.json' '*.jsonc' '*.asmdef' '*.asmref' '*.md' '*.markdown'
+    '*.yml' '*.yaml' '*.js' '*.ts' '*.cs' '*.sh' '*.ps1' '*.txt' '*.html' '*.css' '*.xml')
+NEWLINE_FIXED=()
+for file in "${STAGED_FILES_ARRAY[@]}"; do
+    # Check if file matches any of the text patterns
+    matched=0
+    for pat in "${FINAL_NEWLINE_PATTERNS[@]}"; do
+        # shellcheck disable=SC2254
+        case "$file" in
+            ${pat}) matched=1; break ;;
+        esac
+    done
+    if [[ $matched -eq 1 ]] && [[ -s "$file" ]] && [[ "$(tail -c 1 -- "$file" | wc -l)" -eq 0 ]]; then
+        # Append the correct newline based on the file's line ending style
+        # CRLF files get \r\n, LF files get \n to avoid mixed line endings
+        if file_uses_crlf "$file"; then
+            printf '\r\n' >> "$file"
+        else
+            printf '\n' >> "$file"
+        fi
+        NEWLINE_FIXED+=("$file")
+    fi
+done
+if [[ ${#NEWLINE_FIXED[@]} -gt 0 ]]; then
+    echo "Added final newline to ${#NEWLINE_FIXED[@]} file(s):"
+    for f in "${NEWLINE_FIXED[@]}"; do
+        echo "  $f"
+    done
+    git_add_with_retry "${NEWLINE_FIXED[@]}"
+fi
+
 # Filter files into type-specific arrays
 MD_FILES_ARRAY=()
 JSON_FILES_ARRAY=()
 YAML_FILES_ARRAY=()
+JS_FILES_ARRAY=()
 CS_FILES_ARRAY=()
 SPELL_FILES_ARRAY=()
 
@@ -112,12 +176,16 @@ for file in "${STAGED_FILES_ARRAY[@]}"; do
             MD_FILES_ARRAY+=("$file")
             SPELL_FILES_ARRAY+=("$file")
             ;;
-        *.json|*.asmdef|*.asmref)
+        *.json|*.jsonc|*.asmdef|*.asmref)
             JSON_FILES_ARRAY+=("$file")
             SPELL_FILES_ARRAY+=("$file")
             ;;
         *.yml|*.yaml)
             YAML_FILES_ARRAY+=("$file")
+            SPELL_FILES_ARRAY+=("$file")
+            ;;
+        *.js)
+            JS_FILES_ARRAY+=("$file")
             SPELL_FILES_ARRAY+=("$file")
             ;;
         *.cs)
@@ -145,9 +213,9 @@ done
 
 # Prettier format and re-add using retry logic to handle index.lock contention
 if [ ${#MD_FILES_ARRAY[@]} -gt 0 ]; then
-  npx --no-install prettier --write --log-level warn "${MD_FILES_ARRAY[@]}"
+  npx --no-install prettier --write --log-level warn -- "${MD_FILES_ARRAY[@]}"
   # Verify formatting was successful before re-staging
-  if ! npx --no-install prettier --check "${MD_FILES_ARRAY[@]}" >/dev/null 2>&1; then
+  if ! npx --no-install prettier --check -- "${MD_FILES_ARRAY[@]}" >/dev/null 2>&1; then
     echo "Error: Prettier formatting verification failed for Markdown files." >&2
     exit 1
   fi
@@ -156,9 +224,9 @@ if [ ${#MD_FILES_ARRAY[@]} -gt 0 ]; then
 fi
 
 if [ ${#JSON_FILES_ARRAY[@]} -gt 0 ]; then
-  npx --no-install prettier --write --log-level warn "${JSON_FILES_ARRAY[@]}"
+  npx --no-install prettier --write --log-level warn -- "${JSON_FILES_ARRAY[@]}"
   # Verify formatting was successful before re-staging
-  if ! npx --no-install prettier --check "${JSON_FILES_ARRAY[@]}" >/dev/null 2>&1; then
+  if ! npx --no-install prettier --check -- "${JSON_FILES_ARRAY[@]}" >/dev/null 2>&1; then
     echo "Error: Prettier formatting verification failed for JSON files." >&2
     exit 1
   fi
@@ -167,9 +235,9 @@ if [ ${#JSON_FILES_ARRAY[@]} -gt 0 ]; then
 fi
 
 if [ ${#YAML_FILES_ARRAY[@]} -gt 0 ]; then
-  npx --no-install prettier --write --log-level warn "${YAML_FILES_ARRAY[@]}"
+  npx --no-install prettier --write --log-level warn -- "${YAML_FILES_ARRAY[@]}"
   # Verify formatting was successful before re-staging
-  if ! npx --no-install prettier --check "${YAML_FILES_ARRAY[@]}" >/dev/null 2>&1; then
+  if ! npx --no-install prettier --check -- "${YAML_FILES_ARRAY[@]}" >/dev/null 2>&1; then
     echo "Error: Prettier formatting verification failed for YAML files." >&2
     exit 1
   fi
@@ -177,7 +245,18 @@ if [ ${#YAML_FILES_ARRAY[@]} -gt 0 ]; then
   git_add_with_retry "${YAML_FILES_ARRAY[@]}"
 fi
 
-# 5) Format staged C# files with CSharpier (if available) and re-stage
+if [ ${#JS_FILES_ARRAY[@]} -gt 0 ]; then
+  npx --no-install prettier --write --log-level warn -- "${JS_FILES_ARRAY[@]}"
+  # Verify formatting was successful before re-staging
+  if ! npx --no-install prettier --check -- "${JS_FILES_ARRAY[@]}" >/dev/null 2>&1; then
+    echo "Error: Prettier formatting verification failed for JS files." >&2
+    exit 1
+  fi
+  # Use git_add_with_retry to handle concurrent git operations safely
+  git_add_with_retry "${JS_FILES_ARRAY[@]}"
+fi
+
+# 6) Format staged C# files with CSharpier (if available) and re-stage
 if [ ${#CS_FILES_ARRAY[@]} -gt 0 ]; then
   if command -v pwsh >/dev/null 2>&1; then
     pwsh -NoProfile -File scripts/format-staged-csharp.ps1
@@ -188,26 +267,26 @@ if [ ${#CS_FILES_ARRAY[@]} -gt 0 ]; then
   fi
 fi
 
-# 6) Markdown lint for staged Markdown files
+# 7) Markdown lint for staged Markdown files
 if [ ${#MD_FILES_ARRAY[@]} -gt 0 ]; then
   # First, auto-fix what can be fixed
-  npx --no-install markdownlint --fix "${MD_FILES_ARRAY[@]}" --config .markdownlint.json --ignore-path .markdownlintignore || true
+  npx --no-install markdownlint --fix --config .markdownlint.json --ignore-path .markdownlintignore -- "${MD_FILES_ARRAY[@]}" || true
   # Re-stage the fixed files
   git_add_with_retry "${MD_FILES_ARRAY[@]}"
   # Then run markdownlint again to catch any remaining unfixable issues
-  npx --no-install markdownlint "${MD_FILES_ARRAY[@]}" --config .markdownlint.json --ignore-path .markdownlintignore
+  npx --no-install markdownlint --config .markdownlint.json --ignore-path .markdownlintignore -- "${MD_FILES_ARRAY[@]}"
 fi
 
-# 7) YAML lint on staged YAML files
+# 8) YAML lint on staged YAML files
 if [ ${#YAML_FILES_ARRAY[@]} -gt 0 ]; then
   if command -v yamllint >/dev/null 2>&1; then
-    yamllint -c .yamllint.yaml "${YAML_FILES_ARRAY[@]}"
+    yamllint -c .yamllint.yaml -- "${YAML_FILES_ARRAY[@]}"
   else
     echo "yamllint not found; skipping YAML lint (run 'npm run verify:tools' to check setup)." >&2
   fi
 fi
 
-# 8) Spell check staged files with cspell
+# 9) Spell check staged files with cspell
 # Runs on markdown, code, and config files
 if [ ${#SPELL_FILES_ARRAY[@]} -gt 0 ]; then
   if npx --no-install cspell --version >/dev/null 2>&1; then
@@ -231,7 +310,7 @@ if [ ${#SPELL_FILES_ARRAY[@]} -gt 0 ]; then
   fi
 fi
 
-# 9) Validate LLM instructions if .llm/ files are staged
+# 10) Validate LLM instructions if .llm/ files are staged
 LLM_FILES_ARRAY=()
 for file in "${STAGED_FILES_ARRAY[@]}"; do
     case "$file" in
@@ -258,7 +337,7 @@ if [ ${#LLM_FILES_ARRAY[@]} -gt 0 ]; then
   fi
 fi
 
-# 10) Check skill file sizes if .llm/skills/*.md files are staged
+# 11) Check skill file sizes if .llm/skills/*.md files are staged
 LLM_SKILLS_ARRAY=()
 for file in "${STAGED_FILES_ARRAY[@]}"; do
     case "$file" in
@@ -285,7 +364,7 @@ if [ ${#LLM_SKILLS_ARRAY[@]} -gt 0 ]; then
   fi
 fi
 
-# 11) Run test linter on staged test files
+# 12) Run test linter on staged test files
 # Checks for Unity object lifecycle issues (UNH001-UNH003), naming conventions (UNH004), null checks (UNH005)
 TEST_FILES_ARRAY=()
 for file in "${STAGED_FILES_ARRAY[@]}"; do
@@ -354,7 +433,7 @@ if [ ${#TEST_FILES_ARRAY[@]} -gt 0 ]; then
   fi
 fi
 
-# 12) Check for forbidden #region/#endregion directives in C# files
+# 13) Check for forbidden #region/#endregion directives in C# files
 # Regions are forbidden in this codebase - see .llm/skills/no-regions.md
 if [ ${#CS_FILES_ARRAY[@]} -gt 0 ]; then
   echo "Checking for forbidden #region directives..."

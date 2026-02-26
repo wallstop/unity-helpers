@@ -368,6 +368,7 @@ Samples~/**/*.rsp
 Samples~/**/*.rsp.meta
 
 PLAN.md*
+BACKUP_PLAN.md*
 
 artifacts*/
 artifacts/**

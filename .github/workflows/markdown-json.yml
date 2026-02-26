@@ -37,6 +37,9 @@ jobs:
       - name: Prettier check (JSON / asmdef / asmref)
         run: npm run format:json:check
 
+      - name: Prettier check (JS)
+        run: npm run format:js:check
+
       - name: Markdown lint
         run: npm run lint:markdown
 

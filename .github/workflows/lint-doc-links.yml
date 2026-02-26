@@ -25,6 +25,7 @@ jobs:
             --no-progress
             --include-fragments
             --verbose
+            --
             "./**/*.md"
           # Fail workflow only for actual broken links, not transient server errors
           # The .lychee.toml config already accepts 5xx as valid to handle outages

@@ -33,17 +33,61 @@
   "customizations": {
     "vscode": {
       "extensions": [
+        // ── C#/.NET Development ──
         "ms-dotnettools.csharp",
         "ms-dotnettools.csdevkit",
+        "ms-dotnettools.vscode-dotnet-runtime",
         "csharpier.csharpier-vscode",
+
+        // ── Code Quality & Editor Enhancements ──
         "editorconfig.editorconfig",
+        "usernamehw.errorlens",
+        "Gruntfuggly.todo-tree",
+
+        // ── AI Assistants ──
         "GitHub.copilot",
-        "GitHub.copilot-chat",
         "anthropic.claude-code",
+        "openai.chatgpt",
+
+        // ── Spelling & Markdown ──
         "streetsidesoftware.code-spell-checker",
-        "DavidAnson.vscode-markdownlint"
+        "DavidAnson.vscode-markdownlint",
+        "yzhang.markdown-all-in-one",
+        "bierner.markdown-mermaid",
+        "bierner.github-markdown-preview",
+
+        // ── Formatting (Prettier for MD/JSON/YAML) ──
+        "esbenp.prettier-vscode",
+
+        // ── Git ──
+        "eamodio.gitlens",
+        "mhutchie.git-graph",
+
+        // ── GitHub ──
+        "GitHub.vscode-github-actions",
+        "GitHub.vscode-pull-request-github",
+
+        // ── YAML & XML ──
+        "redhat.vscode-yaml",
+        "redhat.vscode-xml",
+
+        // ── Shell & PowerShell ──
+        "timonwong.shellcheck",
+        "ms-vscode.powershell",
+
+        // ── Unity & Shaders ──
+        "kleber-swf.unity-code-snippets",
+        "slevesque.shader",
+
+        // ── File Icons ──
+        "PKief.material-icon-theme",
+
+        // ── Productivity ──
+        "christian-kohler.path-intellisense",
+        "alefragnani.Bookmarks"
       ],
       "settings": {
+        // ── Terminal ──
         "terminal.integrated.defaultProfile.linux": "bash",
         "terminal.integrated.shellIntegration.enabled": true,
         "terminal.integrated.shellIntegration.decorationsEnabled": "both",
@@ -52,11 +96,301 @@
         "terminal.integrated.suggest.enabled": true,
         "terminal.integrated.suggest.quickSuggestions": true,
         "terminal.integrated.suggest.suggestOnTriggerCharacters": true,
+
+        // ── .NET / C# (C# Dev Kit uses Roslyn, not OmniSharp) ──
         "dotnet.defaultSolution": "disable",
+        "dotnet.completion.showCompletionItemsFromUnimportedNamespaces": true,
+
+        // ── Editor ──
         "editor.formatOnSave": true,
-        "editor.defaultFormatter": "csharpier.csharpier-vscode",
+        "editor.formatOnSaveMode": "modificationsIfAvailable",
+        "editor.rulers": [120],
+        "editor.guides.bracketPairs": "active",
+        "editor.stickyScroll.enabled": true,
+        "editor.minimap.renderCharacters": false,
+        "editor.minimap.scale": 2,
+
+        // ── File Defaults (match .editorconfig root) ──
+        "files.eol": "\r\n",
+
+        // ── Formatter assignments ──
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
         "[csharp]": {
           "editor.defaultFormatter": "csharpier.csharpier-vscode"
+        },
+        "[jsonc]": {
+          "editor.defaultFormatter": "esbenp.prettier-vscode"
+        },
+        "[json]": {
+          "editor.defaultFormatter": "esbenp.prettier-vscode"
+        },
+        "[yaml]": {
+          "editor.defaultFormatter": "esbenp.prettier-vscode"
+        },
+        "[javascript]": {
+          "editor.defaultFormatter": "esbenp.prettier-vscode"
+        },
+        "[markdown]": {
+          "editor.defaultFormatter": "esbenp.prettier-vscode",
+          "editor.wordWrap": "on"
+        },
+        "[xml]": {
+          "editor.formatOnSave": false
+        },
+        "[shellscript]": {
+          "editor.formatOnSave": false
+        },
+        "[powershell]": {
+          "editor.formatOnSave": false
+        },
+        "[hlsl]": {
+          "editor.formatOnSave": false
+        },
+        "[shaderlab]": {
+          "editor.formatOnSave": false
+        },
+
+        // ── File Associations ──
+        "files.associations": {
+          "*.asmdef": "json",
+          "*.asmref": "json",
+          "*.meta": "yaml"
+        },
+
+        // ── File Nesting (collapse .meta files under their source) ──
+        "explorer.fileNesting.enabled": true,
+        "explorer.fileNesting.expand": false,
+        "explorer.fileNesting.patterns": {
+          "*.cs": "${capture}.cs.meta",
+          "*.shader": "${capture}.shader.meta",
+          "*.json": "${capture}.json.meta",
+          "*.md": "${capture}.md.meta",
+          "*.yml": "${capture}.yml.meta",
+          "*.yaml": "${capture}.yaml.meta",
+          "*.txt": "${capture}.txt.meta",
+          "*.asset": "${capture}.asset.meta",
+          "*.prefab": "${capture}.prefab.meta",
+          "*.asmdef": "${capture}.asmdef.meta",
+          "*.asmref": "${capture}.asmref.meta",
+          "*.html": "${capture}.html.meta",
+          "*.xml": "${capture}.xml.meta",
+          "*.png": "${capture}.png.meta",
+          "*.hlsl": "${capture}.hlsl.meta",
+          "*.gif": "${capture}.gif.meta",
+          "*.svg": "${capture}.svg.meta",
+          "*.mat": "${capture}.mat.meta",
+          "*.unity": "${capture}.unity.meta",
+          "*.uss": "${capture}.uss.meta",
+          "*.uxml": "${capture}.uxml.meta",
+          "*.dll": "${capture}.dll.meta",
+          "*.shadergraph": "${capture}.shadergraph.meta",
+          "*.shadersubgraph": "${capture}.shadersubgraph.meta",
+          "*.css": "${capture}.css.meta",
+          "*.js": "${capture}.js.meta",
+          "*.ps1": "${capture}.ps1.meta",
+          "*.sh": "${capture}.sh.meta",
+          "*.py": "${capture}.py.meta",
+          "*.scss": "${capture}.scss.meta"
+        },
+
+        // ── Error Lens ──
+        "errorLens.enabledDiagnosticLevels": ["error", "warning"],
+        "errorLens.delay": 500,
+
+        // ── TODO Tree ──
+        "todo-tree.general.tags": ["TODO", "FIXME", "HACK", "BUG", "NOTE", "PERF"],
+        "todo-tree.highlights.defaultHighlight": {
+          "gutterIcon": true
+        },
+
+        // ── GitLens (keep lightweight) ──
+        "gitlens.codeLens.enabled": false,
+        "gitlens.currentLine.enabled": true,
+        "gitlens.hovers.currentLine.over": "line",
+
+        // ── YAML ──
+        "yaml.schemas": {
+          "https://json.schemastore.org/github-workflow.json": ".github/workflows/*.yml",
+          "https://json.schemastore.org/github-action.json": ".github/actions/*/action.yml",
+          "https://squidfunk.github.io/mkdocs-material/schema.json": "mkdocs.yml"
+        },
+        "yaml.format.enable": false,
+
+        // ── Spell Checker ──
+        "cSpell.enableFiletypes": ["csharp", "markdown", "yaml", "json", "jsonc"],
+
+        // ── PowerShell ──
+        "powershell.integratedConsole.showOnStartup": false,
+
+        // ── Material Icon Theme ──
+        "workbench.iconTheme": "material-icon-theme",
+        "material-icon-theme.activeIconPack": "none",
+        "material-icon-theme.folders.color": "#42A5F5",
+        "material-icon-theme.saturation": 1,
+        "material-icon-theme.opacity": 1,
+        "material-icon-theme.hidesExplorerArrows": false,
+        "material-icon-theme.folders.associations": {
+          // ── Top-level project folders ──
+          "Runtime": "src",
+          "Editor": "tools",
+          "Tests": "test",
+          "Samples~": "examples",
+          "Shaders": "shader",
+          "Styles": "css",
+          "Binaries": "lib",
+          "docs": "docs",
+          "scripts": "scripts",
+          ".llm": "robot",
+          ".github": "github",
+          "Core": "core",
+          "URP": "shader",
+          "progress": "log",
+          "site": "public",
+          // ── Runtime/Core sub-folders ──
+          "Attributes": "decorator",
+          "DataStructure": "class",
+          "Extension": "plugin",
+          "Extensions": "plugin",
+          "Helper": "helper",
+          "Math": "functions",
+          "Model": "model",
+          "OneOf": "rules",
+          "Random": "delta",
+          "Serialization": "json",
+          "Threading": "connection",
+          "Tags": "meta",
+          "Visuals": "layout",
+          // ── Editor sub-folders ──
+          "Tools": "tools",
+          "CustomDrawers": "custom",
+          "CustomEditors": "admin",
+          "Integrations": "middleware",
+          "Settings": "config",
+          "Sprites": "images",
+          "AssetProcessors": "batch",
+          "Odin": "custom",
+          // ── Common sub-folders ──
+          "Persistence": "database",
+          "Internal": "private",
+          "Utils": "utils",
+          "VolumeProfiles": "environment",
+          "Performance": "benchmark",
+          "Pool": "container",
+          "UGUI": "layout",
+          "UIToolkit": "component",
+          "Scenes": "views",
+          "Enums": "class",
+          "SharedEnums": "class",
+          // ── DI framework folders ──
+          "VContainer": "container",
+          "Zenject": "plugin",
+          "Reflex": "hook",
+          // ── Test sub-folders ──
+          "TestDoubles": "mock",
+          "TestTypes": "class",
+          "TestUtils": "utils",
+          // ── Docs sub-folders ──
+          "images": "images",
+          "overrides": "theme",
+          "includes": "include",
+          "stylesheets": "sass",
+          "guides": "content",
+          "features": "flow",
+          "overview": "docs",
+          "contributing": "review",
+          "project": "app",
+          "performance": "benchmark",
+          // ── Additional sub-folders ──
+          "Animation": "animation",
+          "Prefabs": "template",
+          "Textures": "images",
+          "Materials": "images",
+          "ShaderGraph": "shader",
+          "workflows": "ci",
+          "ISSUE_TEMPLATE": "template",
+          "Helpers": "helper",
+          "DataStructures": "class",
+          "Validation": "rules",
+          "TestAssets": "test",
+          "TestComponents": "test",
+          "TestFramework": "test",
+          "SevenZip": "archive",
+          "Compress": "archive",
+          "JsonConverters": "json",
+          "Adapters": "middleware",
+          "Base": "base",
+          "USS": "css",
+          "Components": "component",
+          "skills": "content",
+          "wiki": "docs",
+          "Protobuf-Net": "lib"
+        },
+        "material-icon-theme.files.associations": {
+          // ── Unity shader files ──
+          "*.shader": "shader",
+          "*.hlsl": "shader",
+          "*.cginc": "shader",
+          "*.compute": "shader",
+          "*.shadergraph": "shader",
+          "*.shadersubgraph": "shader",
+          // ── Unity asset files ──
+          "*.meta": "yaml",
+          "*.prefab": "3d",
+          "*.unity": "3d",
+          "*.mat": "3d",
+          "*.asset": "database",
+          "*.uss": "css",
+          "*.uxml": "xml",
+          // ── Unity assembly definitions ──
+          "*.asmdef": "tune",
+          "*.asmref": "tune",
+          // ── Compiled binaries ──
+          "*.dll": "binary",
+          // ── Image formats ──
+          "*.gif": "image",
+          // ── Named project files ──
+          "CHANGELOG.md": "changelog",
+          "LICENSE": "license",
+          "README.md": "readme",
+          "AGENTS.md": "robot",
+          "CLAUDE.md": "robot",
+          "PLAN.md": "todo",
+          "CONTRIBUTING.md": "contributing",
+          "package.json": "npm",
+          "cspell.json": "tune",
+          "mkdocs.yml": "settings",
+          "Gemfile": "ruby",
+          "_config.yml": "settings",
+          "llms.txt": "robot",
+          "TestFailures.txt": "test"
+        },
+
+        // ── Git Decoration Colors ──
+        "workbench.colorCustomizations": {
+          "gitDecoration.modifiedResourceForeground": "#E2B93D",
+          "gitDecoration.untrackedResourceForeground": "#73C991",
+          "gitDecoration.deletedResourceForeground": "#EF5350",
+          "gitDecoration.conflictingResourceForeground": "#CE93D8",
+          "gitDecoration.stageModifiedResourceForeground": "#FFB74D",
+          "gitDecoration.stageDeletedResourceForeground": "#E57373",
+          "gitDecoration.ignoredResourceForeground": "#546E7A"
+        },
+
+        // ── Search Excludes ──
+        "search.exclude": {
+          "**/node_modules": true,
+          "**/site": true,
+          "**/*.meta": true,
+          "**/Runtime/Binaries": true,
+          "**/progress": true
+        },
+
+        // ── File Watcher Excludes (reduce watcher load) ──
+        "files.watcherExclude": {
+          "**/node_modules/**": true,
+          "**/site/**": true,
+          "**/.git/objects/**": true,
+          "**/.git/subtree-cache/**": true
         }
       }
     }

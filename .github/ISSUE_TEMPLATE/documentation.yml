@@ -1,0 +1,36 @@
+name: Documentation Issue
+description: Report an error, omission, or improvement for documentation
+title: "[Docs]: "
+labels: ["documentation"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve our documentation! Please describe the issue below.
+
+  - type: input
+    id: page-url
+    attributes:
+      label: Page URL or Section
+      description: Link to the documentation page or describe the section.
+      placeholder: "https://wallstop.github.io/unity-helpers/... or 'Getting Started > Installation'"
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description of Issue
+      description: What is wrong, missing, or could be improved?
+      placeholder: Describe the documentation issue...
+    validations:
+      required: true
+
+  - type: textarea
+    id: suggested-fix
+    attributes:
+      label: Suggested Fix
+      description: If you have a correction or improvement in mind, describe it here.
+      placeholder: Describe your suggested fix...
+    validations:
+      required: false

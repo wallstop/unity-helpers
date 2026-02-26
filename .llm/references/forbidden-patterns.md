@@ -302,6 +302,35 @@ See [ObjectsHashCodePattern.cs](../code-samples/patterns/ObjectsHashCodePattern.
 
 ---
 
+## CLI Option Injection Patterns
+
+When passing file arguments to CLI tools, a `--` (end-of-options) separator MUST appear before all file/glob arguments. Without this, attacker-controlled filenames (e.g., `--plugin=./evil.js`) are interpreted as CLI flags.
+
+| Forbidden                                                  | Use Instead                                                   | Reason                                       |
+| ---------------------------------------------------------- | ------------------------------------------------------------- | -------------------------------------------- |
+| `prettier --write "**/*.md"`                               | `prettier --write -- "**/*.md"`                               | Glob results could contain option-like names |
+| `markdownlint "**/*.md" --config .markdownlint.json --fix` | `markdownlint --config .markdownlint.json --fix -- "**/*.md"` | Options must precede `--`                    |
+| `npx --yes prettier@3.7.4 --write "**/*.{yml,yaml}"`       | `npx --yes prettier@3.7.4 --write -- "**/*.{yml,yaml}"`       | Applies to npx invocations too               |
+| `yamllint -c .yamllint.yaml "${FILES[@]}"`                 | `yamllint -c .yamllint.yaml -- "${FILES[@]}"`                 | Array expansion can contain malicious names  |
+| `lychee --no-progress "**/*.md"`                           | `lychee --no-progress -- "**/*.md"`                           | Any tool accepting file lists is vulnerable  |
+
+### Key Rules
+
+1. ALL options/flags MUST come BEFORE `--`
+2. ALL file paths/globs MUST come AFTER `--`
+3. This applies to: `prettier`, `markdownlint`, `yamllint`, `eslint`, `lychee`, `cspell`, and any tool accepting file arguments
+4. This applies in ALL contexts: shell scripts, GitHub Actions workflows, npm scripts, PowerShell scripts
+
+### Where This Is Enforced
+
+- Pre-commit hook (`.githooks/pre-commit`) — validated by existing tests
+- Pre-push hook (`.githooks/pre-push`) — validated by tests
+- GitHub Actions workflows — validated by tests
+- npm scripts in `package.json` — validated by tests
+- PowerShell wrapper scripts — validated by tests
+
+---
+
 ## Related Documentation
 
 - [high-performance-csharp](../skills/high-performance-csharp.md) - Core performance patterns

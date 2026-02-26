@@ -36,7 +36,7 @@ if (-not $npx) {
   exit 1
 }
 
-$npxArgs = @('--yes', 'prettier', '--write')
+$npxArgs = @('--yes', 'prettier', '--write', '--')
 $npxArgs += $existingPaths
 & npx @npxArgs
 if ($LASTEXITCODE -ne 0) {

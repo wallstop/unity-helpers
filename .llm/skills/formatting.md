@@ -19,10 +19,10 @@
 | File Type                | Formatter | Command                              |
 | ------------------------ | --------- | ------------------------------------ |
 | C# (`.cs`)               | CSharpier | `dotnet tool run csharpier format .` |
-| Markdown (`.md`)         | Prettier  | `npx prettier --write <file>`        |
-| JSON (`.json`,`.asmdef`) | Prettier  | `npx prettier --write <file>`        |
-| YAML (`.yml`,`.yaml`)    | Prettier  | `npx prettier --write <file>`        |
-| Config files             | Prettier  | `npx prettier --write <file>`        |
+| Markdown (`.md`)         | Prettier  | `npx prettier --write -- <file>`     |
+| JSON (`.json`,`.asmdef`) | Prettier  | `npx prettier --write -- <file>`     |
+| YAML (`.yml`,`.yaml`)    | Prettier  | `npx prettier --write -- <file>`     |
+| Config files             | Prettier  | `npx prettier --write -- <file>`     |
 
 ---
 
@@ -81,29 +81,30 @@ Run **IMMEDIATELY** after editing:
 - `.css`, `.scss` - Stylesheets
 - `.html` - HTML files
 - Config files (`.prettierrc`, `.eslintrc`)
+- **`.devcontainer/devcontainer.json`** - Dev container configuration (often missed!)
 
 ### Commands
 
 ```bash
 # Format a single file (RECOMMENDED)
-npx prettier --write <file>
+npx prettier --write -- <file>
 
 # Verify formatting
-npx prettier --check <file>
+npx prettier --check -- <file>
 
 # Check all files
-npx prettier --check .
+npx prettier --check -- .
 
 # Fix all files (emergency only)
-npx prettier --write .
+npx prettier --write -- .
 ```
 
 ### Workflow Pattern
 
 ```text
 1. Edit the file
-2. Run: npx prettier --write <path/to/file>
-3. Verify: npx prettier --check <path/to/file>
+2. Run: npx prettier --write -- <path/to/file>
+3. Verify: npx prettier --check -- <path/to/file>
 4. Move to next file
 5. Repeat for each file
 ```
@@ -125,7 +126,7 @@ npx prettier --write .
 
 ```bash
 # STEP 1: Format with Prettier IMMEDIATELY after editing
-npx prettier --write <file>
+npx prettier --write -- <file>
 
 # STEP 2: Check structural rules
 npm run lint:markdown
@@ -133,7 +134,7 @@ npm run lint:markdown
 # STEP 3: Fix any errors, then re-run Prettier if you made changes
 
 # STEP 4: Verify both pass
-npx prettier --check <file>
+npx prettier --check -- <file>
 npm run lint:markdown
 ```
 
@@ -205,7 +206,7 @@ After making changes:
 
 ```bash
 # 1. Format non-C# files with Prettier
-npx prettier --write <file>
+npx prettier --write -- <file>
 
 # 2. Format C# code with CSharpier
 dotnet tool run csharpier format .
@@ -224,6 +225,21 @@ npm run validate:prepush
 
 ## Common Mistakes
 
+### Wrong: Missing Final Newline
+
+Files must end with a newline character. Prettier will reject files without one. The pre-commit hook (step 5) auto-fixes this, but if you're editing files outside of git hooks:
+
+```bash
+# Check for missing final newlines
+npm run test:final-newline
+
+# Or use validate-formatting.sh
+./scripts/validate-formatting.sh
+
+# Auto-fix all missing newlines
+./scripts/validate-formatting.sh --fix
+```
+
 ### Wrong: Batching Formatting Until End
 
 ```text
@@ -236,14 +252,18 @@ npm run validate:prepush
 ### Correct: Format Immediately After Each
 
 ```text
-1. Edit file1.md -> npx prettier --write file1.md
-2. Edit file2.json -> npx prettier --write file2.json
+1. Edit file1.md -> npx prettier --write -- file1.md
+2. Edit file2.json -> npx prettier --write -- file2.json
 3. Edit file3.cs -> dotnet tool run csharpier format .
 ```
 
 ### Wrong: Only Formatting One Type
 
 Prettier formats JSON, YAML, and JavaScript too, not just markdown.
+
+### Wrong: Forgetting Config Files
+
+Files like `.devcontainer/devcontainer.json`, `.config/dotnet-tools.json`, and `package.json` are all checked by prettier. When these files are updated (by tooling, CI, or manual edits), they must be formatted before committing.
 
 ### Wrong: Skipping Verification
 
@@ -257,7 +277,7 @@ The pre-push hook enforces all formatting. Commits will be REJECTED if files are
 
 If push fails:
 
-1. Run `npx prettier --write .` to fix non-C# files
+1. Run `npx prettier --write -- .` to fix non-C# files
 2. Run `dotnet tool run csharpier format .` to fix C# files
 3. Run `npm run eol:fix` to fix line endings
 4. Commit the formatting changes

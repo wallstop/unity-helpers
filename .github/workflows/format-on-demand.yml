@@ -82,13 +82,14 @@ jobs:
 
       - name: Apply Prettier fixes
         run: |
-          npx --yes prettier@3.7.4 --write "**/*.{md,markdown}"
-          npx --yes prettier@3.7.4 --write "**/*.{json,asmdef,asmref}"
-          npx --yes prettier@3.7.4 --write "**/*.{yml,yaml}"
+          npx --yes prettier@3.7.4 --write -- "**/*.{md,markdown}"
+          npx --yes prettier@3.7.4 --write -- "**/*.{json,jsonc,asmdef,asmref}"
+          npx --yes prettier@3.7.4 --write -- "**/*.js"
+          npx --yes prettier@3.7.4 --write -- "**/*.{yml,yaml}"
 
       - name: Apply markdownlint fixes
         run: |
-          npx --yes markdownlint-cli@0.46.0 "**/*.md" "**/*.markdown" --config .markdownlint.json --ignore-path .markdownlintignore --fix
+          npx --yes markdownlint-cli@0.46.0 --config .markdownlint.json --ignore-path .markdownlintignore --fix -- "**/*.md" "**/*.markdown"
 
       - name: Apply CSharpier formatting
         run: dotnet tool run csharpier format
@@ -114,6 +115,8 @@ jobs:
             **/*.md
             **/*.markdown
             **/*.json
+            **/*.jsonc
+            **/*.js
             **/*.asmdef
             **/*.asmref
 
@@ -130,7 +133,7 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git checkout -B "$BRANCH"
           # Stage only supported text files; avoid workflows to prevent permission issues
-          git add '**/*.cs' '**/*.md' '**/*.markdown' '**/*.json' '**/*.asmdef' '**/*.asmref'
+          git add '**/*.cs' '**/*.md' '**/*.markdown' '**/*.json' '**/*.jsonc' '**/*.js' '**/*.asmdef' '**/*.asmref'
           git commit -m "chore(format): apply requested formatting for PR #${{ steps.meta.outputs.pr }}"
           git remote add upstream "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git"
           git fetch upstream
@@ -228,13 +231,14 @@ jobs:
 
       - name: Apply Prettier fixes
         run: |
-          npx --yes prettier@3.7.4 --write "**/*.{md,markdown}"
-          npx --yes prettier@3.7.4 --write "**/*.{json,asmdef,asmref}"
-          npx --yes prettier@3.7.4 --write "**/*.{yml,yaml}"
+          npx --yes prettier@3.7.4 --write -- "**/*.{md,markdown}"
+          npx --yes prettier@3.7.4 --write -- "**/*.{json,jsonc,asmdef,asmref}"
+          npx --yes prettier@3.7.4 --write -- "**/*.js"
+          npx --yes prettier@3.7.4 --write -- "**/*.{yml,yaml}"
 
       - name: Apply markdownlint fixes
         run: |
-          npx --yes markdownlint-cli@0.46.0 "**/*.md" "**/*.markdown" --config .markdownlint.json --ignore-path .markdownlintignore --fix
+          npx --yes markdownlint-cli@0.46.0 --config .markdownlint.json --ignore-path .markdownlintignore --fix -- "**/*.md" "**/*.markdown"
 
       - name: Apply CSharpier formatting
         run: dotnet tool run csharpier format
@@ -260,6 +264,8 @@ jobs:
             **/*.md
             **/*.markdown
             **/*.json
+            **/*.jsonc
+            **/*.js
             **/*.asmdef
             **/*.asmref
 
@@ -276,7 +282,7 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git checkout -B "$BRANCH"
           # Stage only supported text files; avoid workflows to prevent permission issues
-          git add '**/*.cs' '**/*.md' '**/*.markdown' '**/*.json' '**/*.asmdef' '**/*.asmref'
+          git add '**/*.cs' '**/*.md' '**/*.markdown' '**/*.json' '**/*.jsonc' '**/*.js' '**/*.asmdef' '**/*.asmref'
           git commit -m "chore(format): apply requested formatting for PR #${{ steps.meta.outputs.pr }}"
           git remote add upstream "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git"
           git fetch upstream

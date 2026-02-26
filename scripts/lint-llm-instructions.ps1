@@ -185,16 +185,17 @@ if ($normalizedExpected -ne $normalizedCurrent) {
         $expectedFull = $expectedIndex -join "`n"
         # Replace the entire block including markers with the new generated content
         $newContent = $contextContent -replace $pattern, $expectedFull
-        
-        # Write back to file
-        Set-Content -Path $contextFile -Value $newContent -NoNewline
+
+        # Trim trailing whitespace and add exactly one LF (Markdown files require LF per .editorconfig)
+        $newContent = $newContent.TrimEnd() + "`n"
+        Set-Content -Path $contextFile -Value $newContent -NoNewline -Encoding UTF8
         Write-SuccessMsg "Skills index has been regenerated in context.md"
         
         # Re-run prettier to format
         Write-Info "Running prettier to format context.md..."
         Push-Location $repoRoot
         try {
-            npx --no-install prettier --write .llm/context.md 2>$null
+            npx --no-install prettier --write -- .llm/context.md 2>$null
         }
         finally {
             Pop-Location

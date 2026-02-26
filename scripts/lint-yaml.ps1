@@ -110,7 +110,7 @@ if ($VerboseOutput) {
 # Using $LASTEXITCODE directly after & operator with array splatting can be
 # unreliable in some PowerShell versions. This pattern ensures we get the
 # correct exit code by checking $LASTEXITCODE immediately after the call.
-$yamllintArgs = @('-c', $configFile)
+$yamllintArgs = @('-c', $configFile, '--')
 $yamllintArgs += $filesToLint
 
 $yamllintResult = $null

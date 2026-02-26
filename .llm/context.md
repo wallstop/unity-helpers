@@ -7,7 +7,7 @@ This document provides guidelines for AI assistants working with this repository
 ## Repository Overview
 
 **Package**: `com.wallstop-studios.unity-helpers`
-**Version**: 3.0.0
+**Version**: 3.2.0
 **Unity Version**: 2021.3+ (LTS)
 **License**: MIT
 **Repository**: <https://github.com/wallstop/unity-helpers>
@@ -83,7 +83,7 @@ Invoke these skills for specific tasks.
 **Regenerate with**: `pwsh -NoProfile -File scripts/generate-skills-index.ps1`
 
 <!-- BEGIN GENERATED SKILLS INDEX -->
-<!-- Generated: 2026-01-25 19:56:30 UTC -->
+<!-- Generated: 2026-02-25 22:17:59 UTC -->
 <!-- Command: pwsh -NoProfile -File scripts/generate-skills-index.ps1 -->
 
 ### Core Skills (Always Consider)
@@ -104,6 +104,7 @@ Invoke these skills for specific tasks.
 | [documentation-consistency](./skills/documentation-consistency.md)                           | When writing or reviewing documentation                          |
 | [editor-caching-patterns](./skills/editor-caching-patterns.md)                               | Caching strategies for Editor code                               |
 | [formatting](./skills/formatting.md)                                                         | After ANY file change (CSharpier/Prettier)                       |
+| [formatting-and-linting](./skills/formatting-and-linting.md)                                 | Before committing, after editing files                           |
 | [git-hook-patterns](./skills/git-hook-patterns.md)                                           | Pre-commit hook safety and configuration                         |
 | [git-safe-operations](./skills/git-safe-operations.md)                                       | Scripts or hooks that interact with git index                    |
 | [git-staging-helpers](./skills/git-staging-helpers.md)                                       | PowerShell/Bash helpers for safe git staging                     |
@@ -290,7 +291,7 @@ See [create-csharp-file](./skills/create-csharp-file.md) for detailed rules. Key
 Run formatters and linters **immediately after each file change**, not batched at task end:
 
 - **C# files**: `dotnet tool run csharpier format .`
-- **Non-C# files** (`.md`, `.json`, `.yaml`, `.yml`): `npx prettier --write <file>`
+- **Non-C# files** (`.md`, `.json`, `.yaml`, `.yml`): `npx prettier --write -- <file>`
 - **Markdown**: `npm run lint:docs` + `npm run lint:markdown`
 - **YAML**: `npm run lint:yaml` (then `actionlint` for workflows)
 - **Spelling**: `npm run lint:spelling` (add valid terms to `cspell.json`)
@@ -312,6 +313,8 @@ See [formatting](./skills/formatting.md) and [validate-before-commit](./skills/v
 - Never use `((var++))` in bash with `set -e`; use `var=$((var + 1))`
 - Line endings must be synchronized across `.gitattributes`, `.prettierrc.json`, `.yamllint.yaml`, `.editorconfig`
 - Git hook regex patterns use single backslashes, not double-escaped
+- When adding formatter support for a new language, add explicit `[language]` entry in `devcontainer.json` formatter assignments even if the global default would cover it
+- When adding new script calls to git hooks, update the hook's step comments AND the "What the Hook Does" list in [formatting-and-linting](./skills/formatting-and-linting.md)
 
 ---
 

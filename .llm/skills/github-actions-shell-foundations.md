@@ -302,6 +302,53 @@ run: |
 
 ---
 
+### Pattern 11: End-of-Options Separator for File Arguments
+
+When passing file lists to CLI tools, ALWAYS insert `--` before the file arguments to prevent option injection.
+
+```bash
+# BAD: A filename like '--plugin=evil.js' is treated as a flag
+run: |
+  set -euo pipefail
+  npx prettier --write "${FILES[@]}"
+
+# GOOD: `--` stops option parsing; everything after is a filename
+run: |
+  set -euo pipefail
+  npx prettier --write -- "${FILES[@]}"
+  markdownlint --fix --config .markdownlint.json -- "${FILES[@]}"
+  yamllint -c .yamllint.yaml -- "${FILES[@]}"
+```
+
+**Applies to**: `prettier`, `markdownlint`, `yamllint`, `eslint`, `csharpier`, and any tool that accepts a file list. Without `--`, an attacker-controlled filename like `--config=malicious.yml` becomes a CLI flag, enabling option injection.
+
+#### File-Reading Commands Also Need `--`
+
+Commands that read or inspect file contents are equally vulnerable:
+
+```bash
+# BAD: Filename starting with '-' is interpreted as option
+run: |
+  tail -n 1 "$file"
+  head -c 10 "$file"
+  cat "$file"
+  od -c "$file"
+
+# GOOD: `--` ensures filename is never parsed as an option
+run: |
+  set -euo pipefail
+  tail -n 1 -- "$file"
+  head -c 10 -- "$file"
+  cat -- "$file"
+  od -c -- "$file"
+```
+
+**Common vulnerable commands**: `tail`, `head`, `cat`, `od`, `wc`, `sort`, `uniq`, `cut`, `tr`, `file`, `stat`, `touch`, `chmod`, `chown`, `mv`, `cp`, `rm`, `ln`.
+
+**Rule of thumb**: If a command takes a filename argument, use `--` before it.
+
+---
+
 ## GitHub Actions Annotations
 
 Use workflow commands for structured output:

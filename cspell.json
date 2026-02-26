@@ -493,6 +493,7 @@
     {
       "name": "tech-terms",
       "words": [
+        "gtk",
         "GC",
         "GFM",
         "IL2CPP",
