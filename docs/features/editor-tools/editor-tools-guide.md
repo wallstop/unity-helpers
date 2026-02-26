@@ -1978,8 +1978,8 @@ For detailed documentation on validation attributes, see [Inspector Validation A
 
 ### ScriptableObject Singleton Creator
 
-**Type:** Automatic (runs on editor load)
-**Menu:** N/A (automatic) - Uses `[InitializeOnLoad]`
+- **Type:** Automatic (runs on editor load)
+- **Menu:** N/A (automatic) - Uses `[InitializeOnLoad]`
 
 **Purpose:** Automatically creates and maintains singleton ScriptableObject assets.
 
@@ -2051,8 +2051,8 @@ Assets/
 
 ### Sprite Label Processor
 
-**Type:** Automatic asset processor
-**Menu:** N/A (automatic) - Uses `AssetPostprocessor`
+- **Type:** Automatic asset processor
+- **Menu:** N/A (automatic) - Uses `AssetPostprocessor`
 
 **Purpose:** Automatically maintains a cache of all sprite labels in the project for fast lookup in editor tools.
 
@@ -2091,8 +2091,8 @@ string[] labels = SpriteLabelCache.GetAllLabels();
 
 ### Request Script Compilation
 
-**Menu:** `Tools > Wallstop Studios > Unity Helpers > Request Script Compilation`
-**Shortcut:** `Ctrl/Cmd + Alt + R` (configurable in Unity's Shortcut Manager)
+- **Menu:** `Tools > Wallstop Studios > Unity Helpers > Request Script Compilation`
+- **Shortcut:** `Ctrl/Cmd + Alt + R` (configurable in Unity's Shortcut Manager)
 
 **Purpose:** Manually trigger Unity script recompilation without needing to modify files or restart the editor.
 
@@ -2275,8 +2275,8 @@ RelationalTypeMetadata relational = cache.GetRelationalMetadataForType(typeof(My
 
 ### Editor Utilities
 
-**Type:** Static utility class
-**Namespace:** `WallstopStudios.UnityHelpers.Editor.Utils`
+- **Type:** Static utility class
+- **Namespace:** `WallstopStudios.UnityHelpers.Editor.Utils`
 
 **Purpose:** Helper methods for Unity Editor operations.
 

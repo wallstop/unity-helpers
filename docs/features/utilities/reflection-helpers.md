@@ -126,110 +126,110 @@ Usage examples
 
 1. Fast field get/set (boxed)
 
-```csharp
-public sealed class Player { public int Score; }
+   ```csharp
+   public sealed class Player { public int Score; }
 
-FieldInfo score = typeof(Player).GetField("Score");
-var getScore = ReflectionHelpers.GetFieldGetter(score);     // object -> object
-var setScore = ReflectionHelpers.GetFieldSetter(score);     // (object, object) -> void
+   FieldInfo score = typeof(Player).GetField("Score");
+   var getScore = ReflectionHelpers.GetFieldGetter(score);     // object -> object
+   var setScore = ReflectionHelpers.GetFieldSetter(score);     // (object, object) -> void
 
-var p = new Player();
-setScore(p, 42);
-UnityEngine.Debug.Log((int)getScore(p)); // 42
-```
+   var p = new Player();
+   setScore(p, 42);
+   UnityEngine.Debug.Log((int)getScore(p)); // 42
+   ```
 
-1. Struct note: use typed ref setter
+2. Struct note: use typed ref setter
 
-```csharp
-public struct Stat { public int Value; }
-FieldInfo valueField = typeof(Stat).GetField("Value");
+   ```csharp
+   public struct Stat { public int Value; }
+   FieldInfo valueField = typeof(Stat).GetField("Value");
 
-// Prefer typed ref setter for structs
-var setValue = ReflectionHelpers.GetFieldSetter<Stat, int>(valueField);
-Stat s = default;
-setValue(ref s, 100);
-// s.Value == 100
-```
+   // Prefer typed ref setter for structs
+   var setValue = ReflectionHelpers.GetFieldSetter<Stat, int>(valueField);
+   Stat s = default;
+   setValue(ref s, 100);
+   // s.Value == 100
+   ```
 
-1. Typed property getter
+3. Typed property getter
 
-```csharp
-var prop = typeof(Camera).GetProperty("orthographicSize");
-var getSize = ReflectionHelpers.GetPropertyGetter<Camera, float>(prop);
-float size = getSize(UnityEngine.Camera.main);
-```
+   ```csharp
+   var prop = typeof(Camera).GetProperty("orthographicSize");
+   var getSize = ReflectionHelpers.GetPropertyGetter<Camera, float>(prop);
+   float size = getSize(UnityEngine.Camera.main);
+   ```
 
-1. Typed property setter (variant)
+4. Typed property setter (variant)
 
-```csharp
-var prop = typeof(TestPropertyClass).GetProperty("InstanceProperty");
-var set = ReflectionHelpers.GetPropertySetter<TestPropertyClass, int>(prop);
-var obj = new TestPropertyClass();
-set(obj, 10);
-```
+   ```csharp
+   var prop = typeof(TestPropertyClass).GetProperty("InstanceProperty");
+   var set = ReflectionHelpers.GetPropertySetter<TestPropertyClass, int>(prop);
+   var obj = new TestPropertyClass();
+   set(obj, 10);
+   ```
 
-1. Fast static method invoker (two params, typed)
+5. Fast static method invoker (two params, typed)
 
-```csharp
-MethodInfo concat = typeof(string).GetMethod(
-    nameof(string.Concat), new[] { typeof(string), typeof(string) }
-);
-var concat2 = ReflectionHelpers.GetStaticMethodInvoker<string, string, string>(concat);
-string joined = concat2("Hello ", "World");
-```
+   ```csharp
+   MethodInfo concat = typeof(string).GetMethod(
+       nameof(string.Concat), new[] { typeof(string), typeof(string) }
+   );
+   var concat2 = ReflectionHelpers.GetStaticMethodInvoker<string, string, string>(concat);
+   string joined = concat2("Hello ", "World");
+   ```
 
-1. Low‑allocation constructors
+6. Low‑allocation constructors
 
-```csharp
-// Parameterless constructor
-var newList = ReflectionHelpers.GetParameterlessConstructor<List<int>>();
-List<int> list = newList();
+   ```csharp
+   // Parameterless constructor
+   var newList = ReflectionHelpers.GetParameterlessConstructor<List<int>>();
+   List<int> list = newList();
 
-// Constructor via ConstructorInfo
-ConstructorInfo ci = typeof(Dictionary<string, int>)
-    .GetConstructor(new[] { typeof(int) });
-var ctor = ReflectionHelpers.GetConstructor(ci);
-var dict = (Dictionary<string, int>)ctor(new object[] { 128 });
-```
+   // Constructor via ConstructorInfo
+   ConstructorInfo ci = typeof(Dictionary<string, int>)
+       .GetConstructor(new[] { typeof(int) });
+   var ctor = ReflectionHelpers.GetConstructor(ci);
+   var dict = (Dictionary<string, int>)ctor(new object[] { 128 });
+   ```
 
-1. Collection creators and HashSet adder
+7. Collection creators and HashSet adder
 
-```csharp
-var makeArray = ReflectionHelpers.GetArrayCreator(typeof(Vector3));
-Array positions = makeArray(256); // Vector3[256]
+   ```csharp
+   var makeArray = ReflectionHelpers.GetArrayCreator(typeof(Vector3));
+   Array positions = makeArray(256); // Vector3[256]
 
-IList names = ReflectionHelpers.CreateList(typeof(string), 64); // List<string>
+   IList names = ReflectionHelpers.CreateList(typeof(string), 64); // List<string>
 
-object set = ReflectionHelpers.CreateHashSet(typeof(int), 0); // HashSet<int>
-var add = ReflectionHelpers.GetHashSetAdder(typeof(int));
-add(set, 1);
-add(set, 1);
-add(set, 2);
-// set contains {1, 2}
-```
+   object set = ReflectionHelpers.CreateHashSet(typeof(int), 0); // HashSet<int>
+   var add = ReflectionHelpers.GetHashSetAdder(typeof(int));
+   add(set, 1);
+   add(set, 1);
+   add(set, 2);
+   // set contains {1, 2}
+   ```
 
-1. Typed collection creators
+8. Typed collection creators
 
-```csharp
-var makeArrayT = ReflectionHelpers.GetArrayCreator<int>();
-int[] ints = makeArrayT(128);
+   ```csharp
+   var makeArrayT = ReflectionHelpers.GetArrayCreator<int>();
+   int[] ints = makeArrayT(128);
 
-var makeListT = ReflectionHelpers.GetListCreator<string>();
-IList strings = makeListT();
+   var makeListT = ReflectionHelpers.GetListCreator<string>();
+   IList strings = makeListT();
 
-var makeSetT = ReflectionHelpers.GetHashSetWithCapacityCreator<int>();
-HashSet<int> intsSet = makeSetT(64);
-var addT = ReflectionHelpers.GetHashSetAdder<int>();
-addT(intsSet, 5);
-```
+   var makeSetT = ReflectionHelpers.GetHashSetWithCapacityCreator<int>();
+   HashSet<int> intsSet = makeSetT(64);
+   var addT = ReflectionHelpers.GetHashSetAdder<int>();
+   addT(intsSet, 5);
+   ```
 
-1. Safe attribute scanning
+9. Safe attribute scanning
 
-```csharp
-bool hasObsolete = ReflectionHelpers.HasAttributeSafe<ObsoleteAttribute>(typeof(MyComponent));
-var values = ReflectionHelpers.GetAllAttributeValuesSafe(typeof(MyComponent));
-// e.g., values["Obsolete"] -> ObsoleteAttribute instance
-```
+   ```csharp
+   bool hasObsolete = ReflectionHelpers.HasAttributeSafe<ObsoleteAttribute>(typeof(MyComponent));
+   var values = ReflectionHelpers.GetAllAttributeValuesSafe(typeof(MyComponent));
+   // e.g., values["Obsolete"] -> ObsoleteAttribute instance
+   ```
 
 Performance tips
 

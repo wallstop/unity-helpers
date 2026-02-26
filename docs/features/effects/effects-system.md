@@ -113,45 +113,44 @@ Instant effects modify base values permanently and return `null` instead of a ha
 
 1. Define stats:
 
-```csharp
-public class CharacterStats : AttributesComponent
-{
-    public Attribute MaxHealth = 100f;
-    public Attribute Speed = 5f;
-    public Attribute AttackDamage = 10f;
-    public Attribute Defense = 10f;
-}
-```
+   ```csharp
+   public class CharacterStats : AttributesComponent
+   {
+       public Attribute MaxHealth = 100f;
+       public Attribute Speed = 5f;
+       public Attribute AttackDamage = 10f;
+       public Attribute Defense = 10f;
+   }
+   ```
 
-1. Create an `AttributeEffect` asset (Project view → Create → Wallstop Studios → Unity Helpers → Attribute Effect):
+2. Create an `AttributeEffect` asset (Project view → Create → Wallstop Studios → Unity Helpers → Attribute Effect):
+   - modifications: e.g., `{ attribute: "Speed", action: Multiplication, value: 1.5f }`
+   - durationType: `Duration` with `duration = 5`
+   - resetDurationOnReapplication: true to refresh timer on re-apply
+   - effectTags: e.g., `[ "Haste" ]`
+   - cosmeticEffects: prefab with `CosmeticEffectData` + `CosmeticEffectComponent` scripts
 
-- modifications: e.g., `{ attribute: "Speed", action: Multiplication, value: 1.5f }`
-- durationType: `Duration` with `duration = 5`
-- resetDurationOnReapplication: true to refresh timer on re-apply
-- effectTags: e.g., `[ "Haste" ]`
-- cosmeticEffects: prefab with `CosmeticEffectData` + `CosmeticEffectComponent` scripts
+3. Apply/remove at runtime:
 
-1. Apply/remove at runtime:
+   ```csharp
+   GameObject player = ...;
+   AttributeEffect haste = ...; // ScriptableObject reference
+   EffectHandle? handle = player.ApplyEffect(haste);
+   // ... later ...
+   if (handle.HasValue)
+   {
+       player.RemoveEffect(handle.Value);
+   }
+   ```
 
-```csharp
-GameObject player = ...;
-AttributeEffect haste = ...; // ScriptableObject reference
-EffectHandle? handle = player.ApplyEffect(haste);
-// ... later ...
-if (handle.HasValue)
-{
-    player.RemoveEffect(handle.Value);
-}
-```
+4. Query tags anywhere:
 
-1. Query tags anywhere:
-
-```csharp
-if (player.HasTag("Stunned"))
-{
-    // Disable input, play animation, etc.
-}
-```
+   ```csharp
+   if (player.HasTag("Stunned"))
+   {
+       // Disable input, play animation, etc.
+   }
+   ```
 
 ## Understanding Attributes: What to Model and What to Avoid
 
@@ -366,11 +365,11 @@ public class CombatFeedback : MonoBehaviour
 
 ### Benefits of Tag-Only Usage
 
-✅ **Simpler setup** - No AttributesComponent required
-✅ **Automatic cleanup** - Duration-based tags clean up themselves
-✅ **Reference counting** - Multiple sources work naturally
-✅ **Cosmetic integration** - Visual effects lifecycle managed automatically
-✅ **System decoupling** - Any system can query tags without dependencies
+- ✅ **Simpler setup** - No AttributesComponent required
+- ✅ **Automatic cleanup** - Duration-based tags clean up themselves
+- ✅ **Reference counting** - Multiple sources work naturally
+- ✅ **Cosmetic integration** - Visual effects lifecycle managed automatically
+- ✅ **System decoupling** - Any system can query tags without dependencies
 
 ### Tag-Only Patterns
 
@@ -992,18 +991,18 @@ void UpdateEffectTooltip(EffectType effectType)
 
 **Benefits:**
 
-✅ **Type safety** - Compiler catches typos and missing effects
-✅ **Refactoring** - Rename effects across the entire codebase reliably
-✅ **Autocomplete** - IDE suggests all available effects
-✅ **Performance** - Dictionary lookup avoids Resources.Load overhead
-✅ **No magic strings** - Effect references are code symbols, not brittle strings
+- ✅ **Type safety** - Compiler catches typos and missing effects
+- ✅ **Refactoring** - Rename effects across the entire codebase reliably
+- ✅ **Autocomplete** - IDE suggests all available effects
+- ✅ **Performance** - Dictionary lookup avoids Resources.Load overhead
+- ✅ **No magic strings** - Effect references are code symbols, not brittle strings
 
 **Drawbacks:**
 
-⚠️ **Centralization** - All effects must be registered in the enum and registry
-⚠️ **Designer friction** - Programmers must add enum entries for new effects
-⚠️ **Scalability** - With 100+ effects, enum becomes unwieldy (consider categories)
-⚠️ **Asset decoupling** - Effects are tied to code enum, harder to add via mods/DLC
+- ⚠️ **Centralization** - All effects must be registered in the enum and registry
+- ⚠️ **Designer friction** - Programmers must add enum entries for new effects
+- ⚠️ **Scalability** - With 100+ effects, enum becomes unwieldy (consider categories)
+- ⚠️ **Asset decoupling** - Effects are tied to code enum, harder to add via mods/DLC
 
 **When to Use:**
 

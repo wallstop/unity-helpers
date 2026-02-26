@@ -41,9 +41,9 @@ Controls how many items are shown per page in various UI elements.
 
 ### StringInListPageSize
 
-**Default:** 25
-**Range:** 5 - 500
-**Applies to:** `[StringInList]` attribute
+- **Default:** 25
+- **Range:** 5 - 500
+- **Applies to:** `[StringInList]` attribute
 
 **Description:** Number of string options shown per page in the dropdown.
 
@@ -58,9 +58,9 @@ public string sceneName;  // Uses StringInListPageSize
 
 ### SerializableSetPageSize
 
-**Default:** 15
-**Range:** 5 - 500
-**Applies to:** `SerializableHashSet<T>`, `SerializableSortedSet<T>`
+- **Default:** 15
+- **Range:** 5 - 500
+- **Applies to:** `SerializableHashSet<T>`, `SerializableSortedSet<T>`
 
 **Description:** Number of set elements shown per page in the inspector.
 
@@ -74,8 +74,8 @@ public SerializableHashSet<string> items;  // Uses SerializableSetPageSize
 
 ### SerializableSetStartCollapsed
 
-**Default:** On  
-**Applies to:** `SerializableHashSet<T>`, `SerializableSortedSet<T>`
+- **Default:** On
+- **Applies to:** `SerializableHashSet<T>`, `SerializableSortedSet<T>`
 
 **Description:** Controls whether SerializableSet inspectors start collapsed the first time they are drawn. When enabled, sets render as a single foldout header until the user expands them; when disabled, the inspector opens automatically. This is only a default—explicit script/test changes to `SerializedProperty.isExpanded` or `[WSerializableCollectionFoldout]` overrides still win.
 
@@ -83,9 +83,9 @@ public SerializableHashSet<string> items;  // Uses SerializableSetPageSize
 
 ### SerializableDictionaryPageSize
 
-**Default:** 15
-**Range:** 5 - 250
-**Applies to:** `SerializableDictionary<TKey, TValue>`, `SerializableSortedDictionary<TKey, TValue>`
+- **Default:** 15
+- **Range:** 5 - 250
+- **Applies to:** `SerializableDictionary<TKey, TValue>`, `SerializableSortedDictionary<TKey, TValue>`
 
 **Description:** Number of dictionary entries shown per page in the inspector.
 
@@ -99,8 +99,8 @@ public SerializableDictionary<string, GameObject> prefabs;  // Uses Serializable
 
 ### SerializableDictionaryStartCollapsed
 
-**Default:** On  
-**Applies to:** `SerializableDictionary<TKey, TValue>`, `SerializableSortedDictionary<TKey, TValue>`
+- **Default:** On
+- **Applies to:** `SerializableDictionary<TKey, TValue>`, `SerializableSortedDictionary<TKey, TValue>`
 
 **Description:** Determines whether SerializableDictionary inspectors begin collapsed before any user interaction. Disable this to have dictionaries open automatically in newly created inspectors. Like the set toggle, this only establishes the default; `[WSerializableCollectionFoldout]` or manual changes to `SerializedProperty.isExpanded` take precedence on a per-field basis.
 
@@ -108,8 +108,8 @@ public SerializableDictionary<string, GameObject> prefabs;  // Uses Serializable
 
 ### SerializableSetFoldoutTweenEnabled
 
-**Default:** On  
-**Applies to:** `SerializableHashSet<T>`
+- **Default:** On
+- **Applies to:** `SerializableHashSet<T>`
 
 **Description:** Controls whether the manual entry foldout in SerializableSet inspectors animates when expanding or collapsing.
 
@@ -117,9 +117,9 @@ public SerializableDictionary<string, GameObject> prefabs;  // Uses Serializable
 
 ### SerializableSetFoldoutSpeed
 
-**Default:** 2  
-**Range:** 2 - 12  
-**Applies to:** `SerializableHashSet<T>`
+- **Default:** 2
+- **Range:** 2 - 12
+- **Applies to:** `SerializableHashSet<T>`
 
 **Description:** Animation speed for the SerializableSet manual entry foldout when `SerializableSetFoldoutTweenEnabled` is enabled.
 
@@ -127,8 +127,8 @@ public SerializableDictionary<string, GameObject> prefabs;  // Uses Serializable
 
 ### SerializableSortedSetFoldoutTweenEnabled
 
-**Default:** On  
-**Applies to:** `SerializableSortedSet<T>`
+- **Default:** On
+- **Applies to:** `SerializableSortedSet<T>`
 
 **Description:** Controls whether the manual entry foldout in SerializableSortedSet inspectors animate when expanding or collapsing.
 
@@ -136,9 +136,9 @@ public SerializableDictionary<string, GameObject> prefabs;  // Uses Serializable
 
 ### SerializableSortedSetFoldoutSpeed
 
-**Default:** 2  
-**Range:** 2 - 12  
-**Applies to:** `SerializableSortedSet<T>`
+- **Default:** 2
+- **Range:** 2 - 12
+- **Applies to:** `SerializableSortedSet<T>`
 
 **Description:** Animation speed for the SerializableSortedSet manual entry foldout when `SerializableSortedSetFoldoutTweenEnabled` is enabled.
 
@@ -146,9 +146,9 @@ public SerializableDictionary<string, GameObject> prefabs;  // Uses Serializable
 
 ### EnumToggleButtonsPageSize
 
-**Default:** 15
-**Range:** 5 - 50
-**Applies to:** `[WEnumToggleButtons]` attribute (when pagination enabled)
+- **Default:** 15
+- **Range:** 5 - 50
+- **Applies to:** `[WEnumToggleButtons]` attribute (when pagination enabled)
 
 **Description:** Number of toggle buttons shown per page for enums with many values.
 
@@ -163,9 +163,9 @@ public ManyOptionsEnum options;  // Uses EnumToggleButtonsPageSize
 
 ### WButtonPageSize
 
-**Default:** 6
-**Range:** 1 - 20
-**Applies to:** `[WButton]` attribute (grouped by draw order)
+- **Default:** 6
+- **Range:** 1 - 20
+- **Applies to:** `[WButton]` attribute (grouped by draw order)
 
 **Description:** Number of button actions shown per page.
 
@@ -185,9 +185,9 @@ private void Action1() { }
 
 ### WButtonHistorySize
 
-**Default:** 5
-**Range:** 1 - 10
-**Applies to:** `[WButton]` methods with return values
+- **Default:** 5
+- **Range:** 1 - 10
+- **Applies to:** `[WButton]` methods with return values
 
 **Description:** Number of recent results to keep per method per target.
 
@@ -205,9 +205,9 @@ private int CustomHistory() => Random.Range(1, 100);
 
 ### WButtonPlacement
 
-**Default:** Bottom
-**Options:** Top, Bottom
-**Applies to:** `[WButton]` buttons using `groupPlacement: WButtonGroupPlacement.UseGlobalSetting`
+- **Default:** Bottom
+- **Options:** Top, Bottom
+- **Applies to:** `[WButton]` buttons using `groupPlacement: WButtonGroupPlacement.UseGlobalSetting`
 
 **Description:** Default placement of buttons in the inspector.
 
@@ -224,9 +224,9 @@ private int CustomHistory() => Random.Range(1, 100);
 
 ### WButtonFoldoutBehavior
 
-**Default:** StartExpanded
-**Options:** Always, StartExpanded, StartCollapsed
-**Applies to:** `[WButton]` grouped buttons
+- **Default:** StartExpanded
+- **Options:** Always, StartExpanded, StartCollapsed
+- **Applies to:** `[WButton]` grouped buttons
 
 **Description:** Controls foldout behavior for button groups.
 
@@ -238,8 +238,8 @@ private int CustomHistory() => Random.Range(1, 100);
 
 ### WButtonFoldoutTweenEnabled
 
-**Default:** true
-**Applies to:** `[WButton]` grouped buttons
+- **Default:** true
+- **Applies to:** `[WButton]` grouped buttons
 
 **Description:** Enable smooth animation when expanding/collapsing button groups.
 
@@ -247,9 +247,9 @@ private int CustomHistory() => Random.Range(1, 100);
 
 ### WButtonFoldoutSpeed
 
-**Default:** 2.0
-**Range:** 2.0 - 12.0
-**Applies to:** `[WButton]` grouped buttons (when tween enabled)
+- **Default:** 2.0
+- **Range:** 2.0 - 12.0
+- **Applies to:** `[WButton]` grouped buttons (when tween enabled)
 
 **Description:** Animation speed for button group fold/unfold.
 
@@ -262,9 +262,9 @@ private int CustomHistory() => Random.Range(1, 100);
 
 ### WGroupAutoIncludeRowCount
 
-**Default:** 4
-**Range:** 0 - 32
-**Applies to:** `[WGroup]` attributes using `UseGlobalAutoInclude`
+- **Default:** 4
+- **Range:** 0 - 32
+- **Applies to:** `[WGroup]` attributes using `UseGlobalAutoInclude`
 
 **Description:** Default number of fields to auto-include in a WGroup.
 
@@ -288,8 +288,8 @@ public float mana;             // Field 2: in group (last field)
 
 ### WGroupStartCollapsed
 
-**Default:** true  
-**Applies to:** `[WGroup]` with `collapsible: true` when `startCollapsed` is omitted
+- **Default:** true
+- **Applies to:** `[WGroup]` with `collapsible: true` when `startCollapsed` is omitted
 
 **Description:** Controls the initial foldout state for collapsible WGroups. Disable this to have collapsible groups start expanded unless the attribute explicitly passes `startCollapsed: true`.
 
@@ -307,8 +307,8 @@ public float mana;             // Field 2: in group (last field)
 
 ### WGroupTweenEnabled
 
-**Default:** true
-**Applies to:** `[WGroup]` with `collapsible: true`
+- **Default:** true
+- **Applies to:** `[WGroup]` with `collapsible: true`
 
 **Description:** Enable smooth animation when expanding/collapsing groups.
 
@@ -316,9 +316,9 @@ public float mana;             // Field 2: in group (last field)
 
 ### WGroupTweenSpeed
 
-**Default:** 2.0
-**Range:** 2.0 - 12.0
-**Applies to:** `[WGroup]` with `collapsible: true` (when tween enabled)
+- **Default:** 2.0
+- **Range:** 2.0 - 12.0
+- **Applies to:** `[WGroup]` with `collapsible: true` (when tween enabled)
 
 **Description:** Animation speed for group fold/unfold.
 
@@ -330,9 +330,9 @@ Controls behavior for the `[WInLineEditor]` attribute that embeds nested inspect
 
 ### InlineEditorFoldoutBehavior
 
-**Default:** StartCollapsed
-**Options:** AlwaysExpanded, StartExpanded, StartCollapsed
-**Applies to:** `[WInLineEditor]` without explicit mode
+- **Default:** StartCollapsed
+- **Options:** AlwaysExpanded, StartExpanded, StartCollapsed
+- **Applies to:** `[WInLineEditor]` without explicit mode
 
 **Description:** Default foldout behavior for inline editors.
 
@@ -360,8 +360,8 @@ public AbilityConfig collapsedByDefault;
 
 ### InlineEditorFoldoutTweenEnabled
 
-**Default:** true
-**Applies to:** `[WInLineEditor]` with foldout modes
+- **Default:** true
+- **Applies to:** `[WInLineEditor]` with foldout modes
 
 **Description:** Enable smooth animation when expanding/collapsing inline editors.
 
@@ -369,9 +369,9 @@ public AbilityConfig collapsedByDefault;
 
 ### InlineEditorFoldoutSpeed
 
-**Default:** 2.0
-**Range:** 2.0 - 12.0
-**Applies to:** `[WInLineEditor]` with foldout modes (when tween enabled)
+- **Default:** 2.0
+- **Range:** 2.0 - 12.0
+- **Applies to:** `[WInLineEditor]` with foldout modes (when tween enabled)
 
 **Description:** Animation speed for inline editor fold/unfold.
 
@@ -386,9 +386,10 @@ Palette keys keep WButton and WEnumToggleButtons visuals consistent across the p
 
 ### WButtonCustomColors
 
-**Applies to:** `[WButton]` via the `colorKey` parameter  
-**Reserved keys:** `Default`, `Default-Light`, `Default-Dark`, `WDefault` (legacy)  
-**Description:** Each entry stores a button color and a readable text color. Reserved keys auto-sync to the current editor skin and cannot be deleted. Custom keys are ideal for highlighting dangerous or primary actions across multiple inspectors.  
+- **Applies to:** `[WButton]` via the `colorKey` parameter
+- **Reserved keys:** `Default`, `Default-Light`, `Default-Dark`, `WDefault` (legacy)
+- **Description:** Each entry stores a button color and a readable text color. Reserved keys auto-sync to the current editor skin and cannot be deleted. Custom keys are ideal for highlighting dangerous or primary actions across multiple inspectors.
+
 **Usage:**
 
 1. Expand **Color Palettes → WButton Custom Colors**.
@@ -402,9 +403,10 @@ private void Submit() { }
 
 ### WEnumToggleButtonsCustomColors
 
-**Applies to:** `[WEnumToggleButtons]` via the `ColorKey` property  
-**Reserved keys:** `Default`, `Default-Light`, `Default-Dark`  
-**Description:** Each entry defines four colors (selected background/text and inactive background/text). Use this dictionary to align enum toggle palettes with the rest of your UI or to clearly separate different tool contexts.  
+- **Applies to:** `[WEnumToggleButtons]` via the `ColorKey` property
+- **Reserved keys:** `Default`, `Default-Light`, `Default-Dark`
+- **Description:** Each entry defines four colors (selected background/text and inactive background/text). Use this dictionary to align enum toggle palettes with the rest of your UI or to clearly separate different tool contexts.
+
 **Usage:** Add a key under **WEnumToggleButtons Custom Colors**, then assign it per field:
 
 ```csharp
