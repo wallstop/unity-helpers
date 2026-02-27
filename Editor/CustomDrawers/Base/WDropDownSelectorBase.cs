@@ -10,6 +10,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers.Base
     using UnityEngine;
     using UnityEngine.UIElements;
     using WallstopStudios.UnityHelpers.Editor.Core.Helper;
+    using WallstopStudios.UnityHelpers.Editor.CustomDrawers.Utils;
     using WallstopStudios.UnityHelpers.Editor.Settings;
     using WallstopStudios.UnityHelpers.Editor.Styles;
     using WallstopStudios.UnityHelpers.Utils;
@@ -69,6 +70,23 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers.Base
         protected abstract string GetDisplayLabel(int optionIndex);
 
         /// <summary>
+        /// Gets the normalized display label for the option at the specified index.
+        /// Applies a fallback of "(Option N)" when the raw label is null or empty,
+        /// ensuring consistent behavior across rendering, search, and suggestion logic.
+        /// </summary>
+        /// <param name="optionIndex">The index of the option.</param>
+        /// <returns>The normalized display label, never null or empty.</returns>
+        protected string GetNormalizedDisplayLabel(int optionIndex)
+        {
+            string label = GetDisplayLabel(optionIndex);
+            if (string.IsNullOrEmpty(label))
+            {
+                return DropDownShared.GetFallbackOptionLabel(optionIndex);
+            }
+            return label;
+        }
+
+        /// <summary>
         /// Gets the tooltip for the option at the specified index.
         /// Return null or empty string if no tooltip is needed.
         /// </summary>
@@ -116,9 +134,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers.Base
         /// <returns>True if the option matches the search.</returns>
         protected virtual bool MatchesSearch(int optionIndex, string searchTerm)
         {
-            string label = GetDisplayLabel(optionIndex);
-            return !string.IsNullOrEmpty(label)
-                && label.StartsWith(searchTerm, StringComparison.OrdinalIgnoreCase);
+            string label = GetNormalizedDisplayLabel(optionIndex);
+            return label.StartsWith(searchTerm, StringComparison.OrdinalIgnoreCase);
         }
 
         /// <summary>
@@ -549,7 +566,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers.Base
             for (int i = startIndex; i < endIndex; i++)
             {
                 int optionIndex = hasSearch ? _filteredIndices[i] : i;
-                string displayLabel = GetDisplayLabel(optionIndex);
+                string displayLabel = GetNormalizedDisplayLabel(optionIndex);
                 _pageOptionIndices.Add(optionIndex);
                 _pageChoices.Add(displayLabel);
             }
@@ -560,7 +577,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers.Base
             string dropdownTooltip = string.Empty;
             if (selectedOptionIndex >= 0 && selectedOptionIndex < OptionCount)
             {
-                dropdownValue = GetDisplayLabel(selectedOptionIndex);
+                dropdownValue = GetNormalizedDisplayLabel(selectedOptionIndex);
                 dropdownTooltip = GetTooltip(selectedOptionIndex);
             }
 
@@ -688,10 +705,9 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers.Base
 
             bool searchVisible = hasSearch && !string.IsNullOrEmpty(_searchText);
             int optionIndex = _filteredIndices[0];
-            string optionLabel = GetDisplayLabel(optionIndex);
+            string optionLabel = GetNormalizedDisplayLabel(optionIndex);
             bool prefixMatch =
                 searchVisible
-                && !string.IsNullOrEmpty(optionLabel)
                 && optionLabel.StartsWith(_searchText, StringComparison.OrdinalIgnoreCase);
 
             UpdateSuggestionDisplay(optionLabel, optionIndex, prefixMatch ? 0 : -1);
@@ -855,7 +871,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers.Base
 
             for (int i = 0; i < OptionCount; i++)
             {
-                string label = GetDisplayLabel(i);
+                string label = GetNormalizedDisplayLabel(i);
                 if (string.Equals(label, optionLabel, StringComparison.Ordinal))
                 {
                     return i;

@@ -416,6 +416,56 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             Assert.That(options.Length, Is.EqualTo(0));
         }
 
+        [Test]
+        public void SelectorWithUnmatchedStringDefaultsToFirstOption()
+        {
+            StringInListStringOptionsAsset asset =
+                CreateScriptableObject<StringInListStringOptionsAsset>();
+            asset.state = "NonExistent";
+            using SerializedObject serializedObject = new(asset);
+            serializedObject.Update();
+
+            SerializedProperty property = serializedObject.FindProperty(
+                nameof(StringInListStringOptionsAsset.state)
+            );
+            Assert.IsTrue(property != null, "Failed to locate state property.");
+
+            StringInListDrawer drawer = new();
+            AssignAttribute(drawer, new StringInListAttribute("Idle", "Run", "Jump"));
+            VisualElement element = drawer.CreatePropertyGUI(property);
+            Assert.IsInstanceOf<BaseField<string>>(element);
+
+            BaseField<string> selector = (BaseField<string>)element;
+            DropdownField dropdown = selector.Q<DropdownField>();
+            Assert.IsTrue(dropdown != null, "DropDown field was not created.");
+            Assert.That(dropdown.value, Is.EqualTo("Idle"));
+        }
+
+        [Test]
+        public void SelectorWithOutOfRangeIntegerDefaultsToFirstOption()
+        {
+            StringInListIntegerOptionsAsset asset =
+                CreateScriptableObject<StringInListIntegerOptionsAsset>();
+            asset.selection = 999;
+            using SerializedObject serializedObject = new(asset);
+            serializedObject.Update();
+
+            SerializedProperty property = serializedObject.FindProperty(
+                nameof(StringInListIntegerOptionsAsset.selection)
+            );
+            Assert.IsTrue(property != null, "Failed to locate integer-backed dropdown.");
+
+            StringInListDrawer drawer = new();
+            AssignAttribute(drawer, new StringInListAttribute("Low", "Medium", "High"));
+            VisualElement element = drawer.CreatePropertyGUI(property);
+            Assert.IsInstanceOf<BaseField<string>>(element);
+
+            BaseField<string> selector = (BaseField<string>)element;
+            DropdownField dropdown = selector.Q<DropdownField>();
+            Assert.IsTrue(dropdown != null, "DropDown field was not created.");
+            Assert.That(dropdown.value, Is.EqualTo("Low"));
+        }
+
         private static T GetAttributeFromProperty<T>(SerializedProperty property)
             where T : Attribute
         {

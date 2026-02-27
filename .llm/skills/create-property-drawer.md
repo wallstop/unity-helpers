@@ -373,6 +373,14 @@ public sealed class MyComplexTypeDrawer : PropertyDrawer
 
 ---
 
+## Display Label Normalization (Dropdown Drawers)
+
+When a dropdown renders a fallback for null/empty labels (e.g., `(Option N)`), **every** code path — rendering, search, filter, suggestion, selection — MUST use the same normalized label. Use a single `GetNormalizedDisplayLabel(int)` helper backed by `DropDownShared.GetFallbackOptionLabel(int)`. Never call raw `GetDisplayLabel` in search/filter/suggestion paths.
+
+See also: [defensive-editor-programming § Consistent Display Label Normalization](./defensive-editor-programming.md)
+
+---
+
 ## Critical Rules
 
 ### 1. `#if UNITY_EDITOR` Wrapping

@@ -370,6 +370,7 @@
         "WInLineEditor",
         "WInLineEditorMode",
         "WValueDropDown",
+        "wvalue",
         "WReadOnly",
         "WNotNull",
         "WSerializableCollectionFoldout",

@@ -24,8 +24,8 @@ Immutable version-4 GUID wrapper using two longs for efficient Unity serializati
 
 ### Why WGuid?
 
-**Problem:** Unity doesn't serialize `System.Guid` directly
-**Solution:** `WGuid` stores as two `long` fields (`_low` and `_high`) for fast Unity serialization
+- **Problem:** Unity doesn't serialize `System.Guid` directly
+- **Solution:** `WGuid` stores as two `long` fields (`_low` and `_high`) for fast Unity serialization
 
 **Performance:**
 
@@ -151,8 +151,8 @@ Unity-friendly dictionary with synchronized key/value arrays and custom drawer.
 
 ### Why SerializableDictionary?
 
-**Problem:** Unity doesn't serialize `Dictionary<TKey, TValue>`
-**Solution:** `SerializableDictionary<TKey, TValue>` maintains synchronized arrays for Unity serialization and a runtime dictionary for fast lookups
+- **Problem:** Unity doesn't serialize `Dictionary<TKey, TValue>`
+- **Solution:** `SerializableDictionary<TKey, TValue>` maintains synchronized arrays for Unity serialization and a runtime dictionary for fast lookups
 
 ---
 
@@ -268,9 +268,9 @@ public SerializableSortedDictionary<int, string> sortedDict;
 
 ### Serialization Support
 
-**Unity:** Synchronized `_keys` and `_values` arrays
-**JSON:** Standard dictionary format
-**Protobuf:** Supported via surrogates
+- **Unity:** Synchronized `_keys` and `_values` arrays
+- **JSON:** Standard dictionary format
+- **Protobuf:** Supported via surrogates
 
 ```csharp
 // JSON example
@@ -293,8 +293,8 @@ Unity-friendly set collections with duplicate detection and custom drawers.
 
 ### Why Serializable Sets?
 
-**Problem:** Unity doesn't serialize `HashSet<T>` or `SortedSet<T>`
-**Solution:** `SerializableHashSet<T>` and `SerializableSortedSet<T>` maintain a serialized array and runtime set for fast lookups
+- **Problem:** Unity doesn't serialize `HashSet<T>` or `SortedSet<T>`
+- **Solution:** `SerializableHashSet<T>` and `SerializableSortedSet<T>` maintain a serialized array and runtime set for fast lookups
 
 ---
 
@@ -433,9 +433,9 @@ public class ThresholdLogger : MonoBehaviour
 
 ### Serialization Support
 
-**Unity:** Serialized `_items` array
-**JSON:** Array format
-**Protobuf:** Supported via collection surrogates
+- **Unity:** Serialized `_items` array
+- **JSON:** Array format
+- **Protobuf:** Supported via collection surrogates
 
 ```csharp
 // JSON example
@@ -468,8 +468,8 @@ public class SerializableTypeExample : MonoBehaviour
 
 ### Why SerializableType?
 
-**Problem:** Unity doesn't serialize `System.Type`, and type names break when refactoring
-**Solution:** `SerializableType` stores assembly-qualified names with fallback resolution on rename/namespace changes
+- **Problem:** Unity doesn't serialize `System.Type`, and type names break when refactoring
+- **Solution:** `SerializableType` stores assembly-qualified names with fallback resolution on rename/namespace changes
 
 ---
 
@@ -557,8 +557,8 @@ bool equal = typeRef.Equals(new SerializableType(typeof(PlayerController)));
 
 **Scenario:** You rename `PlayerController` to `PlayerBehavior` or move it to a new namespace.
 
-**Standard Approach:** Type reference breaks, data loss
-**SerializableType:** Automatically resolves via assembly scanning and fallback matching
+- **Standard Approach:** Type reference breaks, data loss
+- **SerializableType:** Automatically resolves via assembly scanning and fallback matching
 
 **How it works:**
 
@@ -571,9 +571,9 @@ bool equal = typeRef.Equals(new SerializableType(typeof(PlayerController)));
 
 ### Serialization Support
 
-**Unity:** Stores assembly-qualified name string
-**JSON:** Type name string with custom converter
-**Protobuf:** Supported via string surrogates
+- **Unity:** Stores assembly-qualified name string
+- **JSON:** Type name string with custom converter
+- **Protobuf:** Supported via string surrogates
 
 ```csharp
 // JSON example
@@ -590,8 +590,8 @@ Unity-friendly nullable value type wrapper.
 
 ### Why SerializableNullable?
 
-**Problem:** Unity doesn't serialize `Nullable<T>` (e.g., `int?`, `float?`)
-**Solution:** `SerializableNullable<T>` wraps any value type with `HasValue` and `Value` properties
+- **Problem:** Unity doesn't serialize `Nullable<T>` (e.g., `int?`, `float?`)
+- **Solution:** `SerializableNullable<T>` wraps any value type with `HasValue` and `Value` properties
 
 ---
 
@@ -679,9 +679,9 @@ public SerializableNullable<Color> customColor;  // null = use preset
 
 ### Serialization Support
 
-**Unity:** Stores `_hasValue` bool and `_value` T fields
-**JSON:** Standard nullable format
-**Protobuf:** Supported via nullable surrogates
+- **Unity:** Stores `_hasValue` bool and `_value` T fields
+- **JSON:** Standard nullable format
+- **Protobuf:** Supported via nullable surrogates
 
 ```csharp
 // JSON example (has value)
