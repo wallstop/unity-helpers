@@ -10,7 +10,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Editor.CustomDrawers.Utils;
-    using WallstopStudios.UnityHelpers.Editor.Settings;
 
     /// <summary>
     /// Odin Inspector attribute drawer for <see cref="WValueDropDownAttribute"/>.
@@ -50,8 +49,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             object currentValue = Property.ValueEntry?.WeakSmartValue;
             int currentIndex = FindSelectedIndex(currentValue, options);
-
-            int pageSize = Mathf.Max(1, UnityHelpersSettings.GetStringInListPageLimit());
             string[] displayOptions = GetDisplayOptions(options);
 
             Rect controlRect = EditorGUILayout.GetControlRect(
@@ -59,36 +56,14 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 EditorGUIUtility.singleLineHeight
             );
 
-            if (options.Length > pageSize)
-            {
-                DrawPopupDropDown(
-                    controlRect,
-                    label,
-                    options,
-                    displayOptions,
-                    currentIndex,
-                    currentValue
-                );
-            }
-            else
-            {
-                DrawNativeDropDown(controlRect, label, options, displayOptions, currentIndex);
-            }
-        }
-
-        private void DrawNativeDropDown(
-            Rect position,
-            GUIContent label,
-            object[] options,
-            string[] displayOptions,
-            int currentIndex
-        )
-        {
-            int newIndex = EditorGUI.Popup(position, label.text, currentIndex, displayOptions);
-            if (newIndex >= 0 && newIndex < options.Length && newIndex != currentIndex)
-            {
-                ApplySelection(options[newIndex]);
-            }
+            DrawPopupDropDown(
+                controlRect,
+                label,
+                options,
+                displayOptions,
+                currentIndex,
+                currentValue
+            );
         }
 
         private void DrawPopupDropDown(

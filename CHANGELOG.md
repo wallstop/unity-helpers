@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 See [the roadmap](./docs/overview/roadmap.md) for details
 
+### Fixed
+
+- **Linux dropdown rendering phantom rows**: Replaced `EditorGUI.Popup` with `GenericMenu`-based dropdowns in `WValueDropDown`, `IntDropDown`, and `StringInList` drawers (including Odin Inspector variants) to eliminate phantom empty rows when selected index is -1 on Linux ([#209](https://github.com/wallstop/unity-helpers/issues/209))
+
 ## [3.2.1]
 
 ### Fixed

@@ -112,18 +112,68 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
 
             EditorGUI.BeginProperty(position, label, property);
-            string cacheKey = property.propertyPath;
-            string[] displayOptions = GetOrCreateDisplayLabels(cacheKey, options);
-            // EditorGUI.Popup renders phantom rows with index -1 on Linux; clamp is display-only (value applied on user selection)
-            int currentIndex = Mathf.Max(
-                0,
-                ResolveSelectedIndex(property, dropdownAttribute.ValueType, options)
+            Rect fieldRect = EditorGUI.PrefixLabel(position, label);
+            bool previousMixed = EditorGUI.showMixedValue;
+            EditorGUI.showMixedValue = property.hasMultipleDifferentValues;
+
+            string displayValue = ResolveDisplayValue(
+                property,
+                options,
+                dropdownAttribute,
+                out string tooltip
             );
-            int newIndex = EditorGUI.Popup(position, label.text, currentIndex, displayOptions);
-            if (newIndex >= 0 && newIndex < options.Length)
+            ReusableDropDownButtonContent.text = displayValue;
+            ReusableDropDownButtonContent.tooltip = tooltip;
+
+            if (
+                EditorGUI.DropdownButton(
+                    fieldRect,
+                    ReusableDropDownButtonContent,
+                    FocusType.Keyboard
+                )
+            )
             {
-                ApplyOption(property, options[newIndex]);
+                string cacheKey = property.propertyPath;
+                string[] displayLabels = GetOrCreateDisplayLabels(cacheKey, options);
+                int currentIndex = ResolveSelectedIndex(
+                    property,
+                    dropdownAttribute.ValueType,
+                    options
+                );
+
+                SerializedObject serializedObject = property.serializedObject;
+                string propertyPath = property.propertyPath;
+
+                GenericMenu menu = new();
+                for (int i = 0; i < options.Length; i++)
+                {
+                    int capturedIndex = i;
+                    bool isSelected = i == currentIndex;
+                    menu.AddItem(
+                        new GUIContent(displayLabels[i]),
+                        isSelected,
+                        () =>
+                        {
+                            serializedObject.Update();
+                            SerializedProperty prop = serializedObject.FindProperty(propertyPath);
+                            if (prop == null)
+                            {
+                                return;
+                            }
+
+                            Undo.RecordObjects(
+                                serializedObject.targetObjects,
+                                "Change ValueDropDown Selection"
+                            );
+                            ApplyOption(prop, options[capturedIndex]);
+                            serializedObject.ApplyModifiedProperties();
+                        }
+                    );
+                }
+                menu.DropDown(fieldRect);
             }
+
+            EditorGUI.showMixedValue = previousMixed;
             EditorGUI.EndProperty();
         }
 

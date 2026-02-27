@@ -11,7 +11,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
     using WallstopStudios.UnityHelpers.Editor.CustomDrawers.Utils;
-    using WallstopStudios.UnityHelpers.Editor.Settings;
 
     /// <summary>
     /// Odin Inspector attribute drawer for <see cref="StringInListAttribute"/>.
@@ -89,37 +88,20 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             int currentIndex = Array.IndexOf(options, currentString);
             string[] displayOptions = GetDisplayOptions(options, Attribute);
 
-            int pageSize = Mathf.Max(1, UnityHelpersSettings.GetStringInListPageLimit());
             Rect controlRect = EditorGUILayout.GetControlRect(
                 true,
                 EditorGUIUtility.singleLineHeight
             );
 
-            if (options.Length > pageSize)
-            {
-                DrawPopupDropDown(
-                    controlRect,
-                    label,
-                    options,
-                    displayOptions,
-                    currentIndex,
-                    currentString,
-                    ApplyStringSelection
-                );
-            }
-            else
-            {
-                int newIndex = EditorGUI.Popup(
-                    controlRect,
-                    label.text,
-                    currentIndex,
-                    displayOptions
-                );
-                if (newIndex >= 0 && newIndex < options.Length && newIndex != currentIndex)
-                {
-                    ApplyStringSelection(options[newIndex]);
-                }
-            }
+            DrawPopupDropDown(
+                controlRect,
+                label,
+                options,
+                displayOptions,
+                currentIndex,
+                currentString,
+                ApplyStringSelection
+            );
         }
 
         private void DrawIntIndexDropDown(GUIContent label, string[] options)
@@ -135,7 +117,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             string[] displayOptions = GetDisplayOptions(options, Attribute);
 
-            int pageSize = Mathf.Max(1, UnityHelpersSettings.GetStringInListPageLimit());
             Rect controlRect = EditorGUILayout.GetControlRect(
                 true,
                 EditorGUIUtility.singleLineHeight
@@ -146,31 +127,15 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     ? displayOptions[currentIndex]
                     : DropDownShared.GetCachedIntString(currentValue is int idx ? idx : -1);
 
-            if (options.Length > pageSize)
-            {
-                DrawPopupDropDown(
-                    controlRect,
-                    label,
-                    options,
-                    displayOptions,
-                    currentIndex,
-                    currentDisplay,
-                    ApplyIntIndexSelection
-                );
-            }
-            else
-            {
-                int newIndex = EditorGUI.Popup(
-                    controlRect,
-                    label.text,
-                    currentIndex,
-                    displayOptions
-                );
-                if (newIndex >= 0 && newIndex < options.Length && newIndex != currentIndex)
-                {
-                    ApplyIntIndexSelection(options[newIndex]);
-                }
-            }
+            DrawPopupDropDown(
+                controlRect,
+                label,
+                options,
+                displayOptions,
+                currentIndex,
+                currentDisplay,
+                ApplyIntIndexSelection
+            );
         }
 
         private void DrawSerializableTypeDropDown(
@@ -191,7 +156,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             int currentIndex = Array.IndexOf(options, currentAssemblyQualifiedName);
             string[] displayOptions = GetDisplayOptions(options, attribute);
 
-            int pageSize = Mathf.Max(1, UnityHelpersSettings.GetStringInListPageLimit());
             Rect controlRect = EditorGUILayout.GetControlRect(
                 true,
                 EditorGUIUtility.singleLineHeight
@@ -202,31 +166,15 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     ? displayOptions[currentIndex]
                     : "(None)";
 
-            if (options.Length > pageSize)
-            {
-                DrawPopupDropDown(
-                    controlRect,
-                    label,
-                    options,
-                    displayOptions,
-                    currentIndex,
-                    currentDisplay,
-                    ApplySerializableTypeSelection
-                );
-            }
-            else
-            {
-                int newIndex = EditorGUI.Popup(
-                    controlRect,
-                    label.text,
-                    currentIndex,
-                    displayOptions
-                );
-                if (newIndex >= 0 && newIndex < options.Length && newIndex != currentIndex)
-                {
-                    ApplySerializableTypeSelection(options[newIndex]);
-                }
-            }
+            DrawPopupDropDown(
+                controlRect,
+                label,
+                options,
+                displayOptions,
+                currentIndex,
+                currentDisplay,
+                ApplySerializableTypeSelection
+            );
         }
 
         private void DrawPopupDropDown(
