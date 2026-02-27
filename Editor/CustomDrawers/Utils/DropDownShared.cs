@@ -73,6 +73,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers.Utils
 
         private static readonly Dictionary<object, string> FormattedOptionCache = new();
         private static readonly Dictionary<Type, string[]> EnumDisplayNameCache = new();
+        private static readonly Dictionary<int, string> FallbackOptionLabelCache = new();
 
         private static float s_cachedOptionControlHeight = -1f;
         private static float s_cachedOptionRowHeight = -1f;
@@ -558,6 +559,22 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers.Utils
                 alignment = TextAnchor.MiddleCenter,
                 padding = new RectOffset(0, 0, 0, 0),
             };
+        }
+
+        /// <summary>
+        /// Returns a fallback display label for an option at the given index.
+        /// Used when the option's raw display label is null or empty.
+        /// </summary>
+        /// <param name="optionIndex">The index of the option.</param>
+        /// <returns>A fallback label in the format "(Option N)".</returns>
+        public static string GetFallbackOptionLabel(int optionIndex)
+        {
+            if (!FallbackOptionLabelCache.TryGetValue(optionIndex, out string cached))
+            {
+                cached = $"(Option {optionIndex})";
+                FallbackOptionLabelCache[optionIndex] = cached;
+            }
+            return cached;
         }
 
         /// <summary>

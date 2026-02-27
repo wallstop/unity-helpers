@@ -14,6 +14,7 @@ See [the roadmap](./docs/overview/roadmap.md) for details
 ### Fixed
 
 - **WValueDropDown empty rows in dropdown**: Fixed `WValueDropDown` and `StringInList` dropdowns showing empty/blank rows at the top of the dropdown list, particularly on Linux. Clamped invalid `-1` selected indices to `0` in `WValueDropDownDrawer` and `StringInListDrawer`, and hardened dropdown display logic to replace empty labels with descriptive fallback text ([#209](https://github.com/wallstop/unity-helpers/issues/209))
+- **Dropdown display label normalization**: Fixed search, filter, suggestion, and selected-value display in `WValueDropDown`, `StringInList`, and popup dropdown windows not applying the `(Option N)` fallback label consistently, causing items with empty display labels to be unsearchable and the wrong option to appear selected ([#213](https://github.com/wallstop/unity-helpers/pull/213))
 
 ## [3.1.9]
 

@@ -4,6 +4,7 @@
 namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 {
 #if UNITY_EDITOR
+    using System.Collections.Generic;
     using NUnit.Framework;
     using UnityEditor;
     using UnityEngine;
@@ -632,9 +633,35 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         }
 
         [Test]
+        [TestCaseSource(nameof(FormatOptionCachedNeverReturnsEmptyStringData))]
+        public void FormatOptionCachedNeverReturnsEmptyString(object input)
+        {
+            string result = WValueDropDownDrawer.TestHooks.FormatOptionCached(input);
+            Assert.That(result, Is.Not.Null.And.Not.Empty);
+        }
+
+        [Test]
         public void BuildDisplayLabelsProducesNoEmptyStrings()
         {
             object[] options = new object[] { 42, null };
+            string[] labels = WValueDropDownDrawer.TestHooks.BuildDisplayLabelsUncached(options);
+            Assert.That(labels.Length, Is.EqualTo(options.Length));
+            foreach (string label in labels)
+            {
+                Assert.That(label, Is.Not.Null.And.Not.Empty);
+            }
+        }
+
+        [Test]
+        public void BuildDisplayLabelsHandlesEmptyToStringWithFallback()
+        {
+            object[] options = new object[]
+            {
+                new EmptyToStringHelper(),
+                new NullToStringHelper(),
+                42,
+                null,
+            };
             string[] labels = WValueDropDownDrawer.TestHooks.BuildDisplayLabelsUncached(options);
             Assert.That(labels.Length, Is.EqualTo(options.Length));
             foreach (string label in labels)
@@ -664,6 +691,17 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             );
             Assert.That(rawIndex, Is.EqualTo(-1));
             Assert.That(Mathf.Max(0, rawIndex), Is.EqualTo(0));
+        }
+
+        private static IEnumerable<TestCaseData> FormatOptionCachedNeverReturnsEmptyStringData()
+        {
+            yield return new TestCaseData(null).SetName("Option.Null");
+            yield return new TestCaseData(new EmptyToStringHelper()).SetName(
+                "Option.EmptyToString"
+            );
+            yield return new TestCaseData(new NullToStringHelper()).SetName("Option.NullToString");
+            yield return new TestCaseData(42).SetName("Option.Integer");
+            yield return new TestCaseData("hello").SetName("Option.String");
         }
 
         private sealed class EmptyToStringHelper

@@ -998,8 +998,16 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 }
 
                 string optionLabel = GetOptionLabel(_attribute, option, out _);
-                return !string.IsNullOrEmpty(optionLabel)
-                    && optionLabel.StartsWith(searchTerm, StringComparison.OrdinalIgnoreCase);
+                if (
+                    !string.IsNullOrEmpty(optionLabel)
+                    && optionLabel.StartsWith(searchTerm, StringComparison.OrdinalIgnoreCase)
+                )
+                {
+                    return true;
+                }
+
+                string normalized = GetNormalizedDisplayLabel(optionIndex);
+                return normalized.StartsWith(searchTerm, StringComparison.OrdinalIgnoreCase);
             }
 
             public override void BindProperty(SerializedProperty property, string labelText)

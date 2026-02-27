@@ -10,6 +10,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
     using UnityEngine;
     using UnityEngine.UIElements;
     using WallstopStudios.UnityHelpers.Editor.Core.Helper;
+    using WallstopStudios.UnityHelpers.Editor.CustomDrawers.Utils;
     using WallstopStudios.UnityHelpers.Editor.Styles;
     using WallstopStudios.UnityHelpers.Utils;
 
@@ -754,6 +755,16 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             UpdateNoResults();
         }
 
+        private string GetNormalizedLabel(int index)
+        {
+            string label = _data.DisplayLabels[index];
+            if (string.IsNullOrEmpty(label))
+            {
+                return DropDownShared.GetFallbackOptionLabel(index);
+            }
+            return label;
+        }
+
         private void UpdateFilteredIndices()
         {
             _filteredIndices.Clear();
@@ -769,7 +780,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             {
                 for (int i = 0; i < _data.DisplayLabels.Length; i++)
                 {
-                    string label = _data.DisplayLabels[i] ?? string.Empty;
+                    string label = GetNormalizedLabel(i);
                     if (label.IndexOf(_searchText, StringComparison.OrdinalIgnoreCase) >= 0)
                     {
                         _filteredIndices.Add(i);
@@ -806,7 +817,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             for (int i = 0; i < _filteredIndices.Count; i++)
             {
                 int index = _filteredIndices[i];
-                string label = _data.DisplayLabels[index] ?? string.Empty;
+                string label = GetNormalizedLabel(index);
                 if (label.StartsWith(_searchText, StringComparison.OrdinalIgnoreCase))
                 {
                     _suggestion = label;
@@ -879,11 +890,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
         private VisualElement CreateOptionRow(int optionIndex)
         {
-            string label = _data.DisplayLabels[optionIndex];
-            if (string.IsNullOrEmpty(label))
-            {
-                label = $"(Option {optionIndex})";
-            }
+            string label = GetNormalizedLabel(optionIndex);
             string tooltip =
                 _data.Tooltips != null && optionIndex < _data.Tooltips.Length
                     ? _data.Tooltips[optionIndex] ?? string.Empty
@@ -978,7 +985,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             int count = 0;
             for (int i = 0; i < _data.DisplayLabels.Length; i++)
             {
-                string label = _data.DisplayLabels[i] ?? string.Empty;
+                string label = GetNormalizedLabel(i);
                 if (label.IndexOf(_searchText, StringComparison.OrdinalIgnoreCase) >= 0)
                 {
                     count++;

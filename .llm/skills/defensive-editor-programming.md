@@ -466,6 +466,14 @@ public class MyEditorWindow : EditorWindow
 
 ---
 
+## Consistent Display Label Normalization
+
+When editor UI renders a fallback label (e.g., `(Option N)` for empty strings), **every** code path that references that label must apply the same normalization — not just rendering, but also search, filter, suggestion, and selection. Centralize the fallback in a single helper (e.g., `GetNormalizedDisplayLabel`) and never use the raw label in comparison paths.
+
+**Rule:** If any code path transforms a value for display, audit all other paths that read the same value and apply the identical transform. This covers rendering, search/filter, autocomplete/suggestion, selection/resolution, and keyboard navigation labels.
+
+---
+
 ## Quick Checklist for Editor Code
 
 Before submitting editor code, verify:
@@ -480,6 +488,7 @@ Before submitting editor code, verify:
 - [ ] Event subscriptions cleaned up in OnDisable
 - [ ] Deserialization handles corrupt/missing data
 - [ ] EditorPrefs access handles missing keys
+- [ ] Display label fallbacks applied consistently across all code paths
 
 ---
 
@@ -488,3 +497,4 @@ Before submitting editor code, verify:
 - [defensive-programming](./defensive-programming.md) - Core defensive patterns for all code
 - [create-editor-tool](./create-editor-tool.md) - Editor tool creation patterns
 - [create-test](./create-test.md) - Test edge cases and error conditions
+- [create-property-drawer](./create-property-drawer.md) - PropertyDrawer patterns including display label normalization
