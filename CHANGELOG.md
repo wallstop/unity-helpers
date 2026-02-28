@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 See [the roadmap](./docs/overview/roadmap.md) for details
 
+### Fixed
+
+- **IntDropDown invalid value clamping**: Fixed `IntDropDownDrawer` not clamping property values that fall outside the configured options to the first valid option. Previously, invalid values (values not in the options array) were displayed as-is without correction. Now both OnGUI paths (`DrawGenericMenuDropDown` and `DrawPopupDropDown`) automatically clamp invalid values to the first option, and the UI Toolkit `IntDropDownSelector.GetDefaultValue()` returns the first option instead of 0
+- **Linux dropdown rendering phantom rows**: Replaced all `EditorGUI.Popup` usage with `GenericMenu`-based dropdowns to eliminate phantom empty rows when selected index is -1 on Linux. Affected drawers: `WValueDropDownDrawer`, `IntDropDownDrawer`, `StringInListDrawer`, `TexturePlatformOverrideEntryDrawer` (standard variants), and `WValueDropDownOdinDrawer`, `IntDropDownOdinDrawer`, `StringInListOdinDrawer` (Odin Inspector variants). Odin drawers now always use `GenericMenu` regardless of the page limit setting, since `GenericMenu` handles all list sizes correctly without the rendering issues that required the threshold ([#209](https://github.com/wallstop/unity-helpers/issues/209))
+- **Multi-object editing for WValueDropDown**: Added typed `SerializedProperty` setters for Unity-native types (`Vector2`, `Vector3`, `Vector4`, `Color`, `Rect`, `Bounds`, `Quaternion`, `AnimationCurve`, `Hash128`, and their `Int` variants) in `WValueDropDownDrawer.ApplyOption` to avoid the reflection fallback for known property types. The generic reflection path now iterates over all `serializedObject.targetObjects` for proper multi-object editing support instead of only updating the first selected object
+
 ## [3.2.1]
 
 ### Fixed

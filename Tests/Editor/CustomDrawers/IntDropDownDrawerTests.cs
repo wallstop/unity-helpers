@@ -99,11 +99,17 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             Assert.IsInstanceOf<BaseField<int>>(element);
         }
 
+        /// <summary>
+        /// OnGUI (IMGUI path) intentionally does NOT clamp invalid values during render.
+        /// Invalid values are displayed as "(Invalid)" but are not modified.
+        /// This differs from CreatePropertyGUI (UI Toolkit) which clamps on initialization.
+        /// </summary>
         [UnityTest]
-        public IEnumerator OnGUIClampsValuesOutsideConfiguredOptions()
+        public IEnumerator OnGUILeavesInvalidValuesUnchanged()
         {
             IntDropDownTestAsset asset = CreateScriptableObject<IntDropDownTestAsset>();
-            asset.missingValue = 999;
+            int originalValue = 999;
+            asset.missingValue = originalValue;
 
             using SerializedObject serializedObject = new(asset);
             serializedObject.Update();
@@ -124,7 +130,11 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             });
 
             serializedObject.ApplyModifiedProperties();
-            Assert.That(asset.missingValue, Is.EqualTo(5));
+            Assert.That(
+                asset.missingValue,
+                Is.EqualTo(originalValue),
+                $"OnGUI should not modify invalid value {originalValue} during render"
+            );
         }
 
         [UnityTest]
@@ -340,75 +350,6 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             Assert.That(asset.selection, Is.EqualTo(100));
         }
 
-        [Test]
-        public void CreatePropertyGUIShowsErrorForStringFieldWithIntDropDown()
-        {
-            IntDropDownTypeMismatchAsset asset =
-                CreateScriptableObject<IntDropDownTypeMismatchAsset>();
-
-            using SerializedObject serializedObject = new(asset);
-            serializedObject.Update();
-
-            SerializedProperty property = serializedObject.FindProperty(
-                nameof(IntDropDownTypeMismatchAsset.stringFieldWithIntDropDown)
-            );
-            Assert.IsTrue(property != null, "Failed to locate string field property.");
-
-            IntDropDownDrawer drawer = new();
-            AssignAttribute(drawer, new IntDropDownAttribute(1, 2, 3));
-            VisualElement element = drawer.CreatePropertyGUI(property);
-
-            Assert.IsInstanceOf<HelpBox>(element, "Expected HelpBox for type mismatch");
-            HelpBox helpBox = (HelpBox)element;
-            Assert.That(
-                helpBox.text,
-                Does.Contain("Type mismatch"),
-                "Error message should indicate type mismatch"
-            );
-            Assert.That(
-                helpBox.text,
-                Does.Contain("string"),
-                "Error message should mention the actual type"
-            );
-            Assert.That(
-                helpBox.text,
-                Does.Contain("int"),
-                "Error message should mention the expected type"
-            );
-        }
-
-        [Test]
-        public void CreatePropertyGUIShowsErrorForFloatFieldWithIntDropDown()
-        {
-            IntDropDownTypeMismatchAsset asset =
-                CreateScriptableObject<IntDropDownTypeMismatchAsset>();
-
-            using SerializedObject serializedObject = new(asset);
-            serializedObject.Update();
-
-            SerializedProperty property = serializedObject.FindProperty(
-                nameof(IntDropDownTypeMismatchAsset.floatFieldWithIntDropDown)
-            );
-            Assert.IsTrue(property != null, "Failed to locate float field property.");
-
-            IntDropDownDrawer drawer = new();
-            AssignAttribute(drawer, new IntDropDownAttribute(1, 2, 3));
-            VisualElement element = drawer.CreatePropertyGUI(property);
-
-            Assert.IsInstanceOf<HelpBox>(element, "Expected HelpBox for type mismatch");
-            HelpBox helpBox = (HelpBox)element;
-            Assert.That(
-                helpBox.text,
-                Does.Contain("Type mismatch"),
-                "Error message should indicate type mismatch"
-            );
-            Assert.That(
-                helpBox.text,
-                Does.Contain("float"),
-                "Error message should mention the actual type"
-            );
-        }
-
         [TestCase(
             nameof(IntDropDownTypeMismatchAsset.stringFieldWithIntDropDown),
             "string",
@@ -457,6 +398,150 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 Does.Contain(expectedTypeName).IgnoreCase,
                 $"Error message for {fieldName} should mention '{expectedTypeName}'"
             );
+        }
+
+        /// <summary>
+        /// OnGUI (IMGUI path) intentionally does NOT clamp negative invalid values during render.
+        /// Invalid values are displayed as "(Invalid)" but are not modified.
+        /// This differs from CreatePropertyGUI (UI Toolkit) which clamps on initialization.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator OnGUILeavesNegativeInvalidValueUnchanged()
+        {
+            IntDropDownTestAsset asset = CreateScriptableObject<IntDropDownTestAsset>();
+            int originalValue = -5;
+            asset.missingValue = originalValue;
+
+            using SerializedObject serializedObject = new(asset);
+            serializedObject.Update();
+
+            SerializedProperty property = serializedObject.FindProperty(
+                nameof(IntDropDownTestAsset.missingValue)
+            );
+            Assert.IsTrue(property != null, "Failed to locate missing value property.");
+
+            IntDropDownDrawer drawer = new();
+            AssignAttribute(drawer, new IntDropDownAttribute(5, 10, 15));
+            Rect position = new(0f, 0f, 240f, EditorGUIUtility.singleLineHeight);
+            GUIContent label = new("Negative");
+
+            yield return TestIMGUIExecutor.Run(() =>
+            {
+                drawer.OnGUI(position, property, label);
+            });
+
+            serializedObject.ApplyModifiedProperties();
+            Assert.That(
+                asset.missingValue,
+                Is.EqualTo(originalValue),
+                $"OnGUI should not modify negative invalid value {originalValue} during render"
+            );
+        }
+
+        [UnityTest]
+        public IEnumerator OnGUIWithEmptyOptionsLeavesValueUnchanged()
+        {
+            IntDropDownNoOptionsAsset asset = CreateScriptableObject<IntDropDownNoOptionsAsset>();
+            asset.unspecified = 42;
+
+            using SerializedObject serializedObject = new(asset);
+            serializedObject.Update();
+
+            SerializedProperty property = serializedObject.FindProperty(
+                nameof(IntDropDownNoOptionsAsset.unspecified)
+            );
+            Assert.IsTrue(property != null, "Failed to locate unspecified property.");
+
+            IntDropDownDrawer drawer = new();
+            AssignAttribute(
+                drawer,
+                new IntDropDownAttribute(
+                    typeof(IntDropDownEmptySource),
+                    nameof(IntDropDownEmptySource.GetEmptyOptions)
+                )
+            );
+            Rect position = new(0f, 0f, 240f, EditorGUIUtility.singleLineHeight);
+            GUIContent label = new("Empty");
+
+            yield return TestIMGUIExecutor.Run(() =>
+            {
+                drawer.OnGUI(position, property, label);
+            });
+
+            serializedObject.ApplyModifiedProperties();
+            Assert.That(asset.unspecified, Is.EqualTo(42));
+        }
+
+        /// <summary>
+        /// OnGUI popup path (for very large option sets) intentionally does NOT clamp invalid values.
+        /// Invalid values are displayed as "(Invalid)" but are not modified during render.
+        /// This differs from CreatePropertyGUI (UI Toolkit) which clamps on initialization.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator OnGUIPopupPathLeavesInvalidValueUnchanged()
+        {
+            IntDropDownVeryLargeOptionsAsset asset =
+                CreateScriptableObject<IntDropDownVeryLargeOptionsAsset>();
+            int originalValue = 9999;
+            asset.selection = originalValue;
+
+            using SerializedObject serializedObject = new(asset);
+            serializedObject.Update();
+
+            SerializedProperty property = serializedObject.FindProperty(
+                nameof(IntDropDownVeryLargeOptionsAsset.selection)
+            );
+            Assert.IsTrue(property != null, "Failed to locate selection property.");
+
+            IntDropDownDrawer drawer = new();
+            IntDropDownAttribute attribute = new(
+                typeof(IntDropDownLargeSource),
+                nameof(IntDropDownLargeSource.GetVeryLargeOptions)
+            );
+            AssignAttribute(drawer, attribute);
+            Rect position = new(0f, 0f, 400f, EditorGUIUtility.singleLineHeight);
+            GUIContent label = new("VeryLarge Selection");
+
+            yield return TestIMGUIExecutor.Run(() =>
+            {
+                drawer.OnGUI(position, property, label);
+            });
+
+            serializedObject.ApplyModifiedProperties();
+            Assert.That(
+                asset.selection,
+                Is.EqualTo(originalValue),
+                $"OnGUI popup path should not modify invalid value {originalValue} during render"
+            );
+        }
+
+        [Test]
+        [TestCase(999, 5, TestName = "Value.PositiveOutOfRange.ClampsToFirst")]
+        [TestCase(-5, 5, TestName = "Value.Negative.ClampsToFirst")]
+        [TestCase(0, 5, TestName = "Value.Zero.ClampsToFirst")]
+        [TestCase(7, 5, TestName = "Value.NotInOptions.ClampsToFirst")]
+        [TestCase(int.MaxValue, 5, TestName = "Value.IntMaxValue.ClampsToFirst")]
+        [TestCase(int.MinValue, 5, TestName = "Value.IntMinValue.ClampsToFirst")]
+        public void CreatePropertyGUIClampsInvalidValues(int invalidValue, int expectedValue)
+        {
+            IntDropDownTestAsset asset = CreateScriptableObject<IntDropDownTestAsset>();
+            asset.missingValue = invalidValue;
+
+            using SerializedObject serializedObject = new(asset);
+            serializedObject.Update();
+
+            SerializedProperty property = serializedObject.FindProperty(
+                nameof(IntDropDownTestAsset.missingValue)
+            );
+            Assert.IsTrue(property != null, "Failed to locate missing value property.");
+
+            IntDropDownDrawer drawer = new();
+            AssignAttribute(drawer, new IntDropDownAttribute(5, 10, 15));
+            VisualElement element = drawer.CreatePropertyGUI(property);
+
+            Assert.IsInstanceOf<BaseField<int>>(element);
+            BaseField<int> selector = (BaseField<int>)element;
+            Assert.That(selector.value, Is.EqualTo(expectedValue));
         }
 
         private static void AssignAttribute(PropertyDrawer drawer, PropertyAttribute attribute)

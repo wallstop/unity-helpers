@@ -32,435 +32,136 @@ Editor code is especially vulnerable because:
 
 ---
 
-## SerializedProperty Safety
+## Code Samples
 
-### Safe Property Access
+Detailed code patterns are in dedicated sample files:
+
+- [SerializedProperty Safety](./code-samples/editor-serialized-property-safety.md) - Safe property access, height calculation, nested property access
+- [Asset Operations Safety](./code-samples/editor-asset-operations-safety.md) - Safe asset loading, iteration, and creation
+- [Cache Invalidation Safety](./code-samples/editor-cache-invalidation-safety.md) - Safe caching with domain reload handling
+- [Serialization Safety](./code-samples/editor-serialization-safety.md) - Defensive deserialization, EditorPrefs safety
+- [Event/Callback Safety](./code-samples/editor-event-callback-safety.md) - Safe event invocation and callback registration
+
+---
+
+## Multi-Object Editing Pitfalls (CRITICAL)
+
+Multi-object editing is a common source of bugs. These patterns prevent the most frequent issues:
+
+### Never Modify Property During Render Phase
+
+Property modification during `OnGUI` causes infinite repaint loops and corrupted state:
 
 ```csharp
-// ✅ Safe property access
+// FORBIDDEN - Writing to property during render
 public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
 {
-    if (property == null)
+    if (property.intValue < 0)
     {
-        return;
+        property.intValue = 0; // BUG: Causes repaint loop!
     }
+    // ... render code
+}
 
-    if (property.serializedObject == null || property.serializedObject.targetObject == null)
-    {
-        EditorGUI.LabelField(position, label, new GUIContent("(Missing Object)"));
-        return;
-    }
+// CORRECT - Only modify in event callbacks
+public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
+{
+    // ... render code (read-only)
 
-    EditorGUI.BeginProperty(position, label, property);
-    try
+    if (EditorGUI.DropdownButton(rect, content, FocusType.Keyboard))
     {
-        // Draw property...
-    }
-    finally
-    {
-        EditorGUI.EndProperty();
+        ShowMenu(property); // Menu callback will modify property
     }
 }
 ```
 
-### Safe Property Height Calculation
+### Set showMixedValue BEFORE Calculations
+
+Always check and set mixed state before any index or value calculations:
 
 ```csharp
-public override float GetPropertyHeight(SerializedProperty property, GUIContent label)
+// CORRECT order
+EditorGUI.showMixedValue = property.hasMultipleDifferentValues;
+int currentIndex = CalculateDisplayIndex(property); // May be invalid when mixed
+string display = property.hasMultipleDifferentValues ? "\u2014" : GetLabel(currentIndex);
+
+// WRONG order - may use invalid index before checking mixed state
+int currentIndex = CalculateDisplayIndex(property); // Bug: Invalid for some targets
+EditorGUI.showMixedValue = property.hasMultipleDifferentValues;
+```
+
+### Display Conventions for Mixed/Invalid Values
+
+| State                  | Display                     | Notes                     |
+| ---------------------- | --------------------------- | ------------------------- |
+| Mixed values           | `"\u2014"` (em dash)        | Standard Unity convention |
+| Out-of-range index     | `"{index} (Invalid)"`       | Never silently clamp      |
+| Null/missing reference | `"(None)"` or `"(Missing)"` | Context-dependent         |
+
+### Undo Support for Multi-Object
+
+```csharp
+void ApplyValueToAllTargets(SerializedProperty property, object value)
 {
-    if (property == null || property.serializedObject == null)
+    // Step 1: Record undo for ALL targets
+    Undo.RecordObjects(property.serializedObject.targetObjects, "Change Value");
+
+    // Step 2: Apply to each target
+    foreach (var target in property.serializedObject.targetObjects)
     {
-        return EditorGUIUtility.singleLineHeight;
+        SetFieldValue(target, property.propertyPath, value);
+        EditorUtility.SetDirty(target);
     }
 
-    // Calculate actual height...
-    return EditorGUIUtility.singleLineHeight;
+    // Step 3: Sync serialized state
+    property.serializedObject.Update();
 }
 ```
 
-### Safe Nested Property Access
+### Odin Inspector Mixed Value Detection
+
+Odin `OdinAttributeDrawer` lacks `hasMultipleDifferentValues`. Check manually:
 
 ```csharp
-// ✅ Safe nested property access
-private SerializedProperty GetNestedProperty(SerializedProperty parent, string path)
+bool IsMixedValue<T>(InspectorProperty property)
 {
-    if (parent == null || string.IsNullOrEmpty(path))
+    var entry = property.ValueEntry;
+    if (entry.ValueCount <= 1) return false;
+
+    var first = entry.WeakValues[0];
+    for (int i = 1; i < entry.ValueCount; i++)
     {
-        return null;
-    }
-
-    SerializedProperty nested = parent.FindPropertyRelative(path);
-    // FindPropertyRelative returns null if not found - no exception
-    return nested;
-}
-```
-
----
-
-## Safe Asset Operations
-
-### Safe Asset Loading
-
-```csharp
-// ✅ Safe asset loading
-public static T LoadAssetSafe<T>(string path) where T : Object
-{
-    if (string.IsNullOrEmpty(path))
-    {
-        return null;
-    }
-
-    T asset = AssetDatabase.LoadAssetAtPath<T>(path);
-
-    if (asset == null)
-    {
-        Debug.LogWarning($"[AssetLoader] Failed to load asset at: {path}");
-    }
-
-    return asset;
-}
-```
-
-### Safe Asset Iteration
-
-```csharp
-// ✅ Safe asset iteration
-public void ProcessSelectedAssets()
-{
-    Object[] selection = Selection.objects;
-    if (selection == null || selection.Length == 0)
-    {
-        return;
-    }
-
-    for (int i = 0; i < selection.Length; i++)
-    {
-        Object obj = selection[i];
-        if (obj == null)
-        {
-            continue;
-        }
-
-        string path = AssetDatabase.GetAssetPath(obj);
-        if (string.IsNullOrEmpty(path))
-        {
-            continue;
-        }
-
-        ProcessAsset(path);
-    }
-}
-```
-
-### Safe Asset Creation
-
-```csharp
-// ✅ Safe asset creation with directory validation
-public static bool TryCreateAsset<T>(T asset, string path, out string error) where T : Object
-{
-    error = null;
-
-    if (asset == null)
-    {
-        error = "Asset is null";
-        return false;
-    }
-
-    if (string.IsNullOrEmpty(path))
-    {
-        error = "Path is null or empty";
-        return false;
-    }
-
-    string directory = Path.GetDirectoryName(path);
-    if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
-    {
-        try
-        {
-            Directory.CreateDirectory(directory);
-        }
-        catch (Exception ex)
-        {
-            error = $"Failed to create directory: {ex.Message}";
-            return false;
-        }
-    }
-
-    try
-    {
-        AssetDatabase.CreateAsset(asset, path);
-        return true;
-    }
-    catch (Exception ex)
-    {
-        error = $"Failed to create asset: {ex.Message}";
-        return false;
-    }
-}
-```
-
----
-
-## Cache Invalidation Safety
-
-### Safe Cached Value Access
-
-```csharp
-// ✅ Safe cached value access
-private SerializedProperty _cachedProperty;
-private Object _cachedTarget;
-
-private SerializedProperty GetProperty(SerializedObject serializedObject)
-{
-    if (serializedObject == null)
-    {
-        _cachedProperty = null;
-        _cachedTarget = null;
-        return null;
-    }
-
-    // Invalidate cache if target changed
-    if (_cachedTarget != serializedObject.targetObject)
-    {
-        _cachedProperty = null;
-        _cachedTarget = serializedObject.targetObject;
-    }
-
-    if (_cachedProperty == null)
-    {
-        _cachedProperty = serializedObject.FindProperty("_fieldName");
-    }
-
-    return _cachedProperty;
-}
-```
-
-### Domain Reload Safe Caching
-
-```csharp
-// ✅ Handle domain reload
-[InitializeOnLoad]
-public static class EditorCache
-{
-    private static Dictionary<string, object> _cache;
-
-    static EditorCache()
-    {
-        // Cache is cleared on domain reload - reinitialize
-        _cache = new Dictionary<string, object>();
-        EditorApplication.playModeStateChanged += OnPlayModeChanged;
-    }
-
-    private static void OnPlayModeChanged(PlayModeStateChange state)
-    {
-        if (state == PlayModeStateChange.ExitingEditMode ||
-            state == PlayModeStateChange.ExitingPlayMode)
-        {
-            // Clear cache when entering/exiting play mode
-            _cache.Clear();
-        }
-    }
-
-    public static bool TryGetCached<T>(string key, out T value)
-    {
-        value = default;
-        if (_cache == null || string.IsNullOrEmpty(key))
-        {
-            return false;
-        }
-
-        if (_cache.TryGetValue(key, out object cached) && cached is T typed)
-        {
-            value = typed;
+        if (!Equals(first, entry.WeakValues[i]))
             return true;
-        }
-
-        return false;
     }
+    return false;
 }
 ```
 
 ---
 
-## Serialization Resilience in Editor
+## Forbidden Editor APIs
 
-### Defensive Deserialization
+### EditorGUI.Popup - NEVER USE
 
-```csharp
-// ✅ Defensive deserialization
-public T DeserializeSafe<T>(string json) where T : class, new()
-{
-    if (string.IsNullOrEmpty(json))
-    {
-        return new T();
-    }
-
-    try
-    {
-        T result = JsonUtility.FromJson<T>(json);
-        return result ?? new T();
-    }
-    catch (Exception ex)
-    {
-        Debug.LogWarning($"[Serialization] Failed to deserialize {typeof(T).Name}: {ex.Message}");
-        return new T();
-    }
-}
-```
-
-### Validate After Deserialization
+`EditorGUI.Popup` renders phantom empty rows on Linux when the selected index is -1. Always use `EditorGUI.DropdownButton` + `GenericMenu` instead. This applies to ALL drawers - standard PropertyDrawers and Odin OdinAttributeDrawers.
 
 ```csharp
-// ✅ Validate after deserialization
-public void OnAfterDeserialize()
+// FORBIDDEN - Phantom rows on Linux with index -1
+int newIndex = EditorGUI.Popup(position, label.text, currentIndex, displayOptions);
+
+// CORRECT - GenericMenu-based dropdown
+Rect fieldRect = EditorGUI.PrefixLabel(position, label);
+if (EditorGUI.DropdownButton(fieldRect, buttonContent, FocusType.Keyboard))
 {
-    // Repair potentially corrupt data
-    if (_items == null)
+    GenericMenu menu = new();
+    for (int i = 0; i < options.Length; i++)
     {
-        _items = new List<Item>();
+        int captured = i;
+        menu.AddItem(new GUIContent(options[i]), i == currentIndex,
+            () => ApplySelection(captured));
     }
-
-    // Remove null entries that may have resulted from missing references
-    _items.RemoveAll(item => item == null);
-
-    // Clamp values to valid ranges
-    _health = Mathf.Clamp(_health, 0, _maxHealth);
-
-    // Ensure required references
-    if (string.IsNullOrEmpty(_id))
-    {
-        _id = System.Guid.NewGuid().ToString();
-    }
-}
-```
-
-### EditorPrefs Safety
-
-```csharp
-// ✅ Safe EditorPrefs access
-public static T GetEditorPref<T>(string key, T defaultValue)
-{
-    if (string.IsNullOrEmpty(key))
-    {
-        return defaultValue;
-    }
-
-    try
-    {
-        if (typeof(T) == typeof(string))
-        {
-            return (T)(object)EditorPrefs.GetString(key, (string)(object)defaultValue);
-        }
-        if (typeof(T) == typeof(int))
-        {
-            return (T)(object)EditorPrefs.GetInt(key, (int)(object)defaultValue);
-        }
-        if (typeof(T) == typeof(float))
-        {
-            return (T)(object)EditorPrefs.GetFloat(key, (float)(object)defaultValue);
-        }
-        if (typeof(T) == typeof(bool))
-        {
-            return (T)(object)EditorPrefs.GetBool(key, (bool)(object)defaultValue);
-        }
-
-        return defaultValue;
-    }
-    catch
-    {
-        return defaultValue;
-    }
-}
-```
-
----
-
-## Event/Callback Safety in Editor
-
-### Safe Event Invocation
-
-```csharp
-// ✅ Safe event invocation
-public void RaiseValueChanged(int newValue)
-{
-    if (OnValueChanged == null)
-    {
-        return;
-    }
-
-    // Copy delegate to avoid race conditions
-    Action<int> handler = OnValueChanged;
-
-    try
-    {
-        handler.Invoke(newValue);
-    }
-    catch (Exception ex)
-    {
-        // Never let subscriber exceptions crash the publisher
-        Debug.LogError($"[{nameof(MyClass)}] Exception in OnValueChanged handler: {ex}");
-    }
-}
-```
-
-### Safe Multi-cast Delegate Invocation
-
-```csharp
-// ✅ Safe multi-cast delegate invocation
-public void RaiseEvent()
-{
-    Delegate[] handlers = OnEvent?.GetInvocationList();
-    if (handlers == null)
-    {
-        return;
-    }
-
-    for (int i = 0; i < handlers.Length; i++)
-    {
-        try
-        {
-            ((Action)handlers[i]).Invoke();
-        }
-        catch (Exception ex)
-        {
-            Debug.LogError($"[{nameof(MyClass)}] Exception in event handler: {ex}");
-        }
-    }
-}
-```
-
-### Safe Editor Callback Registration
-
-```csharp
-// ✅ Safe callback registration with cleanup
-public class MyEditorWindow : EditorWindow
-{
-    private void OnEnable()
-    {
-        // Always unsubscribe first to prevent double subscription
-        Selection.selectionChanged -= OnSelectionChanged;
-        Selection.selectionChanged += OnSelectionChanged;
-
-        EditorApplication.update -= OnEditorUpdate;
-        EditorApplication.update += OnEditorUpdate;
-    }
-
-    private void OnDisable()
-    {
-        Selection.selectionChanged -= OnSelectionChanged;
-        EditorApplication.update -= OnEditorUpdate;
-    }
-
-    private void OnSelectionChanged()
-    {
-        // Validate window state before processing
-        if (this == null)
-        {
-            return;
-        }
-
-        Repaint();
-    }
+    menu.DropDown(fieldRect);
 }
 ```
 
@@ -468,9 +169,70 @@ public class MyEditorWindow : EditorWindow
 
 ## Consistent Display Label Normalization
 
-When editor UI renders a fallback label (e.g., `(Option N)` for empty strings), **every** code path that references that label must apply the same normalization — not just rendering, but also search, filter, suggestion, and selection. Centralize the fallback in a single helper (e.g., `GetNormalizedDisplayLabel`) and never use the raw label in comparison paths.
+When editor UI renders a fallback label (e.g., `(Option N)` for empty strings), **every** code path that references that label must apply the same normalization - not just rendering, but also search, filter, suggestion, and selection. Centralize the fallback in a single helper (e.g., `GetNormalizedDisplayLabel`) and never use the raw label in comparison paths.
 
 **Rule:** If any code path transforms a value for display, audit all other paths that read the same value and apply the identical transform. This covers rendering, search/filter, autocomplete/suggestion, selection/resolution, and keyboard navigation labels.
+
+---
+
+## IMGUI vs UI Toolkit Value Handling
+
+PropertyDrawers behave differently depending on which rendering path is used. Understanding these differences prevents unexpected value modifications:
+
+### OnGUI (IMGUI Path)
+
+- **Display-only**: Invalid values are shown as "(Invalid)" but are NOT modified
+- **No clamping**: Out-of-range values remain unchanged during render
+- **Explicit user action required**: Values only change when user makes a selection
+- **Rationale**: IMGUI renders every frame; modifying values during render causes infinite repaint loops
+
+```csharp
+// OnGUI renders but does NOT modify invalid values
+public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
+{
+    int currentValue = property.intValue;
+    int index = Array.IndexOf(options, currentValue);
+
+    // Display "(Invalid)" for out-of-range, but DO NOT clamp
+    string display = index >= 0 ? options[index].ToString() : $"{currentValue} (Invalid)";
+
+    // Value only changes via user selection callback, never during render
+}
+```
+
+### CreatePropertyGUI (UI Toolkit Path)
+
+- **Clamps on initialization**: Invalid values are clamped to the first valid option
+- **Binding-driven**: UI Toolkit uses bindings that sync values immediately
+- **One-time setup**: CreatePropertyGUI runs once, not every frame
+- **Rationale**: UI Toolkit binding model expects valid values for proper field state
+
+```csharp
+// CreatePropertyGUI clamps invalid values during initialization
+public override VisualElement CreatePropertyGUI(SerializedProperty property)
+{
+    int currentValue = property.intValue;
+    int index = Array.IndexOf(options, currentValue);
+
+    // Clamp to first option if invalid
+    if (index < 0 && options.Length > 0)
+    {
+        property.intValue = options[0];
+        property.serializedObject.ApplyModifiedProperties();
+    }
+
+    return CreateDropdownField(property);
+}
+```
+
+### Summary Table
+
+| Aspect              | OnGUI (IMGUI)            | CreatePropertyGUI (UI Toolkit) |
+| ------------------- | ------------------------ | ------------------------------ |
+| Invalid value       | Display "(Invalid)"      | Clamp to first option          |
+| Modification timing | Only on user selection   | On initialization              |
+| Render frequency    | Every frame              | Once (binding-driven updates)  |
+| Value preservation  | Preserves invalid values | Normalizes to valid values     |
 
 ---
 
@@ -478,17 +240,26 @@ When editor UI renders a fallback label (e.g., `(Option N)` for empty strings), 
 
 Before submitting editor code, verify:
 
-- [ ] SerializedProperty null-checked before access
-- [ ] SerializedObject.targetObject validated
-- [ ] Asset paths validated before AssetDatabase operations
-- [ ] Selection validated (may be empty or contain nulls)
-- [ ] Cache invalidation handles domain reload
-- [ ] Cache invalidation handles target object changes
-- [ ] Event handlers wrapped in try-catch
-- [ ] Event subscriptions cleaned up in OnDisable
-- [ ] Deserialization handles corrupt/missing data
-- [ ] EditorPrefs access handles missing keys
+- [ ] SerializedProperty null-checked before access ([SerializedProperty Safety](./code-samples/editor-serialized-property-safety.md))
+- [ ] SerializedObject.targetObject validated ([SerializedProperty Safety](./code-samples/editor-serialized-property-safety.md))
+- [ ] Asset paths validated before AssetDatabase operations ([Asset Operations Safety](./code-samples/editor-asset-operations-safety.md))
+- [ ] Selection validated (may be empty or contain nulls) ([Asset Operations Safety](./code-samples/editor-asset-operations-safety.md))
+- [ ] Cache invalidation handles domain reload ([Cache Invalidation Safety](./code-samples/editor-cache-invalidation-safety.md))
+- [ ] Cache invalidation handles target object changes ([Cache Invalidation Safety](./code-samples/editor-cache-invalidation-safety.md))
+- [ ] Event handlers wrapped in try-catch ([Event/Callback Safety](./code-samples/editor-event-callback-safety.md))
+- [ ] Event subscriptions cleaned up in OnDisable ([Event/Callback Safety](./code-samples/editor-event-callback-safety.md))
+- [ ] Deserialization handles corrupt/missing data ([Serialization Safety](./code-samples/editor-serialization-safety.md))
+- [ ] EditorPrefs access handles missing keys ([Serialization Safety](./code-samples/editor-serialization-safety.md))
 - [ ] Display label fallbacks applied consistently across all code paths
+- [ ] No `EditorGUI.Popup` usage (use `GenericMenu` instead - Linux phantom rows)
+- [ ] Multi-object editing supported (iterate `targetObjects`, use typed setters)
+- [ ] No property modification during OnGUI render phase (only in callbacks)
+- [ ] `EditorGUI.showMixedValue` set BEFORE index/value calculations
+- [ ] Em dash (`\u2014`) displayed for mixed values
+- [ ] "(Invalid)" suffix shown for out-of-range indices (no silent clamping)
+- [ ] `Undo.RecordObjects(targetObjects, ...)` used for multi-object undo
+- [ ] Odin drawers manually check mixed values via `ValueEntry.WeakValues`
+- [ ] Standard and Odin drawer variants updated consistently
 
 ---
 

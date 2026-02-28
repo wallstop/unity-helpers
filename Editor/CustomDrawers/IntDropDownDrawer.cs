@@ -117,7 +117,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 }
                 else
                 {
-                    DrawNativeDropDown(position, property, label, options, displayedOptions);
+                    DrawGenericMenuDropDown(position, property, label, options, displayedOptions);
                 }
             }
             finally
@@ -126,7 +126,15 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
         }
 
-        private static void DrawNativeDropDown(
+        /// <summary>
+        /// Draws a dropdown using GenericMenu for a small number of options.
+        /// </summary>
+        /// <remarks>
+        /// If the current property value is not found in the options array,
+        /// the display shows "(Invalid)" but does NOT modify the property during render.
+        /// Property modifications only occur in the GenericMenu callback.
+        /// </remarks>
+        private static void DrawGenericMenuDropDown(
             Rect position,
             SerializedProperty property,
             GUIContent label,
@@ -134,17 +142,79 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             string[] displayedOptions
         )
         {
+            Rect fieldRect = EditorGUI.PrefixLabel(position, label);
+
+            // Set showMixedValue FIRST, before any index calculations
+            bool previousMixed = EditorGUI.showMixedValue;
+            EditorGUI.showMixedValue = property.hasMultipleDifferentValues;
+
+            // Calculate index for display purposes only - NEVER write to property during render
             int currentValue = property.intValue;
-            int selectedIndex = Mathf.Max(0, Array.IndexOf(options, currentValue));
+            int selectedIndex = Array.IndexOf(options, currentValue);
 
-            selectedIndex = EditorGUI.Popup(position, label.text, selectedIndex, displayedOptions);
-
-            if (selectedIndex >= 0 && selectedIndex < options.Length)
+            // Determine display value without modifying property
+            string displayValue;
+            if (property.hasMultipleDifferentValues)
             {
-                property.intValue = options[selectedIndex];
+                displayValue = "\u2014"; // Em dash for mixed values
             }
+            else if (selectedIndex >= 0 && selectedIndex < displayedOptions.Length)
+            {
+                displayValue = displayedOptions[selectedIndex];
+            }
+            else
+            {
+                // Invalid value - show it but don't clamp
+                displayValue = DropDownShared.GetCachedIntString(currentValue) + " (Invalid)";
+            }
+
+            GUIContent buttonContent = new(displayValue);
+
+            if (EditorGUI.DropdownButton(fieldRect, buttonContent, FocusType.Keyboard))
+            {
+                SerializedObject serializedObject = property.serializedObject;
+                string propertyPath = property.propertyPath;
+
+                GenericMenu menu = new();
+                for (int i = 0; i < options.Length; i++)
+                {
+                    int capturedIndex = i;
+                    bool isSelected = i == selectedIndex && !property.hasMultipleDifferentValues;
+                    menu.AddItem(
+                        new GUIContent(displayedOptions[i]),
+                        isSelected,
+                        () =>
+                        {
+                            serializedObject.Update();
+                            SerializedProperty prop = serializedObject.FindProperty(propertyPath);
+                            if (prop == null)
+                            {
+                                return;
+                            }
+
+                            Undo.RecordObjects(
+                                serializedObject.targetObjects,
+                                "Change IntDropDown Selection"
+                            );
+                            prop.intValue = options[capturedIndex];
+                            serializedObject.ApplyModifiedProperties();
+                        }
+                    );
+                }
+                menu.DropDown(fieldRect);
+            }
+
+            EditorGUI.showMixedValue = previousMixed;
         }
 
+        /// <summary>
+        /// Draws a popup button for large option lists that opens a searchable selection window.
+        /// </summary>
+        /// <remarks>
+        /// If the current property value is not found in the options array,
+        /// the display shows "(Invalid)" but does NOT modify the property during render.
+        /// Property modifications only occur in the popup window callback.
+        /// </remarks>
         private static void DrawPopupDropDown(
             Rect position,
             SerializedProperty property,
@@ -154,13 +224,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             int pageSize
         )
         {
-            int currentValue = property.intValue;
-            int selectedIndex = Array.IndexOf(options, currentValue);
-            string displayValue =
-                selectedIndex >= 0 && selectedIndex < displayedOptions.Length
-                    ? displayedOptions[selectedIndex]
-                    : DropDownShared.GetCachedIntString(currentValue);
-
             Rect labelRect = new(
                 position.x,
                 position.y,
@@ -176,6 +239,30 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             EditorGUI.LabelField(labelRect, label);
 
+            // Set showMixedValue FIRST, before any index calculations
+            bool previousMixed = EditorGUI.showMixedValue;
+            EditorGUI.showMixedValue = property.hasMultipleDifferentValues;
+
+            // Calculate index for display purposes only - NEVER write to property during render
+            int currentValue = property.intValue;
+            int selectedIndex = Array.IndexOf(options, currentValue);
+
+            // Determine display value without modifying property
+            string displayValue;
+            if (property.hasMultipleDifferentValues)
+            {
+                displayValue = "\u2014"; // Em dash for mixed values
+            }
+            else if (selectedIndex >= 0 && selectedIndex < displayedOptions.Length)
+            {
+                displayValue = displayedOptions[selectedIndex];
+            }
+            else
+            {
+                // Invalid value - show it but don't clamp
+                displayValue = DropDownShared.GetCachedIntString(currentValue) + " (Invalid)";
+            }
+
             if (GUI.Button(fieldRect, displayValue, EditorStyles.popup))
             {
                 WDropDownPopupWindow.ShowForIntDropDown(
@@ -186,6 +273,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     pageSize
                 );
             }
+
+            EditorGUI.showMixedValue = previousMixed;
         }
 
         /// <inheritdoc/>
@@ -247,11 +336,22 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             protected override string GetDisplayValue(SerializedProperty property)
             {
+                // Handle mixed values first
+                if (property.hasMultipleDifferentValues)
+                {
+                    return "\u2014"; // Em dash for mixed values
+                }
+
                 int currentValue = property.intValue;
                 int selectedIndex = Array.IndexOf(_options, currentValue);
-                return selectedIndex >= 0 && selectedIndex < _displayedOptions.Length
-                    ? _displayedOptions[selectedIndex]
-                    : DropDownShared.GetCachedIntString(currentValue);
+
+                if (selectedIndex >= 0 && selectedIndex < _displayedOptions.Length)
+                {
+                    return _displayedOptions[selectedIndex];
+                }
+
+                // Invalid value - show it with "(Invalid)" suffix
+                return DropDownShared.GetCachedIntString(currentValue) + " (Invalid)";
             }
 
             protected override int GetFieldValue(SerializedProperty property)
@@ -302,6 +402,12 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             protected override int GetCurrentSelectionIndex(SerializedProperty property)
             {
+                // Return -1 for mixed values to prevent display issues
+                if (property.hasMultipleDifferentValues)
+                {
+                    return -1;
+                }
+
                 return Array.IndexOf(_options, property.intValue);
             }
 
@@ -318,7 +424,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return _options[optionIndex];
             }
 
-            protected override int GetDefaultValue() => 0;
+            protected override int GetDefaultValue() => _options.Length > 0 ? _options[0] : 0;
 
             protected override string UndoActionName => "Change IntDropDown Selection";
         }

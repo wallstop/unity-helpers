@@ -160,7 +160,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             {
                 DisplayLabels = displayLabels ?? options,
                 Tooltips = tooltips,
-                SelectedIndex = currentIndex,
+                SelectedIndex = property.hasMultipleDifferentValues ? -1 : currentIndex,
                 PageSize = pageSize,
                 OnSelectionChanged = (selectedIndex) =>
                 {
@@ -293,7 +293,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             {
                 DisplayLabels = displayLabels,
                 Tooltips = null,
-                SelectedIndex = currentIndex,
+                SelectedIndex = property.hasMultipleDifferentValues ? -1 : currentIndex,
                 PageSize = pageSize,
                 OnSelectionChanged = (selectedIndex) =>
                 {

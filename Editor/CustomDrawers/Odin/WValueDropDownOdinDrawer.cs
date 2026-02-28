@@ -10,7 +10,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Editor.CustomDrawers.Utils;
-    using WallstopStudios.UnityHelpers.Editor.Settings;
 
     /// <summary>
     /// Odin Inspector attribute drawer for <see cref="WValueDropDownAttribute"/>.
@@ -48,10 +47,27 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return;
             }
 
+            // Check for mixed values
+            bool hasMultipleDifferentValues = false;
+            if (Property.ValueEntry.ValueCount > 1)
+            {
+                object firstValue = Property.ValueEntry.WeakValues[0];
+                for (int i = 1; i < Property.ValueEntry.ValueCount; i++)
+                {
+                    if (!Equals(firstValue, Property.ValueEntry.WeakValues[i]))
+                    {
+                        hasMultipleDifferentValues = true;
+                        break;
+                    }
+                }
+            }
+
+            // Set showMixedValue FIRST, before any index calculations
+            bool previousMixed = EditorGUI.showMixedValue;
+            EditorGUI.showMixedValue = hasMultipleDifferentValues;
+
             object currentValue = Property.ValueEntry?.WeakSmartValue;
             int currentIndex = FindSelectedIndex(currentValue, options);
-
-            int pageSize = Mathf.Max(1, UnityHelpersSettings.GetStringInListPageLimit());
             string[] displayOptions = GetDisplayOptions(options);
 
             Rect controlRect = EditorGUILayout.GetControlRect(
@@ -59,7 +75,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 EditorGUIUtility.singleLineHeight
             );
 
-            if (options.Length > pageSize)
+            try
             {
                 DrawPopupDropDown(
                     controlRect,
@@ -67,27 +83,13 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     options,
                     displayOptions,
                     currentIndex,
-                    currentValue
+                    currentValue,
+                    hasMultipleDifferentValues
                 );
             }
-            else
+            finally
             {
-                DrawNativeDropDown(controlRect, label, options, displayOptions, currentIndex);
-            }
-        }
-
-        private void DrawNativeDropDown(
-            Rect position,
-            GUIContent label,
-            object[] options,
-            string[] displayOptions,
-            int currentIndex
-        )
-        {
-            int newIndex = EditorGUI.Popup(position, label.text, currentIndex, displayOptions);
-            if (newIndex >= 0 && newIndex < options.Length && newIndex != currentIndex)
-            {
-                ApplySelection(options[newIndex]);
+                EditorGUI.showMixedValue = previousMixed;
             }
         }
 
@@ -97,7 +99,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             object[] options,
             string[] displayOptions,
             int currentIndex,
-            object currentValue
+            object currentValue,
+            bool hasMultipleDifferentValues
         )
         {
             Rect labelRect = new(
@@ -119,14 +122,29 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 EditorGUI.LabelField(labelRect, label);
             }
 
-            string displayValue =
-                currentIndex >= 0 && currentIndex < displayOptions.Length
-                    ? displayOptions[currentIndex]
-                    : DropDownShared.FormatOption(currentValue);
+            string displayValue;
+            if (hasMultipleDifferentValues)
+            {
+                displayValue = "\u2014"; // Em dash for mixed values
+            }
+            else if (currentIndex >= 0 && currentIndex < displayOptions.Length)
+            {
+                displayValue = displayOptions[currentIndex];
+            }
+            else
+            {
+                displayValue = DropDownShared.FormatOption(currentValue);
+            }
 
             if (GUI.Button(fieldRect, displayValue, EditorStyles.popup))
             {
-                ShowPopupMenu(fieldRect, options, displayOptions, currentIndex);
+                ShowPopupMenu(
+                    fieldRect,
+                    options,
+                    displayOptions,
+                    currentIndex,
+                    hasMultipleDifferentValues
+                );
             }
         }
 
@@ -134,14 +152,15 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             Rect buttonRect,
             object[] options,
             string[] displayOptions,
-            int currentIndex
+            int currentIndex,
+            bool hasMultipleDifferentValues
         )
         {
             GenericMenu menu = new();
             for (int i = 0; i < options.Length; i++)
             {
                 int capturedIndex = i;
-                bool isSelected = i == currentIndex;
+                bool isSelected = i == currentIndex && !hasMultipleDifferentValues;
                 menu.AddItem(
                     new GUIContent(displayOptions[i]),
                     isSelected,

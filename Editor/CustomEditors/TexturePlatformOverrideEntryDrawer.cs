@@ -82,16 +82,59 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomEditors
             );
             string[] choices = GetChoices();
             int idx = GetSelectedIndex(nameProp.stringValue, choices);
-            idx = EditorGUI.Popup(r, "Platform", idx, choices);
-            string selected = choices[idx];
-            if (selected == CustomOptionLabel)
+            string currentDisplay = idx >= 0 && idx < choices.Length ? choices[idx] : string.Empty;
+
+            Rect labelRect = new(r.x, r.y, EditorGUIUtility.labelWidth, r.height);
+            Rect fieldRect = new(
+                r.x + EditorGUIUtility.labelWidth + 2f,
+                r.y,
+                r.width - EditorGUIUtility.labelWidth - 2f,
+                r.height
+            );
+            EditorGUI.LabelField(labelRect, "Platform");
+            if (GUI.Button(fieldRect, currentDisplay, EditorStyles.popup))
+            {
+                SerializedObject serializedObject = property.serializedObject;
+                string propertyPath = nameProp.propertyPath;
+                int currentIndex = idx;
+
+                GenericMenu menu = new();
+                for (int i = 0; i < choices.Length; i++)
+                {
+                    int capturedIndex = i;
+                    bool isSelected = i == currentIndex;
+                    menu.AddItem(
+                        new GUIContent(choices[i]),
+                        isSelected,
+                        () =>
+                        {
+                            serializedObject.Update();
+                            SerializedProperty prop = serializedObject.FindProperty(propertyPath);
+                            if (prop == null)
+                            {
+                                return;
+                            }
+
+                            string value = choices[capturedIndex];
+                            if (value != CustomOptionLabel)
+                            {
+                                prop.stringValue = value;
+                            }
+                            serializedObject.ApplyModifiedProperties();
+                        }
+                    );
+                }
+                menu.DropDown(fieldRect);
+            }
+
+            if (idx == choices.Length - 1)
             {
                 r.y += r.height + EditorGUIUtility.standardVerticalSpacing;
                 nameProp.stringValue = EditorGUI.TextField(r, "Custom Name", nameProp.stringValue);
             }
             else
             {
-                nameProp.stringValue = selected;
+                nameProp.stringValue = currentDisplay;
             }
 
             DrawToggleWithValue(

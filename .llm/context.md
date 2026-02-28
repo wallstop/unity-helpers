@@ -83,7 +83,7 @@ Invoke these skills for specific tasks.
 **Regenerate with**: `pwsh -NoProfile -File scripts/generate-skills-index.ps1`
 
 <!-- BEGIN GENERATED SKILLS INDEX -->
-<!-- Generated: 2026-02-25 22:17:59 UTC -->
+<!-- Generated: 2026-02-27 16:19:34 UTC -->
 <!-- Command: pwsh -NoProfile -File scripts/generate-skills-index.ps1 -->
 
 ### Core Skills (Always Consider)
@@ -118,6 +118,8 @@ Invoke these skills for specific tasks.
 | [markdown-reference](./skills/markdown-reference.md)                                         | Link formatting, escaping, linting rules                         |
 | [no-regions](./skills/no-regions.md)                                                         | ALL C# code - never use #region/#endregion                       |
 | [prefer-logging-extensions](./skills/prefer-logging-extensions.md)                           | Unity logging in UnityEngine.Object classes                      |
+| [property-drawer-examples](./skills/property-drawer-examples.md)                             | Property drawer code examples                                    |
+| [property-drawer-rules](./skills/property-drawer-rules.md)                                   | PropertyDrawer critical rules and requirements                   |
 | [search-codebase](./skills/search-codebase.md)                                               | Finding code, files, or patterns                                 |
 | [test-data-driven](./skills/test-data-driven.md)                                             | Data-driven testing with TestCase and TestCaseSource             |
 | [test-naming-conventions](./skills/test-naming-conventions.md)                               | Test method and TestName naming rules                            |
@@ -177,7 +179,7 @@ Invoke these skills for specific tasks.
 
 <!-- END GENERATED SKILLS INDEX -->
 
-<!-- [skills-index] Generated skills index -->
+## Documentation Requirements
 
 **Documentation is NOT optional.** Every customer-visible change MUST include documentation updates. Incomplete documentation = incomplete work.
 
