@@ -117,7 +117,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 }
                 else
                 {
-                    DrawNativeDropDown(position, property, label, options, displayedOptions);
+                    DrawGenericMenuDropDown(position, property, label, options, displayedOptions);
                 }
             }
             finally
@@ -126,7 +126,15 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
         }
 
-        private static void DrawNativeDropDown(
+        /// <summary>
+        /// Draws a dropdown using GenericMenu for a small number of options.
+        /// </summary>
+        /// <remarks>
+        /// If the current property value is not found in the options array,
+        /// it is automatically clamped to the first available option. This ensures
+        /// the displayed value always matches a valid option.
+        /// </remarks>
+        private static void DrawGenericMenuDropDown(
             Rect position,
             SerializedProperty property,
             GUIContent label,
@@ -135,16 +143,69 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         )
         {
             int currentValue = property.intValue;
-            int selectedIndex = Mathf.Max(0, Array.IndexOf(options, currentValue));
-
-            selectedIndex = EditorGUI.Popup(position, label.text, selectedIndex, displayedOptions);
-
-            if (selectedIndex >= 0 && selectedIndex < options.Length)
+            int selectedIndex = Array.IndexOf(options, currentValue);
+            if (selectedIndex < 0 && options.Length > 0)
             {
-                property.intValue = options[selectedIndex];
+                property.intValue = options[0];
+                selectedIndex = 0;
             }
+
+            Rect fieldRect = EditorGUI.PrefixLabel(position, label);
+            bool previousMixed = EditorGUI.showMixedValue;
+            EditorGUI.showMixedValue = property.hasMultipleDifferentValues;
+
+            string displayValue =
+                selectedIndex >= 0 && selectedIndex < displayedOptions.Length
+                    ? displayedOptions[selectedIndex]
+                    : DropDownShared.GetCachedIntString(currentValue);
+
+            GUIContent buttonContent = new(displayValue);
+
+            if (EditorGUI.DropdownButton(fieldRect, buttonContent, FocusType.Keyboard))
+            {
+                SerializedObject serializedObject = property.serializedObject;
+                string propertyPath = property.propertyPath;
+
+                GenericMenu menu = new();
+                for (int i = 0; i < options.Length; i++)
+                {
+                    int capturedIndex = i;
+                    bool isSelected = i == selectedIndex;
+                    menu.AddItem(
+                        new GUIContent(displayedOptions[i]),
+                        isSelected,
+                        () =>
+                        {
+                            serializedObject.Update();
+                            SerializedProperty prop = serializedObject.FindProperty(propertyPath);
+                            if (prop == null)
+                            {
+                                return;
+                            }
+
+                            Undo.RecordObjects(
+                                serializedObject.targetObjects,
+                                "Change IntDropDown Selection"
+                            );
+                            prop.intValue = options[capturedIndex];
+                            serializedObject.ApplyModifiedProperties();
+                        }
+                    );
+                }
+                menu.DropDown(fieldRect);
+            }
+
+            EditorGUI.showMixedValue = previousMixed;
         }
 
+        /// <summary>
+        /// Draws a popup button for large option lists that opens a searchable selection window.
+        /// </summary>
+        /// <remarks>
+        /// If the current property value is not found in the options array,
+        /// it is automatically clamped to the first available option. This ensures
+        /// the displayed value always matches a valid option.
+        /// </remarks>
         private static void DrawPopupDropDown(
             Rect position,
             SerializedProperty property,
@@ -156,6 +217,12 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         {
             int currentValue = property.intValue;
             int selectedIndex = Array.IndexOf(options, currentValue);
+            if (selectedIndex < 0 && options.Length > 0)
+            {
+                property.intValue = options[0];
+                selectedIndex = 0;
+            }
+
             string displayValue =
                 selectedIndex >= 0 && selectedIndex < displayedOptions.Length
                     ? displayedOptions[selectedIndex]
@@ -318,7 +385,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return _options[optionIndex];
             }
 
-            protected override int GetDefaultValue() => 0;
+            protected override int GetDefaultValue() => _options.Length > 0 ? _options[0] : 0;
 
             protected override string UndoActionName => "Change IntDropDown Selection";
         }

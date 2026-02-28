@@ -63,6 +63,17 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers.TestTypes
             }
             return options;
         }
+
+        internal static int[] GetVeryLargeOptions()
+        {
+            // Returns 100+ options to ensure popup path is triggered
+            int[] options = new int[150];
+            for (int i = 0; i < 150; i++)
+            {
+                options[i] = (i + 1) * 5;
+            }
+            return options;
+        }
     }
 
     /// <summary>

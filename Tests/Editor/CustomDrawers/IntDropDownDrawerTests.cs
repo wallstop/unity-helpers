@@ -459,6 +459,129 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             );
         }
 
+        [UnityTest]
+        public IEnumerator OnGUIClampsNegativeInvalidValueToFirstOption()
+        {
+            IntDropDownTestAsset asset = CreateScriptableObject<IntDropDownTestAsset>();
+            asset.missingValue = -5;
+
+            using SerializedObject serializedObject = new(asset);
+            serializedObject.Update();
+
+            SerializedProperty property = serializedObject.FindProperty(
+                nameof(IntDropDownTestAsset.missingValue)
+            );
+            Assert.IsTrue(property != null, "Failed to locate missing value property.");
+
+            IntDropDownDrawer drawer = new();
+            AssignAttribute(drawer, new IntDropDownAttribute(5, 10, 15));
+            Rect position = new(0f, 0f, 240f, EditorGUIUtility.singleLineHeight);
+            GUIContent label = new("Negative");
+
+            yield return TestIMGUIExecutor.Run(() =>
+            {
+                drawer.OnGUI(position, property, label);
+            });
+
+            serializedObject.ApplyModifiedProperties();
+            Assert.That(asset.missingValue, Is.EqualTo(5));
+        }
+
+        [UnityTest]
+        public IEnumerator OnGUIWithEmptyOptionsLeavesValueUnchanged()
+        {
+            IntDropDownNoOptionsAsset asset = CreateScriptableObject<IntDropDownNoOptionsAsset>();
+            asset.unspecified = 42;
+
+            using SerializedObject serializedObject = new(asset);
+            serializedObject.Update();
+
+            SerializedProperty property = serializedObject.FindProperty(
+                nameof(IntDropDownNoOptionsAsset.unspecified)
+            );
+            Assert.IsTrue(property != null, "Failed to locate unspecified property.");
+
+            IntDropDownDrawer drawer = new();
+            AssignAttribute(
+                drawer,
+                new IntDropDownAttribute(
+                    typeof(IntDropDownEmptySource),
+                    nameof(IntDropDownEmptySource.GetEmptyOptions)
+                )
+            );
+            Rect position = new(0f, 0f, 240f, EditorGUIUtility.singleLineHeight);
+            GUIContent label = new("Empty");
+
+            yield return TestIMGUIExecutor.Run(() =>
+            {
+                drawer.OnGUI(position, property, label);
+            });
+
+            serializedObject.ApplyModifiedProperties();
+            Assert.That(asset.unspecified, Is.EqualTo(42));
+        }
+
+        [UnityTest]
+        public IEnumerator OnGUIPopupPathClampsInvalidValueToFirstOption()
+        {
+            IntDropDownVeryLargeOptionsAsset asset =
+                CreateScriptableObject<IntDropDownVeryLargeOptionsAsset>();
+            asset.selection = 9999;
+
+            using SerializedObject serializedObject = new(asset);
+            serializedObject.Update();
+
+            SerializedProperty property = serializedObject.FindProperty(
+                nameof(IntDropDownVeryLargeOptionsAsset.selection)
+            );
+            Assert.IsTrue(property != null, "Failed to locate selection property.");
+
+            IntDropDownDrawer drawer = new();
+            IntDropDownAttribute attribute = new(
+                typeof(IntDropDownLargeSource),
+                nameof(IntDropDownLargeSource.GetVeryLargeOptions)
+            );
+            AssignAttribute(drawer, attribute);
+            Rect position = new(0f, 0f, 400f, EditorGUIUtility.singleLineHeight);
+            GUIContent label = new("VeryLarge Selection");
+
+            yield return TestIMGUIExecutor.Run(() =>
+            {
+                drawer.OnGUI(position, property, label);
+            });
+
+            serializedObject.ApplyModifiedProperties();
+            // First option is (0 + 1) * 5 = 5
+            Assert.That(asset.selection, Is.EqualTo(5));
+        }
+
+        [Test]
+        [TestCase(999, 5, TestName = "Value.PositiveOutOfRange.ClampsToFirst")]
+        [TestCase(-5, 5, TestName = "Value.Negative.ClampsToFirst")]
+        [TestCase(0, 5, TestName = "Value.Zero.ClampsToFirst")]
+        [TestCase(7, 5, TestName = "Value.NotInOptions.ClampsToFirst")]
+        public void CreatePropertyGUIClampsInvalidValues(int invalidValue, int expectedValue)
+        {
+            IntDropDownTestAsset asset = CreateScriptableObject<IntDropDownTestAsset>();
+            asset.missingValue = invalidValue;
+
+            using SerializedObject serializedObject = new(asset);
+            serializedObject.Update();
+
+            SerializedProperty property = serializedObject.FindProperty(
+                nameof(IntDropDownTestAsset.missingValue)
+            );
+            Assert.IsTrue(property != null, "Failed to locate missing value property.");
+
+            IntDropDownDrawer drawer = new();
+            AssignAttribute(drawer, new IntDropDownAttribute(5, 10, 15));
+            VisualElement element = drawer.CreatePropertyGUI(property);
+
+            Assert.IsInstanceOf<BaseField<int>>(element);
+            BaseField<int> selector = (BaseField<int>)element;
+            Assert.That(selector.value, Is.EqualTo(expectedValue));
+        }
+
         private static void AssignAttribute(PropertyDrawer drawer, PropertyAttribute attribute)
         {
             PropertyDrawerTestHelper.AssignAttribute(drawer, attribute);

@@ -499,6 +499,38 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     return MatchesCharacter(property, option);
                 case SerializedPropertyType.ObjectReference:
                     return MatchesObjectReference(property, option);
+                case SerializedPropertyType.Vector2:
+                    return option is Vector2 v2 && property.vector2Value == v2;
+                case SerializedPropertyType.Vector3:
+                    return option is Vector3 v3 && property.vector3Value == v3;
+                case SerializedPropertyType.Vector4:
+                    return option is Vector4 v4 && property.vector4Value == v4;
+                case SerializedPropertyType.Vector2Int:
+                    return option is Vector2Int v2i && property.vector2IntValue == v2i;
+                case SerializedPropertyType.Vector3Int:
+                    return option is Vector3Int v3i && property.vector3IntValue == v3i;
+                case SerializedPropertyType.Color:
+                    if (option is Color color)
+                    {
+                        return property.colorValue == color;
+                    }
+                    return option is Color32 c32 && property.colorValue == (Color)c32;
+                case SerializedPropertyType.Rect:
+                    return option is Rect rect && property.rectValue == rect;
+                case SerializedPropertyType.RectInt:
+                    return option is RectInt ri && property.rectIntValue.Equals(ri);
+                case SerializedPropertyType.Bounds:
+                    return option is Bounds bounds && property.boundsValue == bounds;
+                case SerializedPropertyType.BoundsInt:
+                    return option is BoundsInt bi && property.boundsIntValue == bi;
+                case SerializedPropertyType.Quaternion:
+                    return option is Quaternion q && property.quaternionValue == q;
+                case SerializedPropertyType.AnimationCurve:
+                    return option is AnimationCurve curve
+                        && property.animationCurveValue != null
+                        && property.animationCurveValue.Equals(curve);
+                case SerializedPropertyType.Hash128:
+                    return option is Hash128 hash && property.hash128Value == hash;
                 case SerializedPropertyType.Generic:
                     if (IsSerializableTypeProperty(property))
                     {
@@ -506,8 +538,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     }
                     return MatchesGenericProperty(property, valueType, option);
                 default:
-                    // For any other property type (Vector2, Color, Rect, etc.),
-                    // use reflection-based comparison
                     return MatchesGenericProperty(property, valueType, option);
             }
         }
@@ -982,6 +1012,45 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 case SerializedPropertyType.ObjectReference:
                     ApplyObjectReference(property, selectedOption);
                     break;
+                case SerializedPropertyType.Vector2:
+                    ApplyVector2(property, selectedOption);
+                    break;
+                case SerializedPropertyType.Vector3:
+                    ApplyVector3(property, selectedOption);
+                    break;
+                case SerializedPropertyType.Vector4:
+                    ApplyVector4(property, selectedOption);
+                    break;
+                case SerializedPropertyType.Vector2Int:
+                    ApplyVector2Int(property, selectedOption);
+                    break;
+                case SerializedPropertyType.Vector3Int:
+                    ApplyVector3Int(property, selectedOption);
+                    break;
+                case SerializedPropertyType.Color:
+                    ApplyColor(property, selectedOption);
+                    break;
+                case SerializedPropertyType.Rect:
+                    ApplyRect(property, selectedOption);
+                    break;
+                case SerializedPropertyType.RectInt:
+                    ApplyRectInt(property, selectedOption);
+                    break;
+                case SerializedPropertyType.Bounds:
+                    ApplyBounds(property, selectedOption);
+                    break;
+                case SerializedPropertyType.BoundsInt:
+                    ApplyBoundsInt(property, selectedOption);
+                    break;
+                case SerializedPropertyType.Quaternion:
+                    ApplyQuaternion(property, selectedOption);
+                    break;
+                case SerializedPropertyType.AnimationCurve:
+                    ApplyAnimationCurve(property, selectedOption);
+                    break;
+                case SerializedPropertyType.Hash128:
+                    ApplyHash128(property, selectedOption);
+                    break;
                 case SerializedPropertyType.Generic:
                     if (IsSerializableTypeProperty(property))
                     {
@@ -993,8 +1062,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     }
                     break;
                 default:
-                    // For any other property type (Vector2, Color, Rect, etc.),
-                    // use reflection-based assignment
                     ApplyGenericProperty(property, selectedOption);
                     break;
             }
@@ -1031,6 +1098,114 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
         }
 
+        private static void ApplyVector2(SerializedProperty property, object selectedOption)
+        {
+            if (selectedOption is Vector2 value)
+            {
+                property.vector2Value = value;
+            }
+        }
+
+        private static void ApplyVector3(SerializedProperty property, object selectedOption)
+        {
+            if (selectedOption is Vector3 value)
+            {
+                property.vector3Value = value;
+            }
+        }
+
+        private static void ApplyVector4(SerializedProperty property, object selectedOption)
+        {
+            if (selectedOption is Vector4 value)
+            {
+                property.vector4Value = value;
+            }
+        }
+
+        private static void ApplyVector2Int(SerializedProperty property, object selectedOption)
+        {
+            if (selectedOption is Vector2Int value)
+            {
+                property.vector2IntValue = value;
+            }
+        }
+
+        private static void ApplyVector3Int(SerializedProperty property, object selectedOption)
+        {
+            if (selectedOption is Vector3Int value)
+            {
+                property.vector3IntValue = value;
+            }
+        }
+
+        private static void ApplyColor(SerializedProperty property, object selectedOption)
+        {
+            if (selectedOption is Color value)
+            {
+                property.colorValue = value;
+            }
+            else if (selectedOption is Color32 color32)
+            {
+                property.colorValue = color32;
+            }
+        }
+
+        private static void ApplyRect(SerializedProperty property, object selectedOption)
+        {
+            if (selectedOption is Rect value)
+            {
+                property.rectValue = value;
+            }
+        }
+
+        private static void ApplyRectInt(SerializedProperty property, object selectedOption)
+        {
+            if (selectedOption is RectInt value)
+            {
+                property.rectIntValue = value;
+            }
+        }
+
+        private static void ApplyBounds(SerializedProperty property, object selectedOption)
+        {
+            if (selectedOption is Bounds value)
+            {
+                property.boundsValue = value;
+            }
+        }
+
+        private static void ApplyBoundsInt(SerializedProperty property, object selectedOption)
+        {
+            if (selectedOption is BoundsInt value)
+            {
+                property.boundsIntValue = value;
+            }
+        }
+
+        private static void ApplyQuaternion(SerializedProperty property, object selectedOption)
+        {
+            if (selectedOption is Quaternion value)
+            {
+                property.quaternionValue = value;
+            }
+        }
+
+        private static void ApplyAnimationCurve(SerializedProperty property, object selectedOption)
+        {
+            if (selectedOption is AnimationCurve value)
+            {
+                property.animationCurveValue = value;
+            }
+        }
+
+        private static void ApplyHash128(SerializedProperty property, object selectedOption)
+        {
+            if (selectedOption is Hash128 value)
+            {
+                property.hash128Value = value;
+            }
+        }
+
         private static void ApplySerializableType(
             SerializedProperty property,
             object selectedOption
@@ -1057,15 +1232,30 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             try
             {
-                // Set the field value via reflection on the target object
-                UnityEngine.Object targetObject = property.serializedObject?.targetObject;
-                if (targetObject == null)
+                SerializedObject serializedObject = property.serializedObject;
+                if (serializedObject == null)
                 {
                     return;
                 }
 
-                SetFieldValueFromPropertyPath(targetObject, property.propertyPath, selectedOption);
-                EditorUtility.SetDirty(targetObject);
+                UnityEngine.Object[] targetObjects = serializedObject.targetObjects;
+                if (targetObjects == null || targetObjects.Length == 0)
+                {
+                    return;
+                }
+
+                string path = property.propertyPath;
+                for (int i = 0; i < targetObjects.Length; i++)
+                {
+                    UnityEngine.Object target = targetObjects[i];
+                    if (target == null)
+                    {
+                        continue;
+                    }
+
+                    SetFieldValueFromPropertyPath(target, path, selectedOption);
+                    EditorUtility.SetDirty(target);
+                }
             }
             catch (Exception)
             {

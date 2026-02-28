@@ -16,6 +16,13 @@ All PropertyDrawers MUST go in `Editor/CustomDrawers/`.
 
 ## PropertyDrawer Template
 
+See full template: [code-samples/property-drawer-template.cs](./code-samples/property-drawer-template.cs)
+
+> **Note**: The inline template below shows IMGUI-only implementation. The full template file adds:
+>
+> - `UnityEditor.UIElements` and `UnityEngine.UIElements` imports
+> - `CreatePropertyGUI(SerializedProperty)` method for UI Toolkit support
+
 ```csharp
 namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 {
@@ -23,25 +30,18 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
     using System;
     using System.Collections.Generic;
     using UnityEditor;
-    using UnityEditor.UIElements;
     using UnityEngine;
-    using UnityEngine.UIElements;
     using WallstopStudios.UnityHelpers.Core.Attributes;
 
     [CustomPropertyDrawer(typeof(MyAttribute))]
     public sealed class MyAttributePropertyDrawer : PropertyDrawer
     {
-        private const float HelpBoxPadding = 2f;
-
-        private static readonly Dictionary<string, float> HeightCache = new(
-            StringComparer.Ordinal
-        );
+        private static readonly Dictionary<string, float> HeightCache = new(StringComparer.Ordinal);
         private static readonly GUIContent ReusableContent = new();
 
         public override float GetPropertyHeight(SerializedProperty property, GUIContent label)
         {
             float baseHeight = EditorGUI.GetPropertyHeight(property, label, true);
-            // Add additional height for custom elements
             return baseHeight;
         }
 
@@ -56,19 +56,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             {
                 EditorGUI.EndProperty();
             }
-        }
-
-        // Optional: UI Toolkit support
-        public override VisualElement CreatePropertyGUI(SerializedProperty property)
-        {
-            VisualElement container = new();
-            container.style.flexDirection = FlexDirection.Column;
-
-            PropertyField propertyField = new(property);
-            propertyField.label = property.displayName;
-
-            container.Add(propertyField);
-            return container;
         }
     }
 #endif
@@ -264,232 +251,10 @@ private SerializedProperty GetProperty(SerializedObject so)
 
 ---
 
-## Drawer with Dropdown Selection
-
-For drawers that display a dropdown of options:
-
-```csharp
-[CustomPropertyDrawer(typeof(MySelectableAttribute))]
-public sealed class MySelectablePropertyDrawer : PropertyDrawer
-{
-    private static readonly string[] Options = { "Option A", "Option B", "Option C" };
-    private static readonly GUIContent ReusableContent = new();
-
-    public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
-    {
-        if (property == null || property.propertyType != SerializedPropertyType.String)
-        {
-            EditorGUI.PropertyField(position, property, label, true);
-            return;
-        }
-
-        EditorGUI.BeginProperty(position, label, property);
-        try
-        {
-            int currentIndex = Array.IndexOf(Options, property.stringValue);
-            if (currentIndex < 0)
-            {
-                currentIndex = 0;
-            }
-
-            int newIndex = EditorGUI.Popup(position, label.text, currentIndex, Options);
-            if (newIndex != currentIndex && newIndex >= 0 && newIndex < Options.Length)
-            {
-                property.stringValue = Options[newIndex];
-            }
-        }
-        finally
-        {
-            EditorGUI.EndProperty();
-        }
-    }
-}
-```
-
----
-
-## Drawer with Foldout Section
-
-For complex drawers with expandable sections:
-
-```csharp
-[CustomPropertyDrawer(typeof(MyComplexType))]
-public sealed class MyComplexTypeDrawer : PropertyDrawer
-{
-    private const float LineHeight = 18f;
-    private const float Spacing = 2f;
-
-    public override float GetPropertyHeight(SerializedProperty property, GUIContent label)
-    {
-        if (!property.isExpanded)
-        {
-            return LineHeight;
-        }
-
-        int lineCount = 1; // Foldout
-        lineCount += 3;    // Three child properties
-        return lineCount * (LineHeight + Spacing);
-    }
-
-    public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
-    {
-        EditorGUI.BeginProperty(position, label, property);
-        try
-        {
-            Rect foldoutRect = new(position.x, position.y, position.width, LineHeight);
-            property.isExpanded = EditorGUI.Foldout(foldoutRect, property.isExpanded, label, true);
-
-            if (property.isExpanded)
-            {
-                EditorGUI.indentLevel++;
-
-                float y = position.y + LineHeight + Spacing;
-                DrawChildProperty(ref y, position.width, property, "childField1");
-                DrawChildProperty(ref y, position.width, property, "childField2");
-                DrawChildProperty(ref y, position.width, property, "childField3");
-
-                EditorGUI.indentLevel--;
-            }
-        }
-        finally
-        {
-            EditorGUI.EndProperty();
-        }
-    }
-
-    private void DrawChildProperty(ref float y, float width, SerializedProperty parent, string childName)
-    {
-        SerializedProperty child = parent.FindPropertyRelative(childName);
-        if (child != null)
-        {
-            Rect rect = new(0, y, width, LineHeight);
-            rect = EditorGUI.IndentedRect(rect);
-            EditorGUI.PropertyField(rect, child);
-            y += LineHeight + Spacing;
-        }
-    }
-}
-```
-
----
-
-## Display Label Normalization (Dropdown Drawers)
-
-When a dropdown renders a fallback for null/empty labels (e.g., `(Option N)`), **every** code path — rendering, search, filter, suggestion, selection — MUST use the same normalized label. Use a single `GetNormalizedDisplayLabel(int)` helper backed by `DropDownShared.GetFallbackOptionLabel(int)`. Never call raw `GetDisplayLabel` in search/filter/suggestion paths.
-
-See also: [defensive-editor-programming § Consistent Display Label Normalization](./defensive-editor-programming.md)
-
----
-
-## Critical Rules
-
-### 1. `#if UNITY_EDITOR` Wrapping
-
-Wrap all editor code after namespace declaration:
-
-```csharp
-namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
-{
-#if UNITY_EDITOR
-    // All code here
-#endif
-}
-```
-
-### 2. `using` Directives INSIDE Namespace
-
-```csharp
-namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
-{
-#if UNITY_EDITOR
-    using System;
-    using UnityEditor;
-    using UnityEngine;
-    // ...
-#endif
-}
-```
-
-### 3. Qualify `Object` References
-
-```csharp
-using Object = UnityEngine.Object;
-```
-
-### 4. Unity Object Null Checks
-
-```csharp
-// CORRECT
-if (targetObject != null)
-{
-    // Use targetObject
-}
-
-// INCORRECT
-if (targetObject?.name != null) // Bypasses Unity null check
-```
-
-### 5. Sealed Classes
-
-PropertyDrawers should be `sealed` unless designed for inheritance:
-
-```csharp
-public sealed class MyAttributePropertyDrawer : PropertyDrawer { }
-```
-
----
-
-## Post-Creation Steps (MANDATORY)
-
-1. **Generate meta file** (required - do not skip):
-
-   ```bash
-   ./scripts/generate-meta.sh <path-to-file.cs>
-   ```
-
-   > See [create-unity-meta](./create-unity-meta.md) for full details.
-
-2. **Format code**:
-
-   ```bash
-   dotnet tool run csharpier format .
-   ```
-
-3. **Verify no errors**:
-   - Check IDE for compilation errors
-   - Ensure `WallstopStudios.UnityHelpers.Editor.asmdef` reference is correct
-
----
-
-## File Naming Conventions
-
-| Type           | Naming                 | Example                     |
-| -------------- | ---------------------- | --------------------------- |
-| PropertyDrawer | `{Attribute}Drawer.cs` | `WNotNullPropertyDrawer.cs` |
-
----
-
-## Testing PropertyDrawers (MANDATORY)
-
-**All PropertyDrawers MUST have exhaustive tests.** Create tests in `Tests/Editor/` mirroring the source structure.
-
-See [create-test](./create-test.md) for full testing guidelines.
-
-### Required Test Coverage
-
-| Category           | Test Scenarios                                      |
-| ------------------ | --------------------------------------------------- |
-| **Normal Cases**   | Typical usage, valid inputs, expected workflows     |
-| **Negative Cases** | Invalid inputs, null values, missing dependencies   |
-| **Edge Cases**     | Empty data, boundary values, unusual configurations |
-| **Property Types** | All supported `SerializedPropertyType` values       |
-| **Null Targets**   | Null `SerializedProperty`, null `SerializedObject`  |
-| **Multi-Object**   | Multiple selected objects with different values     |
-
----
-
 ## Related Skills
 
+- [property-drawer-examples](./property-drawer-examples.md) - Dropdown and foldout drawer examples
+- [property-drawer-rules](./property-drawer-rules.md) - Critical rules, multi-object editing, testing
 - [create-editor-tool](./create-editor-tool.md) - EditorWindows and Custom Inspectors
 - [editor-caching-patterns](./editor-caching-patterns.md) - Editor caching and common patterns
 - [defensive-programming](./defensive-programming.md) - General defensive coding practices
