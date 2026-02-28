@@ -13,7 +13,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Editor.CustomDrawers;
     using WallstopStudios.UnityHelpers.Tests.Core;
-    using WallstopStudios.UnityHelpers.Tests.Editor.TestTypes;
+    using WallstopStudios.UnityHelpers.Tests.CustomDrawers.TestTypes;
     using WallstopStudios.UnityHelpers.Tests.EditorFramework;
     using WallstopStudios.UnityHelpers.Tests.TestUtils;
     using PropertyAttribute = UnityEngine.PropertyAttribute;
@@ -21,15 +21,15 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
     [TestFixture]
     [NUnit.Framework.Category("Slow")]
     [NUnit.Framework.Category("Integration")]
-    public sealed class IntDropDownDrawerMultiObjectTests : CommonTestBase
+    public sealed class WValueDropDownDrawerMultiObjectTests : CommonTestBase
     {
         [Test]
         public void MultiObjectSameValueDoesNotShowMixedIndicator()
         {
-            MultiObjectIntDropDownTarget first =
-                CreateScriptableObject<MultiObjectIntDropDownTarget>();
-            MultiObjectIntDropDownTarget second =
-                CreateScriptableObject<MultiObjectIntDropDownTarget>();
+            MultiObjectWValueDropDownTarget first =
+                CreateScriptableObject<MultiObjectWValueDropDownTarget>();
+            MultiObjectWValueDropDownTarget second =
+                CreateScriptableObject<MultiObjectWValueDropDownTarget>();
             first.selection = 20;
             second.selection = 20;
 
@@ -37,7 +37,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             serializedObject.Update();
 
             SerializedProperty property = serializedObject.FindProperty(
-                nameof(MultiObjectIntDropDownTarget.selection)
+                nameof(MultiObjectWValueDropDownTarget.selection)
             );
             Assert.IsTrue(property != null, "Failed to locate selection property.");
 
@@ -50,10 +50,10 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         [Test]
         public void MultiObjectDifferentValueShowsMixedIndicator()
         {
-            MultiObjectIntDropDownTarget first =
-                CreateScriptableObject<MultiObjectIntDropDownTarget>();
-            MultiObjectIntDropDownTarget second =
-                CreateScriptableObject<MultiObjectIntDropDownTarget>();
+            MultiObjectWValueDropDownTarget first =
+                CreateScriptableObject<MultiObjectWValueDropDownTarget>();
+            MultiObjectWValueDropDownTarget second =
+                CreateScriptableObject<MultiObjectWValueDropDownTarget>();
             first.selection = 10;
             second.selection = 30;
 
@@ -61,7 +61,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             serializedObject.Update();
 
             SerializedProperty property = serializedObject.FindProperty(
-                nameof(MultiObjectIntDropDownTarget.selection)
+                nameof(MultiObjectWValueDropDownTarget.selection)
             );
             Assert.IsTrue(property != null, "Failed to locate selection property.");
 
@@ -72,50 +72,12 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         }
 
         [UnityTest]
-        public IEnumerator MultiObjectSameInvalidValueDoesNotShowMixedIndicator()
+        public IEnumerator MultiObjectSelectionChangePropagatesToAllObjects()
         {
-            MultiObjectIntDropDownTarget first =
-                CreateScriptableObject<MultiObjectIntDropDownTarget>();
-            MultiObjectIntDropDownTarget second =
-                CreateScriptableObject<MultiObjectIntDropDownTarget>();
-            first.selection = 999;
-            second.selection = 999;
-
-            using SerializedObject serializedObject = new(new Object[] { first, second });
-            serializedObject.Update();
-
-            SerializedProperty property = serializedObject.FindProperty(
-                nameof(MultiObjectIntDropDownTarget.selection)
-            );
-            Assert.IsTrue(property != null, "Failed to locate selection property.");
-
-            IntDropDownDrawer drawer = new();
-            AssignAttribute(drawer, new IntDropDownAttribute(10, 20, 30, 40, 50));
-
-            VisualElement element = drawer.CreatePropertyGUI(property);
-            Assert.IsTrue(element != null, "CreatePropertyGUI should return a VisualElement.");
-
-            Rect position = new(0f, 0f, 240f, EditorGUIUtility.singleLineHeight);
-            GUIContent label = new("Selection");
-
-            yield return TestIMGUIExecutor.Run(() =>
-            {
-                drawer.OnGUI(position, property, label);
-            });
-
-            Assert.IsFalse(
-                property.hasMultipleDifferentValues,
-                "Both objects have the same (invalid) value, so hasMultipleDifferentValues should be false."
-            );
-        }
-
-        [UnityTest]
-        public IEnumerator MultiObjectSelectionChangesAllObjects()
-        {
-            MultiObjectIntDropDownTarget first =
-                CreateScriptableObject<MultiObjectIntDropDownTarget>();
-            MultiObjectIntDropDownTarget second =
-                CreateScriptableObject<MultiObjectIntDropDownTarget>();
+            MultiObjectWValueDropDownTarget first =
+                CreateScriptableObject<MultiObjectWValueDropDownTarget>();
+            MultiObjectWValueDropDownTarget second =
+                CreateScriptableObject<MultiObjectWValueDropDownTarget>();
             first.selection = 10;
             second.selection = 30;
 
@@ -123,7 +85,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             serializedObject.Update();
 
             SerializedProperty property = serializedObject.FindProperty(
-                nameof(MultiObjectIntDropDownTarget.selection)
+                nameof(MultiObjectWValueDropDownTarget.selection)
             );
             Assert.IsTrue(property != null, "Failed to locate selection property.");
             Assert.IsTrue(
@@ -131,7 +93,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 "Precondition: objects should start with different values."
             );
 
-            property.intValue = 40;
+            WValueDropDownDrawer.ApplyOption(property, 40);
             serializedObject.ApplyModifiedProperties();
 
             Assert.That(

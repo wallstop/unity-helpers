@@ -148,7 +148,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 for (int i = 0; i < options.Length; i++)
                 {
                     int capturedIndex = i;
-                    bool isSelected = i == currentIndex;
+                    bool isSelected = i == currentIndex && !property.hasMultipleDifferentValues;
                     menu.AddItem(
                         new GUIContent(displayLabels[i]),
                         isSelected,
@@ -399,7 +399,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 {
                     DisplayLabels = displayLabels,
                     Tooltips = null,
-                    SelectedIndex = currentIndex,
+                    SelectedIndex = property.hasMultipleDifferentValues ? -1 : currentIndex,
                     PageSize = pageSize,
                     OnSelectionChanged = (selectedIndex) =>
                     {
@@ -1588,11 +1588,9 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 int startIndex = _state.page * pageSize;
                 int endIndex = Math.Min(filteredCount, startIndex + pageSize);
                 int rowsOnPage = Mathf.Max(1, endIndex - startIndex);
-                int currentSelectionIndex = ResolveSelectedIndex(
-                    property,
-                    _attribute.ValueType,
-                    _options
-                );
+                int currentSelectionIndex = property.hasMultipleDifferentValues
+                    ? -1
+                    : ResolveSelectedIndex(property, _attribute.ValueType, _options);
 
                 using (new EditorGUILayout.VerticalScope())
                 {
@@ -1890,7 +1888,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 {
                     DisplayLabels = displayLabels,
                     Tooltips = null,
-                    SelectedIndex = currentIndex,
+                    SelectedIndex = property.hasMultipleDifferentValues ? -1 : currentIndex,
                     PageSize = pageSize,
                     OnSelectionChanged = (selectedIndex) =>
                     {
@@ -1941,6 +1939,10 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             protected override int GetCurrentSelectionIndex(SerializedProperty property)
             {
+                if (property.hasMultipleDifferentValues)
+                {
+                    return -1;
+                }
                 return ResolveSelectedIndex(property, _attribute.ValueType, _options);
             }
 

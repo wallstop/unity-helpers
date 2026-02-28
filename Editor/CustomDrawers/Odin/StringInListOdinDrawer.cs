@@ -52,35 +52,70 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return;
             }
 
-            // Handle string field
-            if (valueType == typeof(string))
+            // Check for mixed values
+            bool hasMultipleDifferentValues = false;
+            if (Property.ValueEntry.ValueCount > 1)
             {
-                DrawStringDropDown(label, options);
-                return;
+                object firstValue = Property.ValueEntry.WeakValues[0];
+                for (int i = 1; i < Property.ValueEntry.ValueCount; i++)
+                {
+                    if (!Equals(firstValue, Property.ValueEntry.WeakValues[i]))
+                    {
+                        hasMultipleDifferentValues = true;
+                        break;
+                    }
+                }
             }
 
-            // Handle int field (index-based)
-            if (valueType == typeof(int))
-            {
-                DrawIntIndexDropDown(label, options);
-                return;
-            }
+            // Set showMixedValue FIRST, before any index calculations
+            bool previousMixed = EditorGUI.showMixedValue;
+            EditorGUI.showMixedValue = hasMultipleDifferentValues;
 
-            // Handle SerializableType
-            if (valueType == typeof(SerializableType))
+            try
             {
-                DrawSerializableTypeDropDown(label, options, stringInList);
-                return;
-            }
+                // Handle string field
+                if (valueType == typeof(string))
+                {
+                    DrawStringDropDown(label, options, hasMultipleDifferentValues);
+                    return;
+                }
 
-            // Unsupported type
-            EditorGUILayout.HelpBox(
-                $"[StringInList] Type mismatch: field is {valueType.Name}, but StringInList requires string, int, or SerializableType.",
-                MessageType.Error
-            );
+                // Handle int field (index-based)
+                if (valueType == typeof(int))
+                {
+                    DrawIntIndexDropDown(label, options, hasMultipleDifferentValues);
+                    return;
+                }
+
+                // Handle SerializableType
+                if (valueType == typeof(SerializableType))
+                {
+                    DrawSerializableTypeDropDown(
+                        label,
+                        options,
+                        stringInList,
+                        hasMultipleDifferentValues
+                    );
+                    return;
+                }
+
+                // Unsupported type
+                EditorGUILayout.HelpBox(
+                    $"[StringInList] Type mismatch: field is {valueType.Name}, but StringInList requires string, int, or SerializableType.",
+                    MessageType.Error
+                );
+            }
+            finally
+            {
+                EditorGUI.showMixedValue = previousMixed;
+            }
         }
 
-        private void DrawStringDropDown(GUIContent label, string[] options)
+        private void DrawStringDropDown(
+            GUIContent label,
+            string[] options,
+            bool hasMultipleDifferentValues
+        )
         {
             object currentValue = Property.ValueEntry?.WeakSmartValue;
             string currentString = currentValue as string ?? string.Empty;
@@ -100,11 +135,16 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 displayOptions,
                 currentIndex,
                 currentString,
-                ApplyStringSelection
+                ApplyStringSelection,
+                hasMultipleDifferentValues
             );
         }
 
-        private void DrawIntIndexDropDown(GUIContent label, string[] options)
+        private void DrawIntIndexDropDown(
+            GUIContent label,
+            string[] options,
+            bool hasMultipleDifferentValues
+        )
         {
             object currentValue = Property.ValueEntry?.WeakSmartValue;
             int currentIndex = currentValue is int intValue ? intValue : -1;
@@ -134,14 +174,16 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 displayOptions,
                 currentIndex,
                 currentDisplay,
-                ApplyIntIndexSelection
+                ApplyIntIndexSelection,
+                hasMultipleDifferentValues
             );
         }
 
         private void DrawSerializableTypeDropDown(
             GUIContent label,
             string[] options,
-            StringInListAttribute attribute
+            StringInListAttribute attribute,
+            bool hasMultipleDifferentValues
         )
         {
             object currentValue = Property.ValueEntry?.WeakSmartValue;
@@ -173,7 +215,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 displayOptions,
                 currentIndex,
                 currentDisplay,
-                ApplySerializableTypeSelection
+                ApplySerializableTypeSelection,
+                hasMultipleDifferentValues
             );
         }
 
@@ -184,7 +227,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             string[] displayOptions,
             int currentIndex,
             string currentDisplay,
-            Action<string> applySelection
+            Action<string> applySelection,
+            bool hasMultipleDifferentValues
         )
         {
             Rect labelRect = new(
@@ -206,9 +250,17 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 EditorGUI.LabelField(labelRect, label);
             }
 
-            if (GUI.Button(fieldRect, currentDisplay, EditorStyles.popup))
+            string buttonText = hasMultipleDifferentValues ? "\u2014" : currentDisplay;
+            if (GUI.Button(fieldRect, buttonText, EditorStyles.popup))
             {
-                ShowPopupMenu(fieldRect, options, displayOptions, currentIndex, applySelection);
+                ShowPopupMenu(
+                    fieldRect,
+                    options,
+                    displayOptions,
+                    currentIndex,
+                    applySelection,
+                    hasMultipleDifferentValues
+                );
             }
         }
 
@@ -217,14 +269,15 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             string[] options,
             string[] displayOptions,
             int currentIndex,
-            Action<string> applySelection
+            Action<string> applySelection,
+            bool hasMultipleDifferentValues
         )
         {
             GenericMenu menu = new();
             for (int i = 0; i < options.Length; i++)
             {
                 int capturedIndex = i;
-                bool isSelected = i == currentIndex;
+                bool isSelected = i == currentIndex && !hasMultipleDifferentValues;
                 menu.AddItem(
                     new GUIContent(displayOptions[i]),
                     isSelected,

@@ -121,7 +121,30 @@ if (index < 0 || index >= options.Length)
 }
 ```
 
-### 5. Undo.RecordObjects Pattern for Multi-Object
+### 5. Guard GenericMenu `isSelected` and Popup `SelectedIndex` for Mixed Values
+
+When building `GenericMenu` items, guard the `isSelected` flag with `!property.hasMultipleDifferentValues` to prevent misleading checkmarks in multi-object editing mode:
+
+```csharp
+// CORRECT - No checkmark when values differ across selected objects
+bool isSelected = i == currentIndex && !property.hasMultipleDifferentValues;
+menu.AddItem(new GUIContent(label), isSelected, callback);
+
+// WRONG - Shows a checkmark based on one object's value even when mixed
+bool isSelected = i == currentIndex;
+```
+
+Similarly, popup window `SelectedIndex` should be set to `-1` when mixed:
+
+```csharp
+// CORRECT - Popup highlights nothing when mixed
+SelectedIndex = property.hasMultipleDifferentValues ? -1 : currentIndex,
+
+// WRONG - Highlights an index that only applies to one of the selected objects
+SelectedIndex = currentIndex,
+```
+
+### 6. Undo.RecordObjects Pattern for Multi-Object
 
 When modifying via reflection or direct field access, record undo for ALL targets:
 
@@ -142,7 +165,7 @@ void ApplySelection(SerializedProperty property, object newValue)
 }
 ```
 
-### 6. Odin Drawer Mixed Value Detection
+### 7. Odin Drawer Mixed Value Detection
 
 Odin drawers do NOT have `hasMultipleDifferentValues`. Manually check:
 
@@ -168,7 +191,7 @@ bool isMixed = HasMixedValues(Property.ValueEntry);
 EditorGUI.showMixedValue = isMixed;
 ```
 
-### 7. UI Toolkit Elements Need Same Handling
+### 8. UI Toolkit Elements Need Same Handling
 
 UI Toolkit `VisualElement`-based drawers require the same patterns:
 

@@ -22,6 +22,10 @@ $propertyReadForIndexPattern = [regex]'(Array\.IndexOf|IndexOf|\.Index\(|selecte
 # Index clamping patterns - suspicious index assignments
 $indexClampPattern = [regex]'(selectedIndex|currentIndex|index)\s*=\s*(0|Math\.Max|Mathf\.Max|Mathf\.Clamp)'
 
+# isSelected assignment without hasMultipleDifferentValues guard
+# Detects: bool isSelected = ... == ...Index (or ...index) without mixed-value check on the same line
+$isSelectedPattern = [regex]'bool\s+isSelected\s*=\s*.+==\s*.*[Ii]ndex'
+
 # Mixed value check pattern
 $mixedValueCheckPattern = [regex]'hasMultipleDifferentValues'
 
@@ -68,8 +72,9 @@ function Is-InsideCallback([string]$line) {
 
 function Has-MixedValueCheck([string[]]$content, [int]$lineIndex, [int]$searchRange) {
   # Search backwards and forwards for hasMultipleDifferentValues check
-  $startLine = [Math]::Max(0, $lineIndex - $searchRange)
-  $endLine = [Math]::Min($content.Count - 1, $lineIndex + $searchRange)
+  $zeroBasedIndex = $lineIndex - 1
+  $startLine = [Math]::Max(0, $zeroBasedIndex - $searchRange)
+  $endLine = [Math]::Min($content.Count - 1, $zeroBasedIndex + $searchRange)
 
   for ($i = $startLine; $i -le $endLine; $i++) {
     if ($mixedValueCheckPattern.IsMatch($content[$i])) {
@@ -212,6 +217,15 @@ foreach ($file in $filesToScan) {
         $match = $indexClampPattern.Match($line)
         $warnings += (@{
           Path=$rel; Line=$lineIndex; Message="Index clamping without hasMultipleDifferentValues check"
+        })
+      }
+    }
+
+    # Pattern 4: isSelected assignment without hasMultipleDifferentValues on the same line
+    if ($isSelectedPattern.IsMatch($line)) {
+      if (-not $mixedValueCheckPattern.IsMatch($line)) {
+        $warnings += (@{
+          Path=$rel; Line=$lineIndex; Message="GenericMenu isSelected assigned without hasMultipleDifferentValues guard"
         })
       }
     }
