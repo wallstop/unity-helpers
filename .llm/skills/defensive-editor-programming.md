@@ -44,6 +44,102 @@ Detailed code patterns are in dedicated sample files:
 
 ---
 
+## Multi-Object Editing Pitfalls (CRITICAL)
+
+Multi-object editing is a common source of bugs. These patterns prevent the most frequent issues:
+
+### Never Modify Property During Render Phase
+
+Property modification during `OnGUI` causes infinite repaint loops and corrupted state:
+
+```csharp
+// FORBIDDEN - Writing to property during render
+public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
+{
+    if (property.intValue < 0)
+    {
+        property.intValue = 0; // BUG: Causes repaint loop!
+    }
+    // ... render code
+}
+
+// CORRECT - Only modify in event callbacks
+public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
+{
+    // ... render code (read-only)
+
+    if (EditorGUI.DropdownButton(rect, content, FocusType.Keyboard))
+    {
+        ShowMenu(property); // Menu callback will modify property
+    }
+}
+```
+
+### Set showMixedValue BEFORE Calculations
+
+Always check and set mixed state before any index or value calculations:
+
+```csharp
+// CORRECT order
+EditorGUI.showMixedValue = property.hasMultipleDifferentValues;
+int currentIndex = CalculateDisplayIndex(property); // May be invalid when mixed
+string display = property.hasMultipleDifferentValues ? "\u2014" : GetLabel(currentIndex);
+
+// WRONG order - may use invalid index before checking mixed state
+int currentIndex = CalculateDisplayIndex(property); // Bug: Invalid for some targets
+EditorGUI.showMixedValue = property.hasMultipleDifferentValues;
+```
+
+### Display Conventions for Mixed/Invalid Values
+
+| State                  | Display                     | Notes                     |
+| ---------------------- | --------------------------- | ------------------------- |
+| Mixed values           | `"\u2014"` (em dash)        | Standard Unity convention |
+| Out-of-range index     | `"{index} (Invalid)"`       | Never silently clamp      |
+| Null/missing reference | `"(None)"` or `"(Missing)"` | Context-dependent         |
+
+### Undo Support for Multi-Object
+
+```csharp
+void ApplyValueToAllTargets(SerializedProperty property, object value)
+{
+    // Step 1: Record undo for ALL targets
+    Undo.RecordObjects(property.serializedObject.targetObjects, "Change Value");
+
+    // Step 2: Apply to each target
+    foreach (var target in property.serializedObject.targetObjects)
+    {
+        SetFieldValue(target, property.propertyPath, value);
+        EditorUtility.SetDirty(target);
+    }
+
+    // Step 3: Sync serialized state
+    property.serializedObject.Update();
+}
+```
+
+### Odin Inspector Mixed Value Detection
+
+Odin `OdinAttributeDrawer` lacks `hasMultipleDifferentValues`. Check manually:
+
+```csharp
+bool IsMixedValue<T>(InspectorProperty property)
+{
+    var entry = property.ValueEntry;
+    if (entry.ValueCount <= 1) return false;
+
+    var first = entry.WeakValues[0];
+    for (int i = 1; i < entry.ValueCount; i++)
+    {
+        if (!Equals(first, entry.WeakValues[i]))
+            return true;
+    }
+    return false;
+}
+```
+
+---
+
 ## Forbidden Editor APIs
 
 ### EditorGUI.Popup - NEVER USE
@@ -79,6 +175,67 @@ When editor UI renders a fallback label (e.g., `(Option N)` for empty strings), 
 
 ---
 
+## IMGUI vs UI Toolkit Value Handling
+
+PropertyDrawers behave differently depending on which rendering path is used. Understanding these differences prevents unexpected value modifications:
+
+### OnGUI (IMGUI Path)
+
+- **Display-only**: Invalid values are shown as "(Invalid)" but are NOT modified
+- **No clamping**: Out-of-range values remain unchanged during render
+- **Explicit user action required**: Values only change when user makes a selection
+- **Rationale**: IMGUI renders every frame; modifying values during render causes infinite repaint loops
+
+```csharp
+// OnGUI renders but does NOT modify invalid values
+public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
+{
+    int currentValue = property.intValue;
+    int index = Array.IndexOf(options, currentValue);
+
+    // Display "(Invalid)" for out-of-range, but DO NOT clamp
+    string display = index >= 0 ? options[index].ToString() : $"{currentValue} (Invalid)";
+
+    // Value only changes via user selection callback, never during render
+}
+```
+
+### CreatePropertyGUI (UI Toolkit Path)
+
+- **Clamps on initialization**: Invalid values are clamped to the first valid option
+- **Binding-driven**: UI Toolkit uses bindings that sync values immediately
+- **One-time setup**: CreatePropertyGUI runs once, not every frame
+- **Rationale**: UI Toolkit binding model expects valid values for proper field state
+
+```csharp
+// CreatePropertyGUI clamps invalid values during initialization
+public override VisualElement CreatePropertyGUI(SerializedProperty property)
+{
+    int currentValue = property.intValue;
+    int index = Array.IndexOf(options, currentValue);
+
+    // Clamp to first option if invalid
+    if (index < 0 && options.Length > 0)
+    {
+        property.intValue = options[0];
+        property.serializedObject.ApplyModifiedProperties();
+    }
+
+    return CreateDropdownField(property);
+}
+```
+
+### Summary Table
+
+| Aspect              | OnGUI (IMGUI)            | CreatePropertyGUI (UI Toolkit) |
+| ------------------- | ------------------------ | ------------------------------ |
+| Invalid value       | Display "(Invalid)"      | Clamp to first option          |
+| Modification timing | Only on user selection   | On initialization              |
+| Render frequency    | Every frame              | Once (binding-driven updates)  |
+| Value preservation  | Preserves invalid values | Normalizes to valid values     |
+
+---
+
 ## Quick Checklist for Editor Code
 
 Before submitting editor code, verify:
@@ -96,6 +253,12 @@ Before submitting editor code, verify:
 - [ ] Display label fallbacks applied consistently across all code paths
 - [ ] No `EditorGUI.Popup` usage (use `GenericMenu` instead - Linux phantom rows)
 - [ ] Multi-object editing supported (iterate `targetObjects`, use typed setters)
+- [ ] No property modification during OnGUI render phase (only in callbacks)
+- [ ] `EditorGUI.showMixedValue` set BEFORE index/value calculations
+- [ ] Em dash (`\u2014`) displayed for mixed values
+- [ ] "(Invalid)" suffix shown for out-of-range indices (no silent clamping)
+- [ ] `Undo.RecordObjects(targetObjects, ...)` used for multi-object undo
+- [ ] Odin drawers manually check mixed values via `ValueEntry.WeakValues`
 - [ ] Standard and Odin drawer variants updated consistently
 
 ---

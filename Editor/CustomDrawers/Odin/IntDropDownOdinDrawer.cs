@@ -5,6 +5,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 {
 #if UNITY_EDITOR && ODIN_INSPECTOR
     using System;
+    using System.Collections;
     using System.Collections.Generic;
     using Sirenix.OdinInspector.Editor;
     using UnityEditor;
@@ -66,6 +67,25 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 return;
             }
 
+            // Check for mixed values BEFORE any calculations
+            bool hasMultipleDifferentValues = false;
+            if (Property.ValueEntry.ValueCount > 1)
+            {
+                object firstValue = Property.ValueEntry.WeakValues[0];
+                for (int i = 1; i < Property.ValueEntry.ValueCount; i++)
+                {
+                    if (!Equals(firstValue, Property.ValueEntry.WeakValues[i]))
+                    {
+                        hasMultipleDifferentValues = true;
+                        break;
+                    }
+                }
+            }
+
+            // Set showMixedValue FIRST, before any index calculations
+            bool previousMixed = EditorGUI.showMixedValue;
+            EditorGUI.showMixedValue = hasMultipleDifferentValues;
+
             object currentValue = Property.ValueEntry?.WeakSmartValue;
             int currentInt = currentValue is int intValue ? intValue : 0;
             int currentIndex = Array.IndexOf(options, currentInt);
@@ -77,14 +97,22 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 EditorGUIUtility.singleLineHeight
             );
 
-            DrawPopupDropDown(
-                controlRect,
-                label,
-                options,
-                displayOptions,
-                currentIndex,
-                currentInt
-            );
+            try
+            {
+                DrawPopupDropDown(
+                    controlRect,
+                    label,
+                    options,
+                    displayOptions,
+                    currentIndex,
+                    currentInt,
+                    hasMultipleDifferentValues
+                );
+            }
+            finally
+            {
+                EditorGUI.showMixedValue = previousMixed;
+            }
         }
 
         private void DrawPopupDropDown(
@@ -93,7 +121,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             int[] options,
             string[] displayOptions,
             int currentIndex,
-            int currentInt
+            int currentInt,
+            bool hasMultipleDifferentValues
         )
         {
             Rect labelRect = new(
@@ -115,14 +144,31 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 EditorGUI.LabelField(labelRect, label);
             }
 
-            string displayValue =
-                currentIndex >= 0 && currentIndex < displayOptions.Length
-                    ? displayOptions[currentIndex]
-                    : DropDownShared.GetCachedIntString(currentInt);
+            // Determine display value without modifying property
+            string displayValue;
+            if (hasMultipleDifferentValues)
+            {
+                displayValue = "\u2014"; // Em dash for mixed values
+            }
+            else if (currentIndex >= 0 && currentIndex < displayOptions.Length)
+            {
+                displayValue = displayOptions[currentIndex];
+            }
+            else
+            {
+                // Invalid value - show it but don't clamp
+                displayValue = DropDownShared.GetCachedIntString(currentInt) + " (Invalid)";
+            }
 
             if (GUI.Button(fieldRect, displayValue, EditorStyles.popup))
             {
-                ShowPopupMenu(fieldRect, options, displayOptions, currentIndex);
+                ShowPopupMenu(
+                    fieldRect,
+                    options,
+                    displayOptions,
+                    currentIndex,
+                    hasMultipleDifferentValues
+                );
             }
         }
 
@@ -130,14 +176,15 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             Rect buttonRect,
             int[] options,
             string[] displayOptions,
-            int currentIndex
+            int currentIndex,
+            bool hasMultipleDifferentValues
         )
         {
             GenericMenu menu = new();
             for (int i = 0; i < options.Length; i++)
             {
                 int capturedIndex = i;
-                bool isSelected = i == currentIndex;
+                bool isSelected = i == currentIndex && !hasMultipleDifferentValues;
                 menu.AddItem(
                     new GUIContent(displayOptions[i]),
                     isSelected,
@@ -149,6 +196,15 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
         private void ApplySelection(int value)
         {
+            // Record Undo for ALL selected objects
+            IList weakTargets = Property.Tree.WeakTargets;
+            UnityEngine.Object[] targets = new UnityEngine.Object[weakTargets.Count];
+            for (int i = 0; i < weakTargets.Count; i++)
+            {
+                targets[i] = weakTargets[i] as UnityEngine.Object;
+            }
+            Undo.RecordObjects(targets, "Change IntDropDown Selection");
+
             Property.ValueEntry.WeakSmartValue = value;
         }
 

@@ -40,6 +40,165 @@ for (int i = 0; i < targets.Length; i++)
 
 ---
 
+## Multi-Object Editing Pitfalls (CRITICAL)
+
+Multi-object editing is notoriously bug-prone. These rules prevent common issues:
+
+### 1. Never Modify Property During Render Phase
+
+Only modify `SerializedProperty` values in callbacks (e.g., `GenericMenu` selection), NEVER during `OnGUI` rendering:
+
+```csharp
+// WRONG - Modifying during render causes infinite repaint loops
+public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
+{
+    int index = CalculateIndex(property);
+    if (index < 0)
+    {
+        property.intValue = 0; // BUG: Writing during render!
+    }
+}
+
+// CORRECT - Only modify in callbacks
+public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
+{
+    if (EditorGUI.DropdownButton(fieldRect, content, FocusType.Keyboard))
+    {
+        GenericMenu menu = new();
+        menu.AddItem(new GUIContent("Option"), false, () =>
+        {
+            property.intValue = 0; // Safe: callback context
+            property.serializedObject.ApplyModifiedProperties();
+        });
+        menu.DropDown(fieldRect);
+    }
+}
+```
+
+### 2. Set showMixedValue BEFORE Index Calculations
+
+Always check `hasMultipleDifferentValues` and set `EditorGUI.showMixedValue` BEFORE calculating display indices:
+
+```csharp
+// CORRECT - Check mixed state first
+bool isMixed = property.hasMultipleDifferentValues;
+EditorGUI.showMixedValue = isMixed;
+
+// Now calculate index (may be invalid for some objects when mixed)
+int currentIndex = GetCurrentIndex(property);
+string displayText = isMixed ? "\u2014" : GetDisplayText(currentIndex);
+```
+
+### 3. Use Em Dash for Mixed Values
+
+Display `"\u2014"` (em dash) when values differ across selected objects. This is the standard Unity convention:
+
+```csharp
+string GetDisplayValue(SerializedProperty property, string[] options)
+{
+    if (property.hasMultipleDifferentValues)
+    {
+        return "\u2014"; // Em dash for mixed values
+    }
+    int index = property.intValue;
+    return IsValidIndex(index, options) ? options[index] : $"{index} (Invalid)";
+}
+```
+
+### 4. Show "(Invalid)" for Out-of-Range Values
+
+Never silently clamp invalid indices. Show the invalid state clearly:
+
+```csharp
+// WRONG - Silent clamping hides data corruption
+int safeIndex = Mathf.Clamp(property.intValue, 0, options.Length - 1);
+
+// CORRECT - Show invalid state
+int index = property.intValue;
+if (index < 0 || index >= options.Length)
+{
+    displayText = $"{index} (Invalid)";
+}
+```
+
+### 5. Undo.RecordObjects Pattern for Multi-Object
+
+When modifying via reflection or direct field access, record undo for ALL targets:
+
+```csharp
+void ApplySelection(SerializedProperty property, object newValue)
+{
+    // Record undo for all selected objects
+    Undo.RecordObjects(property.serializedObject.targetObjects, "Change Value");
+
+    // Apply to all targets
+    foreach (var target in property.serializedObject.targetObjects)
+    {
+        SetFieldValue(target, property.propertyPath, newValue);
+        EditorUtility.SetDirty(target);
+    }
+
+    property.serializedObject.Update();
+}
+```
+
+### 6. Odin Drawer Mixed Value Detection
+
+Odin drawers do NOT have `hasMultipleDifferentValues`. Manually check:
+
+```csharp
+// In OdinAttributeDrawer
+bool HasMixedValues<T>(IPropertyValueEntry<T> valueEntry)
+{
+    if (valueEntry.ValueCount <= 1)
+        return false;
+
+    T firstValue = valueEntry.WeakValues[0] as T;
+    for (int i = 1; i < valueEntry.ValueCount; i++)
+    {
+        T currentValue = valueEntry.WeakValues[i] as T;
+        if (!EqualityComparer<T>.Default.Equals(firstValue, currentValue))
+            return true;
+    }
+    return false;
+}
+
+// Usage
+bool isMixed = HasMixedValues(Property.ValueEntry);
+EditorGUI.showMixedValue = isMixed;
+```
+
+### 7. UI Toolkit Elements Need Same Handling
+
+UI Toolkit `VisualElement`-based drawers require the same patterns:
+
+```csharp
+public override VisualElement CreatePropertyGUI(SerializedProperty property)
+{
+    var dropdown = new DropdownField();
+
+    // Bind with mixed value support
+    dropdown.RegisterCallback<AttachToPanelEvent>(evt =>
+    {
+        UpdateDropdownDisplay(dropdown, property);
+    });
+
+    return dropdown;
+}
+
+void UpdateDropdownDisplay(DropdownField dropdown, SerializedProperty property)
+{
+    if (property.hasMultipleDifferentValues)
+    {
+        dropdown.SetValueWithoutNotify("\u2014");
+        return;
+    }
+    // Normal display logic
+}
+```
+
+---
+
 ## Standard and Odin Drawer Consistency (MANDATORY)
 
 When this package has BOTH a standard `PropertyDrawer` AND an Odin `OdinAttributeDrawer` for the same attribute:
@@ -164,4 +323,5 @@ See [create-test](./create-test.md) for full testing guidelines.
 - [property-drawer-examples](./property-drawer-examples.md) - Dropdown and foldout examples
 - [create-test](./create-test.md) - Test creation guidelines
 - [test-odin-drawers](./test-odin-drawers.md) - Odin Inspector drawer testing
+- [defensive-editor-programming](./defensive-editor-programming.md) - Editor defensive coding patterns
 - [defensive-programming](./defensive-programming.md) - General defensive coding practices

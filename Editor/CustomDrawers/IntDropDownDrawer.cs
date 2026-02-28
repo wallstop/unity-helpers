@@ -131,8 +131,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         /// </summary>
         /// <remarks>
         /// If the current property value is not found in the options array,
-        /// it is automatically clamped to the first available option. This ensures
-        /// the displayed value always matches a valid option.
+        /// the display shows "(Invalid)" but does NOT modify the property during render.
+        /// Property modifications only occur in the GenericMenu callback.
         /// </remarks>
         private static void DrawGenericMenuDropDown(
             Rect position,
@@ -142,22 +142,31 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             string[] displayedOptions
         )
         {
-            int currentValue = property.intValue;
-            int selectedIndex = Array.IndexOf(options, currentValue);
-            if (selectedIndex < 0 && options.Length > 0)
-            {
-                property.intValue = options[0];
-                selectedIndex = 0;
-            }
-
             Rect fieldRect = EditorGUI.PrefixLabel(position, label);
+
+            // Set showMixedValue FIRST, before any index calculations
             bool previousMixed = EditorGUI.showMixedValue;
             EditorGUI.showMixedValue = property.hasMultipleDifferentValues;
 
-            string displayValue =
-                selectedIndex >= 0 && selectedIndex < displayedOptions.Length
-                    ? displayedOptions[selectedIndex]
-                    : DropDownShared.GetCachedIntString(currentValue);
+            // Calculate index for display purposes only - NEVER write to property during render
+            int currentValue = property.intValue;
+            int selectedIndex = Array.IndexOf(options, currentValue);
+
+            // Determine display value without modifying property
+            string displayValue;
+            if (property.hasMultipleDifferentValues)
+            {
+                displayValue = "\u2014"; // Em dash for mixed values
+            }
+            else if (selectedIndex >= 0 && selectedIndex < displayedOptions.Length)
+            {
+                displayValue = displayedOptions[selectedIndex];
+            }
+            else
+            {
+                // Invalid value - show it but don't clamp
+                displayValue = DropDownShared.GetCachedIntString(currentValue) + " (Invalid)";
+            }
 
             GUIContent buttonContent = new(displayValue);
 
@@ -170,7 +179,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 for (int i = 0; i < options.Length; i++)
                 {
                     int capturedIndex = i;
-                    bool isSelected = i == selectedIndex;
+                    bool isSelected = i == selectedIndex && !property.hasMultipleDifferentValues;
                     menu.AddItem(
                         new GUIContent(displayedOptions[i]),
                         isSelected,
@@ -203,8 +212,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
         /// </summary>
         /// <remarks>
         /// If the current property value is not found in the options array,
-        /// it is automatically clamped to the first available option. This ensures
-        /// the displayed value always matches a valid option.
+        /// the display shows "(Invalid)" but does NOT modify the property during render.
+        /// Property modifications only occur in the popup window callback.
         /// </remarks>
         private static void DrawPopupDropDown(
             Rect position,
@@ -215,19 +224,6 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             int pageSize
         )
         {
-            int currentValue = property.intValue;
-            int selectedIndex = Array.IndexOf(options, currentValue);
-            if (selectedIndex < 0 && options.Length > 0)
-            {
-                property.intValue = options[0];
-                selectedIndex = 0;
-            }
-
-            string displayValue =
-                selectedIndex >= 0 && selectedIndex < displayedOptions.Length
-                    ? displayedOptions[selectedIndex]
-                    : DropDownShared.GetCachedIntString(currentValue);
-
             Rect labelRect = new(
                 position.x,
                 position.y,
@@ -243,6 +239,30 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             EditorGUI.LabelField(labelRect, label);
 
+            // Set showMixedValue FIRST, before any index calculations
+            bool previousMixed = EditorGUI.showMixedValue;
+            EditorGUI.showMixedValue = property.hasMultipleDifferentValues;
+
+            // Calculate index for display purposes only - NEVER write to property during render
+            int currentValue = property.intValue;
+            int selectedIndex = Array.IndexOf(options, currentValue);
+
+            // Determine display value without modifying property
+            string displayValue;
+            if (property.hasMultipleDifferentValues)
+            {
+                displayValue = "\u2014"; // Em dash for mixed values
+            }
+            else if (selectedIndex >= 0 && selectedIndex < displayedOptions.Length)
+            {
+                displayValue = displayedOptions[selectedIndex];
+            }
+            else
+            {
+                // Invalid value - show it but don't clamp
+                displayValue = DropDownShared.GetCachedIntString(currentValue) + " (Invalid)";
+            }
+
             if (GUI.Button(fieldRect, displayValue, EditorStyles.popup))
             {
                 WDropDownPopupWindow.ShowForIntDropDown(
@@ -253,6 +273,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                     pageSize
                 );
             }
+
+            EditorGUI.showMixedValue = previousMixed;
         }
 
         /// <inheritdoc/>
@@ -314,11 +336,22 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             protected override string GetDisplayValue(SerializedProperty property)
             {
+                // Handle mixed values first
+                if (property.hasMultipleDifferentValues)
+                {
+                    return "\u2014"; // Em dash for mixed values
+                }
+
                 int currentValue = property.intValue;
                 int selectedIndex = Array.IndexOf(_options, currentValue);
-                return selectedIndex >= 0 && selectedIndex < _displayedOptions.Length
-                    ? _displayedOptions[selectedIndex]
-                    : DropDownShared.GetCachedIntString(currentValue);
+
+                if (selectedIndex >= 0 && selectedIndex < _displayedOptions.Length)
+                {
+                    return _displayedOptions[selectedIndex];
+                }
+
+                // Invalid value - show it with "(Invalid)" suffix
+                return DropDownShared.GetCachedIntString(currentValue) + " (Invalid)";
             }
 
             protected override int GetFieldValue(SerializedProperty property)
@@ -369,6 +402,12 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             protected override int GetCurrentSelectionIndex(SerializedProperty property)
             {
+                // Return -1 for mixed values to prevent display issues
+                if (property.hasMultipleDifferentValues)
+                {
+                    return -1;
+                }
+
                 return Array.IndexOf(_options, property.intValue);
             }
 

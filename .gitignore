@@ -34,6 +34,8 @@ logs_*zip.meta
 /progress/
 /progress.meta
 
+logs_extracted*
+
 *.rsp.meta
 
 .claude/*
