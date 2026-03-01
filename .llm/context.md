@@ -83,7 +83,7 @@ Invoke these skills for specific tasks.
 **Regenerate with**: `pwsh -NoProfile -File scripts/generate-skills-index.ps1`
 
 <!-- BEGIN GENERATED SKILLS INDEX -->
-<!-- Generated: 2026-02-27 16:19:34 UTC -->
+<!-- Generated: 2026-03-01 11:53:27 UTC -->
 <!-- Command: pwsh -NoProfile -File scripts/generate-skills-index.ps1 -->
 
 ### Core Skills (Always Consider)
@@ -102,7 +102,10 @@ Invoke these skills for specific tasks.
 | [defensive-editor-programming](./skills/defensive-editor-programming.md)                     | Editor code - handle Unity Editor edge cases                     |
 | [defensive-programming](./skills/defensive-programming.md)                                   | ALL code - never throw, handle gracefully                        |
 | [documentation-consistency](./skills/documentation-consistency.md)                           | When writing or reviewing documentation                          |
+| [editor-api-rules](./skills/editor-api-rules.md)                                             | Forbidden Editor APIs and value handling rules                   |
 | [editor-caching-patterns](./skills/editor-caching-patterns.md)                               | Caching strategies for Editor code                               |
+| [editor-multi-object-editing](./skills/editor-multi-object-editing.md)                       | Multi-object editing patterns and undo support for editor code   |
+| [editor-singleton-patterns](./skills/editor-singleton-patterns.md)                           | Singleton asset management patterns for Editor code              |
 | [formatting](./skills/formatting.md)                                                         | After ANY file change (CSharpier/Prettier)                       |
 | [formatting-and-linting](./skills/formatting-and-linting.md)                                 | Before committing, after editing files                           |
 | [git-hook-patterns](./skills/git-hook-patterns.md)                                           | Pre-commit hook safety and configuration                         |
@@ -391,6 +394,34 @@ All production code must follow [defensive-programming](./skills/defensive-progr
 - Never throw from public APIs; return `default`, empty, or `false`
 - Use `TryXxx` patterns; bounds-check all indexing
 - Handle all inputs gracefully (null, empty, invalid)
+
+---
+
+## Unity Undo System Pattern
+
+When modifying Unity objects for undo support, there are two valid approaches:
+
+### Approach A: SerializedProperty API (Preferred)
+
+1. `Undo.RecordObjects(targets, "description")`
+2. Modify through `SerializedProperty` API (e.g., `ClearArray()`, `MoveArrayElement()`, `DeleteArrayElementAtIndex()`)
+3. `serializedObject.ApplyModifiedProperties()` -- this writes changes AND integrates with undo
+
+### Approach B: Direct Object Mutation
+
+1. `Undo.RecordObjects(targets, "description")` -- captures "before" snapshot
+2. Modify the underlying C# objects directly
+3. `inspector.SynchronizeSerializedState()` -- syncs internal state to serialized fields
+4. **`Undo.FlushUndoRecordObjects()`** -- CRITICAL: finalizes the undo record by computing the diff
+5. `serializedObject.Update()` -- refreshes the SerializedObject
+
+**Common bug**: Forgetting `Undo.FlushUndoRecordObjects()` in Approach B causes undo to silently fail. The undo record is never finalized, so `Undo.PerformUndo()` has nothing to revert. This is especially hard to catch because:
+
+- It works in normal Editor usage (end-of-frame processing handles the flush)
+- It fails in tests (no frame loop)
+- It fails when multiple operations happen in sequence (each `RecordObjects` may overwrite the previous unflushed snapshot)
+
+See [defensive-editor-programming](./skills/defensive-editor-programming.md) for detailed editor code patterns.
 
 ---
 

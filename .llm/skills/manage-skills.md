@@ -91,12 +91,13 @@ The trigger comment is REQUIRED and parsed by `generate-skills-index.ps1`:
 
 ## Size Guidelines
 
-| Lines   | Status | Action                                          |
-| ------- | ------ | ----------------------------------------------- |
-| <200    | Ideal  | Focused, easy to consume                        |
-| 200-300 | Good   | Acceptable for complex topics                   |
-| 300-500 | Large  | Consider splitting if possible                  |
-| >500    | Split  | MUST split into focused skills with clear scope |
+| Lines   | Status   | Action                                          |
+| ------- | -------- | ----------------------------------------------- |
+| <200    | Ideal    | Focused, easy to consume                        |
+| 200-300 | Good     | Acceptable for complex topics                   |
+| 300-479 | Large    | Consider splitting if possible                  |
+| 480-500 | Critical | Split soon — one edit from hard limit           |
+| >500    | Split    | MUST split into focused skills with clear scope |
 
 ---
 

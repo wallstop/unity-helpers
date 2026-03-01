@@ -337,11 +337,11 @@ if [ ${#LLM_FILES_ARRAY[@]} -gt 0 ]; then
   fi
 fi
 
-# 11) Check skill file sizes if .llm/skills/*.md files are staged
+# 11) Check skill file sizes if .llm/skills/**/*.md files are staged
 LLM_SKILLS_ARRAY=()
 for file in "${STAGED_FILES_ARRAY[@]}"; do
     case "$file" in
-        .llm/skills/*.md)
+        .llm/skills/*.md|.llm/skills/*/*.md)
             LLM_SKILLS_ARRAY+=("$file")
             ;;
     esac

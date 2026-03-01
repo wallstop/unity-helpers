@@ -3,9 +3,10 @@
     Validates LLM skill file sizes against documented limits.
 
 .DESCRIPTION
-    Checks all .llm/skills/*.md files against size thresholds:
+    Checks all .llm/skills/**/*.md files (including subdirectories) against size thresholds:
     - >500 lines: ERROR (MUST split per manage-skills.md)
-    - >300 lines: WARNING (consider splitting)
+    - 480-500 lines: CRITICAL WARNING (always shown, near limit)
+    - >300 lines: WARNING (consider splitting, shown with -VerboseOutput)
 
 .PARAMETER VerboseOutput
     If specified, outputs detailed information during validation including
@@ -27,6 +28,10 @@ function Write-ErrorMsg($msg) {
     Write-Host "[skill-sizes] ERROR: $msg" -ForegroundColor Red
 }
 
+function Write-CriticalWarningMsg($msg) {
+    Write-Host "[skill-sizes] CRITICAL: $msg" -ForegroundColor Magenta
+}
+
 function Write-WarningMsg($msg) {
     Write-Host "[skill-sizes] WARNING: $msg" -ForegroundColor Yellow
 }
@@ -38,6 +43,7 @@ function Write-SuccessMsg($msg) {
 $repoRoot = (Get-Item $PSScriptRoot).Parent.FullName
 $skillsDir = Join-Path -Path $repoRoot -ChildPath '.llm/skills'
 $maxLines = 500
+$criticalLines = 480
 $warningLines = 300
 $exitCode = 0
 
@@ -47,28 +53,35 @@ if (-not (Test-Path $skillsDir)) {
     exit 1
 }
 
-$skillFiles = Get-ChildItem -Path $skillsDir -Filter '*.md' | Sort-Object Name
+$skillFiles = @(Get-ChildItem -Path $skillsDir -Filter '*.md' -Recurse | Sort-Object FullName)
 $errorCount = 0
+$criticalCount = 0
 $warningCount = 0
 $okCount = 0
 
 foreach ($file in $skillFiles) {
-    $lineCount = (Get-Content $file.FullName).Count
+    $lineCount = @(Get-Content $file.FullName).Count
+    $relativePath = $file.FullName.Substring($skillsDir.Length + 1).Replace('\', '/')
 
     if ($lineCount -gt $maxLines) {
-        Write-ErrorMsg "$($file.Name): $lineCount lines (max: $maxLines) - MUST split"
+        Write-ErrorMsg "${relativePath}: $lineCount lines (max: $maxLines) - MUST split"
         $exitCode = 1
         $errorCount++
     }
+    elseif ($lineCount -ge $criticalLines) {
+        $remaining = $maxLines - $lineCount
+        Write-CriticalWarningMsg "${relativePath}: $lineCount lines - only $remaining lines from $maxLines limit! Consider splitting now"
+        $criticalCount++
+    }
     elseif ($lineCount -gt $warningLines) {
         if ($VerboseOutput) {
-            Write-WarningMsg "$($file.Name): $lineCount lines (consider splitting)"
+            Write-WarningMsg "${relativePath}: $lineCount lines (consider splitting)"
         }
         $warningCount++
     }
     else {
         if ($VerboseOutput) {
-            Write-SuccessMsg "$($file.Name): $lineCount lines"
+            Write-SuccessMsg "${relativePath}: $lineCount lines"
         }
         $okCount++
     }
@@ -78,8 +91,8 @@ foreach ($file in $skillFiles) {
 Write-Host ""
 Write-Host ("=" * 60)
 Write-Host "[skill-sizes] Summary: $($skillFiles.Count) files checked"
-if ($VerboseOutput) {
-    Write-Host "[skill-sizes]   OK: $okCount, Warnings: $warningCount, Errors: $errorCount"
+if ($VerboseOutput -or $criticalCount -gt 0 -or $errorCount -gt 0) {
+    Write-Host "[skill-sizes]   OK: $okCount, Warnings: $warningCount, Critical: $criticalCount, Errors: $errorCount"
 }
 
 if ($exitCode -eq 0) {

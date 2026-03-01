@@ -703,6 +703,7 @@
         "clickable",
         "hovering",
         "hovered",
+        "unflushed",
         "unfocused",
         "unselected",
         "deselected",

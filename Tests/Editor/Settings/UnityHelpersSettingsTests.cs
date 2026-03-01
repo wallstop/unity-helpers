@@ -1833,6 +1833,10 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
             nameof(UnityHelpersSettings.SerializedPropertyNames.DetectAssetChangeLoopWindowSeconds),
             "DetectAssetChangeLoopWindowSeconds"
         )]
+        [TestCase(
+            nameof(UnityHelpersSettings.SerializedPropertyNames.FailedTestsOutputDirectory),
+            "FailedTestsOutputDirectory"
+        )]
         public void SerializedPropertyNamesMapsToActualField(
             string constantName,
             string expectedFieldDescription
@@ -2892,6 +2896,15 @@ namespace WallstopStudios.UnityHelpers.Tests.Settings
             Assert.IsTrue(
                 useLruProperty != null,
                 $"Property '{UnityHelpersBufferSettingsAsset.UseLruEvictionPropertyName}' should exist on the asset."
+            );
+        }
+
+        [Test]
+        public void SerializedPropertyNamesFailedTestsOutputDirectoryMatchesFieldName()
+        {
+            Assert.AreEqual(
+                "_failedTestsOutputDirectory",
+                UnityHelpersSettings.SerializedPropertyNames.FailedTestsOutputDirectory
             );
         }
 

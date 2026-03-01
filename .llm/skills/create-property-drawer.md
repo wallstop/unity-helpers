@@ -260,3 +260,5 @@ private SerializedProperty GetProperty(SerializedObject so)
 - [defensive-programming](./defensive-programming.md) - General defensive coding practices
 - [create-test](./create-test.md) - Test creation guidelines
 - [test-odin-drawers](./test-odin-drawers.md) - Odin Inspector drawer testing
+- [editor-multi-object-editing](./editor-multi-object-editing.md) - Multi-object editing patterns and undo support
+- [editor-api-rules](./editor-api-rules.md) - Forbidden Editor APIs and value handling rules

@@ -108,6 +108,10 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomEditors
                         isSelected,
                         () =>
                         {
+                            Undo.RecordObjects(
+                                serializedObject.targetObjects,
+                                "Change Platform Override"
+                            );
                             serializedObject.Update();
                             SerializedProperty prop = serializedObject.FindProperty(propertyPath);
                             if (prop == null)
@@ -116,7 +120,11 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomEditors
                             }
 
                             string value = choices[capturedIndex];
-                            if (value != CustomOptionLabel)
+                            if (value == CustomOptionLabel)
+                            {
+                                prop.stringValue = string.Empty;
+                            }
+                            else
                             {
                                 prop.stringValue = value;
                             }
@@ -130,11 +138,12 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomEditors
             if (idx == choices.Length - 1)
             {
                 r.y += r.height + EditorGUIUtility.standardVerticalSpacing;
-                nameProp.stringValue = EditorGUI.TextField(r, "Custom Name", nameProp.stringValue);
-            }
-            else
-            {
-                nameProp.stringValue = currentDisplay;
+                EditorGUI.BeginChangeCheck();
+                string newCustomName = EditorGUI.TextField(r, "Custom Name", nameProp.stringValue);
+                if (EditorGUI.EndChangeCheck())
+                {
+                    nameProp.stringValue = newCustomName;
+                }
             }
 
             DrawToggleWithValue(
@@ -188,7 +197,12 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomEditors
             SerializedProperty val = property.FindPropertyRelative(valueName);
 
             r.y += r.height + EditorGUIUtility.standardVerticalSpacing;
-            apply.boolValue = EditorGUI.ToggleLeft(r, label, apply.boolValue);
+            EditorGUI.BeginChangeCheck();
+            bool newApplyValue = EditorGUI.ToggleLeft(r, label, apply.boolValue);
+            if (EditorGUI.EndChangeCheck())
+            {
+                apply.boolValue = newApplyValue;
+            }
             if (apply.boolValue)
             {
                 r.y += r.height + EditorGUIUtility.standardVerticalSpacing;
@@ -200,9 +214,16 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomEditors
 
         private static int GetSelectedIndex(string name, string[] choices)
         {
-            if (string.IsNullOrEmpty(name))
+            if (name == null)
             {
-                return 0; // Default by convention
+                // Note: Unreachable through SerializedProperty.stringValue (which converts
+                // null to ""), but kept as defensive code in case the method is made internal.
+                return 0;
+            }
+
+            if (name.Length == 0)
+            {
+                return choices.Length - 1; // Empty string means Custom (user explicitly selected Custom)
             }
 
             for (int i = 0; i < choices.Length - 1; i++)
@@ -212,7 +233,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomEditors
                     return i;
                 }
             }
-            return choices.Length - 1; // Custom
+            return choices.Length - 1; // Unknown platform treated as Custom
         }
     }
 #endif

@@ -85,24 +85,30 @@ function Has-MixedValueCheck([string[]]$content, [int]$lineIndex, [int]$searchRa
 }
 
 function Get-ContainingMethodName([string[]]$content, [int]$lineIndex) {
-  # Search backwards for method signature
+  # Search backwards for method signature, tracking brace nesting.
+  # braceCount represents the nesting depth relative to our starting point.
+  # Positive values mean we're inside a nested scope (lambda, if, etc.).
+  # When braceCount drops to zero or below, we've unwound nested scopes
+  # and are at the method body level or above.
   $braceCount = 0
   for ($i = $lineIndex - 1; $i -ge 0; $i--) {
     $line = $content[$i]
-    # Count braces to track scope
+    # Count braces to track scope (going backwards: closing braces increase depth,
+    # opening braces decrease depth)
     $openBraces = ([regex]::Matches($line, '\{')).Count
     $closeBraces = ([regex]::Matches($line, '\}')).Count
     $braceCount += $closeBraces
     $braceCount -= $openBraces
 
-    # If we've exited the current method scope, stop
-    if ($braceCount -gt 0) {
-      return $null
-    }
-
-    # Check for method signature
-    if ($line -match '^\s*(public|private|protected|internal)?\s*(static)?\s*(override)?\s*(void|VisualElement|[\w<>,\s]+)\s+(\w+)\s*\(') {
-      return $Matches[5]
+    # Only check for method signature when we've unwound all nested scopes
+    # (braceCount <= 0 means we're at method scope level or above).
+    # The method signature regex provides the actual boundary detection,
+    # so we don't need an early exit based on braceCount alone. This
+    # correctly handles arbitrary nesting depth (if/for/lambda/etc.).
+    if ($braceCount -le 0) {
+      if ($line -match '^\s*(public|private|protected|internal)?\s*(static)?\s*(override)?\s*(void|VisualElement|\w[\w<>,\s]*)\s+(\w+)\s*\(') {
+        return $Matches[5]
+      }
     }
   }
   return $null

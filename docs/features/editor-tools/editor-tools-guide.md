@@ -51,6 +51,7 @@ Comprehensive documentation for all editor wizards, windows, and automation tool
 - Respond to asset changes → [Asset Change Detection](./asset-change-detection.md)
 - Cache attribute metadata → [Attribute Metadata Cache Generator](#attribute-metadata-cache-generator)
 - Track sprite labels → [Sprite Label Processor](#sprite-label-processor)
+- Capture and export test failures → [Failed Tests Exporter](#failed-tests-exporter)
 - Manually trigger script recompilation → [Request Script Compilation](#request-script-recompilation)
 - Configure buffer settings → [Project Settings: Unity Helpers](#project-settings-unity-helpers)
 
@@ -2323,6 +2324,27 @@ else
 
 ---
 
+<a id="failed-tests-exporter"></a>
+
+### Failed Tests Exporter
+
+- **Menu:** `Tools > Wallstop Studios > Unity Helpers > Export Failed Tests` / `Clear Failed Tests`
+- **Settings:** `Edit > Project Settings > Wallstop Studios > Unity Helpers`
+
+**Purpose:** Hooks into the Unity Test Runner API to automatically capture failed test results and export them to timestamped text files in a configurable directory (defaults to the project root). Disabled by default — enable in Project Settings.
+
+**Key Features:**
+
+- Automatically records test name, failure message, and stack trace for each failed test
+- Exports failures to `failed-tests-YYYY-MM-DD-HHmmss.txt` in the configured output directory (project root by default)
+- Configurable output directory with folder picker — defaults to the project root
+- Menu items to manually export or clear captured failures
+- Useful for CI/CD pipelines and tracking intermittent test failures
+
+For full setup, usage, and API reference, see [Failed Tests Exporter](./failed-tests-exporter.md).
+
+---
+
 ## Quick Reference
 
 ### Tools by Category
@@ -2371,6 +2393,7 @@ else
 - ScriptableObject Singleton Creator - Auto-create singletons
 - Attribute Metadata Cache Generator - Performance optimization
 - Sprite Label Processor - Automatic sprite label caching
+- Failed Tests Exporter - Capture and export test failures
 
 **Utilities:**
 
@@ -2397,6 +2420,8 @@ else
 - Sprite Sheet Extractor
 - Texture Resizer
 - Texture Settings Applier
+- Export Failed Tests
+- Clear Failed Tests
 
 **Assets > Create > Wallstop Studios > Unity Helpers:**
 

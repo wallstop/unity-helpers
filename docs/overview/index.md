@@ -136,6 +136,9 @@ Alphabetical index of all Unity Helpers features with quick links to documentati
 
 ## F
 
+**Failed Tests Exporter** - Capture and export failed test results to timestamped files
+→ [Failed Tests Exporter](../features/editor-tools/failed-tests-exporter.md)
+
 **Fit Texture Size** - Auto-adjust texture max size to source dimensions
 → [Editor Tools Guide](../features/editor-tools/editor-tools-guide.md#fit-texture-size)
 

@@ -37,11 +37,29 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Validation
         {
             "WallstopStudios.UnityHelpers.Tests.Core",
             "WallstopStudios.UnityHelpers.Tests.Editor",
+            "WallstopStudios.UnityHelpers.Tests.Editor.AssetProcessors",
+            "WallstopStudios.UnityHelpers.Tests.Editor.Attributes",
+            "WallstopStudios.UnityHelpers.Tests.Editor.Core",
+            "WallstopStudios.UnityHelpers.Tests.Editor.CustomDrawers",
+            "WallstopStudios.UnityHelpers.Tests.Editor.CustomEditors",
+            "WallstopStudios.UnityHelpers.Tests.Editor.Extensions",
+            "WallstopStudios.UnityHelpers.Tests.Editor.Helper",
             "WallstopStudios.UnityHelpers.Tests.Editor.Reflex",
-            "WallstopStudios.UnityHelpers.Tests.Editor.Sprites",
+            "WallstopStudios.UnityHelpers.Tests.Editor.Settings",
+            "WallstopStudios.UnityHelpers.Tests.Editor.Sprites.Animation",
+            "WallstopStudios.UnityHelpers.Tests.Editor.Sprites.Cropper",
+            "WallstopStudios.UnityHelpers.Tests.Editor.Sprites.PivotAdjuster",
+            "WallstopStudios.UnityHelpers.Tests.Editor.Sprites.SpriteSheetExtractor",
+            "WallstopStudios.UnityHelpers.Tests.Editor.Sprites.TextureSettings",
+            "WallstopStudios.UnityHelpers.Tests.Editor.Sprites.TextureTools",
+            "WallstopStudios.UnityHelpers.Tests.Editor.Tags",
             "WallstopStudios.UnityHelpers.Tests.Editor.Tools",
+            "WallstopStudios.UnityHelpers.Tests.Editor.Utils",
             "WallstopStudios.UnityHelpers.Tests.Editor.Validation",
             "WallstopStudios.UnityHelpers.Tests.Editor.VContainer",
+            "WallstopStudios.UnityHelpers.Tests.Editor.WButton",
+            "WallstopStudios.UnityHelpers.Tests.Editor.WGroup",
+            "WallstopStudios.UnityHelpers.Tests.Editor.Windows",
             "WallstopStudios.UnityHelpers.Tests.Editor.Zenject",
             "WallstopStudios.UnityHelpers.Tests.Runtime",
             "WallstopStudios.UnityHelpers.Tests.Runtime.Performance",
@@ -80,6 +98,22 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Validation
                 catch (Exception ex)
                 {
                     failedAssemblies.Add($"{assemblyName}: {ex.Message}");
+                }
+            }
+
+            if (failedAssemblies.Count > 0)
+            {
+                TestContext.WriteLine(
+                    "Diagnostic: All loaded assembly names containing 'WallstopStudios':"
+                );
+                Assembly[] loadedAssemblies = AppDomain.CurrentDomain.GetAssemblies();
+                foreach (Assembly assembly in loadedAssemblies)
+                {
+                    string name = assembly.GetName().Name;
+                    if (name.Contains("WallstopStudios"))
+                    {
+                        TestContext.WriteLine($"  {name}");
+                    }
                 }
             }
 
@@ -133,6 +167,22 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Validation
                 Debug.Log(
                     $"Skipped optional integration assemblies:\n{string.Join("\n", skippedAssemblies)}"
                 );
+            }
+
+            if (failedAssemblies.Count > 0)
+            {
+                TestContext.WriteLine(
+                    "Diagnostic: All loaded assembly names containing 'WallstopStudios':"
+                );
+                Assembly[] loadedAssemblies = AppDomain.CurrentDomain.GetAssemblies();
+                foreach (Assembly assembly in loadedAssemblies)
+                {
+                    string name = assembly.GetName().Name;
+                    if (name.Contains("WallstopStudios"))
+                    {
+                        TestContext.WriteLine($"  {name}");
+                    }
+                }
             }
 
             Assert.IsEmpty(
@@ -333,6 +383,25 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Validation
                 }
             }
 
+            if (missingEntries.Count > 0)
+            {
+                TestContext.WriteLine("Diagnostic: InternalsVisibleTo entries found per file:");
+                foreach (KeyValuePair<string, HashSet<string>> kvp in assemblyInfoEntries)
+                {
+                    TestContext.WriteLine($"  {kvp.Key}:");
+                    foreach (string entry in kvp.Value)
+                    {
+                        TestContext.WriteLine($"    {entry}");
+                    }
+                }
+
+                TestContext.WriteLine("\nDiagnostic: TestAssemblyNames being checked:");
+                foreach (string name in TestAssemblyNames)
+                {
+                    TestContext.WriteLine($"  {name}");
+                }
+            }
+
             Assert.IsEmpty(
                 missingEntries,
                 $"InternalsVisibleTo configuration issues:\n{string.Join("\n", missingEntries)}"
@@ -402,6 +471,195 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Validation
             }
 
             Assert.IsEmpty(issues, $"asmdef/assembly issues found:\n{string.Join("\n", issues)}");
+        }
+
+        /// <summary>
+        /// Cross-validates that TestAssemblyNames stays in sync with actual asmdef files.
+        /// Detects stale entries in TestAssemblyNames that no longer have a matching asmdef,
+        /// and asmdef files that are missing from TestAssemblyNames.
+        /// </summary>
+        [Test]
+        public void TestAssemblyNamesMatchAsmdefFiles()
+        {
+            string packagePath = GetPackagePath();
+            if (string.IsNullOrEmpty(packagePath))
+            {
+                Assert.Inconclusive("Could not determine package path");
+                return;
+            }
+
+            string testsPath = Path.Combine(packagePath, "Tests");
+            if (!Directory.Exists(testsPath))
+            {
+                Assert.Fail("Tests directory not found at: " + testsPath);
+                return;
+            }
+
+            string[] asmdefFiles = Directory.GetFiles(
+                testsPath,
+                "*.asmdef",
+                SearchOption.AllDirectories
+            );
+
+            HashSet<string> asmdefAssemblyNames = new();
+            List<string> parseErrors = new();
+            foreach (string asmdefPath in asmdefFiles)
+            {
+                try
+                {
+                    string asmdefContent = File.ReadAllText(asmdefPath);
+                    string assemblyName = ExtractAssemblyNameFromAsmdef(asmdefContent);
+                    if (!string.IsNullOrEmpty(assemblyName))
+                    {
+                        asmdefAssemblyNames.Add(assemblyName);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    parseErrors.Add($"{asmdefPath}: {ex.Message}");
+                }
+            }
+
+            if (parseErrors.Count > 0)
+            {
+                Assert.Fail("Failed to parse asmdef files:\n" + string.Join("\n", parseErrors));
+                return;
+            }
+
+            HashSet<string> expectedNames = new(TestAssemblyNames);
+            List<string> issues = new();
+
+            foreach (string asmdefName in asmdefAssemblyNames)
+            {
+                if (!expectedNames.Contains(asmdefName))
+                {
+                    issues.Add(
+                        $"asmdef assembly '{asmdefName}' exists on disk but is missing from "
+                            + "TestAssemblyNames. Add it to the hardcoded list."
+                    );
+                }
+            }
+
+            foreach (string expectedName in expectedNames)
+            {
+                if (
+                    !asmdefAssemblyNames.Contains(expectedName)
+                    && !IsOptionalIntegrationAssembly(expectedName)
+                )
+                {
+                    issues.Add(
+                        $"TestAssemblyNames contains '{expectedName}' but no matching asmdef "
+                            + "file exists. Remove it from the hardcoded list or create the asmdef."
+                    );
+                }
+            }
+
+            if (issues.Count > 0)
+            {
+                TestContext.WriteLine("Diagnostic: asmdef assembly names on disk:");
+                foreach (string name in asmdefAssemblyNames)
+                {
+                    TestContext.WriteLine($"  {name}");
+                }
+
+                TestContext.WriteLine("\nDiagnostic: TestAssemblyNames entries:");
+                foreach (string name in TestAssemblyNames)
+                {
+                    TestContext.WriteLine($"  {name}");
+                }
+            }
+
+            Assert.IsEmpty(
+                issues,
+                "TestAssemblyNames is out of sync with asmdef files:\n" + string.Join("\n", issues)
+            );
+        }
+
+        /// <summary>
+        /// Cross-validates that InternalsVisibleTo entries in AssemblyInfo.cs files
+        /// stay in sync with TestAssemblyNames. Detects entries referenced in
+        /// TestAssemblyNames but missing from all AssemblyInfo files, and entries in
+        /// AssemblyInfo files that are not in TestAssemblyNames.
+        /// </summary>
+        [Test]
+        public void InternalsVisibleToEntriesMatchTestAssemblyNames()
+        {
+            string packagePath = GetPackagePath();
+            if (string.IsNullOrEmpty(packagePath))
+            {
+                Assert.Inconclusive("Could not determine package path");
+                return;
+            }
+
+            HashSet<string> allInternalsVisibleToEntries = new();
+
+            foreach (string relativePath in AssemblyInfoPaths)
+            {
+                string fullPath = Path.Combine(packagePath, relativePath);
+                if (!File.Exists(fullPath))
+                {
+                    continue;
+                }
+
+                string content = File.ReadAllText(fullPath);
+                HashSet<string> entries = ParseInternalsVisibleToEntries(content);
+                foreach (string entry in entries)
+                {
+                    allInternalsVisibleToEntries.Add(entry);
+                }
+            }
+
+            HashSet<string> expectedNames = new(TestAssemblyNames);
+            List<string> issues = new();
+
+            foreach (string testName in expectedNames)
+            {
+                if (
+                    !allInternalsVisibleToEntries.Contains(testName)
+                    && !IsOptionalIntegrationAssembly(testName)
+                )
+                {
+                    issues.Add(
+                        $"TestAssemblyNames contains '{testName}' but no InternalsVisibleTo "
+                            + "entry exists in any AssemblyInfo.cs file."
+                    );
+                }
+            }
+
+            foreach (string ivtEntry in allInternalsVisibleToEntries)
+            {
+                if (
+                    ivtEntry.StartsWith("WallstopStudios.UnityHelpers.Tests")
+                    && !expectedNames.Contains(ivtEntry)
+                )
+                {
+                    issues.Add(
+                        $"InternalsVisibleTo entry '{ivtEntry}' exists in AssemblyInfo.cs "
+                            + "but is missing from TestAssemblyNames."
+                    );
+                }
+            }
+
+            if (issues.Count > 0)
+            {
+                TestContext.WriteLine("Diagnostic: InternalsVisibleTo entries:");
+                foreach (string entry in allInternalsVisibleToEntries)
+                {
+                    TestContext.WriteLine($"  {entry}");
+                }
+
+                TestContext.WriteLine("\nDiagnostic: TestAssemblyNames entries:");
+                foreach (string name in TestAssemblyNames)
+                {
+                    TestContext.WriteLine($"  {name}");
+                }
+            }
+
+            Assert.IsEmpty(
+                issues,
+                "InternalsVisibleTo entries are out of sync with TestAssemblyNames:\n"
+                    + string.Join("\n", issues)
+            );
         }
 
         /// <summary>
@@ -778,28 +1036,35 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Validation
         private static HashSet<string> ParseInternalsVisibleToEntries(string content)
         {
             HashSet<string> entries = new();
-            string[] lines = content.Split('\n');
+            string singleLine = content.Replace("\r", " ").Replace("\n", " ");
+            int searchStart = 0;
 
-            foreach (string line in lines)
+            while (searchStart < singleLine.Length)
             {
-                string trimmed = line.Trim();
-                if (!trimmed.Contains("InternalsVisibleTo"))
+                int ivtIndex = singleLine.IndexOf("InternalsVisibleTo", searchStart);
+                if (ivtIndex < 0)
                 {
-                    continue;
+                    break;
                 }
 
-                // Parse: [assembly: InternalsVisibleTo("AssemblyName")]
-                int startQuote = trimmed.IndexOf('"');
-                int endQuote = trimmed.LastIndexOf('"');
-
-                if (startQuote >= 0 && endQuote > startQuote)
+                int startQuote = singleLine.IndexOf('"', ivtIndex);
+                if (startQuote < 0)
                 {
-                    string assemblyName = trimmed.Substring(
-                        startQuote + 1,
-                        endQuote - startQuote - 1
-                    );
-                    entries.Add(assemblyName);
+                    break;
                 }
+
+                int endQuote = singleLine.IndexOf('"', startQuote + 1);
+                if (endQuote < 0)
+                {
+                    break;
+                }
+
+                string assemblyName = singleLine.Substring(
+                    startQuote + 1,
+                    endQuote - startQuote - 1
+                );
+                entries.Add(assemblyName);
+                searchStart = endQuote + 1;
             }
 
             return entries;
@@ -807,43 +1072,46 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Validation
 
         private static string ExtractAssemblyNameFromAsmdef(string content)
         {
-            // Simple JSON parsing for "name": "value"
-            string[] lines = content.Split('\n');
-            foreach (string line in lines)
-            {
-                string trimmed = line.Trim();
-                if (trimmed.StartsWith("\"name\""))
-                {
-                    int colonIndex = trimmed.IndexOf(':');
-                    if (colonIndex >= 0)
-                    {
-                        string value = trimmed.Substring(colonIndex + 1).Trim();
-                        value = value.TrimStart('"').TrimEnd(',', '"');
-                        return value;
-                    }
-                }
-            }
-
-            return null;
+            return ExtractJsonStringValue(content, "name");
         }
 
         private static string ExtractRootNamespaceFromAsmdef(string content)
         {
-            // Simple JSON parsing for "rootNamespace": "value"
+            return ExtractJsonStringValue(content, "rootNamespace");
+        }
+
+        private static string ExtractJsonStringValue(string content, string key)
+        {
             string[] lines = content.Split('\n');
+            string quotedKey = "\"" + key + "\"";
             foreach (string line in lines)
             {
                 string trimmed = line.Trim();
-                if (trimmed.StartsWith("\"rootNamespace\""))
+                if (!trimmed.StartsWith(quotedKey))
                 {
-                    int colonIndex = trimmed.IndexOf(':');
-                    if (colonIndex >= 0)
-                    {
-                        string value = trimmed.Substring(colonIndex + 1).Trim();
-                        value = value.TrimStart('"').TrimEnd(',', '"');
-                        return value;
-                    }
+                    continue;
                 }
+
+                int colonIndex = trimmed.IndexOf(':');
+                if (colonIndex < 0)
+                {
+                    continue;
+                }
+
+                string afterColon = trimmed.Substring(colonIndex + 1);
+                int startQuote = afterColon.IndexOf('"');
+                if (startQuote < 0)
+                {
+                    continue;
+                }
+
+                int endQuote = afterColon.IndexOf('"', startQuote + 1);
+                if (endQuote < 0)
+                {
+                    continue;
+                }
+
+                return afterColon.Substring(startQuote + 1, endQuote - startQuote - 1);
             }
 
             return null;

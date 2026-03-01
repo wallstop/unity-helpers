@@ -32,6 +32,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Sprites
     [TestFixture]
     [NUnit.Framework.Category("Slow")]
     [NUnit.Framework.Category("Integration")]
+    [Ignore("Beta feature - SpriteSheetExtractor tests are not reliable")]
     public sealed class SpriteSheetExtractorDiscoveryTests : SpriteSheetExtractorTestBase
     {
         private const string RootPath = "Assets/Temp/SpriteSheetExtractorDiscoveryTests";

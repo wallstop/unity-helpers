@@ -183,7 +183,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
 
             // Update validation state
-            string currentTypeName = typeNameProp.stringValue ?? string.Empty;
+            string currentTypeName = typeNameProp.stringValue;
             if (!string.Equals(state.lastTypeName, currentTypeName, StringComparison.Ordinal))
             {
                 state.lastTypeName = currentTypeName;

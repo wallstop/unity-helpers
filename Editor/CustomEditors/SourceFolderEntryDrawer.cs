@@ -160,13 +160,17 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomEditors
                     availableWidth,
                     EditorGUIUtility.singleLineHeight
                 );
+                EditorGUI.BeginChangeCheck();
                 modeValue = (SpriteSelectionMode)
                     EditorGUI.EnumFlagsField(
                         selectionMode,
                         new GUIContent("Selection Mode"),
                         modeValue
                     );
-                modeProp.intValue = (int)modeValue;
+                if (EditorGUI.EndChangeCheck())
+                {
+                    modeProp.intValue = (int)modeValue;
+                }
                 currentY +=
                     EditorGUIUtility.singleLineHeight + EditorGUIUtility.standardVerticalSpacing;
 

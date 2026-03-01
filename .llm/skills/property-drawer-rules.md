@@ -46,7 +46,7 @@ Multi-object editing is notoriously bug-prone. These rules prevent common issues
 
 ### 1. Never Modify Property During Render Phase
 
-Only modify `SerializedProperty` values in callbacks (e.g., `GenericMenu` selection), NEVER during `OnGUI` rendering:
+Only modify `SerializedProperty` values in callbacks (e.g., `GenericMenu` selection) or inside `BeginChangeCheck`/`EndChangeCheck` guards, NEVER unconditionally during `OnGUI` rendering:
 
 ```csharp
 // WRONG - Modifying during render causes infinite repaint loops
@@ -58,6 +58,10 @@ public override void OnGUI(Rect position, SerializedProperty property, GUIConten
         property.intValue = 0; // BUG: Writing during render!
     }
 }
+
+// WRONG - Direct assignment writes every frame even without user interaction
+apply.boolValue = EditorGUI.ToggleLeft(r, label, apply.boolValue);
+nameProp.stringValue = EditorGUI.TextField(r, "Name", nameProp.stringValue);
 
 // CORRECT - Only modify in callbacks
 public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
@@ -73,7 +77,17 @@ public override void OnGUI(Rect position, SerializedProperty property, GUIConten
         menu.DropDown(fieldRect);
     }
 }
+
+// CORRECT - Guard with change detection
+EditorGUI.BeginChangeCheck();
+bool newValue = EditorGUI.ToggleLeft(r, label, apply.boolValue);
+if (EditorGUI.EndChangeCheck())
+{
+    apply.boolValue = newValue;
+}
 ```
+
+**Note**: `EditorGUI.PropertyField()` handles change detection internally and does not need explicit guards.
 
 ### 2. Set showMixedValue BEFORE Index Calculations
 
@@ -348,3 +362,4 @@ See [create-test](./create-test.md) for full testing guidelines.
 - [test-odin-drawers](./test-odin-drawers.md) - Odin Inspector drawer testing
 - [defensive-editor-programming](./defensive-editor-programming.md) - Editor defensive coding patterns
 - [defensive-programming](./defensive-programming.md) - General defensive coding practices
+- [editor-multi-object-editing](./editor-multi-object-editing.md) - Multi-object editing patterns and undo support

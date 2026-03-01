@@ -1,0 +1,22 @@
+{
+  "name": "WallstopStudios.UnityHelpers.Tests.Editor.Sprites.Cropper",
+  "rootNamespace": "WallstopStudios.UnityHelpers.Tests.Sprites",
+  "references": [
+    "UnityEditor.TestRunner",
+    "UnityEngine.TestRunner",
+    "Unity.2D.Sprite.Editor",
+    "WallstopStudios.UnityHelpers",
+    "WallstopStudios.UnityHelpers.Editor",
+    "WallstopStudios.UnityHelpers.Tests.Core",
+    "WallstopStudios.UnityHelpers.Tests.Editor"
+  ],
+  "includePlatforms": ["Editor"],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": true,
+  "precompiledReferences": ["nunit.framework.dll"],
+  "autoReferenced": false,
+  "defineConstraints": ["UNITY_INCLUDE_TESTS"],
+  "versionDefines": [],
+  "noEngineReferences": false
+}

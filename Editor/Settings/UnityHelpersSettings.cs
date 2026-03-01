@@ -13,6 +13,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Core.DataStructure.Adapters;
     using WallstopStudios.UnityHelpers.Editor.CustomDrawers;
+    using WallstopStudios.UnityHelpers.Editor.Utils;
     using WallstopStudios.UnityHelpers.Editor.Utils.WButton;
     using WallstopStudios.UnityHelpers.Editor.Utils.WGroup;
     using WallstopStudios.UnityHelpers.Settings;
@@ -136,6 +137,16 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         /// A spike is detected when concurrent rentals exceed the rolling average by this factor.
         /// </summary>
         public const float DefaultPoolSpikeThresholdMultiplier = 2.5f;
+
+        /// <summary>
+        /// Default value for Failed Tests Exporter enabled state.
+        /// </summary>
+        public const bool DefaultFailedTestsExporterEnabled = false;
+
+        /// <summary>
+        /// Default relative output directory for failed test results (empty = project root).
+        /// </summary>
+        public const string DefaultFailedTestsOutputDirectory = "";
         private static readonly Color DefaultColorKeyButtonColor = new(0.243f, 0.525f, 0.988f, 1f);
         private static readonly Color DefaultLightThemeButtonColor = new(0.78f, 0.78f, 0.78f, 1f);
         private static readonly Color DefaultDarkThemeButtonColor = new(0.35f, 0.35f, 0.35f, 1f);
@@ -379,6 +390,28 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             );
         private const string PoolPurgingHelpText =
             "Configure intelligent pool purging defaults. These settings control how pools automatically trim idle items based on usage patterns.";
+        private const string FailedTestsExporterHelpText =
+            "When enabled, the Failed Tests Exporter hooks into the Unity Test Runner to capture test failures and export them to a text file in a configurable directory (defaults to the project root).";
+        private static readonly GUIContent FailedTestsExporterEnabledContent =
+            EditorGUIUtility.TrTextContent(
+                "Enable Failed Tests Exporter",
+                "When enabled, automatically captures failed test results from the Unity Test Runner and provides menu items to export them."
+            );
+        private static readonly GUIContent FailedTestsOutputDirectoryContent =
+            EditorGUIUtility.TrTextContent(
+                "Output Directory",
+                "Relative directory path from the project root where failed test result files are saved. Leave empty to use the project root."
+            );
+        private static readonly GUIContent FailedTestsOutputDirectoryBrowseContent =
+            EditorGUIUtility.TrTextContent(
+                "Browse\u2026",
+                "Open a folder picker to select the output directory for failed test result files."
+            );
+        private static readonly GUIContent FailedTestsOutputDirectoryClearContent =
+            EditorGUIUtility.TrTextContent(
+                "\u00d7",
+                "Clear the output directory and use the project root instead."
+            );
         private static readonly GUIContent PoolPurgingEnabledContent =
             EditorGUIUtility.TrTextContent(
                 "Enable Global Purging",
@@ -933,6 +966,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         private float _inlineEditorFoldoutSpeed = DefaultFoldoutSpeed;
 
         private const string PoolPurgingFoldoutKey = "PoolPurging";
+        private const string FailedTestsExporterFoldoutKey = "FailedTestsExporter";
 
         [SerializeField]
         [Tooltip(
@@ -1009,6 +1043,26 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         [SerializeField]
         [HideInInspector]
         private bool _poolPurgingSettingsInitialized;
+
+        [SerializeField]
+        [Tooltip(
+            "When enabled, the Failed Tests Exporter automatically captures test failures from the Unity Test Runner."
+        )]
+        [WGroup(
+            FailedTestsExporterFoldoutKey,
+            displayName: "Failed Tests Exporter",
+            collapsible: true,
+            startCollapsed: true
+        )]
+        internal bool _failedTestsExporterEnabled = DefaultFailedTestsExporterEnabled;
+
+        [SerializeField]
+        [Tooltip(
+            "Relative directory path from the project root where failed test result files are saved. Leave empty to use the project root."
+        )]
+        [WShowIf(nameof(_failedTestsExporterEnabled))]
+        [WGroupEnd(FailedTestsExporterFoldoutKey)]
+        internal string _failedTestsOutputDirectory = DefaultFailedTestsOutputDirectory;
 
         internal HashSet<string> WButtonCustomColorSkipAutoSuggest
         {
@@ -2090,6 +2144,64 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         }
 
         /// <summary>
+        /// Gets whether the Failed Tests Exporter is enabled in settings.
+        /// </summary>
+        public static bool GetFailedTestsExporterEnabled()
+        {
+            return instance._failedTestsExporterEnabled;
+        }
+
+        /// <summary>
+        /// Gets the validated relative output directory for failed test result files.
+        /// The returned path uses forward slashes and has no trailing separator.
+        /// </summary>
+        /// <returns>
+        /// The validated relative directory path, or <see cref="DefaultFailedTestsOutputDirectory"/>
+        /// (empty string, meaning project root) if the configured path is invalid, does not exist,
+        /// or escapes the project root.
+        /// </returns>
+        public static string GetFailedTestsOutputDirectory()
+        {
+            string directory = instance._failedTestsOutputDirectory;
+            if (string.IsNullOrWhiteSpace(directory))
+            {
+                return DefaultFailedTestsOutputDirectory;
+            }
+
+            // Normalize separators
+            directory = directory.Replace('\\', '/').TrimEnd('/');
+
+            // Reject absolute paths, paths with .., and other invalid patterns
+            if (Path.IsPathRooted(directory) || directory.Contains(".."))
+            {
+                return DefaultFailedTestsOutputDirectory;
+            }
+
+            try
+            {
+                string projectRoot = Path.GetFullPath(Path.Combine(Application.dataPath, ".."));
+                string fullPath = Path.GetFullPath(Path.Combine(projectRoot, directory));
+
+                // Ensure the resolved path is still within the project root
+                if (!fullPath.StartsWith(projectRoot, StringComparison.OrdinalIgnoreCase))
+                {
+                    return DefaultFailedTestsOutputDirectory;
+                }
+
+                if (!Directory.Exists(fullPath))
+                {
+                    return DefaultFailedTestsOutputDirectory;
+                }
+
+                return directory;
+            }
+            catch
+            {
+                return DefaultFailedTestsOutputDirectory;
+            }
+        }
+
+        /// <summary>
         /// Gets the default idle timeout in seconds for pool purging.
         /// </summary>
         public static float GetPoolIdleTimeoutSeconds()
@@ -2386,6 +2498,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             internal const string WEnumToggleButtonsInactiveText = nameof(
                 WEnumToggleButtonsCustomColor._inactiveTextColor
             );
+            internal const string FailedTestsOutputDirectory = nameof(_failedTestsOutputDirectory);
 
             /// <summary>
             /// Gets the serialized property name value for the given constant name.
@@ -2435,6 +2548,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                     nameof(WEnumToggleButtonsInactiveBackground) =>
                         WEnumToggleButtonsInactiveBackground,
                     nameof(WEnumToggleButtonsInactiveText) => WEnumToggleButtonsInactiveText,
+                    nameof(FailedTestsOutputDirectory) => FailedTestsOutputDirectory,
                     _ => null,
                 };
             }
@@ -2597,6 +2711,22 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                 MinDetectAssetChangeLoopWindowSeconds,
                 MaxDetectAssetChangeLoopWindowSeconds
             );
+            // Validate the failed tests output directory
+            if (!string.IsNullOrEmpty(_failedTestsOutputDirectory))
+            {
+                string validatedDirectory = GetFailedTestsOutputDirectory();
+                if (
+                    !string.Equals(
+                        _failedTestsOutputDirectory,
+                        validatedDirectory,
+                        StringComparison.Ordinal
+                    )
+                )
+                {
+                    _failedTestsOutputDirectory = validatedDirectory;
+                    SaveSettings();
+                }
+            }
             if (EnsureFoldoutTweenDefaults())
             {
                 SaveSettings();
@@ -3797,6 +3927,110 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             return false;
         }
 
+        private static bool DrawFailedTestsOutputDirectoryField(UnityHelpersSettings settings)
+        {
+            bool changed = false;
+            string currentDirectory = settings._failedTestsOutputDirectory ?? string.Empty;
+
+            EditorGUILayout.BeginHorizontal();
+
+            // Show the current directory as a read-only label (or placeholder)
+            string displayText = string.IsNullOrEmpty(currentDirectory)
+                ? "(Project Root)"
+                : currentDirectory;
+
+            EditorGUILayout.PrefixLabel(FailedTestsOutputDirectoryContent);
+
+            using (new EditorGUI.DisabledScope(true))
+            {
+                EditorGUILayout.TextField(displayText);
+            }
+
+            // Browse button - opens Unity's folder panel
+            if (GUILayout.Button(FailedTestsOutputDirectoryBrowseContent, GUILayout.Width(70f)))
+            {
+                string projectRoot = Path.GetFullPath(Path.Combine(Application.dataPath, ".."));
+                string startDirectory = string.IsNullOrEmpty(currentDirectory)
+                    ? projectRoot
+                    : Path.GetFullPath(Path.Combine(projectRoot, currentDirectory));
+
+                if (!Directory.Exists(startDirectory))
+                {
+                    startDirectory = projectRoot;
+                }
+
+                string selectedPath = EditorUtility.OpenFolderPanel(
+                    "Select Failed Tests Output Directory",
+                    startDirectory,
+                    string.Empty
+                );
+
+                if (!string.IsNullOrEmpty(selectedPath))
+                {
+                    selectedPath = selectedPath.Replace('\\', '/');
+                    projectRoot = projectRoot.Replace('\\', '/');
+
+                    if (!projectRoot.EndsWith("/"))
+                    {
+                        projectRoot += "/";
+                    }
+
+                    if (selectedPath.StartsWith(projectRoot, StringComparison.OrdinalIgnoreCase))
+                    {
+                        string relativePath = selectedPath
+                            .Substring(projectRoot.Length)
+                            .TrimEnd('/');
+                        settings._failedTestsOutputDirectory = relativePath;
+                        changed = true;
+                    }
+                    else if (
+                        string.Equals(
+                            selectedPath.TrimEnd('/'),
+                            projectRoot.TrimEnd('/'),
+                            StringComparison.OrdinalIgnoreCase
+                        )
+                    )
+                    {
+                        settings._failedTestsOutputDirectory = DefaultFailedTestsOutputDirectory;
+                        changed = true;
+                    }
+                    else
+                    {
+                        Debug.LogWarning(
+                            "[UnityHelpersSettings] Selected directory must be within the project root."
+                        );
+                    }
+                }
+            }
+
+            // Clear button (only shown when a directory is set)
+            using (new EditorGUI.DisabledScope(string.IsNullOrEmpty(currentDirectory)))
+            {
+                if (GUILayout.Button(FailedTestsOutputDirectoryClearContent, GUILayout.Width(24f)))
+                {
+                    settings._failedTestsOutputDirectory = DefaultFailedTestsOutputDirectory;
+                    changed = true;
+                }
+            }
+
+            EditorGUILayout.EndHorizontal();
+
+            // Show validation warning if path is set but invalid
+            if (!string.IsNullOrEmpty(currentDirectory))
+            {
+                string validated = GetFailedTestsOutputDirectory();
+                if (string.IsNullOrEmpty(validated))
+                {
+                    EditorGUILayout.HelpBox(
+                        $"The configured directory \"{currentDirectory}\" does not exist or is invalid. Files will be saved to the project root instead.",
+                        MessageType.Warning
+                    );
+                }
+            }
+
+            return changed;
+        }
+
         private static bool DrawEnumPopupField<TEnum>(
             GUIContent content,
             TEnum currentValue,
@@ -4882,6 +5116,49 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                             if (
                                 string.Equals(
                                     property.propertyPath,
+                                    nameof(_failedTestsExporterEnabled),
+                                    StringComparison.Ordinal
+                                )
+                            )
+                            {
+                                EditorGUILayout.HelpBox(
+                                    FailedTestsExporterHelpText,
+                                    MessageType.Info
+                                );
+                                bool changed = DrawToggleField(
+                                    FailedTestsExporterEnabledContent,
+                                    settings._failedTestsExporterEnabled,
+                                    value =>
+                                    {
+                                        settings._failedTestsExporterEnabled = value;
+                                        FailedTestsExporter.Reinitialize();
+                                    }
+                                );
+                                dataChanged |= changed;
+                                return true;
+                            }
+
+                            if (
+                                string.Equals(
+                                    property.propertyPath,
+                                    nameof(_failedTestsOutputDirectory),
+                                    StringComparison.Ordinal
+                                )
+                            )
+                            {
+                                if (!settings._failedTestsExporterEnabled)
+                                {
+                                    return true;
+                                }
+
+                                bool changed = DrawFailedTestsOutputDirectoryField(settings);
+                                dataChanged |= changed;
+                                return true;
+                            }
+
+                            if (
+                                string.Equals(
+                                    property.propertyPath,
                                     nameof(_poolIdleTimeoutSeconds),
                                     StringComparison.Ordinal
                                 )
@@ -5183,6 +5460,9 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                     "Purging",
                     "Buffer",
                     "Memory",
+                    "Failed Tests",
+                    "Exporter",
+                    "Test Runner",
                 },
             };
         }

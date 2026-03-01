@@ -9,11 +9,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 See [the roadmap](./docs/overview/roadmap.md) for details
 
+### Added
+
+- **Failed Tests Exporter**: New editor utility that hooks into the Unity Test Runner to automatically capture test failures and export them to timestamped text files
+  - Automatically records test name, failure message, and stack trace for each failed test
+  - Configurable output directory with a visual folder picker — defaults to the project root if not set
+  - Path validation on every use: falls back to the project root if the configured directory is missing, invalid, or outside the project
+  - Menu items under `Tools > Wallstop Studios > Unity Helpers` to export or clear captured failures
+  - Disabled by default — enable via `Project Settings > Wallstop Studios > Unity Helpers`
+
 ### Fixed
 
+- **TexturePlatformOverrideEntryDrawer render-phase mutations**: Fixed `OnGUI` writing to `SerializedProperty` values every frame without `BeginChangeCheck`/`EndChangeCheck` guards. Direct assignments like `apply.boolValue = EditorGUI.ToggleLeft(...)` and `nameProp.stringValue = EditorGUI.TextField(...)` dirtied the `SerializedObject` on every repaint, corrupting undo history. Also removed a redundant render-phase writeback of the computed display label to the platform name property
+- **TexturePlatformOverrideEntryDrawer GenericMenu undo and Custom handling**: Fixed `GenericMenu` callback not calling `Undo.RecordObjects` before mutation and not handling the "Custom" menu option. Selecting "Custom" from the dropdown now correctly sets the platform name to `string.Empty` (triggering custom mode), and all selections are undoable
+- **SourceFolderEntryDrawer render-phase mutation**: Fixed `EnumFlagsField` for selection mode writing to `modeProp.intValue` every frame without a `BeginChangeCheck`/`EndChangeCheck` guard
+- **AttributeMetadataCache generator path mismatch**: Fixed `AttributeMetadataCacheGenerator.GetOrCreateCache()` using hardcoded asset paths that did not match the `[ScriptableSingletonPath("Wallstop Studios/Unity Helpers")]` attribute on `AttributeMetadataCache`. The generator was creating and loading the cache asset from `Assets/Resources/Wallstop Studios/` instead of the correct `Assets/Resources/Wallstop Studios/Unity Helpers/` path, causing cache generation to silently fail when the singleton was already loaded at the correct path
 - **IntDropDown invalid value clamping**: Fixed `IntDropDownDrawer` not clamping property values that fall outside the configured options to the first valid option. Previously, invalid values (values not in the options array) were displayed as-is without correction. Now both OnGUI paths (`DrawGenericMenuDropDown` and `DrawPopupDropDown`) automatically clamp invalid values to the first option, and the UI Toolkit `IntDropDownSelector.GetDefaultValue()` returns the first option instead of 0
 - **Linux dropdown rendering phantom rows**: Replaced all `EditorGUI.Popup` usage with `GenericMenu`-based dropdowns to eliminate phantom empty rows when selected index is -1 on Linux. Affected drawers: `WValueDropDownDrawer`, `IntDropDownDrawer`, `StringInListDrawer`, `TexturePlatformOverrideEntryDrawer` (standard variants), and `WValueDropDownOdinDrawer`, `IntDropDownOdinDrawer`, `StringInListOdinDrawer` (Odin Inspector variants). Odin drawers now always use `GenericMenu` regardless of the page limit setting, since `GenericMenu` handles all list sizes correctly without the rendering issues that required the threshold ([#209](https://github.com/wallstop/unity-helpers/issues/209))
 - **Multi-object editing for WValueDropDown**: Added typed `SerializedProperty` setters for Unity-native types (`Vector2`, `Vector3`, `Vector4`, `Color`, `Rect`, `Bounds`, `Quaternion`, `AnimationCurve`, `Hash128`, and their `Int` variants) in `WValueDropDownDrawer.ApplyOption` to avoid the reflection fallback for known property types. The generic reflection path now iterates over all `serializedObject.targetObjects` for proper multi-object editing support instead of only updating the first selected object
+- **SerializableSet undo not working for add, clear, sort, and commit operations**: Fixed `TryClearSet`, `TryAddNewElement`, `TryCommitPendingEntry`, `AppendNullPlaceholderEntry`, and `TrySortElements` in `SerializableSetPropertyDrawer` not calling `Undo.FlushUndoRecordObjects()` after direct object mutation. These methods used `Undo.RecordObjects` to snapshot pre-change state but never finalized the undo record, causing `Undo.PerformUndo()` to silently do nothing
 
 ## [3.2.1]
 

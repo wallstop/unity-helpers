@@ -9,7 +9,7 @@
 ## When to Use This Skill
 
 - **After ANY new feature** (MANDATORY)
-- **After ANY bug fix** (MANDATORY)
+- **After ANY bug fix** (MANDATORY — see [Regression Tests for Bug Fixes](#regression-tests-for-bug-fixes-mandatory) below)
 - When adding new public API
 - When modifying existing behavior
 - When refactoring production code
@@ -56,6 +56,66 @@ See [investigate-test-failures](./investigate-test-failures.md) for detailed inv
 | **Unexpected Situations** | Null inputs, disposed objects, concurrent access, missing dependencies                   |
 | **"The Impossible"**      | Cases that "should never happen" but might (corrupted state, invalid enum values)        |
 | **Data-Driven**           | PREFER `[TestCase]` / `[TestCaseSource]` — see [test-data-driven](./test-data-driven.md) |
+
+---
+
+## Regression Tests for Bug Fixes (MANDATORY)
+
+**Every bug fix MUST include regression tests** that would have caught the original bug. This is non-negotiable — a fix without a test is incomplete.
+
+### What Regression Tests Must Verify
+
+1. **The broken behavior no longer occurs** — reproduce the exact scenario that triggered the bug
+2. **The correct behavior is preserved** — verify the fix produces the expected result
+3. **Related edge cases are covered** — test adjacent scenarios that could have similar issues
+
+### PropertyDrawer / Editor Bug Fix Tests
+
+For bugs in `PropertyDrawer`, `Editor`, or IMGUI code, regression tests should verify:
+
+| Bug Category                       | Test Pattern                                                                                 |
+| ---------------------------------- | -------------------------------------------------------------------------------------------- |
+| **Render-phase mutation**          | Call `OnGUI` multiple times, assert property values unchanged afterward                      |
+| **Missing BeginChangeCheck guard** | Call `OnGUI`, assert `serializedObject.hasModifiedProperties` is `false`                     |
+| **GenericMenu callback issues**    | Test that all menu option paths produce correct property values                              |
+| **Index calculation bugs**         | Test `GetSelectedIndex` / equivalent with all input categories (null, empty, valid, invalid) |
+| **Missing Undo support**           | Test that `Undo.PerformUndo()` reverts the change                                            |
+
+### Script / Lint Tool Bug Fix Tests
+
+For bugs in build scripts, lint scripts, or tooling:
+
+1. Create a test script in `scripts/tests/` that exercises the fixed function
+2. Cover the exact input that triggered the bug plus boundary cases
+3. Ensure the test is runnable standalone (e.g., `pwsh -NoProfile -File scripts/tests/test-<name>.ps1`)
+
+### Example: Render-Phase Mutation Regression Test
+
+```csharp
+[UnityTest]
+public IEnumerator OnGUIDoesNotModifyPropertyDuringRender()
+{
+    // Arrange — set up known state
+    _testHost.value = "expected";
+    _serializedObject.Update();
+    SerializedProperty prop = _serializedObject.FindProperty("value");
+    Rect position = new(0, 0, 400, height);
+
+    // Act — render multiple frames without user interaction
+    yield return TestIMGUIExecutor.Run(() =>
+    {
+        for (int i = 0; i < 5; i++)
+        {
+            _drawer.OnGUI(position, prop, GUIContent.none);
+        }
+    });
+
+    // Assert — property unchanged
+    _serializedObject.ApplyModifiedProperties();
+    Assert.That(_testHost.value, Is.EqualTo("expected"),
+        "OnGUI should not modify property during render");
+}
+```
 
 ---
 
