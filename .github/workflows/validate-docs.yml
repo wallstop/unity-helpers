@@ -9,12 +9,16 @@ on:
       - "*.md"
       - "mkdocs.yml"
       - "requirements-docs.txt"
+      - ".gitignore"
+      - "scripts/lint-gitignore-docs.ps1"
   pull_request:
     paths:
       - "docs/**"
       - "*.md"
       - "mkdocs.yml"
       - "requirements-docs.txt"
+      - ".gitignore"
+      - "scripts/lint-gitignore-docs.ps1"
   workflow_dispatch:
 
 jobs:
@@ -317,3 +321,14 @@ jobs:
       - name: Fail if issues found
         if: steps.check-fences.outputs.status == 'failure'
         run: exit 1
+
+  gitignore-docs-safety:
+    name: Gitignore Docs Safety
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Validate no docs files are gitignored
+        shell: pwsh
+        run: ./scripts/lint-gitignore-docs.ps1 -VerboseOutput

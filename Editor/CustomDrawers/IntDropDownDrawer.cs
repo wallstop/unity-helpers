@@ -19,6 +19,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
     public sealed class IntDropDownDrawer : PropertyDrawer
     {
         private static readonly Dictionary<int, string[]> DisplayOptionsCache = new();
+        private static readonly GUIContent ReusableDropDownButtonContent = new();
 
         private static string[] GetOrCreateDisplayOptions(int[] options)
         {
@@ -168,9 +169,16 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 displayValue = DropDownShared.GetCachedIntString(currentValue) + " (Invalid)";
             }
 
-            GUIContent buttonContent = new(displayValue);
+            ReusableDropDownButtonContent.text = displayValue;
+            ReusableDropDownButtonContent.tooltip = string.Empty;
 
-            if (EditorGUI.DropdownButton(fieldRect, buttonContent, FocusType.Keyboard))
+            if (
+                EditorGUI.DropdownButton(
+                    fieldRect,
+                    ReusableDropDownButtonContent,
+                    FocusType.Keyboard
+                )
+            )
             {
                 SerializedObject serializedObject = property.serializedObject;
                 string propertyPath = property.propertyPath;

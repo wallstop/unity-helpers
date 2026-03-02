@@ -234,6 +234,31 @@ void UpdateDropdownDisplay(DropdownField dropdown, SerializedProperty property)
 }
 ```
 
+### 9. Reuse GUIContent in OnGUI — Never Allocate Per Frame
+
+`OnGUI` runs every frame. Allocating `new GUIContent(...)` inside `OnGUI` or `DrawPropertyLayout` creates avoidable GC pressure. Reuse a static `GUIContent` instance and update its `.text`/`.tooltip` before each use:
+
+```csharp
+// WRONG - Allocates GUIContent every frame
+public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
+{
+    GUIContent buttonContent = new(displayValue); // Allocation!
+    EditorGUI.DropdownButton(fieldRect, buttonContent, FocusType.Keyboard);
+}
+
+// CORRECT - Reuse static instance
+private static readonly GUIContent ReusableDropDownButtonContent = new();
+
+public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
+{
+    ReusableDropDownButtonContent.text = displayValue;
+    ReusableDropDownButtonContent.tooltip = string.Empty;
+    EditorGUI.DropdownButton(fieldRect, ReusableDropDownButtonContent, FocusType.Keyboard);
+}
+```
+
+**Exception**: `GenericMenu.AddItem(new GUIContent(...), ...)` allocations are acceptable because they only execute on user click (not every frame) and `GenericMenu` stores references internally, so a single instance cannot be reused across multiple `AddItem` calls.
+
 ---
 
 ## Standard and Odin Drawer Consistency (MANDATORY)

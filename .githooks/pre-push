@@ -12,11 +12,13 @@ set -e
 #   2. Markdownlint
 #   3. Spell checking (cspell)
 #   4. Doc link lint
-#   5. EOL normalization and verification
-#   6. yamllint (if installed)
-#   7. actionlint (if installed and workflow files changed)
-#   8. External link check with lychee (if installed)
-#   9. Test lifecycle lint
+#   5. Gitignore docs safety (no docs/ files accidentally gitignored)
+#   6. Unity meta file lint (missing/orphaned .meta files)
+#   7. EOL normalization and verification
+#   8. yamllint (if installed)
+#   9. actionlint (if installed and workflow files changed)
+#  10. External link check with lychee (if installed)
+#  11. Test lifecycle lint
 #
 # LINE ENDING NOTE:
 #   This repo uses CRLF for most files (.gitattributes).
@@ -94,6 +96,63 @@ else
     node ./scripts/run-doc-link-lint.js || exit 1
     echo "✓ Doc links OK"
   fi
+fi
+
+# 5) Gitignore docs safety (validates no docs/ files are accidentally gitignored)
+# This catches the category of bug where a .gitignore wildcard pattern like
+# "failed-tests-*" accidentally matches "docs/features/editor-tools/failed-tests-exporter.md"
+if command -v pwsh >/dev/null 2>&1; then
+  echo "Checking gitignore docs safety..."
+  pwsh -NoProfile -File scripts/lint-gitignore-docs.ps1 || {
+    echo ""
+    echo "=== Gitignore docs safety check failed ==="
+    echo "Fix .gitignore patterns to avoid excluding documentation files."
+    echo "Example: Narrow 'failed-tests-*' to 'failed-tests-*.txt'"
+    echo ""
+    exit 1
+  }
+  echo "✓ Gitignore docs safety OK"
+elif command -v powershell >/dev/null 2>&1; then
+  echo "Checking gitignore docs safety..."
+  powershell -NoProfile -ExecutionPolicy Bypass -File scripts/lint-gitignore-docs.ps1 || {
+    echo ""
+    echo "=== Gitignore docs safety check failed ==="
+    echo "Fix .gitignore patterns to avoid excluding documentation files."
+    echo "Example: Narrow 'failed-tests-*' to 'failed-tests-*.txt'"
+    echo ""
+    exit 1
+  }
+  echo "✓ Gitignore docs safety OK"
+else
+  echo "PowerShell not found; skipping gitignore docs safety check. CI will validate." >&2
+fi
+
+# 6) Unity meta file lint (validates all files have .meta and no orphaned .meta exist)
+# This catches missing .meta files before they reach CI
+if command -v pwsh >/dev/null 2>&1; then
+  echo "Checking Unity meta files..."
+  pwsh -NoProfile -File scripts/lint-meta-files.ps1 || {
+    echo ""
+    echo "=== Unity meta file lint failed ==="
+    echo "Run './scripts/generate-meta.sh <path>' to generate missing meta files."
+    echo "Delete orphaned .meta files or restore missing source files."
+    echo ""
+    exit 1
+  }
+  echo "✓ Unity meta files OK"
+elif command -v powershell >/dev/null 2>&1; then
+  echo "Checking Unity meta files..."
+  powershell -NoProfile -ExecutionPolicy Bypass -File scripts/lint-meta-files.ps1 || {
+    echo ""
+    echo "=== Unity meta file lint failed ==="
+    echo "Run './scripts/generate-meta.sh <path>' to generate missing meta files."
+    echo "Delete orphaned .meta files or restore missing source files."
+    echo ""
+    exit 1
+  }
+  echo "✓ Unity meta files OK"
+else
+  echo "PowerShell not found; skipping Unity meta file lint. CI will validate." >&2
 fi
 
 # EOL policy (CRLF for most, LF for YAML/shell) - auto-fix then verify

@@ -111,7 +111,35 @@ See [context](./context.md) for guidelines.
 
 **PowerShell `-NoNewline`**: Avoid `Set-Content -NoNewline` — it removes the final newline Prettier requires.
 
-### 10. Pre-Commit Hooks Not Catching CI Failures
+### 10. Gitignore Wildcard Too Broad
+
+**Symptom**: Files in `docs/`, `.llm/`, or other important directories are missing from git / not tracked.
+
+**Cause**: A wildcard pattern in `.gitignore` accidentally matches files in protected directories. For example, `failed-tests-*` matches [Failed Tests Exporter](../../docs/features/editor-tools/failed-tests-exporter.md).
+
+**Fix**:
+
+1. Narrow the pattern with a file extension (e.g., `failed-tests-*.txt` instead of `failed-tests-*`)
+2. Verify with `git check-ignore -v docs/ .llm/` to confirm no important paths are excluded
+3. Run `pwsh -NoProfile -File scripts/lint-gitignore-docs.ps1` to validate gitignore safety for docs
+
+**Prevention**: When editing `.gitignore`, always validate that wildcard patterns don't accidentally exclude files in `docs/`, `.llm/`, or other important directories.
+
+### 11. Missing .meta File for New Script or Asset
+
+**Symptom**: Unity CI build fails with missing `.meta` file errors, or `git status` shows an untracked `.meta` file after someone else opens the project.
+
+**Cause**: A new file was added to the repo but its corresponding `.meta` file was not generated and committed.
+
+**Fix**: Generate the missing meta file:
+
+```bash
+./scripts/generate-meta.sh <path-to-file>
+```
+
+**Prevention**: After creating ANY new file in the Unity package (scripts, docs, configs), immediately run `./scripts/generate-meta.sh <path>`. See [create-unity-meta](./create-unity-meta.md).
+
+### 12. Pre-Commit Hooks Not Catching CI Failures
 
 **Symptom**: CI fails on issues hooks should have caught locally.
 
@@ -120,7 +148,7 @@ See [context](./context.md) for guidelines.
 **Fix**: See [`fix_hook_permissions`](../code-samples/patterns/ValidationFixPatterns.sh) for the full sequence, or run:
 `chmod +x .githooks/* && git update-index --chmod=+x .githooks/pre-commit .githooks/pre-push`
 
-### 11. Dead Link Failures (External URLs)
+### 13. Dead Link Failures (External URLs)
 
 **Symptom**: `Check dead links (lychee)` step fails in CI
 

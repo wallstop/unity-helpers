@@ -63,13 +63,16 @@ Located at `cspell.json` in the project root.
 
 ### Adding Words to Dictionary
 
-Add technical terms, package names, or domain-specific words to `cspell.json`:
+Add words to the appropriate categorized dictionary in `cspell.json`, not the root `words` array:
 
-```json
-{
-  "words": ["PRNG", "Odin", "Sirenix", "MonoBehaviour", "stackalloc"]
-}
-```
+| Dictionary      | Purpose                                  | Examples                                |
+| --------------- | ---------------------------------------- | --------------------------------------- |
+| `unity-terms`   | Unity Engine APIs, components, lifecycle | MonoBehaviour, GetComponent, OnValidate |
+| `csharp-terms`  | C# language features, .NET types         | readonly, nullable, IVT, StringBuilder  |
+| `package-terms` | This package's public API and type names | WallstopStudios, IRandom, SpatialHash   |
+| `tech-terms`    | General programming/tooling terms        | async, config, JSON, IL2CPP             |
+
+When adding technical abbreviations (e.g., IVT for InternalsVisibleTo), place them in the matching category (`csharp-terms` for C# concepts, `tech-terms` for general tooling). Only use the root `words` array for project-specific words that don't fit any category.
 
 ### Inline Ignores
 

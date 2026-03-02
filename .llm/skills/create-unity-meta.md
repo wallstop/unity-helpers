@@ -103,6 +103,7 @@ Generate a `.meta` file whenever you create:
 4. **Use the script** — Don't manually create meta files (proper GUIDs and importer settings)
 5. **Don't modify existing meta files** — Changing GUIDs breaks references
 6. **Verify generation** — Confirm the `.meta` file was created successfully
+7. **Include scripts** — Files in `scripts/` (`.sh`, `.ps1`, `.py`) also need `.meta` files. This is a common oversight that causes CI failures.
 
 ---
 

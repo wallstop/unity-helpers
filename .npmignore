@@ -103,7 +103,10 @@ Editor/Analyzers/*.pdb
 *.tmp_proj
 *.log
 *.log.meta
-method-analysis-*
+method-analysis-*.md
+method-analysis-*.md.meta
+method-analysis-*.json
+method-analysis-*.json.meta
 # TestProjects (root level only)
 /TestProjects.meta
 /TestProjects/

@@ -240,6 +240,7 @@ npm run lint:markdown                # Markdownlint rules
 npm run lint:yaml                    # YAML style
 pwsh -NoProfile -File scripts/lint-tests.ps1   # Lint test lifecycle
 pwsh -NoProfile -File scripts/lint-skill-sizes.ps1  # Skill file sizes
+pwsh -NoProfile -File scripts/lint-gitignore-docs.ps1  # Validate gitignore safety for docs
 ```
 
 LLM instructions lint workflow runs `npm run lint:llm` on Node 22. It enables npm cache only when `package-lock.json` is present; otherwise it installs with `npm i --no-audit --no-fund` to avoid lockfile errors.
@@ -314,6 +315,8 @@ See [formatting](./skills/formatting.md) and [validate-before-commit](./skills/v
 
 ### Additional Technical Rules
 
+- When editing `.gitignore`, always validate that wildcard patterns don't accidentally exclude files in `docs/`, `.llm/`, or other important directories. Use `git check-ignore -v <path>` to verify. Run `pwsh -NoProfile -File scripts/lint-gitignore-docs.ps1` after changes.
+- When adding technical abbreviations to code or documentation, add them to `cspell.json` in the appropriate dictionary category (see [cspell Dictionary Quick Reference](#cspell-dictionary-quick-reference))
 - Verify GitHub Actions config files exist AND are on default branch
 - Never use `((var++))` in bash with `set -e`; use `var=$((var + 1))`
 - Line endings must be synchronized across `.gitattributes`, `.prettierrc.json`, `.yamllint.yaml`, `.editorconfig`
