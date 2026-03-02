@@ -326,5 +326,6 @@ if ($violations.Count -gt 0) {
   exit 1
 } else {
   Write-Info "No issues found in test code."
+  exit 0
 }
 

@@ -65,6 +65,29 @@ for full testing checklist.
 
 ---
 
+## Bash Case Patterns vs Filename Globbing (CRITICAL)
+
+In bash `case` statements, `*` matches **any character including `/`**. This is DIFFERENT from filename globbing (e.g., `ls *.md`) where `*` does NOT match `/`.
+
+```bash
+# case: .llm/skills/*.md matches ALL depths
+case "$file" in .llm/skills/*.md) echo "match" ;; esac
+# Matches: .llm/skills/foo.md, .llm/skills/sub/dir/foo.md
+
+# filename glob: .llm/skills/*.md matches ONE level only
+ls .llm/skills/*.md       # Only matches .llm/skills/foo.md
+ls .llm/skills/**/*.md    # ** needed for recursive glob
+```
+
+**Rules**:
+
+- DO NOT use `**/*.md` notation in `case` comments -- `**` is glob-specific and irrelevant
+- DO NOT add redundant depth alternatives like `.llm/skills/*.md|.llm/skills/*/*.md`
+- The single pattern `.llm/skills/*.md` already matches all subdirectory depths in `case`
+- Regression test: [test-hook-patterns.sh](../../scripts/tests/test-hook-patterns.sh)
+
+---
+
 ## Capture State Early
 
 ```bash
@@ -289,6 +312,55 @@ $newline = if ($useCRLF) { "`r`n" } else { "`n" }
 
 ---
 
+## PowerShell `$LASTEXITCODE` Leaking (CRITICAL)
+
+PowerShell sets `$LASTEXITCODE` after every native command (git, npx, dotnet, etc.).
+If a script does not end with an explicit `exit 0` on its success path, PowerShell
+uses `$LASTEXITCODE` from the **last native command** as the process exit code.
+
+### The `git check-ignore` Trap
+
+`git check-ignore -q <path>` returns exit code **1** when the file is NOT ignored.
+For linters, "not ignored" is the **success case** -- the file should be tracked.
+But that exit code 1 stays in `$LASTEXITCODE` and leaks as the script exit code
+if no explicit `exit` follows.
+
+```powershell
+# BAD - If the last file checked is NOT ignored, $LASTEXITCODE is 1
+# and the script "fails" even though all checks passed
+foreach ($file in $files) {
+    $checkResult = & git check-ignore -q $relativePath 2>&1
+    if ($LASTEXITCODE -eq 0) {
+        $ignoredFiles += $relativePath
+    }
+}
+# Script ends here - $LASTEXITCODE may be 1 from the last check-ignore call
+
+# GOOD - Explicit exit 0 on success path
+if ($hasErrors) {
+    exit 1
+} else {
+    exit 0  # REQUIRED: prevents $LASTEXITCODE leaking
+}
+```
+
+### Rule: All PowerShell Scripts MUST Have Explicit Exit Codes
+
+Every PowerShell lint/hook script MUST end with explicit `exit` on **all** code paths:
+
+- `exit 0` on success
+- `exit 1` (or non-zero) on failure
+
+Native commands that commonly set `$LASTEXITCODE` to non-zero on "success" cases:
+
+| Command                        | Behavior                                    |
+| ------------------------------ | ------------------------------------------- |
+| `git check-ignore -q`          | Returns 1 when file is NOT ignored (normal) |
+| `git diff --quiet`             | Returns 1 when there ARE differences        |
+| `git merge-base --is-ancestor` | Returns 1 when NOT an ancestor              |
+
+---
+
 ## Error Handling in Hooks
 
 Always handle git command failures:
@@ -365,43 +437,23 @@ Git silently skips hook files that are not executable. If `.githooks/*` files ar
 
 ## Hook Template
 
-Here's a complete template for a safe pre-commit hook:
-
 ```bash
 #!/usr/bin/env bash
 set -e
-
-# Get script directory
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-
-# Source helpers
 source "$SCRIPT_DIR/../scripts/git-staging-helpers.sh"
+ensure_no_index_lock || { echo "Warning: index.lock still held." >&2; }
 
-# Wait for external tools to release lock
-ensure_no_index_lock || {
-    echo "Warning: index.lock still held after waiting." >&2
-}
-
-# Capture staged files ONCE
 STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACMR)
-
-# Exit early if no files
-if [ -z "$STAGED_FILES" ]; then
-    exit 0
-fi
+[ -z "$STAGED_FILES" ] && exit 0
 
 # Filter for specific file types (SINGLE backslash!)
 CS_FILES=$(echo "$STAGED_FILES" | grep -E '\.(cs)$' || true)
-
 if [ -n "$CS_FILES" ]; then
-    # Run validation
     echo "Validating C# files..."
     # your validation here
-
-    # If auto-fixing and re-staging:
-    # git_add_with_retry $CS_FILES
+    # If auto-fixing and re-staging: git_add_with_retry $CS_FILES
 fi
-
 exit 0
 ```
 

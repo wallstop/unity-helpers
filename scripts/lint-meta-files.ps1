@@ -231,4 +231,5 @@ if ($hasErrors) {
 } else {
   Write-Info "No meta file issues found."
   Write-Host "All Unity meta files are valid." -ForegroundColor Green
+  exit 0
 }

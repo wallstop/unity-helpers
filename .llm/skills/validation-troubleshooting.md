@@ -134,12 +134,34 @@ See [context](./context.md) for guidelines.
 **Fix**: Generate the missing meta file:
 
 ```bash
-./scripts/generate-meta.sh <path-to-file>
+./scripts/generate-meta.sh <path-to-file-or-folder>
 ```
 
-**Prevention**: After creating ANY new file in the Unity package (scripts, docs, configs), immediately run `./scripts/generate-meta.sh <path>`. See [create-unity-meta](./create-unity-meta.md).
+**Prevention**: After creating ANY new file or folder in the Unity package directories (`Runtime/`, `Editor/`, `Tests/`, `Samples~/`), immediately run `./scripts/generate-meta.sh <path>`. Create parent folder meta files first, then child file meta files. See [create-unity-meta](./create-unity-meta.md).
 
-### 12. Pre-Commit Hooks Not Catching CI Failures
+### 12. Script Passes All Checks but CI Reports Exit Code 1
+
+**Symptom**: A PowerShell lint script logs success messages and all checks pass, but the CI step or pre-commit hook reports a non-zero exit code.
+
+**Cause**: `$LASTEXITCODE` leaking from a native command (git, npx, dotnet). PowerShell uses `$LASTEXITCODE` from the last native command as the process exit code when no explicit `exit` is given. Common culprit: `git check-ignore -q` returns exit code 1 when a file is NOT ignored (which is the success case for linters checking tracked files).
+
+**Fix**: Add explicit `exit 0` on the success path of every PowerShell script. See [git-hook-patterns](./git-hook-patterns.md#powershell-lastexitcode-leaking-critical) for the full pattern.
+
+**Prevention**: Every PowerShell script must end with explicit `exit 0` (success) or `exit 1` (failure) on all code paths. Never let a script fall through without an explicit exit.
+
+### 13. Missing cspell Dictionary Entry for Valid Abbreviation
+
+**Symptom**: `npm run lint:spelling` fails on a technical abbreviation or domain term that is valid.
+
+**Fix**: Add the word to the appropriate dictionary in `cspell.json`. See the [cspell Dictionary Quick Reference](../context.md#cspell-dictionary-quick-reference) for which dictionary to use.
+
+### 14. Documentation Link Points to File Not Yet Created
+
+**Symptom**: `npm run lint:docs` fails with "file not found" for a link that references a documentation page being created as part of the same change.
+
+**Fix**: Create all referenced documentation files before running the link linter. When adding cross-references between new docs, create the files in dependency order (referenced files first, then files that link to them).
+
+### 15. Pre-Commit Hooks Not Catching CI Failures
 
 **Symptom**: CI fails on issues hooks should have caught locally.
 
@@ -148,7 +170,7 @@ See [context](./context.md) for guidelines.
 **Fix**: See [`fix_hook_permissions`](../code-samples/patterns/ValidationFixPatterns.sh) for the full sequence, or run:
 `chmod +x .githooks/* && git update-index --chmod=+x .githooks/pre-commit .githooks/pre-push`
 
-### 13. Dead Link Failures (External URLs)
+### 16. Dead Link Failures (External URLs)
 
 **Symptom**: `Check dead links (lychee)` step fails in CI
 
@@ -268,6 +290,16 @@ Resolution priority: **Prettier** (formatting) > **Markdownlint** (structure) > 
 ### Files That Should Be Ignored
 
 Add files to `.prettierignore`, `.markdownlintignore`, or `cspell.json` `ignorePaths` as appropriate.
+
+---
+
+## PowerShell Exit Code Linter (Potential Safeguard)
+
+Several `scripts/*.ps1` files end without an explicit `exit 0` on their success paths (e.g., `lint-staged-markdown.ps1`, `format-staged-csharp.ps1`, `format-staged-prettier.ps1`). A static linter could check that every script-level `.ps1` file (excluding libraries like `git-staging-helpers.ps1`) has an explicit `exit` as the last statement.
+
+**Simple heuristic**: Parse each `.ps1`, skip trailing whitespace/comments/closing braces, and verify the last meaningful statement is `exit $something` or `exit <number>`. Scripts ending with a closing `}` from an `if` block that contains `exit` on both branches pass, but scripts that fall through after a conditional exit fail.
+
+**Current state**: The bash pre-commit hook (`|| { exit 1; }`) catches non-zero exits from PowerShell scripts. The primary risk is in CI workflows that invoke `.ps1` scripts directly. Most lint scripts already have proper `exit 0/1` on all paths. Monitor for future regressions.
 
 ---
 

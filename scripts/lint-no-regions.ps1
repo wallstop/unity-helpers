@@ -248,4 +248,5 @@ if ($violations.Count -gt 0) {
   if (-not $StagedOnly) {
     Write-Host "No #region directives found in C# files." -ForegroundColor Green
   }
+  exit 0
 }

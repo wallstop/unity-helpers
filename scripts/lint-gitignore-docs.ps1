@@ -306,4 +306,5 @@ if ($hasErrors) {
 } else {
   Write-Info "All gitignore docs/llm safety checks passed."
   Write-Host "Gitignore docs/llm safety: OK" -ForegroundColor Green
+  exit 0
 }

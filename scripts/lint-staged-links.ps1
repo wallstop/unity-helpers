@@ -69,3 +69,4 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 Write-Host "All links are valid." -ForegroundColor Green
+exit 0

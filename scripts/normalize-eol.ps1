@@ -147,3 +147,4 @@ foreach ($path in $targets) {
 
 Write-Host "Files fixed: $changed (EOL:$eolFixed, BOMRemoved:$bomRemoved)"
 if ($DryRun -and $changed -gt 0) { exit 2 }
+exit 0

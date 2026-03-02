@@ -19,6 +19,7 @@ set -e
 #   9. actionlint (if installed and workflow files changed)
 #  10. External link check with lychee (if installed)
 #  11. Test lifecycle lint
+#  12. Hook pattern tests (if hook files changed)
 #
 # LINE ENDING NOTE:
 #   This repo uses CRLF for most files (.gitattributes).
@@ -277,6 +278,28 @@ if [ -n "$WIKI_CHANGES" ]; then
   else
     echo "pytest not installed; skipping Python wiki tests. CI will run them." >&2
   fi
+fi
+
+# Hook pattern tests (validates bash case pattern matching behavior)
+# Runs when hook files or the test script itself change
+HOOK_PATTERN_CHANGES=$(git diff --name-only @{upstream}..HEAD 2>/dev/null | grep -E '^(\.githooks/|scripts/tests/test-hook-patterns\.sh)' || true)
+if [ -z "$HOOK_PATTERN_CHANGES" ]; then
+  # Also check staged/uncommitted hook-related changes
+  HOOK_PATTERN_CHANGES=$(git diff --name-only HEAD 2>/dev/null | grep -E '^(\.githooks/|scripts/tests/test-hook-patterns\.sh)' || true)
+fi
+
+if [ -n "$HOOK_PATTERN_CHANGES" ]; then
+  echo "Hook-related files changed:"
+  echo "$HOOK_PATTERN_CHANGES" | sed 's/^/  /'
+  echo "Running hook pattern tests..."
+  if ! bash scripts/tests/test-hook-patterns.sh; then
+    echo ""
+    echo "=== Hook pattern tests failed ==="
+    echo "Fix the issues in .githooks/ or scripts/tests/test-hook-patterns.sh"
+    echo ""
+    exit 1
+  fi
+  echo "✓ Hook pattern tests OK"
 fi
 
 # actionlint check for GitHub Actions workflows (only if workflow files changed)
