@@ -280,6 +280,40 @@ if [ -n "$WIKI_CHANGES" ]; then
   fi
 fi
 
+# Test lint script tests (validates lint-tests.ps1 allowlist and rule detection)
+# Runs when lint-tests.ps1 or its test script change
+LINT_TEST_CHANGES=$(git diff --name-only @{upstream}..HEAD 2>/dev/null | grep -E '^(scripts/lint-tests\.ps1|scripts/tests/test-lint-tests\.ps1)' || true)
+if [ -z "$LINT_TEST_CHANGES" ]; then
+  LINT_TEST_CHANGES=$(git diff --name-only HEAD 2>/dev/null | grep -E '^(scripts/lint-tests\.ps1|scripts/tests/test-lint-tests\.ps1)' || true)
+fi
+
+if [ -n "$LINT_TEST_CHANGES" ]; then
+  echo "Lint test files changed:"
+  echo "$LINT_TEST_CHANGES" | sed 's/^/  /'
+  echo "Running lint-tests.ps1 test suite..."
+  if command -v pwsh >/dev/null 2>&1; then
+    if ! pwsh -NoProfile -File scripts/tests/test-lint-tests.ps1; then
+      echo ""
+      echo "=== Lint test suite failed ==="
+      echo "Fix the issues in scripts/lint-tests.ps1 or scripts/tests/test-lint-tests.ps1"
+      echo ""
+      exit 1
+    fi
+    echo "✓ Lint test suite OK"
+  elif command -v powershell >/dev/null 2>&1; then
+    if ! powershell -NoProfile -File scripts/tests/test-lint-tests.ps1; then
+      echo ""
+      echo "=== Lint test suite failed ==="
+      echo "Fix the issues in scripts/lint-tests.ps1 or scripts/tests/test-lint-tests.ps1"
+      echo ""
+      exit 1
+    fi
+    echo "✓ Lint test suite OK"
+  else
+    echo "PowerShell not found; skipping lint test suite. CI will catch issues." >&2
+  fi
+fi
+
 # Hook pattern tests (validates bash case pattern matching behavior)
 # Runs when hook files or the test script itself change
 HOOK_PATTERN_CHANGES=$(git diff --name-only @{upstream}..HEAD 2>/dev/null | grep -E '^(\.githooks/|scripts/tests/test-hook-patterns\.sh)' || true)

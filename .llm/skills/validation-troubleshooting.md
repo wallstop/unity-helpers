@@ -95,6 +95,22 @@ See [context](./context.md) for guidelines.
 
 **Fix**: Wrap Unity object creation with `Track()`. See [UnityObjectLifecycleTests.cs](../code-samples/testing/UnityObjectLifecycleTests.cs) for complete examples.
 
+### 7a. Stale Allowlisted Helper Path in lint-tests.ps1
+
+**Symptom**: `npm run validate:tests` or `pwsh -NoProfile -File scripts/lint-tests.ps1` fails immediately with:
+
+```text
+ERROR: Allowlisted helper file not found: Tests/Path/To/OldFile.cs
+```
+
+**Cause**: A test helper file listed in `$allowedHelperFiles` in [lint-tests.ps1](../../scripts/lint-tests.ps1) was moved, renamed, or deleted, but the allowlist was not updated to match. The script validates all allowlisted paths exist on startup and exits with code 1 if any are missing.
+
+**Fix**: Update the `$allowedHelperFiles` array in [lint-tests.ps1](../../scripts/lint-tests.ps1) to reflect the file's new path (or remove the entry if the file was deleted).
+
+**After fixing**: Run `pwsh -NoProfile -File scripts/tests/test-lint-tests.ps1` to verify the allowlist is self-consistent.
+
+**Prevention**: When moving or renaming test helper files, always update `$allowedHelperFiles` in [lint-tests.ps1](../../scripts/lint-tests.ps1) in the same commit.
+
 ### 8. C# Naming Convention Violations
 
 **Symptom**: `npm run lint:csharp-naming` fails

@@ -296,6 +296,13 @@ pwsh -NoProfile -File scripts/lint-tests.ps1
 
 ### What It Checks
 
+1. **Allowlist path validation** (on startup): All paths in `$allowedHelperFiles` must exist on disk. Fails immediately with exit code 1 if any path is stale (file moved/renamed/deleted).
+2. **UNH001**: Direct `Destroy`/`DestroyImmediate` calls without `Track()`
+3. **UNH002**: Untracked Unity object allocation (`new GameObject(...)` etc.)
+4. **UNH003**: Test classes missing `CommonTestBase` inheritance
+5. **UNH004**: Underscores in test names
+6. **UNH005**: `Assert.IsNull`/`Assert.IsNotNull` (should use `Assert.IsTrue` for Unity null checks)
+
 All Unity object creation in tests must use `Track()`:
 
 ```csharp
@@ -306,6 +313,14 @@ MyComponent comp = Track(obj.AddComponent<MyComponent>());
 // ❌ WRONG: Untracked objects may leak
 GameObject obj = new GameObject("Test");
 ```
+
+### Tests
+
+```bash
+pwsh -NoProfile -File scripts/tests/test-lint-tests.ps1
+```
+
+Tests cover allowlist path existence, UNH error detection, clean file acceptance, and helper file allowlisting.
 
 ---
 

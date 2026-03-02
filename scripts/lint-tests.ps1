@@ -16,11 +16,24 @@ $testRoots = @('Tests')
 $allowedHelperFiles = @(
   'Tests/Runtime/Visuals/VisualsTestHelpers.cs',
   'Tests/Core/TextureTestHelper.cs',
-  'Tests/Editor/Sprites/SharedSpriteTestFixtures.cs',
+  'Tests/Editor/Sprites/SpriteSheetExtractor/SharedSpriteTestFixtures.cs',
   'Tests/Editor/TestAssets/SharedAnimationTestFixtures.cs',
   'Tests/Editor/TestAssets/SharedEditorTestFixtures.cs',
   'Tests/Editor/TestAssets/SharedTextureTestFixtures.cs'
 )
+
+# Validate allowlisted paths exist (catches stale paths after file moves)
+# Only validate when running from the repo root (package.json present)
+if (Test-Path (Join-Path (Get-Location).Path 'package.json')) {
+  foreach ($helperPath in $allowedHelperFiles) {
+    $fullPath = Join-Path (Get-Location).Path $helperPath
+    if (-not (Test-Path $fullPath)) {
+      Write-Host "ERROR: Allowlisted helper file not found: $helperPath" -ForegroundColor Red
+      Write-Host "  The file may have been moved or renamed. Update `$allowedHelperFiles in lint-tests.ps1." -ForegroundColor Yellow
+      exit 1
+    }
+  }
+}
 
 $destroyPattern = [regex]'\b(?:UnityEngine\.)?Object\.(?:DestroyImmediate|Destroy)\s*\((?<arg>[^)]*)\)'
 $createAssignObjectPattern = [regex]'(?<var>\b\w+)\s*=\s*new\s+(?<type>GameObject|Texture2D|Material|Mesh|Camera)\s*\('
@@ -41,8 +54,9 @@ $assertIsNotNullPattern = [regex]'Assert\.IsNotNull\s*\('
 
 # Returns true if line contains an allowlisted helper file path
 function Is-AllowlistedFile([string]$relPath) {
+  $normalized = ($relPath -replace '\\','/') -replace '^\.\/', ''
   foreach ($a in $allowedHelperFiles) {
-    if ($relPath -replace '\\','/' -ieq $a) { return $true }
+    if ($normalized -ieq $a) { return $true }
   }
   return $false
 }
