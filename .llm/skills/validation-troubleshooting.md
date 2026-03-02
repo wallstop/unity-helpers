@@ -139,7 +139,23 @@ See [context](./context.md) for guidelines.
 
 **Prevention**: After creating ANY new file or folder in the Unity package directories (`Runtime/`, `Editor/`, `Tests/`, `Samples~/`), immediately run `./scripts/generate-meta.sh <path>`. Create parent folder meta files first, then child file meta files. See [create-unity-meta](./create-unity-meta.md).
 
-### 12. Script Passes All Checks but CI Reports Exit Code 1
+### 12. Meta Lint False Positives From Tooling Artifacts
+
+**Symptom**: `lint-meta-files.ps1` reports missing `.meta` files for directories like `.pytest_cache`, `__pycache__`, `.mypy_cache`, or files like `.DS_Store`, `Thumbs.db`, `.gitkeep`, `*.pyc`, `*.swp`.
+
+**Cause**: New tooling was added that creates cache/artifact directories inside scanned source roots (`Runtime/`, `Editor/`, `Tests/`, `docs/`, `scripts/`, etc.), but the exclusion list in [lint-meta-files.ps1](../../scripts/lint-meta-files.ps1) was not updated.
+
+**Fix**: Add the directory or file pattern to the appropriate exclusion array at the top of [lint-meta-files.ps1](../../scripts/lint-meta-files.ps1):
+
+- `$excludeDirs` — for cache/artifact directories (excludes dir and all contents)
+- `$excludeFilePatterns` — for file name patterns (glob-style)
+- `$excludeDirPatterns` — for directory name patterns
+
+**After fixing**: Add test cases to [test-lint-meta-exclusions.sh](../../scripts/tests/test-lint-meta-exclusions.sh) and run `bash scripts/tests/test-lint-meta-exclusions.sh`.
+
+**Note on `Test-ShouldExclude`**: The function must match both the excluded directory itself AND its contents. Patterns like `$dir/*` alone are insufficient — you also need `$relativePath -eq $dir` and `$relativePath -like "*/$dir"` to match the directory entry itself. Without this, orphaned `.meta` files for excluded directories won't be detected.
+
+### 13. Script Passes All Checks but CI Reports Exit Code 1
 
 **Symptom**: A PowerShell lint script logs success messages and all checks pass, but the CI step or pre-commit hook reports a non-zero exit code.
 
@@ -149,7 +165,7 @@ See [context](./context.md) for guidelines.
 
 **Prevention**: Every PowerShell script must end with explicit `exit 0` (success) or `exit 1` (failure) on all code paths. Never let a script fall through without an explicit exit.
 
-### 13. Missing cspell Dictionary Entry for Valid Abbreviation
+### 14. Missing cspell Dictionary Entry for Valid Abbreviation
 
 **Symptom**: `npm run lint:spelling` fails on a technical abbreviation or domain term that is valid.
 
@@ -157,13 +173,13 @@ See [context](./context.md) for guidelines.
 
 **Shell keywords in markdown code blocks**: When writing bash/shell code examples in `.md` files, non-English keywords like `esac`, `elif`, `getopts`, `mapfile`, and `printf` may trigger spelling failures. Common bash keywords (`if`, `then`, `else`, `case`, `done`, `fi`) are standard English words and are recognized by cspell, but language-specific terms are not. Add these to the `tech-terms` dictionary in `cspell.json`.
 
-### 14. Documentation Link Points to File Not Yet Created
+### 15. Documentation Link Points to File Not Yet Created
 
 **Symptom**: `npm run lint:docs` fails with "file not found" for a link that references a documentation page being created as part of the same change.
 
 **Fix**: Create all referenced documentation files before running the link linter. When adding cross-references between new docs, create the files in dependency order (referenced files first, then files that link to them).
 
-### 15. Pre-Commit Hooks Not Catching CI Failures
+### 16. Pre-Commit Hooks Not Catching CI Failures
 
 **Symptom**: CI fails on issues hooks should have caught locally.
 
@@ -172,7 +188,7 @@ See [context](./context.md) for guidelines.
 **Fix**: See [`fix_hook_permissions`](../code-samples/patterns/ValidationFixPatterns.sh) for the full sequence, or run:
 `chmod +x .githooks/* && git update-index --chmod=+x .githooks/pre-commit .githooks/pre-push`
 
-### 16. Dead Link Failures (External URLs)
+### 17. Dead Link Failures (External URLs)
 
 **Symptom**: `Check dead links (lychee)` step fails in CI
 

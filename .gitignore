@@ -388,3 +388,6 @@ artifacts.meta
 
 # MkDocs build output
 site/
+
+pre-commit.txt*
+pre-push.txt*
