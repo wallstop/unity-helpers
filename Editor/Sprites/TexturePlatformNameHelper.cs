@@ -13,6 +13,8 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
 
     internal static class TexturePlatformNameHelper
     {
+        internal const string DefaultPlatformName = "DefaultTexturePlatform";
+
         private static string[] _cached;
         private static readonly Dictionary<BuildTargetGroup, string> Map = new()
         {
@@ -54,7 +56,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             using PooledResource<HashSet<string>> setLease = Buffers<string>.HashSet.Get(
                 out HashSet<string> set
             );
-            _ = set.Add("DefaultTexturePlatform");
+            _ = set.Add(DefaultPlatformName);
 
             // Enum.GetValues returns a typed array; cast once to avoid boxing per element.
             BuildTargetGroup[] groups = (BuildTargetGroup[])

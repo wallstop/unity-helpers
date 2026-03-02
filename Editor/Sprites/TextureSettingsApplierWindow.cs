@@ -21,7 +21,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
         [Serializable]
         public sealed class PlatformOverrideEntry
         {
-            public string platformName = string.Empty; // DefaultTexturePlatform, Standalone, iPhone, Android, WebGL, etc.
+            public string platformName = TexturePlatformNameHelper.DefaultPlatformName; // DefaultTexturePlatform, Standalone, iPhone, Android, WebGL, etc.
 
             public bool applyResizeAlgorithm;
 
@@ -606,7 +606,11 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                     if (
                         !string.IsNullOrEmpty(name)
                         && Array.IndexOf(knownNames, name) < 0
-                        && !string.Equals(name, "DefaultTexturePlatform", StringComparison.Ordinal)
+                        && !string.Equals(
+                            name,
+                            TexturePlatformNameHelper.DefaultPlatformName,
+                            StringComparison.Ordinal
+                        )
                     )
                     {
                         this.LogWarn(

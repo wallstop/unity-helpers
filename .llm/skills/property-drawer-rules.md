@@ -175,6 +175,7 @@ void ApplySelection(SerializedProperty property, object newValue)
         EditorUtility.SetDirty(target);
     }
 
+    Undo.FlushUndoRecordObjects();
     property.serializedObject.Update();
 }
 ```
@@ -234,7 +235,24 @@ void UpdateDropdownDisplay(DropdownField dropdown, SerializedProperty property)
 }
 ```
 
-### 9. Reuse GUIContent in OnGUI — Never Allocate Per Frame
+### 9. Default Field Values Must Not Collide with Sentinel Values
+
+When a dropdown drawer uses a sentinel value (e.g., empty string for "Custom" mode), the data class field must NOT default to that sentinel. Otherwise, new entries will appear in the sentinel state (e.g., "Custom") instead of a sensible known option, and APIs that skip sentinel-valued entries will silently ignore new entries:
+
+```csharp
+// WRONG - Default collides with Custom sentinel
+public string platformName = string.Empty; // Custom sentinel is also empty string
+// New entries render as "Custom" and are skipped by the API
+
+// CORRECT - Default is a known valid value; sentinel is distinct
+public string platformName = TexturePlatformNameHelper.DefaultPlatformName;
+// New entries render as "DefaultTexturePlatform" and are processed by the API
+// Custom sentinel (empty string) is only set when user explicitly selects "Custom"
+```
+
+**Rule**: Define constants for sentinel values and ensure default field values use a known valid option. When the drawer maps `string.Empty` to "Custom", the field must default to a concrete platform or option name.
+
+### 10. Reuse GUIContent in OnGUI — Never Allocate Per Frame
 
 `OnGUI` runs every frame. Allocating `new GUIContent(...)` inside `OnGUI` or `DrawPropertyLayout` creates avoidable GC pressure. Reuse a static `GUIContent` instance and update its `.text`/`.tooltip` before each use:
 

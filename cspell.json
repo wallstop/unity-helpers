@@ -803,7 +803,13 @@
         "unsubscription",
         "unimi",
         "npmjs",
-        "doi"
+        "doi",
+        "elif",
+        "esac",
+        "getopts",
+        "mapfile",
+        "printf",
+        "shopt"
       ]
     }
   ],
@@ -1146,10 +1152,8 @@
     "toupper",
     "OFS",
     "img",
-    "elif",
     "mdfile",
     "num",
-    "shopt",
     "pytest",
     "GHA",
     "venv",

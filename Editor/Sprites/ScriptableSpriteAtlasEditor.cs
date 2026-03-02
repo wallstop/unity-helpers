@@ -1414,11 +1414,11 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             atlas.SetTextureSettings(textureSettings);
 
             TextureImporterPlatformSettings platformSettings = atlas.GetPlatformSettings(
-                "DefaultTexturePlatform"
+                TexturePlatformNameHelper.DefaultPlatformName
             );
             if (string.IsNullOrWhiteSpace(platformSettings.name))
             {
-                platformSettings.name = "DefaultTexturePlatform";
+                platformSettings.name = TexturePlatformNameHelper.DefaultPlatformName;
             }
 
             platformSettings.overridden = true;

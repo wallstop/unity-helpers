@@ -15,6 +15,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomEditors
         private static string[] _cachedChoices;
         private static string[] _lastKnownRef;
         private const string CustomOptionLabel = "Custom";
+        private const string MixedValueIndicator = "\u2014";
 
         private static string[] GetChoices()
         {
@@ -39,12 +40,15 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomEditors
         {
             // Layout: 1 line for platform + potential custom name, then each checkbox possibly adds a line
             float h = EditorGUIUtility.singleLineHeight + EditorGUIUtility.standardVerticalSpacing;
-            // custom name line
-            string name = property
-                .FindPropertyRelative(PlatformPropertyNames.PlatformName)
-                .stringValue;
+            // custom name line (only shown when not mixed and platform resolves to Custom)
+            SerializedProperty nameProp = property.FindPropertyRelative(
+                PlatformPropertyNames.PlatformName
+            );
             string[] choices = GetChoices();
-            if (GetSelectedIndex(name, choices) == choices.Length - 1) // Custom
+            if (
+                !nameProp.hasMultipleDifferentValues
+                && GetSelectedIndex(nameProp.stringValue, choices) == choices.Length - 1
+            )
             {
                 h += EditorGUIUtility.singleLineHeight + EditorGUIUtility.standardVerticalSpacing;
             }
@@ -81,8 +85,15 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomEditors
                 PlatformPropertyNames.PlatformName
             );
             string[] choices = GetChoices();
+            bool isMixed = nameProp.hasMultipleDifferentValues;
             int idx = GetSelectedIndex(nameProp.stringValue, choices);
-            string currentDisplay = idx >= 0 && idx < choices.Length ? choices[idx] : string.Empty;
+            string currentDisplay =
+                isMixed ? MixedValueIndicator
+                : idx >= 0 && idx < choices.Length ? choices[idx]
+                : string.Empty;
+
+            bool previousMixed = EditorGUI.showMixedValue;
+            EditorGUI.showMixedValue = isMixed;
 
             Rect labelRect = new(r.x, r.y, EditorGUIUtility.labelWidth, r.height);
             Rect fieldRect = new(
@@ -97,12 +108,13 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomEditors
                 SerializedObject serializedObject = property.serializedObject;
                 string propertyPath = nameProp.propertyPath;
                 int currentIndex = idx;
+                bool wasMixed = isMixed;
 
                 GenericMenu menu = new();
                 for (int i = 0; i < choices.Length; i++)
                 {
                     int capturedIndex = i;
-                    bool isSelected = i == currentIndex;
+                    bool isSelected = !wasMixed && i == currentIndex;
                     menu.AddItem(
                         new GUIContent(choices[i]),
                         isSelected,
@@ -135,7 +147,9 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomEditors
                 menu.DropDown(fieldRect);
             }
 
-            if (idx == choices.Length - 1)
+            EditorGUI.showMixedValue = previousMixed;
+
+            if (!isMixed && idx == choices.Length - 1)
             {
                 r.y += r.height + EditorGUIUtility.standardVerticalSpacing;
                 EditorGUI.BeginChangeCheck();
@@ -197,12 +211,15 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomEditors
             SerializedProperty val = property.FindPropertyRelative(valueName);
 
             r.y += r.height + EditorGUIUtility.standardVerticalSpacing;
+            bool previousMixed = EditorGUI.showMixedValue;
+            EditorGUI.showMixedValue = apply.hasMultipleDifferentValues;
             EditorGUI.BeginChangeCheck();
             bool newApplyValue = EditorGUI.ToggleLeft(r, label, apply.boolValue);
             if (EditorGUI.EndChangeCheck())
             {
                 apply.boolValue = newApplyValue;
             }
+            EditorGUI.showMixedValue = previousMixed;
             if (apply.boolValue)
             {
                 r.y += r.height + EditorGUIUtility.standardVerticalSpacing;

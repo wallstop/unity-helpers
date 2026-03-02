@@ -44,6 +44,7 @@ bash scripts/install-hooks.sh
 5. Runs markdownlint on staged Markdown files
 6. Runs YAML lint, spell check, LLM instruction lint, test lint
 7. Checks for forbidden `#region` directives
+8. Checks drawer/editor files for missing multi-object editing support (GenericMenu without `hasMultipleDifferentValues`)
 
 ### If the Hook Wasn't Active
 

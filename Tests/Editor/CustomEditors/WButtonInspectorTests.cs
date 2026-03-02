@@ -11,24 +11,24 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomEditors
     using UnityEditor;
     using UnityEngine;
     using UnityEngine.TestTools;
-    using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Editor.CustomEditors;
     using WallstopStudios.UnityHelpers.Editor.Utils.WButton;
     using WallstopStudios.UnityHelpers.Tests.Core;
     using WallstopStudios.UnityHelpers.Tests.Editor.TestTypes;
-    using WallstopStudios.UnityHelpers.Tests.Runtime.TestTypes;
     using WallstopStudios.UnityHelpers.Tests.EditorFramework;
+    using WallstopStudios.UnityHelpers.Tests.Runtime.TestTypes;
+    using Object = UnityEngine.Object;
 
     [TestFixture]
-    [NUnit.Framework.Category("Slow")]
-    [NUnit.Framework.Category("Integration")]
+    [Category("Slow")]
+    [Category("Integration")]
     public sealed class WButtonInspectorTests : BatchedEditorTestBase
     {
         [Test]
         public void WButtonInspectorCanBeInstantiatedForScriptableObject()
         {
             WButtonSingleButtonTarget target = CreateScriptableObject<WButtonSingleButtonTarget>();
-            UnityEditor.Editor editor = Track(UnityEditor.Editor.CreateEditor(target));
+            Editor editor = Track(Editor.CreateEditor(target));
 
             Assert.IsTrue(editor != null, "Editor should not be null");
             Assert.IsTrue(
@@ -43,7 +43,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomEditors
             GameObject go = NewGameObject("TestObject");
             WButtonMonoBehaviourTestTarget target =
                 go.AddComponent<WButtonMonoBehaviourTestTarget>();
-            UnityEditor.Editor editor = Track(UnityEditor.Editor.CreateEditor(target));
+            Editor editor = Track(Editor.CreateEditor(target));
 
             Assert.IsTrue(editor != null, "Editor should not be null");
             Assert.IsTrue(
@@ -56,7 +56,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomEditors
         public IEnumerator OnInspectorGuiDoesNotThrowForScriptableObject()
         {
             WButtonSingleButtonTarget target = CreateScriptableObject<WButtonSingleButtonTarget>();
-            UnityEditor.Editor editor = Track(UnityEditor.Editor.CreateEditor(target));
+            Editor editor = Track(Editor.CreateEditor(target));
             bool testCompleted = false;
             Exception caughtException = null;
 
@@ -86,7 +86,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomEditors
             GameObject go = NewGameObject("TestObject");
             WButtonMonoBehaviourTestTarget target =
                 go.AddComponent<WButtonMonoBehaviourTestTarget>();
-            UnityEditor.Editor editor = Track(UnityEditor.Editor.CreateEditor(target));
+            Editor editor = Track(Editor.CreateEditor(target));
             bool testCompleted = false;
             Exception caughtException = null;
 
@@ -114,7 +114,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomEditors
         public IEnumerator OnInspectorGuiHandlesNullTargetGracefully()
         {
             WButtonSingleButtonTarget target = CreateScriptableObject<WButtonSingleButtonTarget>();
-            UnityEditor.Editor editor = Track(UnityEditor.Editor.CreateEditor(target));
+            Editor editor = Track(Editor.CreateEditor(target));
             bool testCompleted = false;
             Exception caughtException = null;
 
@@ -135,7 +135,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomEditors
                 $"First OnInspectorGUI call should not throw. Exception: {caughtException}"
             );
 
-            UnityEngine.Object.DestroyImmediate(target); // UNH-SUPPRESS: Intentional to test null handling
+            Object.DestroyImmediate(target); // UNH-SUPPRESS: Intentional to test null handling
 
             caughtException = null;
             yield return TestIMGUIExecutor.Run(() =>
@@ -162,7 +162,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomEditors
         public IEnumerator RepeatedOnInspectorGuiCallsDoNotThrow()
         {
             WButtonSingleButtonTarget target = CreateScriptableObject<WButtonSingleButtonTarget>();
-            UnityEditor.Editor editor = Track(UnityEditor.Editor.CreateEditor(target));
+            Editor editor = Track(Editor.CreateEditor(target));
             bool testCompleted = false;
             Exception caughtException = null;
 
@@ -194,7 +194,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomEditors
         {
             WButtonComplexGroupingTarget target =
                 CreateScriptableObject<WButtonComplexGroupingTarget>();
-            UnityEditor.Editor editor = Track(UnityEditor.Editor.CreateEditor(target));
+            Editor editor = Track(Editor.CreateEditor(target));
             bool testCompleted = false;
             Exception caughtException = null;
 
@@ -223,7 +223,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomEditors
         {
             WButtonGroupPlacementTopTarget target =
                 CreateScriptableObject<WButtonGroupPlacementTopTarget>();
-            UnityEditor.Editor editor = Track(UnityEditor.Editor.CreateEditor(target));
+            Editor editor = Track(Editor.CreateEditor(target));
             bool testCompleted = false;
             Exception caughtException = null;
 
@@ -252,7 +252,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomEditors
         {
             WButtonMixedPlacementGroupsTarget target =
                 CreateScriptableObject<WButtonMixedPlacementGroupsTarget>();
-            UnityEditor.Editor editor = Track(UnityEditor.Editor.CreateEditor(target));
+            Editor editor = Track(Editor.CreateEditor(target));
             bool testCompleted = false;
             Exception caughtException = null;
 
@@ -281,8 +281,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomEditors
         {
             WButtonSingleButtonTarget target1 = CreateScriptableObject<WButtonSingleButtonTarget>();
             WButtonSingleButtonTarget target2 = CreateScriptableObject<WButtonSingleButtonTarget>();
-            UnityEngine.Object[] targets = new UnityEngine.Object[] { target1, target2 };
-            UnityEditor.Editor editor = Track(UnityEditor.Editor.CreateEditor(targets));
+            Object[] targets = { target1, target2 };
+            Editor editor = Track(Editor.CreateEditor(targets));
             bool testCompleted = false;
             Exception caughtException = null;
 
@@ -384,7 +384,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomEditors
         {
             WButtonSpecialCharactersTarget target =
                 CreateScriptableObject<WButtonSpecialCharactersTarget>();
-            UnityEditor.Editor editor = Track(UnityEditor.Editor.CreateEditor(target));
+            Editor editor = Track(Editor.CreateEditor(target));
             bool testCompleted = false;
             Exception caughtException = null;
 
@@ -413,7 +413,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomEditors
         {
             WButtonUnicodeGroupNameTarget target =
                 CreateScriptableObject<WButtonUnicodeGroupNameTarget>();
-            UnityEditor.Editor editor = Track(UnityEditor.Editor.CreateEditor(target));
+            Editor editor = Track(Editor.CreateEditor(target));
             bool testCompleted = false;
             Exception caughtException = null;
 
@@ -442,7 +442,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomEditors
         {
             WButtonEmptyDisplayNameTarget target =
                 CreateScriptableObject<WButtonEmptyDisplayNameTarget>();
-            UnityEditor.Editor editor = Track(UnityEditor.Editor.CreateEditor(target));
+            Editor editor = Track(Editor.CreateEditor(target));
             bool testCompleted = false;
             Exception caughtException = null;
 
@@ -472,8 +472,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomEditors
             WButtonSingleButtonTarget target1 = CreateScriptableObject<WButtonSingleButtonTarget>();
             WButtonSingleButtonTarget target2 = CreateScriptableObject<WButtonSingleButtonTarget>();
 
-            UnityEditor.Editor editor1 = Track(UnityEditor.Editor.CreateEditor(target1));
-            UnityEditor.Editor editor2 = Track(UnityEditor.Editor.CreateEditor(target2));
+            Editor editor1 = Track(Editor.CreateEditor(target1));
+            Editor editor2 = Track(Editor.CreateEditor(target2));
             bool testCompleted = false;
             Exception caughtException = null;
 

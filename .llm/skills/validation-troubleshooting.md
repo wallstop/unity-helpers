@@ -155,6 +155,8 @@ See [context](./context.md) for guidelines.
 
 **Fix**: Add the word to the appropriate dictionary in `cspell.json`. See the [cspell Dictionary Quick Reference](../context.md#cspell-dictionary-quick-reference) for which dictionary to use.
 
+**Shell keywords in markdown code blocks**: When writing bash/shell code examples in `.md` files, non-English keywords like `esac`, `elif`, `getopts`, `mapfile`, and `printf` may trigger spelling failures. Common bash keywords (`if`, `then`, `else`, `case`, `done`, `fi`) are standard English words and are recognized by cspell, but language-specific terms are not. Add these to the `tech-terms` dictionary in `cspell.json`.
+
 ### 14. Documentation Link Points to File Not Yet Created
 
 **Symptom**: `npm run lint:docs` fails with "file not found" for a link that references a documentation page being created as part of the same change.

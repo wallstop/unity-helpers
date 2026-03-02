@@ -219,6 +219,22 @@ void ApplyValueToAllTargets(SerializedProperty property, object value)
 
 ---
 
+## Default Field Values Must Not Collide with Sentinel Values
+
+When a dropdown uses a sentinel value (e.g., empty string for "Custom" mode), ensure the data class field defaults to a known valid option, not the sentinel:
+
+```csharp
+// WRONG - New entries appear as "Custom" and are silently skipped by APIs
+public string platformName = string.Empty;
+
+// CORRECT - New entries default to a valid platform
+public string platformName = TexturePlatformNameHelper.DefaultPlatformName;
+```
+
+**Rule**: Sentinel values (empty string, `-1`, `null`) must only be assigned through explicit user action (e.g., selecting "Custom" from a dropdown), never as the default field value.
+
+---
+
 ## Odin Inspector Mixed Value Detection
 
 Odin `OdinAttributeDrawer` lacks `hasMultipleDifferentValues`. Check manually:

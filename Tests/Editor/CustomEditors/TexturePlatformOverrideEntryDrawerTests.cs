@@ -15,11 +15,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomEditors
     using WallstopStudios.UnityHelpers.Tests.Core;
     using WallstopStudios.UnityHelpers.Tests.Editor.TestTypes;
     using WallstopStudios.UnityHelpers.Tests.EditorFramework;
-    using PlatformPropertyNames = WallstopStudios.UnityHelpers.Editor.Sprites.TextureSettingsApplierWindow.PlatformOverrideEntry.SerializedPropertyNames;
+    using PlatformPropertyNames = UnityHelpers.Editor.Sprites.TextureSettingsApplierWindow.PlatformOverrideEntry.SerializedPropertyNames;
 
     [TestFixture]
-    [NUnit.Framework.Category("Slow")]
-    [NUnit.Framework.Category("Integration")]
+    [Category("Slow")]
+    [Category("Integration")]
     public sealed class TexturePlatformOverrideEntryDrawerTests : CommonTestBase
     {
         private TexturePlatformOverrideEntryTestHost _testHost;
