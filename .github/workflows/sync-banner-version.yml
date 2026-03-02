@@ -1,0 +1,64 @@
+name: Sync Banner Version
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "package.json"
+      - "docs/images/unity-helpers-banner.svg"
+      - ".llm/context.md"
+      - "scripts/sync-banner-version.ps1"
+      - ".github/workflows/sync-banner-version.yml"
+  pull_request:
+    paths:
+      - "package.json"
+      - "docs/images/unity-helpers-banner.svg"
+      - ".llm/context.md"
+      - "scripts/sync-banner-version.ps1"
+      - ".github/workflows/sync-banner-version.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  validate-banner-version:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6.0.1
+
+      - name: Validate banner version matches package.json
+        shell: pwsh
+        run: |
+          $packageJson = Get-Content -Raw package.json | ConvertFrom-Json
+          $version = $packageJson.version
+          Write-Host "Package version: $version"
+
+          # Check SVG banner
+          $bannerPath = 'docs/images/unity-helpers-banner.svg'
+          if (-not (Test-Path $bannerPath)) {
+            Write-Host "::error::Banner SVG not found at $bannerPath"
+            exit 1
+          }
+          $bannerContent = Get-Content -Raw $bannerPath
+          if ($bannerContent -notmatch [regex]::Escape($version)) {
+            Write-Host "::error::Banner SVG does not contain version $version"
+            exit 1
+          }
+          Write-Host "Banner SVG contains version $version"
+
+          # Check .llm/context.md
+          $contextPath = '.llm/context.md'
+          if (-not (Test-Path $contextPath)) {
+            Write-Host "::error::.llm/context.md not found at $contextPath"
+            exit 1
+          }
+          $contextContent = Get-Content -Raw $contextPath
+          if ($contextContent -notmatch "Version.*$([regex]::Escape($version))") {
+            Write-Host "::error::.llm/context.md does not contain version $version"
+            exit 1
+          }
+          Write-Host ".llm/context.md contains version $version"
+
+          Write-Host "All version references are in sync."

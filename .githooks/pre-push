@@ -20,6 +20,7 @@ set -e
 #  10. External link check with lychee (if installed)
 #  11. Test lifecycle lint
 #  12. Hook pattern tests (if hook files changed)
+#  13. LLM instructions validation
 #
 # LINE ENDING NOTE:
 #   This repo uses CRLF for most files (.gitattributes).
@@ -363,6 +364,31 @@ if [ -n "$WORKFLOW_CHANGES" ]; then
     echo "Install: go install github.com/rhysd/actionlint/cmd/actionlint@latest" >&2
     echo "CI will run actionlint and catch any issues." >&2
   fi
+fi
+
+# LLM instructions validation (skills index, trigger comments, etc.)
+if command -v pwsh >/dev/null 2>&1; then
+  echo "Validating LLM instructions..."
+  pwsh -NoProfile -File scripts/lint-llm-instructions.ps1 || {
+    echo ""
+    echo "=== LLM instructions validation failed ==="
+    echo "Run: pwsh -NoProfile -File scripts/lint-llm-instructions.ps1 -Fix"
+    echo ""
+    exit 1
+  }
+  echo "✓ LLM instructions OK"
+elif command -v powershell >/dev/null 2>&1; then
+  echo "Validating LLM instructions..."
+  powershell -NoProfile -ExecutionPolicy Bypass -File scripts/lint-llm-instructions.ps1 || {
+    echo ""
+    echo "=== LLM instructions validation failed ==="
+    echo "Run: powershell -NoProfile -File scripts/lint-llm-instructions.ps1 -Fix"
+    echo ""
+    exit 1
+  }
+  echo "✓ LLM instructions OK"
+else
+  echo "PowerShell not found; skipping LLM instructions validation." >&2
 fi
 
 # ============================================================================

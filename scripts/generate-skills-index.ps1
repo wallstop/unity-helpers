@@ -169,6 +169,14 @@ if ($featureSkills.Count -gt 0) {
 
 $output += "<!-- END GENERATED SKILLS INDEX -->"
 
+# Validate no accidental H1/H2 headings in output
+$badHeadings = $output | Where-Object { $_ -match '^#{1,2}\s' -and $_ -notmatch '^###' }
+if ($badHeadings) {
+    Write-ErrorMsg "Generated index contains unexpected headings:"
+    $badHeadings | ForEach-Object { Write-Host "  $_" -ForegroundColor Red }
+    exit 1
+}
+
 # Output to stdout
 $output | ForEach-Object { Write-Output $_ }
 

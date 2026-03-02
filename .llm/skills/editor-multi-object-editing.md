@@ -257,6 +257,41 @@ bool IsMixedValue<T>(InspectorProperty property)
 
 ---
 
+## Odin Inspector: Safe WeakTargets Undo Pattern
+
+When recording undo in Odin `OdinAttributeDrawer<T>` classes, `Property.Tree.WeakTargets` returns an `IList` that may contain non-`UnityEngine.Object` entries or destroyed objects. **Never cast directly** to `UnityEngine.Object[]`. Always filter:
+
+```csharp
+// FORBIDDEN - Null entries crash Undo.RecordObjects
+IList weakTargets = Property.Tree.WeakTargets;
+UnityEngine.Object[] targets = new UnityEngine.Object[weakTargets.Count];
+for (int i = 0; i < weakTargets.Count; i++)
+{
+    targets[i] = weakTargets[i] as UnityEngine.Object; // May be null!
+}
+Undo.RecordObjects(targets, "Change Selection"); // THROWS
+
+// CORRECT - Filter non-null UnityEngine.Object targets
+IList weakTargets = Property.Tree.WeakTargets;
+List<UnityEngine.Object> validTargets = new(weakTargets.Count);
+for (int i = 0; i < weakTargets.Count; i++)
+{
+    if (weakTargets[i] is UnityEngine.Object obj && obj != null)
+    {
+        validTargets.Add(obj);
+    }
+}
+
+if (validTargets.Count > 0)
+{
+    Undo.RecordObjects(validTargets.ToArray(), "Change Selection");
+}
+```
+
+See [odin-undo-safety](./odin-undo-safety.md) for the complete skill.
+
+---
+
 ## Related Skills
 
 - [defensive-editor-programming](./defensive-editor-programming.md) - Overview of all defensive editor patterns

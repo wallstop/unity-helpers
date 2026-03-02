@@ -1,0 +1,35 @@
+name: Drawer MultiObject Lint
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "**.cs"
+      - "scripts/lint-drawer-multiobject.ps1"
+      - "scripts/tests/test-lint-drawer-multiobject.ps1"
+      - ".github/workflows/drawer-multiobject-lint.yml"
+  pull_request:
+    paths:
+      - "**.cs"
+      - "scripts/lint-drawer-multiobject.ps1"
+      - "scripts/tests/test-lint-drawer-multiobject.ps1"
+      - ".github/workflows/drawer-multiobject-lint.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  lint-drawer-multiobject:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6.0.1
+
+      - name: Test drawer multiobject linter
+        shell: pwsh
+        run: ./scripts/tests/test-lint-drawer-multiobject.ps1 -VerboseOutput
+
+      - name: Lint drawer multiobject
+        shell: pwsh
+        run: ./scripts/lint-drawer-multiobject.ps1 -VerboseOutput

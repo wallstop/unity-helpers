@@ -196,14 +196,21 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
         private void ApplySelection(int value)
         {
-            // Record Undo for ALL selected objects
+            // Record Undo for ALL selected objects, filtering out non-Unity targets
             IList weakTargets = Property.Tree.WeakTargets;
-            UnityEngine.Object[] targets = new UnityEngine.Object[weakTargets.Count];
+            List<UnityEngine.Object> validTargets = new(weakTargets.Count);
             for (int i = 0; i < weakTargets.Count; i++)
             {
-                targets[i] = weakTargets[i] as UnityEngine.Object;
+                if (weakTargets[i] is UnityEngine.Object unityObject && unityObject != null)
+                {
+                    validTargets.Add(unityObject);
+                }
             }
-            Undo.RecordObjects(targets, "Change IntDropDown Selection");
+
+            if (validTargets.Count > 0)
+            {
+                Undo.RecordObjects(validTargets.ToArray(), "Change IntDropDown Selection");
+            }
 
             Property.ValueEntry.WeakSmartValue = value;
         }

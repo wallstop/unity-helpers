@@ -1,0 +1,29 @@
+name: Validate Dev Container
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".devcontainer/**"
+      - "scripts/validate-devcontainer-config.ps1"
+      - ".github/workflows/validate-devcontainer.yml"
+  pull_request:
+    paths:
+      - ".devcontainer/**"
+      - "scripts/validate-devcontainer-config.ps1"
+      - ".github/workflows/validate-devcontainer.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  validate-devcontainer:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6.0.1
+
+      - name: Validate devcontainer config
+        shell: pwsh
+        run: ./scripts/validate-devcontainer-config.ps1 -VerboseOutput

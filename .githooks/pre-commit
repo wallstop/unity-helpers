@@ -483,3 +483,34 @@ if [ ${#DRAWER_FILES_ARRAY[@]} -gt 0 ]; then
     echo "PowerShell not found. Skipping drawer multi-object lint." >&2
   fi
 fi
+
+# 15) Check Odin drawer Undo safety (WeakTargets must be null-filtered before Undo.RecordObjects)
+ODIN_DRAWER_FILES=()
+for file in "${CS_FILES_ARRAY[@]}"; do
+    case "$file" in
+        Editor/CustomDrawers/Odin/*.cs)
+            ODIN_DRAWER_FILES+=("$file")
+            ;;
+    esac
+done
+
+if [ ${#ODIN_DRAWER_FILES[@]} -gt 0 ]; then
+  echo "Checking Odin drawer Undo safety (UNH006)..."
+  if command -v pwsh >/dev/null 2>&1; then
+    if ! pwsh -NoProfile -File scripts/lint-odin-undo-safety.ps1 -Paths "${ODIN_DRAWER_FILES[@]}"; then
+      echo "" >&2
+      echo "=== Odin drawer Undo safety check failed (UNH006) ===" >&2
+      echo "See .llm/skills/odin-undo-safety.md for the safe pattern." >&2
+      exit 1
+    fi
+  elif command -v powershell >/dev/null 2>&1; then
+    if ! powershell -NoProfile -ExecutionPolicy Bypass -File scripts/lint-odin-undo-safety.ps1 -Paths "${ODIN_DRAWER_FILES[@]}"; then
+      echo "" >&2
+      echo "=== Odin drawer Undo safety check failed (UNH006) ===" >&2
+      echo "See .llm/skills/odin-undo-safety.md for the safe pattern." >&2
+      exit 1
+    fi
+  else
+    echo "PowerShell not found. Skipping Odin Undo safety lint." >&2
+  fi
+fi

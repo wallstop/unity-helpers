@@ -83,7 +83,7 @@ Invoke these skills for specific tasks.
 **Regenerate with**: `pwsh -NoProfile -File scripts/generate-skills-index.ps1`
 
 <!-- BEGIN GENERATED SKILLS INDEX -->
-<!-- Generated: 2026-03-01 11:53:27 UTC -->
+<!-- Generated: 2026-03-02 12:40:51 UTC -->
 <!-- Command: pwsh -NoProfile -File scripts/generate-skills-index.ps1 -->
 
 ### Core Skills (Always Consider)
@@ -120,6 +120,7 @@ Invoke these skills for specific tasks.
 | [manage-skills](./skills/manage-skills.md)                                                   | Creating, updating, splitting, consolidating, or removing skills |
 | [markdown-reference](./skills/markdown-reference.md)                                         | Link formatting, escaping, linting rules                         |
 | [no-regions](./skills/no-regions.md)                                                         | ALL C# code - never use #region/#endregion                       |
+| [odin-undo-safety](./skills/odin-undo-safety.md)                                             | Safe undo recording patterns for Odin Inspector drawers          |
 | [prefer-logging-extensions](./skills/prefer-logging-extensions.md)                           | Unity logging in UnityEngine.Object classes                      |
 | [property-drawer-examples](./skills/property-drawer-examples.md)                             | Property drawer code examples                                    |
 | [property-drawer-rules](./skills/property-drawer-rules.md)                                   | PropertyDrawer critical rules and requirements                   |

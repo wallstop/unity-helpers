@@ -106,6 +106,7 @@ Before submitting editor code, verify:
 - [ ] `Undo.RecordObjects(targetObjects, ...)` used for multi-object undo ([editor-multi-object-editing](./editor-multi-object-editing.md))
 - [ ] `Undo.FlushUndoRecordObjects()` called after direct object mutation ([editor-multi-object-editing](./editor-multi-object-editing.md))
 - [ ] Odin drawers manually check mixed values ([editor-multi-object-editing](./editor-multi-object-editing.md))
+- [ ] Odin drawers filter `Property.Tree.WeakTargets` for null before `Undo.RecordObjects` (see [odin-undo-safety](./odin-undo-safety.md))
 - [ ] Standard and Odin drawer variants updated consistently
 - [ ] No `stringValue == null` checks ([editor-api-rules](./editor-api-rules.md))
 - [ ] `AssetDatabase.CreateAsset` followed by `SaveAssets` + `ImportAsset(ForceSynchronousImport)` ([editor-singleton-patterns](./editor-singleton-patterns.md))

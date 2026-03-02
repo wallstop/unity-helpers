@@ -11,6 +11,10 @@ on:
       - "requirements-docs.txt"
       - ".gitignore"
       - "scripts/lint-gitignore-docs.ps1"
+      - "scripts/tests/test-gitignore-docs.ps1"
+      - "scripts/validate-github-pages-css.sh"
+      - "scripts/check-code-fence-syntax.sh"
+      - ".github/workflows/validate-docs.yml"
   pull_request:
     paths:
       - "docs/**"
@@ -19,7 +23,14 @@ on:
       - "requirements-docs.txt"
       - ".gitignore"
       - "scripts/lint-gitignore-docs.ps1"
+      - "scripts/tests/test-gitignore-docs.ps1"
+      - "scripts/validate-github-pages-css.sh"
+      - "scripts/check-code-fence-syntax.sh"
+      - ".github/workflows/validate-docs.yml"
   workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   validate-links:
@@ -27,7 +38,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6.0.1
 
       - name: Check internal markdown links exist
         run: |
@@ -162,7 +173,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6.0.1
 
       - name: Check markdown link format
         run: |
@@ -242,7 +253,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6.0.1
         with:
           fetch-depth: 0
 
@@ -275,7 +286,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6.0.1
 
       - name: Validate GitHub Pages CSS
         run: |
@@ -287,7 +298,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6.0.1
 
       - name: Check code fence syntax
         id: check-fences
@@ -327,7 +338,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6.0.1
+
+      - name: Test gitignore docs linter
+        shell: pwsh
+        run: ./scripts/tests/test-gitignore-docs.ps1 -VerboseOutput
 
       - name: Validate no docs files are gitignored
         shell: pwsh

@@ -200,6 +200,17 @@ if ($normalizedExpected -ne $normalizedCurrent) {
         finally {
             Pop-Location
         }
+
+        # Post-fix validation: ensure no multiple H1 headings (MD025)
+        $fixedContent = Get-Content -Path $contextFile
+        $h1Lines = @($fixedContent | Where-Object { $_ -match '^# ' })
+        if ($h1Lines.Count -gt 1) {
+            Write-ErrorMsg "Fix produced multiple H1 headings (MD025 violation):"
+            $h1Lines | ForEach-Object { Write-Host "  $_" -ForegroundColor Red }
+            Write-ErrorMsg "Rolling back changes..."
+            Set-Content -Path $contextFile -Value $contextContent -NoNewline -Encoding UTF8
+            exit 1
+        }
     }
     else {
         Write-Host "Run with -Fix to regenerate, or manually run:" -ForegroundColor Yellow

@@ -7,6 +7,9 @@ on:
     paths:
       - "package.json"
       - "CHANGELOG.md"
+      - "scripts/tests/test-sync-issue-template-versions.ps1"
+      - "scripts/sync-issue-template-versions.ps1"
+      - ".github/workflows/sync-issue-template.yml"
   release:
     types:
       - published
@@ -27,11 +30,15 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: Checkout main branch
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6.0.1
         with:
           ref: main
           fetch-depth: 0 # Full history for git tags
           token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Test sync-issue-template-versions script
+        shell: pwsh
+        run: ./scripts/tests/test-sync-issue-template-versions.ps1 -VerboseOutput
 
       - name: Fetch all tags
         run: |

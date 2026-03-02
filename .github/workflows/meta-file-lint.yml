@@ -16,6 +16,7 @@ on:
       - "scripts/**"
       - "*.meta"
       - "scripts/lint-meta-files.ps1"
+      - "scripts/tests/test-lint-meta-exclusions.sh"
       - ".github/workflows/meta-file-lint.yml"
   pull_request:
     paths:
@@ -30,6 +31,7 @@ on:
       - "scripts/**"
       - "*.meta"
       - "scripts/lint-meta-files.ps1"
+      - "scripts/tests/test-lint-meta-exclusions.sh"
       - ".github/workflows/meta-file-lint.yml"
 
 permissions:
@@ -41,6 +43,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6.0.1
+
+      - name: Test meta lint exclusions
+        run: bash scripts/tests/test-lint-meta-exclusions.sh
 
       - name: Lint Unity meta files
         shell: pwsh
