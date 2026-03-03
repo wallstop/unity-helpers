@@ -114,10 +114,4 @@ namespace WallstopStudios.UnityHelpers.Tests.Attributes
             }
         }
     }
-
-    public enum AnimationEventSignal
-    {
-        Ready,
-        Done,
-    }
 }

@@ -273,4 +273,5 @@ if ($violations.Count -gt 0) {
   if (-not $StagedOnly) {
     Write-Host "All C# method names follow naming conventions." -ForegroundColor Green
   }
+  exit 0
 }

@@ -249,4 +249,5 @@ if ($violations.Count -gt 0) {
   if (-not $StagedOnly) {
     Write-Host "All Unity Object types follow file naming conventions." -ForegroundColor Green
   }
+  exit 0
 }

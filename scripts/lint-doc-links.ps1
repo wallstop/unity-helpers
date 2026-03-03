@@ -375,5 +375,6 @@ if ($violationCount -gt 0) {
     exit 1
 } else {
     Write-Host "Markdown link lint passed: no issues found." -ForegroundColor Green
+    exit 0
 }
 

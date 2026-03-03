@@ -365,9 +365,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Tags
         {
             // Try loading from the expected path first
             const string assetPath =
-                "Assets/Resources/Wallstop Studios/AttributeMetadataCache.asset";
-            const string resourcesLoadPath = "Wallstop Studios/AttributeMetadataCache";
-            const string resourcesFolder = "Wallstop Studios";
+                "Assets/Resources/Wallstop Studios/Unity Helpers/AttributeMetadataCache.asset";
+            const string resourcesLoadPath =
+                "Wallstop Studios/Unity Helpers/AttributeMetadataCache";
+            const string resourcesFolder = "Wallstop Studios/Unity Helpers";
 
             AttributeMetadataCache cache = AssetDatabase.LoadAssetAtPath<AttributeMetadataCache>(
                 assetPath
@@ -382,7 +383,19 @@ namespace WallstopStudios.UnityHelpers.Editor.Tags
             cache = AttributeMetadataCache.Instance;
             if (cache != null)
             {
-                return cache;
+                // Instance may discover objects at other paths (e.g., backup copies)
+                // via Resources.FindObjectsOfTypeAll, which would bypass creation
+                // at the correct location.
+                string instancePath = AssetDatabase.GetAssetPath(cache);
+                if (string.Equals(instancePath, assetPath, StringComparison.OrdinalIgnoreCase))
+                {
+                    UpdateMetadataEntry(assetPath, resourcesLoadPath, resourcesFolder);
+                    return cache;
+                }
+
+                Debug.LogWarning(
+                    $"AttributeMetadataCacheGenerator: Instance found at '{instancePath}' instead of expected '{assetPath}'. Creating new asset at the correct path."
+                );
             }
 
             // Create the asset ourselves
@@ -416,37 +429,51 @@ namespace WallstopStudios.UnityHelpers.Editor.Tags
 
                 if (!AssetDatabase.IsValidFolder(directory))
                 {
-                    string[] segments = directory.Split('/', StringSplitOptions.RemoveEmptyEntries);
-                    string current = segments[0];
-                    for (int i = 1; i < segments.Length; i++)
+                    using (AssetDatabaseBatchHelper.PauseBatch())
                     {
-                        string next = $"{current}/{segments[i]}";
-                        if (!AssetDatabase.IsValidFolder(next))
+                        string[] segments = directory.Split(
+                            '/',
+                            StringSplitOptions.RemoveEmptyEntries
+                        );
+                        string current = segments[0];
+                        for (int i = 1; i < segments.Length; i++)
                         {
-                            AssetDatabase.CreateFolder(current, segments[i]);
+                            string next = $"{current}/{segments[i]}";
+                            if (!AssetDatabase.IsValidFolder(next))
+                            {
+                                AssetDatabase.CreateFolder(current, segments[i]);
+                            }
+                            current = next;
                         }
-                        current = next;
                     }
                 }
             }
 
             cache = ScriptableObject.CreateInstance<AttributeMetadataCache>();
-            try
+            using (AssetDatabaseBatchHelper.PauseBatch())
             {
-                AssetDatabase.CreateAsset(cache, assetPath);
-            }
-            catch (Exception ex)
-            {
-                Debug.LogWarning(
-                    $"AttributeMetadataCacheGenerator: Failed to create cache asset: {ex.Message}"
-                );
-                if (cache != null)
+                try
                 {
-                    UnityEngine.Object.DestroyImmediate(cache);
+                    AssetDatabase.CreateAsset(cache, assetPath);
+                    AssetDatabase.SaveAssets();
+                    AssetDatabase.ImportAsset(assetPath, ImportAssetOptions.ForceSynchronousImport);
                 }
-                return null;
+                catch (Exception ex)
+                {
+                    Debug.LogWarning(
+                        $"AttributeMetadataCacheGenerator: Failed to create cache asset: {ex.Message}"
+                    );
+                    if (cache != null)
+                    {
+                        UnityEngine.Object.DestroyImmediate(cache);
+                    }
+                    return null;
+                }
             }
-            AssetDatabase.SaveAssets();
+
+            // Reset the cached singleton instance so subsequent Instance calls find the new asset
+            // instead of returning the stale null cached during the earlier Instance lookup above.
+            WallstopStudios.UnityHelpers.Utils.ScriptableObjectSingleton<AttributeMetadataCache>.ClearInstance();
 
             UpdateMetadataEntry(assetPath, resourcesLoadPath, resourcesFolder);
 

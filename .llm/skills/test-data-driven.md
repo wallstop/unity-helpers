@@ -84,12 +84,13 @@ private static IEnumerable<TestCaseData> EdgeCaseTestData()
 
 ### Best Practices for `[TestCaseSource]`
 
-| Practice                            | Example                                      |
-| ----------------------------------- | -------------------------------------------- |
-| Use `nameof()` for method reference | `[TestCaseSource(nameof(TestData))]`         |
-| PascalCase method names             | `EdgeCaseTestData()`, NOT `edge_case_data()` |
-| Use `.SetName()` with dot notation  | `.SetName("Input.Empty.ReturnsZero")`        |
-| Return `IEnumerable<TestCaseData>`  | Allows `.SetName()` and other configuration  |
+| Practice                                                                  | Example                                              |
+| ------------------------------------------------------------------------- | ---------------------------------------------------- |
+| Use `nameof()` for method reference                                       | `[TestCaseSource(nameof(TestData))]`                 |
+| PascalCase method names                                                   | `EdgeCaseTestData()`, NOT `edge_case_data()`         |
+| Use `.SetName()` with dot notation                                        | `.SetName("Input.Empty.ReturnsZero")`                |
+| Return `IEnumerable<TestCaseData>`                                        | Allows `.SetName()` and other configuration          |
+| Compute environment-dependent expectations in test body, not in test data | `bool expected = !EditorUi.Suppress \|\| allowFlag;` |
 
 ---
 
@@ -193,6 +194,61 @@ private static IEnumerable<TestCaseData> ProcessTestCases()
         .SetName("Input.Boundary.MaxValue");
 }
 ```
+
+---
+
+## `[TestCaseSource]` with `[UnityTest]` (IEnumerator Tests)
+
+**CRITICAL**: Two rules for parameterized `[UnityTest]` coroutine tests:
+
+1. **Never combine `[TestCase]` with `[UnityTest]`** — not reliably supported across Unity versions.
+2. **Always add `.Returns(null)` to every `TestCaseData`** — NUnit requires this when the test method has a non-void return type (`IEnumerator`). Without it, NUnit reports: _"Method has non-void return value, but no result is expected."_
+
+```csharp
+// CORRECT - TestCaseSource with UnityTest and .Returns(null)
+private static IEnumerable<TestCaseData> SuppressionFlagTestCases()
+{
+    yield return new TestCaseData(true, false)
+        .Returns(null)
+        .SetName("Suppression.Enabled.AllowFalse");
+    yield return new TestCaseData(true, true)
+        .Returns(null)
+        .SetName("Suppression.Enabled.AllowTrue");
+}
+
+[UnityTest]
+[TestCaseSource(nameof(SuppressionFlagTestCases))]
+public IEnumerator GenerateCacheRespectsSuppressionFlags(
+    bool suppressEditorUi,
+    bool allowDuringSuppression
+)
+{
+    // Compute environment-dependent expectation in the test body
+    bool expectCacheCreated = !EditorUi.Suppress || allowDuringSuppression;
+    // ... coroutine test body with yield return null
+}
+
+// WRONG - Missing .Returns(null) causes NUnit error
+private static IEnumerable<TestCaseData> BrokenTestCases()
+{
+    yield return new TestCaseData(true, false)
+        .SetName("SomeCase"); // BUG: "Method has non-void return value"
+}
+
+// WRONG - TestCase with UnityTest (unreliable)
+[UnityTest]
+[TestCase(true, false, false, TestName = "SomeCase")]
+public IEnumerator SomeTest(bool param1, bool param2, bool param3)
+{
+    yield return null; // May not work correctly
+}
+```
+
+| Pattern            | Use With                                   | `.Returns(null)` Required |
+| ------------------ | ------------------------------------------ | ------------------------- |
+| `[TestCase]`       | `[Test]` (synchronous `void` methods only) | N/A                       |
+| `[TestCaseSource]` | `[Test]` (synchronous `void` methods)      | No                        |
+| `[TestCaseSource]` | `[UnityTest]` (`IEnumerator` methods)      | **YES — MANDATORY**       |
 
 ---
 

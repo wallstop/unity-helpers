@@ -10,15 +10,14 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomEditors
     using UnityEditor;
     using UnityEngine;
     using UnityEngine.TestTools;
-    using WallstopStudios.UnityHelpers.Editor;
     using WallstopStudios.UnityHelpers.Editor.CustomEditors;
     using WallstopStudios.UnityHelpers.Tests.Core;
     using WallstopStudios.UnityHelpers.Tests.Editor.TestTypes;
     using WallstopStudios.UnityHelpers.Tests.EditorFramework;
 
     [TestFixture]
-    [NUnit.Framework.Category("Slow")]
-    [NUnit.Framework.Category("Integration")]
+    [Category("Slow")]
+    [Category("Integration")]
     public sealed class PersistentDirectoryGUITests : CommonTestBase
     {
         private const string TestToolName = "PersistentDirectoryGUITests";
@@ -375,7 +374,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomEditors
 
             Assert.IsTrue(
                 caughtException == null,
-                $"DrawFrequentPaths should handle null callback gracefully (logs error instead of throwing). "
+                "DrawFrequentPaths should handle null callback gracefully (logs error instead of throwing). "
                     + $"Expected: no exception, error logged. Actual: Exception={caughtException}"
             );
             Assert.IsTrue(
@@ -418,7 +417,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomEditors
 
             Assert.IsTrue(
                 caughtException == null,
-                $"DrawFrequentPathsWithEditorGUI should handle null callback gracefully (logs error instead of throwing). "
+                "DrawFrequentPathsWithEditorGUI should handle null callback gracefully (logs error instead of throwing). "
                     + $"Expected: no exception, error logged. Actual: Exception={caughtException}"
             );
             Assert.IsTrue(

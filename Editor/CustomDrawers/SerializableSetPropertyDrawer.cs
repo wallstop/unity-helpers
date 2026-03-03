@@ -3127,6 +3127,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             inspector.SetSerializedItemsSnapshot(updated, preserveSerializedEntries: true);
             inspector.SynchronizeSerializedState();
+            Undo.FlushUndoRecordObjects();
 
             serializedObject.Update();
             property = serializedObject.FindProperty(propertyPath);
@@ -5407,6 +5408,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
                 inspector.SetSerializedItemsSnapshot(updated, preserveSerializedEntries: true);
                 inspector.SynchronizeSerializedState();
+                Undo.FlushUndoRecordObjects();
 
                 serializedObject.Update();
                 property = serializedObject.FindProperty(propertyPath);
@@ -5488,6 +5490,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             expanded.SetValue(null, existingCount);
             inspector.SetSerializedItemsSnapshot(expanded, preserveSerializedEntries: true);
             inspector.SynchronizeSerializedState();
+            Undo.FlushUndoRecordObjects();
 
             serializedObject.Update();
             property = serializedObject.FindProperty(propertyPath);
@@ -6248,6 +6251,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             inspector.ClearElements();
             inspector.SynchronizeSerializedState();
+            Undo.FlushUndoRecordObjects();
             serializedObject.Update();
             property = serializedObject.FindProperty(propertyPath);
             itemsProperty = property?.FindPropertyRelative(
@@ -6435,6 +6439,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
 
             inspector.SynchronizeSerializedState();
+            Undo.FlushUndoRecordObjects();
 
             property.serializedObject.Update();
             property = property.serializedObject.FindProperty(propertyPath);

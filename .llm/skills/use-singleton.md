@@ -389,3 +389,9 @@ public sealed class LevelManager : RuntimeSingleton<LevelManager>
 | Game settings/config     | `ScriptableObjectSingleton<T>`                 |
 | Balance data             | `ScriptableObjectSingleton<T>`                 |
 | Editor-configurable data | `ScriptableObjectSingleton<T>`                 |
+
+---
+
+## Related Skills
+
+- [editor-singleton-patterns](./editor-singleton-patterns.md) - Singleton asset management patterns for Editor code

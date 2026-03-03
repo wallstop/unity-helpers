@@ -23,6 +23,30 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             return string.Join(", ", set.Select(item => item?.ToString() ?? "null"));
         }
 
+        private static string FormatArrayContents(SerializedProperty itemsProperty)
+        {
+            if (itemsProperty == null || !itemsProperty.isArray)
+            {
+                return "<null or non-array>";
+            }
+
+            List<string> values = new(itemsProperty.arraySize);
+            for (int i = 0; i < itemsProperty.arraySize; i++)
+            {
+                SerializedProperty element = itemsProperty.GetArrayElementAtIndex(i);
+                values.Add(
+                    element.propertyType switch
+                    {
+                        SerializedPropertyType.Integer => element.intValue.ToString(),
+                        SerializedPropertyType.String => element.stringValue ?? "null",
+                        _ => element.propertyType.ToString(),
+                    }
+                );
+            }
+
+            return string.Join(", ", values);
+        }
+
         [SetUp]
         public override void BaseSetUp()
         {
@@ -67,6 +91,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             );
 
             int initialCount = host.set.Count;
+            string initialContents = FormatSetContents(host.set);
 
             bool result = drawer.TryCommitPendingEntry(
                 pending,
@@ -77,38 +102,48 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 inspector
             );
 
-            Assert.IsTrue(result, "TryCommitPendingEntry should succeed.");
+            Assert.IsTrue(
+                result,
+                $"TryCommitPendingEntry should succeed. Initial state: [{initialContents}], pending value: 'TestValue'."
+            );
+            string afterCommitContents = FormatSetContents(host.set);
             Assert.AreEqual(
                 initialCount + 1,
                 host.set.Count,
-                "Set should have one more entry after commit."
+                $"Set should have one more entry after commit. Initial ({initialCount}): [{initialContents}], After commit ({host.set.Count}): [{afterCommitContents}]."
             );
             Assert.IsTrue(
                 host.set.Contains("TestValue"),
-                "Set should contain the committed value."
+                $"Set should contain the committed value 'TestValue'. After commit: [{afterCommitContents}]."
             );
 
             Undo.PerformUndo();
 
             serializedObject.Update();
+            string afterUndoContents = FormatSetContents(host.set);
             Assert.AreEqual(
                 initialCount,
                 host.set.Count,
-                "Set count should return to initial after undo."
+                $"Set count should return to initial after undo. Initial ({initialCount}): [{initialContents}], After commit ({initialCount + 1}): [{afterCommitContents}], After undo ({host.set.Count}): [{afterUndoContents}]."
             );
             Assert.IsFalse(
                 host.set.Contains("TestValue"),
-                "Set should not contain the value after undo."
+                $"Set should not contain 'TestValue' after undo. After undo: [{afterUndoContents}]."
             );
         }
 
         [Test]
-        public void TryAddNewElementRegistersUndoAndCanBeReverted()
+        [TestCase(0, TestName = "InitialSize.Empty")]
+        [TestCase(1, TestName = "InitialSize.Single")]
+        [TestCase(3, TestName = "InitialSize.Three")]
+        [TestCase(5, TestName = "InitialSize.Five")]
+        public void TryAddNewElementUndoWorksWithVaryingInitialSetSizes(int initialCount)
         {
             HashSetHost host = CreateScriptableObject<HashSetHost>();
-            host.set.Add(1);
-            host.set.Add(2);
-            host.set.Add(3);
+            for (int i = 0; i < initialCount; i++)
+            {
+                host.set.Add(i * 100);
+            }
 
             SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
             serializedObject.Update();
@@ -123,8 +158,13 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 SerializableHashSetSerializedPropertyNames.Items
             );
 
-            int initialCount = host.set.Count;
-            string initialContents = FormatSetContents(host.set);
+            int beforeAddCount = host.set.Count;
+            string beforeAddContents = FormatSetContents(host.set);
+            Assert.AreEqual(
+                initialCount,
+                beforeAddCount,
+                $"Initial set size should be {initialCount}. Contents: [{beforeAddContents}]."
+            );
 
             bool result = drawer.TryAddNewElement(
                 ref setProperty,
@@ -133,13 +173,16 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 pagination
             );
 
-            Assert.IsTrue(result, "TryAddNewElement should succeed.");
+            Assert.IsTrue(
+                result,
+                $"TryAddNewElement should succeed for initial size {initialCount}."
+            );
             int afterAddCount = host.set.Count;
             string afterAddContents = FormatSetContents(host.set);
             Assert.AreEqual(
-                initialCount + 1,
+                beforeAddCount + 1,
                 afterAddCount,
-                $"Set should have one more entry. Initial: [{initialContents}], After add: [{afterAddContents}]"
+                $"Set should have one more entry after add. Before ({beforeAddCount}): [{beforeAddContents}], After ({afterAddCount}): [{afterAddContents}]."
             );
 
             Undo.PerformUndo();
@@ -148,19 +191,24 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             int afterUndoCount = host.set.Count;
             string afterUndoContents = FormatSetContents(host.set);
             Assert.AreEqual(
-                initialCount,
+                beforeAddCount,
                 afterUndoCount,
-                $"Set count should return to initial after undo. Initial: [{initialContents}], After add: [{afterAddContents}], After undo: [{afterUndoContents}]"
+                $"Undo should restore original count for initial size {initialCount}. Before add ({beforeAddCount}): [{beforeAddContents}], After add ({afterAddCount}): [{afterAddContents}], After undo ({afterUndoCount}): [{afterUndoContents}]."
             );
         }
 
         [Test]
-        public void TryClearSetRegistersUndoAndCanBeReverted()
+        [TestCase(2, TestName = "InitialSize.Two")]
+        [TestCase(3, TestName = "InitialSize.Three")]
+        [TestCase(5, TestName = "InitialSize.Five")]
+        [TestCase(10, TestName = "InitialSize.Ten")]
+        public void TryClearSetUndoWorksWithVaryingSetSizes(int initialCount)
         {
             HashSetHost host = CreateScriptableObject<HashSetHost>();
-            host.set.Add(10);
-            host.set.Add(20);
-            host.set.Add(30);
+            for (int i = 0; i < initialCount; i++)
+            {
+                host.set.Add(i * 10);
+            }
 
             SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
             serializedObject.Update();
@@ -172,25 +220,38 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 SerializableHashSetSerializedPropertyNames.Items
             );
 
-            int initialCount = host.set.Count;
-            Assert.Greater(initialCount, 0, "Set should have entries before clear.");
+            int beforeClearCount = host.set.Count;
+            string beforeClearContents = FormatSetContents(host.set);
+            Assert.AreEqual(
+                initialCount,
+                beforeClearCount,
+                $"Initial set size should be {initialCount}. Contents: [{beforeClearContents}]."
+            );
 
-            drawer.InvokeTryClearSet(ref setProperty, propertyPath, ref itemsProperty);
+            bool result = drawer.InvokeTryClearSet(
+                ref setProperty,
+                propertyPath,
+                ref itemsProperty
+            );
 
+            Assert.IsTrue(result, $"TryClearSet should succeed for initial size {initialCount}.");
             serializedObject.Update();
-            Assert.AreEqual(0, host.set.Count, "Set should be empty after clear.");
+            Assert.AreEqual(
+                0,
+                host.set.Count,
+                $"Set should be empty after clear. Before ({beforeClearCount}): [{beforeClearContents}]."
+            );
 
             Undo.PerformUndo();
 
             serializedObject.Update();
+            int afterUndoCount = host.set.Count;
+            string afterUndoContents = FormatSetContents(host.set);
             Assert.AreEqual(
-                initialCount,
-                host.set.Count,
-                "Set count should return to initial after undo."
+                beforeClearCount,
+                afterUndoCount,
+                $"Undo should restore original count for initial size {initialCount}. Before clear ({beforeClearCount}): [{beforeClearContents}], After undo ({afterUndoCount}): [{afterUndoContents}]."
             );
-            Assert.IsTrue(host.set.Contains(10), "Set should contain original values after undo.");
-            Assert.IsTrue(host.set.Contains(20), "Set should contain original values after undo.");
-            Assert.IsTrue(host.set.Contains(30), "Set should contain original values after undo.");
         }
 
         [Test]
@@ -216,6 +277,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             );
 
             int initialCount = host.set.Count;
+            string initialContents = FormatSetContents(host.set);
 
             drawer.InvokeTryRemoveSelectedEntry(
                 ref setProperty,
@@ -225,19 +287,23 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             );
 
             serializedObject.Update();
+            int afterRemoveCount = host.set.Count;
+            string afterRemoveContents = FormatSetContents(host.set);
             Assert.AreEqual(
                 initialCount - 1,
-                host.set.Count,
-                "Set should have one less entry after removal."
+                afterRemoveCount,
+                $"Set should have one less entry after removal. Initial ({initialCount}): [{initialContents}], After remove ({afterRemoveCount}): [{afterRemoveContents}]."
             );
 
             Undo.PerformUndo();
 
             serializedObject.Update();
+            int afterUndoCount = host.set.Count;
+            string afterUndoContents = FormatSetContents(host.set);
             Assert.AreEqual(
                 initialCount,
-                host.set.Count,
-                "Set count should return to initial after undo."
+                afterUndoCount,
+                $"Set count should return to initial after undo. Initial ({initialCount}): [{initialContents}], After remove ({afterRemoveCount}): [{afterRemoveContents}], After undo ({afterUndoCount}): [{afterUndoContents}]."
             );
         }
 
@@ -265,6 +331,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 
             SerializedProperty firstElement = itemsProperty.GetArrayElementAtIndex(0);
             int originalFirstValue = firstElement.intValue;
+            string originalOrder = FormatArrayContents(itemsProperty);
 
             drawer.InvokeTryMoveSelectedEntry(
                 ref setProperty,
@@ -278,11 +345,12 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             itemsProperty = setProperty.FindPropertyRelative(
                 SerializableHashSetSerializedPropertyNames.Items
             );
+            string afterMoveOrder = FormatArrayContents(itemsProperty);
             SerializedProperty elementAfterMove = itemsProperty.GetArrayElementAtIndex(1);
             Assert.AreEqual(
                 originalFirstValue,
                 elementAfterMove.intValue,
-                "Element should have moved to new position."
+                $"Element should have moved to index 1. Original order: [{originalOrder}], After move: [{afterMoveOrder}]."
             );
 
             Undo.PerformUndo();
@@ -291,21 +359,27 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             itemsProperty = setProperty.FindPropertyRelative(
                 SerializableHashSetSerializedPropertyNames.Items
             );
+            string afterUndoOrder = FormatArrayContents(itemsProperty);
             SerializedProperty elementAfterUndo = itemsProperty.GetArrayElementAtIndex(0);
             Assert.AreEqual(
                 originalFirstValue,
                 elementAfterUndo.intValue,
-                "Element should return to original position after undo."
+                $"Element should return to index 0 after undo. Original: [{originalOrder}], After move: [{afterMoveOrder}], After undo: [{afterUndoOrder}]."
             );
         }
 
         [Test]
-        public void SortElementsRegistersUndoAndCanBeReverted()
+        [TestCase(new[] { 30, 10, 20 }, TestName = "Order.Unsorted")]
+        [TestCase(new[] { 10, 20, 30 }, TestName = "Order.AlreadySorted")]
+        [TestCase(new[] { 30, 20, 10 }, TestName = "Order.ReverseSorted")]
+        [TestCase(new[] { 5, 5, 10 }, TestName = "Order.AlreadySortedAfterDedup")]
+        public void SortElementsUndoRestoresOriginalOrder(int[] initialValues)
         {
             SortedSetHost host = CreateScriptableObject<SortedSetHost>();
-            host.set.Add(30);
-            host.set.Add(10);
-            host.set.Add(20);
+            foreach (int value in initialValues)
+            {
+                host.set.Add(value);
+            }
 
             SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
             serializedObject.Update();
@@ -319,12 +393,13 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 SerializableHashSetSerializedPropertyNames.Items
             );
 
-            SerializedProperty first = itemsProperty.GetArrayElementAtIndex(0);
-            SerializedProperty second = itemsProperty.GetArrayElementAtIndex(1);
-            SerializedProperty third = itemsProperty.GetArrayElementAtIndex(2);
-            int originalFirst = first.intValue;
-            int originalSecond = second.intValue;
-            int originalThird = third.intValue;
+            int arraySize = itemsProperty.arraySize;
+            List<int> originalOrder = new();
+            for (int i = 0; i < arraySize; i++)
+            {
+                originalOrder.Add(itemsProperty.GetArrayElementAtIndex(i).intValue);
+            }
+            string originalOrderStr = string.Join(", ", originalOrder);
 
             bool sorted = drawer.InvokeTrySortElements(
                 ref setProperty,
@@ -332,25 +407,24 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 itemsProperty
             );
 
-            Assert.IsTrue(sorted, "TrySortElements should succeed.");
+            Assert.IsTrue(
+                sorted,
+                $"TrySortElements should succeed. Original order: [{originalOrderStr}]."
+            );
             serializedObject.Update();
             itemsProperty = setProperty.FindPropertyRelative(
                 SerializableHashSetSerializedPropertyNames.Items
             );
 
-            first = itemsProperty.GetArrayElementAtIndex(0);
-            second = itemsProperty.GetArrayElementAtIndex(1);
-            third = itemsProperty.GetArrayElementAtIndex(2);
-            Assert.LessOrEqual(
-                first.intValue,
-                second.intValue,
-                "Elements should be sorted after sort."
-            );
-            Assert.LessOrEqual(
-                second.intValue,
-                third.intValue,
-                "Elements should be sorted after sort."
-            );
+            string afterSortOrder = FormatArrayContents(itemsProperty);
+            for (int i = 0; i < itemsProperty.arraySize - 1; i++)
+            {
+                Assert.LessOrEqual(
+                    itemsProperty.GetArrayElementAtIndex(i).intValue,
+                    itemsProperty.GetArrayElementAtIndex(i + 1).intValue,
+                    $"Elements should be sorted after sort at index {i}. After sort: [{afterSortOrder}]."
+                );
+            }
 
             Undo.PerformUndo();
 
@@ -358,25 +432,16 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             itemsProperty = setProperty.FindPropertyRelative(
                 SerializableHashSetSerializedPropertyNames.Items
             );
-            first = itemsProperty.GetArrayElementAtIndex(0);
-            second = itemsProperty.GetArrayElementAtIndex(1);
-            third = itemsProperty.GetArrayElementAtIndex(2);
+            string afterUndoOrder = FormatArrayContents(itemsProperty);
 
-            Assert.AreEqual(
-                originalFirst,
-                first.intValue,
-                "First element should return to original position after undo."
-            );
-            Assert.AreEqual(
-                originalSecond,
-                second.intValue,
-                "Second element should return to original position after undo."
-            );
-            Assert.AreEqual(
-                originalThird,
-                third.intValue,
-                "Third element should return to original position after undo."
-            );
+            for (int i = 0; i < originalOrder.Count && i < itemsProperty.arraySize; i++)
+            {
+                Assert.AreEqual(
+                    originalOrder[i],
+                    itemsProperty.GetArrayElementAtIndex(i).intValue,
+                    $"Element at index {i} should return to original value after undo. Original: [{originalOrderStr}], After sort: [{afterSortOrder}], After undo: [{afterUndoOrder}]."
+                );
+            }
         }
 
         [Test]
@@ -409,15 +474,14 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             );
             Assert.IsTrue(addResult, "Add should succeed.");
             serializedObject.Update();
+            int afterAddCount = host.set.Count;
             string afterAddContents = FormatSetContents(host.set);
             Assert.AreEqual(
                 initialCount + 1,
-                host.set.Count,
-                $"Set should have one more entry. Initial: [{initialContents}], After add: [{afterAddContents}]"
+                afterAddCount,
+                $"Set should have one more entry. Initial ({initialCount}): [{initialContents}], After add ({afterAddCount}): [{afterAddContents}]."
             );
 
-            // Increment undo group to ensure each operation is in a separate undo group.
-            // Unity's undo system collapses operations with the same name in the same frame.
             Undo.IncrementCurrentGroup();
 
             pagination.selectedIndex = 0;
@@ -428,29 +492,32 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 pagination
             );
             serializedObject.Update();
+            int afterRemoveCount = host.set.Count;
             string afterRemoveContents = FormatSetContents(host.set);
             Assert.AreEqual(
                 initialCount,
-                host.set.Count,
-                $"Set count should match after add then remove. After add: [{afterAddContents}], After remove: [{afterRemoveContents}]"
+                afterRemoveCount,
+                $"Set count should match after add then remove. After add ({afterAddCount}): [{afterAddContents}], After remove ({afterRemoveCount}): [{afterRemoveContents}]."
             );
 
             Undo.PerformUndo();
             serializedObject.Update();
+            int afterFirstUndoCount = host.set.Count;
             string afterFirstUndo = FormatSetContents(host.set);
             Assert.AreEqual(
                 initialCount + 1,
-                host.set.Count,
-                $"First undo should restore the added entry. After remove: [{afterRemoveContents}], After undo: [{afterFirstUndo}]"
+                afterFirstUndoCount,
+                $"First undo should restore the added entry. After remove ({afterRemoveCount}): [{afterRemoveContents}], After undo ({afterFirstUndoCount}): [{afterFirstUndo}]."
             );
 
             Undo.PerformUndo();
             serializedObject.Update();
+            int afterSecondUndoCount = host.set.Count;
             string afterSecondUndo = FormatSetContents(host.set);
             Assert.AreEqual(
                 initialCount,
-                host.set.Count,
-                $"Second undo should restore original state. After first undo: [{afterFirstUndo}], After second undo: [{afterSecondUndo}]"
+                afterSecondUndoCount,
+                $"Second undo should restore original state. Initial ({initialCount}): [{initialContents}], After first undo ({afterFirstUndoCount}): [{afterFirstUndo}], After second undo ({afterSecondUndoCount}): [{afterSecondUndo}]."
             );
         }
 
@@ -489,7 +556,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             Assert.AreEqual(
                 initialCount + 1,
                 countAfterAdd,
-                $"Set should have one more entry. Initial: [{initialContents}], After add: [{afterAddContents}]"
+                $"Set should have one more entry. Initial ({initialCount}): [{initialContents}], After add ({countAfterAdd}): [{afterAddContents}]."
             );
 
             Undo.PerformUndo();
@@ -499,7 +566,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             Assert.AreEqual(
                 initialCount,
                 afterUndoCount,
-                $"Undo should restore original count. Initial: [{initialContents}], After add: [{afterAddContents}], After undo: [{afterUndoContents}]"
+                $"Undo should restore original count. Initial ({initialCount}): [{initialContents}], After add ({countAfterAdd}): [{afterAddContents}], After undo ({afterUndoCount}): [{afterUndoContents}]."
             );
 
             Undo.PerformRedo();
@@ -509,7 +576,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             Assert.AreEqual(
                 countAfterAdd,
                 afterRedoCount,
-                $"Redo should restore the added entry. After add: [{afterAddContents}], After undo: [{afterUndoContents}], After redo: [{afterRedoContents}]"
+                $"Redo should restore the added entry. After add ({countAfterAdd}): [{afterAddContents}], After undo ({afterUndoCount}): [{afterUndoContents}], After redo ({afterRedoCount}): [{afterRedoContents}]."
             );
         }
 
@@ -534,15 +601,21 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 
             drawer.TryAddNewElement(ref setProperty, propertyPath, ref itemsProperty, pagination);
             serializedObject.Update();
-            Assert.AreEqual(1, host.set.Count, "Count after first add.");
+            Assert.AreEqual(
+                1,
+                host.set.Count,
+                $"Count after first add. Contents: [{FormatSetContents(host.set)}]."
+            );
 
-            // Increment undo group to ensure each operation is in a separate undo group.
-            // Unity's undo system collapses operations with the same name in the same frame.
             Undo.IncrementCurrentGroup();
 
             drawer.TryAddNewElement(ref setProperty, propertyPath, ref itemsProperty, pagination);
             serializedObject.Update();
-            Assert.AreEqual(2, host.set.Count, "Count after second add.");
+            Assert.AreEqual(
+                2,
+                host.set.Count,
+                $"Count after second add. Contents: [{FormatSetContents(host.set)}]."
+            );
 
             Undo.IncrementCurrentGroup();
 
@@ -552,7 +625,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             Assert.AreEqual(
                 3,
                 host.set.Count,
-                $"Count after third add. Contents: [{afterThirdAdd}]"
+                $"Count after third add. Contents: [{afterThirdAdd}]."
             );
 
             Undo.PerformUndo();
@@ -561,7 +634,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             Assert.AreEqual(
                 2,
                 host.set.Count,
-                $"Count after first undo. Before: [{afterThirdAdd}], After: [{afterFirstUndo}]"
+                $"Count after first undo. Before ({3}): [{afterThirdAdd}], After ({host.set.Count}): [{afterFirstUndo}]."
             );
 
             Undo.PerformUndo();
@@ -570,7 +643,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             Assert.AreEqual(
                 1,
                 host.set.Count,
-                $"Count after second undo. Before: [{afterFirstUndo}], After: [{afterSecondUndo}]"
+                $"Count after second undo. Before ({2}): [{afterFirstUndo}], After ({host.set.Count}): [{afterSecondUndo}]."
             );
 
             Undo.PerformRedo();
@@ -579,7 +652,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             Assert.AreEqual(
                 2,
                 host.set.Count,
-                $"Count after redo. Before: [{afterSecondUndo}], After: [{afterRedo}]"
+                $"Count after redo. Before ({1}): [{afterSecondUndo}], After ({host.set.Count}): [{afterRedo}]."
             );
 
             Undo.PerformUndo();
@@ -588,7 +661,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             Assert.AreEqual(
                 1,
                 host.set.Count,
-                $"Count after undo again. Before: [{afterRedo}], After: [{afterUndoAgain}]"
+                $"Count after undo again. Before ({2}): [{afterRedo}], After ({host.set.Count}): [{afterUndoAgain}]."
             );
 
             Undo.PerformUndo();
@@ -597,7 +670,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             Assert.AreEqual(
                 0,
                 host.set.Count,
-                $"Count after final undo to empty. Before: [{afterUndoAgain}], After: [{afterFinalUndo}]"
+                $"Count after final undo to empty. Before ({1}): [{afterUndoAgain}], After ({host.set.Count}): [{afterFinalUndo}]."
             );
 
             Undo.PerformRedo();
@@ -608,7 +681,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             Assert.AreEqual(
                 3,
                 host.set.Count,
-                $"Count after multiple redos. Contents: [{afterMultipleRedos}]"
+                $"Count after multiple redos. Expected 3, got {host.set.Count}. Contents: [{afterMultipleRedos}]."
             );
         }
 
@@ -629,7 +702,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
         }
 
         [Test]
-        public void ClearEmptySetRegistersNoUndoOperation()
+        public void ClearEmptySetDoesNotCorruptState()
         {
             HashSetHost host = CreateScriptableObject<HashSetHost>();
 
@@ -653,7 +726,37 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
 
             Assert.IsTrue(result, "TryClearSet should return true even for empty set.");
             serializedObject.Update();
-            Assert.AreEqual(0, host.set.Count, "Set should remain empty.");
+            Assert.AreEqual(0, host.set.Count, "Set should remain empty after clearing empty set.");
+
+            Undo.PerformUndo();
+            serializedObject.Update();
+            Assert.AreEqual(
+                0,
+                host.set.Count,
+                "Set should remain empty after undo of clear on empty set."
+            );
+
+            Undo.IncrementCurrentGroup();
+
+            SerializableSetPropertyDrawer.PaginationState pagination =
+                drawer.GetOrCreatePaginationState(setProperty);
+            bool addResult = drawer.TryAddNewElement(
+                ref setProperty,
+                propertyPath,
+                ref itemsProperty,
+                pagination
+            );
+
+            Assert.IsTrue(
+                addResult,
+                "TryAddNewElement should succeed after clear+undo on empty set."
+            );
+            serializedObject.Update();
+            Assert.AreEqual(
+                1,
+                host.set.Count,
+                $"Set should have 1 element after add following clear+undo on empty set. Contents: [{FormatSetContents(host.set)}]."
+            );
         }
 
         [Test]
@@ -676,12 +779,16 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 SerializableHashSetSerializedPropertyNames.Items
             );
 
+            string initialContents = FormatSetContents(host.set);
             drawer.TryAddNewElement(ref setProperty, propertyPath, ref itemsProperty, pagination);
             serializedObject.Update();
-            Assert.AreEqual(4, host.set.Count, "Count after add.");
+            string afterAdd = FormatSetContents(host.set);
+            Assert.AreEqual(
+                4,
+                host.set.Count,
+                $"Count after add. Initial: [{initialContents}], After add: [{afterAdd}]."
+            );
 
-            // Increment undo group to ensure each operation is in a separate undo group.
-            // Unity's undo system collapses operations with the same name in the same frame.
             Undo.IncrementCurrentGroup();
 
             pagination.selectedIndex = 0;
@@ -692,14 +799,23 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 pagination
             );
             serializedObject.Update();
-            Assert.AreEqual(3, host.set.Count, "Count after remove.");
+            string afterRemove = FormatSetContents(host.set);
+            Assert.AreEqual(
+                3,
+                host.set.Count,
+                $"Count after remove. After add: [{afterAdd}], After remove: [{afterRemove}]."
+            );
 
             Undo.IncrementCurrentGroup();
 
             drawer.InvokeTryClearSet(ref setProperty, propertyPath, ref itemsProperty);
             serializedObject.Update();
             string afterClear = FormatSetContents(host.set);
-            Assert.AreEqual(0, host.set.Count, $"Count after clear. Contents: [{afterClear}]");
+            Assert.AreEqual(
+                0,
+                host.set.Count,
+                $"Count after clear. After remove: [{afterRemove}], After clear: [{afterClear}]."
+            );
 
             Undo.PerformUndo();
             serializedObject.Update();
@@ -707,7 +823,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             Assert.AreEqual(
                 3,
                 host.set.Count,
-                $"First undo restores before clear. Before undo: [{afterClear}], After undo: [{afterFirstUndo}]"
+                $"First undo restores before clear. After clear ({0}): [{afterClear}], After undo ({host.set.Count}): [{afterFirstUndo}]."
             );
 
             Undo.PerformUndo();
@@ -716,7 +832,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             Assert.AreEqual(
                 4,
                 host.set.Count,
-                $"Second undo restores removed entry. Before undo: [{afterFirstUndo}], After undo: [{afterSecondUndo}]"
+                $"Second undo restores removed entry. After first undo ({3}): [{afterFirstUndo}], After second undo ({host.set.Count}): [{afterSecondUndo}]."
             );
 
             Undo.PerformUndo();
@@ -725,7 +841,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             Assert.AreEqual(
                 3,
                 host.set.Count,
-                $"Third undo restores before add. Before undo: [{afterSecondUndo}], After undo: [{afterThirdUndo}]"
+                $"Third undo restores before add. After second undo ({4}): [{afterSecondUndo}], After third undo ({host.set.Count}): [{afterThirdUndo}]."
             );
         }
 
@@ -775,11 +891,9 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             Assert.AreEqual(
                 originalFirst,
                 afterMoveDown1,
-                $"First element moved down. Original: {originalOrder}, After move down: {afterMoveDownOrder}"
+                $"First element moved down. Original: {originalOrder}, After move down: {afterMoveDownOrder}."
             );
 
-            // Increment undo group to ensure each operation is in a separate undo group.
-            // Unity's undo system collapses operations with the same name in the same frame.
             Undo.IncrementCurrentGroup();
 
             pagination.selectedIndex = 1;
@@ -803,7 +917,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             Assert.AreEqual(
                 originalFirst,
                 afterMoveUp0,
-                $"First element moved back up. After move down: {afterMoveDownOrder}, After move up: {afterMoveUpOrder}"
+                $"First element moved back up. After move down: {afterMoveDownOrder}, After move up: {afterMoveUpOrder}."
             );
 
             Undo.PerformUndo();
@@ -819,7 +933,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             Assert.AreEqual(
                 originalSecond,
                 afterUndo1Pos0,
-                $"Undo restores after first move. Original: {originalOrder}, After move down: {afterMoveDownOrder}, After move up: {afterMoveUpOrder}, After first undo: {afterUndo1Order}"
+                $"Undo restores after first move. Original: {originalOrder}, After move down: {afterMoveDownOrder}, After move up: {afterMoveUpOrder}, After first undo: {afterUndo1Order}."
             );
 
             Undo.PerformUndo();
@@ -835,120 +949,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             Assert.AreEqual(
                 originalFirst,
                 afterUndo2Pos0,
-                $"Second undo restores original order. Original: {originalOrder}, After first undo: {afterUndo1Order}, After second undo: {afterUndo2Order}"
-            );
-        }
-
-        [Test]
-        [TestCase(0, Description = "Empty set")]
-        [TestCase(1, Description = "Single element set")]
-        [TestCase(5, Description = "Multiple element set")]
-        public void TryAddNewElementUndoWorksWithVaryingInitialSetSizes(int initialCount)
-        {
-            HashSetHost host = CreateScriptableObject<HashSetHost>();
-            for (int i = 0; i < initialCount; i++)
-            {
-                host.set.Add(i * 100);
-            }
-
-            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
-            serializedObject.Update();
-            SerializedProperty setProperty = serializedObject.FindProperty(nameof(HashSetHost.set));
-
-            SerializableSetPropertyDrawer drawer = new();
-            string propertyPath = setProperty.propertyPath;
-            SerializableSetPropertyDrawer.PaginationState pagination =
-                drawer.GetOrCreatePaginationState(setProperty);
-
-            SerializedProperty itemsProperty = setProperty.FindPropertyRelative(
-                SerializableHashSetSerializedPropertyNames.Items
-            );
-
-            int beforeAddCount = host.set.Count;
-            string beforeAddContents = FormatSetContents(host.set);
-            Assert.AreEqual(
-                initialCount,
-                beforeAddCount,
-                $"Initial set size should be {initialCount}. Contents: [{beforeAddContents}]"
-            );
-
-            bool result = drawer.TryAddNewElement(
-                ref setProperty,
-                propertyPath,
-                ref itemsProperty,
-                pagination
-            );
-
-            Assert.IsTrue(result, "TryAddNewElement should succeed.");
-            int afterAddCount = host.set.Count;
-            string afterAddContents = FormatSetContents(host.set);
-            Assert.AreEqual(
-                beforeAddCount + 1,
-                afterAddCount,
-                $"Set should have one more entry. Before: [{beforeAddContents}], After add: [{afterAddContents}]"
-            );
-
-            Undo.PerformUndo();
-
-            serializedObject.Update();
-            int afterUndoCount = host.set.Count;
-            string afterUndoContents = FormatSetContents(host.set);
-            Assert.AreEqual(
-                beforeAddCount,
-                afterUndoCount,
-                $"Undo should restore original count. Before add: [{beforeAddContents}], After add: [{afterAddContents}], After undo: [{afterUndoContents}]"
-            );
-        }
-
-        [Test]
-        [TestCase(2, Description = "Small set")]
-        [TestCase(5, Description = "Medium set")]
-        [TestCase(10, Description = "Larger set")]
-        public void TryClearSetUndoWorksWithVaryingSetSizes(int initialCount)
-        {
-            HashSetHost host = CreateScriptableObject<HashSetHost>();
-            for (int i = 0; i < initialCount; i++)
-            {
-                host.set.Add(i * 10);
-            }
-
-            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
-            serializedObject.Update();
-            SerializedProperty setProperty = serializedObject.FindProperty(nameof(HashSetHost.set));
-            string propertyPath = setProperty.propertyPath;
-
-            SerializableSetPropertyDrawer drawer = new();
-            SerializedProperty itemsProperty = setProperty.FindPropertyRelative(
-                SerializableHashSetSerializedPropertyNames.Items
-            );
-
-            int beforeClearCount = host.set.Count;
-            string beforeClearContents = FormatSetContents(host.set);
-            Assert.AreEqual(
-                initialCount,
-                beforeClearCount,
-                $"Initial set size should be {initialCount}. Contents: [{beforeClearContents}]"
-            );
-
-            bool result = drawer.InvokeTryClearSet(
-                ref setProperty,
-                propertyPath,
-                ref itemsProperty
-            );
-
-            Assert.IsTrue(result, "TryClearSet should succeed.");
-            serializedObject.Update();
-            Assert.AreEqual(0, host.set.Count, "Set should be empty after clear.");
-
-            Undo.PerformUndo();
-
-            serializedObject.Update();
-            int afterUndoCount = host.set.Count;
-            string afterUndoContents = FormatSetContents(host.set);
-            Assert.AreEqual(
-                beforeClearCount,
-                afterUndoCount,
-                $"Undo should restore original count. Before: [{beforeClearContents}], After undo: [{afterUndoContents}]"
+                $"Second undo restores original order. Original: {originalOrder}, After first undo: {afterUndo1Order}, After second undo: {afterUndo2Order}."
             );
         }
 
@@ -974,8 +975,6 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             int numberOfAdds = 5;
             for (int i = 0; i < numberOfAdds; i++)
             {
-                // Increment undo group between operations to ensure each add is in a separate undo group.
-                // Unity's undo system collapses operations with the same name in the same frame.
                 if (i > 0)
                 {
                     Undo.IncrementCurrentGroup();
@@ -991,7 +990,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 Assert.AreEqual(
                     i + 1,
                     host.set.Count,
-                    $"Count after add {i + 1}: [{FormatSetContents(host.set)}]"
+                    $"Count after add {i + 1} of {numberOfAdds}: [{FormatSetContents(host.set)}]."
                 );
             }
 
@@ -1002,16 +1001,16 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 Assert.AreEqual(
                     i,
                     host.set.Count,
-                    $"Count after undo to {i}: [{FormatSetContents(host.set)}]"
+                    $"Count after undo to {i} (undo {numberOfAdds - i} of {numberOfAdds}): [{FormatSetContents(host.set)}]."
                 );
             }
         }
 
         [Test]
-        [TestCase(1, Description = "Single undo")]
-        [TestCase(2, Description = "Two undos")]
-        [TestCase(3, Description = "Three undos")]
-        [TestCase(5, Description = "Five undos")]
+        [TestCase(1, TestName = "RemovalCount.One")]
+        [TestCase(2, TestName = "RemovalCount.Two")]
+        [TestCase(3, TestName = "RemovalCount.Three")]
+        [TestCase(5, TestName = "RemovalCount.Five")]
         public void ConsecutiveRemovesCanBeUndoneIndividually(int removalCount)
         {
             HashSetHost host = CreateScriptableObject<HashSetHost>();
@@ -1021,6 +1020,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             }
 
             int initialCount = host.set.Count;
+            string initialContents = FormatSetContents(host.set);
 
             SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
             serializedObject.Update();
@@ -1052,7 +1052,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 Assert.AreEqual(
                     initialCount - (i + 1),
                     host.set.Count,
-                    $"Count after removal {i + 1}: [{FormatSetContents(host.set)}]"
+                    $"Count after removal {i + 1} of {removalCount}. Initial ({initialCount}): [{initialContents}], Current ({host.set.Count}): [{FormatSetContents(host.set)}]."
                 );
             }
 
@@ -1063,16 +1063,16 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 Assert.AreEqual(
                     initialCount - i,
                     host.set.Count,
-                    $"Count after undo {removalCount - i}: [{FormatSetContents(host.set)}]"
+                    $"Count after undo {removalCount - i} of {removalCount}. Expected {initialCount - i}, got {host.set.Count}. Contents: [{FormatSetContents(host.set)}]."
                 );
             }
         }
 
         [Test]
-        [TestCase(1, 1, Description = "One add then one remove")]
-        [TestCase(2, 1, Description = "Two adds then one remove")]
-        [TestCase(1, 2, Description = "One add then two removes")]
-        [TestCase(3, 2, Description = "Three adds then two removes")]
+        [TestCase(1, 1, TestName = "Adds.One.Removes.One")]
+        [TestCase(2, 1, TestName = "Adds.Two.Removes.One")]
+        [TestCase(1, 2, TestName = "Adds.One.Removes.Two")]
+        [TestCase(3, 2, TestName = "Adds.Three.Removes.Two")]
         public void MixedAddRemoveOperationsCanBeUndone(int addCount, int removeCount)
         {
             HashSetHost host = CreateScriptableObject<HashSetHost>();
@@ -1080,6 +1080,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             host.set.Add(200);
 
             int initialCount = host.set.Count;
+            string initialContents = FormatSetContents(host.set);
             int safeRemoveCount = Math.Min(removeCount, initialCount + addCount);
 
             SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
@@ -1114,7 +1115,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             Assert.AreEqual(
                 expectedCountAfterAdds,
                 host.set.Count,
-                $"Count after {addCount} adds: [{afterAdds}]"
+                $"Count after {addCount} adds. Initial ({initialCount}): [{initialContents}], After adds ({host.set.Count}): [{afterAdds}]."
             );
 
             Undo.IncrementCurrentGroup();
@@ -1140,7 +1141,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             Assert.AreEqual(
                 expectedCountAfterRemoves,
                 host.set.Count,
-                $"Count after {safeRemoveCount} removes: [{afterRemoves}]"
+                $"Count after {safeRemoveCount} removes. After adds ({expectedCountAfterAdds}): [{afterAdds}], After removes ({host.set.Count}): [{afterRemoves}]."
             );
 
             for (int i = 0; i < safeRemoveCount; i++)
@@ -1152,7 +1153,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             Assert.AreEqual(
                 expectedCountAfterAdds,
                 host.set.Count,
-                $"Count after undoing removes: [{afterUndoRemoves}]"
+                $"Count after undoing {safeRemoveCount} removes. Expected {expectedCountAfterAdds}, got {host.set.Count}. After removes: [{afterRemoves}], After undo removes: [{afterUndoRemoves}]."
             );
 
             for (int i = 0; i < addCount; i++)
@@ -1164,14 +1165,14 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             Assert.AreEqual(
                 initialCount,
                 host.set.Count,
-                $"Count after undoing adds: [{afterUndoAdds}]"
+                $"Count after undoing {addCount} adds. Initial ({initialCount}): [{initialContents}], After undo all ({host.set.Count}): [{afterUndoAdds}]."
             );
         }
 
         [Test]
-        [TestCase(2, Description = "Two moves")]
-        [TestCase(3, Description = "Three moves")]
-        [TestCase(4, Description = "Four moves")]
+        [TestCase(2, TestName = "MoveCount.Two")]
+        [TestCase(3, TestName = "MoveCount.Three")]
+        [TestCase(4, TestName = "MoveCount.Four")]
         public void ConsecutiveMovesCanBeUndoneIndividually(int moveCount)
         {
             HashSetHost host = CreateScriptableObject<HashSetHost>();
@@ -1192,7 +1193,6 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 SerializableHashSetSerializedPropertyNames.Items
             );
 
-            int originalFirst = itemsProperty.GetArrayElementAtIndex(0).intValue;
             List<string> stateHistory = new() { FormatSetContents(host.set) };
 
             for (int i = 0; i < moveCount; i++)
@@ -1229,8 +1229,8 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
                 Assert.AreEqual(
                     expectedState,
                     currentState,
-                    $"State after undo {moveCount - i} should match state {i}. "
-                        + $"History: [{string.Join(" -> ", stateHistory)}], Current: [{currentState}]"
+                    $"State after undo {moveCount - i} of {moveCount} should match state {i}. "
+                        + $"History: [{string.Join(" -> ", stateHistory)}], Current: [{currentState}]."
                 );
             }
         }
@@ -1264,7 +1264,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             Assert.AreEqual(
                 0,
                 host.set.Count,
-                $"Set should be empty after clear. Contents: [{afterClear}]"
+                $"Set should be empty after clear. Initial ({initialCount}): [{initialContents}], After clear: [{afterClear}]."
             );
 
             Undo.IncrementCurrentGroup();
@@ -1275,7 +1275,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             Assert.AreEqual(
                 1,
                 host.set.Count,
-                $"Set should have 1 entry after add. Contents: [{afterAdd}]"
+                $"Set should have 1 entry after add. After clear: [{afterClear}], After add: [{afterAdd}]."
             );
 
             Undo.PerformUndo();
@@ -1284,7 +1284,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             Assert.AreEqual(
                 0,
                 host.set.Count,
-                $"Undoing add should leave empty set. Before: [{afterAdd}], After: [{afterUndoAdd}]"
+                $"Undoing add should leave empty set. After add ({1}): [{afterAdd}], After undo ({host.set.Count}): [{afterUndoAdd}]."
             );
 
             Undo.PerformUndo();
@@ -1293,7 +1293,7 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             Assert.AreEqual(
                 initialCount,
                 host.set.Count,
-                $"Undoing clear should restore initial state. Initial: [{initialContents}], After: [{afterUndoClear}]"
+                $"Undoing clear should restore initial state. Initial ({initialCount}): [{initialContents}], After undo clear ({host.set.Count}): [{afterUndoClear}]."
             );
         }
 
@@ -1337,18 +1337,19 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             Assert.AreEqual(
                 operationCount,
                 host.set.Count,
-                $"Should have {operationCount} entries after adds. Contents: [{FormatSetContents(host.set)}]"
+                $"Should have {operationCount} entries after adds. Contents: [{FormatSetContents(host.set)}]."
             );
 
             for (int i = 0; i < operationCount; i++)
             {
                 Undo.PerformUndo();
                 serializedObject.Update();
+                int expectedCount = expectedCounts[operationCount - 1 - i];
                 Assert.AreEqual(
-                    expectedCounts[operationCount - 1 - i],
+                    expectedCount,
                     host.set.Count,
-                    $"Undo {i + 1} should restore count to {expectedCounts[operationCount - 1 - i]}. "
-                        + $"Contents: [{FormatSetContents(host.set)}]"
+                    $"Undo {i + 1} of {operationCount} should restore count to {expectedCount}. "
+                        + $"Got {host.set.Count}. Contents: [{FormatSetContents(host.set)}]."
                 );
             }
 
@@ -1356,11 +1357,224 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             {
                 Undo.PerformRedo();
                 serializedObject.Update();
+                int expectedCount = expectedCounts[i + 1];
                 Assert.AreEqual(
-                    expectedCounts[i + 1],
+                    expectedCount,
                     host.set.Count,
-                    $"Redo {i + 1} should restore count to {expectedCounts[i + 1]}. "
-                        + $"Contents: [{FormatSetContents(host.set)}]"
+                    $"Redo {i + 1} of {operationCount} should restore count to {expectedCount}. "
+                        + $"Got {host.set.Count}. Contents: [{FormatSetContents(host.set)}]."
+                );
+            }
+        }
+
+        [Test]
+        public void RedoAfterUndoClearRestoresEmptyState()
+        {
+            HashSetHost host = CreateScriptableObject<HashSetHost>();
+            host.set.Add(10);
+            host.set.Add(20);
+            host.set.Add(30);
+
+            int initialCount = host.set.Count;
+            string initialContents = FormatSetContents(host.set);
+
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty setProperty = serializedObject.FindProperty(nameof(HashSetHost.set));
+            string propertyPath = setProperty.propertyPath;
+
+            SerializableSetPropertyDrawer drawer = new();
+            SerializedProperty itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            drawer.InvokeTryClearSet(ref setProperty, propertyPath, ref itemsProperty);
+            serializedObject.Update();
+            Assert.AreEqual(
+                0,
+                host.set.Count,
+                $"Set should be empty after clear. Initial ({initialCount}): [{initialContents}]."
+            );
+
+            Undo.PerformUndo();
+            serializedObject.Update();
+            string afterUndo = FormatSetContents(host.set);
+            Assert.AreEqual(
+                initialCount,
+                host.set.Count,
+                $"Undo should restore original count. Initial ({initialCount}): [{initialContents}], After undo ({host.set.Count}): [{afterUndo}]."
+            );
+
+            Undo.PerformRedo();
+            serializedObject.Update();
+            string afterRedo = FormatSetContents(host.set);
+            Assert.AreEqual(
+                0,
+                host.set.Count,
+                $"Redo should restore empty state after clear. After undo ({initialCount}): [{afterUndo}], After redo ({host.set.Count}): [{afterRedo}]."
+            );
+        }
+
+        [Test]
+        public void RedoAfterUndoSortRestoresSortedOrder()
+        {
+            SortedSetHost host = CreateScriptableObject<SortedSetHost>();
+            host.set.Add(30);
+            host.set.Add(10);
+            host.set.Add(20);
+
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty setProperty = serializedObject.FindProperty(
+                nameof(SortedSetHost.set)
+            );
+            string propertyPath = setProperty.propertyPath;
+
+            SerializableSetPropertyDrawer drawer = new();
+            SerializedProperty itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            string originalOrder = FormatArrayContents(itemsProperty);
+
+            bool sorted = drawer.InvokeTrySortElements(
+                ref setProperty,
+                propertyPath,
+                itemsProperty
+            );
+
+            Assert.IsTrue(sorted, $"TrySortElements should succeed. Original: [{originalOrder}].");
+            serializedObject.Update();
+            itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+            string sortedOrder = FormatArrayContents(itemsProperty);
+
+            Undo.PerformUndo();
+            serializedObject.Update();
+            itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+            string afterUndoOrder = FormatArrayContents(itemsProperty);
+            Assert.AreEqual(
+                originalOrder,
+                afterUndoOrder,
+                $"Undo should restore original order. Original: [{originalOrder}], Sorted: [{sortedOrder}], After undo: [{afterUndoOrder}]."
+            );
+
+            Undo.PerformRedo();
+            serializedObject.Update();
+            itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+            string afterRedoOrder = FormatArrayContents(itemsProperty);
+            Assert.AreEqual(
+                sortedOrder,
+                afterRedoOrder,
+                $"Redo should restore sorted order. Sorted: [{sortedOrder}], After undo: [{afterUndoOrder}], After redo: [{afterRedoOrder}]."
+            );
+        }
+
+        [Test]
+        [TestCase(3, TestName = "Cycles.Three")]
+        [TestCase(5, TestName = "Cycles.Five")]
+        public void RepeatedUndoRedoCyclesAreStable(int cycleCount)
+        {
+            HashSetHost host = CreateScriptableObject<HashSetHost>();
+            host.set.Add(42);
+
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty setProperty = serializedObject.FindProperty(nameof(HashSetHost.set));
+            string propertyPath = setProperty.propertyPath;
+
+            SerializableSetPropertyDrawer drawer = new();
+            SerializableSetPropertyDrawer.PaginationState pagination =
+                drawer.GetOrCreatePaginationState(setProperty);
+            SerializedProperty itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            int initialCount = host.set.Count;
+            string initialContents = FormatSetContents(host.set);
+
+            drawer.TryAddNewElement(ref setProperty, propertyPath, ref itemsProperty, pagination);
+            serializedObject.Update();
+            int afterAddCount = host.set.Count;
+            string afterAddContents = FormatSetContents(host.set);
+            Assert.AreEqual(
+                initialCount + 1,
+                afterAddCount,
+                $"Set should have one more entry. Initial ({initialCount}): [{initialContents}], After add ({afterAddCount}): [{afterAddContents}]."
+            );
+
+            for (int cycle = 0; cycle < cycleCount; cycle++)
+            {
+                Undo.PerformUndo();
+                serializedObject.Update();
+                Assert.AreEqual(
+                    initialCount,
+                    host.set.Count,
+                    $"Undo in cycle {cycle + 1} of {cycleCount} should restore initial count {initialCount}. Got {host.set.Count}. Contents: [{FormatSetContents(host.set)}]."
+                );
+
+                Undo.PerformRedo();
+                serializedObject.Update();
+                Assert.AreEqual(
+                    afterAddCount,
+                    host.set.Count,
+                    $"Redo in cycle {cycle + 1} of {cycleCount} should restore count {afterAddCount}. Got {host.set.Count}. Contents: [{FormatSetContents(host.set)}]."
+                );
+            }
+        }
+
+        [Test]
+        public void UndoAddToPrePopulatedSetRestoresExactContents()
+        {
+            HashSetHost host = CreateScriptableObject<HashSetHost>();
+            host.set.Add(10);
+            host.set.Add(20);
+            host.set.Add(30);
+
+            SerializedObject serializedObject = TrackDisposable(new SerializedObject(host));
+            serializedObject.Update();
+            SerializedProperty setProperty = serializedObject.FindProperty(nameof(HashSetHost.set));
+            string propertyPath = setProperty.propertyPath;
+
+            SerializableSetPropertyDrawer drawer = new();
+            SerializableSetPropertyDrawer.PaginationState pagination =
+                drawer.GetOrCreatePaginationState(setProperty);
+            SerializedProperty itemsProperty = setProperty.FindPropertyRelative(
+                SerializableHashSetSerializedPropertyNames.Items
+            );
+
+            HashSet<int> originalElements = new(host.set);
+            string originalContents = FormatSetContents(host.set);
+
+            drawer.TryAddNewElement(ref setProperty, propertyPath, ref itemsProperty, pagination);
+            serializedObject.Update();
+            string afterAddContents = FormatSetContents(host.set);
+            Assert.AreEqual(
+                originalElements.Count + 1,
+                host.set.Count,
+                $"Set should grow by one. Original ({originalElements.Count}): [{originalContents}], After add ({host.set.Count}): [{afterAddContents}]."
+            );
+
+            Undo.PerformUndo();
+            serializedObject.Update();
+            string afterUndoContents = FormatSetContents(host.set);
+
+            Assert.AreEqual(
+                originalElements.Count,
+                host.set.Count,
+                $"Count should match original after undo. Original ({originalElements.Count}): [{originalContents}], After add: [{afterAddContents}], After undo ({host.set.Count}): [{afterUndoContents}]."
+            );
+
+            foreach (int element in originalElements)
+            {
+                Assert.IsTrue(
+                    host.set.Contains(element),
+                    $"Set should contain original element {element} after undo. Original: [{originalContents}], After undo: [{afterUndoContents}]."
                 );
             }
         }

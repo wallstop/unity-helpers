@@ -73,6 +73,12 @@ This linter is also run by the pre-push git hook. Failing to run it locally will
 - Add the file path to the `$allowedHelperFiles` array in `scripts/lint-tests.ps1`
 - Example: `"Tests/Core/TextureTestHelper.cs"`
 
+> **WARNING — Keep allowlist paths in sync**: When moving, renaming, or deleting a helper file, you MUST update `$allowedHelperFiles` in [lint-tests.ps1](../../scripts/lint-tests.ps1) in the same commit. The script validates all allowlisted paths exist on startup and will **exit with code 1** if any path is stale. After changes, run:
+>
+> ```bash
+> pwsh -NoProfile -File scripts/tests/test-lint-tests.ps1
+> ```
+
 ### Registering Custom Test Base Classes
 
 **Custom test base classes** that inherit from `CommonTestBase` need to be registered:

@@ -67,6 +67,20 @@ public override void OnGUI(Rect position, SerializedProperty property, GUIConten
 }
 ```
 
+**Anti-pattern — local GUIContent in OnGUI**:
+
+```csharp
+// WRONG - Allocates per frame
+GUIContent buttonContent = new(displayValue);
+EditorGUI.DropdownButton(fieldRect, buttonContent, FocusType.Keyboard);
+
+// WRONG - Allocates per frame in header/foldout
+GUIContent headerLabel = new GUIContent(label.text + " (detail)", label.tooltip);
+EditorGUI.Foldout(foldoutRect, property.isExpanded, headerLabel, true);
+```
+
+This applies to all GUIContent used in per-frame rendering. `GenericMenu.AddItem` allocations are acceptable since they only run on user click.
+
 ---
 
 ## Shared Caches (DRY Principle)

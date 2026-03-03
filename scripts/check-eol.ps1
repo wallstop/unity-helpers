@@ -125,3 +125,4 @@ Write-Host "EOL issues: $($eolIssues | Sort-Object -Unique | Measure-Object | Fo
 Write-Host "Files with BOM: $($bomIssues | Sort-Object -Unique | Measure-Object | ForEach-Object { $_.Count })"
 
 if ($eolIssues.Count -gt 0 -or $bomIssues.Count -gt 0) { exit 3 }
+exit 0

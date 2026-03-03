@@ -15,10 +15,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomEditors
     using WallstopStudios.UnityHelpers.Tests.Core;
     using WallstopStudios.UnityHelpers.Tests.Editor.TestTypes;
     using WallstopStudios.UnityHelpers.Tests.EditorFramework;
+    using PlatformPropertyNames = UnityHelpers.Editor.Sprites.TextureSettingsApplierWindow.PlatformOverrideEntry.SerializedPropertyNames;
 
     [TestFixture]
-    [NUnit.Framework.Category("Slow")]
-    [NUnit.Framework.Category("Integration")]
+    [Category("Slow")]
+    [Category("Integration")]
     public sealed class TexturePlatformOverrideEntryDrawerTests : CommonTestBase
     {
         private TexturePlatformOverrideEntryTestHost _testHost;
@@ -127,29 +128,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomEditors
             Assert.IsTrue(
                 heightWithAllFlags > heightWithNoFlags,
                 "Height with all flags should be greater than with no flags"
-            );
-        }
-
-        [Test]
-        public void GetPropertyHeightWithCustomPlatformNameAddsExtraLine()
-        {
-            _testHost.entry.platformName = "Standalone";
-            _serializedObject.Update();
-
-            SerializedProperty entryProperty = _serializedObject.FindProperty(
-                nameof(TexturePlatformOverrideEntryTestHost.entry)
-            );
-
-            float heightKnownPlatform = _drawer.GetPropertyHeight(entryProperty, GUIContent.none);
-
-            _testHost.entry.platformName = "MyCustomPlatform";
-            _serializedObject.Update();
-
-            float heightCustomPlatform = _drawer.GetPropertyHeight(entryProperty, GUIContent.none);
-
-            Assert.IsTrue(
-                heightCustomPlatform > heightKnownPlatform,
-                "Custom platform name should add extra line for text field"
             );
         }
 
@@ -388,25 +366,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomEditors
         }
 
         [Test]
-        [TestCase("Standalone", TestName = "Platform.Standalone")]
-        [TestCase("iPhone", TestName = "Platform.iPhone")]
-        [TestCase("Android", TestName = "Platform.Android")]
-        [TestCase("WebGL", TestName = "Platform.WebGL")]
-        public void GetPropertyHeightWithKnownPlatformNamesReturnsValidHeight(string platformName)
-        {
-            _testHost.entry.platformName = platformName;
-            _serializedObject.Update();
-
-            SerializedProperty entryProperty = _serializedObject.FindProperty(
-                nameof(TexturePlatformOverrideEntryTestHost.entry)
-            );
-
-            float height = _drawer.GetPropertyHeight(entryProperty, GUIContent.none);
-
-            Assert.IsTrue(height > 0f, $"Height should be positive for platform {platformName}");
-        }
-
-        [Test]
         public void GetPropertyHeightIncrementsCorrectlyPerApplyFlag()
         {
             _testHost.entry.applyResizeAlgorithm = false;
@@ -490,6 +449,294 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.CustomEditors
                 $"OnGUI for list of entries should not throw. Exception: {caughtException}"
             );
             Assert.IsTrue(testCompleted, "Test should complete successfully");
+        }
+
+        private static IEnumerable<TestCaseData> KnownPlatformRenderSafetyTestData()
+        {
+            yield return new TestCaseData("Standalone")
+                .Returns(null)
+                .SetName("RenderPhaseSafety.KnownPlatformStandalone");
+            yield return new TestCaseData("Android")
+                .Returns(null)
+                .SetName("RenderPhaseSafety.KnownPlatformAndroid");
+            yield return new TestCaseData("iPhone")
+                .Returns(null)
+                .SetName("RenderPhaseSafety.KnownPlatformiPhone");
+            yield return new TestCaseData("WebGL")
+                .Returns(null)
+                .SetName("RenderPhaseSafety.KnownPlatformWebGL");
+        }
+
+        [UnityTest]
+        [TestCaseSource(nameof(KnownPlatformRenderSafetyTestData))]
+        public IEnumerator OnGUIDoesNotModifyKnownPlatformName(string platformName)
+        {
+            _testHost.entry.platformName = platformName;
+            _serializedObject.Update();
+
+            SerializedProperty entryProperty = _serializedObject.FindProperty(
+                nameof(TexturePlatformOverrideEntryTestHost.entry)
+            );
+
+            float height = _drawer.GetPropertyHeight(entryProperty, GUIContent.none);
+            Rect position = new(0, 0, 400, height);
+
+            yield return TestIMGUIExecutor.Run(() =>
+            {
+                _drawer.OnGUI(position, entryProperty, GUIContent.none);
+            });
+
+            _serializedObject.ApplyModifiedProperties();
+            Assert.That(
+                _testHost.entry.platformName,
+                Is.EqualTo(platformName),
+                $"OnGUI should not modify known platform name '{platformName}' during render"
+            );
+        }
+
+        [UnityTest]
+        public IEnumerator OnGUIDoesNotModifyCustomPlatformName()
+        {
+            string customName = "MyCustomPlatform";
+            _testHost.entry.platformName = customName;
+            _serializedObject.Update();
+
+            SerializedProperty entryProperty = _serializedObject.FindProperty(
+                nameof(TexturePlatformOverrideEntryTestHost.entry)
+            );
+
+            float height = _drawer.GetPropertyHeight(entryProperty, GUIContent.none);
+            Rect position = new(0, 0, 400, height);
+
+            yield return TestIMGUIExecutor.Run(() =>
+            {
+                _drawer.OnGUI(position, entryProperty, GUIContent.none);
+            });
+
+            _serializedObject.ApplyModifiedProperties();
+            Assert.That(
+                _testHost.entry.platformName,
+                Is.EqualTo(customName),
+                "OnGUI should not modify custom platform name during render"
+            );
+        }
+
+        [UnityTest]
+        public IEnumerator OnGUIDoesNotModifyEmptyPlatformName()
+        {
+            _testHost.entry.platformName = string.Empty;
+            _serializedObject.Update();
+
+            SerializedProperty entryProperty = _serializedObject.FindProperty(
+                nameof(TexturePlatformOverrideEntryTestHost.entry)
+            );
+
+            float height = _drawer.GetPropertyHeight(entryProperty, GUIContent.none);
+            Rect position = new(0, 0, 400, height);
+
+            yield return TestIMGUIExecutor.Run(() =>
+            {
+                _drawer.OnGUI(position, entryProperty, GUIContent.none);
+            });
+
+            _serializedObject.ApplyModifiedProperties();
+            Assert.That(
+                _testHost.entry.platformName,
+                Is.EqualTo(string.Empty),
+                "OnGUI should not modify empty platform name during render"
+            );
+        }
+
+        [UnityTest]
+        public IEnumerator OnGUIDoesNotModifyApplyFlagsDuringRender()
+        {
+            _testHost.entry.applyResizeAlgorithm = true;
+            _testHost.entry.applyMaxTextureSize = false;
+            _testHost.entry.applyFormat = true;
+            _testHost.entry.applyCompression = false;
+            _testHost.entry.applyCrunchCompression = true;
+            _serializedObject.Update();
+
+            SerializedProperty entryProperty = _serializedObject.FindProperty(
+                nameof(TexturePlatformOverrideEntryTestHost.entry)
+            );
+
+            float height = _drawer.GetPropertyHeight(entryProperty, GUIContent.none);
+            Rect position = new(0, 0, 400, height);
+
+            yield return TestIMGUIExecutor.Run(() =>
+            {
+                for (int i = 0; i < 5; i++)
+                {
+                    _drawer.OnGUI(position, entryProperty, GUIContent.none);
+                }
+            });
+
+            _serializedObject.ApplyModifiedProperties();
+            Assert.That(
+                _testHost.entry.applyResizeAlgorithm,
+                Is.True,
+                "OnGUI should not modify applyResizeAlgorithm during render"
+            );
+            Assert.That(
+                _testHost.entry.applyMaxTextureSize,
+                Is.False,
+                "OnGUI should not modify applyMaxTextureSize during render"
+            );
+            Assert.That(
+                _testHost.entry.applyFormat,
+                Is.True,
+                "OnGUI should not modify applyFormat during render"
+            );
+            Assert.That(
+                _testHost.entry.applyCompression,
+                Is.False,
+                "OnGUI should not modify applyCompression during render"
+            );
+            Assert.That(
+                _testHost.entry.applyCrunchCompression,
+                Is.True,
+                "OnGUI should not modify applyCrunchCompression during render"
+            );
+        }
+
+        [Test]
+        public void GetPropertyHeightWithNullPlatformNameTreatsAsCustomModeDueToSerialization()
+        {
+            _testHost.entry.platformName = string.Empty;
+            _serializedObject.Update();
+
+            SerializedProperty entryProperty = _serializedObject.FindProperty(
+                nameof(TexturePlatformOverrideEntryTestHost.entry)
+            );
+
+            float emptyStringHeight = _drawer.GetPropertyHeight(entryProperty, GUIContent.none);
+
+            _testHost.entry.platformName = null;
+            _serializedObject.Update();
+
+            SerializedProperty nameProp = entryProperty.FindPropertyRelative(
+                PlatformPropertyNames.PlatformName
+            );
+            TestContext.WriteLine(
+                $"Null platformName serialized stringValue: \"{nameProp.stringValue}\""
+            );
+
+            float nullPlatformHeight = _drawer.GetPropertyHeight(entryProperty, GUIContent.none);
+
+            Assert.That(
+                nullPlatformHeight,
+                Is.EqualTo(emptyStringHeight).Within(0.001f),
+                "Null platform name should be treated as empty string by Unity serialization, "
+                    + "triggering custom mode (same as explicit empty string)"
+            );
+        }
+
+        private static IEnumerable<TestCaseData> PlatformNameHeightModeTestData()
+        {
+            yield return new TestCaseData("Standalone", false).SetName(
+                "HeightMode.KnownPlatform.Standalone"
+            );
+            yield return new TestCaseData("iPhone", false).SetName(
+                "HeightMode.KnownPlatform.iPhone"
+            );
+            yield return new TestCaseData("Android", false).SetName(
+                "HeightMode.KnownPlatform.Android"
+            );
+            yield return new TestCaseData("WebGL", false).SetName("HeightMode.KnownPlatform.WebGL");
+
+            yield return new TestCaseData(string.Empty, true).SetName(
+                "HeightMode.EmptyString.TriggersCustomMode"
+            );
+
+            yield return new TestCaseData(null, true).SetName(
+                "HeightMode.Null.TriggersCustomModeDueToSerialization"
+            );
+
+            yield return new TestCaseData("MyCustomPlatform", true).SetName(
+                "HeightMode.UnknownPlatform.TriggersCustomMode"
+            );
+            yield return new TestCaseData("FuturePlatform2099", true).SetName(
+                "HeightMode.UnknownPlatform.FuturePlatformTriggersCustomMode"
+            );
+        }
+
+        [Test]
+        [TestCaseSource(nameof(PlatformNameHeightModeTestData))]
+        public void GetPropertyHeightCustomModeMatchesPlatformNameType(
+            string platformName,
+            bool expectCustomMode
+        )
+        {
+            _testHost.entry.platformName = "Standalone";
+            _serializedObject.Update();
+
+            SerializedProperty entryProperty = _serializedObject.FindProperty(
+                nameof(TexturePlatformOverrideEntryTestHost.entry)
+            );
+
+            float knownPlatformHeight = _drawer.GetPropertyHeight(entryProperty, GUIContent.none);
+
+            _testHost.entry.platformName = platformName;
+            _serializedObject.Update();
+
+            SerializedProperty nameProp = entryProperty.FindPropertyRelative(
+                PlatformPropertyNames.PlatformName
+            );
+            TestContext.WriteLine(
+                $"Input platformName: {(platformName == null ? "(null)" : $"\"{platformName}\"")}, "
+                    + $"Serialized stringValue: \"{nameProp.stringValue}\""
+            );
+
+            float testHeight = _drawer.GetPropertyHeight(entryProperty, GUIContent.none);
+
+            if (expectCustomMode)
+            {
+                Assert.That(
+                    testHeight,
+                    Is.GreaterThan(knownPlatformHeight),
+                    $"Platform name {(platformName == null ? "(null)" : $"\"{platformName}\"")} "
+                        + "should trigger custom mode (extra line for custom name text field)"
+                );
+            }
+            else
+            {
+                Assert.That(
+                    testHeight,
+                    Is.EqualTo(knownPlatformHeight).Within(0.001f),
+                    $"Known platform \"{platformName}\" should NOT trigger custom mode"
+                );
+            }
+        }
+
+        [UnityTest]
+        public IEnumerator RepeatedOnGUICallsDoNotDirtySerializedObject()
+        {
+            _testHost.entry.platformName = "Standalone";
+            _testHost.entry.applyResizeAlgorithm = true;
+            _testHost.entry.applyMaxTextureSize = false;
+            _serializedObject.Update();
+
+            SerializedProperty entryProperty = _serializedObject.FindProperty(
+                nameof(TexturePlatformOverrideEntryTestHost.entry)
+            );
+
+            float height = _drawer.GetPropertyHeight(entryProperty, GUIContent.none);
+            Rect position = new(0, 0, 400, height);
+
+            yield return TestIMGUIExecutor.Run(() =>
+            {
+                for (int i = 0; i < 10; i++)
+                {
+                    _drawer.OnGUI(position, entryProperty, GUIContent.none);
+                }
+            });
+
+            Assert.That(
+                _serializedObject.hasModifiedProperties,
+                Is.False,
+                "Repeated OnGUI calls without user interaction should not dirty the SerializedObject"
+            );
         }
     }
 #endif

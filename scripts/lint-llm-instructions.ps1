@@ -182,7 +182,16 @@ if ($normalizedExpected -ne $normalizedCurrent) {
         Write-Host "Regenerating skills index..." -ForegroundColor Yellow
         
         # Build the new content - expectedIndex already contains BEGIN/END markers
-        $expectedFull = $expectedIndex -join "`n"
+        # Filter to only lines between BEGIN and END markers (inclusive) to exclude
+        # any summary/diagnostic output from the generator script
+        $inBlock = $false
+        $filteredLines = @()
+        foreach ($line in $expectedIndex) {
+            if ($line -match [regex]::Escape($beginMarker)) { $inBlock = $true }
+            if ($inBlock) { $filteredLines += $line }
+            if ($line -match [regex]::Escape($endMarker)) { $inBlock = $false; break }
+        }
+        $expectedFull = $filteredLines -join "`n"
         # Replace the entire block including markers with the new generated content
         $newContent = $contextContent -replace $pattern, $expectedFull
 
@@ -199,6 +208,17 @@ if ($normalizedExpected -ne $normalizedCurrent) {
         }
         finally {
             Pop-Location
+        }
+
+        # Post-fix validation: ensure no multiple H1 headings (MD025)
+        $fixedContent = Get-Content -Path $contextFile
+        $h1Lines = @($fixedContent | Where-Object { $_ -match '^# ' })
+        if ($h1Lines.Count -gt 1) {
+            Write-ErrorMsg "Fix produced multiple H1 headings (MD025 violation):"
+            $h1Lines | ForEach-Object { Write-Host "  $_" -ForegroundColor Red }
+            Write-ErrorMsg "Rolling back changes..."
+            Set-Content -Path $contextFile -Value $contextContent -NoNewline -Encoding UTF8
+            exit 1
         }
     }
     else {

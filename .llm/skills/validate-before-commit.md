@@ -86,6 +86,8 @@ dotnet tool run csharpier format .
 npm run lint:csharp-naming
 ```
 
+Also verify license headers on new or modified files — see [license-headers](./license-headers.md).
+
 ### Documentation Changes
 
 ```bash
@@ -142,6 +144,20 @@ npm run lint:markdown
 | >500    | **MUST split before commit** — hook will reject the file |
 
 **Why this matters**: Splitting large skill files requires human judgment (deciding topic boundaries, updating cross-references). Catching size issues early prevents blocking commits when you've completed all other work.
+
+### LLM Instructions Changes ([LLM context](../context.md), skills index)
+
+```bash
+# 🚨 MANDATORY: After ANY change to .llm/context.md or skills index generation:
+pwsh -NoProfile -File scripts/lint-llm-instructions.ps1
+
+# Auto-fix mode (rolls back MD025 violations from generated content):
+pwsh -NoProfile -File scripts/lint-llm-instructions.ps1 -Fix
+```
+
+**CRITICAL**: The skills index must NEVER introduce H1 or H2 headings into the [LLM context file](../context.md). Generated skill entries must use H3 or lower. The LLM instructions lint script validates this and the `-Fix` flag can auto-correct violations.
+
+**Tests**: Run `pwsh -NoProfile -File scripts/tests/test-llm-instructions-lint.ps1` to verify the lint script itself (test cases covering generator output validation, lint correctness, H1/H2 detection, and pattern matching).
 
 ---
 
@@ -263,3 +279,4 @@ $cmdArgs = @('--yes', 'prettier', '--write', '--') + $filePaths
 - [test-data-driven](./test-data-driven.md) — Data-driven testing patterns
 - [test-naming-conventions](./test-naming-conventions.md) — Naming rules and legacy test migration
 - [manage-skills](./manage-skills.md) — Skill file maintenance and index regeneration
+- [license-headers](./license-headers.md) — License header requirements and year validation

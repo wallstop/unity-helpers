@@ -34,18 +34,19 @@ npm run validate:prepush
 
 ### Individual Commands
 
-| Command                      | Description                                 |
-| ---------------------------- | ------------------------------------------- |
-| `npm run lint:spelling`      | Spell check all documentation (CSpell)      |
-| `npm run lint:docs`          | Check markdown links and backtick refs      |
-| `npm run lint:markdown`      | Markdownlint structural rules               |
-| `npm run lint:yaml`          | YAML syntax validation                      |
-| `npm run lint:csharp-naming` | C# naming conventions (method casing, etc.) |
-| `npm run format:md:check`    | Check markdown formatting (Prettier)        |
-| `npm run format:json:check`  | Check JSON/ASMDEF formatting (Prettier)     |
-| `npm run format:yaml:check`  | Check YAML formatting (Prettier)            |
-| `npm run eol:check`          | Line endings (CRLF) and BOM check           |
-| `npm run validate:tests`     | Test lifecycle lint (Track() usage)         |
+| Command                                         | Description                                 |
+| ----------------------------------------------- | ------------------------------------------- |
+| `npm run lint:spelling`                         | Spell check all documentation (CSpell)      |
+| `npm run lint:docs`                             | Check markdown links and backtick refs      |
+| `npm run lint:markdown`                         | Markdownlint structural rules               |
+| `npm run lint:yaml`                             | YAML syntax validation                      |
+| `npm run lint:csharp-naming`                    | C# naming conventions (method casing, etc.) |
+| `npm run format:md:check`                       | Check markdown formatting (Prettier)        |
+| `npm run format:json:check`                     | Check JSON/ASMDEF formatting (Prettier)     |
+| `npm run format:yaml:check`                     | Check YAML formatting (Prettier)            |
+| `npm run eol:check`                             | Line endings (CRLF) and BOM check           |
+| `npm run validate:tests`                        | Test lifecycle lint (Track() usage)         |
+| `bash scripts/audit-license-years.sh --summary` | License year header audit                   |
 
 ---
 
@@ -63,13 +64,16 @@ Located at `cspell.json` in the project root.
 
 ### Adding Words to Dictionary
 
-Add technical terms, package names, or domain-specific words to `cspell.json`:
+Add words to the appropriate categorized dictionary in `cspell.json`, not the root `words` array:
 
-```json
-{
-  "words": ["PRNG", "Odin", "Sirenix", "MonoBehaviour", "stackalloc"]
-}
-```
+| Dictionary      | Purpose                                  | Examples                                |
+| --------------- | ---------------------------------------- | --------------------------------------- |
+| `unity-terms`   | Unity Engine APIs, components, lifecycle | MonoBehaviour, GetComponent, OnValidate |
+| `csharp-terms`  | C# language features, .NET types         | readonly, nullable, IVT, StringBuilder  |
+| `package-terms` | This package's public API and type names | WallstopStudios, IRandom, SpatialHash   |
+| `tech-terms`    | General programming/tooling terms        | async, config, JSON, IL2CPP             |
+
+When adding technical abbreviations (e.g., IVT for InternalsVisibleTo), place them in the matching category (`csharp-terms` for C# concepts, `tech-terms` for general tooling). Only use the root `words` array for project-specific words that don't fit any category.
 
 ### Inline Ignores
 
@@ -293,6 +297,13 @@ pwsh -NoProfile -File scripts/lint-tests.ps1
 
 ### What It Checks
 
+1. **Allowlist path validation** (on startup): All paths in `$allowedHelperFiles` must exist on disk. Fails immediately with exit code 1 if any path is stale (file moved/renamed/deleted).
+2. **UNH001**: Direct `Destroy`/`DestroyImmediate` calls without `Track()`
+3. **UNH002**: Untracked Unity object allocation (`new GameObject(...)` etc.)
+4. **UNH003**: Test classes missing `CommonTestBase` inheritance
+5. **UNH004**: Underscores in test names
+6. **UNH005**: `Assert.IsNull`/`Assert.IsNotNull` (should use `Assert.IsTrue` for Unity null checks)
+
 All Unity object creation in tests must use `Track()`:
 
 ```csharp
@@ -303,6 +314,14 @@ MyComponent comp = Track(obj.AddComponent<MyComponent>());
 // ❌ WRONG: Untracked objects may leak
 GameObject obj = new GameObject("Test");
 ```
+
+### Tests
+
+```bash
+pwsh -NoProfile -File scripts/tests/test-lint-tests.ps1
+```
+
+Tests cover allowlist path existence, UNH error detection, clean file acceptance, and helper file allowlisting.
 
 ---
 
@@ -324,6 +343,57 @@ npm run eol:check
 ```bash
 npm run eol:fix
 ```
+
+---
+
+## Meta File Linter
+
+### Command
+
+```bash
+pwsh -NoProfile -File scripts/lint-meta-files.ps1
+pwsh -NoProfile -File scripts/lint-meta-files.ps1 -VerboseOutput  # detailed output
+```
+
+### What It Checks
+
+Every file and directory under scanned source roots (`Runtime`, `Editor`, `Tests`, `Samples~`, `Shaders`, `Styles`, `URP`, `docs`, `scripts`) has a corresponding `.meta` file, and every `.meta` file has a corresponding source file/directory.
+
+### Exclusion Configuration
+
+The script excludes certain paths from requiring `.meta` files. Exclusions are defined in three arrays at the top of [lint-meta-files.ps1](../../scripts/lint-meta-files.ps1):
+
+| Array                  | Purpose                                          | Examples                                                      |
+| ---------------------- | ------------------------------------------------ | ------------------------------------------------------------- |
+| `$excludeDirs`         | Directories excluded entirely (and all contents) | `node_modules`, `.pytest_cache`, `__pycache__`, `.mypy_cache` |
+| `$excludeFilePatterns` | File name/glob patterns excluded                 | `.gitkeep`, `.DS_Store`, `Thumbs.db`, `*.pyc`, `*.swp`        |
+| `$excludeDirPatterns`  | Directory name patterns excluded                 | `Samples~`                                                    |
+
+### Adding New Exclusions
+
+When introducing new tooling that creates cache or artifact directories inside source roots:
+
+1. Add the directory name to `$excludeDirs` (for directories) or file pattern to `$excludeFilePatterns` (for files)
+2. Add test cases to [test-lint-meta-exclusions.sh](../../scripts/tests/test-lint-meta-exclusions.sh)
+3. Run the tests: `bash scripts/tests/test-lint-meta-exclusions.sh`
+
+### Test-ShouldExclude Function
+
+The `Test-ShouldExclude` function checks whether a path should be excluded. For `$excludeDirs` entries, it matches:
+
+- The directory itself: `$relativePath -eq $dir` or `$relativePath -like "*/$dir"`
+- Contents at root level: `$relativePath -like "$dir/*"`
+- Nested contents: `$relativePath -like "*/$dir/*"`
+
+Patterns must match **both** the excluded directory itself **and** its contents. If only contents are matched (e.g., `$dir/*` without `$dir`), orphaned `.meta` files for the directory itself won't be detected correctly.
+
+### Tests
+
+```bash
+bash scripts/tests/test-lint-meta-exclusions.sh
+```
+
+Tests cover all exclusion categories: tooling cache dirs, OS metadata, git placeholders, compiled bytecode, and editor temp files.
 
 ---
 
@@ -370,3 +440,4 @@ Runs these in sequence:
 - [validation-troubleshooting](./validation-troubleshooting.md) — Common errors and fixes
 - [formatting](./formatting.md) — CSharpier, Prettier, markdownlint workflow
 - [markdown-reference](./markdown-reference.md) — Link formatting, structural rules
+- [license-headers](./license-headers.md) — License header year rules and auto-fix

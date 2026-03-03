@@ -15,6 +15,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomEditors
         private static string[] _cachedChoices;
         private static string[] _lastKnownRef;
         private const string CustomOptionLabel = "Custom";
+        private const string MixedValueIndicator = "\u2014";
 
         private static string[] GetChoices()
         {
@@ -39,12 +40,15 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomEditors
         {
             // Layout: 1 line for platform + potential custom name, then each checkbox possibly adds a line
             float h = EditorGUIUtility.singleLineHeight + EditorGUIUtility.standardVerticalSpacing;
-            // custom name line
-            string name = property
-                .FindPropertyRelative(PlatformPropertyNames.PlatformName)
-                .stringValue;
+            // custom name line (only shown when not mixed and platform resolves to Custom)
+            SerializedProperty nameProp = property.FindPropertyRelative(
+                PlatformPropertyNames.PlatformName
+            );
             string[] choices = GetChoices();
-            if (GetSelectedIndex(name, choices) == choices.Length - 1) // Custom
+            if (
+                !nameProp.hasMultipleDifferentValues
+                && GetSelectedIndex(nameProp.stringValue, choices) == choices.Length - 1
+            )
             {
                 h += EditorGUIUtility.singleLineHeight + EditorGUIUtility.standardVerticalSpacing;
             }
@@ -81,17 +85,79 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomEditors
                 PlatformPropertyNames.PlatformName
             );
             string[] choices = GetChoices();
+            bool isMixed = nameProp.hasMultipleDifferentValues;
             int idx = GetSelectedIndex(nameProp.stringValue, choices);
-            idx = EditorGUI.Popup(r, "Platform", idx, choices);
-            string selected = choices[idx];
-            if (selected == CustomOptionLabel)
+            string currentDisplay =
+                isMixed ? MixedValueIndicator
+                : idx >= 0 && idx < choices.Length ? choices[idx]
+                : string.Empty;
+
+            bool previousMixed = EditorGUI.showMixedValue;
+            EditorGUI.showMixedValue = isMixed;
+
+            Rect labelRect = new(r.x, r.y, EditorGUIUtility.labelWidth, r.height);
+            Rect fieldRect = new(
+                r.x + EditorGUIUtility.labelWidth + 2f,
+                r.y,
+                r.width - EditorGUIUtility.labelWidth - 2f,
+                r.height
+            );
+            EditorGUI.LabelField(labelRect, "Platform");
+            if (GUI.Button(fieldRect, currentDisplay, EditorStyles.popup))
+            {
+                SerializedObject serializedObject = property.serializedObject;
+                string propertyPath = nameProp.propertyPath;
+                int currentIndex = idx;
+                bool wasMixed = isMixed;
+
+                GenericMenu menu = new();
+                for (int i = 0; i < choices.Length; i++)
+                {
+                    int capturedIndex = i;
+                    bool isSelected = !wasMixed && i == currentIndex;
+                    menu.AddItem(
+                        new GUIContent(choices[i]),
+                        isSelected,
+                        () =>
+                        {
+                            Undo.RecordObjects(
+                                serializedObject.targetObjects,
+                                "Change Platform Override"
+                            );
+                            serializedObject.Update();
+                            SerializedProperty prop = serializedObject.FindProperty(propertyPath);
+                            if (prop == null)
+                            {
+                                return;
+                            }
+
+                            string value = choices[capturedIndex];
+                            if (value == CustomOptionLabel)
+                            {
+                                prop.stringValue = string.Empty;
+                            }
+                            else
+                            {
+                                prop.stringValue = value;
+                            }
+                            serializedObject.ApplyModifiedProperties();
+                        }
+                    );
+                }
+                menu.DropDown(fieldRect);
+            }
+
+            EditorGUI.showMixedValue = previousMixed;
+
+            if (!isMixed && idx == choices.Length - 1)
             {
                 r.y += r.height + EditorGUIUtility.standardVerticalSpacing;
-                nameProp.stringValue = EditorGUI.TextField(r, "Custom Name", nameProp.stringValue);
-            }
-            else
-            {
-                nameProp.stringValue = selected;
+                EditorGUI.BeginChangeCheck();
+                string newCustomName = EditorGUI.TextField(r, "Custom Name", nameProp.stringValue);
+                if (EditorGUI.EndChangeCheck())
+                {
+                    nameProp.stringValue = newCustomName;
+                }
             }
 
             DrawToggleWithValue(
@@ -145,7 +211,15 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomEditors
             SerializedProperty val = property.FindPropertyRelative(valueName);
 
             r.y += r.height + EditorGUIUtility.standardVerticalSpacing;
-            apply.boolValue = EditorGUI.ToggleLeft(r, label, apply.boolValue);
+            bool previousMixed = EditorGUI.showMixedValue;
+            EditorGUI.showMixedValue = apply.hasMultipleDifferentValues;
+            EditorGUI.BeginChangeCheck();
+            bool newApplyValue = EditorGUI.ToggleLeft(r, label, apply.boolValue);
+            if (EditorGUI.EndChangeCheck())
+            {
+                apply.boolValue = newApplyValue;
+            }
+            EditorGUI.showMixedValue = previousMixed;
             if (apply.boolValue)
             {
                 r.y += r.height + EditorGUIUtility.standardVerticalSpacing;
@@ -157,9 +231,16 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomEditors
 
         private static int GetSelectedIndex(string name, string[] choices)
         {
-            if (string.IsNullOrEmpty(name))
+            if (name == null)
             {
-                return 0; // Default by convention
+                // Note: Unreachable through SerializedProperty.stringValue (which converts
+                // null to ""), but kept as defensive code in case the method is made internal.
+                return 0;
+            }
+
+            if (name.Length == 0)
+            {
+                return choices.Length - 1; // Empty string means Custom (user explicitly selected Custom)
             }
 
             for (int i = 0; i < choices.Length - 1; i++)
@@ -169,7 +250,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomEditors
                     return i;
                 }
             }
-            return choices.Length - 1; // Custom
+            return choices.Length - 1; // Unknown platform treated as Custom
         }
     }
 #endif

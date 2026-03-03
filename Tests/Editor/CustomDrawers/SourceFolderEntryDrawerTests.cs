@@ -686,6 +686,87 @@ namespace WallstopStudios.UnityHelpers.Tests.CustomDrawers
             );
         }
 
+        [UnityTest]
+        public IEnumerator OnGUIDoesNotModifySelectionModeDuringRender()
+        {
+            SerializedProperty entryProp = _sourceFolderEntriesProperty.GetArrayElementAtIndex(0);
+            entryProp.isExpanded = true;
+            _serializedConfig.ApplyModifiedProperties();
+
+            SpriteSelectionMode originalMode = _testConfig.sourceFolderEntries[0].selectionMode;
+
+            float height = _drawer.GetPropertyHeight(entryProp, GUIContent.none);
+            Rect position = new(0, 0, 400, height);
+
+            yield return TestIMGUIExecutor.Run(() =>
+            {
+                for (int i = 0; i < 5; i++)
+                {
+                    _drawer.OnGUI(position, entryProp, GUIContent.none);
+                }
+            });
+
+            _serializedConfig.ApplyModifiedProperties();
+            Assert.That(
+                _testConfig.sourceFolderEntries[0].selectionMode,
+                Is.EqualTo(originalMode),
+                "OnGUI should not modify selectionMode during render without user interaction"
+            );
+        }
+
+        [UnityTest]
+        public IEnumerator OnGUIDoesNotModifyFolderPathDuringRender()
+        {
+            SerializedProperty entryProp = _sourceFolderEntriesProperty.GetArrayElementAtIndex(0);
+            entryProp.isExpanded = true;
+            _serializedConfig.ApplyModifiedProperties();
+
+            string originalPath = _testConfig.sourceFolderEntries[0].folderPath;
+
+            float height = _drawer.GetPropertyHeight(entryProp, GUIContent.none);
+            Rect position = new(0, 0, 400, height);
+
+            yield return TestIMGUIExecutor.Run(() =>
+            {
+                for (int i = 0; i < 5; i++)
+                {
+                    _drawer.OnGUI(position, entryProp, GUIContent.none);
+                }
+            });
+
+            _serializedConfig.ApplyModifiedProperties();
+            Assert.That(
+                _testConfig.sourceFolderEntries[0].folderPath,
+                Is.EqualTo(originalPath),
+                "OnGUI should not modify folderPath during render without user interaction"
+            );
+        }
+
+        [UnityTest]
+        public IEnumerator RepeatedOnGUICallsDoNotDirtySerializedObject()
+        {
+            SerializedProperty entryProp = _sourceFolderEntriesProperty.GetArrayElementAtIndex(0);
+            entryProp.isExpanded = true;
+            _serializedConfig.ApplyModifiedProperties();
+
+            float height = _drawer.GetPropertyHeight(entryProp, GUIContent.none);
+            Rect position = new(0, 0, 400, height);
+
+            yield return TestIMGUIExecutor.Run(() =>
+            {
+                for (int i = 0; i < 10; i++)
+                {
+                    _drawer.OnGUI(position, entryProp, GUIContent.none);
+                }
+            });
+
+            Assert.That(
+                _serializedConfig.hasModifiedProperties,
+                Is.False,
+                "Repeated OnGUI calls without user interaction should not dirty the SerializedObject"
+            );
+        }
+
         private static void SetRegexesFoldoutState(string key, bool value)
         {
             SourceFolderEntryDrawer.RegexesFoldoutState[key] = value;

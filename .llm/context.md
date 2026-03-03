@@ -83,7 +83,7 @@ Invoke these skills for specific tasks.
 **Regenerate with**: `pwsh -NoProfile -File scripts/generate-skills-index.ps1`
 
 <!-- BEGIN GENERATED SKILLS INDEX -->
-<!-- Generated: 2026-02-25 22:17:59 UTC -->
+<!-- Generated: 2026-03-03 04:02:34 UTC -->
 <!-- Command: pwsh -NoProfile -File scripts/generate-skills-index.ps1 -->
 
 ### Core Skills (Always Consider)
@@ -102,7 +102,10 @@ Invoke these skills for specific tasks.
 | [defensive-editor-programming](./skills/defensive-editor-programming.md)                     | Editor code - handle Unity Editor edge cases                     |
 | [defensive-programming](./skills/defensive-programming.md)                                   | ALL code - never throw, handle gracefully                        |
 | [documentation-consistency](./skills/documentation-consistency.md)                           | When writing or reviewing documentation                          |
+| [editor-api-rules](./skills/editor-api-rules.md)                                             | Forbidden Editor APIs and value handling rules                   |
 | [editor-caching-patterns](./skills/editor-caching-patterns.md)                               | Caching strategies for Editor code                               |
+| [editor-multi-object-editing](./skills/editor-multi-object-editing.md)                       | Multi-object editing patterns and undo support for editor code   |
+| [editor-singleton-patterns](./skills/editor-singleton-patterns.md)                           | Singleton asset management patterns for Editor code              |
 | [formatting](./skills/formatting.md)                                                         | After ANY file change (CSharpier/Prettier)                       |
 | [formatting-and-linting](./skills/formatting-and-linting.md)                                 | Before committing, after editing files                           |
 | [git-hook-patterns](./skills/git-hook-patterns.md)                                           | Pre-commit hook safety and configuration                         |
@@ -113,11 +116,15 @@ Invoke these skills for specific tasks.
 | [github-actions-shell-workflow-patterns](./skills/github-actions-shell-workflow-patterns.md) | Workflow integration patterns for GitHub Actions shell steps     |
 | [high-performance-csharp](./skills/high-performance-csharp.md)                               | ALL code - zero allocation patterns                              |
 | [investigate-test-failures](./skills/investigate-test-failures.md)                           | ANY test failure - investigate before fixing                     |
+| [license-headers](./skills/license-headers.md)                                               | Maintaining MIT license headers in C# files                      |
 | [linter-reference](./skills/linter-reference.md)                                             | Detailed linter commands, configurations                         |
 | [manage-skills](./skills/manage-skills.md)                                                   | Creating, updating, splitting, consolidating, or removing skills |
 | [markdown-reference](./skills/markdown-reference.md)                                         | Link formatting, escaping, linting rules                         |
 | [no-regions](./skills/no-regions.md)                                                         | ALL C# code - never use #region/#endregion                       |
+| [odin-undo-safety](./skills/odin-undo-safety.md)                                             | Safe undo recording patterns for Odin Inspector drawers          |
 | [prefer-logging-extensions](./skills/prefer-logging-extensions.md)                           | Unity logging in UnityEngine.Object classes                      |
+| [property-drawer-examples](./skills/property-drawer-examples.md)                             | Property drawer code examples                                    |
+| [property-drawer-rules](./skills/property-drawer-rules.md)                                   | PropertyDrawer critical rules and requirements                   |
 | [search-codebase](./skills/search-codebase.md)                                               | Finding code, files, or patterns                                 |
 | [test-data-driven](./skills/test-data-driven.md)                                             | Data-driven testing with TestCase and TestCaseSource             |
 | [test-naming-conventions](./skills/test-naming-conventions.md)                               | Test method and TestName naming rules                            |
@@ -177,7 +184,7 @@ Invoke these skills for specific tasks.
 
 <!-- END GENERATED SKILLS INDEX -->
 
-<!-- [skills-index] Generated skills index -->
+## Documentation Requirements
 
 **Documentation is NOT optional.** Every customer-visible change MUST include documentation updates. Incomplete documentation = incomplete work.
 
@@ -235,6 +242,7 @@ npm run lint:markdown                # Markdownlint rules
 npm run lint:yaml                    # YAML style
 pwsh -NoProfile -File scripts/lint-tests.ps1   # Lint test lifecycle
 pwsh -NoProfile -File scripts/lint-skill-sizes.ps1  # Skill file sizes
+pwsh -NoProfile -File scripts/lint-gitignore-docs.ps1  # Validate gitignore safety for docs
 ```
 
 LLM instructions lint workflow runs `npm run lint:llm` on Node 22. It enables npm cache only when `package-lock.json` is present; otherwise it installs with `npm i --no-audit --no-fund` to avoid lockfile errors.
@@ -309,6 +317,8 @@ See [formatting](./skills/formatting.md) and [validate-before-commit](./skills/v
 
 ### Additional Technical Rules
 
+- When editing `.gitignore`, always validate that wildcard patterns don't accidentally exclude files in `docs/`, `.llm/`, or other important directories. Use `git check-ignore -v <path>` to verify. Run `pwsh -NoProfile -File scripts/lint-gitignore-docs.ps1` after changes.
+- When adding technical abbreviations to code or documentation, add them to `cspell.json` in the appropriate dictionary category (see [cspell Dictionary Quick Reference](#cspell-dictionary-quick-reference))
 - Verify GitHub Actions config files exist AND are on default branch
 - Never use `((var++))` in bash with `set -e`; use `var=$((var + 1))`
 - Line endings must be synchronized across `.gitattributes`, `.prettierrc.json`, `.yamllint.yaml`, `.editorconfig`
@@ -389,6 +399,34 @@ All production code must follow [defensive-programming](./skills/defensive-progr
 - Never throw from public APIs; return `default`, empty, or `false`
 - Use `TryXxx` patterns; bounds-check all indexing
 - Handle all inputs gracefully (null, empty, invalid)
+
+---
+
+## Unity Undo System Pattern
+
+When modifying Unity objects for undo support, there are two valid approaches:
+
+### Approach A: SerializedProperty API (Preferred)
+
+1. `Undo.RecordObjects(targets, "description")`
+2. Modify through `SerializedProperty` API (e.g., `ClearArray()`, `MoveArrayElement()`, `DeleteArrayElementAtIndex()`)
+3. `serializedObject.ApplyModifiedProperties()` -- this writes changes AND integrates with undo
+
+### Approach B: Direct Object Mutation
+
+1. `Undo.RecordObjects(targets, "description")` -- captures "before" snapshot
+2. Modify the underlying C# objects directly
+3. `inspector.SynchronizeSerializedState()` -- syncs internal state to serialized fields
+4. **`Undo.FlushUndoRecordObjects()`** -- CRITICAL: finalizes the undo record by computing the diff
+5. `serializedObject.Update()` -- refreshes the SerializedObject
+
+**Common bug**: Forgetting `Undo.FlushUndoRecordObjects()` in Approach B causes undo to silently fail. The undo record is never finalized, so `Undo.PerformUndo()` has nothing to revert. This is especially hard to catch because:
+
+- It works in normal Editor usage (end-of-frame processing handles the flush)
+- It fails in tests (no frame loop)
+- It fails when multiple operations happen in sequence (each `RecordObjects` may overwrite the previous unflushed snapshot)
+
+See [defensive-editor-programming](./skills/defensive-editor-programming.md) for detailed editor code patterns.
 
 ---
 

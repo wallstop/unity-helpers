@@ -433,3 +433,5 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Tools
 - [defensive-programming](./defensive-programming.md) — General defensive coding practices
 - [create-test](./create-test.md) — Test creation guidelines
 - [test-odin-drawers](./test-odin-drawers.md) — Odin Inspector drawer testing
+- [editor-api-rules](./editor-api-rules.md) — Forbidden Editor APIs and value handling rules
+- [editor-singleton-patterns](./editor-singleton-patterns.md) — Singleton asset management patterns for Editor code

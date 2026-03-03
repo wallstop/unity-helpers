@@ -122,6 +122,7 @@ The test itself is flawed—either in its assertions, setup, or design.
 2. Write the minimal fix that corrects the behavior
 3. Verify the fix addresses the root cause, not just symptoms
 4. Consider if additional tests are needed for related edge cases
+5. **Update CHANGELOG** — Production bug fixes are user-facing changes and MUST have a CHANGELOG entry under `### Fixed`
 
 #### For Test Bugs
 
@@ -150,12 +151,14 @@ The test itself is flawed—either in its assertions, setup, or design.
 
 **Problem:** Tests affect each other.
 
-| Anti-Pattern                       | Correct Pattern                             |
-| ---------------------------------- | ------------------------------------------- |
-| Static mutable state               | Reset in `[TearDown]` or use instance state |
-| Shared test fixtures without reset | `[SetUp]` creates fresh state each test     |
-| Global singletons                  | Use test-specific instances                 |
-| File system side effects           | Use temp directories, clean up in teardown  |
+| Anti-Pattern                                                           | Correct Pattern                                              |
+| ---------------------------------------------------------------------- | ------------------------------------------------------------ |
+| Static mutable state                                                   | Reset in `[TearDown]` or use instance state                  |
+| Shared test fixtures without reset                                     | `[SetUp]` creates fresh state each test                      |
+| Global singletons                                                      | Use test-specific instances                                  |
+| File system side effects                                               | Use temp directories, clean up in teardown                   |
+| Test backups in Resources/ folder discoverable by FindObjectsOfTypeAll | Store backups outside Resources/ (e.g., Assets/Temp/)        |
+| Not clearing singleton cache between tests                             | Call `ScriptableObjectSingleton<T>.ClearInstance()` in setup |
 
 ### Brittle Assertions
 
@@ -178,6 +181,18 @@ The test itself is flawed—either in its assertions, setup, or design.
 | Network calls            | Mock HTTP clients                      |
 | Database dependencies    | In-memory test databases or mocks      |
 | Unity scene dependencies | Create test GameObjects in code        |
+
+### Serialization Layer Mismatches
+
+**Problem:** Tests assume values survive Unity serialization unchanged.
+
+| Anti-Pattern                                                          | Correct Pattern                                                                |
+| --------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| Setting field to `null`, then asserting `stringValue` is null         | Assert `stringValue` is `""` (Unity converts null to empty)                    |
+| Expecting null-check code to execute through property drawers         | Null checks on `stringValue` are dead code; test the empty-string path instead |
+| Testing distinct behavior for null vs `""` through SerializedProperty | Both map to `""` through serialization; test them as equivalent                |
+
+**Root cause**: `SerializedProperty.stringValue` always converts null strings to `""`. This means any test that sets a backing string field to `null` and then reads it through `SerializedObject.Update()` / `SerializedProperty` will see `""`, not `null`. See [defensive-editor-programming](./defensive-editor-programming.md) for the full serialization behavior documentation.
 
 ---
 
@@ -301,14 +316,15 @@ Use this checklist for every test failure:
 
 These patterns indicate systemic issues requiring thorough analysis:
 
-| Red Flag                                 | Indicates                                    |
-| ---------------------------------------- | -------------------------------------------- |
-| Test passes locally, fails in CI         | Environment dependency or race condition     |
-| Test fails on first run, passes on retry | Static state leakage or initialization order |
-| Multiple unrelated tests fail together   | Shared state corruption                      |
-| Test fails only with other tests         | Test isolation violation                     |
-| Test fails near resource limits          | Memory leak or resource exhaustion           |
-| Test fails at specific times             | Time-dependent logic or timezone issues      |
+| Red Flag                                 | Indicates                                          |
+| ---------------------------------------- | -------------------------------------------------- |
+| Test passes locally, fails in CI         | Environment dependency or race condition           |
+| Test fails on first run, passes on retry | Static state leakage or initialization order       |
+| Multiple unrelated tests fail together   | Shared state corruption                            |
+| Test fails only with other tests         | Test isolation violation                           |
+| Test fails near resource limits          | Memory leak or resource exhaustion                 |
+| Test fails at specific times             | Time-dependent logic or timezone issues            |
+| Test fails after assembly restructuring  | Stale hardcoded assembly name lists or IVT entries |
 
 ---
 
@@ -319,6 +335,16 @@ When fixing test failures, document:
 1. **Root cause** — What was actually broken (production or test)?
 2. **Fix approach** — Why this fix addresses the root cause
 3. **Prevention** — How similar issues can be avoided
+
+**CRITICAL — CHANGELOG updates for production bugs:**
+
+When a test failure investigation reveals a **production bug**, the fix is a user-facing change that **MUST** have a CHANGELOG entry. Test-only fixes (no production code changes) do NOT require a CHANGELOG entry. This distinction is easy to miss because the task starts as "fix test failures" but the actual fix touches production code.
+
+| Classification                         | CHANGELOG Required               | Example                                        |
+| -------------------------------------- | -------------------------------- | ---------------------------------------------- |
+| Production bug found via test failure  | **YES** — add `### Fixed` entry  | Path mismatch in generator, missing null check |
+| Test bug only (test setup, assertions) | No                               | Wrong expected value, missing yield            |
+| Both production and test fixes         | **YES** — for the production fix | Stale paths in both production and test code   |
 
 For significant fixes, update relevant documentation or add code comments explaining non-obvious design decisions.
 

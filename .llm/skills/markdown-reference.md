@@ -238,15 +238,17 @@ More text.
 
 ## Common Markdownlint Rules
 
-| Rule  | Issue                        | Fix                                             |
-| ----- | ---------------------------- | ----------------------------------------------- |
-| MD028 | Blank line inside blockquote | Remove blank line between consecutive quotes    |
-| MD031 | No blank line around fences  | Add blank line before and after code blocks     |
-| MD032 | No blank line around lists   | Add blank line before and after lists           |
-| MD022 | No blank line after headings | Add blank line after `#` headings               |
-| MD040 | Fenced code without language | Add language specifier (`csharp`, `bash`, etc.) |
-| MD025 | Multiple top-level headings  | Only one `#` heading per document               |
-| MD009 | Trailing spaces              | Remove trailing whitespace                      |
+| Rule  | Issue                        | Fix                                                |
+| ----- | ---------------------------- | -------------------------------------------------- |
+| MD028 | Blank line inside blockquote | Remove blank line between consecutive quotes       |
+| MD031 | No blank line around fences  | Add blank line before and after code blocks        |
+| MD032 | No blank line around lists   | Add blank line before and after lists              |
+| MD022 | No blank line after headings | Add blank line after `#` headings                  |
+| MD040 | Fenced code without language | Add language specifier (`csharp`, `bash`, etc.)    |
+| MD025 | Multiple top-level headings  | Only one `#` heading per document (see note below) |
+| MD009 | Trailing spaces              | Remove trailing whitespace                         |
+
+> **MD025 — Generated Content Warning**: Documents like the [LLM context file](../context.md) have a single `#` title. Generated content (e.g., the skills index) must use `###` or lower — never `#` or `##`. The LLM instructions lint script (`scripts/lint-llm-instructions.ps1`) enforces this; run with `-Fix` to auto-correct violations.
 
 ---
 

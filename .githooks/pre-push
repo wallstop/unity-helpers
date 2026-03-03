@@ -12,11 +12,16 @@ set -e
 #   2. Markdownlint
 #   3. Spell checking (cspell)
 #   4. Doc link lint
-#   5. EOL normalization and verification
-#   6. yamllint (if installed)
-#   7. actionlint (if installed and workflow files changed)
-#   8. External link check with lychee (if installed)
-#   9. Test lifecycle lint
+#   5. Gitignore docs safety (no docs/ files accidentally gitignored)
+#   6. Unity meta file lint (missing/orphaned .meta files)
+#   7. EOL normalization and verification
+#   8. yamllint (if installed)
+#   9. actionlint (if installed and workflow files changed)
+#  10. External link check with lychee (if installed)
+#  11. Test lifecycle lint
+#  12. License year audit
+#  13. Hook pattern tests (if hook files changed)
+#  14. LLM instructions validation
 #
 # LINE ENDING NOTE:
 #   This repo uses CRLF for most files (.gitattributes).
@@ -96,6 +101,63 @@ else
   fi
 fi
 
+# 5) Gitignore docs safety (validates no docs/ files are accidentally gitignored)
+# This catches the category of bug where a .gitignore wildcard pattern like
+# "failed-tests-*" accidentally matches "docs/features/editor-tools/failed-tests-exporter.md"
+if command -v pwsh >/dev/null 2>&1; then
+  echo "Checking gitignore docs safety..."
+  pwsh -NoProfile -File scripts/lint-gitignore-docs.ps1 || {
+    echo ""
+    echo "=== Gitignore docs safety check failed ==="
+    echo "Fix .gitignore patterns to avoid excluding documentation files."
+    echo "Example: Narrow 'failed-tests-*' to 'failed-tests-*.txt'"
+    echo ""
+    exit 1
+  }
+  echo "✓ Gitignore docs safety OK"
+elif command -v powershell >/dev/null 2>&1; then
+  echo "Checking gitignore docs safety..."
+  powershell -NoProfile -ExecutionPolicy Bypass -File scripts/lint-gitignore-docs.ps1 || {
+    echo ""
+    echo "=== Gitignore docs safety check failed ==="
+    echo "Fix .gitignore patterns to avoid excluding documentation files."
+    echo "Example: Narrow 'failed-tests-*' to 'failed-tests-*.txt'"
+    echo ""
+    exit 1
+  }
+  echo "✓ Gitignore docs safety OK"
+else
+  echo "PowerShell not found; skipping gitignore docs safety check. CI will validate." >&2
+fi
+
+# 6) Unity meta file lint (validates all files have .meta and no orphaned .meta exist)
+# This catches missing .meta files before they reach CI
+if command -v pwsh >/dev/null 2>&1; then
+  echo "Checking Unity meta files..."
+  pwsh -NoProfile -File scripts/lint-meta-files.ps1 || {
+    echo ""
+    echo "=== Unity meta file lint failed ==="
+    echo "Run './scripts/generate-meta.sh <path>' to generate missing meta files."
+    echo "Delete orphaned .meta files or restore missing source files."
+    echo ""
+    exit 1
+  }
+  echo "✓ Unity meta files OK"
+elif command -v powershell >/dev/null 2>&1; then
+  echo "Checking Unity meta files..."
+  powershell -NoProfile -ExecutionPolicy Bypass -File scripts/lint-meta-files.ps1 || {
+    echo ""
+    echo "=== Unity meta file lint failed ==="
+    echo "Run './scripts/generate-meta.sh <path>' to generate missing meta files."
+    echo "Delete orphaned .meta files or restore missing source files."
+    echo ""
+    exit 1
+  }
+  echo "✓ Unity meta files OK"
+else
+  echo "PowerShell not found; skipping Unity meta file lint. CI will validate." >&2
+fi
+
 # EOL policy (CRLF for most, LF for YAML/shell) - auto-fix then verify
 if command -v pwsh >/dev/null 2>&1; then
   pwsh -NoProfile -File scripts/normalize-eol.ps1
@@ -161,6 +223,20 @@ else
   echo 'PowerShell not found; skipping test lints.' >&2
 fi
 
+# 12) License year audit (validates copyright year headers in .cs files)
+# Note: This scans all .cs files using git log and can take 40-60 seconds on large repos
+echo "Checking license year headers..."
+if ! bash scripts/audit-license-years.sh --summary; then
+  echo ""
+  echo "=== License year audit failed ==="
+  echo "Some .cs files have incorrect copyright year headers."
+  echo "To auto-fix: bash scripts/update-license-headers.sh"
+  echo "To see details: bash scripts/audit-license-years.sh --csv"
+  echo ""
+  exit 1
+fi
+echo "✓ License year headers OK"
+
 # Check for forbidden #region/#endregion directives in ALL C# files
 # This is a full repository scan (not just staged files) to catch any regions before push
 # Regions are forbidden in this codebase - see .llm/skills/no-regions.md
@@ -220,6 +296,62 @@ if [ -n "$WIKI_CHANGES" ]; then
   fi
 fi
 
+# Test lint script tests (validates lint-tests.ps1 allowlist and rule detection)
+# Runs when lint-tests.ps1 or its test script change
+LINT_TEST_CHANGES=$(git diff --name-only @{upstream}..HEAD 2>/dev/null | grep -E '^(scripts/lint-tests\.ps1|scripts/tests/test-lint-tests\.ps1)' || true)
+if [ -z "$LINT_TEST_CHANGES" ]; then
+  LINT_TEST_CHANGES=$(git diff --name-only HEAD 2>/dev/null | grep -E '^(scripts/lint-tests\.ps1|scripts/tests/test-lint-tests\.ps1)' || true)
+fi
+
+if [ -n "$LINT_TEST_CHANGES" ]; then
+  echo "Lint test files changed:"
+  echo "$LINT_TEST_CHANGES" | sed 's/^/  /'
+  echo "Running lint-tests.ps1 test suite..."
+  if command -v pwsh >/dev/null 2>&1; then
+    if ! pwsh -NoProfile -File scripts/tests/test-lint-tests.ps1; then
+      echo ""
+      echo "=== Lint test suite failed ==="
+      echo "Fix the issues in scripts/lint-tests.ps1 or scripts/tests/test-lint-tests.ps1"
+      echo ""
+      exit 1
+    fi
+    echo "✓ Lint test suite OK"
+  elif command -v powershell >/dev/null 2>&1; then
+    if ! powershell -NoProfile -File scripts/tests/test-lint-tests.ps1; then
+      echo ""
+      echo "=== Lint test suite failed ==="
+      echo "Fix the issues in scripts/lint-tests.ps1 or scripts/tests/test-lint-tests.ps1"
+      echo ""
+      exit 1
+    fi
+    echo "✓ Lint test suite OK"
+  else
+    echo "PowerShell not found; skipping lint test suite. CI will catch issues." >&2
+  fi
+fi
+
+# Hook pattern tests (validates bash case pattern matching behavior)
+# Runs when hook files or the test script itself change
+HOOK_PATTERN_CHANGES=$(git diff --name-only @{upstream}..HEAD 2>/dev/null | grep -E '^(\.githooks/|scripts/tests/test-hook-patterns\.sh)' || true)
+if [ -z "$HOOK_PATTERN_CHANGES" ]; then
+  # Also check staged/uncommitted hook-related changes
+  HOOK_PATTERN_CHANGES=$(git diff --name-only HEAD 2>/dev/null | grep -E '^(\.githooks/|scripts/tests/test-hook-patterns\.sh)' || true)
+fi
+
+if [ -n "$HOOK_PATTERN_CHANGES" ]; then
+  echo "Hook-related files changed:"
+  echo "$HOOK_PATTERN_CHANGES" | sed 's/^/  /'
+  echo "Running hook pattern tests..."
+  if ! bash scripts/tests/test-hook-patterns.sh; then
+    echo ""
+    echo "=== Hook pattern tests failed ==="
+    echo "Fix the issues in .githooks/ or scripts/tests/test-hook-patterns.sh"
+    echo ""
+    exit 1
+  fi
+  echo "✓ Hook pattern tests OK"
+fi
+
 # actionlint check for GitHub Actions workflows (only if workflow files changed)
 # This mirrors the actionlint.yml CI workflow
 # Use @{upstream} to compare against the remote tracking branch
@@ -247,6 +379,31 @@ if [ -n "$WORKFLOW_CHANGES" ]; then
     echo "Install: go install github.com/rhysd/actionlint/cmd/actionlint@latest" >&2
     echo "CI will run actionlint and catch any issues." >&2
   fi
+fi
+
+# LLM instructions validation (skills index, trigger comments, etc.)
+if command -v pwsh >/dev/null 2>&1; then
+  echo "Validating LLM instructions..."
+  pwsh -NoProfile -File scripts/lint-llm-instructions.ps1 || {
+    echo ""
+    echo "=== LLM instructions validation failed ==="
+    echo "Run: pwsh -NoProfile -File scripts/lint-llm-instructions.ps1 -Fix"
+    echo ""
+    exit 1
+  }
+  echo "✓ LLM instructions OK"
+elif command -v powershell >/dev/null 2>&1; then
+  echo "Validating LLM instructions..."
+  powershell -NoProfile -ExecutionPolicy Bypass -File scripts/lint-llm-instructions.ps1 || {
+    echo ""
+    echo "=== LLM instructions validation failed ==="
+    echo "Run: powershell -NoProfile -File scripts/lint-llm-instructions.ps1 -Fix"
+    echo ""
+    exit 1
+  }
+  echo "✓ LLM instructions OK"
+else
+  echo "PowerShell not found; skipping LLM instructions validation." >&2
 fi
 
 # ============================================================================

@@ -147,7 +147,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                         continue;
                     }
                     TextureImporterPlatformSettings ops =
-                        po.name == "DefaultTexturePlatform"
+                        po.name == TexturePlatformNameHelper.DefaultPlatformName
                             ? ti.GetDefaultPlatformTextureSettings()
                             : ti.GetPlatformTextureSettings(po.name);
 
@@ -305,7 +305,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                         continue;
                     }
                     TextureImporterPlatformSettings ops =
-                        po.name == "DefaultTexturePlatform"
+                        po.name == TexturePlatformNameHelper.DefaultPlatformName
                             ? textureImporter.GetDefaultPlatformTextureSettings()
                             : textureImporter.GetPlatformTextureSettings(po.name);
 
@@ -342,7 +342,9 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                     {
                         // Ensure override is enabled for named platforms
                         ops.overridden =
-                            po.name != "DefaultTexturePlatform" ? true : ops.overridden;
+                            po.name != TexturePlatformNameHelper.DefaultPlatformName
+                                ? true
+                                : ops.overridden;
                         textureImporter.SetPlatformTextureSettings(ops);
                         changed = true;
                     }

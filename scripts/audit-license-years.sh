@@ -167,11 +167,18 @@ if [[ "$OUTPUT_MODE" != "csv" ]]; then
     echo "No git history:         $no_git_history_files"
     echo ""
 
-    if [[ $mismatched_files -gt 0 ]]; then
-        echo "Files needing update: $mismatched_files"
+    if [[ $mismatched_files -gt 0 || $missing_header_files -gt 0 ]]; then
+        needs_update=$((mismatched_files + missing_header_files))
+        echo "Files needing update: $needs_update"
         exit 1
     else
         echo "All files have correct copyright years!"
         exit 0
     fi
 fi
+
+# CSV mode: exit with appropriate code based on results
+if [[ $mismatched_files -gt 0 || $missing_header_files -gt 0 ]]; then
+    exit 1
+fi
+exit 0

@@ -60,6 +60,73 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             return state;
         }
 
+        private static void DrawGenericMenuDropDown(
+            Rect position,
+            SerializedProperty property,
+            GUIContent label,
+            string[] options,
+            StringInListAttribute attribute
+        )
+        {
+            Rect fieldRect = EditorGUI.PrefixLabel(position, label);
+            bool previousMixed = EditorGUI.showMixedValue;
+            EditorGUI.showMixedValue = property.hasMultipleDifferentValues;
+
+            string displayValue = ResolveDisplayValue(
+                property,
+                options,
+                attribute,
+                out string tooltip
+            );
+            ReusableDropDownButtonContent.text = displayValue;
+            ReusableDropDownButtonContent.tooltip = tooltip;
+
+            if (
+                EditorGUI.DropdownButton(
+                    fieldRect,
+                    ReusableDropDownButtonContent,
+                    FocusType.Keyboard
+                )
+            )
+            {
+                string[] displayLabels = GetOptionDisplayArray(attribute, options);
+                int currentIndex = ResolveCurrentSelectionIndex(property, options);
+
+                SerializedObject serializedObject = property.serializedObject;
+                string propertyPath = property.propertyPath;
+
+                GenericMenu menu = new();
+                for (int i = 0; i < options.Length; i++)
+                {
+                    int capturedIndex = i;
+                    bool isSelected = i == currentIndex && !property.hasMultipleDifferentValues;
+                    menu.AddItem(
+                        new GUIContent(displayLabels[i]),
+                        isSelected,
+                        () =>
+                        {
+                            serializedObject.Update();
+                            SerializedProperty prop = serializedObject.FindProperty(propertyPath);
+                            if (prop == null)
+                            {
+                                return;
+                            }
+
+                            Undo.RecordObjects(
+                                serializedObject.targetObjects,
+                                "Change StringInList Selection"
+                            );
+                            ApplySelection(prop, options, capturedIndex);
+                            serializedObject.ApplyModifiedProperties();
+                        }
+                    );
+                }
+                menu.DropDown(fieldRect);
+            }
+
+            EditorGUI.showMixedValue = previousMixed;
+        }
+
         public override float GetPropertyHeight(SerializedProperty property, GUIContent label)
         {
             StringInListAttribute stringInList = (StringInListAttribute)attribute;
@@ -111,57 +178,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
 
             EditorGUI.BeginProperty(position, label, property);
-            string[] displayOptions = GetOptionDisplayArray(stringInList, options);
-            if (property.propertyType == SerializedPropertyType.String)
-            {
-                int currentIndex = Mathf.Max(0, Array.IndexOf(options, property.stringValue));
-                int newIndex = EditorGUI.Popup(position, label.text, currentIndex, displayOptions);
-                if (newIndex >= 0 && newIndex < options.Length)
-                {
-                    property.stringValue = options[newIndex];
-                }
-            }
-            else if (property.propertyType == SerializedPropertyType.Integer)
-            {
-                string currentString;
-                if (property.intValue >= 0 && property.intValue < options.Length)
-                {
-                    currentString = options[property.intValue];
-                }
-                else
-                {
-                    currentString = property.intValue.ToString();
-                }
-
-                int currentIndex = Mathf.Max(0, Array.IndexOf(options, currentString));
-                int newIndex = EditorGUI.Popup(position, label.text, currentIndex, displayOptions);
-                if (newIndex >= 0 && newIndex < options.Length)
-                {
-                    property.intValue = newIndex;
-                }
-            }
-            else if (IsSerializableTypeProperty(property))
-            {
-                SerializedProperty assemblyQualifiedNameProperty =
-                    GetSerializableTypeStringProperty(property);
-                if (assemblyQualifiedNameProperty != null)
-                {
-                    int currentIndex = Mathf.Max(
-                        0,
-                        Array.IndexOf(options, assemblyQualifiedNameProperty.stringValue)
-                    );
-                    int newIndex = EditorGUI.Popup(
-                        position,
-                        label.text,
-                        currentIndex,
-                        displayOptions
-                    );
-                    if (newIndex >= 0 && newIndex < options.Length)
-                    {
-                        assemblyQualifiedNameProperty.stringValue = options[newIndex];
-                    }
-                }
-            }
+            DrawGenericMenuDropDown(position, property, label, options, stringInList);
             EditorGUI.EndProperty();
         }
 
@@ -579,7 +596,9 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
                 int startIndex = _state.page * pageSize;
                 int endIndex = Math.Min(filteredCount, startIndex + pageSize);
                 int rowsOnPage = Mathf.Max(1, endIndex - startIndex);
-                int currentSelectionIndex = ResolveCurrentSelectionIndex(property, _options);
+                int currentSelectionIndex = property.hasMultipleDifferentValues
+                    ? -1
+                    : ResolveCurrentSelectionIndex(property, _options);
 
                 using (new EditorGUILayout.VerticalScope())
                 {
@@ -918,6 +937,11 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 
             protected override int GetCurrentSelectionIndex(SerializedProperty property)
             {
+                if (property.hasMultipleDifferentValues)
+                {
+                    return -1;
+                }
+
                 if (_isStringProperty)
                 {
                     string selectionValue = property.stringValue ?? string.Empty;

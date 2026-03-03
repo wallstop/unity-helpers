@@ -15,14 +15,21 @@ function Write-Info($msg) {
 $sourceRoots = @('Runtime', 'Editor', 'Tests', 'Samples~', 'Shaders', 'Styles', 'URP', 'docs', 'scripts')
 
 # Directories to exclude entirely
-$excludeDirs = @('node_modules', '.git', 'obj', 'bin', 'Library', 'Temp')
+$excludeDirs = @('node_modules', '.git', 'obj', 'bin', 'Library', 'Temp', '.pytest_cache', '__pycache__', '.mypy_cache')
 
 # File patterns to exclude from requiring meta files
 $excludeFilePatterns = @(
   '*.meta',                    # Meta files themselves don't need meta files
   'package-lock.json',         # npm lock file doesn't need meta
   'Gemfile.lock',              # Ruby lock file doesn't need meta
-  '*.tmp'                      # Temporary files don't need meta
+  '*.tmp',                     # Temporary files don't need meta
+  '.gitkeep',                  # Git directory placeholders are not Unity assets
+  '.DS_Store',                 # macOS Finder metadata
+  'Thumbs.db',                 # Windows Explorer thumbnails
+  '*.pyc',                     # Python compiled bytecode
+  '*.pyo',                     # Python optimized bytecode
+  '*.swp',                     # Vim swap files
+  '*.swo'                      # Vim swap files
 )
 
 # Directory patterns to exclude from requiring meta files
@@ -44,18 +51,21 @@ function Get-RelativePath([string]$path) {
 function Test-ShouldExclude([string]$relativePath, [bool]$isDirectory) {
   # Check directory exclusions
   foreach ($dir in $excludeDirs) {
-    if ($relativePath -like "*/$dir/*" -or $relativePath -like "$dir/*" -or $relativePath -eq $dir) {
+    # Match: exact name, nested dir itself, contents at root level, or nested contents
+    if ($relativePath -eq $dir -or $relativePath -like "*/$dir" -or $relativePath -like "$dir/*" -or $relativePath -like "*/$dir/*") {
+      return $true
+    }
+  }
+
+  # Check directory pattern exclusions (applies to both files and directories inside matched dirs)
+  foreach ($pattern in $excludeDirPatterns) {
+    if ($relativePath -like $pattern -or $relativePath -eq $pattern -or $relativePath -like "$pattern/*") {
       return $true
     }
   }
 
   if ($isDirectory) {
-    # Check directory pattern exclusions
-    foreach ($pattern in $excludeDirPatterns) {
-      if ($relativePath -like $pattern -or $relativePath -eq $pattern) {
-        return $true
-      }
-    }
+    # Directory-specific checks can go here
   } else {
     # Check file pattern exclusions
     foreach ($pattern in $excludeFilePatterns) {
@@ -231,4 +241,5 @@ if ($hasErrors) {
 } else {
   Write-Info "No meta file issues found."
   Write-Host "All Unity meta files are valid." -ForegroundColor Green
+  exit 0
 }

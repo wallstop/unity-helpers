@@ -95,6 +95,24 @@ Generate a `.meta` file whenever you create:
 
 ---
 
+## Files and Directories That Do NOT Need Meta Files
+
+Beyond dot folders (covered above), certain tooling artifacts, OS metadata, and editor temp files must be excluded from meta file requirements. These are configured in the `$excludeDirs`, `$excludeFilePatterns`, and `$excludeDirPatterns` arrays in [lint-meta-files.ps1](../../scripts/lint-meta-files.ps1).
+
+| Category           | Examples                                                                    | Why Excluded                          |
+| ------------------ | --------------------------------------------------------------------------- | ------------------------------------- |
+| Tooling cache dirs | `.pytest_cache`, `__pycache__`, `.mypy_cache`, `node_modules`, `obj`, `bin` | Generated artifacts, not Unity assets |
+| OS metadata files  | `.DS_Store`, `Thumbs.db`                                                    | OS-specific, not Unity assets         |
+| Git placeholders   | `.gitkeep`                                                                  | Convention file, not a Unity asset    |
+| Compiled bytecode  | `*.pyc`, `*.pyo`                                                            | Build artifacts                       |
+| Editor temp files  | `*.swp`, `*.swo`, `*.tmp`                                                   | Transient editor files                |
+| Lock files         | `package-lock.json`, `Gemfile.lock`                                         | Dependency lock files                 |
+| Unity sample dirs  | `Samples~`                                                                  | Unity ignores `~` suffix folders      |
+
+**When adding new tooling** (Python tools, linters, build systems) that creates cache or artifact directories inside scanned source roots (`Runtime/`, `Editor/`, `Tests/`, `docs/`, `scripts/`, etc.), you **must** add exclusions to [lint-meta-files.ps1](../../scripts/lint-meta-files.ps1) and update the corresponding tests at [test-lint-meta-exclusions.sh](../../scripts/tests/test-lint-meta-exclusions.sh).
+
+---
+
 ## Important Rules
 
 1. **Never skip meta file generation** — Every file and folder needs one. This is mandatory, not optional.
@@ -103,6 +121,7 @@ Generate a `.meta` file whenever you create:
 4. **Use the script** — Don't manually create meta files (proper GUIDs and importer settings)
 5. **Don't modify existing meta files** — Changing GUIDs breaks references
 6. **Verify generation** — Confirm the `.meta` file was created successfully
+7. **Include scripts** — Files in `scripts/` (`.sh`, `.ps1`, `.py`) also need `.meta` files. This is a common oversight that causes CI failures.
 
 ---
 

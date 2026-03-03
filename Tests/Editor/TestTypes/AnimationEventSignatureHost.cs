@@ -5,7 +5,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.TestTypes
 {
     using UnityEngine;
     using WallstopStudios.UnityHelpers.Core.Attributes;
-    using WallstopStudios.UnityHelpers.Tests.Attributes;
+
+    public enum AnimationEventSignal
+    {
+        Ready,
+        Done,
+    }
 
     public sealed class AnimationEventSignatureHost : MonoBehaviour
     {

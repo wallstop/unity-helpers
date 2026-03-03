@@ -32,445 +32,50 @@ Editor code is especially vulnerable because:
 
 ---
 
-## SerializedProperty Safety
+## Detailed Guidance
 
-### Safe Property Access
+This skill is an overview. For detailed patterns and code examples, see the focused skills below:
 
-```csharp
-// ✅ Safe property access
-public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
-{
-    if (property == null)
-    {
-        return;
-    }
+### Multi-Object Editing and Undo
 
-    if (property.serializedObject == null || property.serializedObject.targetObject == null)
-    {
-        EditorGUI.LabelField(position, label, new GUIContent("(Missing Object)"));
-        return;
-    }
+See [editor-multi-object-editing](./editor-multi-object-editing.md) for:
 
-    EditorGUI.BeginProperty(position, label, property);
-    try
-    {
-        // Draw property...
-    }
-    finally
-    {
-        EditorGUI.EndProperty();
-    }
-}
-```
+- Render-phase vs callback-phase property modification
+- BeginChangeCheck/EndChangeCheck guards for IMGUI value reads
+- GenericMenu callback requirements (undo, all options, apply)
+- Display value writeback prevention
+- showMixedValue ordering
+- Mixed/invalid value display conventions
+- Undo support approaches (SerializedProperty API vs direct mutation)
+- Odin Inspector mixed value detection
 
-### Safe Property Height Calculation
+### Forbidden APIs and Value Handling
 
-```csharp
-public override float GetPropertyHeight(SerializedProperty property, GUIContent label)
-{
-    if (property == null || property.serializedObject == null)
-    {
-        return EditorGUIUtility.singleLineHeight;
-    }
+See [editor-api-rules](./editor-api-rules.md) for:
 
-    // Calculate actual height...
-    return EditorGUIUtility.singleLineHeight;
-}
-```
+- `EditorGUI.Popup` prohibition (Linux phantom rows)
+- Display label normalization consistency
+- IMGUI vs UI Toolkit value handling differences
+- Unity string serialization null-to-empty conversion
 
-### Safe Nested Property Access
+### Singleton Asset Management
 
-```csharp
-// ✅ Safe nested property access
-private SerializedProperty GetNestedProperty(SerializedProperty parent, string path)
-{
-    if (parent == null || string.IsNullOrEmpty(path))
-    {
-        return null;
-    }
+See [editor-singleton-patterns](./editor-singleton-patterns.md) for:
 
-    SerializedProperty nested = parent.FindPropertyRelative(path);
-    // FindPropertyRelative returns null if not found - no exception
-    return nested;
-}
-```
+- Singleton path consistency with `ScriptableSingletonPath` attribute
+- Asset creation pattern (PauseBatch + SaveAssets + ImportAsset)
+- Lazy singleton caching after asset creation (`ClearInstance()`)
+- Singleton instance path validation in find-or-create patterns
 
----
+### Code Samples
 
-## Safe Asset Operations
+Detailed code patterns are in dedicated sample files:
 
-### Safe Asset Loading
-
-```csharp
-// ✅ Safe asset loading
-public static T LoadAssetSafe<T>(string path) where T : Object
-{
-    if (string.IsNullOrEmpty(path))
-    {
-        return null;
-    }
-
-    T asset = AssetDatabase.LoadAssetAtPath<T>(path);
-
-    if (asset == null)
-    {
-        Debug.LogWarning($"[AssetLoader] Failed to load asset at: {path}");
-    }
-
-    return asset;
-}
-```
-
-### Safe Asset Iteration
-
-```csharp
-// ✅ Safe asset iteration
-public void ProcessSelectedAssets()
-{
-    Object[] selection = Selection.objects;
-    if (selection == null || selection.Length == 0)
-    {
-        return;
-    }
-
-    for (int i = 0; i < selection.Length; i++)
-    {
-        Object obj = selection[i];
-        if (obj == null)
-        {
-            continue;
-        }
-
-        string path = AssetDatabase.GetAssetPath(obj);
-        if (string.IsNullOrEmpty(path))
-        {
-            continue;
-        }
-
-        ProcessAsset(path);
-    }
-}
-```
-
-### Safe Asset Creation
-
-```csharp
-// ✅ Safe asset creation with directory validation
-public static bool TryCreateAsset<T>(T asset, string path, out string error) where T : Object
-{
-    error = null;
-
-    if (asset == null)
-    {
-        error = "Asset is null";
-        return false;
-    }
-
-    if (string.IsNullOrEmpty(path))
-    {
-        error = "Path is null or empty";
-        return false;
-    }
-
-    string directory = Path.GetDirectoryName(path);
-    if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
-    {
-        try
-        {
-            Directory.CreateDirectory(directory);
-        }
-        catch (Exception ex)
-        {
-            error = $"Failed to create directory: {ex.Message}";
-            return false;
-        }
-    }
-
-    try
-    {
-        AssetDatabase.CreateAsset(asset, path);
-        return true;
-    }
-    catch (Exception ex)
-    {
-        error = $"Failed to create asset: {ex.Message}";
-        return false;
-    }
-}
-```
-
----
-
-## Cache Invalidation Safety
-
-### Safe Cached Value Access
-
-```csharp
-// ✅ Safe cached value access
-private SerializedProperty _cachedProperty;
-private Object _cachedTarget;
-
-private SerializedProperty GetProperty(SerializedObject serializedObject)
-{
-    if (serializedObject == null)
-    {
-        _cachedProperty = null;
-        _cachedTarget = null;
-        return null;
-    }
-
-    // Invalidate cache if target changed
-    if (_cachedTarget != serializedObject.targetObject)
-    {
-        _cachedProperty = null;
-        _cachedTarget = serializedObject.targetObject;
-    }
-
-    if (_cachedProperty == null)
-    {
-        _cachedProperty = serializedObject.FindProperty("_fieldName");
-    }
-
-    return _cachedProperty;
-}
-```
-
-### Domain Reload Safe Caching
-
-```csharp
-// ✅ Handle domain reload
-[InitializeOnLoad]
-public static class EditorCache
-{
-    private static Dictionary<string, object> _cache;
-
-    static EditorCache()
-    {
-        // Cache is cleared on domain reload - reinitialize
-        _cache = new Dictionary<string, object>();
-        EditorApplication.playModeStateChanged += OnPlayModeChanged;
-    }
-
-    private static void OnPlayModeChanged(PlayModeStateChange state)
-    {
-        if (state == PlayModeStateChange.ExitingEditMode ||
-            state == PlayModeStateChange.ExitingPlayMode)
-        {
-            // Clear cache when entering/exiting play mode
-            _cache.Clear();
-        }
-    }
-
-    public static bool TryGetCached<T>(string key, out T value)
-    {
-        value = default;
-        if (_cache == null || string.IsNullOrEmpty(key))
-        {
-            return false;
-        }
-
-        if (_cache.TryGetValue(key, out object cached) && cached is T typed)
-        {
-            value = typed;
-            return true;
-        }
-
-        return false;
-    }
-}
-```
-
----
-
-## Serialization Resilience in Editor
-
-### Defensive Deserialization
-
-```csharp
-// ✅ Defensive deserialization
-public T DeserializeSafe<T>(string json) where T : class, new()
-{
-    if (string.IsNullOrEmpty(json))
-    {
-        return new T();
-    }
-
-    try
-    {
-        T result = JsonUtility.FromJson<T>(json);
-        return result ?? new T();
-    }
-    catch (Exception ex)
-    {
-        Debug.LogWarning($"[Serialization] Failed to deserialize {typeof(T).Name}: {ex.Message}");
-        return new T();
-    }
-}
-```
-
-### Validate After Deserialization
-
-```csharp
-// ✅ Validate after deserialization
-public void OnAfterDeserialize()
-{
-    // Repair potentially corrupt data
-    if (_items == null)
-    {
-        _items = new List<Item>();
-    }
-
-    // Remove null entries that may have resulted from missing references
-    _items.RemoveAll(item => item == null);
-
-    // Clamp values to valid ranges
-    _health = Mathf.Clamp(_health, 0, _maxHealth);
-
-    // Ensure required references
-    if (string.IsNullOrEmpty(_id))
-    {
-        _id = System.Guid.NewGuid().ToString();
-    }
-}
-```
-
-### EditorPrefs Safety
-
-```csharp
-// ✅ Safe EditorPrefs access
-public static T GetEditorPref<T>(string key, T defaultValue)
-{
-    if (string.IsNullOrEmpty(key))
-    {
-        return defaultValue;
-    }
-
-    try
-    {
-        if (typeof(T) == typeof(string))
-        {
-            return (T)(object)EditorPrefs.GetString(key, (string)(object)defaultValue);
-        }
-        if (typeof(T) == typeof(int))
-        {
-            return (T)(object)EditorPrefs.GetInt(key, (int)(object)defaultValue);
-        }
-        if (typeof(T) == typeof(float))
-        {
-            return (T)(object)EditorPrefs.GetFloat(key, (float)(object)defaultValue);
-        }
-        if (typeof(T) == typeof(bool))
-        {
-            return (T)(object)EditorPrefs.GetBool(key, (bool)(object)defaultValue);
-        }
-
-        return defaultValue;
-    }
-    catch
-    {
-        return defaultValue;
-    }
-}
-```
-
----
-
-## Event/Callback Safety in Editor
-
-### Safe Event Invocation
-
-```csharp
-// ✅ Safe event invocation
-public void RaiseValueChanged(int newValue)
-{
-    if (OnValueChanged == null)
-    {
-        return;
-    }
-
-    // Copy delegate to avoid race conditions
-    Action<int> handler = OnValueChanged;
-
-    try
-    {
-        handler.Invoke(newValue);
-    }
-    catch (Exception ex)
-    {
-        // Never let subscriber exceptions crash the publisher
-        Debug.LogError($"[{nameof(MyClass)}] Exception in OnValueChanged handler: {ex}");
-    }
-}
-```
-
-### Safe Multi-cast Delegate Invocation
-
-```csharp
-// ✅ Safe multi-cast delegate invocation
-public void RaiseEvent()
-{
-    Delegate[] handlers = OnEvent?.GetInvocationList();
-    if (handlers == null)
-    {
-        return;
-    }
-
-    for (int i = 0; i < handlers.Length; i++)
-    {
-        try
-        {
-            ((Action)handlers[i]).Invoke();
-        }
-        catch (Exception ex)
-        {
-            Debug.LogError($"[{nameof(MyClass)}] Exception in event handler: {ex}");
-        }
-    }
-}
-```
-
-### Safe Editor Callback Registration
-
-```csharp
-// ✅ Safe callback registration with cleanup
-public class MyEditorWindow : EditorWindow
-{
-    private void OnEnable()
-    {
-        // Always unsubscribe first to prevent double subscription
-        Selection.selectionChanged -= OnSelectionChanged;
-        Selection.selectionChanged += OnSelectionChanged;
-
-        EditorApplication.update -= OnEditorUpdate;
-        EditorApplication.update += OnEditorUpdate;
-    }
-
-    private void OnDisable()
-    {
-        Selection.selectionChanged -= OnSelectionChanged;
-        EditorApplication.update -= OnEditorUpdate;
-    }
-
-    private void OnSelectionChanged()
-    {
-        // Validate window state before processing
-        if (this == null)
-        {
-            return;
-        }
-
-        Repaint();
-    }
-}
-```
-
----
-
-## Consistent Display Label Normalization
-
-When editor UI renders a fallback label (e.g., `(Option N)` for empty strings), **every** code path that references that label must apply the same normalization — not just rendering, but also search, filter, suggestion, and selection. Centralize the fallback in a single helper (e.g., `GetNormalizedDisplayLabel`) and never use the raw label in comparison paths.
-
-**Rule:** If any code path transforms a value for display, audit all other paths that read the same value and apply the identical transform. This covers rendering, search/filter, autocomplete/suggestion, selection/resolution, and keyboard navigation labels.
+- [SerializedProperty Safety](./code-samples/editor-serialized-property-safety.md) - Safe property access, height calculation, nested property access
+- [Asset Operations Safety](./code-samples/editor-asset-operations-safety.md) - Safe asset loading, iteration, and creation
+- [Cache Invalidation Safety](./code-samples/editor-cache-invalidation-safety.md) - Safe caching with domain reload handling
+- [Serialization Safety](./code-samples/editor-serialization-safety.md) - Defensive deserialization, EditorPrefs safety
+- [Event/Callback Safety](./code-samples/editor-event-callback-safety.md) - Safe event invocation and callback registration
 
 ---
 
@@ -478,22 +83,43 @@ When editor UI renders a fallback label (e.g., `(Option N)` for empty strings), 
 
 Before submitting editor code, verify:
 
-- [ ] SerializedProperty null-checked before access
-- [ ] SerializedObject.targetObject validated
-- [ ] Asset paths validated before AssetDatabase operations
-- [ ] Selection validated (may be empty or contain nulls)
-- [ ] Cache invalidation handles domain reload
-- [ ] Cache invalidation handles target object changes
-- [ ] Event handlers wrapped in try-catch
-- [ ] Event subscriptions cleaned up in OnDisable
-- [ ] Deserialization handles corrupt/missing data
-- [ ] EditorPrefs access handles missing keys
-- [ ] Display label fallbacks applied consistently across all code paths
+- [ ] SerializedProperty null-checked before access ([SerializedProperty Safety](./code-samples/editor-serialized-property-safety.md))
+- [ ] SerializedObject.targetObject validated ([SerializedProperty Safety](./code-samples/editor-serialized-property-safety.md))
+- [ ] Asset paths validated before AssetDatabase operations ([Asset Operations Safety](./code-samples/editor-asset-operations-safety.md))
+- [ ] Selection validated (may be empty or contain nulls) ([Asset Operations Safety](./code-samples/editor-asset-operations-safety.md))
+- [ ] Cache invalidation handles domain reload ([Cache Invalidation Safety](./code-samples/editor-cache-invalidation-safety.md))
+- [ ] Cache invalidation handles target object changes ([Cache Invalidation Safety](./code-samples/editor-cache-invalidation-safety.md))
+- [ ] Event handlers wrapped in try-catch ([Event/Callback Safety](./code-samples/editor-event-callback-safety.md))
+- [ ] Event subscriptions cleaned up in OnDisable ([Event/Callback Safety](./code-samples/editor-event-callback-safety.md))
+- [ ] Deserialization handles corrupt/missing data ([Serialization Safety](./code-samples/editor-serialization-safety.md))
+- [ ] EditorPrefs access handles missing keys ([Serialization Safety](./code-samples/editor-serialization-safety.md))
+- [ ] Display label fallbacks applied consistently across all code paths ([editor-api-rules](./editor-api-rules.md))
+- [ ] No `EditorGUI.Popup` usage — use `GenericMenu` instead ([editor-api-rules](./editor-api-rules.md))
+- [ ] Multi-object editing supported ([editor-multi-object-editing](./editor-multi-object-editing.md))
+- [ ] No property modification during OnGUI render phase ([editor-multi-object-editing](./editor-multi-object-editing.md))
+- [ ] All IMGUI value reads wrapped in `BeginChangeCheck`/`EndChangeCheck` ([editor-multi-object-editing](./editor-multi-object-editing.md))
+- [ ] No computed display values written back to properties during render ([editor-multi-object-editing](./editor-multi-object-editing.md))
+- [ ] GenericMenu callbacks handle ALL options ([editor-multi-object-editing](./editor-multi-object-editing.md))
+- [ ] `EditorGUI.showMixedValue` set BEFORE index/value calculations ([editor-multi-object-editing](./editor-multi-object-editing.md))
+- [ ] Em dash (`\u2014`) displayed for mixed values ([editor-multi-object-editing](./editor-multi-object-editing.md))
+- [ ] "(Invalid)" suffix shown for out-of-range indices ([editor-multi-object-editing](./editor-multi-object-editing.md))
+- [ ] `Undo.RecordObjects(targetObjects, ...)` used for multi-object undo ([editor-multi-object-editing](./editor-multi-object-editing.md))
+- [ ] `Undo.FlushUndoRecordObjects()` called after direct object mutation ([editor-multi-object-editing](./editor-multi-object-editing.md))
+- [ ] Odin drawers manually check mixed values ([editor-multi-object-editing](./editor-multi-object-editing.md))
+- [ ] Odin drawers filter `Property.Tree.WeakTargets` for null before `Undo.RecordObjects` (see [odin-undo-safety](./odin-undo-safety.md))
+- [ ] Standard and Odin drawer variants updated consistently
+- [ ] No `stringValue == null` checks ([editor-api-rules](./editor-api-rules.md))
+- [ ] `AssetDatabase.CreateAsset` followed by `SaveAssets` + `ImportAsset(ForceSynchronousImport)` ([editor-singleton-patterns](./editor-singleton-patterns.md))
+- [ ] `ScriptableObjectSingleton<T>.ClearInstance()` called after creating singleton assets ([editor-singleton-patterns](./editor-singleton-patterns.md))
+- [ ] Singleton `Instance` results validated for correct path ([editor-singleton-patterns](./editor-singleton-patterns.md))
 
 ---
 
 ## Related Skills
 
+- [editor-multi-object-editing](./editor-multi-object-editing.md) - Multi-object editing patterns and undo support
+- [editor-api-rules](./editor-api-rules.md) - Forbidden APIs and value handling rules
+- [editor-singleton-patterns](./editor-singleton-patterns.md) - Singleton asset management patterns
 - [defensive-programming](./defensive-programming.md) - Core defensive patterns for all code
 - [create-editor-tool](./create-editor-tool.md) - Editor tool creation patterns
 - [create-test](./create-test.md) - Test edge cases and error conditions

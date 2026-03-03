@@ -346,7 +346,8 @@
         "covariant",
         "contravariant",
         "vtable",
-        "blittable"
+        "blittable",
+        "IVT"
       ]
     },
     {
@@ -703,6 +704,7 @@
         "clickable",
         "hovering",
         "hovered",
+        "unflushed",
         "unfocused",
         "unselected",
         "deselected",
@@ -801,7 +803,13 @@
         "unsubscription",
         "unimi",
         "npmjs",
-        "doi"
+        "doi",
+        "elif",
+        "esac",
+        "getopts",
+        "mapfile",
+        "printf",
+        "shopt"
       ]
     }
   ],
@@ -1144,11 +1152,15 @@
     "toupper",
     "OFS",
     "img",
-    "elif",
     "mdfile",
     "num",
-    "shopt",
     "pytest",
+    "pycache",
+    "mypy",
+    "pyc",
+    "pyo",
+    "swp",
+    "swo",
     "GHA",
     "venv",
     "rcs",

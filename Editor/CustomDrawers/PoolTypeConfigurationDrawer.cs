@@ -110,6 +110,8 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             "Spike threshold multiplier."
         );
 
+        private static readonly GUIContent ReusableHeaderLabel = new();
+
         public override float GetPropertyHeight(SerializedProperty property, GUIContent label)
         {
             if (!property.isExpanded)
@@ -183,7 +185,7 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             }
 
             // Update validation state
-            string currentTypeName = typeNameProp.stringValue ?? string.Empty;
+            string currentTypeName = typeNameProp.stringValue;
             if (!string.Equals(state.lastTypeName, currentTypeName, StringComparison.Ordinal))
             {
                 state.lastTypeName = currentTypeName;
@@ -199,29 +201,28 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
             // Foldout header with validation indicator
             Rect foldoutRect = new(position.x, currentY, position.width, lineHeight);
 
-            GUIContent headerLabel;
             if (string.IsNullOrWhiteSpace(currentTypeName))
             {
-                headerLabel = new GUIContent(label.text + " (empty)", label.tooltip);
+                ReusableHeaderLabel.text = label.text + " (empty)";
+                ReusableHeaderLabel.tooltip = label.tooltip;
             }
             else if (state.isValid)
             {
                 string displayName = PoolTypeResolver.GetDisplayName(state.resolvedType);
                 string prefix = state.resolvedType.IsGenericTypeDefinition ? "[Open] " : "";
-                headerLabel = new GUIContent($"{label.text}: {prefix}{displayName}", label.tooltip);
+                ReusableHeaderLabel.text = $"{label.text}: {prefix}{displayName}";
+                ReusableHeaderLabel.tooltip = label.tooltip;
             }
             else
             {
-                headerLabel = new GUIContent(
-                    $"{label.text}: {currentTypeName} (invalid)",
-                    label.tooltip
-                );
+                ReusableHeaderLabel.text = $"{label.text}: {currentTypeName} (invalid)";
+                ReusableHeaderLabel.tooltip = label.tooltip;
             }
 
             property.isExpanded = EditorGUI.Foldout(
                 foldoutRect,
                 property.isExpanded,
-                headerLabel,
+                ReusableHeaderLabel,
                 true
             );
             currentY += lineHeight + spacing;
