@@ -61,6 +61,8 @@ Every new C# file MUST include the MIT license header as the **first two lines**
 
 The year reflects when the file was created, NOT when the project started. Use the current calendar year at the time of file creation.
 
+See [license-headers](./license-headers.md) for full rules.
+
 ---
 
 ## Critical Rules

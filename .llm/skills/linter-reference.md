@@ -34,18 +34,19 @@ npm run validate:prepush
 
 ### Individual Commands
 
-| Command                      | Description                                 |
-| ---------------------------- | ------------------------------------------- |
-| `npm run lint:spelling`      | Spell check all documentation (CSpell)      |
-| `npm run lint:docs`          | Check markdown links and backtick refs      |
-| `npm run lint:markdown`      | Markdownlint structural rules               |
-| `npm run lint:yaml`          | YAML syntax validation                      |
-| `npm run lint:csharp-naming` | C# naming conventions (method casing, etc.) |
-| `npm run format:md:check`    | Check markdown formatting (Prettier)        |
-| `npm run format:json:check`  | Check JSON/ASMDEF formatting (Prettier)     |
-| `npm run format:yaml:check`  | Check YAML formatting (Prettier)            |
-| `npm run eol:check`          | Line endings (CRLF) and BOM check           |
-| `npm run validate:tests`     | Test lifecycle lint (Track() usage)         |
+| Command                                         | Description                                 |
+| ----------------------------------------------- | ------------------------------------------- |
+| `npm run lint:spelling`                         | Spell check all documentation (CSpell)      |
+| `npm run lint:docs`                             | Check markdown links and backtick refs      |
+| `npm run lint:markdown`                         | Markdownlint structural rules               |
+| `npm run lint:yaml`                             | YAML syntax validation                      |
+| `npm run lint:csharp-naming`                    | C# naming conventions (method casing, etc.) |
+| `npm run format:md:check`                       | Check markdown formatting (Prettier)        |
+| `npm run format:json:check`                     | Check JSON/ASMDEF formatting (Prettier)     |
+| `npm run format:yaml:check`                     | Check YAML formatting (Prettier)            |
+| `npm run eol:check`                             | Line endings (CRLF) and BOM check           |
+| `npm run validate:tests`                        | Test lifecycle lint (Track() usage)         |
+| `bash scripts/audit-license-years.sh --summary` | License year header audit                   |
 
 ---
 
@@ -439,3 +440,4 @@ Runs these in sequence:
 - [validation-troubleshooting](./validation-troubleshooting.md) — Common errors and fixes
 - [formatting](./formatting.md) — CSharpier, Prettier, markdownlint workflow
 - [markdown-reference](./markdown-reference.md) — Link formatting, structural rules
+- [license-headers](./license-headers.md) — License header year rules and auto-fix

@@ -391,3 +391,4 @@ site/
 
 pre-commit.txt*
 pre-push.txt*
+benchmarks/

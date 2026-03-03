@@ -83,7 +83,7 @@ Invoke these skills for specific tasks.
 **Regenerate with**: `pwsh -NoProfile -File scripts/generate-skills-index.ps1`
 
 <!-- BEGIN GENERATED SKILLS INDEX -->
-<!-- Generated: 2026-03-02 12:40:51 UTC -->
+<!-- Generated: 2026-03-03 04:02:34 UTC -->
 <!-- Command: pwsh -NoProfile -File scripts/generate-skills-index.ps1 -->
 
 ### Core Skills (Always Consider)
@@ -116,6 +116,7 @@ Invoke these skills for specific tasks.
 | [github-actions-shell-workflow-patterns](./skills/github-actions-shell-workflow-patterns.md) | Workflow integration patterns for GitHub Actions shell steps     |
 | [high-performance-csharp](./skills/high-performance-csharp.md)                               | ALL code - zero allocation patterns                              |
 | [investigate-test-failures](./skills/investigate-test-failures.md)                           | ANY test failure - investigate before fixing                     |
+| [license-headers](./skills/license-headers.md)                                               | Maintaining MIT license headers in C# files                      |
 | [linter-reference](./skills/linter-reference.md)                                             | Detailed linter commands, configurations                         |
 | [manage-skills](./skills/manage-skills.md)                                                   | Creating, updating, splitting, consolidating, or removing skills |
 | [markdown-reference](./skills/markdown-reference.md)                                         | Link formatting, escaping, linting rules                         |

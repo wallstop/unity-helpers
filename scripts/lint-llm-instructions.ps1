@@ -182,7 +182,16 @@ if ($normalizedExpected -ne $normalizedCurrent) {
         Write-Host "Regenerating skills index..." -ForegroundColor Yellow
         
         # Build the new content - expectedIndex already contains BEGIN/END markers
-        $expectedFull = $expectedIndex -join "`n"
+        # Filter to only lines between BEGIN and END markers (inclusive) to exclude
+        # any summary/diagnostic output from the generator script
+        $inBlock = $false
+        $filteredLines = @()
+        foreach ($line in $expectedIndex) {
+            if ($line -match [regex]::Escape($beginMarker)) { $inBlock = $true }
+            if ($inBlock) { $filteredLines += $line }
+            if ($line -match [regex]::Escape($endMarker)) { $inBlock = $false; break }
+        }
+        $expectedFull = $filteredLines -join "`n"
         # Replace the entire block including markers with the new generated content
         $newContent = $contextContent -replace $pattern, $expectedFull
 

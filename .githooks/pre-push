@@ -19,8 +19,9 @@ set -e
 #   9. actionlint (if installed and workflow files changed)
 #  10. External link check with lychee (if installed)
 #  11. Test lifecycle lint
-#  12. Hook pattern tests (if hook files changed)
-#  13. LLM instructions validation
+#  12. License year audit
+#  13. Hook pattern tests (if hook files changed)
+#  14. LLM instructions validation
 #
 # LINE ENDING NOTE:
 #   This repo uses CRLF for most files (.gitattributes).
@@ -221,6 +222,20 @@ elif command -v powershell >/dev/null 2>&1; then
 else
   echo 'PowerShell not found; skipping test lints.' >&2
 fi
+
+# 12) License year audit (validates copyright year headers in .cs files)
+# Note: This scans all .cs files using git log and can take 40-60 seconds on large repos
+echo "Checking license year headers..."
+if ! bash scripts/audit-license-years.sh --summary; then
+  echo ""
+  echo "=== License year audit failed ==="
+  echo "Some .cs files have incorrect copyright year headers."
+  echo "To auto-fix: bash scripts/update-license-headers.sh"
+  echo "To see details: bash scripts/audit-license-years.sh --csv"
+  echo ""
+  exit 1
+fi
+echo "✓ License year headers OK"
 
 # Check for forbidden #region/#endregion directives in ALL C# files
 # This is a full repository scan (not just staged files) to catch any regions before push

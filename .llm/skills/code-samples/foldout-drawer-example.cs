@@ -1,3 +1,5 @@
+// MIT License - Copyright (c) 2026 wallstop
+// Full license text: https://github.com/wallstop/unity-helpers/blob/main/LICENSE
 // NOTE: This is a code snippet for reference. Place inside the proper namespace and #if UNITY_EDITOR wrapper:
 // namespace WallstopStudios.UnityHelpers.Editor.CustomDrawers
 // {

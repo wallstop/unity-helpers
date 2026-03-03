@@ -273,22 +273,17 @@ RUN git config --system core.pager delta \
 RUN echo 'eval "$(zoxide init bash)"' >> /etc/bash.bashrc
 
 # Add helpful aliases to bashrc
+# IMPORTANT: Do NOT alias standard POSIX tools (find, grep, sed, cat, etc.)
+# Modern replacements (fd, rg, sd, bat) have DIFFERENT syntax and break scripts.
+# They are installed and available by their real names: fd, rg, sd, bat, dust, procs, duf, etc.
+# Only alias commands that don't shadow standard tools.
 RUN { \
     echo ''; \
-    echo '# Modern CLI tool aliases'; \
+    echo '# Modern CLI tool aliases (list/tree only - never shadow POSIX tools)'; \
+    echo '# Modern tools available by real name: fd, rg, sd, bat, dust, procs, duf, eza, z, zi'; \
     echo 'alias ls="eza --icons --group-directories-first"'; \
     echo 'alias ll="eza -la --icons --group-directories-first"'; \
     echo 'alias lt="eza --tree --icons --group-directories-first"'; \
-    echo 'alias cat="bat --paging=never"'; \
-    echo 'alias less="bat"'; \
-    echo 'alias find="fd"'; \
-    echo 'alias grep="rg"'; \
-    echo 'alias df="duf"'; \
-    echo 'alias sed="sd"'; \
-    echo 'alias du="dust"'; \
-    echo 'alias ps="procs"'; \
-    echo 'alias cd="z"'; \
-    echo 'alias cdi="zi"'; \
     } >> /etc/bash.bashrc
 
 # Enable VS Code shell integration

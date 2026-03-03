@@ -86,6 +86,8 @@ dotnet tool run csharpier format .
 npm run lint:csharp-naming
 ```
 
+Also verify license headers on new or modified files — see [license-headers](./license-headers.md).
+
 ### Documentation Changes
 
 ```bash
@@ -277,3 +279,4 @@ $cmdArgs = @('--yes', 'prettier', '--write', '--') + $filePaths
 - [test-data-driven](./test-data-driven.md) — Data-driven testing patterns
 - [test-naming-conventions](./test-naming-conventions.md) — Naming rules and legacy test migration
 - [manage-skills](./manage-skills.md) — Skill file maintenance and index regeneration
+- [license-headers](./license-headers.md) — License header requirements and year validation
