@@ -65,7 +65,7 @@ If changes include user-facing modifications:
 
 1. Add entry under `## [Unreleased]` section
 2. Use correct subsection: `### Added`, `### Fixed`, `### Changed`, `### Removed`
-3. Reference issue numbers where applicable: `[#NNN](https://github.com/wallstop/unity-helpers/issues/NNN)`
+3. Reference issue numbers where applicable: `[#NNN](https://github.com/wallstop/unity-helpers/issues/NNN)` <!-- cspell:ignore NNN -->
 4. Keep entries concise — one line per change
 
 ### Step 5: Documentation Check
