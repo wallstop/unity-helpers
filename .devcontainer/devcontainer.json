@@ -6,9 +6,10 @@
   "build": {
     "dockerfile": "Dockerfile",
     "context": "..",
-    "args": {
-      "TARGETARCH": "amd64"
-    }
+    "cacheFrom": [
+      "ghcr.io/wallstop/unity-helpers/devcontainer:buildcache",
+      "ghcr.io/wallstop/unity-helpers/devcontainer:latest"
+    ]
   },
   // Features to add to the dev container
   "features": {
@@ -16,19 +17,35 @@
       "installZsh": true,
       "configureZshAsDefaultShell": false
     },
-    "ghcr.io/devcontainers/features/github-cli:1": {}
+    "ghcr.io/devcontainers/features/github-cli:1": {},
+    // Docker-in-Docker enables running Unity Editor via GameCI Docker images
+    // for headless compilation and test execution without a local Unity install.
+    // See: scripts/unity/ for wrapper scripts.
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {
+      "moby": true,
+      "installDockerComposeV2": false
+    }
   },
   // Container settings
   "containerEnv": {
     "DOTNET_CLI_TELEMETRY_OPTOUT": "1",
-    "DOTNET_NOLOGO": "1"
+    "DOTNET_NOLOGO": "1",
+    // Unity Docker image settings (override via Codespaces secrets or .env)
+    // UNITY_VERSION: Unity Editor version for Docker image (e.g., "2021.3.45f1")
+    // UNITY_IMAGE_VERSION: GameCI image version tag (e.g., "3")
+    // UNITY_LICENSE: Contents of .ulf license file (set via secrets, not here).
+    // Setup and troubleshooting: docs/guides/unity-devcontainer-licensing.md
+    "UNITY_VERSION": "2021.3.45f1",
+    "UNITY_IMAGE_VERSION": "3"
   },
-  // Run any post-create commands
-  // 1. Restore .NET tools (CSharpier, etc.)
-  // 2. Install npm dependencies (markdownlint-cli, cspell, prettier)
-  // 3. Install git hooks
-  // 4. Mark workspace as safe directory
-  "postCreateCommand": "dotnet tool restore || true && npm install && npm run hooks:install && git config --global --add safe.directory ${containerWorkspaceFolder}",
+  // Run any post-create commands (see post-create.sh for details)
+  // 1. Fix volume mount permissions (Docker named volumes are root-owned)
+  // 2. Restore .NET tools (CSharpier, etc.)
+  // 3. Install npm dependencies (markdownlint-cli, cspell, prettier)
+  // 4. Install git hooks
+  // 5. Mark workspace as safe directory
+  // 6. Pre-pull Unity Docker image (background, non-blocking)
+  "postCreateCommand": "bash .devcontainer/post-create.sh",
   // VS Code customizations
   "customizations": {
     "vscode": {
@@ -58,6 +75,7 @@
 
         // ── Formatting (Prettier for MD/JSON/YAML) ──
         "esbenp.prettier-vscode",
+        "foxundermoon.shell-format",
 
         // ── Git ──
         "eamodio.gitlens",
@@ -74,12 +92,15 @@
         // ── Shell & PowerShell ──
         "timonwong.shellcheck",
         "ms-vscode.powershell",
+        "ms-python.python",
 
         // ── Unity & Shaders ──
-        "kleber-swf.unity-code-snippets",
+        "Chindragon.vscode-unity-tools",
         "slevesque.shader",
 
-        // ── File Icons ──
+        // ── Themes & File Icons ──
+        "zhuangtongfa.material-theme",
+        "zhuangtongfa.one-dark-pro",
         "PKief.material-icon-theme",
 
         // ── Productivity ──
@@ -104,11 +125,15 @@
         // ── Editor ──
         "editor.formatOnSave": true,
         "editor.formatOnSaveMode": "modificationsIfAvailable",
+        "workbench.colorTheme": "One Dark Pro",
         "editor.rulers": [120],
         "editor.guides.bracketPairs": "active",
         "editor.stickyScroll.enabled": true,
         "editor.minimap.renderCharacters": false,
         "editor.minimap.scale": 2,
+        "editor.fontFamily": "'JetBrains Mono', 'Cascadia Code', 'Fira Code', monospace",
+        "editor.fontLigatures": true,
+        "editor.lineHeight": 1.5,
 
         // ── File Defaults (match .editorconfig root) ──
         "files.eol": "\r\n",
@@ -221,6 +246,12 @@
 
         // ── PowerShell ──
         "powershell.integratedConsole.showOnStartup": false,
+        "python.analysis.typeCheckingMode": "basic",
+
+        // ── GitHub Integrations ──
+        "github.copilot.chat.codeGeneration.useInstructionFiles": true,
+        "githubPullRequests.pullBranch": "never",
+        "githubPullRequests.fileListLayout": "tree",
 
         // ── Material Icon Theme ──
         "workbench.iconTheme": "material-icon-theme",
@@ -323,7 +354,8 @@
           "Components": "component",
           "skills": "content",
           "wiki": "docs",
-          "Protobuf-Net": "lib"
+          "Protobuf-Net": "lib",
+          "unity": "app"
         },
         "material-icon-theme.files.associations": {
           // ── Unity shader files ──
@@ -397,7 +429,12 @@
   },
   // Mount settings
   "mounts": [
-    "source=${localWorkspaceFolder}/.git,target=${containerWorkspaceFolder}/.git,type=bind,consistency=cached"
+    "source=${localWorkspaceFolder}/.git,target=${containerWorkspaceFolder}/.git,type=bind,consistency=cached",
+    "source=unity-helpers-npm-cache,target=/home/vscode/.npm,type=volume",
+    "source=unity-helpers-pip-cache,target=/home/vscode/.cache/pip,type=volume",
+    "source=unity-helpers-nuget-cache,target=/home/vscode/.nuget/packages,type=volume",
+    "source=unity-helpers-docker-cache,target=/var/lib/docker,type=volume",
+    "source=unity-helpers-unity-project,target=/home/vscode/.unity-test-project,type=volume"
   ],
   // Forwarded ports (if needed for debugging)
   "forwardPorts": [],

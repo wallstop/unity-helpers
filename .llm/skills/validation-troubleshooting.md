@@ -295,6 +295,37 @@ If a site fails despite these settings, it likely needs an exclusion.
 
 When updating URLs, check consistency between source code metadata (`.cs` files) and documentation (`.md` files).
 
+### 18. CS0012/CS0311: Missing Sirenix.Serialization.dll in Assembly Definition
+
+**Symptom**: Compilation fails with:
+
+```text
+error CS0012: The type 'SerializedMonoBehaviour' is defined in an assembly that is not referenced.
+You must add a reference to assembly 'Sirenix.Serialization, Version=1.0.0.0, ...'
+```
+
+or:
+
+```text
+error CS0311: The type 'X' cannot be used as type parameter 'T' in the generic type or method 'Y'.
+There is no implicit reference conversion from 'X' to 'UnityEngine.MonoBehaviour'.
+```
+
+**Cause**: The assembly definition has `overrideReferences: true` and references `WallstopStudios.UnityHelpers`, but is missing `Sirenix.Serialization.dll` in its `precompiledReferences`. This happens because `RuntimeSingleton<T>` and `ScriptableObjectSingleton<T>` conditionally inherit from Sirenix types (`SerializedMonoBehaviour` and `SerializedScriptableObject`) when `ODIN_INSPECTOR` is defined, and `overrideReferences: true` does not propagate precompiled references transitively.
+
+**Fix**: Add `"Sirenix.Serialization.dll"` to the `precompiledReferences` array in the affected `.asmdef` file:
+
+```json
+"precompiledReferences": [
+  "nunit.framework.dll",
+  "Sirenix.Serialization.dll"
+]
+```
+
+**Prevention**: The [manage-assembly-definitions](./manage-assembly-definitions.md) skill documents this requirement in detail. The standard test assembly template includes `Sirenix.Serialization.dll` by default — always use that template when creating new test assemblies.
+
+**Linter**: `pwsh -NoProfile -File scripts/lint-asmdef.ps1` detects assemblies that reference `WallstopStudios.UnityHelpers` with `overrideReferences: true` but are missing `Sirenix.Serialization.dll`.
+
 ---
 
 ## Debugging Failed CI Runs

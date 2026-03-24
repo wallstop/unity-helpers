@@ -2912,5 +2912,175 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
                 "ToString should contain CurrentSize=0"
             );
         }
+
+        [Test]
+        public void DefaultPurgeTriggerIsPeriodic()
+        {
+            using WallstopGenericPool<TestPoolItem> pool = new(
+                () => new TestPoolItem(),
+                options: new PoolOptions<TestPoolItem> { TimeProvider = TestTimeProvider }
+            );
+            Assert.That(
+                pool.Triggers,
+                Is.EqualTo(PurgeTrigger.Periodic),
+                "Default PurgeTrigger should be Periodic to avoid per-operation overhead"
+            );
+        }
+
+        [Test]
+        public void DefaultPoolOptionsHavePeriodicTrigger()
+        {
+            PoolOptions<TestPoolItem> options = new();
+            Assert.That(
+                options.Triggers,
+                Is.EqualTo(PurgeTrigger.Periodic),
+                "Default PoolOptions.Triggers should be Periodic"
+            );
+        }
+
+        [Test]
+        public void PeriodicTriggerDoesNotPurgeOnEveryGet()
+        {
+            _currentTime = 1f;
+            int purgeCallbackCount = 0;
+            using WallstopGenericPool<TestPoolItem> pool = new(
+                () => new TestPoolItem(),
+                options: new PoolOptions<TestPoolItem>
+                {
+                    TimeProvider = TestTimeProvider,
+                    IdleTimeoutSeconds = 5f,
+                    PurgeIntervalSeconds = 30f,
+                    OnPurge = (_, _) => purgeCallbackCount++,
+                }
+            );
+
+            // Return some items to the pool
+            for (int i = 0; i < 10; i++)
+            {
+                using PooledResource<TestPoolItem> resource = pool.Get();
+            }
+
+            Assert.That(pool.Count, Is.EqualTo(10));
+
+            // Advance time past idle timeout but NOT past purge interval
+            _currentTime = 10f;
+
+            // Do many Get() calls - with Periodic trigger, these should NOT trigger purge
+            // since the purge interval has not elapsed
+            for (int i = 0; i < 100; i++)
+            {
+                using PooledResource<TestPoolItem> resource = pool.Get();
+            }
+
+            Assert.That(
+                purgeCallbackCount,
+                Is.EqualTo(0),
+                "Periodic trigger should not purge until the interval has elapsed"
+            );
+        }
+
+        [Test]
+        public void PeriodicTriggerPurgesAfterInterval()
+        {
+            _currentTime = 1f;
+            int purgeCallbackCount = 0;
+            using WallstopGenericPool<TestPoolItem> pool = new(
+                () => new TestPoolItem(),
+                options: new PoolOptions<TestPoolItem>
+                {
+                    TimeProvider = TestTimeProvider,
+                    IdleTimeoutSeconds = 5f,
+                    PurgeIntervalSeconds = 10f,
+                    OnPurge = (_, _) => purgeCallbackCount++,
+                }
+            );
+
+            // Return some items to the pool
+            for (int i = 0; i < 5; i++)
+            {
+                using PooledResource<TestPoolItem> resource = pool.Get();
+            }
+
+            Assert.That(pool.Count, Is.EqualTo(5));
+
+            // Advance time past both idle timeout and purge interval
+            _currentTime = 20f;
+
+            // This Get() should trigger periodic purge
+            using (PooledResource<TestPoolItem> resource = pool.Get()) { }
+
+            Assert.That(
+                purgeCallbackCount,
+                Is.GreaterThan(0),
+                "Periodic trigger should purge after the interval has elapsed"
+            );
+        }
+
+        [Test]
+        public void ExplicitOnRentTriggerStillWorksWhenConfigured()
+        {
+            _currentTime = 1f;
+            int purgeCallbackCount = 0;
+            using WallstopGenericPool<TestPoolItem> pool = new(
+                () => new TestPoolItem(),
+                options: new PoolOptions<TestPoolItem>
+                {
+                    Triggers = PurgeTrigger.OnRent,
+                    TimeProvider = TestTimeProvider,
+                    IdleTimeoutSeconds = 5f,
+                    OnPurge = (_, _) => purgeCallbackCount++,
+                }
+            );
+
+            // Return items to the pool
+            for (int i = 0; i < 5; i++)
+            {
+                using PooledResource<TestPoolItem> resource = pool.Get();
+            }
+
+            Assert.That(pool.Count, Is.EqualTo(5));
+
+            // Advance time past idle timeout
+            _currentTime = 10f;
+
+            // This Get() should trigger purge because OnRent is explicitly configured
+            using (PooledResource<TestPoolItem> resource = pool.Get()) { }
+
+            Assert.That(
+                purgeCallbackCount,
+                Is.GreaterThan(0),
+                "OnRent trigger should still work when explicitly configured"
+            );
+        }
+
+        [Test]
+        public void DefaultPoolGetPerformanceIsAcceptable()
+        {
+            // Measure that the default pool (Periodic trigger) can do many Get/Return
+            // cycles quickly, without the overhead of per-operation purge checks
+            using WallstopGenericPool<TestPoolItem> pool = new(() => new TestPoolItem());
+
+            System.Diagnostics.Stopwatch sw = System.Diagnostics.Stopwatch.StartNew();
+
+            const int iterations = 100_000;
+            for (int i = 0; i < iterations; i++)
+            {
+                using PooledResource<TestPoolItem> resource = pool.Get();
+            }
+
+            sw.Stop();
+
+            TestContext.WriteLine(
+                $"Default pool: {iterations} Get/Return cycles in {sw.ElapsedMilliseconds}ms"
+            );
+
+            // With Periodic trigger (default), 100K iterations should complete well
+            // under 1 second. The old OnRent default could take 200+ seconds.
+            Assert.That(
+                sw.ElapsedMilliseconds,
+                Is.LessThan(5_000),
+                $"Default pool should handle {iterations} Get/Return cycles in under 5 seconds"
+            );
+        }
     }
 }

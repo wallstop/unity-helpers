@@ -135,11 +135,8 @@ $linkPattern = [regex]'\[[^\]]+\]\([^)]+\)'
 $standardLinkPattern = [regex]'(?<!\!)\[(?<text>[^\]]+)\]\((?<target>[^)]+)\)'
 $anglePattern = [regex]'<[^>]+>'
 $filenameTextLinkPattern = [regex]'\[(?<text>[^\]]+?\.md(?:#[^\]]+)?)\]\((?<target>[^)]+?\.md(?:#[^)]+)?)\)'
-# Match inline code that mentions a .md file path (not just a bare extension like `.md` or `.json`)
-# Excludes: `*.md`, `.md`, `*.json`, `.cs` etc. - these are file type references, not file paths
-$inlineCodeMdPattern = [regex]'`[^`\n]*[A-Za-z0-9_\-]+\.md[^`\n]*`'
-# Pattern to detect bare file extension references that should NOT be flagged
-$fileExtensionPattern = [regex]'^`(\*)?\.[\w]+`$'
+# Match actual markdown inline code spans (double-backtick then single-backtick)
+$codeSpanPattern = [regex]'(?:``(.+?)``|`([^`\n]+)`)'
 $imagePattern = [regex]'!\[[^\]]*\]\((?<target>[^)]+)\)'
 $imageReferencePattern = [regex]'!\[[^\]]*\]\[(?<label>[^\]]+)\]'
 $definitionPattern = [regex]'^\s*\[(?<label>[^\]]+)\]:\s*(?<rest>.+)$'
@@ -227,20 +224,20 @@ $mdFiles | ForEach-Object {
         if ($inFence) { continue }
 
         # Check for inline code that mentions .md files (but not bare extension references)
-        foreach ($match in $inlineCodeMdPattern.Matches($line)) {
-            $codeContent = $match.Value
-            # Skip if it's a file extension or glob pattern reference like:
-            # `.md`, `*.md`, `**/*.md`, `.json`, `*.xml`, etc.
-            # Pattern: starts with `, optional glob chars (**/), optional *, then .extension, ends with `
-            if ($codeContent -match '^`(\*\*/|\./)?(\*)?\.[\w]+`$') {
-                continue
-            }
+        # Uses proper backtick-pair parsing to avoid matching text between separate code spans
+        foreach ($match in $codeSpanPattern.Matches($line)) {
+            $content = if ($match.Groups[1].Success) { $match.Groups[1].Value } else { $match.Groups[2].Value }
+            # Skip if content doesn't reference a .md file
+            if ($content -notmatch '[A-Za-z0-9_\-]+\.md') { continue }
+            # Skip glob patterns and bare extensions: .md, *.md, **/*.md, .json, etc.
+            if ($content -match '^(\*\*/|\./)?(\*)?\.[\w]+$') { continue }
             $violationCount++
             Write-Violation -File $file -LineNumber $lineNo -Message "Inline code mentions .md; use a human-readable link instead" -Line $line
         }
 
         $stripped = $linkPattern.Replace($line, '')
         $stripped = $anglePattern.Replace($stripped, '')
+        $stripped = $codeSpanPattern.Replace($stripped, '')
 
         if ($mdPattern.IsMatch($stripped)) {
             $violationCount++
@@ -259,7 +256,7 @@ $mdFiles | ForEach-Object {
         # Check for absolute GitHub Pages paths (e.g., /unity-helpers/ or /unity-helpers/docs/...)
         # These break in CI because /unity-helpers is the GitHub Pages baseurl, not a real directory
         # IMPORTANT: First strip inline code (backticks) to avoid false positives from example links
-        $lineWithoutInlineCode = $line -replace '``[^`]*``', '' -replace '`[^`]*`', ''
+        $lineWithoutInlineCode = $codeSpanPattern.Replace($line, '')
         foreach ($match in $absoluteGitHubPagesPrefixPattern.Matches($lineWithoutInlineCode)) {
             $target = $match.Groups['target'].Value
             $violationCount++

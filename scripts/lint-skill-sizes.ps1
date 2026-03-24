@@ -1,12 +1,16 @@
 <#
 .SYNOPSIS
-    Validates LLM skill file sizes against documented limits.
+    Validates LLM skill file and context file sizes against documented limits.
 
 .DESCRIPTION
-    Checks all .llm/skills/**/*.md files (including subdirectories) against size thresholds:
+    Checks all .llm/skills/**/*.md files (including subdirectories) and .llm/context.md
+    against size thresholds:
     - >500 lines: ERROR (MUST split per manage-skills.md)
     - 480-500 lines: CRITICAL WARNING (always shown, near limit)
     - >300 lines: WARNING (consider splitting, shown with -VerboseOutput)
+
+    Skill file messages use the [skill-sizes] prefix.
+    Context file messages use the [context-size] prefix.
 
 .PARAMETER VerboseOutput
     If specified, outputs detailed information during validation including
@@ -24,20 +28,20 @@ Param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-function Write-ErrorMsg($msg) {
-    Write-Host "[skill-sizes] ERROR: $msg" -ForegroundColor Red
+function Write-ErrorMsg($msg, $prefix = "[skill-sizes]") {
+    Write-Host "$prefix ERROR: $msg" -ForegroundColor Red
 }
 
-function Write-CriticalWarningMsg($msg) {
-    Write-Host "[skill-sizes] CRITICAL: $msg" -ForegroundColor Magenta
+function Write-CriticalWarningMsg($msg, $prefix = "[skill-sizes]") {
+    Write-Host "$prefix CRITICAL: $msg" -ForegroundColor Magenta
 }
 
-function Write-WarningMsg($msg) {
-    Write-Host "[skill-sizes] WARNING: $msg" -ForegroundColor Yellow
+function Write-WarningMsg($msg, $prefix = "[skill-sizes]") {
+    Write-Host "$prefix WARNING: $msg" -ForegroundColor Yellow
 }
 
-function Write-SuccessMsg($msg) {
-    Write-Host "[skill-sizes] OK: $msg" -ForegroundColor Green
+function Write-SuccessMsg($msg, $prefix = "[skill-sizes]") {
+    Write-Host "$prefix OK: $msg" -ForegroundColor Green
 }
 
 $repoRoot = (Get-Item $PSScriptRoot).Parent.FullName
@@ -70,7 +74,11 @@ foreach ($file in $skillFiles) {
     }
     elseif ($lineCount -ge $criticalLines) {
         $remaining = $maxLines - $lineCount
-        Write-CriticalWarningMsg "${relativePath}: $lineCount lines - only $remaining lines from $maxLines limit! Consider splitting now"
+        if ($remaining -eq 0) {
+            Write-CriticalWarningMsg "${relativePath}: $lineCount lines - AT the $maxLines line limit! Must split"
+        } else {
+            Write-CriticalWarningMsg "${relativePath}: $lineCount lines - only $remaining lines from $maxLines limit! Consider splitting now"
+        }
         $criticalCount++
     }
     elseif ($lineCount -gt $warningLines) {
@@ -87,6 +95,50 @@ foreach ($file in $skillFiles) {
     }
 }
 
+# Check .llm/context.md
+$contextFile = Join-Path -Path $repoRoot -ChildPath '.llm/context.md'
+$contextErrorCount = 0
+$contextCriticalCount = 0
+$contextWarningCount = 0
+$contextOkCount = 0
+
+$contextFound = $false
+if (Test-Path $contextFile) {
+    $contextFound = $true
+    $contextLineCount = @(Get-Content $contextFile).Count
+
+    if ($contextLineCount -gt $maxLines) {
+        Write-ErrorMsg "context.md: $contextLineCount lines (max: $maxLines) - MUST reduce" "[context-size]"
+        $exitCode = 1
+        $contextErrorCount++
+    }
+    elseif ($contextLineCount -ge $criticalLines) {
+        $remaining = $maxLines - $contextLineCount
+        if ($remaining -eq 0) {
+            Write-CriticalWarningMsg "context.md: $contextLineCount lines - AT the $maxLines line limit! Must reduce" "[context-size]"
+        } else {
+            Write-CriticalWarningMsg "context.md: $contextLineCount lines - only $remaining lines from $maxLines limit! Consider reducing now" "[context-size]"
+        }
+        $contextCriticalCount++
+    }
+    elseif ($contextLineCount -gt $warningLines) {
+        if ($VerboseOutput) {
+            Write-WarningMsg "context.md: $contextLineCount lines (consider reducing)" "[context-size]"
+        }
+        $contextWarningCount++
+    }
+    else {
+        if ($VerboseOutput) {
+            Write-SuccessMsg "context.md: $contextLineCount lines" "[context-size]"
+        }
+        $contextOkCount++
+    }
+}
+else {
+    Write-WarningMsg "context.md not found at: $contextFile" "[context-size]"
+    $contextWarningCount++
+}
+
 # Summary
 Write-Host ""
 Write-Host ("=" * 60)
@@ -95,11 +147,21 @@ if ($VerboseOutput -or $criticalCount -gt 0 -or $errorCount -gt 0) {
     Write-Host "[skill-sizes]   OK: $okCount, Warnings: $warningCount, Critical: $criticalCount, Errors: $errorCount"
 }
 
-if ($exitCode -eq 0) {
-    Write-Host "[skill-sizes] All skill files within size limits" -ForegroundColor Green
+if ($contextFound) {
+    Write-Host "[context-size] Summary: context.md checked ($contextLineCount lines)"
 }
 else {
-    Write-Host "[skill-sizes] Some skill files exceed size limits - see errors above" -ForegroundColor Red
+    Write-Host "[context-size] Summary: context.md not found"
+}
+if ($VerboseOutput -or $contextCriticalCount -gt 0 -or $contextErrorCount -gt 0) {
+    Write-Host "[context-size]   OK: $contextOkCount, Warnings: $contextWarningCount, Critical: $contextCriticalCount, Errors: $contextErrorCount"
+}
+
+if ($exitCode -eq 0) {
+    Write-Host "All files within size limits" -ForegroundColor Green
+}
+else {
+    Write-Host "Some files exceed size limits - see errors above" -ForegroundColor Red
 }
 Write-Host ("=" * 60)
 

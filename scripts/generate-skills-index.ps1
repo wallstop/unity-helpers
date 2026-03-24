@@ -180,20 +180,19 @@ if ($badHeadings) {
 # Output to stdout
 $output | ForEach-Object { Write-Output $_ }
 
-# Summary to stderr
-Write-Host "" -NoNewline
-Write-Host ("=" * 60)
+# Summary to stderr (use [Console]::Error.WriteLine to avoid polluting stdout when called as child process)
+[Console]::Error.WriteLine("=" * 60)
 if ($warnings.Count -gt 0) {
-  Write-Host ""
-  Write-WarningMsg "Found $($warnings.Count) skill(s) without trigger comments:"
+  [Console]::Error.WriteLine("")
+  [Console]::Error.WriteLine("[skills-index] WARNING: Found $($warnings.Count) skill(s) without trigger comments:")
   foreach ($w in $warnings) {
-    Write-Host "  - $w" -ForegroundColor Yellow
+    [Console]::Error.WriteLine("  - $w")
   }
 }
-Write-Host ""
-Write-SuccessMsg "Generated skills index:"
-Write-Info "  Core skills: $($coreSkills.Count)"
-Write-Info "  Performance skills: $($perfSkills.Count)"
-Write-Info "  Feature skills: $($featureSkills.Count)"
-Write-Info "  Total: $($skills.Count)"
-Write-Host ("=" * 60)
+[Console]::Error.WriteLine("")
+[Console]::Error.WriteLine("[skills-index] Generated skills index:")
+[Console]::Error.WriteLine("  Core skills: $($coreSkills.Count)")
+[Console]::Error.WriteLine("  Performance skills: $($perfSkills.Count)")
+[Console]::Error.WriteLine("  Feature skills: $($featureSkills.Count)")
+[Console]::Error.WriteLine("  Total: $($skills.Count)")
+[Console]::Error.WriteLine("=" * 60)

@@ -26,7 +26,8 @@ namespace WallstopStudios.UnityHelpers.Utils
 
         /// <summary>
         /// Trigger purge checks when an item is rented from the pool.
-        /// This is the default behavior providing lazy cleanup during normal usage.
+        /// Provides lazy cleanup during normal usage but adds overhead to every Get() call.
+        /// Consider <see cref="Periodic"/> for hot paths where per-operation cost matters.
         /// </summary>
         OnRent = 1,
 
@@ -44,6 +45,7 @@ namespace WallstopStudios.UnityHelpers.Utils
 
         /// <summary>
         /// Enable periodic purge checks based on a time interval.
+        /// This is the default behavior, providing time-based cleanup without per-operation overhead.
         /// Requires setting PurgeIntervalSeconds in PoolOptions.
         /// </summary>
         Periodic = 8,

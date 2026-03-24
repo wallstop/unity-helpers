@@ -323,46 +323,61 @@ done
 if [ ${#LLM_FILES_ARRAY[@]} -gt 0 ]; then
   echo "Validating LLM instructions..."
   if command -v pwsh >/dev/null 2>&1; then
-    pwsh -NoProfile -File scripts/lint-llm-instructions.ps1 || {
-      echo "LLM instructions validation failed. Run 'pwsh -NoProfile -File scripts/lint-llm-instructions.ps1 -Fix' to auto-fix." >&2
-      exit 1
-    }
+    if ! pwsh -NoProfile -File scripts/lint-llm-instructions.ps1; then
+      echo "LLM lint failed. Attempting auto-fix..." >&2
+      if pwsh -NoProfile -File scripts/lint-llm-instructions.ps1 -Fix; then
+        git_add_with_retry .llm/context.md
+        echo "LLM instructions auto-fixed and re-staged."
+      else
+        echo "LLM instructions auto-fix also failed." >&2
+        exit 1
+      fi
+    fi
   elif command -v powershell >/dev/null 2>&1; then
-    powershell -NoProfile -ExecutionPolicy Bypass -File scripts/lint-llm-instructions.ps1 || {
-      echo "LLM instructions validation failed. Run 'powershell -NoProfile -File scripts/lint-llm-instructions.ps1 -Fix' to auto-fix." >&2
-      exit 1
-    }
+    if ! powershell -NoProfile -ExecutionPolicy Bypass -File scripts/lint-llm-instructions.ps1; then
+      echo "LLM lint failed. Attempting auto-fix..." >&2
+      if powershell -NoProfile -ExecutionPolicy Bypass -File scripts/lint-llm-instructions.ps1 -Fix; then
+        git_add_with_retry .llm/context.md
+        echo "LLM instructions auto-fixed and re-staged."
+      else
+        echo "LLM instructions auto-fix also failed." >&2
+        exit 1
+      fi
+    fi
   else
     echo "PowerShell not found. Skipping LLM instructions validation." >&2
   fi
 fi
 
-# 11) Check skill file sizes if .llm/skills/ markdown files are staged
+# 11) Check skill file sizes if .llm/skills/ markdown files or .llm/context.md are staged
 # Note: In bash case statements, * matches any character including /
 # so .llm/skills/*.md matches all depths (e.g., .llm/skills/sub/dir/file.md)
-LLM_SKILLS_ARRAY=()
+LLM_SIZE_CHECK_ARRAY=()
 for file in "${STAGED_FILES_ARRAY[@]}"; do
     case "$file" in
         .llm/skills/*.md)
-            LLM_SKILLS_ARRAY+=("$file")
+            LLM_SIZE_CHECK_ARRAY+=("$file")
+            ;;
+        .llm/context.md)
+            LLM_SIZE_CHECK_ARRAY+=("$file")
             ;;
     esac
 done
 
-if [ ${#LLM_SKILLS_ARRAY[@]} -gt 0 ]; then
-  echo "Checking skill file sizes..."
+if [ ${#LLM_SIZE_CHECK_ARRAY[@]} -gt 0 ]; then
+  echo "Checking skill and context file sizes..."
   if command -v pwsh >/dev/null 2>&1; then
     pwsh -NoProfile -File scripts/lint-skill-sizes.ps1 || {
-      echo "Skill file size check failed. Some files exceed 500 lines and must be split." >&2
+      echo "File size check failed. Some files exceed 500 lines and must be split or reduced." >&2
       exit 1
     }
   elif command -v powershell >/dev/null 2>&1; then
     powershell -NoProfile -ExecutionPolicy Bypass -File scripts/lint-skill-sizes.ps1 || {
-      echo "Skill file size check failed. Some files exceed 500 lines and must be split." >&2
+      echo "File size check failed. Some files exceed 500 lines and must be split or reduced." >&2
       exit 1
     }
   else
-    echo "PowerShell not found. Skipping skill file size check." >&2
+    echo "PowerShell not found. Skipping skill and context file size check." >&2
   fi
 fi
 

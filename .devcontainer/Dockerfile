@@ -62,7 +62,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Install fd-find (faster alternative to find) from GitHub releases
 # fd respects .gitignore by default and has intuitive syntax
-RUN FD_VERSION="10.2.0" \
+RUN FD_VERSION="10.4.2" \
     && case "${TARGETARCH}" in \
         amd64) FD_ARCH="x86_64-unknown-linux-gnu" ;; \
         arm64) FD_ARCH="aarch64-unknown-linux-gnu" ;; \
@@ -73,7 +73,7 @@ RUN FD_VERSION="10.2.0" \
     && chmod +x /usr/local/bin/fd
 
 # Install bat (better cat with syntax highlighting) from GitHub releases
-RUN BAT_VERSION="0.24.0" \
+RUN BAT_VERSION="0.26.1" \
     && case "${TARGETARCH}" in \
         amd64) BAT_ARCH="x86_64-unknown-linux-gnu" ;; \
         arm64) BAT_ARCH="aarch64-unknown-linux-gnu" ;; \
@@ -84,7 +84,7 @@ RUN BAT_VERSION="0.24.0" \
     && chmod +x /usr/local/bin/bat
 
 # Install fzf (fuzzy finder) from GitHub releases
-RUN FZF_VERSION="0.56.3" \
+RUN FZF_VERSION="0.70.0" \
     && case "${TARGETARCH}" in \
         amd64) FZF_ARCH="linux_amd64" ;; \
         arm64) FZF_ARCH="linux_arm64" ;; \
@@ -106,7 +106,7 @@ RUN DELTA_VERSION="0.18.2" \
     && chmod +x /usr/local/bin/delta
 
 # Install eza (modern replacement for ls, successor to exa) from GitHub releases
-RUN EZA_VERSION="0.20.14" \
+RUN EZA_VERSION="0.23.4" \
     && case "${TARGETARCH}" in \
         amd64) EZA_ARCH="x86_64-unknown-linux-gnu" ;; \
         arm64) EZA_ARCH="aarch64-unknown-linux-gnu" ;; \
@@ -117,7 +117,7 @@ RUN EZA_VERSION="0.20.14" \
     && chmod +x /usr/local/bin/eza
 
 # Install zoxide (smarter cd command) from GitHub releases
-RUN ZOXIDE_VERSION="0.9.6" \
+RUN ZOXIDE_VERSION="0.9.9" \
     && case "${TARGETARCH}" in \
         amd64) ZOXIDE_ARCH="x86_64-unknown-linux-musl" ;; \
         arm64) ZOXIDE_ARCH="aarch64-unknown-linux-musl" ;; \
@@ -128,7 +128,7 @@ RUN ZOXIDE_VERSION="0.9.6" \
     && chmod +x /usr/local/bin/zoxide
 
 # Install yq (YAML processor, like jq for YAML) from GitHub releases
-RUN YQ_VERSION="4.44.6" \
+RUN YQ_VERSION="4.52.4" \
     && case "${TARGETARCH}" in \
         amd64) YQ_ARCH="linux_amd64" ;; \
         arm64) YQ_ARCH="linux_arm64" ;; \
@@ -138,7 +138,7 @@ RUN YQ_VERSION="4.44.6" \
     && chmod +x /usr/local/bin/yq
 
 # Install duf (better df) from GitHub releases
-RUN DUF_VERSION="0.8.1" \
+RUN DUF_VERSION="0.9.1" \
     && case "${TARGETARCH}" in \
         amd64) DUF_ARCH="linux_x86_64" ;; \
         arm64) DUF_ARCH="linux_arm64" ;; \
@@ -149,10 +149,11 @@ RUN DUF_VERSION="0.8.1" \
     && chmod +x /usr/local/bin/duf
 
 # Install sd (intuitive find-and-replace, better sed) from GitHub releases
-RUN SD_VERSION="1.0.0" \
+# Note: arm64 uses musl (no gnu aarch64 builds published)
+RUN SD_VERSION="1.1.0" \
     && case "${TARGETARCH}" in \
         amd64) SD_ARCH="x86_64-unknown-linux-gnu" ;; \
-        arm64) SD_ARCH="aarch64-unknown-linux-gnu" ;; \
+        arm64) SD_ARCH="aarch64-unknown-linux-musl" ;; \
         *) echo "Unsupported TARGETARCH: ${TARGETARCH}" >&2; exit 1 ;; \
     esac \
     && curl -fsSL "https://github.com/chmln/sd/releases/download/v${SD_VERSION}/sd-v${SD_VERSION}-${SD_ARCH}.tar.gz" \
@@ -160,7 +161,7 @@ RUN SD_VERSION="1.0.0" \
     && chmod +x /usr/local/bin/sd
 
 # Install dust (intuitive disk usage, better du) from GitHub releases
-RUN DUST_VERSION="1.1.1" \
+RUN DUST_VERSION="1.2.4" \
     && case "${TARGETARCH}" in \
         amd64) DUST_ARCH="x86_64-unknown-linux-gnu" ;; \
         arm64) DUST_ARCH="aarch64-unknown-linux-gnu" ;; \
@@ -171,16 +172,18 @@ RUN DUST_VERSION="1.1.1" \
     && chmod +x /usr/local/bin/dust
 
 # Install procs (modern replacement for ps) from GitHub releases
-RUN PROCS_VERSION="0.14.8" \
+RUN PROCS_VERSION="0.14.11" \
     && case "${TARGETARCH}" in \
         amd64) PROCS_ARCH="x86_64-linux" ;; \
         arm64) PROCS_ARCH="aarch64-linux" ;; \
         *) echo "Unsupported TARGETARCH: ${TARGETARCH}" >&2; exit 1 ;; \
     esac \
     && curl -fsSL "https://github.com/dalance/procs/releases/download/v${PROCS_VERSION}/procs-v${PROCS_VERSION}-${PROCS_ARCH}.zip" -o /tmp/procs.zip \
-    && unzip -q /tmp/procs.zip -d /usr/local/bin \
-    && chmod +x /usr/local/bin/procs \
-    && rm /tmp/procs.zip
+    && unzip -q /tmp/procs.zip -d /tmp/procs \
+    && PROCS_BIN="$(find /tmp/procs -type f -name procs | head -n 1)" \
+    && test -n "${PROCS_BIN}" \
+    && install -m 0755 "${PROCS_BIN}" /usr/local/bin/procs \
+    && rm -rf /tmp/procs /tmp/procs.zip
 
 # Install tokei (code statistics) from GitHub releases
 RUN TOKEI_VERSION="12.1.2" \
@@ -195,19 +198,19 @@ RUN TOKEI_VERSION="12.1.2" \
 
 # Install lychee (fast link checker) from GitHub releases
 # Version should match lychee-action in .github/workflows/lint-doc-links.yml
-RUN LYCHEE_VERSION="0.21.0" \
+RUN LYCHEE_VERSION="0.23.0" \
     && case "${TARGETARCH}" in \
         amd64) LYCHEE_ARCH="x86_64-unknown-linux-gnu" ;; \
         arm64) LYCHEE_ARCH="aarch64-unknown-linux-gnu" ;; \
         *) echo "Unsupported TARGETARCH: ${TARGETARCH}" >&2; exit 1 ;; \
     esac \
     && curl -fsSL "https://github.com/lycheeverse/lychee/releases/download/lychee-v${LYCHEE_VERSION}/lychee-${LYCHEE_ARCH}.tar.gz" \
-    | tar -xz -C /usr/local/bin \
+    | tar -xz -C /usr/local/bin lychee \
     && chmod +x /usr/local/bin/lychee
 
 # Install actionlint (GitHub Actions workflow linter) from GitHub releases
 # https://github.com/rhysd/actionlint - validates workflow syntax and detects common errors
-RUN ACTIONLINT_VERSION="1.7.7" \
+RUN ACTIONLINT_VERSION="1.7.11" \
     && case "${TARGETARCH}" in \
         amd64) ACTIONLINT_ARCH="linux_amd64" ;; \
         arm64) ACTIONLINT_ARCH="linux_arm64" ;; \
@@ -217,44 +220,66 @@ RUN ACTIONLINT_VERSION="1.7.7" \
     | tar -xz -C /usr/local/bin actionlint \
     && chmod +x /usr/local/bin/actionlint
 
-# Install PowerShell
+# Verify GitHub-release tools are available and executable.
+RUN command -v fd >/dev/null \
+    && command -v bat >/dev/null \
+    && command -v fzf >/dev/null \
+    && command -v delta >/dev/null \
+    && command -v eza >/dev/null \
+    && command -v zoxide >/dev/null \
+    && command -v yq >/dev/null \
+    && command -v duf >/dev/null \
+    && command -v sd >/dev/null \
+    && command -v dust >/dev/null \
+    && command -v procs >/dev/null \
+    && command -v tokei >/dev/null \
+    && command -v lychee >/dev/null \
+    && command -v actionlint >/dev/null
+
+# Install cross-tool Python requirements for container tooling.
+COPY .devcontainer/requirements-tools.txt /tmp/requirements-tools.txt
+
+# Install PowerShell, Git LFS, Python, yamllint and Node.js in a consolidated cycle.
 RUN wget -q https://packages.microsoft.com/config/debian/12/packages-microsoft-prod.deb \
     && dpkg -i packages-microsoft-prod.deb \
     && rm packages-microsoft-prod.deb \
+    && curl -fsSL https://deb.nodesource.com/setup_22.x -o /tmp/nodesource_setup.sh \
+    && bash /tmp/nodesource_setup.sh \
+    && rm -f /tmp/nodesource_setup.sh \
     && apt-get update \
-    && apt-get install -y --no-install-recommends powershell \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
-
-# Install Git LFS
-RUN apt-get update && apt-get install -y --no-install-recommends git-lfs \
-    && git lfs install \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
-
-# Install Python and pip
-RUN apt-get update && apt-get install -y --no-install-recommends \
+    && apt-get install -y --no-install-recommends \
+    git-lfs \
+    nodejs \
+    powershell \
     python3 \
     python3-pip \
     python3-venv \
+    && python3 -m venv /opt/python-tools \
+    && /opt/python-tools/bin/pip install --no-cache-dir --requirement /tmp/requirements-tools.txt \
+    && ln -sf /opt/python-tools/bin/yamllint /usr/local/bin/yamllint \
+    && git lfs install \
+    && npm install -g npm@10.9.2 \
+    && rm -f /tmp/requirements-tools.txt \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Install yamllint (YAML linter) via pip
-# Using --break-system-packages to allow global install in container
-# https://yamllint.readthedocs.io/ - validates YAML syntax and style
-RUN pip3 install --break-system-packages yamllint
-
-# Install Node.js (latest LTS) and npm from NodeSource
-RUN curl -fsSL https://deb.nodesource.com/setup_lts.x | bash - \
-    && apt-get install -y --no-install-recommends nodejs \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/* \
-    && npm install -g npm@latest
+# Pre-create volume mount target directories with correct ownership.
+# Docker named volumes copy image-layer permissions into empty volumes on
+# first mount, so this ensures new volumes start with vscode ownership.
+# For existing volumes, post-create.sh runs sudo chown as a safety net.
+# See: https://github.com/microsoft/vscode-remote-release/issues/9931
+#
+# Note: /var/lib/docker is managed by the Docker-in-Docker feature and must
+# remain root-owned. It is NOT pre-created here (the DinD feature handles it).
+RUN mkdir -p /home/vscode/.npm \
+    && mkdir -p /home/vscode/.nuget/packages \
+    && mkdir -p /home/vscode/.cache/pip \
+    && mkdir -p /home/vscode/.unity-test-project \
+    && chown -R vscode:vscode /home/vscode/.npm /home/vscode/.nuget /home/vscode/.cache /home/vscode/.unity-test-project
 
 # Install CSharpier as a global .NET tool for the vscode user
 USER vscode
-RUN dotnet tool install -g csharpier
+RUN dotnet tool install -g csharpier --version 1.2.6
 
 # Switch back to root for remaining setup
 USER root
@@ -308,13 +333,11 @@ RUN { \
     echo '        unset _vscode_shell_integration'; \
     echo '    fi'; \
     echo 'fi'; \
-    } >> /etc/bash.bashrc
-
-# Enable VS Code shell integration for zsh (installed via common-utils feature)
-# See: https://code.visualstudio.com/docs/terminal/shell-integration
-RUN { \
+    } >> /etc/bash.bashrc \
+    && { \
     echo ''; \
     echo '# VS Code shell integration (manual fallback)'; \
+    echo ''; \
     echo 'if [[ "$TERM_PROGRAM" == "vscode" ]]; then'; \
     echo '    if [[ -n "$VSCODE_SHELL_INTEGRATION" && -f "$VSCODE_SHELL_INTEGRATION" ]]; then'; \
     echo '        builtin source "$VSCODE_SHELL_INTEGRATION"'; \

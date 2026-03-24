@@ -17,7 +17,8 @@
     "System.Text.Json.dll",
     "protobuf-net.dll",
     "protobuf-net.Core.dll",
-    "System.Collections.Immutable.dll"
+    "System.Collections.Immutable.dll",
+    "Sirenix.Serialization.dll"
   ],
   "autoReferenced": false,
   "defineConstraints": ["UNITY_INCLUDE_TESTS"],

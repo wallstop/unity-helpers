@@ -117,6 +117,10 @@ if (-not (Test-Path $generateScript)) {
 
 # Run the generator and capture output
 $expectedIndex = & pwsh -NoProfile -File $generateScript 2>$null
+if ($LASTEXITCODE -ne 0) {
+    Write-ErrorMsg "Generator script failed with exit code $LASTEXITCODE"
+    exit 1
+}
 
 # Read current context.md
 $contextContent = Get-Content -Path $contextFile -Raw
@@ -145,17 +149,27 @@ else {
     exit 1
 }
 
-# Normalize both for comparison (remove markers, timestamps, summary lines, and normalize whitespace)
-function Normalize-Index($indexLines) {
-    $lines = $indexLines -split "`n" | 
+# Extract content between BEGIN/END markers from a raw string
+function Extract-MarkerContent($raw) {
+    # Normalize CRLF to LF for cross-platform consistency
+    $raw = $raw -replace "`r`n", "`n"
+    $beginMarkerLocal = '<!-- BEGIN GENERATED SKILLS INDEX -->'
+    $endMarkerLocal = '<!-- END GENERATED SKILLS INDEX -->'
+    $patternLocal = "(?s)$([regex]::Escape($beginMarkerLocal))(.*)$([regex]::Escape($endMarkerLocal))"
+    if ($raw -match $patternLocal) {
+        return $Matches[1].Trim()
+    }
+    return $null
+}
+
+# Normalize for comparison (remove timestamps, normalize whitespace)
+function Normalize-Index($indexContent) {
+    # Normalize CRLF to LF for cross-platform consistency
+    $indexContent = $indexContent -replace "`r`n", "`n"
+    $lines = $indexContent -split "`n" | 
         Where-Object { 
             $_ -notmatch '<!-- Generated:' -and 
-            $_ -notmatch '<!-- Command:' -and
-            $_ -notmatch '<!-- BEGIN GENERATED' -and
-            $_ -notmatch '<!-- END GENERATED' -and
-            $_ -notmatch '^\[skills-index\]' -and
-            $_ -notmatch '^={10,}$' -and
-            $_ -notmatch '^\s*#\s*$'
+            $_ -notmatch '<!-- Command:'
         } |
         ForEach-Object { 
             $line = $_.TrimEnd()
@@ -171,12 +185,40 @@ function Normalize-Index($indexLines) {
     return ($lines -join "`n").Trim()
 }
 
-$normalizedExpected = Normalize-Index ($expectedIndex -join "`n")
+# Extract only the content between markers from the generated output
+$expectedRaw = $expectedIndex -join "`n"
+$expectedContent = Extract-MarkerContent $expectedRaw
+if (-not $expectedContent) {
+    Write-ErrorMsg "Generated output missing BEGIN/END markers"
+    exit 1
+}
+
+$normalizedExpected = Normalize-Index $expectedContent
 $normalizedCurrent = Normalize-Index $currentIndex
 
 if ($normalizedExpected -ne $normalizedCurrent) {
     Write-ErrorMsg "Skills index in context.md is out of date!"
     Write-Host ""
+    
+    # Show first few differences to help diagnose
+    $expectedLines = $normalizedExpected -split "`n"
+    $currentLines = $normalizedCurrent -split "`n"
+    $maxLines = [Math]::Max($expectedLines.Count, $currentLines.Count)
+    $diffCount = 0
+    for ($i = 0; $i -lt $maxLines -and $diffCount -lt 5; $i++) {
+        $exp = if ($i -lt $expectedLines.Count) { $expectedLines[$i] } else { "(missing)" }
+        $cur = if ($i -lt $currentLines.Count) { $currentLines[$i] } else { "(missing)" }
+        if ($exp -ne $cur) {
+            Write-Host "  Line $($i+1):" -ForegroundColor Yellow
+            Write-Host "    Expected: $exp" -ForegroundColor Green
+            Write-Host "    Current:  $cur" -ForegroundColor Red
+            $diffCount++
+        }
+    }
+    if ($diffCount -eq 0) {
+        Write-Host "  Expected line count: $($expectedLines.Count)" -ForegroundColor Yellow
+        Write-Host "  Current line count:  $($currentLines.Count)" -ForegroundColor Yellow
+    }
     
     if ($Fix) {
         Write-Host "Regenerating skills index..." -ForegroundColor Yellow
@@ -205,16 +247,27 @@ if ($normalizedExpected -ne $normalizedCurrent) {
         Push-Location $repoRoot
         try {
             npx --no-install prettier --write -- .llm/context.md 2>$null
+            if ($LASTEXITCODE -ne 0) {
+                Write-ErrorMsg "Prettier formatting failed (exit code $LASTEXITCODE). Rolling back changes..."
+                Set-Content -Path $contextFile -Value $contextContent -NoNewline -Encoding UTF8
+                exit 1
+            }
+        }
+        catch {
+            Write-ErrorMsg "Prettier formatting failed: $_. Rolling back changes..."
+            Set-Content -Path $contextFile -Value $contextContent -NoNewline -Encoding UTF8
+            exit 1
         }
         finally {
             Pop-Location
         }
 
-        # Post-fix validation: ensure no multiple H1 headings (MD025)
+        # Post-fix validation: ensure no NEW H1 headings were introduced (MD025)
+        $originalH1Count = @($contextContent -split "`n" | Where-Object { $_ -match '^# ' }).Count
         $fixedContent = Get-Content -Path $contextFile
         $h1Lines = @($fixedContent | Where-Object { $_ -match '^# ' })
-        if ($h1Lines.Count -gt 1) {
-            Write-ErrorMsg "Fix produced multiple H1 headings (MD025 violation):"
+        if ($h1Lines.Count -gt $originalH1Count) {
+            Write-ErrorMsg "Fix introduced new H1 headings (MD025 violation):"
             $h1Lines | ForEach-Object { Write-Host "  $_" -ForegroundColor Red }
             Write-ErrorMsg "Rolling back changes..."
             Set-Content -Path $contextFile -Value $contextContent -NoNewline -Encoding UTF8
