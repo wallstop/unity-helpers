@@ -45,6 +45,8 @@ bash scripts/install-hooks.sh
 6. Runs YAML lint, spell check, LLM instruction lint, test lint
 7. Checks for forbidden `#region` directives
 8. Checks drawer/editor files for missing multi-object editing support (GenericMenu without `hasMultipleDifferentValues`)
+9. Checks Odin drawer Undo safety (WeakTargets null-filtering before `Undo.RecordObjects`)
+10. Checks for missing `.meta` files on staged files (auto-stages existing `.meta` companions)
 
 ### If the Hook Wasn't Active
 

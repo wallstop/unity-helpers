@@ -529,3 +529,94 @@ if [ ${#ODIN_DRAWER_FILES[@]} -gt 0 ]; then
     echo "PowerShell not found. Skipping Odin Undo safety lint." >&2
   fi
 fi
+
+# 16) Check for missing .meta files on staged files
+# Files in source roots (Runtime, Editor, Tests, docs, scripts, etc.) require .meta companions
+META_REQUIRED_FILES=()
+for file in "${STAGED_FILES_ARRAY[@]}"; do
+    case "$file" in
+        Runtime/*|Editor/*|Tests/*|Samples~/*|Shaders/*|Styles/*|URP/*|docs/*|scripts/*)
+            # Skip .meta files, package-lock.json, Gemfile.lock, temp files, dot files
+            case "$file" in
+                *.meta|*/package-lock.json|*/Gemfile.lock|*.tmp|*/.gitkeep|*/.DS_Store|*/Thumbs.db|*.pyc|*.pyo|*.swp|*.swo)
+                    continue
+                    ;;
+            esac
+            META_REQUIRED_FILES+=("$file")
+            ;;
+    esac
+done
+
+if [ ${#META_REQUIRED_FILES[@]} -gt 0 ]; then
+    echo "Checking for missing .meta files on staged files..."
+
+    # Build set of staged file paths for quick lookup
+    STAGED_SET=""
+    for f in "${STAGED_FILES_ARRAY[@]}"; do
+        STAGED_SET="${STAGED_SET}${f}"$'\n'
+    done
+
+    META_MISSING=()
+    META_UNSTAGED=()
+    for file in "${META_REQUIRED_FILES[@]}"; do
+        meta="${file}.meta"
+        if [ ! -f "$meta" ]; then
+            META_MISSING+=("$file")
+        elif ! echo "$STAGED_SET" | grep -qxF "$meta"; then
+            # .meta exists on disk but is not staged -- auto-stage it
+            META_UNSTAGED+=("$meta")
+        fi
+    done
+
+    # Also check for missing .meta files on new directories introduced by staged files
+    # Use associative-style dedup via sorted unique list
+    META_DIRS_TO_CHECK=()
+    for file in "${META_REQUIRED_FILES[@]}"; do
+        dir=$(dirname "$file")
+        while true; do
+            case "$dir" in
+                Runtime|Editor|Tests|Samples~|Shaders|Styles|URP|docs|scripts|.)
+                    break
+                    ;;
+            esac
+            META_DIRS_TO_CHECK+=("$dir")
+            dir=$(dirname "$dir")
+        done
+    done
+
+    # Deduplicate directories
+    if [ ${#META_DIRS_TO_CHECK[@]} -gt 0 ]; then
+        UNIQUE_DIRS=$(printf '%s\n' "${META_DIRS_TO_CHECK[@]}" | sort -u)
+        while IFS= read -r dir; do
+            [ -z "$dir" ] && continue
+            meta="${dir}.meta"
+            if [ -d "$dir" ] && [ ! -f "$meta" ]; then
+                META_MISSING+=("$dir")
+            elif [ -d "$dir" ] && [ -f "$meta" ] && ! echo "$STAGED_SET" | grep -qxF "$meta"; then
+                META_UNSTAGED+=("$meta")
+            fi
+        done <<< "$UNIQUE_DIRS"
+    fi
+
+    # Auto-stage .meta files that exist on disk but weren't staged
+    if [ ${#META_UNSTAGED[@]} -gt 0 ]; then
+        echo "Auto-staging ${#META_UNSTAGED[@]} unstaged .meta file(s):"
+        for meta in "${META_UNSTAGED[@]}"; do
+            echo "  $meta"
+        done
+        git_add_with_retry "${META_UNSTAGED[@]}"
+    fi
+
+    if [ ${#META_MISSING[@]} -gt 0 ]; then
+        echo "" >&2
+        echo "=== Missing .meta files for staged files ===" >&2
+        for file in "${META_MISSING[@]}"; do
+            echo "  $file" >&2
+        done
+        echo "" >&2
+        echo "Generate missing meta files:" >&2
+        echo "  ./scripts/generate-meta.sh <path>" >&2
+        echo "" >&2
+        exit 1
+    fi
+fi

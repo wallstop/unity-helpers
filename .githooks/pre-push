@@ -106,6 +106,7 @@ CHANGED_CS=$(changed_files_matching '\.cs$')
 CHANGED_META=$(changed_files_matching '\.meta$')
 CHANGED_PRETTIER=$(printf '%s\n%s\n%s\n%s\n' "$CHANGED_MD" "$CHANGED_JSON" "$CHANGED_YAML" "$CHANGED_JS" | grep -v '^$' || true)
 CHANGED_TESTS=$(changed_files_matching '^Tests/')
+CHANGED_SCRIPTS=$(changed_files_matching '^scripts/')
 CHANGED_DOCS=$(changed_files_matching '^docs/')
 CHANGED_LLM=$(changed_files_matching '^\.llm/')
 CHANGED_WORKFLOWS=$(changed_files_matching '^\.github/workflows/')
@@ -220,7 +221,7 @@ run_pwsh_checks() {
   fi
 
   # 6) Unity meta file lint (repo-wide, but optimized via git ls-files)
-  if [ -n "$CHANGED_CS" ] || [ -n "$CHANGED_META" ] || [ -n "$CHANGED_DOCS" ]; then
+  if [ -n "$CHANGED_CS" ] || [ -n "$CHANGED_META" ] || [ -n "$CHANGED_DOCS" ] || [ -n "$CHANGED_SCRIPTS" ]; then
     echo "Checking Unity meta files..."
     $PWSH_CMD scripts/lint-meta-files.ps1 || {
       echo ""
