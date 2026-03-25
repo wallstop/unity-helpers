@@ -87,6 +87,23 @@ yamllint -c .yamllint.yaml -- "${FILES[@]}"
 
 **Why**: A staged filename like `--plugin=./evil.js` would be parsed as a CLI flag without `--`. This is an option injection vulnerability.
 
+### Never Transport File Lists Through `echo ... | xargs`
+
+`echo "$FILES" | xargs tool ...` is unsafe for path lists. `xargs` re-splits on whitespace, so filenames with spaces are mangled, and newline-delimited shell variables are not a reliable file transport format.
+
+```bash
+# WRONG - whitespace in filenames is split into multiple arguments
+echo "$CHANGED_MD" | xargs markdownlint --config .markdownlint.json --
+
+# CORRECT (bash) - keep paths in arrays and expand them directly
+markdownlint --config .markdownlint.json -- "${CHANGED_MD[@]}"
+
+# CORRECT (generic) - if xargs is required, feed it NUL-delimited input
+printf '%s\0' "${CHANGED_MD[@]}" | xargs -0 markdownlint --config .markdownlint.json --
+```
+
+**Rule**: In bash hooks, prefer arrays plus `"${ARRAY[@]}"` over newline-delimited variables. Only use `xargs` with `-0` and NUL-delimited input.
+
 ### File-Reading Commands Also Need `--`
 
 Commands that read file contents (`tail`, `head`, `cat`, `od`, etc.) are also vulnerable to option injection and must use `--`:
@@ -182,6 +199,23 @@ grep -E '^[[:space:]]*#' file.txt
 
 - **Allowed**: tool detection (`command -v`), process cleanup (`kill`), grep no-match, git exploratory calls, version checks
 - **Forbidden on lint/validation tools**: cspell, prettier, markdownlint, lint-cspell-config.js — their stderr contains actionable diagnostic output
+
+### Git Path Parsing Must Not Assume Single-Field Paths
+
+Structured git output often places the path after several whitespace-delimited fields. Do not parse paths with fixed-field extraction like `awk '{print $4}'`, because valid git paths can contain spaces.
+
+```bash
+# WRONG - truncates paths containing spaces
+file_path=$(echo "$line" | awk '{print $4}')
+
+# CORRECT - strip the first three metadata fields, keep the remainder verbatim
+mode="${line%% *}"
+file_path="${line#* }"
+file_path="${file_path#* }"
+file_path="${file_path#* }"
+```
+
+**Rule**: When parsing `git ls-files -s` or similar output, treat the path as the remainder after the metadata fields, not as a fixed single field.
 
 ---
 

@@ -9,6 +9,7 @@
 #   B) Hardcoded user paths without env var override in Unity scripts
 #   C) Inappropriate stderr suppression hiding lint/validation output
 #   D) PowerShell child process invocations missing $LASTEXITCODE checks
+#   E) Unsafe filename transport and fragile git path parsing in shell hooks
 #
 # Run: bash scripts/tests/test-shell-portability.sh
 # Exit codes: 0 = all tests pass, 1 = test failure
@@ -254,7 +255,7 @@ for hookfile in "$REPO_ROOT"/.githooks/*; do
         echo "$line" | grep -qE 'docker\b.*info' && skip=true
 
         # Git operations that legitimately fail (merge-base on orphan, etc.)
-        echo "$line" | grep -qE 'git (merge-base|rev-parse|diff|log)' && skip=true
+        echo "$line" | grep -qE 'git (merge-base|rev-parse|diff|log|ls-tree)' && skip=true
 
         # Grep (exit code 1 on no match is expected)
         echo "$line" | grep -qE '\bgrep\b' && skip=true
@@ -340,6 +341,97 @@ if [[ -z "$d1_violations" ]]; then
     pass "All & pwsh invocations have \$LASTEXITCODE checks"
 else
     fail "Found & pwsh calls without \$LASTEXITCODE check within 8 lines:" "$d1_violations"
+fi
+
+# =============================================================================
+# Section E: Filename transport and path parsing safety
+# =============================================================================
+echo ""
+echo '=== Section E: Filename transport and path parsing safety ==='
+
+# E1: echo "$VAR" | xargs is unsafe for file lists because xargs re-splits on
+# spaces and other delimiters.
+echo ""
+echo '--- E1: Unsafe echo-to-xargs file transport ---'
+
+e1_violations=""
+for file in "${SHELL_FILES[@]}"; do
+    rel_path="${file#"$REPO_ROOT"/}"
+    line_num=0
+    while IFS= read -r line; do
+        line_num=$((line_num + 1))
+
+        stripped="${line#"${line%%[![:space:]]*}"}"
+        [[ "$stripped" == \#* ]] && continue
+
+        if echo "$line" | grep -qE 'echo[[:space:]]+"\$[A-Z_][A-Z0-9_]*"[[:space:]]*\|[[:space:]]*xargs'; then
+            e1_violations="${e1_violations}  ${rel_path}:${line_num}: ${line}"$'\n'
+        fi
+    done < "$file"
+done
+
+run_test
+if [[ -z "$e1_violations" ]]; then
+    pass "No unsafe echo-to-xargs file transport patterns found"
+else
+    fail "Found unsafe echo-to-xargs file transport patterns:" "$e1_violations"
+fi
+
+# E2: Exact grep matches on variable file names must include -- so leading-dash
+# file names cannot be interpreted as options.
+echo ""
+echo '--- E2: grep exact-match variable arguments missing -- ---'
+
+e2_violations=""
+for file in "${SHELL_FILES[@]}"; do
+    rel_path="${file#"$REPO_ROOT"/}"
+    line_num=0
+    while IFS= read -r line; do
+        line_num=$((line_num + 1))
+
+        stripped="${line#"${line%%[![:space:]]*}"}"
+        [[ "$stripped" == \#* ]] && continue
+
+        if echo "$line" | grep -qE 'grep[[:space:]]+-[a-zA-Z]*q[a-zA-Z]*F[[:space:]]+"\$[^"]+"'; then
+            if ! echo "$line" | grep -qE 'grep[[:space:]]+-[a-zA-Z]*q[a-zA-Z]*F[[:space:]]+--[[:space:]]+"\$[^"]+"'; then
+                e2_violations="${e2_violations}  ${rel_path}:${line_num}: ${line}"$'\n'
+            fi
+        fi
+    done < "$file"
+done
+
+run_test
+if [[ -z "$e2_violations" ]]; then
+    pass "All grep exact-match variable arguments use --"
+else
+    fail "Found grep exact-match variable arguments missing --:" "$e2_violations"
+fi
+
+# E3: Fixed-field awk parsing is fragile for git paths with spaces.
+echo ""
+echo '--- E3: Fragile awk field parsing for git paths ---'
+
+e3_violations=""
+for file in "${SHELL_FILES[@]}"; do
+    rel_path="${file#"$REPO_ROOT"/}"
+    line_num=0
+    while IFS= read -r line; do
+        line_num=$((line_num + 1))
+
+        stripped="${line#"${line%%[![:space:]]*}"}"
+        [[ "$stripped" == \#* ]] && continue
+
+        if echo "$line" | grep -qE "awk.*print[[:space:]]+\\\$4"; then
+            e3_violations="${e3_violations}  ${rel_path}:${line_num}: ${line}"$'\n'
+        fi
+    done < "$file"
+done
+
+run_test
+if [[ -z "$e3_violations" ]]; then
+    pass "No fragile awk field parsing for git paths found"
+else
+    fail "Found fragile awk field parsing for git paths:" "$e3_violations"
 fi
 
 # =============================================================================

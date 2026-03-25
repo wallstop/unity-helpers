@@ -215,7 +215,7 @@ else
         check_path="$target"
         while [[ "$check_path" != "/" && "$check_path" != "/home/vscode" && "$check_path" != "/home" ]]; do
             # Match the path in non-comment lines (lines not starting with #)
-            if grep -v '^[[:space:]]*#' "$POST_CREATE" | grep -qF "$check_path"; then
+            if grep -v '^[[:space:]]*#' "$POST_CREATE" | grep -qF -- "$check_path"; then
                 found_in_script=true
                 break
             fi
@@ -233,7 +233,7 @@ else
         found_in_dockerfile=false
         check_path="$target"
         while [[ "$check_path" != "/" && "$check_path" != "/home/vscode" && "$check_path" != "/home" ]]; do
-            if grep -v '^[[:space:]]*#' "$DOCKERFILE" | grep -qF "$check_path"; then
+            if grep -v '^[[:space:]]*#' "$DOCKERFILE" | grep -qF -- "$check_path"; then
                 found_in_dockerfile=true
                 break
             fi

@@ -33,17 +33,23 @@ the full-repo validation as a safety net. This means:
 See [git-hook-patterns](./git-hook-patterns.md)
 for the full stdin-parsing pattern.
 
-**Key optimization:** Pre-compute file sets once, then reuse:
+**Key optimization:** Collect changed files once using null-delimited git output, then classify them into arrays and reuse those arrays across checks:
 
-```sh
-# Pre-compute file sets for each check
-CHANGED_MD=$(grep -E '\.(md|markdown)$' "$CHANGED_FILES_LIST" || true)
-CHANGED_CS=$(grep -E '\.cs$' "$CHANGED_FILES_LIST" || true)
-CHANGED_JSON=$(grep -E '\.(json|jsonc|asmdef|asmref)$' "$CHANGED_FILES_LIST" || true)
+```bash
+ALL_CHANGED_FILES=()
+while IFS= read -r -d '' file; do
+    ALL_CHANGED_FILES+=("$file")
+done < <(git diff --name-only -z ...)
 
-# Skip checks entirely when no relevant files changed
-if [ -n "$CHANGED_MD" ]; then
-  echo "$CHANGED_MD" | xargs npx --no-install markdownlint ...
+CHANGED_MD=()
+CHANGED_CS=()
+for file in "${ALL_CHANGED_FILES[@]}"; do
+    [[ "$file" =~ \.(md|markdown)$ ]] && CHANGED_MD+=("$file")
+    [[ "$file" =~ \.cs$ ]] && CHANGED_CS+=("$file")
+done
+
+if [ ${#CHANGED_MD[@]} -gt 0 ]; then
+    markdownlint --config .markdownlint.json -- "${CHANGED_MD[@]}"
 fi
 ```
 
@@ -160,8 +166,8 @@ for the full pattern. Key considerations:
 
 When adding a new check to the pre-push hook:
 
-1. **Define a changed-file set** using `changed_files_matching()` with the relevant pattern
-2. **Skip when empty:** `if [ -n "$CHANGED_SET" ]; then ... fi`
+1. **Classify changed files into a dedicated array** while walking the collected file list
+2. **Skip when empty:** `if [ ${#CHANGED_SET[@]} -gt 0 ]; then ... fi`
 3. **Add to the appropriate parallel group** (node/pwsh/bash)
 4. **Return non-zero** on failure from within the group function
 5. **Update the hook header comment** listing all checks

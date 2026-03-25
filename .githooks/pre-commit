@@ -550,11 +550,18 @@ done
 if [ ${#META_REQUIRED_FILES[@]} -gt 0 ]; then
     echo "Checking for missing .meta files on staged files..."
 
-    # Build set of staged file paths for quick lookup
-    STAGED_SET=""
-    for f in "${STAGED_FILES_ARRAY[@]}"; do
-        STAGED_SET="${STAGED_SET}${f}"$'\n'
-    done
+    # Use exact array membership checks instead of newline buffers so staged-path
+    # matching remains correct for filenames with spaces or leading dashes.
+    is_file_staged_exact() {
+        local target="$1"
+        local staged_file
+        for staged_file in "${STAGED_FILES_ARRAY[@]}"; do
+            if [[ "$staged_file" == "$target" ]]; then
+                return 0
+            fi
+        done
+        return 1
+    }
 
     META_MISSING=()
     META_UNSTAGED=()
@@ -562,7 +569,7 @@ if [ ${#META_REQUIRED_FILES[@]} -gt 0 ]; then
         meta="${file}.meta"
         if [ ! -f "$meta" ]; then
             META_MISSING+=("$file")
-        elif ! echo "$STAGED_SET" | grep -qxF "$meta"; then
+        elif ! is_file_staged_exact "$meta"; then
             # .meta exists on disk but is not staged -- auto-stage it
             META_UNSTAGED+=("$meta")
         fi
@@ -592,7 +599,7 @@ if [ ${#META_REQUIRED_FILES[@]} -gt 0 ]; then
             meta="${dir}.meta"
             if [ -d "$dir" ] && [ ! -f "$meta" ]; then
                 META_MISSING+=("$dir")
-            elif [ -d "$dir" ] && [ -f "$meta" ] && ! echo "$STAGED_SET" | grep -qxF "$meta"; then
+            elif [ -d "$dir" ] && [ -f "$meta" ] && ! is_file_staged_exact "$meta"; then
                 META_UNSTAGED+=("$meta")
             fi
         done <<< "$UNIQUE_DIRS"
