@@ -112,6 +112,7 @@ CHANGED_WORKFLOWS=$(changed_files_matching '^\.github/workflows/')
 CHANGED_WIKI=$(changed_files_matching '^(scripts/wiki/|scripts/tests/test-wiki-generation\.sh|\.github/workflows/deploy-wiki\.yml)')
 CHANGED_HOOK_FILES=$(changed_files_matching '^(\.githooks/|scripts/tests/test-hook-patterns\.sh)')
 CHANGED_LINT_TEST=$(changed_files_matching '^(scripts/lint-tests\.ps1|scripts/tests/test-lint-tests\.ps1)')
+CHANGED_GITIGNORE_DOCS_LINT=$(changed_files_matching '^(scripts/lint-gitignore-docs\.ps1|scripts/tests/test-gitignore-docs\.ps1)')
 CHANGED_EOL=$(cat "$CHANGED_FILES_LIST")
 
 # ---- Track parallel job failures ----
@@ -350,6 +351,21 @@ run_conditional_tests() {
       echo "Running lint-tests.ps1 test suite..."
       $PWSH_CMD scripts/tests/test-lint-tests.ps1 || return 1
       echo "✓ Lint test suite OK"
+    fi
+  fi
+
+  # Gitignore docs lint test suite
+  if [ -n "$CHANGED_GITIGNORE_DOCS_LINT" ]; then
+    PWSH_CMD=""
+    if command -v pwsh >/dev/null 2>&1; then
+      PWSH_CMD="pwsh -NoProfile -File"
+    elif command -v powershell >/dev/null 2>&1; then
+      PWSH_CMD="powershell -NoProfile -ExecutionPolicy Bypass -File"
+    fi
+    if [ -n "$PWSH_CMD" ]; then
+      echo "Running lint-gitignore-docs.ps1 test suite..."
+      $PWSH_CMD scripts/tests/test-gitignore-docs.ps1 || return 1
+      echo "✓ Gitignore docs lint test suite OK"
     fi
   fi
 

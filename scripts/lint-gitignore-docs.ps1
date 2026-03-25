@@ -38,10 +38,19 @@ function Write-Info($msg) {
 # Returns a HashSet of paths that are gitignored
 function Get-GitIgnoredPaths([string[]]$paths) {
   $result = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
-  if ($paths.Count -eq 0) { return $result }
+  if ($null -eq $paths -or $paths.Count -eq 0) {
+    Write-Output -NoEnumerate $result
+    return
+  }
+  if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
+    throw 'git is not available on PATH. lint-gitignore-docs requires git check-ignore.'
+  }
   $input_text = ($paths -join "`n")
   # git check-ignore --stdin returns ignored paths (one per line), exits 0 if any match, 1 if none
   $ignored = $input_text | & git check-ignore --stdin 2>$null
+  if ($LASTEXITCODE -ne 0 -and $LASTEXITCODE -ne 1) {
+    throw "git check-ignore failed with exit code $LASTEXITCODE"
+  }
   if ($null -ne $ignored) {
     $lines = if ($ignored -is [array]) { $ignored } else { @($ignored) }
     foreach ($line in $lines) {
@@ -49,7 +58,7 @@ function Get-GitIgnoredPaths([string[]]$paths) {
       if ($trimmed -ne '') { [void]$result.Add($trimmed) }
     }
   }
-  return $result
+  Write-Output -NoEnumerate $result
 }
 
 $hasErrors = $false
@@ -75,6 +84,10 @@ foreach ($protectedDir in $protectedDirs) {
 
     # Batch check all paths in one git subprocess call
     $ignoredSet = Get-GitIgnoredPaths $allRelPaths
+    if ($null -eq $ignoredSet) {
+      Write-Host "ERROR: Internal check failed to produce ignored file set for $protectedDir/" -ForegroundColor Red
+      $ignoredSet = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+    }
     $ignoredFiles = @($allRelPaths | Where-Object { $ignoredSet.Contains($_) })
 
     if ($ignoredFiles.Count -gt 0) {
@@ -191,6 +204,10 @@ if ((Test-Path '.gitignore') -and $hasProtectedDirs) {
   if ($dangerousPatterns.Count -gt 0) {
     # Batch check all protected paths once for Check 2 verification
     $check2IgnoredSet = Get-GitIgnoredPaths $allProtectedRelPaths
+    if ($null -eq $check2IgnoredSet) {
+      Write-Host "ERROR: Internal check failed to produce wildcard verification set." -ForegroundColor Red
+      $check2IgnoredSet = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+    }
 
     # Only report as errors if the files are actually gitignored (check 1 caught them).
     # Otherwise report as warnings since the pattern *could* match but git's path
@@ -273,6 +290,10 @@ if (Test-Path 'mkdocs.yml') {
 
   # Batch check all existing nav file paths in one git subprocess call
   $navIgnoredSet = Get-GitIgnoredPaths $existingNavPaths
+  if ($null -eq $navIgnoredSet) {
+    Write-Host "ERROR: Internal check failed to produce mkdocs nav ignored set." -ForegroundColor Red
+    $navIgnoredSet = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+  }
   foreach ($navPath in $existingNavPaths) {
     if ($navIgnoredSet.Contains($navPath)) {
       # Derive the original nav reference from the path

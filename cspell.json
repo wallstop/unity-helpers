@@ -520,6 +520,7 @@
         "DXT",
         "TOCTOU",
         "Regex",
+        "BRE",
         "Lookaheads",
         "Glob",
         "Pathfinding",
