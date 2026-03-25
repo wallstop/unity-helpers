@@ -37,6 +37,8 @@ npm run validate:prepush
 | Command                                         | Description                                 |
 | ----------------------------------------------- | ------------------------------------------- |
 | `npm run lint:spelling`                         | Spell check all documentation (CSpell)      |
+| `npm run lint:spelling:config`                  | Lint cspell.json for config issues          |
+| `npm run lint:spelling:config:fix`              | Auto-fix cspell.json config issues          |
 | `npm run lint:docs`                             | Check markdown links and backtick refs      |
 | `npm run lint:markdown`                         | Markdownlint structural rules               |
 | `npm run lint:yaml`                             | YAML syntax validation                      |
@@ -46,6 +48,7 @@ npm run validate:prepush
 | `npm run format:yaml:check`                     | Check YAML formatting (Prettier)            |
 | `npm run eol:check`                             | Line endings (CRLF) and BOM check           |
 | `npm run validate:tests`                        | Test lifecycle lint (Track() usage)         |
+| `npm run test:sync-script-contracts`            | Sync newline + cspell contract regressions  |
 | `bash scripts/audit-license-years.sh --summary` | License year header audit                   |
 
 ---
@@ -74,6 +77,17 @@ Add words to the appropriate categorized dictionary in `cspell.json`, not the ro
 | `tech-terms`    | General programming/tooling terms        | async, config, JSON, IL2CPP             |
 
 When adding technical abbreviations (e.g., IVT for InternalsVisibleTo), place them in the matching category (`csharp-terms` for C# concepts, `tech-terms` for general tooling). Only use the root `words` array for project-specific words that don't fit any category.
+
+Since `caseSensitive` is `false` in this project, only ONE case variant per word is needed (e.g., `ulf` covers `ULF`, `Ulf`, etc.).
+
+### Config Lint
+
+```bash
+npm run lint:spelling:config       # Check for case-redundant entries
+npm run lint:spelling:config:fix   # Auto-fix case-redundant entries
+```
+
+The config linter catches case-redundant dictionary entries (error, blocking) and cross-dictionary duplicates (warning, non-blocking). It does not auto-classify root words into categorized dictionaries. That remains a review-time policy decision.
 
 ### Inline Ignores
 

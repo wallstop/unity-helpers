@@ -44,6 +44,9 @@ function Write-SuccessMsg($msg) {
     Write-Host "[llm-lint] $msg" -ForegroundColor Green
 }
 
+$markdownHelpersPath = Join-Path -Path $PSScriptRoot -ChildPath 'markdown-helpers.ps1'
+. $markdownHelpersPath
+
 $repoRoot = (Get-Item $PSScriptRoot).Parent.FullName
 $skillsDir = Join-Path -Path $repoRoot -ChildPath '.llm/skills'
 $contextFile = Join-Path -Path $repoRoot -ChildPath '.llm/context.md'
@@ -117,6 +120,10 @@ if (-not (Test-Path $generateScript)) {
 
 # Run the generator and capture output
 $expectedIndex = & pwsh -NoProfile -File $generateScript 2>$null
+if ($LASTEXITCODE -ne 0) {
+    Write-ErrorMsg "Generator script failed with exit code $LASTEXITCODE"
+    exit 1
+}
 
 # Read current context.md
 $contextContent = Get-Content -Path $contextFile -Raw
@@ -124,6 +131,78 @@ $contextContent = Get-Content -Path $contextFile -Raw
 # Extract current index from context.md
 $beginMarker = '<!-- BEGIN GENERATED SKILLS INDEX -->'
 $endMarker = '<!-- END GENERATED SKILLS INDEX -->'
+
+# Returns marker presence/order diagnostics to make extraction failures actionable.
+function Get-MarkerDiagnostics($raw, $beginMarkerLocal, $endMarkerLocal) {
+    if ($null -eq $raw) {
+        return @{
+            IsNull = $true
+            BeginCount = 0
+            EndCount = 0
+            BeginIndex = -1
+            EndIndex = -1
+            OrderValid = $false
+        }
+    }
+
+    $normalized = $raw -replace "`r`n", "`n"
+    $beginCount = [regex]::Matches($normalized, [regex]::Escape($beginMarkerLocal)).Count
+    $endCount = [regex]::Matches($normalized, [regex]::Escape($endMarkerLocal)).Count
+    $beginIndex = $normalized.IndexOf($beginMarkerLocal)
+    $endIndex = $normalized.IndexOf($endMarkerLocal)
+
+    return @{
+        IsNull = $false
+        BeginCount = $beginCount
+        EndCount = $endCount
+        BeginIndex = $beginIndex
+        EndIndex = $endIndex
+        OrderValid = ($beginIndex -ge 0 -and $endIndex -ge 0 -and $beginIndex -lt $endIndex)
+    }
+}
+
+function Test-MarkerShape($diag, $sourceName) {
+    if ($diag.IsNull) {
+        Write-ErrorMsg "$sourceName content is null"
+        return $false
+    }
+
+    $isValid = $true
+    if ($diag.BeginCount -ne 1) {
+        Write-ErrorMsg "$sourceName has $($diag.BeginCount) BEGIN markers (expected exactly 1)"
+        $isValid = $false
+    }
+    if ($diag.EndCount -ne 1) {
+        Write-ErrorMsg "$sourceName has $($diag.EndCount) END markers (expected exactly 1)"
+        $isValid = $false
+    }
+    if (-not $diag.OrderValid) {
+        Write-ErrorMsg "$sourceName marker order is invalid (beginIndex=$($diag.BeginIndex), endIndex=$($diag.EndIndex))"
+        $isValid = $false
+    }
+
+    return $isValid
+}
+
+# Extract content between BEGIN/END markers from a raw string.
+# IMPORTANT: capture semantics are explicit via named group `content`.
+function Extract-MarkerContent($raw, $beginMarkerLocal, $endMarkerLocal) {
+    if ($null -eq $raw) {
+        return $null
+    }
+
+    # Normalize CRLF to LF for cross-platform consistency
+    $normalized = $raw -replace "`r`n", "`n"
+    $escapedBegin = [regex]::Escape($beginMarkerLocal)
+    $escapedEnd = [regex]::Escape($endMarkerLocal)
+    $pattern = "(?s)$escapedBegin(?<content>.*?)$escapedEnd"
+
+    if ($normalized -match $pattern) {
+        return $Matches['content'].Trim()
+    }
+
+    return $null
+}
 
 if ($contextContent -notmatch [regex]::Escape($beginMarker)) {
     Write-ErrorMsg "Missing BEGIN marker in context.md"
@@ -135,27 +214,27 @@ if ($contextContent -notmatch [regex]::Escape($endMarker)) {
     exit 1
 }
 
-# Extract current index
-$pattern = "(?s)$([regex]::Escape($beginMarker))(.*)$([regex]::Escape($endMarker))"
-if ($contextContent -match $pattern) {
-    $currentIndex = $Matches[1].Trim()
-}
-else {
-    Write-ErrorMsg "Could not extract skills index from context.md"
+# Extract current index via the single shared extraction path
+$contextDiag = Get-MarkerDiagnostics $contextContent $beginMarker $endMarker
+if (-not (Test-MarkerShape $contextDiag 'context.md')) {
     exit 1
 }
 
-# Normalize both for comparison (remove markers, timestamps, summary lines, and normalize whitespace)
-function Normalize-Index($indexLines) {
-    $lines = $indexLines -split "`n" | 
+$currentIndex = Extract-MarkerContent $contextContent $beginMarker $endMarker
+if ($null -eq $currentIndex) {
+    Write-ErrorMsg "Could not extract skills index from context.md"
+    Write-ErrorMsg "Diagnostics: beginCount=$($contextDiag.BeginCount), endCount=$($contextDiag.EndCount), beginIndex=$($contextDiag.BeginIndex), endIndex=$($contextDiag.EndIndex), orderValid=$($contextDiag.OrderValid)"
+    exit 1
+}
+
+# Normalize for comparison (remove timestamps, normalize whitespace)
+function Normalize-Index($indexContent) {
+    # Normalize CRLF to LF for cross-platform consistency
+    $indexContent = $indexContent -replace "`r`n", "`n"
+    $lines = $indexContent -split "`n" | 
         Where-Object { 
             $_ -notmatch '<!-- Generated:' -and 
-            $_ -notmatch '<!-- Command:' -and
-            $_ -notmatch '<!-- BEGIN GENERATED' -and
-            $_ -notmatch '<!-- END GENERATED' -and
-            $_ -notmatch '^\[skills-index\]' -and
-            $_ -notmatch '^={10,}$' -and
-            $_ -notmatch '^\s*#\s*$'
+            $_ -notmatch '<!-- Command:'
         } |
         ForEach-Object { 
             $line = $_.TrimEnd()
@@ -171,12 +250,51 @@ function Normalize-Index($indexLines) {
     return ($lines -join "`n").Trim()
 }
 
-$normalizedExpected = Normalize-Index ($expectedIndex -join "`n")
+# Extract only the content between markers from the generated output
+$expectedRaw = $expectedIndex -join "`n"
+$expectedDiag = Get-MarkerDiagnostics $expectedRaw $beginMarker $endMarker
+if (-not (Test-MarkerShape $expectedDiag 'generated output')) {
+    exit 1
+}
+
+$expectedContent = Extract-MarkerContent $expectedRaw $beginMarker $endMarker
+if ($null -eq $expectedContent) {
+    Write-ErrorMsg "Generated output missing BEGIN/END markers"
+    Write-ErrorMsg "Diagnostics: beginCount=$($expectedDiag.BeginCount), endCount=$($expectedDiag.EndCount), beginIndex=$($expectedDiag.BeginIndex), endIndex=$($expectedDiag.EndIndex), orderValid=$($expectedDiag.OrderValid)"
+    exit 1
+}
+
+if ($expectedContent.Trim().Length -eq 0) {
+    Write-ErrorMsg "Generated output between markers is empty"
+    exit 1
+}
+
+$normalizedExpected = Normalize-Index $expectedContent
 $normalizedCurrent = Normalize-Index $currentIndex
 
 if ($normalizedExpected -ne $normalizedCurrent) {
     Write-ErrorMsg "Skills index in context.md is out of date!"
     Write-Host ""
+    
+    # Show first few differences to help diagnose
+    $expectedLines = $normalizedExpected -split "`n"
+    $currentLines = $normalizedCurrent -split "`n"
+    $maxLines = [Math]::Max($expectedLines.Count, $currentLines.Count)
+    $diffCount = 0
+    for ($i = 0; $i -lt $maxLines -and $diffCount -lt 5; $i++) {
+        $exp = if ($i -lt $expectedLines.Count) { $expectedLines[$i] } else { "(missing)" }
+        $cur = if ($i -lt $currentLines.Count) { $currentLines[$i] } else { "(missing)" }
+        if ($exp -ne $cur) {
+            Write-Host "  Line $($i+1):" -ForegroundColor Yellow
+            Write-Host "    Expected: $exp" -ForegroundColor Green
+            Write-Host "    Current:  $cur" -ForegroundColor Red
+            $diffCount++
+        }
+    }
+    if ($diffCount -eq 0) {
+        Write-Host "  Expected line count: $($expectedLines.Count)" -ForegroundColor Yellow
+        Write-Host "  Current line count:  $($currentLines.Count)" -ForegroundColor Yellow
+    }
     
     if ($Fix) {
         Write-Host "Regenerating skills index..." -ForegroundColor Yellow
@@ -187,13 +305,14 @@ if ($normalizedExpected -ne $normalizedCurrent) {
         $inBlock = $false
         $filteredLines = @()
         foreach ($line in $expectedIndex) {
-            if ($line -match [regex]::Escape($beginMarker)) { $inBlock = $true }
+            if ($line -eq $beginMarker) { $inBlock = $true }
             if ($inBlock) { $filteredLines += $line }
-            if ($line -match [regex]::Escape($endMarker)) { $inBlock = $false; break }
+            if ($line -eq $endMarker) { $inBlock = $false; break }
         }
         $expectedFull = $filteredLines -join "`n"
         # Replace the entire block including markers with the new generated content
-        $newContent = $contextContent -replace $pattern, $expectedFull
+        $replacePattern = "(?s)$([regex]::Escape($beginMarker)).*?$([regex]::Escape($endMarker))"
+        $newContent = $contextContent -replace $replacePattern, $expectedFull
 
         # Trim trailing whitespace and add exactly one LF (Markdown files require LF per .editorconfig)
         $newContent = $newContent.TrimEnd() + "`n"
@@ -204,18 +323,31 @@ if ($normalizedExpected -ne $normalizedCurrent) {
         Write-Info "Running prettier to format context.md..."
         Push-Location $repoRoot
         try {
-            npx --no-install prettier --write -- .llm/context.md 2>$null
+            $prettierOutput = npx --no-install prettier --write -- .llm/context.md 2>&1
+            if ($LASTEXITCODE -ne 0) {
+                Write-ErrorMsg "Prettier formatting failed (exit code $LASTEXITCODE):"
+                Write-Host $prettierOutput -ForegroundColor Red
+                Write-ErrorMsg "Rolling back changes..."
+                Set-Content -Path $contextFile -Value $contextContent -NoNewline -Encoding UTF8
+                exit 1
+            }
+        }
+        catch {
+            Write-ErrorMsg "Prettier formatting failed: $_. Rolling back changes..."
+            Set-Content -Path $contextFile -Value $contextContent -NoNewline -Encoding UTF8
+            exit 1
         }
         finally {
             Pop-Location
         }
 
-        # Post-fix validation: ensure no multiple H1 headings (MD025)
-        $fixedContent = Get-Content -Path $contextFile
-        $h1Lines = @($fixedContent | Where-Object { $_ -match '^# ' })
-        if ($h1Lines.Count -gt 1) {
-            Write-ErrorMsg "Fix produced multiple H1 headings (MD025 violation):"
-            $h1Lines | ForEach-Object { Write-Host "  $_" -ForegroundColor Red }
+        # Post-fix validation: ensure no NEW H1 headings were introduced (MD025)
+        $originalH1Count = @(Get-MarkdownH1Lines -Lines @($contextContent -split "`n")).Count
+        $fixedContent = @(Get-Content -Path $contextFile)
+        $h1Lines = @(Get-MarkdownH1Lines -Lines $fixedContent)
+        if ($h1Lines.Count -gt $originalH1Count) {
+            Write-ErrorMsg "Fix introduced new H1 headings (MD025 violation):"
+            $h1Lines | ForEach-Object { Write-Host "  L$($_.LineNumber): $($_.Text)" -ForegroundColor Red }
             Write-ErrorMsg "Rolling back changes..."
             Set-Content -Path $contextFile -Value $contextContent -NoNewline -Encoding UTF8
             exit 1

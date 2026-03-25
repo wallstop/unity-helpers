@@ -227,6 +227,7 @@ nav:
       - Baseline Tests: performance/baseline-tests-performance.md
   - Guides:
       - Odin Migration: guides/odin-migration-guide.md
+      - Unity Devcontainer Licensing: guides/unity-devcontainer-licensing.md
   - Contributing:
       - Overview: project/contributing.md
       - Testing Patterns: contributing/testing-patterns.md

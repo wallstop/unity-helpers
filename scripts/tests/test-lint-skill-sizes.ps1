@@ -7,11 +7,14 @@ Param(
     Test runner for lint-skill-sizes.ps1
 
 .DESCRIPTION
-    Tests that lint-skill-sizes.ps1 correctly classifies skill files by size:
+    Tests that lint-skill-sizes.ps1 correctly classifies skill files and context.md by size:
     - >500 lines: ERROR (exit code 1)
     - 480-500 lines: CRITICAL warning (exit code 0, but warning shown)
     - 300-500 lines: WARNING (exit code 0)
     - <300 lines: OK (exit code 0)
+
+    Also tests .llm/context.md size checking with [context-size] prefix messages,
+    including missing file detection and interaction between skill and context errors.
 
     Uses temporary directories with generated fixture files to test each threshold.
 
@@ -75,6 +78,7 @@ function New-SkillFixture {
 function Invoke-Linter {
   param(
     [string]$SkillsDir,
+    [int]$ContextLines = 100,
     [switch]$Verbose
   )
   # Run the linter against a custom skills directory by temporarily creating the expected structure
@@ -98,6 +102,17 @@ function Invoke-Linter {
       New-Item -ItemType Directory -Path $destDir -Force | Out-Null
     }
     Copy-Item $_.FullName $destPath
+  }
+
+  # Create .llm/context.md fixture unless $ContextLines is -1 (skip)
+  if ($ContextLines -ge 0) {
+    $contextPath = Join-Path $tempRoot '.llm' 'context.md'
+    $contextContent = @("# Context")
+    $contextContent += ""
+    for ($i = 2; $i -lt $ContextLines; $i++) {
+      $contextContent += "Line $i of context content."
+    }
+    $contextContent | Set-Content -Path $contextPath -Encoding UTF8
   }
 
   $linterArgs = @((Join-Path $tempScriptsDir 'lint-skill-sizes.ps1'))
@@ -189,6 +204,7 @@ New-SkillFixture -Dir $tempDir5 -FileName "boundary-500-skill.md" -LineCount 500
 $result5 = Invoke-Linter -SkillsDir $tempDir5
 Write-TestResult "FileAt500Lines_ExitCode0" ($result5.ExitCode -eq 0) "Expected exit code 0, got $($result5.ExitCode)"
 Write-TestResult "FileAt500Lines_CriticalNotError" ($result5.Output -match 'CRITICAL' -and -not ($result5.Output -match '\] ERROR:')) "Expected CRITICAL without ERROR message"
+Write-TestResult "FileAt500Lines_AtLimitPhrasing" ($result5.Output -match '\[skill-sizes\] CRITICAL.*AT the 500 line limit') "Expected 'AT the 500 line limit' phrasing for exactly 500 lines"
 Remove-Item -Path $tempDir5 -Recurse -Force -ErrorAction SilentlyContinue
 
 # Test 6: File at exactly 501 lines should be ERROR (exit 1)
@@ -241,6 +257,85 @@ New-Item -ItemType Directory -Path $tempDir9 -Force | Out-Null
 $result9 = Invoke-Linter -SkillsDir $tempDir9
 Write-TestResult "EmptyDir_ExitCode0" ($result9.ExitCode -eq 0) "Expected exit code 0 for empty dir, got $($result9.ExitCode)"
 Remove-Item -Path $tempDir9 -Recurse -Force -ErrorAction SilentlyContinue
+
+# ---- Context.md Tests ----
+
+Write-Host "`nTest group: Context.md size checks" -ForegroundColor Magenta
+
+# Test 10: context.md under 300 lines should be OK (exit 0)
+$tempDir10 = Join-Path ([System.IO.Path]::GetTempPath()) "skill-test-ctx-ok-$([System.Guid]::NewGuid().ToString('N').Substring(0,8))"
+New-Item -ItemType Directory -Path $tempDir10 -Force | Out-Null
+New-SkillFixture -Dir $tempDir10 -FileName "small-skill.md" -LineCount 100
+$result10 = Invoke-Linter -SkillsDir $tempDir10 -ContextLines 100
+Write-TestResult "ContextUnderLimit_ExitCode0" ($result10.ExitCode -eq 0) "Expected exit code 0, got $($result10.ExitCode)"
+Write-TestResult "ContextUnderLimit_NoError" (-not ($result10.Output -match '\[context-size\] ERROR:')) "Output contained context-size ERROR: $($result10.Output)"
+Remove-Item -Path $tempDir10 -Recurse -Force -ErrorAction SilentlyContinue
+
+# Test 11: context.md at 301 lines should be WARNING (exit 0, verbose output contains WARNING)
+$tempDir11 = Join-Path ([System.IO.Path]::GetTempPath()) "skill-test-ctx-warn-$([System.Guid]::NewGuid().ToString('N').Substring(0,8))"
+New-Item -ItemType Directory -Path $tempDir11 -Force | Out-Null
+New-SkillFixture -Dir $tempDir11 -FileName "small-skill.md" -LineCount 100
+$result11 = Invoke-Linter -SkillsDir $tempDir11 -ContextLines 301 -Verbose
+Write-TestResult "ContextAtWarningThreshold_ExitCode0" ($result11.ExitCode -eq 0) "Expected exit code 0, got $($result11.ExitCode)"
+Write-TestResult "ContextAtWarningThreshold_Warning" ($result11.Output -match '\[context-size\] WARNING') "Expected [context-size] WARNING in verbose output, got: $($result11.Output)"
+Remove-Item -Path $tempDir11 -Recurse -Force -ErrorAction SilentlyContinue
+
+# Test 12: context.md at 480 lines should be CRITICAL (exit 0)
+$tempDir12 = Join-Path ([System.IO.Path]::GetTempPath()) "skill-test-ctx-crit-$([System.Guid]::NewGuid().ToString('N').Substring(0,8))"
+New-Item -ItemType Directory -Path $tempDir12 -Force | Out-Null
+New-SkillFixture -Dir $tempDir12 -FileName "small-skill.md" -LineCount 100
+$result12 = Invoke-Linter -SkillsDir $tempDir12 -ContextLines 480
+Write-TestResult "ContextAtCriticalThreshold_ExitCode0" ($result12.ExitCode -eq 0) "Expected exit code 0, got $($result12.ExitCode)"
+Write-TestResult "ContextAtCriticalThreshold_Critical" ($result12.Output -match '\[context-size\] CRITICAL') "Expected [context-size] CRITICAL in output, got: $($result12.Output)"
+Remove-Item -Path $tempDir12 -Recurse -Force -ErrorAction SilentlyContinue
+
+# Test 12b: context.md at exactly 500 lines should be CRITICAL with "AT the limit" phrasing (exit 0)
+$tempDir12b = Join-Path ([System.IO.Path]::GetTempPath()) "skill-test-ctx-500-$([System.Guid]::NewGuid().ToString('N').Substring(0,8))"
+New-Item -ItemType Directory -Path $tempDir12b -Force | Out-Null
+New-SkillFixture -Dir $tempDir12b -FileName "small-skill.md" -LineCount 100
+$result12b = Invoke-Linter -SkillsDir $tempDir12b -ContextLines 500
+Write-TestResult "ContextAt500Lines_ExitCode0" ($result12b.ExitCode -eq 0) "Expected exit code 0, got $($result12b.ExitCode)"
+Write-TestResult "ContextAt500Lines_CriticalAtLimit" ($result12b.Output -match '\[context-size\] CRITICAL.*AT the 500 line limit') "Expected [context-size] CRITICAL with 'AT the limit' phrasing, got: $($result12b.Output)"
+Remove-Item -Path $tempDir12b -Recurse -Force -ErrorAction SilentlyContinue
+
+# Test 13: context.md at 501 lines should be ERROR (exit 1)
+$tempDir13 = Join-Path ([System.IO.Path]::GetTempPath()) "skill-test-ctx-err-$([System.Guid]::NewGuid().ToString('N').Substring(0,8))"
+New-Item -ItemType Directory -Path $tempDir13 -Force | Out-Null
+New-SkillFixture -Dir $tempDir13 -FileName "small-skill.md" -LineCount 100
+$result13 = Invoke-Linter -SkillsDir $tempDir13 -ContextLines 501
+Write-TestResult "ContextOverLimit_ExitCode1" ($result13.ExitCode -eq 1) "Expected exit code 1, got $($result13.ExitCode)"
+Write-TestResult "ContextOverLimit_ErrorMsg" ($result13.Output -match '\[context-size\] ERROR:') "Expected [context-size] ERROR in output, got: $($result13.Output)"
+Remove-Item -Path $tempDir13 -Recurse -Force -ErrorAction SilentlyContinue
+
+# Test 14: context.md missing should produce WARNING (exit 0)
+$tempDir14 = Join-Path ([System.IO.Path]::GetTempPath()) "skill-test-ctx-miss-$([System.Guid]::NewGuid().ToString('N').Substring(0,8))"
+New-Item -ItemType Directory -Path $tempDir14 -Force | Out-Null
+New-SkillFixture -Dir $tempDir14 -FileName "small-skill.md" -LineCount 100
+$result14 = Invoke-Linter -SkillsDir $tempDir14 -ContextLines -1
+Write-TestResult "ContextMissing_ExitCode0" ($result14.ExitCode -eq 0) "Expected exit code 0, got $($result14.ExitCode)"
+Write-TestResult "ContextMissing_Warning" ($result14.Output -match '\[context-size\] WARNING') "Expected [context-size] WARNING for missing file, got: $($result14.Output)"
+Remove-Item -Path $tempDir14 -Recurse -Force -ErrorAction SilentlyContinue
+
+# Test 15: context.md over limit with skills OK -> exit 1 (context error drives failure)
+Write-Host "`nTest group: Context and skill interaction" -ForegroundColor Magenta
+$tempDir15 = Join-Path ([System.IO.Path]::GetTempPath()) "skill-test-ctx-err-skill-ok-$([System.Guid]::NewGuid().ToString('N').Substring(0,8))"
+New-Item -ItemType Directory -Path $tempDir15 -Force | Out-Null
+New-SkillFixture -Dir $tempDir15 -FileName "good-skill.md" -LineCount 100
+$result15 = Invoke-Linter -SkillsDir $tempDir15 -ContextLines 501
+Write-TestResult "ContextOverLimitWithSkillsOk_ExitCode1" ($result15.ExitCode -eq 1) "Expected exit code 1, got $($result15.ExitCode)"
+Write-TestResult "ContextOverLimitWithSkillsOk_ContextError" ($result15.Output -match '\[context-size\] ERROR:') "Expected [context-size] ERROR in output"
+Write-TestResult "ContextOverLimitWithSkillsOk_NoSkillError" (-not ($result15.Output -match '\[skill-sizes\] ERROR:')) "Unexpected [skill-sizes] ERROR in output"
+Remove-Item -Path $tempDir15 -Recurse -Force -ErrorAction SilentlyContinue
+
+# Test 16: skill over limit with context OK -> exit 1 (skill error drives failure)
+$tempDir16 = Join-Path ([System.IO.Path]::GetTempPath()) "skill-test-skill-err-ctx-ok-$([System.Guid]::NewGuid().ToString('N').Substring(0,8))"
+New-Item -ItemType Directory -Path $tempDir16 -Force | Out-Null
+New-SkillFixture -Dir $tempDir16 -FileName "bad-skill.md" -LineCount 501
+$result16 = Invoke-Linter -SkillsDir $tempDir16 -ContextLines 100
+Write-TestResult "SkillOverLimitWithContextOk_ExitCode1" ($result16.ExitCode -eq 1) "Expected exit code 1, got $($result16.ExitCode)"
+Write-TestResult "SkillOverLimitWithContextOk_SkillError" ($result16.Output -match '\[skill-sizes\] ERROR:') "Expected [skill-sizes] ERROR in output"
+Write-TestResult "SkillOverLimitWithContextOk_NoContextError" (-not ($result16.Output -match '\[context-size\] ERROR:')) "Unexpected [context-size] ERROR in output"
+Remove-Item -Path $tempDir16 -Recurse -Force -ErrorAction SilentlyContinue
 
 # ---- Summary ----
 

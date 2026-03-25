@@ -30,11 +30,17 @@ exclude = [
   "^https?://doi\\.org",
   # Known flaky/unreliable sites that cause intermittent CI failures
   "^https?://bugs\\.python\\.org",
-  # Academic/hobby sites with intermittent connectivity from GitHub Actions runners
+  # Academic/hobby/archive sites with intermittent connectivity from GitHub Actions runners
   # These sites are valid but frequently timeout or fail from CI runner networks
   # Verified working from regular internet connections (Feb 2026)
+  # When adding new external URLs to docs, evaluate CI reliability for academic,
+  # archive, and conference sites -- add exclusions here if they are reference-only
   "^https?://www\\.pcg-random\\.org",
   "^https?://www\\.greensort\\.org",
+  # Web Archive frequently times out from CI runners; snapshot URLs are reference-only
+  "^https?://web\\.archive\\.org",
+  # Old conference subdomains are unreliable; referenced in third-party-notices/performance docs
+  "^https?://2014\\.splashcon\\.org",
   # Defunct or permanently unavailable sites
   "^https?://wiki\\.unity3d\\.com",
   "^https?://grepcode\\.com",

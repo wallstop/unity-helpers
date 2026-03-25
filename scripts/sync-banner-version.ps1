@@ -75,6 +75,8 @@ else {
         else {
             # Replace version
             $updatedContent = $svgContent -replace $versionPattern, $newVersionText
+            # Preserve repository final-newline policy: exactly one trailing LF.
+            $updatedContent = $updatedContent.TrimEnd() + "`n"
             Set-Content -Path $bannerSvgPath -Value $updatedContent -NoNewline -Encoding UTF8
 
             Write-Host "Updated banner version to: v$version"

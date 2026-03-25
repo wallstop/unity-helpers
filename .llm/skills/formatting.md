@@ -297,12 +297,12 @@ The repository's `.editorconfig` defines all formatting rules. CSharpier reads t
 
 ---
 
-## Skill File Additional Requirements
+## Skill File and Context Additional Requirements
 
-Skill files (`.llm/skills/*.md`) have additional size constraints beyond formatting:
+Skill files (`.llm/skills/*.md`) and [context](../context.md) have additional size constraints beyond formatting:
 
 ```bash
-# After editing ANY skill file, also run:
+# After editing ANY skill file or .llm/context.md, also run:
 pwsh -NoProfile -File scripts/lint-skill-sizes.ps1
 ```
 

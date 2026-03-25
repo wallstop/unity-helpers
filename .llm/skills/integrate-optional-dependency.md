@@ -371,6 +371,14 @@ When optional dependencies affect assembly definitions, use Version Defines:
 }
 ```
 
+### Transitive Precompiled References (Critical)
+
+When an assembly has `"overrideReferences": true`, it can ONLY see precompiled DLLs explicitly listed in its `precompiledReferences`. These references do NOT propagate transitively through assembly references.
+
+**Example**: `ScriptableObjectSingleton<T>` conditionally inherits from `SerializedScriptableObject` (Sirenix) when `ODIN_INSPECTOR` is defined. Any assembly using types derived from `ScriptableObjectSingleton<T>` must include `Sirenix.Serialization.dll` in its own `precompiledReferences`, even if a referenced assembly already lists it.
+
+**When splitting assemblies**: Always audit the parent assembly's `precompiledReferences` and propagate required DLLs to each child. See [manage-assembly-definitions](./manage-assembly-definitions.md) for the full checklist.
+
 ---
 
 ## Related Skills

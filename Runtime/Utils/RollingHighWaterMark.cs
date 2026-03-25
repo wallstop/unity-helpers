@@ -4,9 +4,8 @@
 namespace WallstopStudios.UnityHelpers.Utils
 {
     using System;
-    using System.Collections.Generic;
     using System.Runtime.CompilerServices;
-    using System.Threading;
+    using WallstopStudios.UnityHelpers.Core.DataStructure;
     using WallstopStudios.UnityHelpers.Core.Helper;
 
     /// <summary>
@@ -41,7 +40,7 @@ namespace WallstopStudios.UnityHelpers.Utils
         /// </summary>
         private const int MaxSampleCount = 10000;
 
-        private readonly struct Sample
+        internal readonly struct Sample
         {
             public readonly float Time;
             public readonly int Value;
@@ -53,11 +52,13 @@ namespace WallstopStudios.UnityHelpers.Utils
             }
         }
 
-        private readonly List<Sample> _samples = new List<Sample>();
+        private readonly CyclicBuffer<Sample> _samples;
+        private readonly CyclicBuffer<Sample> _peakDeque;
         private readonly object _lock = new object();
         private float _windowSeconds;
         private int _cachedPeak;
         private float _lastCleanupTime;
+        private long _runningSum;
 
         /// <summary>
         /// Gets or sets the rolling window duration in seconds.
@@ -118,6 +119,8 @@ namespace WallstopStudios.UnityHelpers.Utils
             _windowSeconds =
                 windowSeconds > 0f ? windowSeconds : PoolPurgeSettings.DefaultRollingWindowSeconds;
             _cachedPeak = 0;
+            _samples = new CyclicBuffer<Sample>(MaxSampleCount);
+            _peakDeque = new CyclicBuffer<Sample>(MaxSampleCount);
         }
 
         /// <summary>
@@ -129,22 +132,7 @@ namespace WallstopStudios.UnityHelpers.Utils
         {
             lock (_lock)
             {
-                // Enforce maximum sample limit to prevent unbounded growth
-                if (_samples.Count >= MaxSampleCount)
-                {
-                    int removeCount = _samples.Count - MaxSampleCount + 1;
-                    _samples.RemoveRange(0, removeCount);
-                    RecalculatePeak();
-                }
-
-                _samples.Add(new Sample(currentTime, value));
-
-                if (value > _cachedPeak)
-                {
-                    _cachedPeak = value;
-                }
-
-                CleanupIfNeeded(currentTime);
+                RecordCore(currentTime, value);
             }
         }
 
@@ -163,6 +151,57 @@ namespace WallstopStudios.UnityHelpers.Utils
         }
 
         /// <summary>
+        /// Records a new sample and returns the average in a single lock acquisition.
+        /// This avoids the overhead of acquiring the lock twice when both operations are needed.
+        /// </summary>
+        /// <param name="currentTime">The current time.</param>
+        /// <param name="value">The value to record.</param>
+        /// <returns>The average value within the window after recording, or 0 if no samples exist.</returns>
+        public float RecordAndGetAverage(float currentTime, int value)
+        {
+            lock (_lock)
+            {
+                RecordCore(currentTime, value);
+
+                if (_samples.Count == 0)
+                {
+                    return 0f;
+                }
+                return (float)_runningSum / _samples.Count;
+            }
+        }
+
+        /// <summary>
+        /// Core record logic shared by <see cref="Record"/> and <see cref="RecordAndGetAverage"/>.
+        /// Must be called while holding <see cref="_lock"/>.
+        /// </summary>
+        private void RecordCore(float currentTime, int value)
+        {
+            // Handle overflow: if buffer is full, account for the item about to be overwritten
+            if (_samples.Count == _samples.Capacity)
+            {
+                Sample oldest = _samples[0];
+                _runningSum -= oldest.Value;
+            }
+
+            Sample newSample = new Sample(currentTime, value);
+            _samples.Add(newSample);
+            _runningSum += value;
+
+            // Update peak deque: maintain strictly decreasing invariant
+            while (_peakDeque.Count > 0 && _peakDeque[_peakDeque.Count - 1].Value <= value)
+            {
+                _peakDeque.TryPopBack(out _);
+            }
+            _peakDeque.Add(newSample);
+
+            // Synchronize peak deque with samples buffer to evict stale entries
+            SyncPeakDeque();
+
+            CleanupIfNeeded(currentTime);
+        }
+
+        /// <summary>
         /// Gets the average value within the rolling window.
         /// </summary>
         /// <param name="currentTime">The current time.</param>
@@ -178,13 +217,7 @@ namespace WallstopStudios.UnityHelpers.Utils
                     return 0f;
                 }
 
-                long sum = 0;
-                for (int i = 0; i < _samples.Count; i++)
-                {
-                    sum += _samples[i].Value;
-                }
-
-                return (float)sum / _samples.Count;
+                return (float)_runningSum / _samples.Count;
             }
         }
 
@@ -196,6 +229,8 @@ namespace WallstopStudios.UnityHelpers.Utils
             lock (_lock)
             {
                 _samples.Clear();
+                _peakDeque.Clear();
+                _runningSum = 0;
                 _cachedPeak = 0;
                 _lastCleanupTime = 0f;
             }
@@ -217,38 +252,61 @@ namespace WallstopStudios.UnityHelpers.Utils
             _lastCleanupTime = currentTime;
 
             float cutoff = currentTime - _windowSeconds;
-            int removeCount = 0;
 
-            for (int i = 0; i < _samples.Count; i++)
+            while (_samples.Count > 0 && _samples[0].Time < cutoff)
             {
-                if (_samples[i].Time < cutoff)
-                {
-                    removeCount++;
-                }
-                else
-                {
-                    break;
-                }
+                _samples.TryPopFront(out Sample expired);
+                _runningSum -= expired.Value;
             }
 
-            if (removeCount > 0)
-            {
-                _samples.RemoveRange(0, removeCount);
-                RecalculatePeak();
-            }
+            SyncPeakDeque();
         }
 
-        private void RecalculatePeak()
+        /// <summary>
+        /// Evicts stale entries from the peak deque that correspond to samples no longer
+        /// in the samples buffer. Must be called while holding <see cref="_lock"/>.
+        /// </summary>
+        private void SyncPeakDeque()
         {
-            int peak = 0;
-            for (int i = 0; i < _samples.Count; i++)
+            if (_samples.Count == 0)
             {
-                if (_samples[i].Value > peak)
-                {
-                    peak = _samples[i].Value;
-                }
+                _peakDeque.Clear();
+                _cachedPeak = 0;
+                return;
             }
-            _cachedPeak = peak;
+
+            float oldestSampleTime = _samples[0].Time;
+            while (_peakDeque.Count > 0 && _peakDeque[0].Time < oldestSampleTime)
+            {
+                _peakDeque.TryPopFront(out _);
+            }
+
+            _cachedPeak = _peakDeque.Count > 0 ? _peakDeque[0].Value : 0;
+        }
+    }
+
+    /// <summary>
+    /// Immutable snapshot of all purge-related parameters computed in a single lock acquisition.
+    /// Used to reduce lock contention on the hot purge path.
+    /// </summary>
+    internal readonly struct PurgeParameters
+    {
+        public readonly float EffectiveIdleTimeout;
+        public readonly int EffectiveMinRetainCount;
+        public readonly int ComfortableSize;
+        public readonly bool InHysteresis;
+
+        public PurgeParameters(
+            float effectiveIdleTimeout,
+            int effectiveMinRetainCount,
+            int comfortableSize,
+            bool inHysteresis
+        )
+        {
+            EffectiveIdleTimeout = effectiveIdleTimeout;
+            EffectiveMinRetainCount = effectiveMinRetainCount;
+            ComfortableSize = comfortableSize;
+            InHysteresis = inHysteresis;
         }
     }
 
@@ -578,9 +636,10 @@ namespace WallstopStudios.UnityHelpers.Utils
                     _peakConcurrentRentals = _currentlyRented;
                 }
 
-                _rollingHighWaterMark.Record(currentTime, _currentlyRented);
-
-                float average = _rollingHighWaterMark.GetAverage(currentTime);
+                float average = _rollingHighWaterMark.RecordAndGetAverage(
+                    currentTime,
+                    _currentlyRented
+                );
                 if (
                     _spikeThresholdMultiplier > 0f
                     && _currentlyRented > average * _spikeThresholdMultiplier
@@ -708,6 +767,114 @@ namespace WallstopStudios.UnityHelpers.Utils
 
             int bufferedSize = (int)(rollingPeak * buffer);
             return bufferedSize > effectiveMinRetainCount ? bufferedSize : effectiveMinRetainCount;
+        }
+
+        /// <summary>
+        /// Computes all purge-related parameters in a single lock acquisition to reduce contention.
+        /// This combines the logic of <see cref="GetFrequencyAdjustedIdleTimeout"/>,
+        /// <see cref="GetEffectiveMinRetainCount(float,float,int,int,MemoryPressureLevel)"/>,
+        /// <see cref="IsInHysteresisPeriod"/>, and <see cref="GetComfortableSize(float,int,MemoryPressureLevel)"/>.
+        /// </summary>
+        public PurgeParameters GetPurgeParameters(
+            float currentTime,
+            float baseIdleTimeoutSeconds,
+            int minRetainCount,
+            int warmRetainCount,
+            bool useIntelligent,
+            MemoryPressureLevel pressureLevel
+        )
+        {
+            lock (_lock)
+            {
+                // Frequency-adjusted idle timeout
+                float effectiveIdleTimeout = baseIdleTimeoutSeconds;
+                if (
+                    _cachedRentalsPerMinute <= LowFrequencyThreshold
+                    && _cachedRentalsPerMinute > 0f
+                    && _totalRentalCount > 0
+                )
+                {
+                    effectiveIdleTimeout = baseIdleTimeoutSeconds * LowFrequencyTimeoutMultiplier;
+                }
+
+                // Effective min retain count
+                int effectiveMinRetain = minRetainCount;
+                if (pressureLevel < MemoryPressureLevel.Medium)
+                {
+                    bool isActive =
+                        baseIdleTimeoutSeconds > 0f
+                        && (currentTime - _lastRentalTime) < baseIdleTimeoutSeconds;
+                    int warmFloor = isActive ? warmRetainCount : 0;
+                    effectiveMinRetain = warmFloor > minRetainCount ? warmFloor : minRetainCount;
+                }
+
+                // Comfortable size
+                int comfortableSize;
+                if (!useIntelligent)
+                {
+                    comfortableSize = effectiveMinRetain;
+                }
+                else if (pressureLevel >= MemoryPressureLevel.High)
+                {
+                    comfortableSize = effectiveMinRetain;
+                }
+                else
+                {
+                    int rollingPeak = _rollingHighWaterMark.GetPeak(currentTime);
+                    float buffer = _bufferMultiplier;
+
+                    if (_cachedRentalsPerMinute >= HighFrequencyThreshold)
+                    {
+                        buffer *= HighFrequencyBufferBoost;
+                    }
+
+                    if (pressureLevel == MemoryPressureLevel.Medium)
+                    {
+                        buffer =
+                            buffer > MediumPressureBufferCap ? MediumPressureBufferCap : buffer;
+                    }
+                    else if (pressureLevel == MemoryPressureLevel.Low)
+                    {
+                        buffer = buffer > LowPressureBufferCap ? LowPressureBufferCap : buffer;
+                    }
+
+                    float unusedThresholdSeconds = UnusedPoolThresholdMinutes * SecondsPerMinute;
+                    float lastAccess =
+                        _lastRentalTime > _lastReturnTime ? _lastRentalTime : _lastReturnTime;
+                    if (lastAccess > 0f && (currentTime - lastAccess) >= unusedThresholdSeconds)
+                    {
+                        comfortableSize = effectiveMinRetain;
+                    }
+                    else
+                    {
+                        int bufferedSize = (int)(rollingPeak * buffer);
+                        comfortableSize =
+                            bufferedSize > effectiveMinRetain ? bufferedSize : effectiveMinRetain;
+                    }
+                }
+
+                // Hysteresis check
+                bool inHysteresis = false;
+                if (useIntelligent)
+                {
+                    bool ignoreForPressure = pressureLevel >= MemoryPressureLevel.High;
+                    if (
+                        !ignoreForPressure
+                        && _lastSpikeTime > 0f
+                        && currentTime - _lastSpikeTime < _hysteresisSeconds
+                    )
+                    {
+                        inHysteresis = true;
+                    }
+                }
+
+                return new PurgeParameters(
+                    effectiveIdleTimeout,
+                    effectiveMinRetain,
+                    comfortableSize,
+                    inHysteresis
+                );
+            }
         }
 
         /// <summary>

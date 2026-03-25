@@ -132,9 +132,10 @@ namespace WallstopStudios.UnityHelpers.Utils
 
         /// <summary>
         /// Specifies when automatic purge operations should be triggered.
-        /// Default is <see cref="PurgeTrigger.OnRent"/> for lazy cleanup.
+        /// Default is <see cref="PurgeTrigger.Periodic"/> for time-based cleanup that avoids
+        /// per-operation overhead in hot paths.
         /// </summary>
-        public PurgeTrigger Triggers { get; set; } = PurgeTrigger.OnRent;
+        public PurgeTrigger Triggers { get; set; } = PurgeTrigger.Periodic;
 
         /// <summary>
         /// Optional callback invoked when an item is purged from the pool.

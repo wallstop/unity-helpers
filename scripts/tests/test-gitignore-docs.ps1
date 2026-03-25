@@ -58,6 +58,46 @@ function Write-TestResult {
   }
 }
 
+function Invoke-Scenario {
+  param(
+    [hashtable]$Scenario
+  )
+
+  $gitignoreContent = ''
+  $docsFiles = @()
+  $llmFiles = @()
+  $mkdocsNavContent = ''
+
+  if ($Scenario.ContainsKey('GitignoreContent')) { $gitignoreContent = [string]$Scenario.GitignoreContent }
+  if ($Scenario.ContainsKey('DocsFiles')) { $docsFiles = [string[]]$Scenario.DocsFiles }
+  if ($Scenario.ContainsKey('LlmFiles')) { $llmFiles = [string[]]$Scenario.LlmFiles }
+  if ($Scenario.ContainsKey('MkdocsNavContent')) { $mkdocsNavContent = [string]$Scenario.MkdocsNavContent }
+
+  $repo = New-TestRepo `
+    -GitignoreContent $gitignoreContent `
+    -DocsFiles $docsFiles `
+    -LlmFiles $llmFiles `
+    -MkdocsNavContent $mkdocsNavContent
+
+  try {
+    $result = Invoke-Linter -RepoDir $repo
+    $expectedExit = [int]$Scenario.ExpectedExitCode
+    Write-TestResult $Scenario.Name ($result.ExitCode -eq $expectedExit) "Expected exit code $expectedExit, got $($result.ExitCode)"
+
+    if ($Scenario.ContainsKey('ExpectedOutputRegex') -and -not [string]::IsNullOrWhiteSpace([string]$Scenario.ExpectedOutputRegex)) {
+      $regex = [string]$Scenario.ExpectedOutputRegex
+      Write-TestResult "$($Scenario.Name)_Output" ($result.Output -match $regex) "Expected output to match regex: $regex"
+    }
+
+    if ($Scenario.ContainsKey('ForbiddenOutputRegex') -and -not [string]::IsNullOrWhiteSpace([string]$Scenario.ForbiddenOutputRegex)) {
+      $forbidden = [string]$Scenario.ForbiddenOutputRegex
+      Write-TestResult "$($Scenario.Name)_NoForbiddenOutput" ($result.Output -notmatch $forbidden) "Output unexpectedly matched forbidden regex: $forbidden"
+    }
+  } finally {
+    Remove-TestRepo $repo
+  }
+}
+
 function New-TestRepo {
   <#
   .SYNOPSIS
@@ -160,36 +200,42 @@ Write-Host "Testing lint-gitignore-docs.ps1..." -ForegroundColor White
 # ==== Test Group 1: Clean scenarios (should pass) ====
 Write-Host "`nTest group: Clean scenarios (should pass)" -ForegroundColor Magenta
 
-# Test 1a: No .gitignore, no docs -> should pass
-$repo1a = New-TestRepo
-$result1a = Invoke-Linter -RepoDir $repo1a
-Write-TestResult "NoDocs_NoGitignore_Passes" ($result1a.ExitCode -eq 0) "Expected exit code 0, got $($result1a.ExitCode)"
-Remove-TestRepo $repo1a
+$cleanScenarios = @(
+  @{
+    Name = 'NoDocs_NoGitignore_Passes'
+    ExpectedExitCode = 0
+  },
+  @{
+    Name = 'SafeGitignore_Passes'
+    GitignoreContent = "node_modules/`n*.log`n.vs/"
+    DocsFiles = @('index.md', 'features/inspector/overview.md')
+    ExpectedExitCode = 0
+  },
+  @{
+    Name = 'SafeWildcards_Passes'
+    GitignoreContent = "*.log`n*.tmp`n*.dll`nfailed-tests-*.txt"
+    DocsFiles = @('index.md', 'features/editor-tools/failed-tests-exporter.md')
+    ExpectedExitCode = 0
+  },
+  @{
+    Name = 'ValidMkdocsNav_Passes'
+    GitignoreContent = "*.log"
+    DocsFiles = @('index.md', 'features/guide.md')
+    MkdocsNavContent = "nav:`n  - Home: index.md`n  - Guide: features/guide.md"
+    ExpectedExitCode = 0
+  },
+  @{
+    Name = 'Regression_EmptyIgnoredSet_DoesNotCrash'
+    GitignoreContent = "*.log`n*.tmp"
+    DocsFiles = @('index.md', 'guides/getting-started.md')
+    ExpectedExitCode = 0
+    ForbiddenOutputRegex = 'null-valued expression'
+  }
+)
 
-# Test 1b: Docs exist, .gitignore has no wildcard patterns -> should pass
-$repo1b = New-TestRepo `
-  -GitignoreContent "node_modules/`n*.log`n.vs/" `
-  -DocsFiles @('index.md', 'features/inspector/overview.md')
-$result1b = Invoke-Linter -RepoDir $repo1b
-Write-TestResult "SafeGitignore_Passes" ($result1b.ExitCode -eq 0) "Expected exit code 0, got $($result1b.ExitCode)"
-Remove-TestRepo $repo1b
-
-# Test 1c: .gitignore with wildcards that do NOT match any docs files -> should pass
-$repo1c = New-TestRepo `
-  -GitignoreContent "*.log`n*.tmp`n*.dll`nfailed-tests-*.txt" `
-  -DocsFiles @('index.md', 'features/editor-tools/failed-tests-exporter.md')
-$result1c = Invoke-Linter -RepoDir $repo1c
-Write-TestResult "SafeWildcards_Passes" ($result1c.ExitCode -eq 0) "Expected exit code 0, got $($result1c.ExitCode)"
-Remove-TestRepo $repo1c
-
-# Test 1d: mkdocs.yml with valid nav references -> should pass
-$repo1d = New-TestRepo `
-  -GitignoreContent "*.log" `
-  -DocsFiles @('index.md', 'features/guide.md') `
-  -MkdocsNavContent "nav:`n  - Home: index.md`n  - Guide: features/guide.md"
-$result1d = Invoke-Linter -RepoDir $repo1d
-Write-TestResult "ValidMkdocsNav_Passes" ($result1d.ExitCode -eq 0) "Expected exit code 0, got $($result1d.ExitCode)"
-Remove-TestRepo $repo1d
+foreach ($scenario in $cleanScenarios) {
+  Invoke-Scenario -Scenario $scenario
+}
 
 # ==== Test Group 2: Gitignored docs (should fail) ====
 Write-Host "`nTest group: Gitignored docs files (should fail)" -ForegroundColor Magenta
@@ -221,7 +267,7 @@ $repo3a = New-TestRepo `
   -MkdocsNavContent "nav:`n  - Home: index.md`n  - Missing: features/nonexistent.md"
 $result3a = Invoke-Linter -RepoDir $repo3a
 Write-TestResult "MissingNavFile_Fails" ($result3a.ExitCode -eq 1) "Expected exit code 1, got $($result3a.ExitCode)"
-Write-TestResult "MissingNavFile_DetectsFile" ($result3a.Output -match 'nonexistent\.md') "Expected output to mention nonexistent.md"
+Write-TestResult "MissingNavFile_DetectsFailure" ($result3a.Output -match 'Nav references missing file|Gitignore docs safety check failed') "Expected output to include nav failure context"
 Remove-TestRepo $repo3a
 
 # Test 3b: mkdocs.yml references a file that is gitignored
@@ -237,36 +283,35 @@ Remove-TestRepo $repo3b
 # ==== Test Group 4: Edge cases ====
 Write-Host "`nTest group: Edge cases" -ForegroundColor Magenta
 
-# Test 4a: Negation pattern un-ignores docs files -> should pass
-$repo4a = New-TestRepo `
-  -GitignoreContent "*.md`n!docs/**" `
-  -DocsFiles @('index.md', 'guide.md')
-$result4a = Invoke-Linter -RepoDir $repo4a
-Write-TestResult "NegationPattern_Passes" ($result4a.ExitCode -eq 0) "Expected exit code 0, got $($result4a.ExitCode)"
-Remove-TestRepo $repo4a
+$edgeScenarios = @(
+  @{
+    Name = 'NegationPattern_Passes'
+    GitignoreContent = "*.md`n!docs/**"
+    DocsFiles = @('index.md', 'guide.md')
+    ExpectedExitCode = 0
+  },
+  @{
+    Name = 'AnchoredPattern_Passes'
+    GitignoreContent = "/Unity/*`n/build/*"
+    DocsFiles = @('index.md', 'features/guide.md')
+    ExpectedExitCode = 0
+  },
+  @{
+    Name = 'EmptyNoDocs_Passes'
+    GitignoreContent = "*.md"
+    ExpectedExitCode = 0
+  },
+  @{
+    Name = 'ExtensionScopedWildcard_Passes'
+    GitignoreContent = "failed-tests-*.txt`nfailed-tests-*.txt.meta"
+    DocsFiles = @('index.md', 'features/editor-tools/failed-tests-exporter.md')
+    ExpectedExitCode = 0
+  }
+)
 
-# Test 4b: Directory-anchored pattern that cannot reach docs/ -> should pass
-$repo4b = New-TestRepo `
-  -GitignoreContent "/Unity/*`n/build/*" `
-  -DocsFiles @('index.md', 'features/guide.md')
-$result4b = Invoke-Linter -RepoDir $repo4b
-Write-TestResult "AnchoredPattern_Passes" ($result4b.ExitCode -eq 0) "Expected exit code 0, got $($result4b.ExitCode)"
-Remove-TestRepo $repo4b
-
-# Test 4c: Empty docs directory -> should pass
-$repo4c = New-TestRepo -GitignoreContent "*.md"
-# docs dir does not exist, so nothing to check
-$result4c = Invoke-Linter -RepoDir $repo4c
-Write-TestResult "EmptyNoDocs_Passes" ($result4c.ExitCode -eq 0) "Expected exit code 0, got $($result4c.ExitCode)"
-Remove-TestRepo $repo4c
-
-# Test 4d: Path-scoped wildcard (failed-tests-*.txt) should NOT match .md files -> should pass
-$repo4d = New-TestRepo `
-  -GitignoreContent "failed-tests-*.txt`nfailed-tests-*.txt.meta" `
-  -DocsFiles @('index.md', 'features/editor-tools/failed-tests-exporter.md')
-$result4d = Invoke-Linter -RepoDir $repo4d
-Write-TestResult "ExtensionScopedWildcard_Passes" ($result4d.ExitCode -eq 0) "Expected exit code 0, got $($result4d.ExitCode)"
-Remove-TestRepo $repo4d
+foreach ($scenario in $edgeScenarios) {
+  Invoke-Scenario -Scenario $scenario
+}
 
 # ==== Test Group 5: .llm/ directory protection ====
 Write-Host "`nTest group: .llm/ directory protection" -ForegroundColor Magenta

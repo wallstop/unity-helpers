@@ -123,9 +123,16 @@ ERROR: Allowlisted helper file not found: Tests/Path/To/OldFile.cs
 
 **Fix**: `npm run eol:fix`
 
-**Mixed endings after newline fix**: If a script appended LF to a CRLF file, detect existing endings first. See [`crlf_aware_append_newline`](../code-samples/patterns/ValidationFixPatterns.sh) and [git-hook-patterns](./git-hook-patterns.md#crlf-aware-newline-handling) for patterns.
+**Mixed endings after newline fix**: If a script appended LF to a CRLF file, detect existing endings first. See [`crlf_aware_append_newline`](../code-samples/patterns/ValidationFixPatterns.sh) and [git-hook-syntax-portability](./git-hook-syntax-portability.md#crlf-aware-newline-handling) for patterns.
 
-**PowerShell `-NoNewline`**: Avoid `Set-Content -NoNewline` — it removes the final newline Prettier requires.
+**PowerShell `-NoNewline`**: Avoid raw `Set-Content -NoNewline` writes. Normalize first with:
+
+```powershell
+$content = $content.TrimEnd() + "`n"
+Set-Content -Path $filePath -Value $content -NoNewline -Encoding UTF8
+```
+
+Run `npm run test:sync-script-contracts` after editing sync scripts to catch regressions early.
 
 ### 10. Gitignore Wildcard Too Broad
 
@@ -177,7 +184,7 @@ ERROR: Allowlisted helper file not found: Tests/Path/To/OldFile.cs
 
 **Cause**: `$LASTEXITCODE` leaking from a native command (git, npx, dotnet). PowerShell uses `$LASTEXITCODE` from the last native command as the process exit code when no explicit `exit` is given. Common culprit: `git check-ignore -q` returns exit code 1 when a file is NOT ignored (which is the success case for linters checking tracked files).
 
-**Fix**: Add explicit `exit 0` on the success path of every PowerShell script. See [git-hook-patterns](./git-hook-patterns.md#powershell-lastexitcode-leaking-critical) for the full pattern.
+**Fix**: Add explicit `exit 0` on the success path of every PowerShell script. See [git-hook-lifecycle-debugging](./git-hook-lifecycle-debugging.md#powershell-lastexitcode-leaking-critical) for the full pattern.
 
 **Prevention**: Every PowerShell script must end with explicit `exit 0` (success) or `exit 1` (failure) on all code paths. Never let a script fall through without an explicit exit.
 
@@ -294,6 +301,37 @@ accept = ["200..=299", "429", "500..=599"]  # Accept server errors as transient
 If a site fails despite these settings, it likely needs an exclusion.
 
 When updating URLs, check consistency between source code metadata (`.cs` files) and documentation (`.md` files).
+
+### 18. CS0012/CS0311: Missing Sirenix.Serialization.dll in Assembly Definition
+
+**Symptom**: Compilation fails with:
+
+```text
+error CS0012: The type 'SerializedMonoBehaviour' is defined in an assembly that is not referenced.
+You must add a reference to assembly 'Sirenix.Serialization, Version=1.0.0.0, ...'
+```
+
+or:
+
+```text
+error CS0311: The type 'X' cannot be used as type parameter 'T' in the generic type or method 'Y'.
+There is no implicit reference conversion from 'X' to 'UnityEngine.MonoBehaviour'.
+```
+
+**Cause**: The assembly definition has `overrideReferences: true` and references `WallstopStudios.UnityHelpers`, but is missing `Sirenix.Serialization.dll` in its `precompiledReferences`. This happens because `RuntimeSingleton<T>` and `ScriptableObjectSingleton<T>` conditionally inherit from Sirenix types (`SerializedMonoBehaviour` and `SerializedScriptableObject`) when `ODIN_INSPECTOR` is defined, and `overrideReferences: true` does not propagate precompiled references transitively.
+
+**Fix**: Add `"Sirenix.Serialization.dll"` to the `precompiledReferences` array in the affected `.asmdef` file:
+
+```json
+"precompiledReferences": [
+  "nunit.framework.dll",
+  "Sirenix.Serialization.dll"
+]
+```
+
+**Prevention**: The [manage-assembly-definitions](./manage-assembly-definitions.md) skill documents this requirement in detail. The standard test assembly template includes `Sirenix.Serialization.dll` by default — always use that template when creating new test assemblies.
+
+**Linter**: `pwsh -NoProfile -File scripts/lint-asmdef.ps1` detects assemblies that reference `WallstopStudios.UnityHelpers` with `overrideReferences: true` but are missing `Sirenix.Serialization.dll`.
 
 ---
 

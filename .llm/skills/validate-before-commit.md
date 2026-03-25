@@ -124,10 +124,22 @@ npm run lint:csharp-naming
 
 **Why this matters**: Test lifecycle lint failures will cause the pre-push hook to fail. Catching and fixing these issues early (after each file change) prevents frustrating failures when you try to push your commits.
 
-### Skill File Changes (`.llm/skills/*.md`)
+### Assembly Definition Changes (`.asmdef`)
 
 ```bash
-# 🚨 MANDATORY: After EVERY skill file modification:
+# 🚨 MANDATORY: After EVERY .asmdef file creation or modification:
+pwsh -NoProfile -File scripts/lint-asmdef.ps1
+
+# Also run standard JSON formatting:
+npx prettier --write -- <file>
+```
+
+**CRITICAL**: The asmdef linter checks that assemblies with `overrideReferences: true` referencing `WallstopStudios.UnityHelpers` include `Sirenix.Serialization.dll` in `precompiledReferences`. Missing this causes CS0012/CS0311 compilation errors when Odin Inspector is installed. See [manage-assembly-definitions](./manage-assembly-definitions.md) for the standard template.
+
+### Skill File and Context Changes (`.llm/skills/*.md`, [context](../context.md))
+
+```bash
+# 🚨 MANDATORY: After EVERY skill file or context.md modification:
 pwsh -NoProfile -File scripts/lint-skill-sizes.ps1
 
 # Also run standard markdown formatting:
@@ -135,7 +147,7 @@ npx prettier --write -- <file>
 npm run lint:markdown
 ```
 
-**CRITICAL**: Skill files have a **500-line hard limit** enforced by the pre-commit hook. Files exceeding this limit **CANNOT be committed** and require human judgment to split.
+**CRITICAL**: Skill files and [context](../context.md) have a **500-line hard limit** enforced by the pre-commit hook. Files exceeding this limit **CANNOT be committed** and require human judgment to split or reduce.
 
 | Lines   | Action Required                                          |
 | ------- | -------------------------------------------------------- |

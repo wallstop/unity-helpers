@@ -181,7 +181,7 @@
     <!-- Tests badge -->
     <rect x="0" y="38" width="130" height="28" rx="14" ry="14" fill="#3498db" opacity="0.2"/>
     <rect x="0" y="38" width="130" height="28" rx="14" ry="14" fill="none" stroke="#3498db" stroke-width="1.5" opacity="0.5"/>
-    <text x="65" y="56" font-family="'SF Mono', 'Fira Code', monospace" font-size="11" text-anchor="middle" fill="#3498db" font-weight="600" letter-spacing="0.3">✅ 8,000+ tests</text>
+    <text x="65" y="56" font-family="'SF Mono', 'Fira Code', monospace" font-size="11" text-anchor="middle" fill="#3498db" font-weight="600" letter-spacing="0.3">✅ 11,000+ tests</text>
 
     <!-- High performance badge -->
     <rect x="0" y="76" width="130" height="28" rx="14" ry="14" fill="#9b59b6" opacity="0.2"/>

@@ -1,6 +1,9 @@
 # Node / tooling
 node_modules/
 
+# Python test cache
+.pytest_cache/
+
 # Unity / build artifacts
 Library/
 obj/

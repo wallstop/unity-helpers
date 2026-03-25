@@ -60,7 +60,7 @@ Unity Helpers provides production-ready utilities designed to improve developmen
 - 🎮 **Designer-friendly** effects system (buffs/debuffs as ScriptableObjects)
 - 🌳 **O(log n)** spatial queries instead of O(n) loops
 - 🛠️ **20+ editor tools** that automate sprite/animation workflows
-- ✅ **8,000+ tests** ensuring production quality
+- ✅ **11,000+ tests** ensuring production quality
 
 ---
 
@@ -380,7 +380,7 @@ Common Unity development patterns like GetComponent calls, spatial queries, and 
 **Built for Real Projects:**
 
 - ✅ **Production-tested** in shipped commercial games
-- ✅ **8,000+ automated tests** catch edge cases before you hit them
+- ✅ **11,000+ automated tests** catch edge cases before you hit them
 - ✅ **Zero external dependencies** — protobuf-net is bundled for binary serialization
 - ✅ **IL2CPP/WebGL ready** with optimized SINGLE_THREADED paths
 - ✅ **MIT Licensed** - use freely in commercial projects
@@ -604,7 +604,7 @@ Already read the [Top 5 Time-Savers](#-top-time-savers)? Jump directly to the [C
 
 ### Random Number Generators
 
-Unity Helpers includes **15 high-quality random number generators**, all implementing a rich `IRandom` interface:
+Unity Helpers includes **15+ high-quality random number generators**, all implementing a rich `IRandom` interface:
 
 #### Available Generators
 

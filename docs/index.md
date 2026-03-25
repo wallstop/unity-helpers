@@ -234,9 +234,9 @@ public class CharacterStats : MonoBehaviour
 
 <div class="feature-card" markdown>
 
-### 8,000+ Tests
+### 11,000+ Tests
 
-8,000+ automated tests.
+11,000+ automated tests.
 
 </div>
 

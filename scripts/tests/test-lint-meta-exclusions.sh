@@ -30,6 +30,7 @@ NC='\033[0m' # No Color
 tests_run=0
 tests_passed=0
 tests_failed=0
+tests_skipped_pwsh=false
 
 pass() {
   tests_passed=$((tests_passed + 1))
@@ -147,6 +148,7 @@ echo "=== Part 2: Functional Tests ==="
 
 if ! command -v pwsh >/dev/null 2>&1; then
   echo -e "${YELLOW}SKIP${NC}: PowerShell (pwsh) not available; skipping functional tests."
+  tests_skipped_pwsh=true
   echo ""
 else
 
@@ -158,8 +160,24 @@ else
   create_workspace() {
     local ws
     ws=$(mktemp -d)
+    git init "$ws" >/dev/null 2>&1
+    git -C "$ws" config user.email "test@test.com" >/dev/null 2>&1
+    git -C "$ws" config user.name "Test" >/dev/null 2>&1
+    git -C "$ws" config core.excludesFile "" >/dev/null 2>&1
+    CLEANUP_DIRS+=("$ws")
     echo "$ws"
   }
+
+  # Lint output captured for diagnostics on failure
+  LINT_OUTPUT=""
+
+  CLEANUP_DIRS=()
+  cleanup_workspaces() {
+    for d in "${CLEANUP_DIRS[@]}"; do
+      rm -rf "$d" 2>/dev/null || true
+    done
+  }
+  trap cleanup_workspaces EXIT
 
   # Helper: run lint and capture result
   # Args: $1=workspace path
@@ -167,8 +185,11 @@ else
   run_lint() {
     local ws="$1"
     local exit_code=0
-    cd "$ws" && pwsh -NoProfile -File "$LINT_SCRIPT" >/dev/null 2>&1 || exit_code=$?
-    cd "$REPO_ROOT"
+    if ! git -C "$ws" rev-parse --git-dir >/dev/null 2>&1; then
+      LINT_OUTPUT="ERROR: Workspace is not a git repository: $ws"
+      return 99
+    fi
+    LINT_OUTPUT=$(cd "$ws" && pwsh -NoProfile -File "$LINT_SCRIPT" 2>&1) || exit_code=$?
     return $exit_code
   }
 
@@ -185,6 +206,8 @@ else
     # Run the setup commands
     "$@" "$ws"
 
+    (cd "$ws" && git add -A) >/dev/null 2>&1
+
     local exit_code=0
     run_lint "$ws" || exit_code=$?
 
@@ -193,7 +216,7 @@ else
     if [ "$exit_code" -eq 0 ]; then
       pass "$test_name"
     else
-      fail "$test_name" "Lint exited with code $exit_code (expected 0)"
+      fail "$test_name" "Lint exited with code $exit_code (expected 0). Lint output: ${LINT_OUTPUT:-<empty>}"
     fi
   }
 
@@ -208,6 +231,8 @@ else
 
     "$@" "$ws"
 
+    (cd "$ws" && git add -A) >/dev/null 2>&1
+
     local exit_code=0
     run_lint "$ws" || exit_code=$?
 
@@ -216,7 +241,7 @@ else
     if [ "$exit_code" -ne 0 ]; then
       pass "$test_name"
     else
-      fail "$test_name" "Expected lint failure but it passed"
+      fail "$test_name" "Expected lint failure but it passed. Lint output: ${LINT_OUTPUT:-<empty>}"
     fi
   }
 
@@ -257,13 +282,10 @@ else
     echo "{}" > "$ws/scripts/node_modules/some-pkg/package.json"
   }
 
-  setup_git_dir() {
-    local ws="$1"
-    mkdir -p "$ws/scripts"
-    touch "$ws/scripts.meta"
-    mkdir -p "$ws/scripts/.git/objects"
-    echo "ref" > "$ws/scripts/.git/HEAD"
-  }
+  # NOTE: .git/ exclusion cannot be functionally tested because git itself
+  # refuses to track .git/ directories at any nesting level. The exclusion
+  # is verified by the Part 1 config check above. This is defense-in-depth
+  # in the linter for non-git-based file discovery scenarios.
 
   setup_obj_bin() {
     local ws="$1"
@@ -355,7 +377,19 @@ else
     local ws="$1"
     mkdir -p "$ws/Runtime/SubDir"
     touch "$ws/Runtime.meta"
+    echo "public class Bar {}" > "$ws/Runtime/SubDir/Bar.cs"
+    touch "$ws/Runtime/SubDir/Bar.cs.meta"
     # Intentionally no SubDir.meta
+  }
+
+  setup_orphaned_meta_no_source() {
+    local ws="$1"
+    mkdir -p "$ws/Runtime"
+    touch "$ws/Runtime.meta"
+    echo "public class Baz {}" > "$ws/Runtime/Baz.cs"
+    touch "$ws/Runtime/Baz.cs.meta"
+    touch "$ws/Runtime/Deleted.cs.meta"
+    # Intentionally no Deleted.cs -- orphaned meta
   }
 
   # -------------------------------------------------------------------------
@@ -385,6 +419,18 @@ else
     # No scripts/.pytest_cache/ directory exists
   }
 
+  setup_orphaned_meta_excluded_file_pattern() {
+    local ws="$1"
+    mkdir -p "$ws/scripts"
+    touch "$ws/scripts.meta"
+    # Orphaned .meta for excluded file patterns (*.pyc, *.tmp, etc.)
+    # The source files are excluded by file pattern but .meta files remain
+    touch "$ws/scripts/helper.pyc.meta"
+    touch "$ws/scripts/build.tmp.meta"
+    # No helper.pyc or build.tmp exist -- their .meta files are orphaned
+    # but the lint should not flag them because the source patterns are excluded
+  }
+
   setup_deeply_nested_exclusion() {
     local ws="$1"
     mkdir -p "$ws/scripts/sub/deeper/.pytest_cache/cache/data"
@@ -404,7 +450,6 @@ else
   test_exclusion "__pycache__ excluded from scripts/"     setup_pycache
   test_exclusion ".mypy_cache excluded from scripts/"     setup_mypy_cache
   test_exclusion "node_modules excluded from scripts/"    setup_node_modules
-  test_exclusion ".git subdir excluded from scripts/"     setup_git_dir
   test_exclusion "obj/ and bin/ excluded from Runtime/"   setup_obj_bin
 
   echo ""
@@ -422,6 +467,7 @@ else
   echo "--- Detection tests (non-excluded items flagged) ---"
   test_detected  "Normal .cs file without .meta detected" setup_normal_file_no_meta
   test_detected  "Normal dir without .meta detected"      setup_normal_dir_no_meta
+  test_detected  "Orphaned .meta without source detected"  setup_orphaned_meta_no_source
 
   echo ""
   echo "--- Directory pattern exclusions (functional) ---"
@@ -430,6 +476,7 @@ else
   echo ""
   echo "--- Orphaned .meta for excluded items ---"
   test_exclusion "Orphaned .meta for excluded .pytest_cache" setup_orphaned_meta_excluded
+  test_exclusion "Orphaned .meta for excluded file patterns" setup_orphaned_meta_excluded_file_pattern
 
   echo ""
   echo "--- Deeply nested exclusions ---"
@@ -450,11 +497,17 @@ echo "Tests run:    $tests_run"
 echo -e "Tests passed: ${GREEN}$tests_passed${NC}"
 if [ "$tests_failed" -gt 0 ]; then
   echo -e "Tests failed: ${RED}$tests_failed${NC}"
+  if [ "$tests_skipped_pwsh" = "true" ]; then
+    echo -e "  ${YELLOW}WARNING${NC}: Functional tests were skipped (pwsh not available)"
+  fi
   echo ""
   echo -e "${RED}FAILED${NC}"
   exit 1
 else
   echo -e "Tests failed: ${GREEN}0${NC}"
+  if [ "$tests_skipped_pwsh" = "true" ]; then
+    echo -e "  ${YELLOW}WARNING${NC}: Functional tests were skipped (pwsh not available)"
+  fi
   echo ""
   echo -e "${GREEN}ALL TESTS PASSED${NC}"
   exit 0

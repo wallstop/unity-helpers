@@ -315,6 +315,26 @@ When creating anchor links (links to headings within a document), use consistent
 
 ---
 
+## Automated Count Synchronization
+
+Counts for tests, PRNGs, and editor tools are auto-synced from the codebase. **Never hardcode these counts manually.**
+
+| Metric       | Single Source of Truth                                     |
+| ------------ | ---------------------------------------------------------- |
+| Test count   | `[Test]`, `[TestCase]`, `[UnityTest]` attributes in Tests/ |
+| PRNG count   | IRandom/AbstractRandom implementations in Runtime/Random/  |
+| Editor tools | EditorWindow/ScriptableWizard/MenuItem in Editor/          |
+
+**How it works:**
+
+1. `scripts/generate-doc-metadata.ps1` — counts items deterministically from source code
+2. `scripts/sync-doc-counts.ps1` — updates all documentation files with correct "X+" display values
+3. `scripts/lint-doc-counts.ps1` — validates docs match reality (use `-Check` mode in CI)
+
+**After adding tests, PRNGs, or editor tools**, run: `npm run sync:doc-counts`
+
+---
+
 ## Cross-File Consistency Checklist
 
 When updating documentation, verify these items are consistent across ALL documentation files:
@@ -324,7 +344,9 @@ When updating documentation, verify these items are consistent across ALL docume
 - [ ] Random generation speed (e.g., "10-15x faster than Unity.Random")
 - [ ] Reflection speedup (e.g., "10-100x faster, varies by operation")
 - [ ] Spatial query complexity (e.g., "O(log n)")
-- [ ] Test count (e.g., "8,000+ tests")
+- [ ] Test count — **auto-synced** via `npm run sync:doc-counts`
+- [ ] PRNG count — **auto-synced** via `npm run sync:doc-counts`
+- [ ] Editor tool count — **auto-synced** via `npm run sync:doc-counts`
 
 ### Feature Descriptions
 

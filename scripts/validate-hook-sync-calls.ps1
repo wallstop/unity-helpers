@@ -1,10 +1,14 @@
 <#
 .SYNOPSIS
-    Validates that pre-commit hook step 0 calls all required sync scripts.
+    Validates that pre-commit hook calls all required sync scripts and
+    pre-push hook reads stdin for changed-file detection.
 .DESCRIPTION
     Checks that the pre-commit hook invokes all required version sync scripts:
       - sync-banner-version.ps1
       - sync-issue-template-versions.ps1
+
+    Also validates the pre-push hook reads stdin to determine changed files
+    (critical for performance — without this, pre-push scans the entire repo).
 
     This prevents regressions where new sync scripts are added to the
     repository but not wired into the pre-commit hook.
@@ -57,5 +61,46 @@ if ($missing.Count -gt 0) {
 
 if ($VerboseOutput) {
     Write-Host "Pre-commit hook correctly invokes all required sync scripts." -ForegroundColor Green
+}
+
+# ---- Validate pre-push hook reads stdin for changed-file detection ----
+$prePushPath = Join-Path $repoRoot '.githooks' 'pre-push'
+
+if (-not (Test-Path $prePushPath)) {
+    Write-Error "pre-push hook not found at: $prePushPath"
+    exit 1
+}
+
+$prePushContent = Get-Content $prePushPath -Raw
+
+# The pre-push hook MUST read stdin to determine changed files.
+# Without this, all checks scan the entire repository (~60s).
+$requiredPrePushPatterns = @(
+    @{ Pattern = 'while read'; Description = 'reads stdin (while read loop)' },
+    @{ Pattern = 'local_sha'; Description = 'parses local SHA from stdin' },
+    @{ Pattern = 'remote_sha'; Description = 'parses remote SHA from stdin' },
+    @{ Pattern = 'ALL_CHANGED_FILES'; Description = 'stores changed files in array' }
+)
+
+$prePushMissing = @()
+foreach ($entry in $requiredPrePushPatterns) {
+    if ($prePushContent -notmatch [regex]::Escape($entry.Pattern)) {
+        $prePushMissing += $entry
+    }
+}
+
+if ($prePushMissing.Count -gt 0) {
+    Write-Host ''
+    Write-Warning "The pre-push hook is missing required changed-file detection patterns:"
+    foreach ($m in $prePushMissing) {
+        Write-Warning "  - $($m.Description) (expected: '$($m.Pattern)')"
+    }
+    Write-Host ''
+    Write-Error "Pre-push hook is missing $($prePushMissing.Count) required pattern(s). The hook must read stdin to detect changed files for performance."
+    exit 1
+}
+
+if ($VerboseOutput) {
+    Write-Host "Pre-push hook correctly reads stdin for changed-file detection." -ForegroundColor Green
 }
 exit 0

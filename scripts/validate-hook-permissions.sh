@@ -109,9 +109,10 @@ while IFS= read -r line; do
         continue
     fi
 
-    # Parse the mode and path from git ls-files -s output
-    mode=$(echo "$line" | awk '{print $1}')
-    file_path=$(echo "$line" | awk '{print $4}')
+    # Parse the mode and path from git ls-files -s output without assuming the
+    # path is a single whitespace-delimited field.
+    mode="${line%% *}"
+    file_path="${line#*$'\t'}"
 
     CHECKED=$((CHECKED + 1))
 

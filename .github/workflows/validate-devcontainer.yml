@@ -7,11 +7,15 @@ on:
     paths:
       - ".devcontainer/**"
       - "scripts/validate-devcontainer-config.ps1"
+      - "scripts/validate-devcontainer-urls.sh"
+      - "scripts/tests/test-post-create.sh"
       - ".github/workflows/validate-devcontainer.yml"
   pull_request:
     paths:
       - ".devcontainer/**"
       - "scripts/validate-devcontainer-config.ps1"
+      - "scripts/validate-devcontainer-urls.sh"
+      - "scripts/tests/test-post-create.sh"
       - ".github/workflows/validate-devcontainer.yml"
 
 permissions:
@@ -27,3 +31,9 @@ jobs:
       - name: Validate devcontainer config
         shell: pwsh
         run: ./scripts/validate-devcontainer-config.ps1 -VerboseOutput
+
+      - name: Validate Dockerfile download URLs
+        run: ./scripts/validate-devcontainer-urls.sh
+
+      - name: Validate post-create script
+        run: ./scripts/tests/test-post-create.sh --verbose

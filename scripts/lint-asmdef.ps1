@@ -271,6 +271,61 @@ foreach ($file in $asmdefFilesToValidate) {
   }
 }
 
+# 5. Check that assemblies referencing WallstopStudios.UnityHelpers with overrideReferences include Sirenix.Serialization.dll
+foreach ($file in $asmdefFilesToValidate) {
+  $relativePath = $file.FullName.Replace($repoRoot, '').TrimStart('\', '/')
+
+  try {
+    $content = Get-Content -Path $file.FullName -Raw
+    $json = $content | ConvertFrom-Json
+  }
+  catch {
+    # Already reported during JSON validation above
+    continue
+  }
+
+  $hasOverrideReferences = $false
+  if ($json.PSObject.Properties['overrideReferences'] -and $json.overrideReferences -eq $true) {
+    $hasOverrideReferences = $true
+  }
+
+  if (-not $hasOverrideReferences) {
+    continue
+  }
+
+  $referencesRuntime = $false
+  if ($json.references -and $json.references.Count -gt 0) {
+    foreach ($ref in $json.references) {
+      if ($ref -eq 'WallstopStudios.UnityHelpers') {
+        $referencesRuntime = $true
+        break
+      }
+    }
+  }
+
+  if (-not $referencesRuntime) {
+    continue
+  }
+
+  $hasSirenixSerialization = $false
+  if ($json.precompiledReferences -and $json.precompiledReferences.Count -gt 0) {
+    foreach ($pcRef in $json.precompiledReferences) {
+      if ($pcRef -eq 'Sirenix.Serialization.dll') {
+        $hasSirenixSerialization = $true
+        break
+      }
+    }
+  }
+
+  if (-not $hasSirenixSerialization) {
+    Write-Info "  [$relativePath] overrideReferences=true + references WallstopStudios.UnityHelpers but missing Sirenix.Serialization.dll"
+    $errorList += "[$relativePath] Missing 'Sirenix.Serialization.dll' in precompiledReferences. Required because assembly references WallstopStudios.UnityHelpers which contains types with conditional Odin inheritance (RuntimeSingleton, ScriptableObjectSingleton). See .llm/skills/manage-assembly-definitions.md"
+  }
+  else {
+    Write-Info "  [$relativePath] Sirenix.Serialization.dll present (required for WallstopStudios.UnityHelpers with overrideReferences)"
+  }
+}
+
 # Also validate any .asmref files
 $asmrefFiles = @()
 foreach ($root in $sourceRoots) {

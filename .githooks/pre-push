@@ -1,413 +1,473 @@
-#!/usr/bin/env sh
-set -e
+#!/usr/bin/env bash
+set -euo pipefail
 
 # ============================================================================
-# PRE-PUSH HOOK: Mirror CI checks before pushing
+# PRE-PUSH HOOK: Fast validation of pushed changes
 # ============================================================================
-# This hook runs the same checks as CI to catch issues before they reach
-# the remote. Auto-fixes formatting issues where possible, then verifies.
+# This hook reads stdin to detect which files are being pushed, then runs
+# only the relevant checks on changed files. Full-repo validation happens in CI.
 #
-# Checks performed:
+# Performance: Targets <10s for typical pushes by:
+#   - Parsing stdin to detect exactly which files changed
+#   - Running checks only on changed files (not the whole repo)
+#   - Executing independent checks in parallel
+#   - Skipping irrelevant checks (e.g. no .cs files changed → skip license audit)
+#   - Using cached license year data
+#
+# Checks performed (when relevant files change):
 #   1. Prettier formatting (Markdown, JSON, asmdef/asmref, YAML, JS)
 #   2. Markdownlint
 #   3. Spell checking (cspell)
 #   4. Doc link lint
 #   5. Gitignore docs safety (no docs/ files accidentally gitignored)
 #   6. Unity meta file lint (missing/orphaned .meta files)
-#   7. EOL normalization and verification
+#   7. EOL verification
 #   8. yamllint (if installed)
 #   9. actionlint (if installed and workflow files changed)
 #  10. External link check with lychee (if installed)
 #  11. Test lifecycle lint
-#  12. License year audit
+#  12. License year audit (with cache)
 #  13. Hook pattern tests (if hook files changed)
 #  14. LLM instructions validation
 #
-# LINE ENDING NOTE:
-#   This repo uses CRLF for most files (.gitattributes).
-#   EXCEPTIONS that MUST use LF:
-#     - YAML files (.yml, .yaml) - cross-platform compatibility
-#     - Shell scripts (.sh) - Unix requirement
-#     - .github/** ALL files - GitHub Actions run on Linux, Dependabot commits LF
-#       This includes .github/*.md files (copilot-instructions.md, etc.)
-#   If you encounter EOL-related CI failures, run: npm run fix:eol
+# To skip in emergencies: git push --no-verify
+#   (CI will still validate all checks)
 # ============================================================================
 
-# Ensure Node is available
-if ! command -v npx >/dev/null 2>&1; then
-  echo "npx not found; skipping Node-based checks. CI will validate." >&2
-else
-  # Check if npm dependencies are installed
-  if [ ! -d "node_modules" ]; then
-    echo "node_modules not found. Run 'npm install' to enable local pre-push checks, or skip - CI will validate." >&2
+# ---- Changed-file detection from stdin ----
+# Pre-push stdin format: <local-ref> <local-sha> <remote-ref> <remote-sha>
+# Multiple lines possible when pushing multiple refs at once.
+ZERO_SHA="0000000000000000000000000000000000000000"
+HAS_REFS=false
+ALL_CHANGED_FILES=()
+
+array_contains_exact() {
+  local needle="$1"
+  shift || true
+  local item
+  for item in "$@"; do
+    if [[ "$item" == "$needle" ]]; then
+      return 0
+    fi
+  done
+  return 1
+}
+
+add_changed_file() {
+  local file="$1"
+  if [[ -z "$file" ]]; then
+    return 0
+  fi
+
+  if ! array_contains_exact "$file" "${ALL_CHANGED_FILES[@]}"; then
+    ALL_CHANGED_FILES+=("$file")
+  fi
+}
+
+collect_changed_files() {
+  local file
+  while IFS= read -r -d '' file; do
+    add_changed_file "$file"
+  done
+}
+
+# Cleanup on exit/interrupt (defined before while read so temp file is always cleaned up)
+PID_NODE="" PID_PWSH="" PID_BASH=""
+cleanup() {
+  # Kill background processes if any
+  for pid in $PID_NODE $PID_PWSH $PID_BASH; do
+    kill "$pid" 2>/dev/null || true
+  done
+}
+trap cleanup EXIT INT TERM
+
+while read -r _local_ref local_sha _remote_ref remote_sha; do
+  # Skip delete pushes (local_sha is all zeros)
+  if [ "$local_sha" = "$ZERO_SHA" ]; then
+    continue
+  fi
+  HAS_REFS=true
+
+  if [ "$remote_sha" = "$ZERO_SHA" ]; then
+    # New branch: compare against default branch merge-base
+    merge_base=$(git merge-base main "$local_sha" 2>/dev/null || echo "")
+    if [ -n "$merge_base" ]; then
+      collect_changed_files < <(git diff --name-only -z "$merge_base".."$local_sha" 2>/dev/null || true)
+    else
+      # No merge-base (orphan branch or no main): compare against the full tree.
+      collect_changed_files < <(git ls-tree -r -z --name-only "$local_sha" 2>/dev/null || true)
+    fi
   else
-    # 1) Prettier checks (Markdown, JSON, asmdef/asmref, YAML, JS)
-    # File patterns match CI workflows:
-    #   - markdown-json.yml: **/*.{md,markdown} and **/*.{json,jsonc,asmdef,asmref}
-    #   - yaml-format-lint.yml: **/*.{yml,yaml}
-    # Auto-fix first, then verify. If verification fails, the user needs to commit the fixes.
+    # Normal push: diff between remote and local
+    collect_changed_files < <(git diff --name-only -z "$remote_sha".."$local_sha" 2>/dev/null || true)
+  fi
+done
+
+# If no refs to push (delete-only) or stdin was empty (no-op), skip all checks
+if [ "$HAS_REFS" = "false" ] || [ ${#ALL_CHANGED_FILES[@]} -eq 0 ]; then
+  echo "No files changed in push, skipping checks."
+  exit 0
+fi
+
+CHANGED_COUNT=${#ALL_CHANGED_FILES[@]}
+echo "Pre-push: checking $CHANGED_COUNT changed file(s)..."
+
+# ---- Pre-compute changed file sets ----
+CHANGED_MD=()
+CHANGED_JSON=()
+CHANGED_YAML=()
+CHANGED_JS=()
+CHANGED_CS=()
+CHANGED_META=()
+CHANGED_TESTS=()
+CHANGED_SCRIPTS=()
+CHANGED_DOCS=()
+CHANGED_LLM=()
+CHANGED_WORKFLOWS=()
+CHANGED_WIKI=()
+CHANGED_HOOK_FILES=()
+CHANGED_LINT_TEST=()
+CHANGED_GITIGNORE_DOCS_LINT=()
+CHANGED_SYNC_SCRIPT_CONTRACTS=()
+
+for file in "${ALL_CHANGED_FILES[@]}"; do
+  [[ "$file" =~ \.(md|markdown)$ ]] && CHANGED_MD+=("$file")
+  [[ "$file" =~ \.(json|jsonc|asmdef|asmref)$ ]] && CHANGED_JSON+=("$file")
+  [[ "$file" =~ \.(yml|yaml)$ ]] && CHANGED_YAML+=("$file")
+  [[ "$file" =~ \.js$ ]] && CHANGED_JS+=("$file")
+  [[ "$file" =~ \.cs$ ]] && CHANGED_CS+=("$file")
+  [[ "$file" =~ \.meta$ ]] && CHANGED_META+=("$file")
+  [[ "$file" =~ ^Tests/ ]] && CHANGED_TESTS+=("$file")
+  [[ "$file" =~ ^scripts/ ]] && CHANGED_SCRIPTS+=("$file")
+  [[ "$file" =~ ^docs/ ]] && CHANGED_DOCS+=("$file")
+  [[ "$file" =~ ^\.llm/ ]] && CHANGED_LLM+=("$file")
+  [[ "$file" =~ ^\.github/workflows/ ]] && CHANGED_WORKFLOWS+=("$file")
+  [[ "$file" =~ ^(scripts/wiki/.*|scripts/tests/test-wiki-generation\.sh|\.github/workflows/deploy-wiki\.yml)$ ]] && CHANGED_WIKI+=("$file")
+  [[ "$file" =~ ^(\.githooks/.*|scripts/tests/test-hook-patterns\.sh)$ ]] && CHANGED_HOOK_FILES+=("$file")
+  [[ "$file" =~ ^(scripts/lint-tests\.ps1|scripts/tests/test-lint-tests\.ps1)$ ]] && CHANGED_LINT_TEST+=("$file")
+  [[ "$file" =~ ^(scripts/lint-gitignore-docs\.ps1|scripts/tests/test-gitignore-docs\.ps1)$ ]] && CHANGED_GITIGNORE_DOCS_LINT+=("$file")
+  [[ "$file" =~ ^(scripts/sync-doc-counts\.ps1|scripts/sync-banner-version\.ps1|scripts/lint-cspell-config\.js|scripts/tests/test-sync-script-contracts\.ps1)$ ]] && CHANGED_SYNC_SCRIPT_CONTRACTS+=("$file")
+done
+
+CHANGED_PRETTIER=("${CHANGED_MD[@]}" "${CHANGED_JSON[@]}" "${CHANGED_YAML[@]}" "${CHANGED_JS[@]}")
+CHANGED_SPELL=("${CHANGED_MD[@]}" "${CHANGED_CS[@]}" "${CHANGED_JSON[@]}")
+CHANGED_EOL=("${ALL_CHANGED_FILES[@]}")
+
+# ---- Track parallel job failures ----
+HOOK_FAILED=0
+
+# ---- Group A: Node-based checks (run in parallel) ----
+run_node_checks() {
+  if ! command -v npx >/dev/null 2>&1; then
+    echo "npx not found; skipping Node-based checks. CI will validate." >&2
+    return 0
+  fi
+
+  if [ ! -d "node_modules" ]; then
+    echo "node_modules not found. Run 'npm install' to enable local pre-push checks." >&2
+    return 0
+  fi
+
+  # 1) Prettier (validation only — no auto-fix in pre-push)
+  if [ ${#CHANGED_PRETTIER[@]} -gt 0 ]; then
     if npx --no-install prettier --version >/dev/null 2>&1; then
-      echo "Checking formatting with patterns matching CI..."
-      echo "  Patterns: **/*.{md,markdown,json,jsonc,asmdef,asmref,yml,yaml,js}"
-      if ! npx --no-install prettier --check -- "**/*.{md,markdown,json,jsonc,asmdef,asmref,yml,yaml,js}" 2>/dev/null; then
+      echo "Checking formatting on changed files..."
+      if ! npx --no-install prettier --check -- "${CHANGED_PRETTIER[@]}"; then
         echo ""
         echo "=== Prettier formatting issues detected ==="
-        echo "Auto-fixing formatting..."
-        npx --no-install prettier --write --log-level warn -- "**/*.{md,markdown,json,jsonc,asmdef,asmref,yml,yaml,js}"
+        echo "Run: npx prettier --write <files>"
+        echo "Then commit and push again."
         echo ""
-        echo "Files have been auto-formatted. Please:"
-        echo "  1. Review the changes: git diff"
-        echo "  2. Stage and commit: git add -A && git commit --amend --no-edit"
-        echo "  3. Push again: git push"
-        echo ""
-        exit 1
+        return 1
       fi
       echo "✓ Prettier formatting OK"
-    else
-      echo "prettier not installed; skipping format check. Run 'npm install' or CI will validate." >&2
     fi
+  fi
 
-    # 2) Markdownlint (uses repo config and ignore list)
+  # 2) Markdownlint
+  if [ ${#CHANGED_MD[@]} -gt 0 ]; then
     if npx --no-install markdownlint --version >/dev/null 2>&1; then
-      npx --no-install markdownlint --config .markdownlint.json --ignore-path .markdownlintignore -- "**/*.md" "**/*.markdown" || exit 1
-    else
-      echo "markdownlint not installed; skipping markdown lint. Run 'npm install' or CI will validate." >&2
+      npx --no-install markdownlint --config .markdownlint.json --ignore-path .markdownlintignore -- "${CHANGED_MD[@]}" || return 1
     fi
+  fi
 
-    # 3) Spell checking (cspell - validates all files for spelling errors)
+  # 3) Spell checking (only if spell-relevant files changed)
+  if [ ${#CHANGED_SPELL[@]} -gt 0 ]; then
     if npx --no-install cspell --version >/dev/null 2>&1; then
-      echo "Checking spelling..."
-      if ! npm run lint:spelling 2>/dev/null; then
-        echo ""
-        echo "=== Spelling errors detected ==="
-        echo "To fix spelling issues:"
-        echo "  1. Fix the typos in the reported files"
-        echo "  2. Or add valid words to cspell.json in the 'words' array"
-        echo "  3. Stage and commit your changes"
-        echo "  4. Push again: git push"
-        echo ""
-        exit 1
+      echo "Checking spelling on changed files..."
+      if ! npx --no-install cspell lint --no-must-find-files --no-progress --show-suggestions -- "${CHANGED_SPELL[@]}"; then
+        echo "" >&2
+        echo "=== Spelling errors detected ===" >&2
+        echo "Fix typos or add valid terms to the appropriate dictionary in cspell.json:" >&2
+        echo "  unity-terms   -- Unity Engine APIs, components, lifecycle" >&2
+        echo "  csharp-terms  -- C# language features, .NET types" >&2
+        echo "  package-terms -- This package's public API and type names" >&2
+        echo "  tech-terms    -- General programming/tooling terms (CRLF, NUL, ASCII, etc.)" >&2
+        echo "  words (root)  -- Project-specific words that don't fit a category" >&2
+        echo "" >&2
+        echo "Re-run locally: npm run lint:spelling" >&2
+        echo "" >&2
+        return 1
       fi
       echo "✓ Spell check OK"
-    else
-      echo "cspell not installed; skipping spell check. Run 'npm install' or CI will validate." >&2
-    fi
 
-    # 4) Doc link lint (validates internal links, relative prefixes, and broken references)
-    # This runs the same PowerShell linter as the CI to catch issues before push
+      # 3b) cspell.json config lint
+      if array_contains_exact "cspell.json" "${ALL_CHANGED_FILES[@]}"; then
+        echo "Checking cspell.json configuration..."
+        if ! node scripts/lint-cspell-config.js; then
+          echo ""
+          echo "=== cspell.json configuration issues ==="
+          echo "Run: npm run lint:spelling:config:fix"
+          echo ""
+          return 1
+        fi
+        echo "✓ cspell.json config OK"
+      fi
+    fi
+  fi
+
+  # 4) Doc link lint (only if docs or markdown changed)
+  if [ ${#CHANGED_MD[@]} -gt 0 ] || [ ${#CHANGED_DOCS[@]} -gt 0 ] || [ ${#CHANGED_LLM[@]} -gt 0 ]; then
     echo "Checking documentation links..."
-    node ./scripts/run-doc-link-lint.js || exit 1
+    node ./scripts/run-doc-link-lint.js || return 1
     echo "✓ Doc links OK"
   fi
-fi
 
-# 5) Gitignore docs safety (validates no docs/ files are accidentally gitignored)
-# This catches the category of bug where a .gitignore wildcard pattern like
-# "failed-tests-*" accidentally matches "docs/features/editor-tools/failed-tests-exporter.md"
-if command -v pwsh >/dev/null 2>&1; then
-  echo "Checking gitignore docs safety..."
-  pwsh -NoProfile -File scripts/lint-gitignore-docs.ps1 || {
-    echo ""
-    echo "=== Gitignore docs safety check failed ==="
-    echo "Fix .gitignore patterns to avoid excluding documentation files."
-    echo "Example: Narrow 'failed-tests-*' to 'failed-tests-*.txt'"
-    echo ""
-    exit 1
-  }
-  echo "✓ Gitignore docs safety OK"
-elif command -v powershell >/dev/null 2>&1; then
-  echo "Checking gitignore docs safety..."
-  powershell -NoProfile -ExecutionPolicy Bypass -File scripts/lint-gitignore-docs.ps1 || {
-    echo ""
-    echo "=== Gitignore docs safety check failed ==="
-    echo "Fix .gitignore patterns to avoid excluding documentation files."
-    echo "Example: Narrow 'failed-tests-*' to 'failed-tests-*.txt'"
-    echo ""
-    exit 1
-  }
-  echo "✓ Gitignore docs safety OK"
-else
-  echo "PowerShell not found; skipping gitignore docs safety check. CI will validate." >&2
-fi
+  return 0
+}
 
-# 6) Unity meta file lint (validates all files have .meta and no orphaned .meta exist)
-# This catches missing .meta files before they reach CI
-if command -v pwsh >/dev/null 2>&1; then
-  echo "Checking Unity meta files..."
-  pwsh -NoProfile -File scripts/lint-meta-files.ps1 || {
-    echo ""
-    echo "=== Unity meta file lint failed ==="
-    echo "Run './scripts/generate-meta.sh <path>' to generate missing meta files."
-    echo "Delete orphaned .meta files or restore missing source files."
-    echo ""
-    exit 1
-  }
-  echo "✓ Unity meta files OK"
-elif command -v powershell >/dev/null 2>&1; then
-  echo "Checking Unity meta files..."
-  powershell -NoProfile -ExecutionPolicy Bypass -File scripts/lint-meta-files.ps1 || {
-    echo ""
-    echo "=== Unity meta file lint failed ==="
-    echo "Run './scripts/generate-meta.sh <path>' to generate missing meta files."
-    echo "Delete orphaned .meta files or restore missing source files."
-    echo ""
-    exit 1
-  }
-  echo "✓ Unity meta files OK"
-else
-  echo "PowerShell not found; skipping Unity meta file lint. CI will validate." >&2
-fi
-
-# EOL policy (CRLF for most, LF for YAML/shell) - auto-fix then verify
-if command -v pwsh >/dev/null 2>&1; then
-  pwsh -NoProfile -File scripts/normalize-eol.ps1
-  pwsh -NoProfile -File scripts/check-eol.ps1 -VerboseOutput
-elif command -v powershell >/dev/null 2>&1; then
-  powershell -NoProfile -ExecutionPolicy Bypass -File scripts/normalize-eol.ps1
-  powershell -NoProfile -ExecutionPolicy Bypass -File scripts/check-eol.ps1 -VerboseOutput
-else
-  echo "PowerShell not found; skipping EOL validation." >&2
-fi
-
-# Optional YAML lint (if yamllint installed)
-if command -v yamllint >/dev/null 2>&1; then
-  echo "Running yamllint..."
-  yamllint -c .yamllint.yaml -- .
-  echo "✓ yamllint OK"
-else
-  echo "yamllint not found; skipping YAML lint. CI will catch issues." >&2
-fi
-
-# Optional external link check (if lychee installed)
-if command -v lychee >/dev/null 2>&1; then
-  # Exclude node_modules to avoid scanning hundreds of third-party markdown files
-  lychee -c .lychee.toml --no-progress --verbose --exclude-path node_modules --exclude-path .git -- "**/*.md"
-else
-  echo "lychee not found; skipping external link check. CI will run lychee." >&2
-fi
-
-# Test lifecycle lint (UNH001-UNH003: lifecycle, UNH004: naming conventions, UNH005: null checks)
-if command -v pwsh >/dev/null 2>&1; then
-  pwsh -NoProfile -File scripts/lint-tests.ps1 -VerboseOutput || {
-    echo ""
-    echo "=== Test lint failed ==="
-    echo "Fix the issues above or add // UNH-SUPPRESS comments for valid exceptions."
-    echo "For naming convention errors (UNH004):"
-    echo "  - Use PascalCase or dot notation in TestName/SetName (e.g., 'Input.Null.ReturnsFalse')"
-    echo "  - Use PascalCase for TestCaseSource method names (e.g., 'EdgeCaseTestData')"
-    echo "For null check errors (UNH005):"
-    echo "  - Use Assert.IsTrue(x != null) instead of Assert.IsNotNull(x)"
-    echo "  - Use Assert.IsTrue(x == null) instead of Assert.IsNull(x)"
-    echo "  - Why: Unity's == operator performs special 'fake null' checking"
-    echo "Auto-fix null asserts: pwsh -NoProfile -File scripts/lint-tests.ps1 -FixNullChecks -Paths <test files>"
-    echo ""
-    exit 1
-  }
-elif command -v powershell >/dev/null 2>&1; then
-  powershell -NoProfile -ExecutionPolicy Bypass -File scripts/lint-tests.ps1 -VerboseOutput || {
-    echo ""
-    echo "=== Test lint failed ==="
-    echo "Fix the issues above or add // UNH-SUPPRESS comments for valid exceptions."
-    echo "For naming convention errors (UNH004):"
-    echo "  - Use PascalCase or dot notation in TestName/SetName (e.g., 'Input.Null.ReturnsFalse')"
-    echo "  - Use PascalCase for TestCaseSource method names (e.g., 'EdgeCaseTestData')"
-    echo "For null check errors (UNH005):"
-    echo "  - Use Assert.IsTrue(x != null) instead of Assert.IsNotNull(x)"
-    echo "  - Use Assert.IsTrue(x == null) instead of Assert.IsNull(x)"
-    echo "  - Why: Unity's == operator performs special 'fake null' checking"
-    echo "Auto-fix null asserts: powershell -NoProfile -ExecutionPolicy Bypass -File scripts/lint-tests.ps1 -FixNullChecks -Paths <test files>"
-    echo ""
-    exit 1
-  }
-else
-  echo 'PowerShell not found; skipping test lints.' >&2
-fi
-
-# 12) License year audit (validates copyright year headers in .cs files)
-# Note: This scans all .cs files using git log and can take 40-60 seconds on large repos
-echo "Checking license year headers..."
-if ! bash scripts/audit-license-years.sh --summary; then
-  echo ""
-  echo "=== License year audit failed ==="
-  echo "Some .cs files have incorrect copyright year headers."
-  echo "To auto-fix: bash scripts/update-license-headers.sh"
-  echo "To see details: bash scripts/audit-license-years.sh --csv"
-  echo ""
-  exit 1
-fi
-echo "✓ License year headers OK"
-
-# Check for forbidden #region/#endregion directives in ALL C# files
-# This is a full repository scan (not just staged files) to catch any regions before push
-# Regions are forbidden in this codebase - see .llm/skills/no-regions.md
-echo "Checking for forbidden #region directives in C# files..."
-REGION_VIOLATIONS=$(grep -r -n -i '^\s*#\s*region\|^\s*#\s*endregion' --include="*.cs" Runtime/ Editor/ Tests/ Samples~/ 2>/dev/null || true)
-if [ -n "$REGION_VIOLATIONS" ]; then
-  echo ""
-  echo "=== Error: C# regions (#region/#endregion) are forbidden ==="
-  echo "The following files contain regions:"
-  echo "$REGION_VIOLATIONS" | head -50
-  VIOLATION_COUNT=$(echo "$REGION_VIOLATIONS" | wc -l)
-  if [ "$VIOLATION_COUNT" -gt 50 ]; then
-    echo "... and $((VIOLATION_COUNT - 50)) more violations"
-  fi
-  echo ""
-  echo "Remove all #region and #endregion directives before pushing."
-  echo "See .llm/skills/no-regions.md for guidance on code organization alternatives."
-  echo ""
-  exit 1
-fi
-echo "✓ No #region directives found"
-
-# Wiki generation tests (validates sidebar format, link transformations)
-# This mirrors the validate-wiki-links.yml CI workflow
-WIKI_CHANGES=$(git diff --name-only @{upstream}..HEAD 2>/dev/null | grep -E '^(scripts/wiki/|scripts/tests/test-wiki-generation\.sh|\.github/workflows/deploy-wiki\.yml)' || true)
-if [ -z "$WIKI_CHANGES" ]; then
-  # Also check staged/uncommitted wiki-related changes
-  WIKI_CHANGES=$(git diff --name-only HEAD 2>/dev/null | grep -E '^(scripts/wiki/|scripts/tests/test-wiki-generation\.sh|\.github/workflows/deploy-wiki\.yml)' || true)
-fi
-
-if [ -n "$WIKI_CHANGES" ]; then
-  echo "Wiki-related files changed:"
-  echo "$WIKI_CHANGES" | sed 's/^/  /'
-  echo "Running wiki generation tests..."
-  if ! bash scripts/tests/test-wiki-generation.sh; then
-    echo ""
-    echo "=== Wiki generation tests failed ==="
-    echo "Fix the issues in scripts/wiki/*.py or scripts/tests/test-wiki-generation.sh"
-    echo ""
-    exit 1
-  fi
-  echo "✓ Wiki generation tests OK"
-  
-  # Also run Python wiki tests if pytest is available
-  if command -v python3 >/dev/null 2>&1 && python3 -c "import pytest" 2>/dev/null; then
-    echo "Running Python wiki script tests..."
-    if ! python3 -m pytest scripts/wiki/test_wiki_scripts.py -v; then
-      echo ""
-      echo "=== Python wiki tests failed ==="
-      echo "Fix the issues in scripts/wiki/*.py"
-      echo ""
-      exit 1
-    fi
-    echo "✓ Python wiki tests OK"
-  else
-    echo "pytest not installed; skipping Python wiki tests. CI will run them." >&2
-  fi
-fi
-
-# Test lint script tests (validates lint-tests.ps1 allowlist and rule detection)
-# Runs when lint-tests.ps1 or its test script change
-LINT_TEST_CHANGES=$(git diff --name-only @{upstream}..HEAD 2>/dev/null | grep -E '^(scripts/lint-tests\.ps1|scripts/tests/test-lint-tests\.ps1)' || true)
-if [ -z "$LINT_TEST_CHANGES" ]; then
-  LINT_TEST_CHANGES=$(git diff --name-only HEAD 2>/dev/null | grep -E '^(scripts/lint-tests\.ps1|scripts/tests/test-lint-tests\.ps1)' || true)
-fi
-
-if [ -n "$LINT_TEST_CHANGES" ]; then
-  echo "Lint test files changed:"
-  echo "$LINT_TEST_CHANGES" | sed 's/^/  /'
-  echo "Running lint-tests.ps1 test suite..."
+# ---- Group B: PowerShell-based checks (run in parallel) ----
+run_pwsh_checks() {
+  PWSH_CMD=()
   if command -v pwsh >/dev/null 2>&1; then
-    if ! pwsh -NoProfile -File scripts/tests/test-lint-tests.ps1; then
-      echo ""
-      echo "=== Lint test suite failed ==="
-      echo "Fix the issues in scripts/lint-tests.ps1 or scripts/tests/test-lint-tests.ps1"
-      echo ""
-      exit 1
-    fi
-    echo "✓ Lint test suite OK"
+    PWSH_CMD=(pwsh -NoProfile -File)
   elif command -v powershell >/dev/null 2>&1; then
-    if ! powershell -NoProfile -File scripts/tests/test-lint-tests.ps1; then
-      echo ""
-      echo "=== Lint test suite failed ==="
-      echo "Fix the issues in scripts/lint-tests.ps1 or scripts/tests/test-lint-tests.ps1"
-      echo ""
-      exit 1
-    fi
-    echo "✓ Lint test suite OK"
+    PWSH_CMD=(powershell -NoProfile -ExecutionPolicy Bypass -File)
   else
-    echo "PowerShell not found; skipping lint test suite. CI will catch issues." >&2
+    echo "PowerShell not found; skipping PowerShell checks. CI will validate." >&2
+    return 0
   fi
-fi
 
-# Hook pattern tests (validates bash case pattern matching behavior)
-# Runs when hook files or the test script itself change
-HOOK_PATTERN_CHANGES=$(git diff --name-only @{upstream}..HEAD 2>/dev/null | grep -E '^(\.githooks/|scripts/tests/test-hook-patterns\.sh)' || true)
-if [ -z "$HOOK_PATTERN_CHANGES" ]; then
-  # Also check staged/uncommitted hook-related changes
-  HOOK_PATTERN_CHANGES=$(git diff --name-only HEAD 2>/dev/null | grep -E '^(\.githooks/|scripts/tests/test-hook-patterns\.sh)' || true)
-fi
-
-if [ -n "$HOOK_PATTERN_CHANGES" ]; then
-  echo "Hook-related files changed:"
-  echo "$HOOK_PATTERN_CHANGES" | sed 's/^/  /'
-  echo "Running hook pattern tests..."
-  if ! bash scripts/tests/test-hook-patterns.sh; then
-    echo ""
-    echo "=== Hook pattern tests failed ==="
-    echo "Fix the issues in .githooks/ or scripts/tests/test-hook-patterns.sh"
-    echo ""
-    exit 1
+  # 5) Gitignore docs safety (repo-wide, but batched & fast)
+  if [ ${#CHANGED_DOCS[@]} -gt 0 ] || [ ${#CHANGED_LLM[@]} -gt 0 ] || array_contains_exact ".gitignore" "${ALL_CHANGED_FILES[@]}"; then
+    echo "Checking gitignore docs safety..."
+    "${PWSH_CMD[@]}" scripts/lint-gitignore-docs.ps1 || {
+      echo ""
+      echo "=== Gitignore docs safety check failed ==="
+      echo "Fix .gitignore patterns to avoid excluding documentation files."
+      echo ""
+      return 1
+    }
+    echo "✓ Gitignore docs safety OK"
   fi
-  echo "✓ Hook pattern tests OK"
-fi
 
-# actionlint check for GitHub Actions workflows (only if workflow files changed)
-# This mirrors the actionlint.yml CI workflow
-# Use @{upstream} to compare against the remote tracking branch
-WORKFLOW_CHANGES=$(git diff --name-only @{upstream}..HEAD 2>/dev/null | grep -E '^\.github/workflows/' || true)
-if [ -z "$WORKFLOW_CHANGES" ]; then
-  # Also check staged/uncommitted workflow changes
-  WORKFLOW_CHANGES=$(git diff --name-only HEAD 2>/dev/null | grep -E '^\.github/workflows/' || true)
-fi
+  # 6) Unity meta file lint (repo-wide, but optimized via git ls-files)
+  if [ ${#CHANGED_CS[@]} -gt 0 ] || [ ${#CHANGED_META[@]} -gt 0 ] || [ ${#CHANGED_DOCS[@]} -gt 0 ] || [ ${#CHANGED_SCRIPTS[@]} -gt 0 ]; then
+    echo "Checking Unity meta files..."
+    "${PWSH_CMD[@]}" scripts/lint-meta-files.ps1 || {
+      echo ""
+      echo "=== Unity meta file lint failed ==="
+      echo "Run './scripts/generate-meta.sh <path>' to generate missing meta files."
+      echo ""
+      return 1
+    }
+    echo "✓ Unity meta files OK"
+  fi
 
-if [ -n "$WORKFLOW_CHANGES" ]; then
-  echo "GitHub Actions workflow files changed:"
-  echo "$WORKFLOW_CHANGES" | sed 's/^/  /'
-  if command -v actionlint >/dev/null 2>&1; then
-    echo "Running actionlint..."
-    if ! actionlint; then
+  # 7) EOL verification (validation only — no normalize in pre-push)
+  if [ ${#CHANGED_EOL[@]} -gt 0 ]; then
+    "${PWSH_CMD[@]}" scripts/check-eol.ps1 -VerboseOutput -Paths "${CHANGED_EOL[@]}" || {
       echo ""
-      echo "=== actionlint found issues ==="
-      echo "Fix the workflow issues before pushing."
+      echo "=== EOL check failed ==="
+      echo "Run: npm run fix:eol"
       echo ""
-      exit 1
+      return 1
+    }
+  fi
+
+  # 11) Test lifecycle lint (only if test files changed)
+  if [ ${#CHANGED_TESTS[@]} -gt 0 ]; then
+    "${PWSH_CMD[@]}" scripts/lint-tests.ps1 -VerboseOutput -Paths "${CHANGED_TESTS[@]}" || {
+      echo ""
+      echo "=== Test lint failed ==="
+      echo "Fix the issues or add // UNH-SUPPRESS comments for valid exceptions."
+      echo ""
+      return 1
+    }
+  fi
+
+  # LLM instructions validation (only if .llm or skills changed)
+  if [ ${#CHANGED_LLM[@]} -gt 0 ]; then
+    echo "Validating LLM instructions..."
+    "${PWSH_CMD[@]}" scripts/lint-llm-instructions.ps1 || {
+      echo ""
+      echo "=== LLM instructions validation failed ==="
+      echo "Run: pwsh -NoProfile -File scripts/lint-llm-instructions.ps1 -Fix"
+      echo ""
+      return 1
+    }
+    echo "✓ LLM instructions OK"
+  fi
+
+  return 0
+}
+
+# ---- Group C: Bash/native checks (run in parallel) ----
+run_bash_checks() {
+  # 12) License year audit (only if .cs files changed, uses cache)
+  if [ ${#CHANGED_CS[@]} -gt 0 ]; then
+    echo "Checking license year headers..."
+    if ! bash scripts/audit-license-years.sh --summary --paths "${CHANGED_CS[@]}"; then
+      echo ""
+      echo "=== License year audit failed ==="
+      echo "To auto-fix: bash scripts/update-license-headers.sh"
+      echo ""
+      return 1
     fi
-    echo "✓ actionlint OK"
-  else
-    echo "actionlint not installed; skipping workflow lint." >&2
-    echo "Install: go install github.com/rhysd/actionlint/cmd/actionlint@latest" >&2
-    echo "CI will run actionlint and catch any issues." >&2
+    echo "✓ License year headers OK"
   fi
-fi
 
-# LLM instructions validation (skills index, trigger comments, etc.)
-if command -v pwsh >/dev/null 2>&1; then
-  echo "Validating LLM instructions..."
-  pwsh -NoProfile -File scripts/lint-llm-instructions.ps1 || {
-    echo ""
-    echo "=== LLM instructions validation failed ==="
-    echo "Run: pwsh -NoProfile -File scripts/lint-llm-instructions.ps1 -Fix"
-    echo ""
-    exit 1
-  }
-  echo "✓ LLM instructions OK"
-elif command -v powershell >/dev/null 2>&1; then
-  echo "Validating LLM instructions..."
-  powershell -NoProfile -ExecutionPolicy Bypass -File scripts/lint-llm-instructions.ps1 || {
-    echo ""
-    echo "=== LLM instructions validation failed ==="
-    echo "Run: powershell -NoProfile -File scripts/lint-llm-instructions.ps1 -Fix"
-    echo ""
-    exit 1
-  }
-  echo "✓ LLM instructions OK"
-else
-  echo "PowerShell not found; skipping LLM instructions validation." >&2
+  # 13) Check for #region directives (only in changed .cs files)
+  if [ ${#CHANGED_CS[@]} -gt 0 ]; then
+    echo "Checking for forbidden #region directives..."
+    REGION_VIOLATIONS=$(grep -E -n -i '^[[:space:]]*#[[:space:]]*(region|endregion)' -- "${CHANGED_CS[@]}" 2>/dev/null || true)
+    if [ -n "$REGION_VIOLATIONS" ]; then
+      echo ""
+      echo "=== Error: C# regions (#region/#endregion) are forbidden ==="
+      echo "$REGION_VIOLATIONS" | head -50
+      echo ""
+      echo "Remove all #region and #endregion directives before pushing."
+      echo ""
+      return 1
+    fi
+    echo "✓ No #region directives found"
+  fi
+
+  # Optional YAML lint (only if YAML files changed)
+  if [ ${#CHANGED_YAML[@]} -gt 0 ]; then
+    if command -v yamllint >/dev/null 2>&1; then
+      echo "Running yamllint on changed YAML files..."
+      yamllint -c .yamllint.yaml -- "${CHANGED_YAML[@]}" || return 1
+      echo "✓ yamllint OK"
+    fi
+  fi
+
+  # Optional external link check (only if markdown changed)
+  if [ ${#CHANGED_MD[@]} -gt 0 ]; then
+    if command -v lychee >/dev/null 2>&1; then
+      lychee -c .lychee.toml --no-progress --verbose -- "${CHANGED_MD[@]}" || return 1
+    fi
+  fi
+
+  return 0
+}
+
+# ---- Conditional test suites (run sequentially, only when relevant) ----
+run_conditional_tests() {
+  # Wiki generation tests
+  if [ ${#CHANGED_WIKI[@]} -gt 0 ]; then
+    echo "Running wiki generation tests..."
+    bash scripts/tests/test-wiki-generation.sh || return 1
+    echo "✓ Wiki generation tests OK"
+
+    if command -v python3 >/dev/null 2>&1 && python3 -c "import pytest" 2>/dev/null; then
+      python3 -m pytest scripts/wiki/test_wiki_scripts.py -v || return 1
+      echo "✓ Python wiki tests OK"
+    fi
+  fi
+
+  # Lint test suite
+  if [ ${#CHANGED_LINT_TEST[@]} -gt 0 ]; then
+    PWSH_CMD=()
+    if command -v pwsh >/dev/null 2>&1; then
+      PWSH_CMD=(pwsh -NoProfile -File)
+    elif command -v powershell >/dev/null 2>&1; then
+      PWSH_CMD=(powershell -NoProfile -ExecutionPolicy Bypass -File)
+    fi
+    if [ ${#PWSH_CMD[@]} -gt 0 ]; then
+      echo "Running lint-tests.ps1 test suite..."
+      "${PWSH_CMD[@]}" scripts/tests/test-lint-tests.ps1 || return 1
+      echo "✓ Lint test suite OK"
+    fi
+  fi
+
+  # Gitignore docs lint test suite
+  if [ ${#CHANGED_GITIGNORE_DOCS_LINT[@]} -gt 0 ]; then
+    PWSH_CMD=()
+    if command -v pwsh >/dev/null 2>&1; then
+      PWSH_CMD=(pwsh -NoProfile -File)
+    elif command -v powershell >/dev/null 2>&1; then
+      PWSH_CMD=(powershell -NoProfile -ExecutionPolicy Bypass -File)
+    fi
+    if [ ${#PWSH_CMD[@]} -gt 0 ]; then
+      echo "Running lint-gitignore-docs.ps1 test suite..."
+      "${PWSH_CMD[@]}" scripts/tests/test-gitignore-docs.ps1 || return 1
+      echo "✓ Gitignore docs lint test suite OK"
+    fi
+  fi
+
+  # Hook pattern tests
+  if [ ${#CHANGED_HOOK_FILES[@]} -gt 0 ]; then
+    echo "Running hook pattern tests..."
+    bash scripts/tests/test-hook-patterns.sh || return 1
+    echo "✓ Hook pattern tests OK"
+  fi
+
+  # Sync script and cspell contract tests
+  if [ ${#CHANGED_SYNC_SCRIPT_CONTRACTS[@]} -gt 0 ]; then
+    PWSH_CMD=()
+    if command -v pwsh >/dev/null 2>&1; then
+      PWSH_CMD=(pwsh -NoProfile -File)
+    elif command -v powershell >/dev/null 2>&1; then
+      PWSH_CMD=(powershell -NoProfile -ExecutionPolicy Bypass -File)
+    fi
+    if [ ${#PWSH_CMD[@]} -gt 0 ]; then
+      echo "Running sync script contract tests..."
+      "${PWSH_CMD[@]}" scripts/tests/test-sync-script-contracts.ps1 || return 1
+      echo "✓ Sync script contract tests OK"
+    fi
+  fi
+
+  # actionlint (only if workflow files changed)
+  if [ ${#CHANGED_WORKFLOWS[@]} -gt 0 ]; then
+    if command -v actionlint >/dev/null 2>&1; then
+      echo "Running actionlint..."
+      actionlint || return 1
+      echo "✓ actionlint OK"
+    fi
+  fi
+
+  return 0
+}
+
+# ---- Execute parallel groups ----
+# Run Groups A, B, C in parallel with proper error propagation
+run_node_checks &
+PID_NODE=$!
+run_pwsh_checks &
+PID_PWSH=$!
+run_bash_checks &
+PID_BASH=$!
+
+# Wait for all groups, collect exit codes
+wait $PID_NODE || HOOK_FAILED=1
+wait $PID_PWSH || HOOK_FAILED=1
+wait $PID_BASH || HOOK_FAILED=1
+
+# Run conditional tests sequentially (they depend on having seen parallel output)
+if [ $HOOK_FAILED -eq 0 ]; then
+  run_conditional_tests || HOOK_FAILED=1
 fi
 
 # ============================================================================
-# FINAL VERIFICATION SUMMARY
+# FINAL RESULT
 # ============================================================================
+if [ $HOOK_FAILED -ne 0 ]; then
+  echo ""
+  echo "Pre-push checks FAILED. Fix the issues above and push again."
+  echo "To skip in emergencies: git push --no-verify (CI will still validate)"
+  exit 1
+fi
+
 echo ""
 echo "Pre-push checks complete. Push proceeding..."

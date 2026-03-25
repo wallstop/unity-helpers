@@ -301,8 +301,18 @@ if [ ${#SPELL_FILES_ARRAY[@]} -gt 0 ]; then
     trap 'rm -f "$SPELL_FILE_LIST"' EXIT
     printf '%s\n' "${SPELL_FILES_ARRAY[@]}" > "$SPELL_FILE_LIST"
     # Use --no-must-find-files to avoid errors when files are filtered by cspell config
-    npx --no-install cspell lint --no-must-find-files --no-progress --file-list "$SPELL_FILE_LIST" || {
-      echo "Spell check failed. Fix spelling errors or add words to cspell.json." >&2
+    npx --no-install cspell lint --no-must-find-files --no-progress --show-suggestions --file-list "$SPELL_FILE_LIST" || {
+      echo "" >&2
+      echo "=== Spelling errors detected ===" >&2
+      echo "Fix typos or add valid terms to the appropriate dictionary in cspell.json:" >&2
+      echo "  unity-terms   -- Unity Engine APIs, components, lifecycle" >&2
+      echo "  csharp-terms  -- C# language features, .NET types" >&2
+      echo "  package-terms -- This package's public API and type names" >&2
+      echo "  tech-terms    -- General programming/tooling terms (CRLF, NUL, ASCII, etc.)" >&2
+      echo "  words (root)  -- Project-specific words that don't fit a category" >&2
+      echo "" >&2
+      echo "Re-run locally: npm run lint:spelling" >&2
+      echo "" >&2
       exit 1
     }
   else
@@ -323,46 +333,61 @@ done
 if [ ${#LLM_FILES_ARRAY[@]} -gt 0 ]; then
   echo "Validating LLM instructions..."
   if command -v pwsh >/dev/null 2>&1; then
-    pwsh -NoProfile -File scripts/lint-llm-instructions.ps1 || {
-      echo "LLM instructions validation failed. Run 'pwsh -NoProfile -File scripts/lint-llm-instructions.ps1 -Fix' to auto-fix." >&2
-      exit 1
-    }
+    if ! pwsh -NoProfile -File scripts/lint-llm-instructions.ps1; then
+      echo "LLM lint failed. Attempting auto-fix..." >&2
+      if pwsh -NoProfile -File scripts/lint-llm-instructions.ps1 -Fix; then
+        git_add_with_retry .llm/context.md
+        echo "LLM instructions auto-fixed and re-staged."
+      else
+        echo "LLM instructions auto-fix also failed." >&2
+        exit 1
+      fi
+    fi
   elif command -v powershell >/dev/null 2>&1; then
-    powershell -NoProfile -ExecutionPolicy Bypass -File scripts/lint-llm-instructions.ps1 || {
-      echo "LLM instructions validation failed. Run 'powershell -NoProfile -File scripts/lint-llm-instructions.ps1 -Fix' to auto-fix." >&2
-      exit 1
-    }
+    if ! powershell -NoProfile -ExecutionPolicy Bypass -File scripts/lint-llm-instructions.ps1; then
+      echo "LLM lint failed. Attempting auto-fix..." >&2
+      if powershell -NoProfile -ExecutionPolicy Bypass -File scripts/lint-llm-instructions.ps1 -Fix; then
+        git_add_with_retry .llm/context.md
+        echo "LLM instructions auto-fixed and re-staged."
+      else
+        echo "LLM instructions auto-fix also failed." >&2
+        exit 1
+      fi
+    fi
   else
     echo "PowerShell not found. Skipping LLM instructions validation." >&2
   fi
 fi
 
-# 11) Check skill file sizes if .llm/skills/ markdown files are staged
+# 11) Check skill file sizes if .llm/skills/ markdown files or .llm/context.md are staged
 # Note: In bash case statements, * matches any character including /
 # so .llm/skills/*.md matches all depths (e.g., .llm/skills/sub/dir/file.md)
-LLM_SKILLS_ARRAY=()
+LLM_SIZE_CHECK_ARRAY=()
 for file in "${STAGED_FILES_ARRAY[@]}"; do
     case "$file" in
         .llm/skills/*.md)
-            LLM_SKILLS_ARRAY+=("$file")
+            LLM_SIZE_CHECK_ARRAY+=("$file")
+            ;;
+        .llm/context.md)
+            LLM_SIZE_CHECK_ARRAY+=("$file")
             ;;
     esac
 done
 
-if [ ${#LLM_SKILLS_ARRAY[@]} -gt 0 ]; then
-  echo "Checking skill file sizes..."
+if [ ${#LLM_SIZE_CHECK_ARRAY[@]} -gt 0 ]; then
+  echo "Checking skill and context file sizes..."
   if command -v pwsh >/dev/null 2>&1; then
     pwsh -NoProfile -File scripts/lint-skill-sizes.ps1 || {
-      echo "Skill file size check failed. Some files exceed 500 lines and must be split." >&2
+      echo "File size check failed. Some files exceed 500 lines and must be split or reduced." >&2
       exit 1
     }
   elif command -v powershell >/dev/null 2>&1; then
     powershell -NoProfile -ExecutionPolicy Bypass -File scripts/lint-skill-sizes.ps1 || {
-      echo "Skill file size check failed. Some files exceed 500 lines and must be split." >&2
+      echo "File size check failed. Some files exceed 500 lines and must be split or reduced." >&2
       exit 1
     }
   else
-    echo "PowerShell not found. Skipping skill file size check." >&2
+    echo "PowerShell not found. Skipping skill and context file size check." >&2
   fi
 fi
 
@@ -443,7 +468,7 @@ if [ ${#CS_FILES_ARRAY[@]} -gt 0 ]; then
   for file in "${CS_FILES_ARRAY[@]}"; do
     # Use grep to find #region or #endregion (case-insensitive for robustness)
     # Match lines that have #region or #endregion as preprocessor directives
-    MATCHES=$(grep -n -i '^\s*#\s*region\|^\s*#\s*endregion' "$file" 2>/dev/null || true)
+    MATCHES=$(grep -n -iE '^[[:space:]]*#[[:space:]]*(region|endregion)' "$file" 2>/dev/null || true)
     if [ -n "$MATCHES" ]; then
       while IFS= read -r match; do
         REGION_VIOLATIONS="${REGION_VIOLATIONS}  ${file}:${match}"$'\n'
@@ -513,4 +538,102 @@ if [ ${#ODIN_DRAWER_FILES[@]} -gt 0 ]; then
   else
     echo "PowerShell not found. Skipping Odin Undo safety lint." >&2
   fi
+fi
+
+# 16) Check for missing .meta files on staged files
+# Files in source roots (Runtime, Editor, Tests, docs, scripts, etc.) require .meta companions
+META_REQUIRED_FILES=()
+for file in "${STAGED_FILES_ARRAY[@]}"; do
+    case "$file" in
+        Runtime/*|Editor/*|Tests/*|Samples~/*|Shaders/*|Styles/*|URP/*|docs/*|scripts/*)
+            # Skip .meta files, package-lock.json, Gemfile.lock, temp files, dot files
+            case "$file" in
+                *.meta|*/package-lock.json|*/Gemfile.lock|*.tmp|*/.gitkeep|*/.DS_Store|*/Thumbs.db|*.pyc|*.pyo|*.swp|*.swo)
+                    continue
+                    ;;
+            esac
+            META_REQUIRED_FILES+=("$file")
+            ;;
+    esac
+done
+
+if [ ${#META_REQUIRED_FILES[@]} -gt 0 ]; then
+    echo "Checking for missing .meta files on staged files..."
+
+    # Use exact array membership checks instead of newline buffers so staged-path
+    # matching remains correct for filenames with spaces or leading dashes.
+    is_file_staged_exact() {
+        local target="$1"
+        local staged_file
+        for staged_file in "${STAGED_FILES_ARRAY[@]}"; do
+            if [[ "$staged_file" == "$target" ]]; then
+                return 0
+            fi
+        done
+        return 1
+    }
+
+    META_MISSING=()
+    META_UNSTAGED=()
+    for file in "${META_REQUIRED_FILES[@]}"; do
+        meta="${file}.meta"
+        if [ ! -f "$meta" ]; then
+            META_MISSING+=("$file")
+        elif ! is_file_staged_exact "$meta"; then
+            # .meta exists on disk but is not staged -- auto-stage it
+            META_UNSTAGED+=("$meta")
+        fi
+    done
+
+    # Also check for missing .meta files on new directories introduced by staged files
+    # Use associative-style dedup via sorted unique list
+    META_DIRS_TO_CHECK=()
+    for file in "${META_REQUIRED_FILES[@]}"; do
+        dir=$(dirname "$file")
+        while true; do
+            case "$dir" in
+                Runtime|Editor|Tests|Samples~|Shaders|Styles|URP|docs|scripts|.)
+                    break
+                    ;;
+            esac
+            META_DIRS_TO_CHECK+=("$dir")
+            dir=$(dirname "$dir")
+        done
+    done
+
+    # Deduplicate directories
+    if [ ${#META_DIRS_TO_CHECK[@]} -gt 0 ]; then
+        UNIQUE_DIRS=$(printf '%s\n' "${META_DIRS_TO_CHECK[@]}" | sort -u)
+        while IFS= read -r dir; do
+            [ -z "$dir" ] && continue
+            meta="${dir}.meta"
+            if [ -d "$dir" ] && [ ! -f "$meta" ]; then
+                META_MISSING+=("$dir")
+            elif [ -d "$dir" ] && [ -f "$meta" ] && ! is_file_staged_exact "$meta"; then
+                META_UNSTAGED+=("$meta")
+            fi
+        done <<< "$UNIQUE_DIRS"
+    fi
+
+    # Auto-stage .meta files that exist on disk but weren't staged
+    if [ ${#META_UNSTAGED[@]} -gt 0 ]; then
+        echo "Auto-staging ${#META_UNSTAGED[@]} unstaged .meta file(s):"
+        for meta in "${META_UNSTAGED[@]}"; do
+            echo "  $meta"
+        done
+        git_add_with_retry "${META_UNSTAGED[@]}"
+    fi
+
+    if [ ${#META_MISSING[@]} -gt 0 ]; then
+        echo "" >&2
+        echo "=== Missing .meta files for staged files ===" >&2
+        for file in "${META_MISSING[@]}"; do
+            echo "  $file" >&2
+        done
+        echo "" >&2
+        echo "Generate missing meta files:" >&2
+        echo "  ./scripts/generate-meta.sh <path>" >&2
+        echo "" >&2
+        exit 1
+    fi
 fi
