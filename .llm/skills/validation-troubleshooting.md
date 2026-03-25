@@ -125,7 +125,14 @@ ERROR: Allowlisted helper file not found: Tests/Path/To/OldFile.cs
 
 **Mixed endings after newline fix**: If a script appended LF to a CRLF file, detect existing endings first. See [`crlf_aware_append_newline`](../code-samples/patterns/ValidationFixPatterns.sh) and [git-hook-syntax-portability](./git-hook-syntax-portability.md#crlf-aware-newline-handling) for patterns.
 
-**PowerShell `-NoNewline`**: Avoid `Set-Content -NoNewline` — it removes the final newline Prettier requires.
+**PowerShell `-NoNewline`**: Avoid raw `Set-Content -NoNewline` writes. Normalize first with:
+
+```powershell
+$content = $content.TrimEnd() + "`n"
+Set-Content -Path $filePath -Value $content -NoNewline -Encoding UTF8
+```
+
+Run `npm run test:sync-script-contracts` after editing sync scripts to catch regressions early.
 
 ### 10. Gitignore Wildcard Too Broad
 

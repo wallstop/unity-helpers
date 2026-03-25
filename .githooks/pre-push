@@ -128,6 +128,7 @@ CHANGED_WIKI=()
 CHANGED_HOOK_FILES=()
 CHANGED_LINT_TEST=()
 CHANGED_GITIGNORE_DOCS_LINT=()
+CHANGED_SYNC_SCRIPT_CONTRACTS=()
 
 for file in "${ALL_CHANGED_FILES[@]}"; do
   [[ "$file" =~ \.(md|markdown)$ ]] && CHANGED_MD+=("$file")
@@ -145,6 +146,7 @@ for file in "${ALL_CHANGED_FILES[@]}"; do
   [[ "$file" =~ ^(\.githooks/.*|scripts/tests/test-hook-patterns\.sh)$ ]] && CHANGED_HOOK_FILES+=("$file")
   [[ "$file" =~ ^(scripts/lint-tests\.ps1|scripts/tests/test-lint-tests\.ps1)$ ]] && CHANGED_LINT_TEST+=("$file")
   [[ "$file" =~ ^(scripts/lint-gitignore-docs\.ps1|scripts/tests/test-gitignore-docs\.ps1)$ ]] && CHANGED_GITIGNORE_DOCS_LINT+=("$file")
+  [[ "$file" =~ ^(scripts/sync-doc-counts\.ps1|scripts/sync-banner-version\.ps1|scripts/lint-cspell-config\.js|scripts/tests/test-sync-script-contracts\.ps1)$ ]] && CHANGED_SYNC_SCRIPT_CONTRACTS+=("$file")
 done
 
 CHANGED_PRETTIER=("${CHANGED_MD[@]}" "${CHANGED_JSON[@]}" "${CHANGED_YAML[@]}" "${CHANGED_JS[@]}")
@@ -409,6 +411,21 @@ run_conditional_tests() {
     echo "Running hook pattern tests..."
     bash scripts/tests/test-hook-patterns.sh || return 1
     echo "✓ Hook pattern tests OK"
+  fi
+
+  # Sync script and cspell contract tests
+  if [ ${#CHANGED_SYNC_SCRIPT_CONTRACTS[@]} -gt 0 ]; then
+    PWSH_CMD=()
+    if command -v pwsh >/dev/null 2>&1; then
+      PWSH_CMD=(pwsh -NoProfile -File)
+    elif command -v powershell >/dev/null 2>&1; then
+      PWSH_CMD=(powershell -NoProfile -ExecutionPolicy Bypass -File)
+    fi
+    if [ ${#PWSH_CMD[@]} -gt 0 ]; then
+      echo "Running sync script contract tests..."
+      "${PWSH_CMD[@]}" scripts/tests/test-sync-script-contracts.ps1 || return 1
+      echo "✓ Sync script contract tests OK"
+    fi
   fi
 
   # actionlint (only if workflow files changed)

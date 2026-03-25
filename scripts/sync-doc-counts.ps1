@@ -178,6 +178,8 @@ foreach ($filePath in $targetFiles) {
             $hasChanges = $true
         }
         else {
+            # Preserve repository final-newline policy: exactly one trailing LF.
+            $content = $content.TrimEnd() + "`n"
             Set-Content -Path $filePath -Value $content -NoNewline -Encoding UTF8
             Write-Host "  Updated: $relativePath" -ForegroundColor Green
             $updatedFiles += $filePath

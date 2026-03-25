@@ -48,6 +48,7 @@ npm run validate:prepush
 | `npm run format:yaml:check`                     | Check YAML formatting (Prettier)            |
 | `npm run eol:check`                             | Line endings (CRLF) and BOM check           |
 | `npm run validate:tests`                        | Test lifecycle lint (Track() usage)         |
+| `npm run test:sync-script-contracts`            | Sync newline + cspell contract regressions  |
 | `bash scripts/audit-license-years.sh --summary` | License year header audit                   |
 
 ---
@@ -86,7 +87,7 @@ npm run lint:spelling:config       # Check for case-redundant entries
 npm run lint:spelling:config:fix   # Auto-fix case-redundant entries
 ```
 
-The config linter catches case-redundant dictionary entries (error, blocking) and cross-dictionary duplicates (warning, non-blocking). It runs automatically in the pre-push hook and `validate:prepush`.
+The config linter catches case-redundant dictionary entries (error, blocking) and cross-dictionary duplicates (warning, non-blocking). It does not auto-classify root words into categorized dictionaries. That remains a review-time policy decision.
 
 ### Inline Ignores
 

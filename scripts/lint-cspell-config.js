@@ -4,7 +4,6 @@
 // Lints cspell.json for common configuration issues:
 //   1. Case-redundant entries (when caseSensitive is false)
 //   2. Cross-dictionary duplicates (same word in multiple dictionaries)
-//   3. Root words that belong in a categorized dictionary
 //
 // Usage:
 //   node scripts/lint-cspell-config.js          # Check only
@@ -168,6 +167,9 @@ function main() {
 
   // ── Summary ──
   if (issueCount > 0 && !fixMode) {
+    console.log("\nChecks enforced:");
+    console.log("  1. Case-redundant entries (blocking)");
+    console.log("  2. Cross-dictionary duplicates (warning only)");
     console.log(`\ncspell.json: ${issueCount} error(s), ${warningCount} warning(s).`);
     console.log("Run with --fix to auto-deduplicate case-redundant entries.");
     process.exit(1);
@@ -180,6 +182,9 @@ function main() {
     );
     process.exit(0);
   } else {
+    console.log("Checks enforced:");
+    console.log("  1. Case-redundant entries (blocking)");
+    console.log("  2. Cross-dictionary duplicates (warning only)");
     if (warningCount > 0) {
       console.log(`cspell.json: No errors. ${warningCount} warning(s) (cross-duplicates).`);
     } else {

@@ -419,6 +419,18 @@ else
     # No scripts/.pytest_cache/ directory exists
   }
 
+  setup_orphaned_meta_excluded_file_pattern() {
+    local ws="$1"
+    mkdir -p "$ws/scripts"
+    touch "$ws/scripts.meta"
+    # Orphaned .meta for excluded file patterns (*.pyc, *.tmp, etc.)
+    # The source files are excluded by file pattern but .meta files remain
+    touch "$ws/scripts/helper.pyc.meta"
+    touch "$ws/scripts/build.tmp.meta"
+    # No helper.pyc or build.tmp exist -- their .meta files are orphaned
+    # but the lint should not flag them because the source patterns are excluded
+  }
+
   setup_deeply_nested_exclusion() {
     local ws="$1"
     mkdir -p "$ws/scripts/sub/deeper/.pytest_cache/cache/data"
@@ -464,6 +476,7 @@ else
   echo ""
   echo "--- Orphaned .meta for excluded items ---"
   test_exclusion "Orphaned .meta for excluded .pytest_cache" setup_orphaned_meta_excluded
+  test_exclusion "Orphaned .meta for excluded file patterns" setup_orphaned_meta_excluded_file_pattern
 
   echo ""
   echo "--- Deeply nested exclusions ---"
