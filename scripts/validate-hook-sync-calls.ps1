@@ -79,7 +79,7 @@ $requiredPrePushPatterns = @(
     @{ Pattern = 'while read'; Description = 'reads stdin (while read loop)' },
     @{ Pattern = 'local_sha'; Description = 'parses local SHA from stdin' },
     @{ Pattern = 'remote_sha'; Description = 'parses remote SHA from stdin' },
-    @{ Pattern = 'CHANGED_FILES_LIST'; Description = 'stores changed files in temp file' }
+    @{ Pattern = 'ALL_CHANGED_FILES'; Description = 'stores changed files in array' }
 )
 
 $prePushMissing = @()

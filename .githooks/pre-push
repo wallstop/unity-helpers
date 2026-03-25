@@ -193,11 +193,18 @@ run_node_checks() {
   if [ ${#CHANGED_SPELL[@]} -gt 0 ]; then
     if npx --no-install cspell --version >/dev/null 2>&1; then
       echo "Checking spelling on changed files..."
-      if ! npx --no-install cspell lint --no-must-find-files --no-progress -- "${CHANGED_SPELL[@]}"; then
-        echo ""
-        echo "=== Spelling errors detected ==="
-        echo "Fix typos or add valid terms to the appropriate dictionary in cspell.json."
-        echo ""
+      if ! npx --no-install cspell lint --no-must-find-files --no-progress --show-suggestions -- "${CHANGED_SPELL[@]}"; then
+        echo "" >&2
+        echo "=== Spelling errors detected ===" >&2
+        echo "Fix typos or add valid terms to the appropriate dictionary in cspell.json:" >&2
+        echo "  unity-terms   -- Unity Engine APIs, components, lifecycle" >&2
+        echo "  csharp-terms  -- C# language features, .NET types" >&2
+        echo "  package-terms -- This package's public API and type names" >&2
+        echo "  tech-terms    -- General programming/tooling terms (CRLF, NUL, ASCII, etc.)" >&2
+        echo "  words (root)  -- Project-specific words that don't fit a category" >&2
+        echo "" >&2
+        echo "Re-run locally: npm run lint:spelling" >&2
+        echo "" >&2
         return 1
       fi
       echo "✓ Spell check OK"
