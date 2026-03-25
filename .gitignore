@@ -45,6 +45,7 @@ logs_extracted*
 .codex/*
 _llm_*
 _llm_*.meta
+/.*/**/*.meta
 
 # Build results
 [Dd]ebug/
