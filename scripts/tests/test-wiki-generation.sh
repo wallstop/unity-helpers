@@ -326,7 +326,7 @@ SIDEBAR_SCRIPT="scripts/wiki/generate_wiki_sidebar.py"
 if [ -f "$SIDEBAR_SCRIPT" ]; then
     run_test
     # Check that Python script generates Markdown syntax for Home link: - [Home](Home)
-    if grep -qE '^\s*"- \[Home\]\(Home\)"' "$SIDEBAR_SCRIPT" || grep -qE "'\- \[Home\]\(Home\)'" "$SIDEBAR_SCRIPT" || grep -qE 'f"- \[Home\]\(Home\)"' "$SIDEBAR_SCRIPT" || grep -qE "lines\.append\(f\"- \[" "$SIDEBAR_SCRIPT"; then
+    if grep -qE '^[[:space:]]*"- \[Home\]\(Home\)"' "$SIDEBAR_SCRIPT" || grep -qE "'\- \[Home\]\(Home\)'" "$SIDEBAR_SCRIPT" || grep -qE 'f"- \[Home\]\(Home\)"' "$SIDEBAR_SCRIPT" || grep -qE "lines\.append\(f\"- \[" "$SIDEBAR_SCRIPT"; then
         pass "Workflow uses Markdown syntax for Home link"
     else
         fail "Workflow uses Markdown syntax for Home link" 'echo "- [Home](Home)"' "(not found)"

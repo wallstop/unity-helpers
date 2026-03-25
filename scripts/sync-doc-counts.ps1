@@ -31,7 +31,16 @@ if (-not (Test-Path $generateScript)) {
 
 # Run generate script (status goes to stderr, JSON to stdout)
 $rawOutput = & pwsh -NoProfile -File $generateScript 2>&1
+if ($LASTEXITCODE -ne 0) {
+    $stderrLines = @($rawOutput | Where-Object { $_ -is [System.Management.Automation.ErrorRecord] })
+    Write-Error "generate-doc-metadata.ps1 failed with exit code $LASTEXITCODE`n$($stderrLines -join "`n")"
+    exit 1
+}
 $stdoutLines = $rawOutput | Where-Object { $_ -is [string] }
+if (-not $stdoutLines) {
+    Write-Error 'generate-doc-metadata.ps1 produced no stdout output'
+    exit 1
+}
 $metadata = ($stdoutLines -join "`n") | ConvertFrom-Json
 
 $testDisplay = $metadata.testCount.display -replace '\+$', ''

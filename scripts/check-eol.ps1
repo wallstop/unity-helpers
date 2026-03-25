@@ -1,4 +1,5 @@
 param(
+    [string[]]$Paths,
     [switch]$VerboseOutput
 )
 
@@ -58,6 +59,13 @@ function Test-ShouldUseLf([string]$path) {
 }
 
 function Get-TrackedFiles {
+    if ($Paths -and $Paths.Count -gt 0) {
+        # Use provided file list instead of scanning all tracked files
+        return $Paths | Where-Object {
+            $ext = [System.IO.Path]::GetExtension($_).TrimStart('.').ToLowerInvariant()
+            $extensions -contains $ext
+        }
+    }
     $files = (git ls-files -z) -split "`0" | Where-Object { $_ -ne '' }
     return $files | Where-Object {
         $ext = [System.IO.Path]::GetExtension($_).TrimStart('.').ToLowerInvariant()

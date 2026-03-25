@@ -1,0 +1,363 @@
+#!/usr/bin/env bash
+# =============================================================================
+# Test Script: Shell Script Portability & Hygiene
+# =============================================================================
+# Validates that all shell scripts and git hooks in the repository follow
+# POSIX-portable patterns and avoid common hygiene issues:
+#
+#   A) Non-portable grep patterns (\| without -E, \s without -E/-P)
+#   B) Hardcoded user paths without env var override in Unity scripts
+#   C) Inappropriate stderr suppression hiding lint/validation output
+#   D) PowerShell child process invocations missing $LASTEXITCODE checks
+#
+# Run: bash scripts/tests/test-shell-portability.sh
+# Exit codes: 0 = all tests pass, 1 = test failure
+# =============================================================================
+
+set -euo pipefail
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+# Test counters
+tests_run=0
+tests_passed=0
+tests_failed=0
+
+pass() {
+    tests_passed=$((tests_passed + 1))
+    echo -e "${GREEN}PASS${NC} $1"
+}
+
+fail() {
+    tests_failed=$((tests_failed + 1))
+    echo -e "${RED}FAIL${NC} $1"
+    if [[ -n "${2:-}" ]]; then
+        echo -e "  ${RED}Detail:${NC} $2"
+    fi
+}
+
+run_test() {
+    tests_run=$((tests_run + 1))
+}
+
+# Get repo root
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+
+# Collect all shell scripts and git hooks to scan
+SHELL_FILES=()
+while IFS= read -r -d '' f; do
+    # Skip this test script itself to avoid self-referential false positives
+    [[ "$f" == *test-shell-portability.sh ]] && continue
+    SHELL_FILES+=("$f")
+done < <(find "$REPO_ROOT/scripts" -name '*.sh' -print0 2>/dev/null)
+while IFS= read -r -d '' f; do
+    SHELL_FILES+=("$f")
+done < <(find "$REPO_ROOT/.githooks" -type f -print0 2>/dev/null)
+
+# Collect PowerShell scripts
+PS1_FILES=()
+while IFS= read -r -d '' f; do
+    PS1_FILES+=("$f")
+done < <(find "$REPO_ROOT/scripts" -name '*.ps1' -print0 2>/dev/null)
+
+# =============================================================================
+# Section A: Non-portable grep patterns
+# =============================================================================
+echo ""
+echo "=== Section A: Non-portable grep patterns ==="
+
+# A1: grep with \| (BRE alternation) without -E flag
+# GNU grep supports \| in BRE mode, but this is a GNU extension not in POSIX.
+# The fix is to use -E (ERE mode) so | works portably, or use -F for literals.
+echo ""
+echo "--- A1: grep with BRE \\| alternation (requires -E for portability) ---"
+
+a1_violations=""
+for file in "${SHELL_FILES[@]}"; do
+    rel_path="${file#"$REPO_ROOT"/}"
+    line_num=0
+    while IFS= read -r line; do
+        line_num=$((line_num + 1))
+
+        # Skip comment lines
+        stripped="${line#"${line%%[![:space:]]*}"}"
+        [[ "$stripped" == \#* ]] && continue
+
+        # Skip lines that don't contain grep
+        case "$line" in
+            *grep*) ;;
+            *) continue ;;
+        esac
+
+        # Skip lines that already have -E, -P, or -F flags (portable or literal)
+        # Match grep invocations with flags that include E, P, or F
+        if echo "$line" | grep -qE 'grep[[:space:]]+-[a-zA-Z]*[EPF]'; then
+            continue
+        fi
+
+        # Check if the pattern argument contains \|
+        if echo "$line" | grep -qF '\|'; then
+            # Allowlist: grep -cF '\|' is literal pipe counting (not alternation)
+            if echo "$line" | grep -qE 'grep[[:space:]]+-[a-zA-Z]*F'; then
+                continue
+            fi
+            a1_violations="${a1_violations}  ${rel_path}:${line_num}: ${line}"$'\n'
+        fi
+    done < "$file"
+done
+
+run_test
+if [[ -z "$a1_violations" ]]; then
+    pass "No grep with BRE \\| alternation found (all use -E or -F)"
+else
+    fail "Found grep with BRE \\| (non-portable, needs -E flag):" "$a1_violations"
+fi
+
+# A2: grep with \s (non-POSIX shorthand, should use [[:space:]])
+echo ""
+echo "--- A2: grep with \\s shorthand (non-POSIX, use [[:space:]]) ---"
+
+a2_violations=""
+for file in "${SHELL_FILES[@]}"; do
+    rel_path="${file#"$REPO_ROOT"/}"
+    line_num=0
+    while IFS= read -r line; do
+        line_num=$((line_num + 1))
+
+        # Skip comment lines
+        stripped="${line#"${line%%[![:space:]]*}"}"
+        [[ "$stripped" == \#* ]] && continue
+
+        # Skip lines that don't contain grep
+        case "$line" in
+            *grep*) ;;
+            *) continue ;;
+        esac
+
+        # Skip lines using -P (PCRE, where \s is valid) or -F (fixed string, literal match)
+        if echo "$line" | grep -qE 'grep[[:space:]]+-[a-zA-Z]*[PF]'; then
+            continue
+        fi
+
+        # Check for \s in the grep pattern (not in [[:space:]] form)
+        # We look for \s that isn't part of a word like "patterns" or variable like "$s"
+        if echo "$line" | grep -qE '\\s[*+?)]|\\s[^a-zA-Z]|\\s$'; then
+            a2_violations="${a2_violations}  ${rel_path}:${line_num}: ${line}"$'\n'
+        fi
+    done < "$file"
+done
+
+run_test
+if [[ -z "$a2_violations" ]]; then
+    pass "No grep with \\s shorthand found (all use [[:space:]])"
+else
+    fail "Found grep with \\s (non-POSIX, use [[:space:]]):" "$a2_violations"
+fi
+
+# =============================================================================
+# Section B: Hardcoded paths without env var override
+# =============================================================================
+echo ""
+echo "=== Section B: Hardcoded paths in Unity scripts ==="
+
+# B1: /home/vscode/ paths that aren't inside ${VAR:-...} defaults or comments
+echo ""
+echo "--- B1: Hardcoded /home/vscode/ paths (should use env var override) ---"
+
+b1_violations=""
+while IFS= read -r -d '' file; do
+    rel_path="${file#"$REPO_ROOT"/}"
+    line_num=0
+    while IFS= read -r line; do
+        line_num=$((line_num + 1))
+
+        # Skip comment lines (lines whose first non-whitespace is #)
+        stripped="${line#"${line%%[![:space:]]*}"}"
+        [[ "$stripped" == \#* ]] && continue
+
+        # Skip if line doesn't contain /home/vscode/
+        case "$line" in
+            */home/vscode/*) ;;
+            *) continue ;;
+        esac
+
+        # Allow: ${VAR:-/home/vscode/...} pattern (env var with default)
+        if echo "$line" | grep -qE '\$\{[A-Z_]+:-/home/vscode/'; then
+            continue
+        fi
+
+        # Allow: echo/printf statements (display-only, not assignment)
+        if echo "$line" | grep -qE '^[[:space:]]*(echo|printf)[[:space:]]'; then
+            continue
+        fi
+
+        b1_violations="${b1_violations}  ${rel_path}:${line_num}: ${line}"$'\n'
+    done < "$file"
+done < <(find "$REPO_ROOT/scripts/unity" -name '*.sh' -print0 2>/dev/null)
+
+run_test
+if [[ -z "$b1_violations" ]]; then
+    pass "No hardcoded /home/vscode/ paths found without env var override"
+else
+    fail "Found hardcoded paths (should use \${VAR:-default} pattern):" "$b1_violations"
+fi
+
+# =============================================================================
+# Section C: Inappropriate stderr suppression in git hooks
+# =============================================================================
+echo ""
+echo "=== Section C: Stderr suppression in git hooks ==="
+
+# C1: 2>/dev/null on lint/validation commands in hooks
+# Allowed: command -v, kill, grep ... || true, docker inspect, git merge-base,
+#          tool version checks (--version), mktemp
+echo ""
+echo "--- C1: 2>/dev/null masking lint tool output ---"
+
+c1_violations=""
+for hookfile in "$REPO_ROOT"/.githooks/*; do
+    [[ -f "$hookfile" ]] || continue
+    rel_path="${hookfile#"$REPO_ROOT"/}"
+    line_num=0
+    while IFS= read -r line; do
+        line_num=$((line_num + 1))
+
+        # Skip comment lines
+        stripped="${line#"${line%%[![:space:]]*}"}"
+        [[ "$stripped" == \#* ]] && continue
+
+        # Only check lines with 2>/dev/null
+        case "$line" in
+            *2\>/dev/null*) ;;
+            *) continue ;;
+        esac
+
+        # Allowlist of safe 2>/dev/null usage
+        skip=false
+
+        # Tool detection: command -v, which
+        echo "$line" | grep -qE 'command -v|which ' && skip=true
+
+        # Process cleanup: kill
+        echo "$line" | grep -qE '\bkill\b' && skip=true
+
+        # Version checks: --version
+        echo "$line" | grep -qF -- '--version' && skip=true
+
+        # Docker inspect (checking if image exists)
+        echo "$line" | grep -qE 'docker\b.*inspect' && skip=true
+        echo "$line" | grep -qE 'docker\b.*info' && skip=true
+
+        # Git operations that legitimately fail (merge-base on orphan, etc.)
+        echo "$line" | grep -qE 'git (merge-base|rev-parse|diff|log)' && skip=true
+
+        # Grep (exit code 1 on no match is expected)
+        echo "$line" | grep -qE '\bgrep\b' && skip=true
+
+        # Temp file creation
+        echo "$line" | grep -qF 'mktemp' && skip=true
+
+        # Tool restoration
+        echo "$line" | grep -qE 'dotnet tool restore' && skip=true
+
+        # Binary format checks (encoding detection)
+        echo "$line" | grep -qF '$'"'"'\r' && skip=true
+
+        if [[ "$skip" == false ]]; then
+            c1_violations="${c1_violations}  ${rel_path}:${line_num}: ${line}"$'\n'
+        fi
+    done < "$hookfile"
+done
+
+run_test
+if [[ -z "$c1_violations" ]]; then
+    pass "No inappropriate stderr suppression in git hooks"
+else
+    fail "Found 2>/dev/null on lint/validation commands (warnings hidden):" "$c1_violations"
+fi
+
+# =============================================================================
+# Section D: PowerShell child process exit code safety
+# =============================================================================
+echo ""
+echo '=== Section D: PowerShell $LASTEXITCODE after child process calls ==='
+
+# D1: & pwsh invocations without $LASTEXITCODE check nearby
+echo ""
+echo '--- D1: Missing $LASTEXITCODE check after & pwsh calls ---'
+
+d1_violations=""
+for file in "${PS1_FILES[@]}"; do
+    rel_path="${file#"$REPO_ROOT"/}"
+
+    # Find lines with "& pwsh" invocations
+    line_num=0
+    total_lines=$(wc -l < "$file")
+    while IFS= read -r line; do
+        line_num=$((line_num + 1))
+
+        # Skip comment lines
+        stripped="${line#"${line%%[![:space:]]*}"}"
+        [[ "$stripped" == \#* ]] && continue
+
+        # Check for & pwsh invocation
+        case "$line" in
+            *'& pwsh'*) ;;
+            *) continue ;;
+        esac
+
+        # Look ahead up to 8 lines for $LASTEXITCODE check
+        found_check=false
+        end_line=$((line_num + 8))
+        if [[ $end_line -gt $total_lines ]]; then
+            end_line=$total_lines
+        fi
+
+        lookahead=$(sed -n "$((line_num + 1)),${end_line}p" "$file")
+        if echo "$lookahead" | grep -qF 'LASTEXITCODE'; then
+            found_check=true
+        fi
+
+        # Also check if the script immediately exits with $LASTEXITCODE
+        # (pattern: "& pwsh ... ; exit $LASTEXITCODE" on same line or "exit $LASTEXITCODE" as next line)
+        if echo "$line" | grep -qF 'LASTEXITCODE'; then
+            found_check=true
+        fi
+
+        if [[ "$found_check" == false ]]; then
+            d1_violations="${d1_violations}  ${rel_path}:${line_num}: ${line}"$'\n'
+        fi
+    done < "$file"
+done
+
+run_test
+if [[ -z "$d1_violations" ]]; then
+    pass "All & pwsh invocations have \$LASTEXITCODE checks"
+else
+    fail "Found & pwsh calls without \$LASTEXITCODE check within 8 lines:" "$d1_violations"
+fi
+
+# =============================================================================
+# Summary
+# =============================================================================
+echo ""
+echo "==========================================="
+echo "Shell Portability Test Results"
+echo "==========================================="
+echo -e "Tests run:    ${tests_run}"
+echo -e "Tests passed: ${GREEN}${tests_passed}${NC}"
+if [[ $tests_failed -gt 0 ]]; then
+    echo -e "Tests failed: ${RED}${tests_failed}${NC}"
+    echo ""
+    exit 1
+else
+    echo -e "Tests failed: ${tests_failed}"
+    echo ""
+    echo "All portability checks passed!"
+    exit 0
+fi

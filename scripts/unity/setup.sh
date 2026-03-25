@@ -18,7 +18,7 @@ set -euo pipefail
 #   UNITY_TEST_PROJECT_DIR - Path to test project (default: /home/vscode/.unity-test-project)
 #
 # Usage:
-#   ./setup.sh
+#   bash scripts/unity/setup.sh
 ###############################################################################
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -69,6 +69,6 @@ echo "    Unity version: ${UNITY_VERSION}"
 echo "    Test project: ${UNITY_TEST_PROJECT_DIR:-/home/vscode/.unity-test-project}"
 echo ""
 echo "    Next steps:"
-echo "      - Compile: ./scripts/unity/compile.sh"
-echo "      - Run tests: ./scripts/unity/run-tests.sh"
-echo "      - Run tests (all): ./scripts/unity/run-tests.sh --mode all"
+echo "      - Compile: bash scripts/unity/compile.sh"
+echo "      - Run tests: bash scripts/unity/run-tests.sh"
+echo "      - Run tests (all): bash scripts/unity/run-tests.sh --mode all"

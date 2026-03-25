@@ -44,6 +44,9 @@ function Write-SuccessMsg($msg) {
     Write-Host "[llm-lint] $msg" -ForegroundColor Green
 }
 
+$markdownHelpersPath = Join-Path -Path $PSScriptRoot -ChildPath 'markdown-helpers.ps1'
+. $markdownHelpersPath
+
 $repoRoot = (Get-Item $PSScriptRoot).Parent.FullName
 $skillsDir = Join-Path -Path $repoRoot -ChildPath '.llm/skills'
 $contextFile = Join-Path -Path $repoRoot -ChildPath '.llm/context.md'
@@ -263,12 +266,12 @@ if ($normalizedExpected -ne $normalizedCurrent) {
         }
 
         # Post-fix validation: ensure no NEW H1 headings were introduced (MD025)
-        $originalH1Count = @($contextContent -split "`n" | Where-Object { $_ -match '^# ' }).Count
-        $fixedContent = Get-Content -Path $contextFile
-        $h1Lines = @($fixedContent | Where-Object { $_ -match '^# ' })
+        $originalH1Count = @(Get-MarkdownH1Lines -Lines @($contextContent -split "`n")).Count
+        $fixedContent = @(Get-Content -Path $contextFile)
+        $h1Lines = @(Get-MarkdownH1Lines -Lines $fixedContent)
         if ($h1Lines.Count -gt $originalH1Count) {
             Write-ErrorMsg "Fix introduced new H1 headings (MD025 violation):"
-            $h1Lines | ForEach-Object { Write-Host "  $_" -ForegroundColor Red }
+            $h1Lines | ForEach-Object { Write-Host "  L$($_.LineNumber): $($_.Text)" -ForegroundColor Red }
             Write-ErrorMsg "Rolling back changes..."
             Set-Content -Path $contextFile -Value $contextContent -NoNewline -Encoding UTF8
             exit 1

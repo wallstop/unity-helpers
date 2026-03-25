@@ -1,0 +1,18 @@
+#!/usr/bin/env sh
+# ============================================================================
+# POST-REWRITE HOOK: Invalidate caches after history rewrite
+# ============================================================================
+# Triggered by: git rebase, git commit --amend, git filter-branch
+# Purpose: Clear the license year cache since git log dates may have changed.
+# ============================================================================
+
+REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null)
+if [ -z "$REPO_ROOT" ]; then
+  exit 0
+fi
+
+CACHE_FILE="$REPO_ROOT/.git/license-year-cache"
+if [ -f "$CACHE_FILE" ]; then
+  rm -f "$CACHE_FILE"
+  echo "License year cache invalidated (history rewritten)."
+fi

@@ -18,7 +18,8 @@ set -euo pipefail
 
 WORKSPACE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 SECRETS_DIR="${WORKSPACE_DIR}/.unity-secrets"
-CACHE_DIR="/home/vscode/.unity-test-project/.unity-license-cache"
+UNITY_TEST_PROJECT_DIR="${UNITY_TEST_PROJECT_DIR:-/home/vscode/.unity-test-project}"
+CACHE_DIR="${UNITY_LICENSE_CACHE_DIR:-${UNITY_TEST_PROJECT_DIR}/.unity-license-cache}"
 
 # Color codes for terminal output
 GREEN='\033[0;32m'

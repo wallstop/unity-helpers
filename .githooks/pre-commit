@@ -458,7 +458,7 @@ if [ ${#CS_FILES_ARRAY[@]} -gt 0 ]; then
   for file in "${CS_FILES_ARRAY[@]}"; do
     # Use grep to find #region or #endregion (case-insensitive for robustness)
     # Match lines that have #region or #endregion as preprocessor directives
-    MATCHES=$(grep -n -i '^\s*#\s*region\|^\s*#\s*endregion' "$file" 2>/dev/null || true)
+    MATCHES=$(grep -n -iE '^[[:space:]]*#[[:space:]]*(region|endregion)' "$file" 2>/dev/null || true)
     if [ -n "$MATCHES" ]; then
       while IFS= read -r match; do
         REGION_VIOLATIONS="${REGION_VIOLATIONS}  ${file}:${match}"$'\n'

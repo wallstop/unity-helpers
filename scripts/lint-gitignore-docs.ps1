@@ -34,6 +34,24 @@ function Write-Info($msg) {
   if ($VerboseOutput) { Write-Host "[lint-gitignore-docs] $msg" -ForegroundColor Cyan }
 }
 
+# Batch git check-ignore: pipe all paths via stdin in one subprocess call
+# Returns a HashSet of paths that are gitignored
+function Get-GitIgnoredPaths([string[]]$paths) {
+  $result = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+  if ($paths.Count -eq 0) { return $result }
+  $input_text = ($paths -join "`n")
+  # git check-ignore --stdin returns ignored paths (one per line), exits 0 if any match, 1 if none
+  $ignored = $input_text | & git check-ignore --stdin 2>$null
+  if ($null -ne $ignored) {
+    $lines = if ($ignored -is [array]) { $ignored } else { @($ignored) }
+    foreach ($line in $lines) {
+      $trimmed = $line.Trim()
+      if ($trimmed -ne '') { [void]$result.Add($trimmed) }
+    }
+  }
+  return $result
+}
+
 $hasErrors = $false
 $errorCount = 0
 
@@ -44,7 +62,7 @@ $protectedDirs = @('docs', '.llm')
 foreach ($protectedDir in $protectedDirs) {
   if (Test-Path $protectedDir) {
     $protectedFiles = Get-ChildItem -Recurse -File -Path $protectedDir -ErrorAction SilentlyContinue
-    $ignoredFiles = @()
+    $allRelPaths = @()
 
     foreach ($file in $protectedFiles) {
       $relativePath = $file.FullName
@@ -52,14 +70,12 @@ foreach ($protectedDir in $protectedDirs) {
       if ($relativePath.StartsWith($root)) {
         $relativePath = $relativePath.Substring($root.Length).TrimStart([System.IO.Path]::DirectorySeparatorChar)
       }
-      $relativePath = $relativePath -replace '\\', '/'
-
-      # Use git check-ignore to test if the file would be ignored
-      $checkResult = & git check-ignore -q $relativePath 2>&1
-      if ($LASTEXITCODE -eq 0) {
-        $ignoredFiles += $relativePath
-      }
+      $allRelPaths += ($relativePath -replace '\\', '/')
     }
+
+    # Batch check all paths in one git subprocess call
+    $ignoredSet = Get-GitIgnoredPaths $allRelPaths
+    $ignoredFiles = @($allRelPaths | Where-Object { $ignoredSet.Contains($_) })
 
     if ($ignoredFiles.Count -gt 0) {
       $hasErrors = $true
@@ -173,17 +189,19 @@ if ((Test-Path '.gitignore') -and $hasProtectedDirs) {
   }
 
   if ($dangerousPatterns.Count -gt 0) {
+    # Batch check all protected paths once for Check 2 verification
+    $check2IgnoredSet = Get-GitIgnoredPaths $allProtectedRelPaths
+
     # Only report as errors if the files are actually gitignored (check 1 caught them).
     # Otherwise report as warnings since the pattern *could* match but git's path
     # scoping may protect the files.
     foreach ($dp in $dangerousPatterns) {
-      # Verify with git check-ignore whether any matching protected file is actually ignored
+      # Check against the batch-computed ignored set for this pattern's matched files
       $actuallyIgnored = $false
       foreach ($protectedPath in $allProtectedRelPaths) {
         $protectedFileName = Split-Path -Leaf $protectedPath
         if ($protectedFileName -eq $dp.MatchedFile) {
-          $checkResult = & git check-ignore -q $protectedPath 2>&1
-          if ($LASTEXITCODE -eq 0) {
+          if ($check2IgnoredSet.Contains($protectedPath)) {
             $actuallyIgnored = $true
             break
           }
@@ -237,6 +255,7 @@ if (Test-Path 'mkdocs.yml') {
 
   $missingFiles = @()
   $ignoredNavFiles = @()
+  $existingNavPaths = @()
 
   foreach ($navFile in $navFiles) {
     $fullPath = Join-Path 'docs' $navFile
@@ -248,14 +267,19 @@ if (Test-Path 'mkdocs.yml') {
         FullPath = $fullPath
       }
     } else {
-      # Check if file is gitignored
-      $relativePath = $fullPath -replace '\\', '/'
-      $checkResult = & git check-ignore -q $relativePath 2>&1
-      if ($LASTEXITCODE -eq 0) {
-        $ignoredNavFiles += @{
-          NavPath = $navFile
-          FullPath = $relativePath
-        }
+      $existingNavPaths += ($fullPath -replace '\\', '/')
+    }
+  }
+
+  # Batch check all existing nav file paths in one git subprocess call
+  $navIgnoredSet = Get-GitIgnoredPaths $existingNavPaths
+  foreach ($navPath in $existingNavPaths) {
+    if ($navIgnoredSet.Contains($navPath)) {
+      # Derive the original nav reference from the path
+      $navRef = $navPath -replace '^docs/', ''
+      $ignoredNavFiles += @{
+        NavPath = $navRef
+        FullPath = $navPath
       }
     }
   }

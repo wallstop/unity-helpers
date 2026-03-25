@@ -123,7 +123,7 @@ ERROR: Allowlisted helper file not found: Tests/Path/To/OldFile.cs
 
 **Fix**: `npm run eol:fix`
 
-**Mixed endings after newline fix**: If a script appended LF to a CRLF file, detect existing endings first. See [`crlf_aware_append_newline`](../code-samples/patterns/ValidationFixPatterns.sh) and [git-hook-patterns](./git-hook-patterns.md#crlf-aware-newline-handling) for patterns.
+**Mixed endings after newline fix**: If a script appended LF to a CRLF file, detect existing endings first. See [`crlf_aware_append_newline`](../code-samples/patterns/ValidationFixPatterns.sh) and [git-hook-syntax-portability](./git-hook-syntax-portability.md#crlf-aware-newline-handling) for patterns.
 
 **PowerShell `-NoNewline`**: Avoid `Set-Content -NoNewline` — it removes the final newline Prettier requires.
 
@@ -177,7 +177,7 @@ ERROR: Allowlisted helper file not found: Tests/Path/To/OldFile.cs
 
 **Cause**: `$LASTEXITCODE` leaking from a native command (git, npx, dotnet). PowerShell uses `$LASTEXITCODE` from the last native command as the process exit code when no explicit `exit` is given. Common culprit: `git check-ignore -q` returns exit code 1 when a file is NOT ignored (which is the success case for linters checking tracked files).
 
-**Fix**: Add explicit `exit 0` on the success path of every PowerShell script. See [git-hook-patterns](./git-hook-patterns.md#powershell-lastexitcode-leaking-critical) for the full pattern.
+**Fix**: Add explicit `exit 0` on the success path of every PowerShell script. See [git-hook-lifecycle-debugging](./git-hook-lifecycle-debugging.md#powershell-lastexitcode-leaking-critical) for the full pattern.
 
 **Prevention**: Every PowerShell script must end with explicit `exit 0` (success) or `exit 1` (failure) on all code paths. Never let a script fall through without an explicit exit.
 

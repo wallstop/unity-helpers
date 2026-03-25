@@ -5,6 +5,8 @@
 #   ./scripts/audit-license-years.sh
 #   ./scripts/audit-license-years.sh --csv
 #   ./scripts/audit-license-years.sh --summary
+#   ./scripts/audit-license-years.sh --paths file1.cs file2.cs
+#   ./scripts/audit-license-years.sh --summary --paths file1.cs file2.cs
 #
 # This script compares the copyright year in .cs file headers against the
 # git creation year to identify files with mismatched years.
@@ -12,6 +14,8 @@
 # Options:
 #   --csv      Output results in CSV format (file,current_year,git_year,match)
 #   --summary  Only show summary statistics
+#   --no-cache Disable cache reading (forces full git log scan, still writes)
+#   --paths    Audit only the listed files (all args after --paths are paths)
 #   --help     Show this help message
 
 set -euo pipefail
@@ -22,20 +26,39 @@ CURRENT_YEAR=2026
 
 # Parse arguments
 OUTPUT_MODE="default"
-for arg in "$@"; do
-    case "$arg" in
+USE_CACHE=true
+declare -a PATH_ARGS=()
+PATHS_MODE=false
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
         --csv)
             OUTPUT_MODE="csv"
+            shift
             ;;
         --summary)
             OUTPUT_MODE="summary"
+            shift
+            ;;
+        --no-cache)
+            USE_CACHE=false
+            shift
+            ;;
+        --paths)
+            PATHS_MODE=true
+            shift
+            # All remaining args are file paths
+            while [[ $# -gt 0 ]]; do
+                PATH_ARGS+=("$1")
+                shift
+            done
             ;;
         --help|-h)
-            head -20 "$0" | tail -18
+            head -19 "$0" | tail -18
             exit 0
             ;;
         *)
-            echo "Unknown option: $arg" >&2
+            echo "Unknown option: $1" >&2
             exit 1
             ;;
     esac
@@ -46,6 +69,39 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 cd "$REPO_ROOT"
+
+# --- Cache setup ---
+CACHE_FILE="$REPO_ROOT/.git/license-year-cache"
+declare -A year_cache=()
+cache_dirty=false
+
+# Load cache into associative array
+load_cache() {
+    if [[ "$USE_CACHE" == true && -f "$CACHE_FILE" ]]; then
+        while IFS=$'\t' read -r cached_path cached_year; do
+            if [[ -n "$cached_path" && -n "$cached_year" ]]; then
+                year_cache["$cached_path"]="$cached_year"
+            fi
+        done < "$CACHE_FILE"
+    fi
+}
+
+# Write cache atomically (temp file + mv)
+save_cache() {
+    if [[ "$cache_dirty" == true ]]; then
+        local tmp_cache
+        tmp_cache=$(mktemp "$CACHE_FILE.XXXXXX")
+        for key in "${!year_cache[@]}"; do
+            printf '%s\t%s\n' "$key" "${year_cache[$key]}"
+        done | LC_ALL=C sort > "$tmp_cache"
+        mv -f "$tmp_cache" "$CACHE_FILE"
+    fi
+}
+
+# Ensure cache is saved on exit
+trap save_cache EXIT
+
+load_cache
 
 # Counters
 total_files=0
@@ -61,7 +117,7 @@ declare -a mismatch_list=()
 get_header_year() {
     local file="$1"
     local first_line
-    first_line=$(head -1 "$file" 2>/dev/null || echo "")
+    first_line=$(head -1 -- "$file" 2>/dev/null || echo "")
 
     # Match pattern: // MIT License - Copyright (c) YYYY ...
     if [[ "$first_line" =~ Copyright\ \(c\)\ ([0-9]{4}) ]]; then
@@ -71,18 +127,26 @@ get_header_year() {
     fi
 }
 
-# Get git creation year for a file
+# Get git creation year for a file (with cache)
+# Sets global _git_year to avoid subshell (cache writes must stay in main shell)
+_git_year=""
 get_git_creation_year() {
     local file="$1"
-    local year
+    local rel="$2"
+
+    # Check cache first
+    if [[ "$USE_CACHE" == true && -n "${year_cache[$rel]+_}" ]]; then
+        _git_year="${year_cache[$rel]}"
+        return
+    fi
 
     # Use --follow to track across renames, --diff-filter=A for additions only
-    year=$(git log --follow --diff-filter=A --format=%ad --date=format:%Y -- "$file" 2>/dev/null | tail -1)
+    _git_year=$(git log --follow --diff-filter=A --format=%ad --date=format:%Y -- "$file" 2>/dev/null | tail -1)
 
-    if [[ -z "$year" ]]; then
-        echo ""
-    else
-        echo "$year"
+    if [[ -n "$_git_year" ]]; then
+        # Store in cache
+        year_cache["$rel"]="$_git_year"
+        cache_dirty=true
     fi
 }
 
@@ -91,8 +155,9 @@ if [[ "$OUTPUT_MODE" == "csv" ]]; then
     echo "file,current_year,git_year,status"
 fi
 
-# Find all .cs files
-while IFS= read -r -d '' file; do
+# Audit a single file (absolute path)
+audit_file() {
+    local file="$1"
     ((total_files++)) || true
 
     # Get relative path for cleaner output
@@ -108,11 +173,12 @@ while IFS= read -r -d '' file; do
         elif [[ "$OUTPUT_MODE" == "default" ]]; then
             echo "MISSING HEADER: $rel_path"
         fi
-        continue
+        return
     fi
 
-    # Get git creation year
-    git_year=$(get_git_creation_year "$file")
+    # Get git creation year (sets _git_year global, no subshell)
+    get_git_creation_year "$file" "$rel_path"
+    git_year="$_git_year"
 
     if [[ -z "$git_year" ]]; then
         ((no_git_history_files++)) || true
@@ -131,7 +197,7 @@ while IFS= read -r -d '' file; do
                 echo "MISMATCH: $rel_path - has $header_year, expected $CURRENT_YEAR (untracked)"
             fi
         fi
-        continue
+        return
     fi
 
     # Handle files created before repo start year
@@ -154,7 +220,29 @@ while IFS= read -r -d '' file; do
             echo "MISMATCH: $rel_path - has $header_year, expected $git_year"
         fi
     fi
-done < <(find "$REPO_ROOT" -name "*.cs" -type f -print0 | sort -z)
+}
+
+if [[ "$PATHS_MODE" == true ]]; then
+    # Incremental mode: audit only specified files
+    for p in "${PATH_ARGS[@]}"; do
+        # Resolve to absolute path
+        if [[ "$p" = /* ]]; then
+            abs_path="$p"
+        else
+            abs_path="$REPO_ROOT/$p"
+        fi
+        if [[ -f "$abs_path" ]]; then
+            audit_file "$abs_path"
+        else
+            echo "WARNING: File not found: $p" >&2
+        fi
+    done
+else
+    # Full scan: find all .cs files
+    while IFS= read -r -d '' file; do
+        audit_file "$file"
+    done < <(find "$REPO_ROOT" -name "*.cs" -type f -print0 | sort -z)
+fi
 
 # Print summary
 if [[ "$OUTPUT_MODE" != "csv" ]]; then

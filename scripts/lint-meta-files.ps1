@@ -84,37 +84,47 @@ function Test-ShouldExclude([string]$relativePath, [bool]$isDirectory) {
 }
 
 function Get-AllItems {
-  param([string]$root)
+  param([string[]]$roots)
 
   $items = @{
     Files = @()
     Directories = @()
   }
 
-  if (-not (Test-Path $root)) {
-    return $items
-  }
+  # Single git ls-files call for all roots (replaces N recursive Get-ChildItem traversals)
+  $existingRoots = @($roots | Where-Object { Test-Path $_ })
+  if ($existingRoots.Count -eq 0) { return $items }
 
-  # Get all files
-  $allFiles = Get-ChildItem -Recurse -File -Path $root -ErrorAction SilentlyContinue
-  foreach ($file in $allFiles) {
-    $rel = Get-RelativePath $file.FullName
+  $trackedFiles = (git ls-files -z -- @existingRoots) -split "`0" | Where-Object { $_ -ne '' }
+
+  # Collect unique directories from tracked file paths
+  $dirSet = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+
+  foreach ($rel in $trackedFiles) {
     if (-not (Test-ShouldExclude $rel $false)) {
+      $fullPath = Join-Path (Get-Location).Path $rel
       $items.Files += @{
-        FullPath = $file.FullName
-        RelativePath = $rel
+        FullPath = $fullPath
+        RelativePath = ($rel -replace '\\', '/')
       }
+    }
+    # Collect parent directory chain
+    $parent = Split-Path $rel -Parent
+    while ($parent -and $parent -ne '.') {
+      $normalized = $parent -replace '\\', '/'
+      if (-not $dirSet.Add($normalized)) { break }
+      $parent = Split-Path $parent -Parent
     }
   }
 
-  # Get all directories
-  $allDirs = Get-ChildItem -Recurse -Directory -Path $root -ErrorAction SilentlyContinue
-  foreach ($dir in $allDirs) {
-    $rel = Get-RelativePath $dir.FullName
-    if (-not (Test-ShouldExclude $rel $true)) {
-      $items.Directories += @{
-        FullPath = $dir.FullName
-        RelativePath = $rel
+  foreach ($dirRel in $dirSet) {
+    if (-not (Test-ShouldExclude $dirRel $true)) {
+      $fullPath = Join-Path (Get-Location).Path $dirRel
+      if (Test-Path -LiteralPath $fullPath -PathType Container) {
+        $items.Directories += @{
+          FullPath = $fullPath
+          RelativePath = $dirRel
+        }
       }
     }
   }
@@ -127,14 +137,12 @@ $orphanedMeta = @()
 
 Write-Info "Scanning for Unity meta file issues..."
 
-# Collect all items from all source roots
+# Collect all items from all source roots using a single git ls-files call
 $allFiles = @()
 $allDirectories = @()
 
+# Add root directories themselves (if they exist and aren't excluded)
 foreach ($root in $sourceRoots) {
-  Write-Info "Scanning root: $root"
-
-  # Also check if the root directory itself needs a meta file
   if (Test-Path $root) {
     $rootRel = $root -replace '\\', '/'
     if (-not (Test-ShouldExclude $rootRel $true)) {
@@ -143,12 +151,13 @@ foreach ($root in $sourceRoots) {
         RelativePath = $rootRel
       }
     }
-
-    $items = Get-AllItems $root
-    $allFiles += $items.Files
-    $allDirectories += $items.Directories
   }
 }
+
+# Single call to get all tracked files across all source roots
+$items = Get-AllItems $sourceRoots
+$allFiles += $items.Files
+$allDirectories += $items.Directories
 
 Write-Info "Found $($allFiles.Count) files and $($allDirectories.Count) directories to check"
 

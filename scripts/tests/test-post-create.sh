@@ -215,7 +215,7 @@ else
         check_path="$target"
         while [[ "$check_path" != "/" && "$check_path" != "/home/vscode" && "$check_path" != "/home" ]]; do
             # Match the path in non-comment lines (lines not starting with #)
-            if grep -v '^\s*#' "$POST_CREATE" | grep -qF "$check_path"; then
+            if grep -v '^[[:space:]]*#' "$POST_CREATE" | grep -qF "$check_path"; then
                 found_in_script=true
                 break
             fi
@@ -233,7 +233,7 @@ else
         found_in_dockerfile=false
         check_path="$target"
         while [[ "$check_path" != "/" && "$check_path" != "/home/vscode" && "$check_path" != "/home" ]]; do
-            if grep -v '^\s*#' "$DOCKERFILE" | grep -qF "$check_path"; then
+            if grep -v '^[[:space:]]*#' "$DOCKERFILE" | grep -qF "$check_path"; then
                 found_in_dockerfile=true
                 break
             fi
@@ -255,9 +255,9 @@ fi
 echo -e "${BLUE}Checking command ordering...${NC}"
 
 # Only check non-comment lines (skip lines starting with optional whitespace + #)
-CHOWN_LINE=$(grep -n 'sudo chown' "$POST_CREATE" | grep -v '^\s*[0-9]*:\s*#' | head -1 | cut -d: -f1)
-DOTNET_LINE=$(grep -n 'dotnet tool restore' "$POST_CREATE" | grep -v '^\s*[0-9]*:\s*#' | head -1 | cut -d: -f1)
-NPM_LINE=$(grep -n 'npm ci\|npm i ' "$POST_CREATE" | grep -v '^\s*[0-9]*:\s*#' | head -1 | cut -d: -f1)
+CHOWN_LINE=$(grep -n 'sudo chown' "$POST_CREATE" | grep -vE '^[[:space:]]*[0-9]*:[[:space:]]*#' | head -1 | cut -d: -f1)
+DOTNET_LINE=$(grep -n 'dotnet tool restore' "$POST_CREATE" | grep -vE '^[[:space:]]*[0-9]*:[[:space:]]*#' | head -1 | cut -d: -f1)
+NPM_LINE=$(grep -nE 'npm ci|npm i ' "$POST_CREATE" | grep -vE '^[[:space:]]*[0-9]*:[[:space:]]*#' | head -1 | cut -d: -f1)
 
 if [[ -n "$CHOWN_LINE" && -n "$DOTNET_LINE" ]]; then
     if [[ "$CHOWN_LINE" -lt "$DOTNET_LINE" ]]; then
@@ -297,7 +297,7 @@ fi
 echo -e "${BLUE}Checking sudo usage...${NC}"
 
 # chown on volume dirs requires sudo since we run as vscode user
-if grep -v '^\s*#' "$POST_CREATE" | grep -q 'sudo chown'; then
+if grep -v '^[[:space:]]*#' "$POST_CREATE" | grep -q 'sudo chown'; then
     pass "post-create.sh uses sudo with chown"
 else
     fail "post-create.sh uses sudo with chown" \

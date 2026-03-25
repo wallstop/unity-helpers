@@ -55,7 +55,7 @@ Invoke these skills for specific tasks.
 **Regenerate with**: `pwsh -NoProfile -File scripts/generate-skills-index.ps1`
 
 <!-- BEGIN GENERATED SKILLS INDEX -->
-<!-- Generated: 2026-03-24 21:57:02 UTC -->
+<!-- Generated: 2026-03-25 02:24:06 UTC -->
 <!-- Command: pwsh -NoProfile -File scripts/generate-skills-index.ps1 -->
 
 ### Core Skills (Always Consider)
@@ -82,7 +82,10 @@ Invoke these skills for specific tasks.
 | [editor-singleton-patterns](./skills/editor-singleton-patterns.md)                           | Singleton asset management patterns for Editor code                                    |
 | [formatting](./skills/formatting.md)                                                         | After ANY file change (CSharpier/Prettier)                                             |
 | [formatting-and-linting](./skills/formatting-and-linting.md)                                 | Before committing, after editing files                                                 |
-| [git-hook-patterns](./skills/git-hook-patterns.md)                                           | Pre-commit hook safety and configuration                                               |
+| [git-hook-lifecycle-debugging](./skills/git-hook-lifecycle-debugging.md)                     | Hook validation philosophy, framework config, PowerShell exit codes, debugging         |
+| [git-hook-patterns](./skills/git-hook-patterns.md)                                           | Git hook safety, syntax, and debugging patterns (hub)                                  |
+| [git-hook-safety](./skills/git-hook-safety.md)                                               | Hook index safety, permissions, and execution templates                                |
+| [git-hook-syntax-portability](./skills/git-hook-syntax-portability.md)                       | Hook regex, CLI safety, CRLF handling, portable grep patterns                          |
 | [git-safe-operations](./skills/git-safe-operations.md)                                       | Scripts or hooks that interact with git index                                          |
 | [git-staging-helpers](./skills/git-staging-helpers.md)                                       | PowerShell/Bash helpers for safe git staging                                           |
 | [github-actions-shell-foundations](./skills/github-actions-shell-foundations.md)             | Core shell scripting safety for GitHub Actions                                         |
@@ -96,6 +99,7 @@ Invoke these skills for specific tasks.
 | [markdown-reference](./skills/markdown-reference.md)                                         | Link formatting, escaping, linting rules                                               |
 | [no-regions](./skills/no-regions.md)                                                         | ALL C# code - never use #region/#endregion                                             |
 | [odin-undo-safety](./skills/odin-undo-safety.md)                                             | Safe undo recording patterns for Odin Inspector drawers                                |
+| [optimize-git-hooks](./skills/optimize-git-hooks.md)                                         | How to keep git hooks fast                                                             |
 | [prefer-logging-extensions](./skills/prefer-logging-extensions.md)                           | Unity logging in UnityEngine.Object classes                                            |
 | [property-drawer-examples](./skills/property-drawer-examples.md)                             | Property drawer code examples                                                          |
 | [property-drawer-rules](./skills/property-drawer-rules.md)                                   | PropertyDrawer critical rules and requirements                                         |

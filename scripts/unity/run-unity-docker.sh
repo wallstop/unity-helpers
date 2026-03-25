@@ -187,7 +187,7 @@ elif echo "${ONLINE_OUTPUT}" | grep -Eqi "invalid (user )?credentials|invalid us
     HARD_FAILURE=1
 elif echo "${ONLINE_OUTPUT}" | grep -Eqi "timeout|network|connection|temporar|DNS|refused|unreachable"; then
     SOFT_FAILURE=1
-elif echo "${ONLINE_OUTPUT}" | grep -qi "license activated\|License updated successfully\|Entitlement-based licensing initiated"; then
+elif echo "${ONLINE_OUTPUT}" | grep -qiE "license activated|License updated successfully|Entitlement-based licensing initiated"; then
     ONLINE_CONFIRMED=1
 fi
 
