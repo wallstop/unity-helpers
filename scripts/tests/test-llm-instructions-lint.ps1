@@ -170,6 +170,79 @@ Write-TestResult "ContextMd.HasBeginMarker" $contextHasBegin "Missing BEGIN mark
 Write-TestResult "ContextMd.HasEndMarker" $contextHasEnd "Missing END marker in context.md"
 
 # =============================================================================
+# Test 7b: Marker extraction semantics regression tests
+# =============================================================================
+Write-Host "`n  Section: Marker extraction semantics" -ForegroundColor White
+
+function Invoke-TestMarkerExtract {
+  param(
+    [string]$Raw,
+    [string]$Begin,
+    [string]$End
+  )
+
+  if ($null -eq $Raw) {
+    return $null
+  }
+
+  $normalized = $Raw -replace "`r`n", "`n"
+  $pattern = "(?s)$([regex]::Escape($Begin))(?<content>.*?)$([regex]::Escape($End))"
+  if ($normalized -match $pattern) {
+    return $Matches['content'].Trim()
+  }
+
+  return $null
+}
+
+$mBegin = '<!-- BEGIN GENERATED SKILLS INDEX -->'
+$mEnd = '<!-- END GENERATED SKILLS INDEX -->'
+
+$validRaw = @(
+  'Header',
+  $mBegin,
+  'Line A',
+  'Line B',
+  $mEnd,
+  'Footer'
+) -join "`n"
+$validExtract = Invoke-TestMarkerExtract -Raw $validRaw -Begin $mBegin -End $mEnd
+Write-TestResult "MarkerExtract.ValidContent" ($validExtract -eq "Line A`nLine B") `
+  "Expected 'Line A\\nLine B', got '$validExtract'"
+
+$missingBeginRaw = @('x', 'y', $mEnd) -join "`n"
+$missingBeginExtract = Invoke-TestMarkerExtract -Raw $missingBeginRaw -Begin $mBegin -End $mEnd
+Write-TestResult "MarkerExtract.MissingBeginReturnsNull" ($null -eq $missingBeginExtract) `
+  "Expected null when BEGIN marker missing"
+
+$malformedOrderRaw = @($mEnd, 'middle', $mBegin) -join "`n"
+$malformedOrderExtract = Invoke-TestMarkerExtract -Raw $malformedOrderRaw -Begin $mBegin -End $mEnd
+Write-TestResult "MarkerExtract.MalformedOrderReturnsNull" ($null -eq $malformedOrderExtract) `
+  "Expected null when END appears before BEGIN"
+
+$emptyRaw = @($mBegin, $mEnd) -join "`n"
+$emptyExtract = Invoke-TestMarkerExtract -Raw $emptyRaw -Begin $mBegin -End $mEnd
+Write-TestResult "MarkerExtract.EmptyContentExtractsEmpty" ($emptyExtract -eq '') `
+  "Expected empty string for empty marker content, got '$emptyExtract'"
+
+$crlfRaw = "head`r`n$mBegin`r`nLine 1`r`nLine 2`r`n$mEnd`r`ntail"
+$crlfExtract = Invoke-TestMarkerExtract -Raw $crlfRaw -Begin $mBegin -End $mEnd
+Write-TestResult "MarkerExtract.CRLFNormalization" ($crlfExtract -eq "Line 1`nLine 2") `
+  "Expected normalized LF content, got '$crlfExtract'"
+
+$multiMarkerRaw = @(
+  $mBegin,
+  'first',
+  $mEnd,
+  'between',
+  $mBegin,
+  'second',
+  $mEnd
+) -join "`n"
+$multiMarkerExtract = Invoke-TestMarkerExtract -Raw $multiMarkerRaw -Begin $mBegin -End $mEnd
+Write-TestResult "MarkerExtract.NonGreedyFirstBlock" ($multiMarkerExtract -eq 'first') `
+  "Expected first block only (non-greedy), got '$multiMarkerExtract'"
+
+# =============================================================================
 # Test 8: Data-driven — known-bad patterns do not appear in generator output
 # =============================================================================
 Write-Host "`n  Section: Data-driven bad-pattern validation" -ForegroundColor White

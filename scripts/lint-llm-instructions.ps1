@@ -132,6 +132,78 @@ $contextContent = Get-Content -Path $contextFile -Raw
 $beginMarker = '<!-- BEGIN GENERATED SKILLS INDEX -->'
 $endMarker = '<!-- END GENERATED SKILLS INDEX -->'
 
+# Returns marker presence/order diagnostics to make extraction failures actionable.
+function Get-MarkerDiagnostics($raw, $beginMarkerLocal, $endMarkerLocal) {
+    if ($null -eq $raw) {
+        return @{
+            IsNull = $true
+            BeginCount = 0
+            EndCount = 0
+            BeginIndex = -1
+            EndIndex = -1
+            OrderValid = $false
+        }
+    }
+
+    $normalized = $raw -replace "`r`n", "`n"
+    $beginCount = [regex]::Matches($normalized, [regex]::Escape($beginMarkerLocal)).Count
+    $endCount = [regex]::Matches($normalized, [regex]::Escape($endMarkerLocal)).Count
+    $beginIndex = $normalized.IndexOf($beginMarkerLocal)
+    $endIndex = $normalized.IndexOf($endMarkerLocal)
+
+    return @{
+        IsNull = $false
+        BeginCount = $beginCount
+        EndCount = $endCount
+        BeginIndex = $beginIndex
+        EndIndex = $endIndex
+        OrderValid = ($beginIndex -ge 0 -and $endIndex -ge 0 -and $beginIndex -lt $endIndex)
+    }
+}
+
+function Test-MarkerShape($diag, $sourceName) {
+    if ($diag.IsNull) {
+        Write-ErrorMsg "$sourceName content is null"
+        return $false
+    }
+
+    $isValid = $true
+    if ($diag.BeginCount -ne 1) {
+        Write-ErrorMsg "$sourceName has $($diag.BeginCount) BEGIN markers (expected exactly 1)"
+        $isValid = $false
+    }
+    if ($diag.EndCount -ne 1) {
+        Write-ErrorMsg "$sourceName has $($diag.EndCount) END markers (expected exactly 1)"
+        $isValid = $false
+    }
+    if (-not $diag.OrderValid) {
+        Write-ErrorMsg "$sourceName marker order is invalid (beginIndex=$($diag.BeginIndex), endIndex=$($diag.EndIndex))"
+        $isValid = $false
+    }
+
+    return $isValid
+}
+
+# Extract content between BEGIN/END markers from a raw string.
+# IMPORTANT: capture semantics are explicit via named group `content`.
+function Extract-MarkerContent($raw, $beginMarkerLocal, $endMarkerLocal) {
+    if ($null -eq $raw) {
+        return $null
+    }
+
+    # Normalize CRLF to LF for cross-platform consistency
+    $normalized = $raw -replace "`r`n", "`n"
+    $escapedBegin = [regex]::Escape($beginMarkerLocal)
+    $escapedEnd = [regex]::Escape($endMarkerLocal)
+    $pattern = "(?s)$escapedBegin(?<content>.*?)$escapedEnd"
+
+    if ($normalized -match $pattern) {
+        return $Matches['content'].Trim()
+    }
+
+    return $null
+}
+
 if ($contextContent -notmatch [regex]::Escape($beginMarker)) {
     Write-ErrorMsg "Missing BEGIN marker in context.md"
     exit 1
@@ -142,27 +214,17 @@ if ($contextContent -notmatch [regex]::Escape($endMarker)) {
     exit 1
 }
 
-# Extract current index
-$pattern = "(?s)$([regex]::Escape($beginMarker))(.*)$([regex]::Escape($endMarker))"
-if ($contextContent -match $pattern) {
-    $currentIndex = $Matches[1].Trim()
-}
-else {
-    Write-ErrorMsg "Could not extract skills index from context.md"
+# Extract current index via the single shared extraction path
+$contextDiag = Get-MarkerDiagnostics $contextContent $beginMarker $endMarker
+if (-not (Test-MarkerShape $contextDiag 'context.md')) {
     exit 1
 }
 
-# Extract content between BEGIN/END markers from a raw string
-function Extract-MarkerContent($raw) {
-    # Normalize CRLF to LF for cross-platform consistency
-    $raw = $raw -replace "`r`n", "`n"
-    $beginMarkerLocal = '<!-- BEGIN GENERATED SKILLS INDEX -->'
-    $endMarkerLocal = '<!-- END GENERATED SKILLS INDEX -->'
-    $patternLocal = "(?s)$([regex]::Escape($beginMarkerLocal))(.*)$([regex]::Escape($endMarkerLocal))"
-    if ($raw -match $patternLocal) {
-        return $Matches[1].Trim()
-    }
-    return $null
+$currentIndex = Extract-MarkerContent $contextContent $beginMarker $endMarker
+if ($null -eq $currentIndex) {
+    Write-ErrorMsg "Could not extract skills index from context.md"
+    Write-ErrorMsg "Diagnostics: beginCount=$($contextDiag.BeginCount), endCount=$($contextDiag.EndCount), beginIndex=$($contextDiag.BeginIndex), endIndex=$($contextDiag.EndIndex), orderValid=$($contextDiag.OrderValid)"
+    exit 1
 }
 
 # Normalize for comparison (remove timestamps, normalize whitespace)
@@ -190,9 +252,20 @@ function Normalize-Index($indexContent) {
 
 # Extract only the content between markers from the generated output
 $expectedRaw = $expectedIndex -join "`n"
-$expectedContent = Extract-MarkerContent $expectedRaw
-if (-not $expectedContent) {
+$expectedDiag = Get-MarkerDiagnostics $expectedRaw $beginMarker $endMarker
+if (-not (Test-MarkerShape $expectedDiag 'generated output')) {
+    exit 1
+}
+
+$expectedContent = Extract-MarkerContent $expectedRaw $beginMarker $endMarker
+if ($null -eq $expectedContent) {
     Write-ErrorMsg "Generated output missing BEGIN/END markers"
+    Write-ErrorMsg "Diagnostics: beginCount=$($expectedDiag.BeginCount), endCount=$($expectedDiag.EndCount), beginIndex=$($expectedDiag.BeginIndex), endIndex=$($expectedDiag.EndIndex), orderValid=$($expectedDiag.OrderValid)"
+    exit 1
+}
+
+if ($expectedContent.Trim().Length -eq 0) {
+    Write-ErrorMsg "Generated output between markers is empty"
     exit 1
 }
 
@@ -232,13 +305,14 @@ if ($normalizedExpected -ne $normalizedCurrent) {
         $inBlock = $false
         $filteredLines = @()
         foreach ($line in $expectedIndex) {
-            if ($line -match [regex]::Escape($beginMarker)) { $inBlock = $true }
+            if ($line -eq $beginMarker) { $inBlock = $true }
             if ($inBlock) { $filteredLines += $line }
-            if ($line -match [regex]::Escape($endMarker)) { $inBlock = $false; break }
+            if ($line -eq $endMarker) { $inBlock = $false; break }
         }
         $expectedFull = $filteredLines -join "`n"
         # Replace the entire block including markers with the new generated content
-        $newContent = $contextContent -replace $pattern, $expectedFull
+        $replacePattern = "(?s)$([regex]::Escape($beginMarker)).*?$([regex]::Escape($endMarker))"
+        $newContent = $contextContent -replace $replacePattern, $expectedFull
 
         # Trim trailing whitespace and add exactly one LF (Markdown files require LF per .editorconfig)
         $newContent = $newContent.TrimEnd() + "`n"
@@ -249,9 +323,11 @@ if ($normalizedExpected -ne $normalizedCurrent) {
         Write-Info "Running prettier to format context.md..."
         Push-Location $repoRoot
         try {
-            npx --no-install prettier --write -- .llm/context.md 2>$null
+            $prettierOutput = npx --no-install prettier --write -- .llm/context.md 2>&1
             if ($LASTEXITCODE -ne 0) {
-                Write-ErrorMsg "Prettier formatting failed (exit code $LASTEXITCODE). Rolling back changes..."
+                Write-ErrorMsg "Prettier formatting failed (exit code $LASTEXITCODE):"
+                Write-Host $prettierOutput -ForegroundColor Red
+                Write-ErrorMsg "Rolling back changes..."
                 Set-Content -Path $contextFile -Value $contextContent -NoNewline -Encoding UTF8
                 exit 1
             }

@@ -101,7 +101,10 @@ function Get-AllItems {
   $dirSet = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
 
   foreach ($rel in $trackedFiles) {
-    if (-not (Test-ShouldExclude $rel $false)) {
+    # Always include .meta files so the orphaned-meta check can inspect them;
+    # the missing-meta loop already skips *.meta on its own.
+    $isMeta = $rel -like '*.meta'
+    if ($isMeta -or -not (Test-ShouldExclude $rel $false)) {
       $fullPath = Join-Path (Get-Location).Path $rel
       $items.Files += @{
         FullPath = $fullPath
