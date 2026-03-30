@@ -18,6 +18,7 @@ Param(
     - Detects DEP003 (multi-ecosystem-group: inside an entry)
     - Detects DEP004 (patterns: at entry level instead of inside groups)
     - Detects DEP005 (missing schedule: from an entry)
+    - Passes a config where groups: block contains inline comments (no false DEP006)
     - Detects DEP006 (groups entry missing patterns:)
     - Fails on the exact broken config that was previously shipped
 
@@ -282,6 +283,26 @@ updates:
 $result = Invoke-LintOnContent $groupsNoPatternsConfig
 $hasDEP006 = $result.Output -match 'DEP006'
 Write-TestResult "Fail_GroupsMissingPatterns" ($result.ExitCode -ne 0 -and $hasDEP006) "Expected non-zero + DEP006. Exit: $($result.ExitCode), Output: $($result.Output)"
+
+# ── Pass_GroupsWithComments ────────────────────────────────────────────────────
+# Inline comments and blank lines inside groups: must NOT trigger false DEP006.
+$groupsWithCommentsConfig = @'
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    groups:
+      # This comment should not be treated as a group item
+      all-dependencies:
+        # Another comment
+        patterns:
+          - "*"
+'@
+
+$result = Invoke-LintOnContent $groupsWithCommentsConfig
+Write-TestResult "Pass_GroupsWithComments" ($result.ExitCode -eq 0) "Expected exit 0 when groups block contains comments. Exit: $($result.ExitCode), Output: $($result.Output)"
 
 # ── Regression_OriginalBrokenConfig ──────────────────────────────────────────
 Write-Host "`n  Section: Regression" -ForegroundColor White

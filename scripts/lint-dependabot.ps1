@@ -160,8 +160,15 @@ function Get-DependabotErrors {
         }
 
         if ($inGroupsBlock) {
-            # A named group item: 6-space indent + non-whitespace key (e.g. '      all-dependencies:')
-            if ($line -match '^      [^\s]') {
+            # Skip blank lines and comments inside the groups block — they are not group items.
+            if ($line -match '^\s*$' -or $line -match '^\s*#') {
+                continue
+            }
+
+            # A named group item: exactly 6-space indent + a YAML key
+            # (e.g. '      all-dependencies:').  Use a strict key-character class to
+            # avoid treating comment lines as group items.
+            if ($line -match '^\s{6}[A-Za-z0-9_.~-]+\s*:') {
                 if ($inGroupsItem -and -not $groupsItemHasPatterns) {
                     $fileErrors.Add("DEP006: A 'groups:' entry (near line $lineNum) is missing 'patterns:' inside it")
                 }
@@ -269,4 +276,8 @@ if ($totalErrors -eq 0 -and $VerboseOutput) {
     Write-Host "All dependabot config files passed schema checks." -ForegroundColor Green
 }
 
-exit ($totalErrors -gt 0 ? 1 : 0)
+if ($totalErrors -gt 0) {
+    exit 1
+} else {
+    exit 0
+}
