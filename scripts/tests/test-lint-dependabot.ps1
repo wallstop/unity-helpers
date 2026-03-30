@@ -15,6 +15,8 @@ Param(
     - Detects DEP001 (missing version: 2)
     - Detects DEP001 when version: 2 appears after updates: instead of before
     - Passes when a non-version top-level key (e.g. registries:) precedes version: 2 (no false DEP001)
+    - Does NOT pass when version: 2 is nested inside another key (Fail_NestedVersionDoesNotSatisfyDEP001)
+    - Passes valid YAML scalar forms: trailing comment, double-quoted, single-quoted version: 2
     - Reports the group item's declaration line (not the parser's current line) in DEP006 messages
     - Detects DEP002 (multi-ecosystem-groups: top-level key)
     - Detects DEP003 (multi-ecosystem-group: inside an entry)
@@ -22,6 +24,7 @@ Param(
     - Detects DEP005 (missing schedule: from an entry)
     - Passes a config where groups: block contains inline comments (no false DEP006)
     - Detects DEP006 (groups entry missing patterns:)
+    - Detects DEP007 (updates: section absent entirely)
     - Fails on the exact broken config that was previously shipped
 
 .PARAMETER VerboseOutput
@@ -271,6 +274,36 @@ updates:
 
 $result = Invoke-LintOnContent $versionSingleQuotedConfig
 Write-TestResult "Pass_VersionSingleQuoted" ($result.ExitCode -eq 0) "Expected exit 0 when version: is single-quoted as '2'. Exit: $($result.ExitCode), Output: $($result.Output)"
+
+# ── Fail_NestedVersionDoesNotSatisfyDEP001 ────────────────────────────────────
+# A 'version: 2' nested inside another top-level section (e.g. registries:)
+# must NOT satisfy DEP001.  Only a root-level (zero-indent) 'version: 2' counts.
+$nestedVersionConfig = @'
+registries:
+  my-reg:
+    type: npm-registry
+    url: https://registry.npmjs.org
+    version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+'@
+
+$result = Invoke-LintOnContent $nestedVersionConfig
+$hasDEP001nested = $result.Output -match 'DEP001'
+Write-TestResult "Fail_NestedVersionDoesNotSatisfyDEP001" ($result.ExitCode -ne 0 -and $hasDEP001nested) "Expected non-zero + DEP001 when version: 2 is nested. Exit: $($result.ExitCode), Output: $($result.Output)"
+
+# ── Fail_MissingUpdatesSection ────────────────────────────────────────────────
+# A file with version: 2 but no 'updates:' section must fail with DEP007.
+$noUpdatesSectionConfig = @'
+version: 2
+'@
+
+$result = Invoke-LintOnContent $noUpdatesSectionConfig
+$hasDEP007 = $result.Output -match 'DEP007'
+Write-TestResult "Fail_MissingUpdatesSection" ($result.ExitCode -ne 0 -and $hasDEP007) "Expected non-zero + DEP007 when updates: section is absent. Exit: $($result.ExitCode), Output: $($result.Output)"
 
 # ── Pass_DEP006LineNumberAccuracy ─────────────────────────────────────────────
 # DEP006 error must reference the group item's declaration line, not the

@@ -15,6 +15,7 @@
       DEP004 - 'patterns:' key at updates-entry level instead of inside groups
       DEP005 - An updates entry is missing a 'schedule:' block
       DEP006 - A 'groups:' entry is missing 'patterns:' inside it
+      DEP007 - No 'updates:' section found in the configuration
 
 .PARAMETER Paths
     One or more paths to validate. All provided paths are checked and errors
@@ -67,11 +68,13 @@ function Get-DependabotErrors {
         if ($line -match '^\s*$' -or $line -match '^\s*#') {
             continue
         }
-        # Found version: 2 before updates: — passes DEP001.
+        # Found top-level version: 2 before updates: — passes DEP001.
+        # Require zero leading whitespace so a nested 'version: 2' under another
+        # top-level key (e.g. registries:) cannot satisfy this check.
         # Allow optional trailing inline comment (e.g. `version: 2  # required`)
         # and optional quotes around 2 — both single (`version: '2'`) and double
         # (`version: "2"`) are valid YAML scalar quoting styles.
-        if ($line -match "^\s*version\s*:\s*[`"']?2[`"']?\s*(#.*)?$") {
+        if ($line -match "^version\s*:\s*[`"']?2[`"']?\s*(#.*)?$") {
             $hasVersion2 = $true
             break
         }
@@ -226,6 +229,11 @@ function Get-DependabotErrors {
         if (-not $entryHasSchedule) {
             $fileErrors.Add("DEP005: updates entry '$currentEcosystem' (near line $entryLineNumber) is missing a 'schedule:' block")
         }
+    }
+
+    # ── DEP007: 'updates:' section is absent entirely ────────────────────────
+    if (-not $inUpdates) {
+        $fileErrors.Add('DEP007: No "updates:" section found; a valid Dependabot v2 config must have at least one entry')
     }
 
     # Return the list as a single object (not enumerated) so the caller receives
