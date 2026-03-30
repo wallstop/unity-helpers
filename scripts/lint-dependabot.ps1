@@ -68,7 +68,10 @@ function Get-DependabotErrors {
             continue
         }
         # Found version: 2 before updates: — passes DEP001.
-        if ($line -match '^\s*version\s*:\s*2\s*$') {
+        # Allow optional trailing inline comment (e.g. `version: 2  # required`)
+        # and optional quotes around 2 — both single (`version: '2'`) and double
+        # (`version: "2"`) are valid YAML scalar quoting styles.
+        if ($line -match "^\s*version\s*:\s*[`"']?2[`"']?\s*(#.*)?$") {
             $hasVersion2 = $true
             break
         }

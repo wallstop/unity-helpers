@@ -231,6 +231,47 @@ updates:
 $result = Invoke-LintOnContent $versionAfterRegistriesConfig
 Write-TestResult "Pass_VersionAfterOtherTopLevelKey" ($result.ExitCode -eq 0) "Expected exit 0 when registries: precedes version: 2. Exit: $($result.ExitCode), Output: $($result.Output)"
 
+# ── Pass_VersionWithTrailingComment ───────────────────────────────────────────
+# YAML allows trailing inline comments; `version: 2  # comment` is valid and must
+# NOT trigger DEP001.  Quoted `version: "2"` is also valid YAML.
+$versionTrailingCommentConfig = @'
+version: 2  # required by Dependabot v2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+'@
+
+$result = Invoke-LintOnContent $versionTrailingCommentConfig
+Write-TestResult "Pass_VersionWithTrailingComment" ($result.ExitCode -eq 0) "Expected exit 0 when version: 2 has trailing inline comment. Exit: $($result.ExitCode), Output: $($result.Output)"
+
+# ── Pass_VersionQuoted ────────────────────────────────────────────────────────
+$versionQuotedConfig = @'
+version: "2"
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+'@
+
+$result = Invoke-LintOnContent $versionQuotedConfig
+Write-TestResult "Pass_VersionQuoted" ($result.ExitCode -eq 0) "Expected exit 0 when version: is quoted as \"2\". Exit: $($result.ExitCode), Output: $($result.Output)"
+
+# ── Pass_VersionSingleQuoted ──────────────────────────────────────────────────
+$versionSingleQuotedConfig = @'
+version: '2'
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+'@
+
+$result = Invoke-LintOnContent $versionSingleQuotedConfig
+Write-TestResult "Pass_VersionSingleQuoted" ($result.ExitCode -eq 0) "Expected exit 0 when version: is single-quoted as '2'. Exit: $($result.ExitCode), Output: $($result.Output)"
+
 # ── Pass_DEP006LineNumberAccuracy ─────────────────────────────────────────────
 # DEP006 error must reference the group item's declaration line, not the
 # parser's current line (which could be the start of the next entry or EOF).
