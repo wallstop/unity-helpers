@@ -1,0 +1,37 @@
+name: Dependabot Config Lint
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/dependabot.yml"
+      - "scripts/lint-dependabot.ps1"
+      - "scripts/tests/test-lint-dependabot.ps1"
+      - ".github/workflows/dependabot-lint.yml"
+  pull_request:
+    paths:
+      - ".github/dependabot.yml"
+      - "scripts/lint-dependabot.ps1"
+      - "scripts/tests/test-lint-dependabot.ps1"
+      - ".github/workflows/dependabot-lint.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  dependabot-lint:
+    name: Dependabot Config Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6.0.1
+
+      - name: Test Dependabot linter
+        shell: pwsh
+        run: ./scripts/tests/test-lint-dependabot.ps1 -VerboseOutput
+
+      - name: Lint Dependabot config
+        shell: pwsh
+        run: ./scripts/lint-dependabot.ps1 -VerboseOutput

@@ -42,7 +42,7 @@ bash scripts/install-hooks.sh
 3. Formats staged files with Prettier (Markdown, JSON, YAML, JS)
 4. Formats staged C# files with CSharpier
 5. Runs markdownlint on staged Markdown files
-6. Runs YAML lint, spell check, LLM instruction lint, test lint
+6. Runs YAML lint, Dependabot config schema lint, spell check, LLM instruction lint, test lint
 7. Checks for forbidden `#region` directives
 8. Checks drawer/editor files for missing multi-object editing support (GenericMenu without `hasMultipleDifferentValues`)
 9. Checks Odin drawer Undo safety (WeakTargets null-filtering before `Undo.RecordObjects`)

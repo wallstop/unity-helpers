@@ -4,7 +4,11 @@ updates:
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
-      interval: "daily"
+      interval: "weekly"
+    groups:
+      all-dependencies:
+        patterns:
+          - "*"
     assignees:
       - wallstop
     reviewers:
@@ -14,7 +18,11 @@ updates:
   - package-ecosystem: "nuget"
     directory: "/"
     schedule:
-      interval: "daily"
+      interval: "weekly"
+    groups:
+      all-dependencies:
+        patterns:
+          - "*"
     assignees:
       - wallstop
     reviewers:
@@ -24,8 +32,12 @@ updates:
   - package-ecosystem: "npm"
     directory: "/"
     schedule:
-      interval: "daily"
+      interval: "weekly"
     versioning-strategy: increase
+    groups:
+      all-dependencies:
+        patterns:
+          - "*"
     assignees:
       - wallstop
     reviewers:
