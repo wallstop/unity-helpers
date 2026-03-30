@@ -9,13 +9,16 @@ Param(
 .DESCRIPTION
     Tests that lint-dependabot.ps1 correctly:
     - Passes a fully valid Dependabot v2 config
+    - Passes a config with multiple named groups
+    - Passes when validating multiple valid files at once
+    - Fails when one of multiple provided files is invalid
     - Detects DEP001 (missing version: 2)
+    - Detects DEP001 when version: 2 appears after updates: instead of before
     - Detects DEP002 (multi-ecosystem-groups: top-level key)
     - Detects DEP003 (multi-ecosystem-group: inside an entry)
     - Detects DEP004 (patterns: at entry level instead of inside groups)
     - Detects DEP005 (missing schedule: from an entry)
     - Detects DEP006 (groups entry missing patterns:)
-    - Passes a config with proper groups: syntax
     - Fails on the exact broken config that was previously shipped
 
 .PARAMETER VerboseOutput
@@ -71,7 +74,21 @@ function Invoke-LintOnContent {
     param([string]$YamlContent)
     $fixturePath = Join-Path $tempDir "dependabot-$(Get-Random).yml"
     Set-Content -Path $fixturePath -Value $YamlContent -NoNewline
+    Write-Info "Testing fixture: $fixturePath"
     $output = & $lintScriptPath -- $fixturePath *>&1
+    $exitCode = $LASTEXITCODE
+    return @{ ExitCode = $exitCode; Output = ($output | Out-String) }
+}
+
+# Helper: run the lint script against two fixture strings, return exit code + output
+function Invoke-LintOnTwoContents {
+    param([string]$YamlContent1, [string]$YamlContent2)
+    $fixturePath1 = Join-Path $tempDir "dependabot-$(Get-Random).yml"
+    $fixturePath2 = Join-Path $tempDir "dependabot-$(Get-Random).yml"
+    Set-Content -Path $fixturePath1 -Value $YamlContent1 -NoNewline
+    Set-Content -Path $fixturePath2 -Value $YamlContent2 -NoNewline
+    Write-Info "Testing fixtures: $fixturePath1 and $fixturePath2"
+    $output = & $lintScriptPath -- $fixturePath1 $fixturePath2 *>&1
     $exitCode = $LASTEXITCODE
     return @{ ExitCode = $exitCode; Output = ($output | Out-String) }
 }
@@ -123,6 +140,37 @@ updates:
 $result = Invoke-LintOnContent $groupsConfig
 Write-TestResult "Pass_GroupsWithPatterns" ($result.ExitCode -eq 0) "Expected exit 0, got $($result.ExitCode). Output: $($result.Output)"
 
+# ── Pass_MultipleValidFiles ───────────────────────────────────────────────────
+$validConfig2 = @'
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    groups:
+      all-dependencies:
+        patterns:
+          - "*"
+'@
+
+$result = Invoke-LintOnTwoContents $validConfig $validConfig2
+Write-TestResult "Pass_MultipleValidFiles" ($result.ExitCode -eq 0) "Expected exit 0 for two valid files, got $($result.ExitCode). Output: $($result.Output)"
+
+# ── Fail_MultipleFilesOneInvalid ──────────────────────────────────────────────
+$invalidForMulti = @'
+version: 2
+updates:
+  - package-ecosystem: "nuget"
+    directory: "/"
+    assignees:
+      - wallstop
+'@
+
+$result = Invoke-LintOnTwoContents $validConfig $invalidForMulti
+$hasDEP005multi = $result.Output -match 'DEP005'
+Write-TestResult "Fail_MultipleFilesOneInvalid" ($result.ExitCode -ne 0 -and $hasDEP005multi) "Expected non-zero + DEP005 when one of two files is invalid. Exit: $($result.ExitCode), Output: $($result.Output)"
+
 # ── Fail_MissingVersion ───────────────────────────────────────────────────────
 Write-Host "`n  Section: Error detection" -ForegroundColor White
 
@@ -137,6 +185,21 @@ updates:
 $result = Invoke-LintOnContent $noVersionConfig
 $hasDEP001 = $result.Output -match 'DEP001'
 Write-TestResult "Fail_MissingVersion" ($result.ExitCode -ne 0 -and $hasDEP001) "Expected non-zero + DEP001. Exit: $($result.ExitCode), Output: $($result.Output)"
+
+# ── Fail_VersionAfterUpdates ──────────────────────────────────────────────────
+# version: 2 must appear BEFORE updates:, not after
+$versionAfterUpdatesConfig = @'
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+version: 2
+'@
+
+$result = Invoke-LintOnContent $versionAfterUpdatesConfig
+$hasDEP001pos = $result.Output -match 'DEP001'
+Write-TestResult "Fail_VersionAfterUpdates" ($result.ExitCode -ne 0 -and $hasDEP001pos) "Expected non-zero + DEP001 when version: 2 is after updates:. Exit: $($result.ExitCode), Output: $($result.Output)"
 
 # ── Fail_MultiEcosystemGroups ─────────────────────────────────────────────────
 $multiGroupsConfig = @'
