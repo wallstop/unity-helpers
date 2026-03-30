@@ -1,32 +1,39 @@
 version: 2
+
+multi-ecosystem-groups:
+  all-dependencies:
+    schedule:
+      interval: weekly
+
 updates:
-  # GitHub Actions workflow updates
-  - package-ecosystem: "github-actions"
-    directory: "/"
-    schedule:
-      interval: "daily"
+  # GitHub Actions, NuGet, and npm updates are grouped into one large PR.
+  - package-ecosystem: github-actions
+    directory: /
     assignees:
       - wallstop
     reviewers:
       - wallstop
+    patterns:
+      - "*"
+    multi-ecosystem-group: all-dependencies
 
-  # NuGet: .csproj/props/targets and .config/dotnet-tools.json (local tools)
-  - package-ecosystem: "nuget"
-    directory: "/"
-    schedule:
-      interval: "daily"
+  - package-ecosystem: nuget
+    directory: /
     assignees:
       - wallstop
     reviewers:
       - wallstop
+    patterns:
+      - "*"
+    multi-ecosystem-group: all-dependencies
 
-  # npm/UPM: package.json at repo root (Unity package manifest)
-  - package-ecosystem: "npm"
-    directory: "/"
-    schedule:
-      interval: "daily"
+  - package-ecosystem: npm
+    directory: /
     versioning-strategy: increase
     assignees:
       - wallstop
     reviewers:
       - wallstop
+    patterns:
+      - "*"
+    multi-ecosystem-group: all-dependencies
