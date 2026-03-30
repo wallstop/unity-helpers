@@ -196,8 +196,12 @@ function Get-DependabotErrors {
             if ($line -match '^    [^\s]' -and $line -notmatch '^    -') {
                 if ($inGroupsItem -and -not $groupsItemHasPatterns) {
                     $fileErrors.Add("DEP006: A 'groups:' entry (near line $groupsItemLineNumber) is missing 'patterns:' inside it")
-                    $inGroupsItem = $false
                 }
+                # Always clear per-group state when leaving the groups block, not just on
+                # the error path, so that subsequent sections see a clean state.
+                $inGroupsItem = $false
+                $groupsItemHasPatterns = $false
+                $groupsItemLineNumber = 0
                 $inGroupsBlock = $false
             }
         }

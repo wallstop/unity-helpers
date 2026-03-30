@@ -78,9 +78,13 @@ function Invoke-LintOnContent {
     $fixturePath = Join-Path $tempDir "dependabot-$(Get-Random).yml"
     Set-Content -Path $fixturePath -Value $YamlContent -NoNewline
     Write-Info "Testing fixture: $fixturePath"
-    $output = & $lintScriptPath -- $fixturePath *>&1
-    $exitCode = $LASTEXITCODE
-    return @{ ExitCode = $exitCode; Output = ($output | Out-String) }
+    try {
+        $output = & $lintScriptPath -- $fixturePath *>&1
+        $exitCode = $LASTEXITCODE
+        return @{ ExitCode = $exitCode; Output = ($output | Out-String) }
+    } catch {
+        return @{ ExitCode = -1; Output = "Exception invoking linter: $_" }
+    }
 }
 
 # Helper: run the lint script against two fixture strings, return exit code + output
@@ -91,9 +95,13 @@ function Invoke-LintOnTwoContents {
     Set-Content -Path $fixturePath1 -Value $YamlContent1 -NoNewline
     Set-Content -Path $fixturePath2 -Value $YamlContent2 -NoNewline
     Write-Info "Testing fixtures: $fixturePath1 and $fixturePath2"
-    $output = & $lintScriptPath -- $fixturePath1 $fixturePath2 *>&1
-    $exitCode = $LASTEXITCODE
-    return @{ ExitCode = $exitCode; Output = ($output | Out-String) }
+    try {
+        $output = & $lintScriptPath -- $fixturePath1 $fixturePath2 *>&1
+        $exitCode = $LASTEXITCODE
+        return @{ ExitCode = $exitCode; Output = ($output | Out-String) }
+    } catch {
+        return @{ ExitCode = -1; Output = "Exception invoking linter: $_" }
+    }
 }
 
 try {
