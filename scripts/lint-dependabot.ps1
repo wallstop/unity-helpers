@@ -57,20 +57,26 @@ function Get-DependabotErrors {
     $fileErrors = [System.Collections.Generic.List[string]]::new()
 
     # ── DEP001: version: 2 must appear before the updates: section ───────────
-    # Scan only lines preceding the first top-level structural key other than
-    # 'version:'. Finding 'version: 2' after 'updates:' is also wrong.
+    # Scan until the first top-level 'updates:' key, skipping comments and
+    # blank lines.  Any other top-level keys before 'updates:' (e.g.
+    # 'registries:') are permitted — we do NOT stop on them.  Fail only if
+    # 'updates:' is reached before 'version: 2' is found.
     $hasVersion2 = $false
     foreach ($line in $lines) {
-        # Stop scanning once we hit the updates: block or any other top-level key
-        # that is not 'version:' or a comment/blank line.
-        # Use '^[a-z][a-z-]*\s*:' to match only YAML keys (not arbitrary lines).
-        if (($line -match '^updates\s*:') -or (($line -match '^[a-z][a-z-]*\s*:') -and ($line -notmatch '^version\s*:'))) {
-            break
+        # Skip blank lines and comments.
+        if ($line -match '^\s*$' -or $line -match '^\s*#') {
+            continue
         }
+        # Found version: 2 before updates: — passes DEP001.
         if ($line -match '^\s*version\s*:\s*2\s*$') {
             $hasVersion2 = $true
             break
         }
+        # Reached the updates: block without seeing version: 2 — fails DEP001.
+        if ($line -match '^updates\s*:') {
+            break
+        }
+        # Any other top-level key (e.g. 'registries:') is fine — keep scanning.
     }
     if (-not $hasVersion2) {
         $fileErrors.Add('DEP001: "version: 2" is missing or does not appear before the "updates:" section')
@@ -101,6 +107,7 @@ function Get-DependabotErrors {
     $groupsItemHasPatterns = $false
     $currentEcosystem = ''
     $entryLineNumber = 0
+    $groupsItemLineNumber = 0
     $lineNum = 0
 
     foreach ($line in $lines) {
@@ -119,7 +126,7 @@ function Get-DependabotErrors {
             # Close previous entry
             if ($inEntry) {
                 if ($inGroupsItem -and -not $groupsItemHasPatterns) {
-                    $fileErrors.Add("DEP006: A 'groups:' entry (near line $lineNum) is missing 'patterns:' inside it")
+                    $fileErrors.Add("DEP006: A 'groups:' entry (near line $groupsItemLineNumber) is missing 'patterns:' inside it")
                 }
                 if (-not $entryHasSchedule) {
                     $fileErrors.Add("DEP005: updates entry '$currentEcosystem' (near line $entryLineNumber) is missing a 'schedule:' block")
@@ -130,6 +137,7 @@ function Get-DependabotErrors {
             $inGroupsBlock = $false
             $inGroupsItem = $false
             $groupsItemHasPatterns = $false
+            $groupsItemLineNumber = 0
             $entryLineNumber = $lineNum
             if ($line -match 'package-ecosystem\s*:\s*["\x27]?(\S+?)["\x27]?\s*$') {
                 $currentEcosystem = $Matches[1]
@@ -170,10 +178,11 @@ function Get-DependabotErrors {
             # avoid treating comment lines as group items.
             if ($line -match '^\s{6}[A-Za-z0-9_.~-]+\s*:') {
                 if ($inGroupsItem -and -not $groupsItemHasPatterns) {
-                    $fileErrors.Add("DEP006: A 'groups:' entry (near line $lineNum) is missing 'patterns:' inside it")
+                    $fileErrors.Add("DEP006: A 'groups:' entry (near line $groupsItemLineNumber) is missing 'patterns:' inside it")
                 }
                 $inGroupsItem = $true
                 $groupsItemHasPatterns = $false
+                $groupsItemLineNumber = $lineNum
                 continue
             }
 
@@ -186,7 +195,7 @@ function Get-DependabotErrors {
             # If we hit a 4-space key that is not groups:, we've left the groups block
             if ($line -match '^    [^\s]' -and $line -notmatch '^    -') {
                 if ($inGroupsItem -and -not $groupsItemHasPatterns) {
-                    $fileErrors.Add("DEP006: A 'groups:' entry (near line $lineNum) is missing 'patterns:' inside it")
+                    $fileErrors.Add("DEP006: A 'groups:' entry (near line $groupsItemLineNumber) is missing 'patterns:' inside it")
                     $inGroupsItem = $false
                 }
                 $inGroupsBlock = $false
@@ -205,7 +214,7 @@ function Get-DependabotErrors {
     # Close the last entry
     if ($inEntry) {
         if ($inGroupsItem -and -not $groupsItemHasPatterns) {
-            $fileErrors.Add("DEP006: A 'groups:' entry (near line $lineNum) is missing 'patterns:' inside it")
+            $fileErrors.Add("DEP006: A 'groups:' entry (near line $groupsItemLineNumber) is missing 'patterns:' inside it")
         }
         if (-not $entryHasSchedule) {
             $fileErrors.Add("DEP005: updates entry '$currentEcosystem' (near line $entryLineNumber) is missing a 'schedule:' block")

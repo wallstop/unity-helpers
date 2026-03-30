@@ -14,6 +14,8 @@ Param(
     - Fails when one of multiple provided files is invalid
     - Detects DEP001 (missing version: 2)
     - Detects DEP001 when version: 2 appears after updates: instead of before
+    - Passes when a non-version top-level key (e.g. registries:) precedes version: 2 (no false DEP001)
+    - Reports the group item's declaration line (not the parser's current line) in DEP006 messages
     - Detects DEP002 (multi-ecosystem-groups: top-level key)
     - Detects DEP003 (multi-ecosystem-group: inside an entry)
     - Detects DEP004 (patterns: at entry level instead of inside groups)
@@ -201,6 +203,47 @@ version: 2
 $result = Invoke-LintOnContent $versionAfterUpdatesConfig
 $hasDEP001pos = $result.Output -match 'DEP001'
 Write-TestResult "Fail_VersionAfterUpdates" ($result.ExitCode -ne 0 -and $hasDEP001pos) "Expected non-zero + DEP001 when version: 2 is after updates:. Exit: $($result.ExitCode), Output: $($result.Output)"
+
+# ── Pass_VersionAfterOtherTopLevelKey ─────────────────────────────────────────
+# A config with another top-level key (e.g. 'registries:') before 'version: 2'
+# must NOT trigger DEP001 — only reaching 'updates:' without 'version: 2' fails.
+$versionAfterRegistriesConfig = @'
+registries:
+  dockerhub:
+    type: docker-registry
+    url: https://registry.hub.docker.com
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+'@
+
+$result = Invoke-LintOnContent $versionAfterRegistriesConfig
+Write-TestResult "Pass_VersionAfterOtherTopLevelKey" ($result.ExitCode -eq 0) "Expected exit 0 when registries: precedes version: 2. Exit: $($result.ExitCode), Output: $($result.Output)"
+
+# ── Pass_DEP006LineNumberAccuracy ─────────────────────────────────────────────
+# DEP006 error must reference the group item's declaration line, not the
+# parser's current line (which could be the start of the next entry or EOF).
+$dep006LineNumConfig = @'
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    groups:
+      bad-group:
+        apply-security-updates-only: true
+'@
+
+$result = Invoke-LintOnContent $dep006LineNumConfig
+$hasDEP006 = $result.Output -match 'DEP006'
+# The group item 'bad-group:' is on line 8 of the fixture.
+# Ensure the reported line is NOT 0 (uninitialized) and the error text says DEP006.
+$lineNumIsNonZero = $result.Output -match 'DEP006: .* \(near line [1-9]\d*\)'
+Write-TestResult "Pass_DEP006LineNumberAccuracy" ($result.ExitCode -ne 0 -and $hasDEP006 -and $lineNumIsNonZero) "Expected non-zero + DEP006 with non-zero line number. Exit: $($result.ExitCode), Output: $($result.Output)"
 
 # ── Fail_MultiEcosystemGroups ─────────────────────────────────────────────────
 $multiGroupsConfig = @'
