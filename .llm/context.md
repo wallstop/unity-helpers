@@ -245,6 +245,7 @@ npm run lint:spelling                                   # Spell check
 npm run lint:docs                                       # Lint documentation links
 npm run lint:markdown                                   # Markdownlint rules
 npm run lint:yaml                                       # YAML style
+npm run lint:dependabot                                 # Dependabot config schema
 pwsh -NoProfile -File scripts/lint-tests.ps1            # Lint test lifecycle
 pwsh -NoProfile -File scripts/lint-skill-sizes.ps1      # Skill file sizes
 pwsh -NoProfile -File scripts/lint-gitignore-docs.ps1   # Validate gitignore safety
