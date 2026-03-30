@@ -286,6 +286,24 @@ if [ ${#YAML_FILES_ARRAY[@]} -gt 0 ]; then
   fi
 fi
 
+# 8b) Dependabot config lint (if dependabot.yml is staged)
+# Check for dependabot.yml specifically since yamllint doesn't validate schema
+DEPENDABOT_FILES_ARRAY=()
+for f in "${YAML_FILES_ARRAY[@]}"; do
+  if [[ "$f" == *".github/dependabot.yml" ]]; then
+    DEPENDABOT_FILES_ARRAY+=("$f")
+  fi
+done
+if [ ${#DEPENDABOT_FILES_ARRAY[@]} -gt 0 ]; then
+  if command -v pwsh >/dev/null 2>&1; then
+    pwsh -NoProfile -File scripts/lint-dependabot.ps1 -- "${DEPENDABOT_FILES_ARRAY[@]}"
+  elif command -v powershell >/dev/null 2>&1; then
+    powershell -NoProfile -ExecutionPolicy Bypass -File scripts/lint-dependabot.ps1 -- "${DEPENDABOT_FILES_ARRAY[@]}"
+  else
+    echo "PowerShell not found; skipping dependabot schema check." >&2
+  fi
+fi
+
 # 9) Spell check staged files with cspell
 # Runs on markdown, code, and config files
 if [ ${#SPELL_FILES_ARRAY[@]} -gt 0 ]; then
