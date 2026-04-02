@@ -103,7 +103,15 @@ if ($jsonParseSucceeded) {
     $changelogUri = $null
     $isValidHttpsUri = [uri]::TryCreate($changelogUrlValue, [System.UriKind]::Absolute, [ref]$changelogUri) -and $changelogUri.Scheme -eq 'https'
     Write-TestResult -TestName 'changelogUrl is valid absolute HTTPS URL' -Passed $isValidHttpsUri
-    Write-TestResult -TestName 'changelogUrl targets changelog resource' -Passed ($changelogUrlValue -match '(?i)CHANGELOG(\.md)?([?#].*)?$')
+
+    $targetsChangelogResource = $false
+    $absolutePath = ''
+    if ($isValidHttpsUri -and $null -ne $changelogUri) {
+      $absolutePath = $changelogUri.AbsolutePath
+      $targetsChangelogResource = $absolutePath -match '(?i)/CHANGELOG(\.md)?$'
+    }
+
+    Write-TestResult -TestName 'changelogUrl targets changelog resource path' -Passed $targetsChangelogResource -Message "Absolute path: '$absolutePath'"
   }
 }
 
