@@ -239,18 +239,31 @@ RUN command -v fd >/dev/null \
 # Install cross-tool Python requirements for container tooling.
 COPY .devcontainer/requirements-tools.txt /tmp/requirements-tools.txt
 
-# Install PowerShell, Git LFS, Python, yamllint and Node.js in a consolidated cycle.
-RUN wget -q https://packages.microsoft.com/config/debian/12/packages-microsoft-prod.deb \
-    && dpkg -i packages-microsoft-prod.deb \
-    && rm packages-microsoft-prod.deb \
-    && curl -fsSL https://deb.nodesource.com/setup_22.x -o /tmp/nodesource_setup.sh \
+# Install PowerShell from GitHub releases to support both amd64 and arm64.
+RUN POWERSHELL_VERSION="7.5.3" \
+    && case "${TARGETARCH}" in \
+        amd64) POWERSHELL_ARCH="x64" ; POWERSHELL_SHA256="5C74E0BBAFD8BE59E72267F05700FD6615344D9CF4D30460D9B6D12CD4A88A8C" ;; \
+        arm64) POWERSHELL_ARCH="arm64" ; POWERSHELL_SHA256="4A6B656DD0E751E82C5DF9B9A4245BD1EC7D21DE5334AFBBD802DFD009595599" ;; \
+        *) echo "Unsupported TARGETARCH: ${TARGETARCH}" >&2; exit 1 ;; \
+    esac \
+    && curl -fsSL "https://github.com/PowerShell/PowerShell/releases/download/v${POWERSHELL_VERSION}/powershell-${POWERSHELL_VERSION}-linux-${POWERSHELL_ARCH}.tar.gz" -o /tmp/powershell.tar.gz \
+    && echo "${POWERSHELL_SHA256}  /tmp/powershell.tar.gz" | sha256sum -c - \
+    && mkdir -p /opt/microsoft/powershell/7 \
+    && tar -xzf /tmp/powershell.tar.gz -C /opt/microsoft/powershell/7 \
+    && chmod +x /opt/microsoft/powershell/7/pwsh \
+    && ln -sf /opt/microsoft/powershell/7/pwsh /usr/local/bin/pwsh \
+    && ln -sf /opt/microsoft/powershell/7/pwsh /usr/local/bin/powershell \
+    && rm -f /tmp/powershell.tar.gz \
+    && pwsh -NoLogo -NoProfile -Command '$PSVersionTable.PSVersion.ToString()'
+
+# Install Git LFS, Python, yamllint and Node.js in a consolidated cycle.
+RUN curl -fsSL https://deb.nodesource.com/setup_22.x -o /tmp/nodesource_setup.sh \
     && bash /tmp/nodesource_setup.sh \
     && rm -f /tmp/nodesource_setup.sh \
     && apt-get update \
     && apt-get install -y --no-install-recommends \
     git-lfs \
     nodejs \
-    powershell \
     python3 \
     python3-pip \
     python3-venv \
