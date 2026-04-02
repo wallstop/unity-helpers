@@ -124,19 +124,61 @@ Write-TestResult -TestName 'no changelogUrl keys in package.json raw content' -P
 Write-Host ""
 Write-Host "  Section: npm pack inclusion" -ForegroundColor White
 
-if (Test-Path $npmignorePath) {
-  $npmignoreContent = Get-Content -Path $npmignorePath -Raw
-  # Check that CHANGELOG.md is not excluded by .npmignore
-  # Look for patterns that would exclude it: /CHANGELOG.md, CHANGELOG.md, CHANGELOG*, *.md at root
-  $excludesChangelog = $npmignoreContent -match '(?m)^/?CHANGELOG\.md\s*$'
-  $excludesChangelogMeta = $npmignoreContent -match '(?m)^/?CHANGELOG\.md\.meta\s*$'
-  Write-TestResult -TestName 'CHANGELOG.md not excluded by .npmignore' -Passed (-not $excludesChangelog) -Message ".npmignore explicitly excludes CHANGELOG.md"
-  Write-TestResult -TestName 'CHANGELOG.md.meta not excluded by .npmignore' -Passed (-not $excludesChangelogMeta) -Message ".npmignore explicitly excludes CHANGELOG.md.meta"
+$npmCommand = Get-Command npm -ErrorAction SilentlyContinue
+if ($null -eq $npmCommand) {
+  Write-TestResult -TestName 'CHANGELOG.md included in npm pack output' -Passed $false -Message "npm command not found; unable to validate packed file list"
+  Write-TestResult -TestName 'CHANGELOG.md.meta included in npm pack output' -Passed $false -Message "npm command not found; unable to validate packed file list"
 }
 else {
-  Write-Info "No .npmignore found (all files included by default)"
-  Write-TestResult -TestName 'CHANGELOG.md not excluded by .npmignore' -Passed $true
-  Write-TestResult -TestName 'CHANGELOG.md.meta not excluded by .npmignore' -Passed $true
+  Push-Location $repoRoot
+  $packOutput = $null
+  $packExitCode = 0
+  try {
+    $packOutput = & $npmCommand.Source pack --dry-run --json 2>&1
+    $packExitCode = $LASTEXITCODE
+  }
+  finally {
+    Pop-Location
+  }
+
+  $packOutputText = ($packOutput | Out-String).Trim()
+  if ($packExitCode -ne 0) {
+    Write-TestResult -TestName 'CHANGELOG.md included in npm pack output' -Passed $false -Message "npm pack --dry-run --json failed (exit $packExitCode): $packOutputText"
+    Write-TestResult -TestName 'CHANGELOG.md.meta included in npm pack output' -Passed $false -Message "npm pack --dry-run --json failed (exit $packExitCode): $packOutputText"
+  }
+  else {
+    $packParseSucceeded = $true
+    $packEntries = @()
+    $packedPaths = @()
+
+    try {
+      $packJson = $packOutputText | ConvertFrom-Json -ErrorAction Stop
+      $packEntries = @($packJson)
+      if (($packEntries.Count -gt 0) -and ($null -ne $packEntries[0].files)) {
+        $packedPaths = @($packEntries[0].files | ForEach-Object { [string]$_.path })
+      }
+      else {
+        $packParseSucceeded = $false
+      }
+    }
+    catch {
+      $packParseSucceeded = $false
+    }
+
+    if (-not $packParseSucceeded) {
+      Write-TestResult -TestName 'CHANGELOG.md included in npm pack output' -Passed $false -Message "Unable to parse npm pack --dry-run --json output: $packOutputText"
+      Write-TestResult -TestName 'CHANGELOG.md.meta included in npm pack output' -Passed $false -Message "Unable to parse npm pack --dry-run --json output: $packOutputText"
+    }
+    else {
+      $hasPackedChangelog = $packedPaths -contains 'CHANGELOG.md'
+      $hasPackedChangelogMeta = $packedPaths -contains 'CHANGELOG.md.meta'
+      $packedFilesMessage = "Packed files ($($packedPaths.Count)): $($packedPaths -join ', ')"
+      $changelogMessage = if ($hasPackedChangelog) { $packedFilesMessage } else { "Missing expected packed file: CHANGELOG.md. $packedFilesMessage" }
+      $changelogMetaMessage = if ($hasPackedChangelogMeta) { $packedFilesMessage } else { "Missing expected packed file: CHANGELOG.md.meta. $packedFilesMessage" }
+      Write-TestResult -TestName 'CHANGELOG.md included in npm pack output' -Passed $hasPackedChangelog -Message $changelogMessage
+      Write-TestResult -TestName 'CHANGELOG.md.meta included in npm pack output' -Passed $hasPackedChangelogMeta -Message $changelogMetaMessage
+    }
+  }
 }
 
 # ── Section: CHANGELOG.md content ────────────────────────────────────────────
@@ -151,10 +193,14 @@ if ($changelogExists -and (-not [string]::IsNullOrWhiteSpace($versionValue))) {
   Write-TestResult -TestName 'CHANGELOG.md has current version section or [Unreleased]' -Passed ($hasVersionHeader -or $hasUnreleasedHeader) -Message "Expected section: ## [$versionValue] or ## [Unreleased]"
 
   # Verify the changelog starts with a heading (Unity parser expects this)
-  $lines = Get-Content -Path $changelogPath
+  $firstLineArray = @(Get-Content -Path $changelogPath -TotalCount 1)
+  $firstLine = ''
+  if ($firstLineArray.Count -gt 0) {
+    $firstLine = [string]$firstLineArray[0]
+  }
   $startsWithHeading = $false
-  if ($lines.Count -gt 0) {
-    $startsWithHeading = $lines[0] -match '^#\s+'
+  if (-not [string]::IsNullOrWhiteSpace($firstLine)) {
+    $startsWithHeading = $firstLine -match '^#\s+'
   }
   Write-TestResult -TestName 'CHANGELOG.md starts with markdown heading' -Passed $startsWithHeading -Message "First line should be a markdown heading (e.g., '# Changelog')"
 }
