@@ -40,6 +40,19 @@ fail() {
     fi
 }
 
+assert_file_contains_literal() {
+    local file_path="$1"
+    local needle="$2"
+    local test_name="$3"
+    local failure_message="$4"
+
+    if grep -Fq -- "$needle" "$file_path"; then
+        pass "$test_name"
+    else
+        fail "$test_name" "$failure_message (literal: $needle)"
+    fi
+}
+
 echo -e "${BLUE}── validate-devcontainer-urls parser contracts ──${NC}"
 echo ""
 
@@ -55,37 +68,34 @@ else
     fail ".devcontainer/Dockerfile exists" "Missing .devcontainer/Dockerfile"
 fi
 
-if grep -q 'POWERSHELL_VERSION=' "$DOCKERFILE"; then
-    pass "Dockerfile defines POWERSHELL_VERSION for release URL validation"
-else
-    fail "Dockerfile defines POWERSHELL_VERSION for release URL validation" "Missing POWERSHELL_VERSION assignment"
-fi
+assert_file_contains_literal "$DOCKERFILE" \
+    'POWERSHELL_VERSION=' \
+    "Dockerfile defines POWERSHELL_VERSION for release URL validation" \
+    "Missing POWERSHELL_VERSION assignment"
 
-if grep -q 'https://github.com/PowerShell/PowerShell/releases/download/v${POWERSHELL_VERSION}/powershell-${POWERSHELL_VERSION}-linux-${POWERSHELL_ARCH}.tar.gz' "$DOCKERFILE"; then
-    pass "Dockerfile contains inline PowerShell release URL template"
-else
-    fail "Dockerfile contains inline PowerShell release URL template" "Expected inline PowerShell GitHub release URL pattern"
-fi
+assert_file_contains_literal "$DOCKERFILE" \
+    'https://github.com/PowerShell/PowerShell/releases/download/v${POWERSHELL_VERSION}/powershell-${POWERSHELL_VERSION}-linux-${POWERSHELL_ARCH}.tar.gz' \
+    "Dockerfile contains inline PowerShell release URL template" \
+    "Expected inline PowerShell GitHub release URL pattern"
 
-if grep -q 'amd64) POWERSHELL_ARCH="x64"' "$DOCKERFILE" \
-    && grep -q 'arm64) POWERSHELL_ARCH="arm64"' "$DOCKERFILE"; then
+if grep -Fq -- 'amd64) POWERSHELL_ARCH="x64"' "$DOCKERFILE" \
+    && grep -Fq -- 'arm64) POWERSHELL_ARCH="arm64"' "$DOCKERFILE"; then
     pass "Dockerfile maps TARGETARCH to PowerShell asset architecture"
 else
     fail "Dockerfile maps TARGETARCH to PowerShell asset architecture" "Expected amd64->x64 and arm64->arm64 mappings"
 fi
 
-if grep -q 'sha256sum -c -' "$DOCKERFILE"; then
-    pass "Dockerfile verifies PowerShell tarball checksum"
-else
-    fail "Dockerfile verifies PowerShell tarball checksum" "Expected checksum verification for PowerShell download"
-fi
+assert_file_contains_literal "$DOCKERFILE" \
+    'sha256sum -c -' \
+    "Dockerfile verifies PowerShell tarball checksum" \
+    "Expected checksum verification for PowerShell download"
 
 # Contract: validator parser should still discover powershell tool entry from Dockerfile.
 if validator_output="$("$VALIDATOR" --dockerfile .devcontainer/Dockerfile 2>&1)"; then
-    if echo "$validator_output" | grep -q 'powershell'; then
+    if grep -Fiq -- 'powershell' <<< "$validator_output"; then
         pass "validator output includes powershell tool entry"
     else
-        fail "validator output includes powershell tool entry" "Validator succeeded but did not report powershell entry"
+        fail "validator output includes powershell tool entry" "Validator succeeded but did not report powershell entry. Output: $validator_output"
     fi
 else
     fail "validator script exits successfully on current Dockerfile" "$validator_output"
