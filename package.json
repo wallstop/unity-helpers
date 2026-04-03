@@ -43,7 +43,6 @@
   "author": "wallstop studios <wallstop@wallstopstudios.com> (https://wallstopstudios.com)",
   "homepage": "https://wallstop.github.io/unity-helpers",
   "documentationUrl": "https://wallstop.github.io/unity-helpers",
-  "changelogUrl": "https://raw.githubusercontent.com/wallstop/unity-helpers/main/CHANGELOG.md",
   "licensesUrl": "https://wallstop.github.io/unity-helpers/project/license/",
   "samples": [
     {
@@ -129,7 +128,7 @@
     "test:lint-dependabot": "pwsh -NoProfile -File scripts/tests/test-lint-dependabot.ps1 -VerboseOutput",
     "lint:markdown": "markdownlint --config .markdownlint.json --ignore-path .markdownlintignore -- \"**/*.md\" \"**/*.markdown\"",
     "validate:content": "npm run lint:docs && npm run lint:markdown && npm run lint:yaml && npm run format:check && npm run lint:llm && npm run lint:doc-counts && npm run lint:dependabot",
-    "validate:tests": "npm run lint:tests && npm run test:gitignore-docs && npm run test:sync-script-contracts && npm run test:lint-dependabot && npm run test:npm-package-signature",
+    "validate:tests": "npm run lint:tests && npm run test:gitignore-docs && npm run test:sync-script-contracts && npm run test:lint-dependabot && npm run test:npm-package-signature && npm run test:npm-package-changelog",
     "validate:prepush": "npm run validate:content && npm run eol:check && npm run validate:tests && npm run lint:csharp-naming && npm run lint:spelling:config && npm run validate:devcontainer && npm run validate:hook-sync && npm run validate:hook-perms && npm run test:shell-portability && npm run test:validate-devcontainer-urls",
     "validate:devcontainer": "pwsh -NoProfile -File scripts/validate-devcontainer-config.ps1 -VerboseOutput",
     "validate:hook-sync": "pwsh -NoProfile -File scripts/validate-hook-sync-calls.ps1 -VerboseOutput",
@@ -149,6 +148,7 @@
     "test:shell-portability": "bash scripts/tests/test-shell-portability.sh",
     "test:validate-devcontainer-urls": "bash scripts/tests/test-validate-devcontainer-urls.sh",
     "test:npm-package-signature": "pwsh -NoProfile -File scripts/tests/test-npm-package-signature.ps1 -VerboseOutput",
+    "test:npm-package-changelog": "pwsh -NoProfile -File scripts/tests/test-npm-package-changelog.ps1 -VerboseOutput",
     "verify:tools": "bash scripts/verify-devcontainer-tools.sh",
     "unity:setup-license": "pwsh -NoProfile -File scripts/unity/setup-license.ps1",
     "unity:validate": "bash scripts/unity/validate-license-setup.sh",
