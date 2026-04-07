@@ -162,7 +162,7 @@
     "unity:retry-license": "bash scripts/unity/retry-license.sh"
   },
   "devDependencies": {
-    "cspell": "^9.7.0",
+    "cspell": "^10.0.0",
     "markdownlint-cli": "^0.48.0",
     "prettier": "^3.8.1"
   }
