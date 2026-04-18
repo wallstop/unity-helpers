@@ -445,6 +445,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
 
                         if (!dryRun)
                         {
+                            Undo.RecordObject(importer, "Adjust Sprite Pivot");
                             TextureImporterSettings settings = new();
                             importer.ReadTextureSettings(settings);
                             settings.spritePivot = newPivot;

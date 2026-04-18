@@ -152,3 +152,4 @@ After creating any file or folder, verify:
 - [ ] Meta file exists: `ls -la <path>.meta`
 - [ ] Meta file is not empty and contains valid GUID
 - [ ] Parent folder meta files also exist
+- [ ] `npm run agent:preflight:fix` passes before task completion

@@ -23,15 +23,48 @@ For troubleshooting common errors, see [validation-troubleshooting](./validation
 ## Quick Reference
 
 ```bash
-# Run all validations before completing any task
+# Fast changed-file preflight (MANDATORY before marking task complete)
+npm run agent:preflight:fix
+
+# Run all validations before pushing
 npm run validate:prepush
 ```
 
-This single command runs ALL CI/CD checks locally, ensuring your changes will pass in GitHub Actions.
+Use `agent:preflight:fix` continuously while working to catch hook-class failures early on changed files.
+Use `validate:prepush` for full CI parity before push.
 
 ---
 
 ## The Golden Rules
+
+### Rule 0: Preflight Before Completion
+
+Run `npm run agent:preflight:fix` before declaring a task complete.
+
+Hooks are a last-resort safety net. Do not rely on hook-time auto-fixes as the normal workflow.
+
+This catches hook-class failures early for changed files:
+
+- Missing Unity `.meta` files on changed paths
+- Unstaged Unity `.meta` companions for currently staged source files
+- Skill/context files approaching hard size limits
+- LLM index/trigger drift when `.llm/` files changed
+- Test-lint regressions with auto-fix for Unity null assertions
+
+After creating any file/folder under Unity meta-required roots (`Runtime/`, `Editor/`, `Tests/`, `Samples~/`, `Shaders/`, `Styles/`, `URP/`, `docs/`, `scripts/`):
+
+1. Generate `.meta` immediately with `./scripts/generate-meta.sh <path>`.
+2. Run `npm run agent:preflight:fix` before continuing work.
+
+Run `agent:preflight:fix` after staging candidate files (right before commit prep) so staged `.meta` companion drift is corrected before hooks run.
+By default (no `-Paths`), preflight validates all changed files from git; passing `-Paths` scopes checks to those targets.
+
+Preferred commit prep order:
+
+1. Stage candidate files.
+2. Run `npm run agent:preflight:fix`.
+3. Resolve any reported issues.
+4. Commit (hooks should only catch unexpected regressions).
 
 ### Rule 1: Format IMMEDIATELY After Every Change
 
@@ -115,6 +148,9 @@ actionlint
 # 🚨 MANDATORY: After EVERY test file modification:
 pwsh -NoProfile -File scripts/lint-tests.ps1
 
+# Recommended fast-path (runs test lint + safe auto-fixes on changed files):
+npm run agent:preflight:fix
+
 # Also run standard C# formatting:
 dotnet tool run csharpier format .
 npm run lint:csharp-naming
@@ -142,12 +178,17 @@ npx prettier --write -- <file>
 # 🚨 MANDATORY: After EVERY skill file or context.md modification:
 pwsh -NoProfile -File scripts/lint-skill-sizes.ps1
 
+# Recommended strict changed-file check (fails on critical near-limit sizes):
+npm run agent:preflight
+
 # Also run standard markdown formatting:
 npx prettier --write -- <file>
 npm run lint:markdown
 ```
 
 **CRITICAL**: Skill files and [context](../context.md) have a **500-line hard limit** enforced by the pre-commit hook. Files exceeding this limit **CANNOT be committed** and require human judgment to split or reduce.
+
+`agent:preflight` treats critical near-limit sizes as failures for changed files, so growth pressure is addressed before the pre-commit hook becomes the final stop.
 
 | Lines   | Action Required                                          |
 | ------- | -------------------------------------------------------- |

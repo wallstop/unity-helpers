@@ -30,7 +30,18 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomEditors
                 PolygonCollider2DOptimizer optimizer = target as PolygonCollider2DOptimizer;
                 if (optimizer != null)
                 {
+                    PolygonCollider2D collider = optimizer.GetComponent<PolygonCollider2D>();
+                    if (collider != null)
+                    {
+                        Undo.RecordObject(collider, "Optimize Polygon Collider");
+                    }
+                    Undo.RecordObject(optimizer, "Optimize Polygon Collider");
                     optimizer.Refresh();
+                    EditorUtility.SetDirty(optimizer);
+                    if (collider != null)
+                    {
+                        EditorUtility.SetDirty(collider);
+                    }
                 }
             }
 

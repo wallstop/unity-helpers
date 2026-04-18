@@ -6,6 +6,7 @@
 # Usage:
 #   ./scripts/validate-devcontainer-urls.sh
 #   ./scripts/validate-devcontainer-urls.sh --dockerfile .devcontainer/Dockerfile
+#   ./scripts/validate-devcontainer-urls.sh --contracts-only
 #
 # Requires: bash 4+, curl, sed
 
@@ -19,6 +20,7 @@ NC='\033[0m' # No Color
 
 # Default Dockerfile path (relative to repo root)
 DOCKERFILE=".devcontainer/Dockerfile"
+CONTRACTS_ONLY=0
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
@@ -27,8 +29,12 @@ while [[ $# -gt 0 ]]; do
             DOCKERFILE="$2"
             shift 2
             ;;
+        --contracts-only)
+            CONTRACTS_ONLY=1
+            shift
+            ;;
         *)
-            echo "Usage: $0 [--dockerfile <path>]" >&2
+            echo "Usage: $0 [--dockerfile <path>] [--contracts-only]" >&2
             exit 1
             ;;
     esac
@@ -37,18 +43,87 @@ done
 # Resolve to repo root
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-DOCKERFILE_PATH="$REPO_ROOT/$DOCKERFILE"
+if [[ "$DOCKERFILE" = /* ]]; then
+    DOCKERFILE_PATH="$DOCKERFILE"
+else
+    DOCKERFILE_PATH="$REPO_ROOT/$DOCKERFILE"
+fi
 
 if [ ! -f "$DOCKERFILE_PATH" ]; then
     echo "Error: Dockerfile not found at $DOCKERFILE_PATH" >&2
     exit 1
 fi
 
+assert_no_apt_powershell_install() {
+    local hits
+
+    # PowerShell apt packages are not consistently available across all target
+    # architectures used in buildx. Require release-tarball installs instead.
+    hits=$(awk '
+        function trim(s) {
+            sub(/^[[:space:]]+/, "", s)
+            sub(/[[:space:]]+$/, "", s)
+            return s
+        }
+
+        function check_buffer(start_line, cmd, lc_cmd) {
+            lc_cmd = tolower(cmd)
+            if (lc_cmd ~ /apt(-get)?[[:space:]]+install[^&;|]*([^[:alnum:]_]|^)powershell([^[:alnum:]_]|$)/) {
+                print start_line ":" cmd
+            }
+        }
+
+        {
+            line=$0
+
+            if (line ~ /^[[:space:]]*#/) {
+                next
+            }
+
+            if (!in_run && line ~ /^[[:space:]]*RUN[[:space:]]+/) {
+                in_run=1
+                start_line=NR
+                cmd=line
+            } else if (in_run) {
+                cmd=cmd " " line
+            }
+
+            if (in_run) {
+                if (line !~ /\\[[:space:]]*$/) {
+                    check_buffer(start_line, trim(cmd))
+                    in_run=0
+                    cmd=""
+                }
+            }
+        }
+
+        END {
+            if (in_run && cmd != "") {
+                check_buffer(start_line, trim(cmd))
+            }
+        }
+    ' "$DOCKERFILE_PATH")
+
+    if [ -n "$hits" ]; then
+        printf "%b\n" "${RED}Detected apt-based PowerShell install in Dockerfile:${NC}" >&2
+        echo "$hits" >&2
+        echo "Use PowerShell release tarballs with TARGETARCH mapping (amd64=x64, arm64=arm64)." >&2
+        exit 1
+    fi
+}
+
 echo "========================================"
 echo "Devcontainer Download URL Validation"
 echo "Dockerfile: $DOCKERFILE"
 echo "========================================"
 echo ""
+
+assert_no_apt_powershell_install
+
+if [ "$CONTRACTS_ONLY" -eq 1 ]; then
+    echo "Contract checks passed (no URL probing requested)."
+    exit 0
+fi
 
 FAILED=0
 PASSED=0
@@ -126,9 +201,8 @@ extract_tools() {
 }
 
 check_url() {
-    local tool="$1"
-    local arch_label="$2"
-    local url="$3"
+    local arch_label="$1"
+    local url="$2"
 
     CHECKED=$((CHECKED + 1))
     local status
@@ -165,19 +239,19 @@ for entry in "${tools[@]}"; do
     # Check amd64
     if [ "$amd64_arch" != "NONE" ]; then
         amd64_url=$(echo "$url_template" | sed "s/{VERSION}/$version/g; s/{ARCH}/$amd64_arch/g")
-        check_url "$tool_name" "amd64" "$amd64_url" || true
+        check_url "amd64" "$amd64_url" || true
     else
         amd64_url=$(echo "$url_template" | sed "s/{VERSION}/$version/g; s/{ARCH}//g")
-        check_url "$tool_name" "amd64" "$amd64_url" || true
+        check_url "amd64" "$amd64_url" || true
     fi
 
     # Check arm64
     if [ "$arm64_arch" != "NONE" ]; then
         arm64_url=$(echo "$url_template" | sed "s/{VERSION}/$version/g; s/{ARCH}/$arm64_arch/g")
-        check_url "$tool_name" "arm64" "$arm64_url" || true
+        check_url "arm64" "$arm64_url" || true
     else
         arm64_url=$(echo "$url_template" | sed "s/{VERSION}/$version/g; s/{ARCH}//g")
-        check_url "$tool_name" "arm64" "$arm64_url" || true
+        check_url "arm64" "$arm64_url" || true
     fi
 
     echo ""

@@ -240,9 +240,14 @@ RUN command -v fd >/dev/null \
 COPY .devcontainer/requirements-tools.txt /tmp/requirements-tools.txt
 
 # Install PowerShell, Git LFS, Python, yamllint and Node.js in a consolidated cycle.
-RUN wget -q https://packages.microsoft.com/config/debian/12/packages-microsoft-prod.deb \
-    && dpkg -i packages-microsoft-prod.deb \
-    && rm packages-microsoft-prod.deb \
+# PowerShell is installed from official release tarballs to ensure consistent
+# multi-arch availability (amd64 + arm64) in Docker Buildx CI builds.
+RUN POWERSHELL_VERSION="7.5.1" \
+    && case "${TARGETARCH}" in \
+        amd64) POWERSHELL_ARCH="x64" ;; \
+        arm64) POWERSHELL_ARCH="arm64" ;; \
+        *) echo "Unsupported TARGETARCH for PowerShell install: ${TARGETARCH}" >&2; exit 1 ;; \
+    esac \
     && curl -fsSL https://deb.nodesource.com/setup_22.x -o /tmp/nodesource_setup.sh \
     && bash /tmp/nodesource_setup.sh \
     && rm -f /tmp/nodesource_setup.sh \
@@ -250,15 +255,20 @@ RUN wget -q https://packages.microsoft.com/config/debian/12/packages-microsoft-p
     && apt-get install -y --no-install-recommends \
     git-lfs \
     nodejs \
-    powershell \
     python3 \
     python3-pip \
     python3-venv \
+    && mkdir -p /opt/microsoft/powershell/7 \
+    && curl -fsSL "https://github.com/PowerShell/PowerShell/releases/download/v${POWERSHELL_VERSION}/powershell-${POWERSHELL_VERSION}-linux-${POWERSHELL_ARCH}.tar.gz" \
+    | tar -xz -C /opt/microsoft/powershell/7 \
+    && chmod +x /opt/microsoft/powershell/7/pwsh \
+    && ln -sf /opt/microsoft/powershell/7/pwsh /usr/local/bin/pwsh \
     && python3 -m venv /opt/python-tools \
     && /opt/python-tools/bin/pip install --no-cache-dir --requirement /tmp/requirements-tools.txt \
     && ln -sf /opt/python-tools/bin/yamllint /usr/local/bin/yamllint \
     && git lfs install \
     && npm install -g npm@10.9.2 \
+    && pwsh --version \
     && rm -f /tmp/requirements-tools.txt \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*

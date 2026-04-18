@@ -55,7 +55,7 @@ Invoke these skills for specific tasks.
 **Regenerate with**: `pwsh -NoProfile -File scripts/generate-skills-index.ps1`
 
 <!-- BEGIN GENERATED SKILLS INDEX -->
-<!-- Generated: 2026-03-25 02:24:06 UTC -->
+<!-- Generated: 2026-03-25 20:25:05 UTC -->
 <!-- Command: pwsh -NoProfile -File scripts/generate-skills-index.ps1 -->
 
 ### Core Skills (Always Consider)
@@ -80,6 +80,7 @@ Invoke these skills for specific tasks.
 | [editor-caching-patterns](./skills/editor-caching-patterns.md)                               | Caching strategies for Editor code                                                     |
 | [editor-multi-object-editing](./skills/editor-multi-object-editing.md)                       | Multi-object editing patterns and undo support for editor code                         |
 | [editor-singleton-patterns](./skills/editor-singleton-patterns.md)                           | Singleton asset management patterns for Editor code                                    |
+| [editor-undo-complete](./skills/editor-undo-complete.md)                                     | Complete undo policy for editor tooling with enforceable scope boundaries              |
 | [formatting](./skills/formatting.md)                                                         | After ANY file change (CSharpier/Prettier)                                             |
 | [formatting-and-linting](./skills/formatting-and-linting.md)                                 | Before committing, after editing files                                                 |
 | [git-hook-lifecycle-debugging](./skills/git-hook-lifecycle-debugging.md)                     | Hook validation philosophy, framework config, PowerShell exit codes, debugging         |
@@ -184,12 +185,13 @@ See [create-csharp-file](./skills/create-csharp-file.md) for detailed C# rules.
 6. One file per MonoBehaviour/ScriptableObject (production AND tests)
 7. NEVER use `?.`, `??`, `??=` on UnityEngine.Object types
 8. Minimal comments -- only explain **why**, never **what**
-9. Generate `.meta` files after creating ANY file/folder (see [create-unity-meta](./skills/create-unity-meta.md)); exception: no `.meta` for dot folders (`.llm/`, `.github/`, `.git/`, `.vscode/`). Use `./scripts/generate-meta.sh <path>`
+9. Generate `.meta` files after creating ANY file/folder (see [create-unity-meta](./skills/create-unity-meta.md)); exception: no `.meta` for dot folders (`.llm/`, `.github/`, `.git/`, `.vscode/`). Use `./scripts/generate-meta.sh <path>`, then run `npm run agent:preflight:fix` immediately.
 10. Enums: explicit values, `None`/`Unknown` = 0 with `[Obsolete]` (see [create-enum](./skills/create-enum.md))
 11. Never reflect on our own code; use `internal` + `[InternalsVisibleTo]` (see [avoid-reflection](./skills/avoid-reflection.md))
 12. Never use magic strings; use `nameof()` (see [avoid-magic-strings](./skills/avoid-magic-strings.md))
 13. All code must follow [high-performance-csharp](./skills/high-performance-csharp.md) and [defensive-programming](./skills/defensive-programming.md) (never throw from public APIs; use `TryXxx` patterns; handle all inputs gracefully)
 14. For forbidden patterns and alternatives, see [forbidden-patterns reference](./references/forbidden-patterns.md)
+15. All editor mutation paths must follow the complete undo policy (see [editor-undo-complete](./skills/editor-undo-complete.md)); classify paths as Tier A/B/C and never claim full reversal for Tier C file/reimport side effects
 
 ### Documentation Rules
 
@@ -216,6 +218,7 @@ Run formatters/linters **immediately after each file change**, not batched at ta
 - **Spelling**: `npm run lint:spelling` (add valid terms to `cspell.json`)
 - **Tests**: `pwsh -NoProfile -File scripts/lint-tests.ps1 -FixNullChecks -Paths <changed test files>`
 - **Skill files and [context](./context.md)**: `pwsh -NoProfile -File scripts/lint-skill-sizes.ps1` (500-line limit)
+- **Commit prep**: stage files, then run `npm run agent:preflight:fix` before any commit attempt; treat git hooks as last-resort only
 
 See [formatting](./skills/formatting.md) and [validate-before-commit](./skills/validate-before-commit.md) for details.
 
@@ -240,6 +243,7 @@ npm run hooks:install                                   # Install git hooks
 dotnet tool restore                                     # Restore .NET tools (CSharpier, etc.)
 
 # Formatting & Linting
+npm run agent:preflight:fix                            # Fast changed-file preflight with safe auto-fixes
 dotnet tool run csharpier format .                      # Format C#
 npm run lint:spelling                                   # Spell check
 npm run lint:docs                                       # Lint documentation links

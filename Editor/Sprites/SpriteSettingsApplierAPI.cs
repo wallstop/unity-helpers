@@ -287,6 +287,18 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
 
             bool changed = false;
             bool settingsChanged = false;
+            bool undoRecorded = false;
+
+            void EnsureUndoRecorded()
+            {
+                if (undoRecorded)
+                {
+                    return;
+                }
+
+                Undo.RecordObject(textureImporter, "Apply Sprite Settings");
+                undoRecorded = true;
+            }
 
             buffer ??= new TextureImporterSettings();
             textureImporter.ReadTextureSettings(buffer);
@@ -295,6 +307,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             {
                 if (textureImporter.textureType != spriteData.textureType)
                 {
+                    EnsureUndoRecorded();
                     textureImporter.textureType = spriteData.textureType;
                     changed = true;
                 }
@@ -304,11 +317,13 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             {
                 if (textureImporter.spriteImportMode != spriteData.spriteMode)
                 {
+                    EnsureUndoRecorded();
                     textureImporter.spriteImportMode = spriteData.spriteMode;
                     changed = true;
                 }
                 if (buffer.spriteMode != (int)spriteData.spriteMode)
                 {
+                    EnsureUndoRecorded();
                     buffer.spriteMode = (int)spriteData.spriteMode;
                     settingsChanged = true;
                 }
@@ -317,11 +332,13 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             {
                 if (textureImporter.spritePixelsPerUnit != spriteData.pixelsPerUnit)
                 {
+                    EnsureUndoRecorded();
                     textureImporter.spritePixelsPerUnit = spriteData.pixelsPerUnit;
                     changed = true;
                 }
                 if (buffer.spritePixelsPerUnit != spriteData.pixelsPerUnit)
                 {
+                    EnsureUndoRecorded();
                     buffer.spritePixelsPerUnit = spriteData.pixelsPerUnit;
                     settingsChanged = true;
                 }
@@ -330,16 +347,19 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             {
                 if (textureImporter.spritePivot != spriteData.pivot)
                 {
+                    EnsureUndoRecorded();
                     textureImporter.spritePivot = spriteData.pivot;
                     changed = true;
                 }
                 if (buffer.spriteAlignment != (int)SpriteAlignment.Custom)
                 {
+                    EnsureUndoRecorded();
                     buffer.spriteAlignment = (int)SpriteAlignment.Custom;
                     settingsChanged = true;
                 }
                 if (buffer.spritePivot != spriteData.pivot)
                 {
+                    EnsureUndoRecorded();
                     buffer.spritePivot = spriteData.pivot;
                     settingsChanged = true;
                 }
@@ -348,11 +368,13 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             {
                 if (textureImporter.mipmapEnabled != spriteData.generateMipMaps)
                 {
+                    EnsureUndoRecorded();
                     textureImporter.mipmapEnabled = spriteData.generateMipMaps;
                     changed = true;
                 }
                 if (buffer.mipmapEnabled != spriteData.generateMipMaps)
                 {
+                    EnsureUndoRecorded();
                     buffer.mipmapEnabled = spriteData.generateMipMaps;
                     settingsChanged = true;
                 }
@@ -361,6 +383,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             {
                 if (textureImporter.crunchedCompression != spriteData.useCrunchCompression)
                 {
+                    EnsureUndoRecorded();
                     textureImporter.crunchedCompression = spriteData.useCrunchCompression;
                     changed = true;
                 }
@@ -369,6 +392,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             {
                 if (textureImporter.textureCompression != spriteData.compressionLevel)
                 {
+                    EnsureUndoRecorded();
                     textureImporter.textureCompression = spriteData.compressionLevel;
                     changed = true;
                 }
@@ -377,11 +401,13 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             {
                 if (textureImporter.alphaIsTransparency != spriteData.alphaIsTransparency)
                 {
+                    EnsureUndoRecorded();
                     textureImporter.alphaIsTransparency = spriteData.alphaIsTransparency;
                     changed = true;
                 }
                 if (buffer.alphaIsTransparency != spriteData.alphaIsTransparency)
                 {
+                    EnsureUndoRecorded();
                     buffer.alphaIsTransparency = spriteData.alphaIsTransparency;
                     settingsChanged = true;
                 }
@@ -390,11 +416,13 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             {
                 if (textureImporter.isReadable != spriteData.readWriteEnabled)
                 {
+                    EnsureUndoRecorded();
                     textureImporter.isReadable = spriteData.readWriteEnabled;
                     changed = true;
                 }
                 if (buffer.readable != spriteData.readWriteEnabled)
                 {
+                    EnsureUndoRecorded();
                     buffer.readable = spriteData.readWriteEnabled;
                     settingsChanged = true;
                 }
@@ -403,6 +431,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             {
                 if (buffer.spriteExtrude != spriteData.extrudeEdges)
                 {
+                    EnsureUndoRecorded();
                     buffer.spriteExtrude = spriteData.extrudeEdges;
                     settingsChanged = true;
                 }
@@ -411,11 +440,13 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             {
                 if (textureImporter.wrapMode != spriteData.wrapMode)
                 {
+                    EnsureUndoRecorded();
                     textureImporter.wrapMode = spriteData.wrapMode;
                     changed = true;
                 }
                 if (buffer.wrapMode != spriteData.wrapMode)
                 {
+                    EnsureUndoRecorded();
                     buffer.wrapMode = spriteData.wrapMode;
                     settingsChanged = true;
                 }
@@ -424,11 +455,13 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             {
                 if (textureImporter.filterMode != spriteData.filterMode)
                 {
+                    EnsureUndoRecorded();
                     textureImporter.filterMode = spriteData.filterMode;
                     changed = true;
                 }
                 if (buffer.filterMode != spriteData.filterMode)
                 {
+                    EnsureUndoRecorded();
                     buffer.filterMode = spriteData.filterMode;
                     settingsChanged = true;
                 }
@@ -436,6 +469,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
 
             if (settingsChanged)
             {
+                EnsureUndoRecorded();
                 textureImporter.SetTextureSettings(buffer);
             }
 

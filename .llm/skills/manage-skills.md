@@ -230,6 +230,7 @@ Skills should work with GitHub Copilot, Claude, Codex, and similar tools.
 8. Format: `npx prettier --write -- .llm/skills/<skill-name>`
 9. Lint: `npm run lint:markdown` and `npm run lint:docs`
 10. Regenerate index: `pwsh -NoProfile -File scripts/generate-skills-index.ps1`
+11. Run strict changed-file preflight: `npm run agent:preflight`
 
 ---
 

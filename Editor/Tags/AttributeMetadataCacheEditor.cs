@@ -32,6 +32,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Tags
             AttributeMetadataCache cache = AttributeMetadataCache.Instance;
             if (cache != null)
             {
+                Undo.RecordObject(cache, "Purge Attribute Metadata Cache");
                 cache.SetMetadata(
                     Array.Empty<string>(),
                     Array.Empty<AttributeMetadataCache.TypeFieldMetadata>(),
@@ -39,6 +40,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Tags
                     Array.Empty<AttributeMetadataCache.AutoLoadSingletonEntry>()
                 );
 
+                EditorUtility.SetDirty(cache);
                 AssetDatabase.SaveAssets();
                 Debug.Log("Attribute Metadata Cache purged.");
             }
