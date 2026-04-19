@@ -204,6 +204,58 @@ function Run-CspellContractTests {
     -Message 'Found stale header text: "Root words that belong in a categorized dictionary"'
 }
 
+function Run-AgentValidationContractTests {
+  Write-Host ""
+  Write-Host "Agent/pre-push spelling contract checks:" -ForegroundColor Magenta
+  Write-Host ""
+
+  $repoRoot = Get-RepoRoot
+  $packageJsonPath = Join-Path $repoRoot 'package.json'
+  $agentPreflightPath = Join-Path $repoRoot 'scripts/agent-preflight.ps1'
+
+  if (-not (Test-Path $packageJsonPath)) {
+    Write-TestResult -TestName 'package.json exists for validate:prepush contract' -Passed $false -Message "Missing file: $packageJsonPath"
+    return
+  }
+
+  if (-not (Test-Path $agentPreflightPath)) {
+    Write-TestResult -TestName 'agent-preflight.ps1 exists for spelling contract' -Passed $false -Message "Missing file: $agentPreflightPath"
+    return
+  }
+
+  $packageJson = Get-Content -Path $packageJsonPath -Raw | ConvertFrom-Json
+  $validatePrepushScript = [string]$packageJson.scripts.'validate:prepush'
+
+  $includesLintSpelling = $validatePrepushScript -match 'npm run lint:spelling(?!:config)'
+  Write-TestResult `
+    -TestName 'validate:prepush includes npm run lint:spelling' `
+    -Passed $includesLintSpelling `
+    -Message "Current validate:prepush script: $validatePrepushScript"
+
+  $includesLintSpellingConfig = $validatePrepushScript -match 'npm run lint:spelling:config'
+  Write-TestResult `
+    -TestName 'validate:prepush includes npm run lint:spelling:config' `
+    -Passed $includesLintSpellingConfig `
+    -Message "Current validate:prepush script: $validatePrepushScript"
+
+  $agentPreflightContent = Get-Content -Path $agentPreflightPath -Raw
+
+  Write-TestResult `
+    -TestName 'agent-preflight reports changed markdown spelling checks' `
+    -Passed ($agentPreflightContent -match 'Checking spelling on changed markdown files') `
+    -Message 'Expected status message for changed markdown spelling checks was not found.'
+
+  Write-TestResult `
+    -TestName 'agent-preflight runs cspell lint command' `
+    -Passed ($agentPreflightContent -match 'cspell\s+lint') `
+    -Message 'Expected cspell lint invocation was not found.'
+
+  Write-TestResult `
+    -TestName 'agent-preflight supports AGENT_PREFLIGHT_NPX_COMMAND override' `
+    -Passed ($agentPreflightContent -match 'AGENT_PREFLIGHT_NPX_COMMAND') `
+    -Message 'Expected AGENT_PREFLIGHT_NPX_COMMAND override support was not found.'
+}
+
 function Print-SummaryAndExit {
   Write-Host ""
   Write-Host "Results:" -ForegroundColor Magenta
@@ -224,4 +276,5 @@ function Print-SummaryAndExit {
 
 Run-SyncScriptContractTests
 Run-CspellContractTests
+Run-AgentValidationContractTests
 Print-SummaryAndExit

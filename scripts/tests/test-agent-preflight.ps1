@@ -114,6 +114,52 @@ function Get-StagedPaths {
     }
 }
 
+function New-NpxStub {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$RepoPath,
+        [Parameter(Mandatory = $true)]
+        [ValidateSet('Pass', 'FailLint')]
+        [string]$Mode
+    )
+
+    $lintExitCode = if ($Mode -eq 'FailLint') { '1' } else { '0' }
+
+    if ($IsWindows) {
+        $stubPath = Join-Path $RepoPath 'npx-stub.cmd'
+        $script = @"
+@echo off
+if "%~1"=="--no-install" if "%~2"=="cspell" if "%~3"=="--version" exit /b 0
+if "%~1"=="--no-install" if "%~2"=="cspell" if "%~3"=="lint" exit /b $lintExitCode
+exit /b 0
+"@
+        Set-Content -Path $stubPath -Value $script -Encoding ascii
+    }
+    else {
+        $stubPath = Join-Path $RepoPath 'npx-stub.sh'
+        $script = @'
+#!/usr/bin/env bash
+set -e
+
+if [[ "${1:-}" == "--no-install" && "${2:-}" == "cspell" && "${3:-}" == "--version" ]]; then
+  exit 0
+fi
+
+if [[ "${1:-}" == "--no-install" && "${2:-}" == "cspell" && "${3:-}" == "lint" ]]; then
+  exit __LINT_EXIT_CODE__
+fi
+
+exit 0
+'@
+        $script = $script.Replace('__LINT_EXIT_CODE__', $lintExitCode)
+        $script = $script -replace "`r`n", "`n"
+        Set-Content -Path $stubPath -Value $script -Encoding ascii
+        & chmod +x $stubPath | Out-Null
+    }
+
+    return $stubPath
+}
+
 Write-Host 'Testing agent-preflight.ps1...' -ForegroundColor White
 
 # Test 1: No changed files should exit successfully
@@ -164,7 +210,7 @@ try {
     }
 
     $result3 = Invoke-Preflight -RepoPath $repo3 -Arguments @('-Fix', '-Paths', 'Editor/Nested/Tool.cs')
-    Write-TestResult 'FixMode_ExitCode0' ($result3.ExitCode -eq 0) "Expected exit code 0, got $($result3.ExitCode)"
+    Write-TestResult 'FixMode_ExitCode0' ($result3.ExitCode -eq 0) "Expected exit code 0, got $($result3.ExitCode). Output: $($result3.Output)"
     Write-TestResult 'FixMode_FileMetaCreated' (Test-Path (Join-Path $repo3 'Editor/Nested/Tool.cs.meta')) 'Expected file .meta to be created'
     Write-TestResult 'FixMode_DirMetaCreated' (Test-Path (Join-Path $repo3 'Editor/Nested.meta')) 'Expected directory .meta to be created'
 
@@ -264,7 +310,7 @@ DefaultImporter:
     }
 
     $result5 = Invoke-Preflight -RepoPath $repo5 -Arguments @('-Fix', '-Paths', 'Editor/Tools/Window.cs')
-    Write-TestResult 'UnstagedCompanionFix_ExitCode0' ($result5.ExitCode -eq 0) "Expected exit code 0, got $($result5.ExitCode)"
+    Write-TestResult 'UnstagedCompanionFix_ExitCode0' ($result5.ExitCode -eq 0) "Expected exit code 0, got $($result5.ExitCode). Output: $($result5.Output)"
     Write-TestResult 'UnstagedCompanionFix_StageMessage' ($result5.Output -match 'Auto-staging unstaged \.meta companions') 'Expected auto-stage message'
 
     $staged5 = Get-StagedPaths -RepoPath $repo5
@@ -321,7 +367,7 @@ MonoImporter:
     }
 
     $result6 = Invoke-Preflight -RepoPath $repo6 -Arguments @('-Fix', '-Paths', 'Runtime/ScopedA.cs')
-    Write-TestResult 'ScopedPaths_ExitCode0' ($result6.ExitCode -eq 0) "Expected exit code 0, got $($result6.ExitCode)"
+    Write-TestResult 'ScopedPaths_ExitCode0' ($result6.ExitCode -eq 0) "Expected exit code 0, got $($result6.ExitCode). Output: $($result6.Output)"
 
     $staged6 = Get-StagedPaths -RepoPath $repo6
     Write-TestResult 'ScopedPaths_StagesScopedCompanion' ($staged6 -contains 'Runtime/ScopedA.cs.meta') 'Expected scoped .meta companion to be staged'
@@ -377,6 +423,55 @@ MonoImporter:
 }
 finally {
     Remove-Item -Path $repo7 -Recurse -Force -ErrorAction SilentlyContinue
+}
+
+# Test 8: Changed markdown files should pass when cspell lint succeeds
+Write-Host "`nTest group: spelling checks on changed files" -ForegroundColor Magenta
+$repo8 = New-TestRepo
+try {
+    Set-Content -Path (Join-Path $repo8 'README.md') -Value 'Spelling check baseline.' -Encoding UTF8
+    $npxStub8 = New-NpxStub -RepoPath $repo8 -Mode Pass
+    $result8 = Invoke-Preflight -RepoPath $repo8 -Arguments @('-Paths', 'README.md') -EnvOverrides @{
+        AGENT_PREFLIGHT_NPX_COMMAND = $npxStub8
+    }
+
+    Write-TestResult 'SpellingChecks_ExitCode0' ($result8.ExitCode -eq 0) "Expected exit code 0, got $($result8.ExitCode). Output: $($result8.Output)"
+    Write-TestResult 'SpellingChecks_Message' ($result8.Output -match 'Checking spelling on changed markdown files') 'Expected spelling check status message'
+}
+finally {
+    Remove-Item -Path $repo8 -Recurse -Force -ErrorAction SilentlyContinue
+}
+
+# Test 9: Changed markdown typos should fail preflight with actionable output
+Write-Host "`nTest group: spelling failure diagnostics" -ForegroundColor Magenta
+$repo9 = New-TestRepo
+try {
+    Set-Content -Path (Join-Path $repo9 'README.md') -Value 'teh typo to trigger spell failure.' -Encoding UTF8
+    $npxStub9 = New-NpxStub -RepoPath $repo9 -Mode FailLint
+    $result9 = Invoke-Preflight -RepoPath $repo9 -Arguments @('-Paths', 'README.md') -EnvOverrides @{
+        AGENT_PREFLIGHT_NPX_COMMAND = $npxStub9
+    }
+
+    Write-TestResult 'SpellingFailure_ExitCode1' ($result9.ExitCode -eq 1) "Expected exit code 1, got $($result9.ExitCode). Output: $($result9.Output)"
+    Write-TestResult 'SpellingFailure_ErrorMessage' ($result9.Output -match 'Spelling errors detected in changed markdown files') 'Expected spelling failure message'
+    Write-TestResult 'SpellingFailure_RecoveryHint' ($result9.Output -match 'npm run lint:spelling') 'Expected recovery command hint'
+}
+finally {
+    Remove-Item -Path $repo9 -Recurse -Force -ErrorAction SilentlyContinue
+}
+
+# Test 10: Missing cspell should fail with an actionable dependency message
+Write-Host "`nTest group: spelling missing dependency diagnostics" -ForegroundColor Magenta
+$repo10 = New-TestRepo
+try {
+    Set-Content -Path (Join-Path $repo10 'README.md') -Value 'Spelling check baseline.' -Encoding UTF8
+    $result10 = Invoke-Preflight -RepoPath $repo10 -Arguments @('-Paths', 'README.md')
+
+    Write-TestResult 'SpellingMissingDependency_ExitCode1' ($result10.ExitCode -eq 1) "Expected exit code 1 when cspell is unavailable, got $($result10.ExitCode). Output: $($result10.Output)"
+    Write-TestResult 'SpellingMissingDependency_Message' ($result10.Output -match 'cspell is not installed in this repository') 'Expected missing-cspell diagnostic message'
+}
+finally {
+    Remove-Item -Path $repo10 -Recurse -Force -ErrorAction SilentlyContinue
 }
 
 Write-Host ''

@@ -218,7 +218,8 @@ Run formatters/linters **immediately after each file change**, not batched at ta
 - **Spelling**: `npm run lint:spelling` (add valid terms to `cspell.json`)
 - **Tests**: `pwsh -NoProfile -File scripts/lint-tests.ps1 -FixNullChecks -Paths <changed test files>`
 - **Skill files and [context](./context.md)**: `pwsh -NoProfile -File scripts/lint-skill-sizes.ps1` (500-line limit)
-- **Commit prep**: stage files, then run `npm run agent:preflight:fix` before any commit attempt; treat git hooks as last-resort only
+- **Commit prep**: stage files, then run `npm run agent:preflight:fix` (includes changed markdown spelling checks) before any commit attempt
+- **Pre-push parity**: run `npm run validate:prepush` (includes full `lint:spelling`) before push; treat git hooks as last-resort only
 
 See [formatting](./skills/formatting.md) and [validate-before-commit](./skills/validate-before-commit.md) for details.
 

@@ -47,6 +47,7 @@ This catches hook-class failures early for changed files:
 
 - Missing Unity `.meta` files on changed paths
 - Unstaged Unity `.meta` companions for currently staged source files
+- Spelling regressions in changed markdown files (`.md`, `.markdown`)
 - Skill/context files approaching hard size limits
 - LLM index/trigger drift when `.llm/` files changed
 - Test-lint regressions with auto-fix for Unity null assertions
@@ -176,6 +177,7 @@ npx prettier --write -- <file>
 
 ```bash
 # 🚨 MANDATORY: After EVERY skill file or context.md modification:
+npm run lint:spelling
 pwsh -NoProfile -File scripts/lint-skill-sizes.ps1
 
 # Recommended strict changed-file check (fails on critical near-limit sizes):
@@ -225,11 +227,13 @@ The `npm run validate:prepush` command runs these checks:
    - `format:json:check` — Prettier JSON/asmdef formatting
    - `format:yaml:check` — Prettier YAML formatting
 
-2. **eol:check** — Line endings (CRLF, no BOM)
+2. **lint:spelling** — CSpell validation on the repository
 
-3. **validate:tests** — Test lifecycle lint (Track() usage)
+3. **eol:check** — Line endings (CRLF, no BOM)
 
-4. **lint:csharp-naming** — C# naming conventions
+4. **validate:tests** — Test lifecycle lint (Track() usage)
+
+5. **lint:csharp-naming** — C# naming conventions
 
 ---
 

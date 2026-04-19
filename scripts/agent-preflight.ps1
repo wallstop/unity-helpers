@@ -256,6 +256,61 @@ if ($llmFiles.Count -gt 0) {
     }
 }
 
+# Validate changed markdown spelling early; full-repo spelling still runs in validate:prepush.
+$spellingTargets = @(
+    $relativePaths | Where-Object {
+        $_ -like '*.md' -or $_ -like '*.markdown'
+    }
+)
+
+if ($spellingTargets.Count -gt 0) {
+    Write-Host '[agent-preflight] Checking spelling on changed markdown files...' -ForegroundColor Blue
+    $npxCommand = if ([string]::IsNullOrWhiteSpace($env:AGENT_PREFLIGHT_NPX_COMMAND)) { 'npx' } else { $env:AGENT_PREFLIGHT_NPX_COMMAND }
+
+    if (-not (Get-Command $npxCommand -ErrorAction SilentlyContinue)) {
+        Write-ErrorMsg 'npx is required for spelling checks. Install Node.js/npm and run npm install.'
+        $failureCount++
+    }
+    else {
+        $spellingFileList = $null
+        try {
+            $spellingFileList = [System.IO.Path]::GetTempFileName()
+            Set-Content -LiteralPath $spellingFileList -Value $spellingTargets -Encoding UTF8
+        }
+        catch {
+            Write-ErrorMsg "Failed to prepare temporary spelling file list: $($_.Exception.Message)"
+            $failureCount++
+        }
+
+        if ($null -ne $spellingFileList) {
+            try {
+                Push-Location $repoRoot
+                try {
+                    & $npxCommand --no-install cspell --version *> $null
+                    if ($LASTEXITCODE -ne 0) {
+                        Write-ErrorMsg 'cspell is not installed in this repository. Run npm install to enable spelling checks.'
+                        $failureCount++
+                    }
+                    else {
+                        & $npxCommand --no-install cspell lint --no-must-find-files --no-progress --show-suggestions --file-list $spellingFileList
+                        if ($LASTEXITCODE -ne 0) {
+                            Write-ErrorMsg 'Spelling errors detected in changed markdown files.'
+                            Write-Host 'Run: npm run lint:spelling' -ForegroundColor Cyan
+                            $failureCount++
+                        }
+                    }
+                }
+                finally {
+                    Pop-Location
+                }
+            }
+            finally {
+                Remove-Item -LiteralPath $spellingFileList -ErrorAction SilentlyContinue
+            }
+        }
+    }
+}
+
 if ($testFiles.Count -gt 0) {
     if ($Fix) {
         Write-Host '[agent-preflight] Auto-fixing Unity null assertions in changed tests...' -ForegroundColor Blue
