@@ -239,16 +239,25 @@ RUN command -v fd >/dev/null \
 # Install cross-tool Python requirements for container tooling.
 COPY .devcontainer/requirements-tools.txt /tmp/requirements-tools.txt
 
-# Install PowerShell, Git LFS, Python, yamllint and Node.js in a consolidated cycle.
-# PowerShell is installed from official release tarballs to ensure consistent
-# multi-arch availability (amd64 + arm64) in Docker Buildx CI builds.
-RUN POWERSHELL_VERSION="7.5.1" \
+# Install PowerShell from GitHub releases to support both amd64 and arm64.
+RUN POWERSHELL_VERSION="7.5.3" \
     && case "${TARGETARCH}" in \
-        amd64) POWERSHELL_ARCH="x64" ;; \
-        arm64) POWERSHELL_ARCH="arm64" ;; \
-        *) echo "Unsupported TARGETARCH for PowerShell install: ${TARGETARCH}" >&2; exit 1 ;; \
+        amd64) POWERSHELL_ARCH="x64" ; POWERSHELL_SHA256="5C74E0BBAFD8BE59E72267F05700FD6615344D9CF4D30460D9B6D12CD4A88A8C" ;; \
+        arm64) POWERSHELL_ARCH="arm64" ; POWERSHELL_SHA256="4A6B656DD0E751E82C5DF9B9A4245BD1EC7D21DE5334AFBBD802DFD009595599" ;; \
+        *) echo "Unsupported TARGETARCH: ${TARGETARCH}" >&2; exit 1 ;; \
     esac \
-    && curl -fsSL https://deb.nodesource.com/setup_22.x -o /tmp/nodesource_setup.sh \
+    && curl -fsSL "https://github.com/PowerShell/PowerShell/releases/download/v${POWERSHELL_VERSION}/powershell-${POWERSHELL_VERSION}-linux-${POWERSHELL_ARCH}.tar.gz" -o /tmp/powershell.tar.gz \
+    && echo "${POWERSHELL_SHA256}  /tmp/powershell.tar.gz" | sha256sum -c - \
+    && mkdir -p /opt/microsoft/powershell/7 \
+    && tar -xzf /tmp/powershell.tar.gz -C /opt/microsoft/powershell/7 \
+    && chmod +x /opt/microsoft/powershell/7/pwsh \
+    && ln -sf /opt/microsoft/powershell/7/pwsh /usr/local/bin/pwsh \
+    && ln -sf /opt/microsoft/powershell/7/pwsh /usr/local/bin/powershell \
+    && rm -f /tmp/powershell.tar.gz \
+    && pwsh -NoLogo -NoProfile -Command '$PSVersionTable.PSVersion.ToString()'
+
+# Install Git LFS, Python, yamllint and Node.js in a consolidated cycle.
+RUN curl -fsSL https://deb.nodesource.com/setup_22.x -o /tmp/nodesource_setup.sh \
     && bash /tmp/nodesource_setup.sh \
     && rm -f /tmp/nodesource_setup.sh \
     && apt-get update \
@@ -258,17 +267,11 @@ RUN POWERSHELL_VERSION="7.5.1" \
     python3 \
     python3-pip \
     python3-venv \
-    && mkdir -p /opt/microsoft/powershell/7 \
-    && curl -fsSL "https://github.com/PowerShell/PowerShell/releases/download/v${POWERSHELL_VERSION}/powershell-${POWERSHELL_VERSION}-linux-${POWERSHELL_ARCH}.tar.gz" \
-    | tar -xz -C /opt/microsoft/powershell/7 \
-    && chmod +x /opt/microsoft/powershell/7/pwsh \
-    && ln -sf /opt/microsoft/powershell/7/pwsh /usr/local/bin/pwsh \
     && python3 -m venv /opt/python-tools \
     && /opt/python-tools/bin/pip install --no-cache-dir --requirement /tmp/requirements-tools.txt \
     && ln -sf /opt/python-tools/bin/yamllint /usr/local/bin/yamllint \
     && git lfs install \
     && npm install -g npm@10.9.2 \
-    && pwsh --version \
     && rm -f /tmp/requirements-tools.txt \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*

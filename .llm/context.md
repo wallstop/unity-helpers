@@ -55,7 +55,7 @@ Invoke these skills for specific tasks.
 **Regenerate with**: `pwsh -NoProfile -File scripts/generate-skills-index.ps1`
 
 <!-- BEGIN GENERATED SKILLS INDEX -->
-<!-- Generated: 2026-03-25 20:25:05 UTC -->
+<!-- Generated: 2026-04-19 14:17:43 UTC -->
 <!-- Command: pwsh -NoProfile -File scripts/generate-skills-index.ps1 -->
 
 ### Core Skills (Always Consider)
@@ -66,6 +66,7 @@ Invoke these skills for specific tasks.
 | [ask-structured-questions](./skills/ask-structured-questions.md)                             | Present questions with context, options, and recommendations                           |
 | [avoid-magic-strings](./skills/avoid-magic-strings.md)                                       | ALL code - use nameof() not strings                                                    |
 | [avoid-reflection](./skills/avoid-reflection.md)                                             | ALL code - never reflect on our own types                                              |
+| [bash-pwsh-invocation](./skills/bash-pwsh-invocation.md)                                     | Calling .ps1 scripts from bash/hooks/workflows                                         |
 | [create-csharp-file](./skills/create-csharp-file.md)                                         | Creating any new .cs file                                                              |
 | [create-editor-tool](./skills/create-editor-tool.md)                                         | Creating Editor windows and inspectors                                                 |
 | [create-enum](./skills/create-enum.md)                                                       | Creating a new enum type                                                               |
@@ -250,6 +251,7 @@ npm run lint:spelling                                   # Spell check
 npm run lint:docs                                       # Lint documentation links
 npm run lint:markdown                                   # Markdownlint rules
 npm run lint:yaml                                       # YAML style
+npm run lint:dependabot                                 # Dependabot config schema
 pwsh -NoProfile -File scripts/lint-tests.ps1            # Lint test lifecycle
 pwsh -NoProfile -File scripts/lint-skill-sizes.ps1      # Skill file sizes
 pwsh -NoProfile -File scripts/lint-gitignore-docs.ps1   # Validate gitignore safety

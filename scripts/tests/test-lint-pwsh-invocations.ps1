@@ -1,0 +1,514 @@
+#!/usr/bin/env pwsh
+<#
+.SYNOPSIS
+    Test runner for lint-pwsh-invocations.ps1.
+
+.DESCRIPTION
+    Tests that lint-pwsh-invocations.ps1 correctly:
+    - Exits 0 against a clean synthetic repo (negative fixtures only).
+    - Exits 1 and emits PWS001 for a bash-level bad invocation in a .sh fixture.
+    - Exits 1 and emits PWS001 for a bad invocation in a .yml workflow fixture.
+    - Exits 1 and emits PWS001 for a bad invocation in a .githooks/* fixture.
+    - Exits 1 and emits PWS002 for in-process bad invocation in tests/*.ps1 fixture.
+    - Does NOT flag the correct -Paths invocation pattern.
+    - Does NOT flag the bad pattern when it only appears inside a PowerShell help
+      comment block.
+    - Includes a canary: a lone bad pattern in a .sh fixture MUST be caught.
+
+.PARAMETER VerboseOutput
+    Show verbose per-test diagnostics.
+
+.EXAMPLE
+    pwsh -NoProfile -File scripts/tests/test-lint-pwsh-invocations.ps1
+    pwsh -NoProfile -File scripts/tests/test-lint-pwsh-invocations.ps1 -VerboseOutput
+#>
+param(
+    [switch]$VerboseOutput
+)
+
+Set-StrictMode -Version Latest
+$ErrorActionPreference = 'Stop'
+
+$script:TestsPassed = 0
+$script:TestsFailed = 0
+$script:FailedTests = @()
+
+function Write-Info($msg) {
+    if ($VerboseOutput) { Write-Host "[test-lint-pwsh-invocations] $msg" -ForegroundColor Cyan }
+}
+
+function Write-TestResult {
+    param(
+        [string]$TestName,
+        [bool]$Passed,
+        [string]$Message = ""
+    )
+    if ($Passed) {
+        Write-Host "  [PASS] $TestName" -ForegroundColor Green
+        $script:TestsPassed++
+    } else {
+        Write-Host "  [FAIL] $TestName" -ForegroundColor Red
+        if ($Message) {
+            Write-Host "         $Message" -ForegroundColor Yellow
+        }
+        $script:TestsFailed++
+        $script:FailedTests += $TestName
+    }
+}
+
+$lintScriptPath = (Resolve-Path (Join-Path $PSScriptRoot '..' 'lint-pwsh-invocations.ps1')).Path
+
+$tempBase = if ($env:TEMP) { $env:TEMP } elseif ($env:TMPDIR) { $env:TMPDIR } else { '/tmp' }
+$tempRoot = Join-Path $tempBase "test-lint-pwsh-invocations-$(Get-Random)"
+
+# Build a synthetic repo layout inside a tempdir and invoke the lint scoped to it.
+# The lint resolves scan targets relative to $PSScriptRoot/.. (the repo root), so
+# we must copy the lint script into the tempdir under the same layout.
+function New-FixtureRoot {
+    $root = Join-Path $tempRoot "repo-$(Get-Random)"
+    New-Item -ItemType Directory -Path (Join-Path $root 'scripts/tests') -Force | Out-Null
+    New-Item -ItemType Directory -Path (Join-Path $root '.githooks') -Force | Out-Null
+    New-Item -ItemType Directory -Path (Join-Path $root '.github/workflows') -Force | Out-Null
+    Copy-Item -LiteralPath $lintScriptPath -Destination (Join-Path $root 'scripts/lint-pwsh-invocations.ps1')
+    return $root
+}
+
+function Invoke-LintInFixture {
+    param([string]$FixtureRoot)
+    $lintCopy = Join-Path $FixtureRoot 'scripts/lint-pwsh-invocations.ps1'
+    $output = & pwsh -NoProfile -File $lintCopy *>&1
+    $exitCode = $LASTEXITCODE
+    return @{ ExitCode = $exitCode; Output = ($output | Out-String) }
+}
+
+try {
+    New-Item -ItemType Directory -Path $tempRoot -Force | Out-Null
+
+    Write-Host "Testing lint-pwsh-invocations.ps1..." -ForegroundColor White
+    Write-Host "`n  Section: Negative (clean) fixtures" -ForegroundColor White
+
+    # --- Pass_CleanRepo ---
+    $root = New-FixtureRoot
+    # A well-formed hook: uses -Paths (the correct pattern).
+    Set-Content -LiteralPath (Join-Path $root '.githooks/pre-commit') -Value @'
+#!/usr/bin/env bash
+set -e
+pwsh -NoProfile -File scripts/lint-dependabot.ps1 -Paths "${ARRAY[@]}"
+'@
+    $result = Invoke-LintInFixture $root
+    Write-TestResult "Pass_CleanRepo" ($result.ExitCode -eq 0) "Expected exit 0 on clean fixture. Exit: $($result.ExitCode). Output: $($result.Output)"
+
+    Write-Host "`n  Section: Positive (should-fail) fixtures" -ForegroundColor White
+
+    # --- Canary_LoneBadFileFlagInSh ---
+    # The planted canary fixture: assert the lint catches `pwsh -File bad.ps1 --`.
+    $root = New-FixtureRoot
+    Set-Content -LiteralPath (Join-Path $root 'canary.sh') -Value @'
+#!/usr/bin/env bash
+pwsh -File bad.ps1 -- arg
+'@
+    $result = Invoke-LintInFixture $root
+    $hasCanary = $result.Output -match 'PWS001' -and $result.Output -match 'canary\.sh'
+    Write-TestResult "Canary_LoneBadFileFlagInSh" ($result.ExitCode -ne 0 -and $hasCanary) "Expected exit != 0 and PWS001 on canary fixture. Exit: $($result.ExitCode). Output: $($result.Output)"
+
+    # --- Fail_BadInvocationInShellScript ---
+    $root = New-FixtureRoot
+    Set-Content -LiteralPath (Join-Path $root 'scripts/bad.sh') -Value @'
+#!/usr/bin/env bash
+set -e
+pwsh -NoProfile -File scripts/lint-dependabot.ps1 -- "${FILES[@]}"
+'@
+    $result = Invoke-LintInFixture $root
+    $hasPws001 = $result.Output -match 'PWS001' -and $result.Output -match 'scripts/bad\.sh'
+    Write-TestResult "Fail_BadInvocationInShellScript" ($result.ExitCode -ne 0 -and $hasPws001) "Expected exit != 0 + PWS001. Exit: $($result.ExitCode). Output: $($result.Output)"
+
+    # --- Fail_BadInvocationInWorkflow ---
+    $root = New-FixtureRoot
+    Set-Content -LiteralPath (Join-Path $root '.github/workflows/bad.yml') -Value @'
+name: Bad
+on: [push]
+jobs:
+  bad:
+    runs-on: ubuntu-latest
+    steps:
+      - run: pwsh -NoProfile -File scripts/thing.ps1 -- arg1 arg2
+'@
+    $result = Invoke-LintInFixture $root
+    $hasPws001 = $result.Output -match 'PWS001' -and $result.Output -match 'bad\.yml'
+    Write-TestResult "Fail_BadInvocationInWorkflow" ($result.ExitCode -ne 0 -and $hasPws001) "Expected exit != 0 + PWS001 in workflow. Exit: $($result.ExitCode). Output: $($result.Output)"
+
+    # --- Fail_BadInvocationInGithooks ---
+    $root = New-FixtureRoot
+    Set-Content -LiteralPath (Join-Path $root '.githooks/pre-commit') -Value @'
+#!/usr/bin/env bash
+set -e
+if command -v pwsh >/dev/null 2>&1; then
+  pwsh -NoProfile -File scripts/lint-dependabot.ps1 -- "${FILES[@]}"
+fi
+'@
+    $result = Invoke-LintInFixture $root
+    $hasPws001 = $result.Output -match 'PWS001' -and $result.Output -match 'pre-commit'
+    Write-TestResult "Fail_BadInvocationInGithooks" ($result.ExitCode -ne 0 -and $hasPws001) "Expected exit != 0 + PWS001 in .githooks. Exit: $($result.ExitCode). Output: $($result.Output)"
+
+    # --- Fail_BadInvocationPowershellCommand ---
+    $root = New-FixtureRoot
+    Set-Content -LiteralPath (Join-Path $root 'scripts/bad-ps.sh') -Value @'
+#!/usr/bin/env bash
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/lint-dependabot.ps1 -- arg
+'@
+    $result = Invoke-LintInFixture $root
+    $hasPws001 = $result.Output -match 'PWS001' -and $result.Output -match 'bad-ps\.sh'
+    Write-TestResult "Fail_BadInvocationPowershellCommand" ($result.ExitCode -ne 0 -and $hasPws001) "Expected exit != 0 + PWS001 for powershell.exe form. Exit: $($result.ExitCode). Output: $($result.Output)"
+
+    # --- Fail_BadInvocationInTestsInProcess ---
+    $root = New-FixtureRoot
+    Set-Content -LiteralPath (Join-Path $root 'scripts/tests/test-foo.ps1') -Value @'
+param()
+$lint = "./scripts/lint-foo.ps1"
+$output = & $lint -- $fixturePath *>&1
+'@
+    $result = Invoke-LintInFixture $root
+    $hasPws002 = $result.Output -match 'PWS002' -and $result.Output -match 'test-foo\.ps1'
+    Write-TestResult "Fail_BadInvocationInTestsInProcess" ($result.ExitCode -ne 0 -and $hasPws002) "Expected exit != 0 + PWS002 for in-process '& script --'. Exit: $($result.ExitCode). Output: $($result.Output)"
+
+    Write-Host "`n  Section: False-positive guards" -ForegroundColor White
+
+    # --- Pass_CorrectPathsPattern ---
+    $root = New-FixtureRoot
+    Set-Content -LiteralPath (Join-Path $root 'scripts/good.sh') -Value @'
+#!/usr/bin/env bash
+pwsh -NoProfile -File scripts/lint-dependabot.ps1 -Paths "${ARR[@]}"
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/lint-dependabot.ps1 -Paths "${ARR[@]}"
+'@
+    $result = Invoke-LintInFixture $root
+    Write-TestResult "Pass_CorrectPathsPattern" ($result.ExitCode -eq 0) "Expected exit 0 for correct -Paths invocation. Exit: $($result.ExitCode). Output: $($result.Output)"
+
+    # --- Pass_DoubleDashInCommentedHelp ---
+    # Anti-pattern appears inside a <# ... #> help block -> must NOT be flagged.
+    $root = New-FixtureRoot
+    $cbh = @'
+<#
+.SYNOPSIS
+    Example invocation:
+        pwsh -NoProfile -File scripts/thing.ps1 -- arg
+#>
+param([string]$Foo)
+Write-Host "ok"
+'@
+    Set-Content -LiteralPath (Join-Path $root 'scripts/tests/test-doc.ps1') -Value $cbh
+    $result = Invoke-LintInFixture $root
+    Write-TestResult "Pass_DoubleDashInCommentedHelp" ($result.ExitCode -eq 0) "Expected exit 0 when '--' appears only inside <# #>. Exit: $($result.ExitCode). Output: $($result.Output)"
+
+    # --- Pass_SelfAndSelfTestExempted ---
+    # The lint script itself and its own test script intentionally mention the
+    # anti-pattern as fixture content; they must NOT be flagged.
+    $root = New-FixtureRoot
+    # Drop a copy of this test (which builds fixture STRINGS containing "--")
+    # into the synthetic repo. The lint must exempt scripts/tests/test-lint-pwsh-invocations.ps1.
+    Copy-Item -LiteralPath $PSCommandPath -Destination (Join-Path $root 'scripts/tests/test-lint-pwsh-invocations.ps1')
+    $result = Invoke-LintInFixture $root
+    Write-TestResult "Pass_SelfAndSelfTestExempted" ($result.ExitCode -eq 0) "Expected exit 0 with only the self-test present. Exit: $($result.ExitCode). Output: $($result.Output)"
+
+    Write-Host "`n  Section: Literal-byte canary" -ForegroundColor White
+
+    # --- Canary_ExactOriginalBugLine ---
+    # Byte-for-byte fixture: the exact shipped bug line from the pre-commit hook.
+    # If the lint ever stops firing on THIS, the primary regression guard is dead.
+    $root = New-FixtureRoot
+    Set-Content -LiteralPath (Join-Path $root '.githooks/pre-commit') -Value @'
+#!/usr/bin/env bash
+pwsh -NoProfile -File scripts/lint-dependabot.ps1 -- "${DEPENDABOT_FILES_ARRAY[@]}"
+'@
+    $result = Invoke-LintInFixture $root
+    $hasCanary = $result.Output -match 'PWS001' -and $result.Output -match 'pre-commit'
+    Write-TestResult "Canary_ExactOriginalBugLine" ($result.ExitCode -ne 0 -and $hasCanary) "Expected exit != 0 + PWS001 on byte-for-byte original bug line. Exit: $($result.ExitCode). Output: $($result.Output)"
+
+    Write-Host "`n  Section: Multi-line continuation (M1)" -ForegroundColor White
+
+    # --- Fail_MultilineBashContinuation ---
+    # Bash script where the pwsh invocation spans 4 physical lines via `\`.
+    $root = New-FixtureRoot
+    Set-Content -LiteralPath (Join-Path $root 'scripts/multiline.sh') -Value @'
+#!/usr/bin/env bash
+set -e
+pwsh \
+  -NoProfile \
+  -File scripts/lint-dependabot.ps1 \
+  -- "${ARR[@]}"
+'@
+    $result = Invoke-LintInFixture $root
+    $hasPws001 = $result.Output -match 'PWS001' -and $result.Output -match 'multiline\.sh'
+    Write-TestResult "Fail_MultilineBashContinuation" ($result.ExitCode -ne 0 -and $hasPws001) "Expected exit != 0 + PWS001 on 4-line '\\' continuation. Exit: $($result.ExitCode). Output: $($result.Output)"
+
+    # --- Fail_MultilineYamlRunBlock ---
+    # YAML workflow `run: |` block with `\` continuations.
+    $root = New-FixtureRoot
+    Set-Content -LiteralPath (Join-Path $root '.github/workflows/multiline.yml') -Value @'
+name: Multiline
+on: [push]
+jobs:
+  bad:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          pwsh \
+            -NoProfile \
+            -File scripts/thing.ps1 \
+            -- "${ARR[@]}"
+'@
+    $result = Invoke-LintInFixture $root
+    $hasPws001 = $result.Output -match 'PWS001' -and $result.Output -match 'multiline\.yml'
+    Write-TestResult "Fail_MultilineYamlRunBlock" ($result.ExitCode -ne 0 -and $hasPws001) "Expected exit != 0 + PWS001 on YAML run: block with '\\' continuation. Exit: $($result.ExitCode). Output: $($result.Output)"
+
+    # --- Pass_MultilineContinuationWithCorrectPattern ---
+    # Multi-line `\` continuation using -Paths (the correct form) must NOT trigger.
+    $root = New-FixtureRoot
+    Set-Content -LiteralPath (Join-Path $root 'scripts/multiline-good.sh') -Value @'
+#!/usr/bin/env bash
+pwsh \
+  -NoProfile \
+  -File scripts/lint-dependabot.ps1 \
+  -Paths "${ARR[@]}"
+'@
+    $result = Invoke-LintInFixture $root
+    Write-TestResult "Pass_MultilineContinuationWithCorrectPattern" ($result.ExitCode -eq 0) "Expected exit 0 on multi-line '\\' continuation with -Paths. Exit: $($result.ExitCode). Output: $($result.Output)"
+
+    Write-Host "`n  Section: Comment exclusions for .sh / .yml (M3)" -ForegroundColor White
+
+    # --- Pass_ShCommentIgnored ---
+    # A bash comment mentioning the anti-pattern must NOT be flagged.
+    $root = New-FixtureRoot
+    Set-Content -LiteralPath (Join-Path $root 'scripts/commented.sh') -Value @'
+#!/usr/bin/env bash
+# historical bad pattern: pwsh -NoProfile -File scripts/lint-dependabot.ps1 -- "${ARR[@]}"
+echo ok
+'@
+    $result = Invoke-LintInFixture $root
+    Write-TestResult "Pass_ShCommentIgnored" ($result.ExitCode -eq 0) "Expected exit 0 on bash comment mentioning the anti-pattern. Exit: $($result.ExitCode). Output: $($result.Output)"
+
+    # --- Pass_YamlCommentIgnored ---
+    # A YAML comment mentioning the anti-pattern must NOT be flagged.
+    $root = New-FixtureRoot
+    Set-Content -LiteralPath (Join-Path $root '.github/workflows/commented.yml') -Value @'
+name: Commented
+on: [push]
+# historical: pwsh -NoProfile -File scripts/thing.ps1 -- arg
+jobs:
+  ok:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo ok
+'@
+    $result = Invoke-LintInFixture $root
+    Write-TestResult "Pass_YamlCommentIgnored" ($result.ExitCode -eq 0) "Expected exit 0 on YAML comment mentioning the anti-pattern. Exit: $($result.ExitCode). Output: $($result.Output)"
+
+    # --- Fail_YamlQuotedStringWithHash ---
+    # Per documented tolerated limitation: `#` inside a quoted YAML string is
+    # treated as a comment-start. We ASSERT that limitation here so it is loud
+    # if it ever changes. This is the "scanned" direction — a line whose first
+    # non-whitespace character is NOT `#` (so it is NOT a comment-start) but
+    # which contains a quoted string ending with a `#` inside the quotes
+    # followed by the anti-pattern MUST still be flagged. The tolerated case
+    # is a full-line `^\s*#...` which we skip.
+    $root = New-FixtureRoot
+    Set-Content -LiteralPath (Join-Path $root '.github/workflows/hashquoted.yml') -Value @'
+name: HashQuoted
+on: [push]
+jobs:
+  bad:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "see #1"; pwsh -NoProfile -File scripts/thing.ps1 -- arg
+'@
+    $result = Invoke-LintInFixture $root
+    $hasPws001 = $result.Output -match 'PWS001' -and $result.Output -match 'hashquoted\.yml'
+    Write-TestResult "Fail_YamlQuotedStringWithHash" ($result.ExitCode -ne 0 -and $hasPws001) "Expected exit != 0 + PWS001 on YAML line where '#' is inside a quoted string but the line itself is not a comment. Exit: $($result.ExitCode). Output: $($result.Output)"
+
+    Write-Host "`n  Section: Edge-case input files (C1, C2)" -ForegroundColor White
+
+    # --- Pass_EmptyFile ---
+    # An empty .sh file must NOT crash the linter under StrictMode. Prior to
+    # the fix, `Get-Content` returned $null and accessing .Length threw
+    # "property 'Length' cannot be found on this object".
+    $root = New-FixtureRoot
+    # Create a truly empty file (0 bytes).
+    $emptyPath = Join-Path $root 'empty.sh'
+    New-Item -ItemType File -Path $emptyPath -Force | Out-Null
+    $result = Invoke-LintInFixture $root
+    # Exit 0 + no crash message in output.
+    $notCrashed = ($result.Output -notmatch 'ParentContainsErrorRecordException') `
+        -and ($result.Output -notmatch "property 'Length' cannot be found")
+    Write-TestResult "Pass_EmptyFile" ($result.ExitCode -eq 0 -and $notCrashed) "Expected exit 0 and no crash on empty .sh file. Exit: $($result.ExitCode). Output: $($result.Output)"
+
+    # --- Fail_SingleLineNoTrailingNewline ---
+    # A single-line .sh file containing the anti-pattern with NO trailing
+    # newline must still be flagged. Prior to the fix, Get-Content returned
+    # a scalar String in this case, the loop iterated over characters instead
+    # of lines, no regex ever matched, and violations were silently missed.
+    $root = New-FixtureRoot
+    $singlePath = Join-Path $root 'single.sh'
+    # Use .NET directly to guarantee no trailing newline (Set-Content adds one).
+    [System.IO.File]::WriteAllBytes(
+        $singlePath,
+        [System.Text.Encoding]::UTF8.GetBytes('pwsh -NoProfile -File thing.ps1 -- arg')
+    )
+    $result = Invoke-LintInFixture $root
+    $hasPws001 = $result.Output -match 'PWS001' -and $result.Output -match 'single\.sh'
+    Write-TestResult "Fail_SingleLineNoTrailingNewline" ($result.ExitCode -ne 0 -and $hasPws001) "Expected exit != 0 + PWS001 on single-line .sh with no trailing newline. Exit: $($result.ExitCode). Output: $($result.Output)"
+
+    Write-Host "`n  Section: Comment-line backslash bypass (M1a)" -ForegroundColor White
+
+    # --- Fail_YamlCommentBackslashDoesNotAbsorb ---
+    # A '# comment with trailing \' must NOT absorb the subsequent lines into
+    # one logical command — bash does not continue comments across '\'. The
+    # real bash command that follows (with its own '\' continuations reaching
+    # `--`) must still be flagged.
+    $root = New-FixtureRoot
+    Set-Content -LiteralPath (Join-Path $root '.github/workflows/commentcont.yml') -Value @'
+name: CommentCont
+on: [push]
+jobs:
+  bad:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          # comment-with-backslash \
+          pwsh \
+            -NoProfile \
+            -File scripts/thing.ps1 \
+            -- "${ARR[@]}"
+'@
+    $result = Invoke-LintInFixture $root
+    $hasPws001 = $result.Output -match 'PWS001' -and $result.Output -match 'commentcont\.yml'
+    Write-TestResult "Fail_YamlCommentBackslashDoesNotAbsorb" ($result.ExitCode -ne 0 -and $hasPws001) "Expected exit != 0 + PWS001 when a `# comment \\` precedes a multi-line pwsh invocation. Exit: $($result.ExitCode). Output: $($result.Output)"
+
+    # --- Fail_ShCommentBackslashDoesNotAbsorb ---
+    # Same as above but in a plain .sh file.
+    $root = New-FixtureRoot
+    Set-Content -LiteralPath (Join-Path $root 'scripts/commentcont.sh') -Value @'
+#!/usr/bin/env bash
+set -e
+# a comment ending in a backslash \
+pwsh \
+  -NoProfile \
+  -File scripts/thing.ps1 \
+  -- "${ARR[@]}"
+'@
+    $result = Invoke-LintInFixture $root
+    $hasPws001 = $result.Output -match 'PWS001' -and $result.Output -match 'commentcont\.sh'
+    Write-TestResult "Fail_ShCommentBackslashDoesNotAbsorb" ($result.ExitCode -ne 0 -and $hasPws001) "Expected exit != 0 + PWS001 when `# comment \\` precedes multi-line pwsh in .sh. Exit: $($result.ExitCode). Output: $($result.Output)"
+
+    Write-Host "`n  Section: Regex tolerance — positional args & quoted script paths (M1b)" -ForegroundColor White
+
+    # --- Fail_PositionalArgBetweenFileAndDashDash ---
+    # `pwsh -NoProfile -File foo.ps1 positional -- arg` — a bare positional
+    # between -File <script> and the `--` separator must still trigger PWS001.
+    $root = New-FixtureRoot
+    Set-Content -LiteralPath (Join-Path $root 'scripts/positional.sh') -Value @'
+#!/usr/bin/env bash
+pwsh -NoProfile -File scripts/thing.ps1 positional -- arg
+'@
+    $result = Invoke-LintInFixture $root
+    $hasPws001 = $result.Output -match 'PWS001' -and $result.Output -match 'positional\.sh'
+    Write-TestResult "Fail_PositionalArgBetweenFileAndDashDash" ($result.ExitCode -ne 0 -and $hasPws001) "Expected exit != 0 + PWS001 when a bare positional arg sits between -File <script> and --. Exit: $($result.ExitCode). Output: $($result.Output)"
+
+    # --- Fail_QuotedScriptPathWithSpaces ---
+    # `pwsh -NoProfile -File "path with spaces.ps1" -- arg` — the quoted
+    # script path contains a space; previously the regex used \S+ which
+    # can't span the space. Must still trigger PWS001.
+    $root = New-FixtureRoot
+    Set-Content -LiteralPath (Join-Path $root 'scripts/quotedpath.sh') -Value @'
+#!/usr/bin/env bash
+pwsh -NoProfile -File "path with spaces.ps1" -- arg
+'@
+    $result = Invoke-LintInFixture $root
+    $hasPws001 = $result.Output -match 'PWS001' -and $result.Output -match 'quotedpath\.sh'
+    Write-TestResult "Fail_QuotedScriptPathWithSpaces" ($result.ExitCode -ne 0 -and $hasPws001) "Expected exit != 0 + PWS001 on quoted script path with spaces. Exit: $($result.ExitCode). Output: $($result.Output)"
+
+    Write-Host "`n  Section: YAML folded block scalar (M1c)" -ForegroundColor White
+
+    # --- Fail_YamlFoldedRunBlock ---
+    # `run: >` — YAML folded scalar; body has NO backslashes. YAML folds it to
+    # a single space-joined command that bash runs as one pwsh invocation
+    # with `--` reaching PowerShell. Must trigger PWS001.
+    $root = New-FixtureRoot
+    Set-Content -LiteralPath (Join-Path $root '.github/workflows/folded.yml') -Value @'
+name: Folded
+on: [push]
+jobs:
+  bad:
+    runs-on: ubuntu-latest
+    steps:
+      - run: >
+          pwsh
+          -NoProfile
+          -File scripts/thing.ps1
+          -- arg
+'@
+    $result = Invoke-LintInFixture $root
+    $hasPws001 = $result.Output -match 'PWS001' -and $result.Output -match 'folded\.yml'
+    Write-TestResult "Fail_YamlFoldedRunBlock" ($result.ExitCode -ne 0 -and $hasPws001) "Expected exit != 0 + PWS001 on YAML `run: >` folded block scalar. Exit: $($result.ExitCode). Output: $($result.Output)"
+
+    # --- Pass_YamlFoldedRunBlockCorrect ---
+    # `run: >` with the correct `-Paths` form must NOT trigger.
+    $root = New-FixtureRoot
+    Set-Content -LiteralPath (Join-Path $root '.github/workflows/folded-good.yml') -Value @'
+name: FoldedGood
+on: [push]
+jobs:
+  ok:
+    runs-on: ubuntu-latest
+    steps:
+      - run: >
+          pwsh
+          -NoProfile
+          -File scripts/thing.ps1
+          -Paths arg
+'@
+    $result = Invoke-LintInFixture $root
+    Write-TestResult "Pass_YamlFoldedRunBlockCorrect" ($result.ExitCode -eq 0) "Expected exit 0 on `run: >` folded block with -Paths. Exit: $($result.ExitCode). Output: $($result.Output)"
+
+    Write-Host "`n  Section: Bash array-indirection pwsh invocation (M1d)" -ForegroundColor White
+
+    # --- Fail_ArrayIndirectionPwshInvocation ---
+    # `PWSH_CMD=(pwsh -NoProfile -File); "${PWSH_CMD[@]}" foo.ps1 -- arg` —
+    # the pwsh command is expanded from a bash array, so a naive regex on
+    # 'pwsh' misses it. The array-variant pattern must still trigger PWS001.
+    $root = New-FixtureRoot
+    Set-Content -LiteralPath (Join-Path $root 'scripts/array.sh') -Value @'
+#!/usr/bin/env bash
+set -e
+PWSH_CMD=(pwsh -NoProfile -File)
+"${PWSH_CMD[@]}" scripts/thing.ps1 -- arg
+'@
+    $result = Invoke-LintInFixture $root
+    $hasPws001 = $result.Output -match 'PWS001' -and $result.Output -match 'array\.sh'
+    Write-TestResult "Fail_ArrayIndirectionPwshInvocation" ($result.ExitCode -ne 0 -and $hasPws001) "Expected exit != 0 + PWS001 on array-indirection pwsh invocation with --. Exit: $($result.ExitCode). Output: $($result.Output)"
+
+    # --- Pass_ArrayIndirectionWithPaths ---
+    # Same pattern but with `-Paths` instead of `--` must NOT trigger.
+    $root = New-FixtureRoot
+    Set-Content -LiteralPath (Join-Path $root 'scripts/array-good.sh') -Value @'
+#!/usr/bin/env bash
+PWSH_CMD=(pwsh -NoProfile -File)
+"${PWSH_CMD[@]}" scripts/thing.ps1 -Paths arg
+'@
+    $result = Invoke-LintInFixture $root
+    Write-TestResult "Pass_ArrayIndirectionWithPaths" ($result.ExitCode -eq 0) "Expected exit 0 on array-indirection with -Paths. Exit: $($result.ExitCode). Output: $($result.Output)"
+
+} finally {
+    Remove-Item -Recurse -Force $tempRoot -ErrorAction SilentlyContinue
+}
+
+# ── Summary ──────────────────────────────────────────────────────────────────
+Write-Host ""
+Write-Host ("Tests passed: {0}" -f $script:TestsPassed) -ForegroundColor Green
+Write-Host ("Tests failed: {0}" -f $script:TestsFailed) -ForegroundColor $(if ($script:TestsFailed -gt 0) { "Red" } else { "Green" })
+if ($script:FailedTests.Count -gt 0) {
+    Write-Host "Failed tests:" -ForegroundColor Red
+    foreach ($t in $script:FailedTests) {
+        Write-Host "  - $t" -ForegroundColor Red
+    }
+}
+
+exit $script:TestsFailed

@@ -42,6 +42,8 @@ npm run validate:prepush
 | `npm run lint:docs`                             | Check markdown links and backtick refs      |
 | `npm run lint:markdown`                         | Markdownlint structural rules               |
 | `npm run lint:yaml`                             | YAML syntax validation                      |
+| `npm run lint:dependabot`                       | Dependabot config schema validation         |
+| `npm run lint:pwsh-invocations`                 | Bash->PowerShell invocation anti-patterns   |
 | `npm run lint:csharp-naming`                    | C# naming conventions (method casing, etc.) |
 | `npm run format:md:check`                       | Check markdown formatting (Prettier)        |
 | `npm run format:json:check`                     | Check JSON/ASMDEF formatting (Prettier)     |
