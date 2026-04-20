@@ -292,9 +292,46 @@ if ($spellingTargets.Count -gt 0) {
                         $failureCount++
                     }
                     else {
-                        & $npxCommand --no-install cspell lint --no-must-find-files --no-progress --show-suggestions --file-list $spellingFileList
-                        if ($LASTEXITCODE -ne 0) {
+                        # Capture cspell output so we can (a) surface it
+                        # verbatim to the caller and (b) extract lint-error-
+                        # code-shaped unknown tokens and print a copy-pasteable
+                        # cspell.json patch. This makes the agent preflight
+                        # the EARLIEST point at which a new lint-error-code
+                        # family without a cspell entry is caught — before
+                        # any hook runs.
+                        $spellingOutput = & $npxCommand --no-install cspell lint --no-must-find-files --no-progress --show-suggestions --file-list $spellingFileList 2>&1
+                        $spellingExit = $LASTEXITCODE
+                        foreach ($line in $spellingOutput) { Write-Host $line }
+                        if ($spellingExit -ne 0) {
                             Write-ErrorMsg 'Spelling errors detected in changed markdown files.'
+                            $unknownPrefixes = @()
+                            foreach ($line in $spellingOutput) {
+                                $text = [string]$line
+                                # Width: unbounded (>=2) because cspell never
+                                # emits monster tokens and a narrow upper
+                                # bound (originally 5) let prefixes longer
+                                # than 5 chars slip past the patch emitter —
+                                # the exact fragility reviewed in P0-3.
+                                $codeMatch = [regex]::Match($text, 'Unknown word \(([A-Z]{2,})\)')
+                                if ($codeMatch.Success) {
+                                    $unknownPrefixes += $codeMatch.Groups[1].Value
+                                }
+                            }
+                            $unknownPrefixes = @($unknownPrefixes | Sort-Object -Unique)
+                            if ($unknownPrefixes.Count -gt 0) {
+                                Write-Host ''
+                                Write-Host '=== Detected unregistered lint-error-code prefix(es) ===' -ForegroundColor Red
+                                Write-Host 'Copy-paste this patch into the root "words" array in cspell.json' -ForegroundColor Yellow
+                                Write-Host '(append each quoted prefix as a new array element):' -ForegroundColor Yellow
+                                Write-Host ''
+                                foreach ($prefix in $unknownPrefixes) {
+                                    Write-Host ('    "{0}",' -f $prefix) -ForegroundColor White
+                                }
+                                Write-Host ''
+                                Write-Host 'See scripts/validate-lint-error-codes.ps1 for the contract that' -ForegroundColor Cyan
+                                Write-Host 'enforces this requirement once the prefix is registered.' -ForegroundColor Cyan
+                                Write-Host ''
+                            }
                             Write-Host 'Run: npm run lint:spelling' -ForegroundColor Cyan
                             $failureCount++
                         }

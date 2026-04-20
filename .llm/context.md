@@ -228,6 +228,8 @@ See [formatting](./skills/formatting.md) and [validate-before-commit](./skills/v
 
 - When editing `.gitignore`, validate with `git check-ignore -v <path>` and run `pwsh -NoProfile -File scripts/lint-gitignore-docs.ps1`
 - When adding abbreviations, add them to `cspell.json` (see [cspell dictionary categories](#cspell-dictionary-quick-reference))
+- When introducing ANY new all-caps token or acronym in a skill/doc/script (lint error code, new abbreviation, new API name), add it to the correct cspell dictionary category before committing. `npm run agent:preflight` catches this before pre-commit; the `validate-lint-error-codes` contract enforces lint-error-code families permanently
+- When introducing a new lint-error-code family (e.g., `UNH001`, `PWS002`), register the 2+ letter uppercase prefix in the root `words` array of `cspell.json`; `npm run validate:lint-error-codes` enforces this contract and fails with a copy-pasteable patch on drift
 - Verify GitHub Actions config files exist AND are on default branch
 - Never use `((var++))` in bash with `set -e`; use `var=$((var + 1))`
 - Line endings must be synchronized across `.gitattributes`, `.prettierrc.json`, `.yamllint.yaml`, `.editorconfig`
@@ -291,12 +293,15 @@ See [unity-devcontainer-testing](./skills/unity-devcontainer-testing.md) for ful
 
 Add unknown words to the appropriate dictionary in `cspell.json`:
 
-| Dictionary      | Purpose                                  | Examples                                |
-| --------------- | ---------------------------------------- | --------------------------------------- |
-| `unity-terms`   | Unity Engine APIs, components, lifecycle | MonoBehaviour, GetComponent, OnValidate |
-| `csharp-terms`  | C# language features, .NET types         | readonly, nullable, LINQ, StringBuilder |
-| `package-terms` | This package's public API and type names | WallstopStudios, IRandom, SpatialHash   |
-| `tech-terms`    | General programming/tooling terms        | async, config, JSON, middleware         |
+| Dictionary      | Purpose                                                 | Examples                                |
+| --------------- | ------------------------------------------------------- | --------------------------------------- |
+| `unity-terms`   | Unity Engine APIs, components, lifecycle                | MonoBehaviour, GetComponent, OnValidate |
+| `csharp-terms`  | C# language features, .NET types                        | readonly, nullable, LINQ, StringBuilder |
+| `package-terms` | This package's public API and type names                | WallstopStudios, IRandom, SpatialHash   |
+| `tech-terms`    | General programming/tooling terms                       | async, config, JSON, middleware         |
+| root `words`    | Project-specific tokens, incl. lint-error-code prefixes | UNH, PWS (covers UNH001, PWS002…)       |
+
+Lint-error-code prefixes (`^[A-Z]{2,}\d{3}$` tokens like `UNH001`, `PWS002`) must be registered in the root `words` array. `npm run validate:lint-error-codes` is the contract test and will fail with a copy-pasteable patch on drift.
 
 ---
 

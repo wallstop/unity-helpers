@@ -129,6 +129,7 @@ CHANGED_HOOK_FILES=()
 CHANGED_LINT_TEST=()
 CHANGED_GITIGNORE_DOCS_LINT=()
 CHANGED_SYNC_SCRIPT_CONTRACTS=()
+CHANGED_LINT_ERROR_CODE_SCRIPTS=()
 
 for file in "${ALL_CHANGED_FILES[@]}"; do
   [[ "$file" =~ \.(md|markdown)$ ]] && CHANGED_MD+=("$file")
@@ -147,6 +148,19 @@ for file in "${ALL_CHANGED_FILES[@]}"; do
   [[ "$file" =~ ^(scripts/lint-tests\.ps1|scripts/tests/test-lint-tests\.ps1)$ ]] && CHANGED_LINT_TEST+=("$file")
   [[ "$file" =~ ^(scripts/lint-gitignore-docs\.ps1|scripts/tests/test-gitignore-docs\.ps1)$ ]] && CHANGED_GITIGNORE_DOCS_LINT+=("$file")
   [[ "$file" =~ ^(scripts/sync-doc-counts\.ps1|scripts/sync-banner-version\.ps1|scripts/lint-cspell-config\.js|scripts/tests/test-sync-script-contracts\.ps1)$ ]] && CHANGED_SYNC_SCRIPT_CONTRACTS+=("$file")
+  # Run the lint-error-code cspell contract test whenever any file in the
+  # harvester's scan scope is touched. The harvester in
+  # scripts/validate-lint-error-codes.ps1 scans THREE roots:
+  #   1. scripts/lint-*.{ps1,js}                -- where new PWS/UNH/DEP
+  #      prefixes are born.
+  #   2. scripts/tests/test-lint-*.{ps1,js,sh}  -- test assertions that cite
+  #      codes (a new prefix may first surface in a test).
+  #   3. .githooks/*                            -- hook error messages cite
+  #      codes (e.g. UNH004 in a pre-commit failure block).
+  # Plus: cspell.json itself (prefix registry changes) and the validator /
+  # its regression test. The `.githooks/` anchor uses `^\.githooks/` to avoid
+  # accidentally matching the similarly-prefixed `.github/` directory.
+  [[ "$file" =~ ^(scripts/lint-[^/]+\.(ps1|js)|scripts/tests/test-lint-[^/]+\.(ps1|js|sh)|\.githooks/[^/]+|scripts/validate-lint-error-codes\.ps1|scripts/tests/test-validate-lint-error-codes\.ps1|cspell\.json)$ ]] && CHANGED_LINT_ERROR_CODE_SCRIPTS+=("$file")
 done
 
 CHANGED_PRETTIER=("${CHANGED_MD[@]}" "${CHANGED_JSON[@]}" "${CHANGED_YAML[@]}" "${CHANGED_JS[@]}")
@@ -195,7 +209,28 @@ run_node_checks() {
   if [ ${#CHANGED_SPELL[@]} -gt 0 ]; then
     if npx --no-install cspell --version >/dev/null 2>&1; then
       echo "Checking spelling on changed files..."
-      if ! npx --no-install cspell lint --no-must-find-files --no-progress --show-suggestions -- "${CHANGED_SPELL[@]}"; then
+      # Capture cspell output via a temp file so we can BOTH surface the raw
+      # diagnostics (tee to stderr) AND post-process them for lint-error-code
+      # prefixes that need cspell registration. Keeping the tee ensures the
+      # developer still sees file:line:column diagnostics.
+      PREPUSH_SPELL_CAPTURE="$(mktemp 2>/dev/null || true)"
+      if [ -z "$PREPUSH_SPELL_CAPTURE" ]; then
+        echo "Error: Failed to create temporary file for spell check output." >&2
+        return 1
+      fi
+      # AR-1: trap-based cleanup guarantees this temp is deleted on every exit
+      # path from run_node_checks — including signals. Scoped to RETURN so
+      # failures downstream in the function still clean up.
+      # shellcheck disable=SC2064  # We intend immediate expansion of the temp path.
+      trap "rm -f '$PREPUSH_SPELL_CAPTURE'" RETURN
+      # Explicit-exit-code form mirrors pre-commit's P0-1 fix: capture exit
+      # status separately from the pipeline so a future revert of pipefail
+      # cannot silently mask a failure. pre-push has `set -euo pipefail`
+      # today, but defense-in-depth is cheap here.
+      PREPUSH_SPELL_EXIT=0
+      npx --no-install cspell lint --no-must-find-files --no-progress --show-suggestions -- "${CHANGED_SPELL[@]}" >"$PREPUSH_SPELL_CAPTURE" 2>&1 || PREPUSH_SPELL_EXIT=$?
+      cat "$PREPUSH_SPELL_CAPTURE"
+      if [ "$PREPUSH_SPELL_EXIT" -ne 0 ]; then
         echo "" >&2
         echo "=== Spelling errors detected ===" >&2
         echo "Fix typos or add valid terms to the appropriate dictionary in cspell.json:" >&2
@@ -205,6 +240,26 @@ run_node_checks() {
         echo "  tech-terms    -- General programming/tooling terms (CRLF, NUL, ASCII, etc.)" >&2
         echo "  words (root)  -- Project-specific words that don't fit a category" >&2
         echo "" >&2
+        # Synthesize a copy-pasteable patch when the failure is specifically an
+        # unregistered lint-error-code-shaped token. This makes the error
+        # message itself the fix rather than a pointer to documentation.
+        # Width note: unbounded upper bound (`{2,}`) mirrors the pre-commit
+        # P0-3 widening so prefixes longer than 5 chars are still surfaced.
+        UNKNOWN_CODE_PREFIXES="$(grep -oE 'Unknown word \([A-Z]{2,}\)' "$PREPUSH_SPELL_CAPTURE" 2>/dev/null | grep -oE '[A-Z]{2,}' | sort -u || true)"
+        if [ -n "$UNKNOWN_CODE_PREFIXES" ]; then
+          echo "=== Detected unregistered lint-error-code prefix(es) ===" >&2
+          echo "Copy-paste this patch into the root 'words' array in cspell.json" >&2
+          echo "(append each quoted prefix as a new array element):" >&2
+          echo "" >&2
+          while IFS= read -r prefix; do
+            [ -z "$prefix" ] && continue
+            echo "    \"$prefix\"," >&2
+          done <<< "$UNKNOWN_CODE_PREFIXES"
+          echo "" >&2
+          echo "See scripts/validate-lint-error-codes.ps1 for the contract that" >&2
+          echo "enforces this requirement once the prefix is registered." >&2
+          echo "" >&2
+        fi
         echo "Re-run locally: npm run lint:spelling" >&2
         echo "" >&2
         return 1
@@ -425,6 +480,28 @@ run_conditional_tests() {
       echo "Running sync script contract tests..."
       "${PWSH_CMD[@]}" scripts/tests/test-sync-script-contracts.ps1 || return 1
       echo "✓ Sync script contract tests OK"
+    fi
+  fi
+
+  # Lint-error-code cspell contract: when any lint-*.ps1|.js, cspell.json,
+  # the validator, or its test changes, enforce that every lint-error-code
+  # prefix emitted by the lint family is registered with cspell. This closes
+  # the loop that let the PWS001/PWS002 regression ship in April 2026.
+  if [ ${#CHANGED_LINT_ERROR_CODE_SCRIPTS[@]} -gt 0 ]; then
+    PWSH_CMD=()
+    if command -v pwsh >/dev/null 2>&1; then
+      PWSH_CMD=(pwsh -NoProfile -File)
+    elif command -v powershell >/dev/null 2>&1; then
+      PWSH_CMD=(powershell -NoProfile -ExecutionPolicy Bypass -File)
+    fi
+    if [ ${#PWSH_CMD[@]} -gt 0 ]; then
+      echo "Validating lint-error-code cspell coverage..."
+      "${PWSH_CMD[@]}" scripts/validate-lint-error-codes.ps1 || return 1
+      echo "✓ Lint-error-code cspell coverage OK"
+
+      echo "Running lint-error-code validator test suite..."
+      "${PWSH_CMD[@]}" scripts/tests/test-validate-lint-error-codes.ps1 || return 1
+      echo "✓ Lint-error-code validator test suite OK"
     fi
   fi
 

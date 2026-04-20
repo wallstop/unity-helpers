@@ -1,5 +1,12 @@
 #!/usr/bin/env bash
-set -e
+# Upgrade from `set -e` to include pipefail so that pipelines fail when any
+# stage exits non-zero (not just the last). Without `pipefail`, a construct
+# like `cspell ... | tee "$capture"` silently passes when cspell fails because
+# tee's exit status is 0 — the exact regression seen when the Round 1 work
+# gated the spell-check failure path on `if ! ... | tee`. `-u` (nounset) is
+# intentionally omitted here: pre-commit legitimately dereferences arrays that
+# may be empty (e.g. `${STAGED_FILES_ARRAY[@]}` under `bash -u` + old bash).
+set -eo pipefail
 
 # Source git staging helpers for safe index.lock handling
 # This prevents "fatal: Unable to create '.git/index.lock': File exists" errors
@@ -343,8 +350,31 @@ if [ ${#SPELL_FILES_ARRAY[@]} -gt 0 ]; then
 
     trap 'rm -f "$SPELL_FILE_LIST"' EXIT
     printf '%s\n' "${SPELL_FILES_ARRAY[@]}" > "$SPELL_FILE_LIST"
-    # Use --no-must-find-files to avoid errors when files are filtered by cspell config
-    npx --no-install cspell lint --no-must-find-files --no-progress --show-suggestions --file-list "$SPELL_FILE_LIST" || {
+    # Capture cspell output so we can both display it AND scan it for
+    # lint-error-code-shaped tokens (the most common source of regression;
+    # see 2026-04-19 PWS001 incident documented in .githooks/pre-merge-commit).
+    # Use --no-must-find-files to avoid errors when files are filtered by cspell config.
+    SPELL_CAPTURE="$(mktemp 2>/dev/null || true)"
+    if [ -z "$SPELL_CAPTURE" ]; then
+      echo "Error: Failed to create temporary file for spell check output." >&2
+      exit 1
+    fi
+    # Extend the existing trap so both temp files are cleaned up.
+    trap 'rm -f "$SPELL_FILE_LIST" "$SPELL_CAPTURE"' EXIT
+    # IMPORTANT: do NOT use `if ! cspell ... | tee "$SPELL_CAPTURE"; then`.
+    # Even with pipefail enabled on the top of the file, keeping the
+    # explicit-exit-code form below is the paranoid belt-and-braces guard
+    # against a future revert of pipefail in this hook. The pattern is:
+    #   1. capture cspell output directly to the temp file,
+    #   2. capture cspell's exit status in SPELL_EXIT,
+    #   3. cat the capture so the user still sees the diagnostics,
+    #   4. branch on SPELL_EXIT only.
+    # This is the regression guard against P0-1 (Round 1 shipped the tee form
+    # on a `set -e`-only hook and silently passed every spelling failure).
+    SPELL_EXIT=0
+    npx --no-install cspell lint --no-must-find-files --no-progress --show-suggestions --file-list "$SPELL_FILE_LIST" >"$SPELL_CAPTURE" 2>&1 || SPELL_EXIT=$?
+    cat "$SPELL_CAPTURE"
+    if [ "$SPELL_EXIT" -ne 0 ]; then
       echo "" >&2
       echo "=== Spelling errors detected ===" >&2
       echo "Fix typos or add valid terms to the appropriate dictionary in cspell.json:" >&2
@@ -354,10 +384,32 @@ if [ ${#SPELL_FILES_ARRAY[@]} -gt 0 ]; then
       echo "  tech-terms    -- General programming/tooling terms (CRLF, NUL, ASCII, etc.)" >&2
       echo "  words (root)  -- Project-specific words that don't fit a category" >&2
       echo "" >&2
+      # Synthesize a copy-pasteable patch for lint-error-code-shaped unknowns.
+      # Extracts the "(TOKEN)" after "Unknown word" and keeps only tokens
+      # matching the lint-error-code prefix shape. This catches the common
+      # "new lint family -> new prefix -> missing cspell entry" regression.
+      # Width note: upper bound is unbounded (via {2,}) because cspell never
+      # emits monster tokens, and a narrow cap (originally 5) silently let
+      # longer prefixes like SHA256 or NOVELPFX slip past the patch emitter.
+      UNKNOWN_CODE_PREFIXES="$(grep -oE 'Unknown word \([A-Z]{2,}\)' "$SPELL_CAPTURE" 2>/dev/null | grep -oE '[A-Z]{2,}' | sort -u || true)"
+      if [ -n "$UNKNOWN_CODE_PREFIXES" ]; then
+        echo "=== Detected unregistered lint-error-code prefix(es) ===" >&2
+        echo "Copy-paste this patch into the root 'words' array in cspell.json" >&2
+        echo "(append each quoted prefix as a new array element):" >&2
+        echo "" >&2
+        while IFS= read -r prefix; do
+          [ -z "$prefix" ] && continue
+          echo "    \"$prefix\"," >&2
+        done <<< "$UNKNOWN_CODE_PREFIXES"
+        echo "" >&2
+        echo "See scripts/validate-lint-error-codes.ps1 for the contract that" >&2
+        echo "enforces this requirement once the prefix is registered." >&2
+        echo "" >&2
+      fi
       echo "Re-run locally: npm run lint:spelling" >&2
       echo "" >&2
       exit 1
-    }
+    fi
   else
     echo "cspell not found; skipping spell check (run 'npm install' to install)." >&2
   fi

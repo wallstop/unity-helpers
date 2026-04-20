@@ -226,12 +226,13 @@ The `npm run validate:prepush` command runs these checks:
    - `format:md:check` — Prettier markdown formatting
    - `format:json:check` — Prettier JSON/asmdef formatting
    - `format:yaml:check` — Prettier YAML formatting
+   - `validate:lint-error-codes` — cspell coverage for every `^[A-Z]{2,}\d{3}$` prefix emitted by `scripts/lint-*.{ps1,js}`, `scripts/tests/test-lint-*.{ps1,js,sh}`, or `.githooks/*`
 
 2. **lint:spelling** — CSpell validation on the repository
 
 3. **eol:check** — Line endings (CRLF, no BOM)
 
-4. **validate:tests** — Test lifecycle lint (Track() usage)
+4. **validate:tests** — Test lifecycle lint (Track() usage) and cspell lint-error-code contract regression test
 
 5. **lint:csharp-naming** — C# naming conventions
 

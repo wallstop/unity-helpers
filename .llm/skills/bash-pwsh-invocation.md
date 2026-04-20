@@ -26,6 +26,7 @@ This rule is enforced by:
 1. `scripts/lint-pwsh-invocations.ps1` — scans `*.sh`, `.githooks/*`, `.github/workflows/*.yml`, `scripts/tests/*.ps1`, and `package.json` for `-File <script> --` (code `PWS001`).
 2. `.github/workflows/pwsh-invocations-lint.yml` — runs the lint on every PR that touches hook/workflow/script files.
 3. `scripts/tests/test-precommit-integration.sh` — smoke-tests that each pwsh-invoked hook branch works.
+4. `scripts/validate-lint-error-codes.ps1` — enforces that the `PWS` prefix (and any other lint-error-code prefix introduced by a new lint script) is registered in `cspell.json`, so the skill/doc tokens `PWS001`/`PWS002` do not trip the spell checker.
 
 ---
 

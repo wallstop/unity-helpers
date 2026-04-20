@@ -103,4 +103,47 @@ if ($prePushMissing.Count -gt 0) {
 if ($VerboseOutput) {
     Write-Host "Pre-push hook correctly reads stdin for changed-file detection." -ForegroundColor Green
 }
+
+# ---- Validate pre-merge-commit hook delegates to pre-commit ----
+# Git does not run pre-commit for merge commits; the pre-merge-commit hook is
+# the merge-time equivalent. Without delegation, any file introduced through a
+# merge bypasses spell check, lint, EOL normalization, etc. — a real incident
+# in April 2026 (skill file added during merge resolution introduced a lint-
+# error-code prefix that never reached cspell, surfacing only at pre-push).
+$preMergeCommitPath = Join-Path $repoRoot '.githooks' 'pre-merge-commit'
+
+if (-not (Test-Path $preMergeCommitPath)) {
+    Write-Error "pre-merge-commit hook not found at: $preMergeCommitPath. Merge commits will bypass pre-commit validation."
+    exit 1
+}
+
+$preMergeContent = Get-Content $preMergeCommitPath -Raw
+
+$requiredMergePatterns = @(
+    @{ Pattern = 'pre-commit'; Description = 'references pre-commit hook path' },
+    @{ Pattern = 'exec '; Description = 'exec-delegates so merge commits run full pre-commit validation' }
+)
+
+$mergeMissing = @()
+foreach ($entry in $requiredMergePatterns) {
+    if ($preMergeContent -notmatch [regex]::Escape($entry.Pattern)) {
+        $mergeMissing += $entry
+    }
+}
+
+if ($mergeMissing.Count -gt 0) {
+    Write-Host ''
+    Write-Warning "The pre-merge-commit hook is missing required delegation patterns:"
+    foreach ($m in $mergeMissing) {
+        Write-Warning "  - $($m.Description) (expected: '$($m.Pattern)')"
+    }
+    Write-Host ''
+    Write-Error "Pre-merge-commit hook is missing $($mergeMissing.Count) required pattern(s). Without delegation, merge commits bypass pre-commit validation."
+    exit 1
+}
+
+if ($VerboseOutput) {
+    Write-Host "Pre-merge-commit hook correctly delegates to pre-commit." -ForegroundColor Green
+}
+
 exit 0

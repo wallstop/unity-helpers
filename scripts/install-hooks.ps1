@@ -155,7 +155,15 @@ function Test-Status {
         Write-Error "pre-commit hook: MISSING"
         $allOk = $false
     }
-    
+
+    if (Test-Path (Join-Path $RepoRoot ".githooks/pre-merge-commit")) {
+        Write-Success "pre-merge-commit hook: exists"
+    }
+    else {
+        Write-Error "pre-merge-commit hook: MISSING"
+        $allOk = $false
+    }
+
     if (Test-Path (Join-Path $RepoRoot ".githooks/pre-push")) {
         Write-Success "pre-push hook: exists"
     }
@@ -282,7 +290,11 @@ function Install-GitHooks {
         if (Test-Path ".githooks/pre-commit") {
             Write-Success "pre-commit hook exists"
         }
-        
+
+        if (Test-Path ".githooks/pre-merge-commit") {
+            Write-Success "pre-merge-commit hook exists"
+        }
+
         if (Test-Path ".githooks/pre-push") {
             Write-Success "pre-push hook exists"
         }

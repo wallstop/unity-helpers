@@ -42,6 +42,10 @@ jobs:
             echo "::error::pwsh is not available on this runner; cannot run pre-commit integration tests."
             exit 1
           fi
+          # shellcheck disable=SC2016
+          # $PSVersionTable is a PowerShell automatic variable; single quotes
+          # are required so bash does NOT interpolate it. Without this disable
+          # actionlint's embedded shellcheck flags SC2016 as a false positive.
           pwsh -NoProfile -Command '$PSVersionTable.PSVersion | Out-String | Write-Host'
 
       - name: Pre-commit integration smoke tests
