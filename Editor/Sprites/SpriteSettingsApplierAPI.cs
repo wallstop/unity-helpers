@@ -289,16 +289,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             bool settingsChanged = false;
             bool undoRecorded = false;
 
-            void EnsureUndoRecorded()
-            {
-                if (undoRecorded)
-                {
-                    return;
-                }
-
-                Undo.RecordObject(textureImporter, "Apply Sprite Settings");
-                undoRecorded = true;
-            }
+            TextureImporter localTextureImporter = textureImporter;
 
             buffer ??= new TextureImporterSettings();
             textureImporter.ReadTextureSettings(buffer);
@@ -474,6 +465,17 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             }
 
             return changed || settingsChanged;
+
+            void EnsureUndoRecorded()
+            {
+                if (undoRecorded)
+                {
+                    return;
+                }
+
+                Undo.RecordObject(localTextureImporter, "Apply Sprite Settings");
+                undoRecorded = true;
+            }
         }
     }
 #endif

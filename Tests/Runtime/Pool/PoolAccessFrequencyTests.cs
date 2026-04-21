@@ -56,6 +56,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
             // (time 0 is treated as uninitialized in the tracker)
             _currentTime = 1f;
             TestPoolItem.ResetIdCounter();
+            PoolPurgeSettings.ResetToDefaults();
             // Disable memory pressure monitoring to ensure deterministic test behavior
             _wasMemoryPressureEnabled = MemoryPressureMonitor.Enabled;
             MemoryPressureMonitor.Enabled = false;
@@ -64,6 +65,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
         [TearDown]
         public void TearDown()
         {
+            PoolPurgeSettings.ResetToDefaults();
             MemoryPressureMonitor.Enabled = _wasMemoryPressureEnabled;
         }
 
@@ -1507,6 +1509,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
         {
             _currentTime = 1f;
             TestPoolItem.ResetIdCounter();
+            PoolPurgeSettings.ResetToDefaults();
             // Disable memory pressure monitoring to ensure deterministic test behavior
             _wasMemoryPressureEnabled = MemoryPressureMonitor.Enabled;
             MemoryPressureMonitor.Enabled = false;
@@ -1515,6 +1518,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
         [TearDown]
         public void TearDown()
         {
+            PoolPurgeSettings.ResetToDefaults();
             MemoryPressureMonitor.Enabled = _wasMemoryPressureEnabled;
         }
 

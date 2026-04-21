@@ -35,6 +35,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
         }
 
         private float _currentTime;
+        private bool _wasMemoryPressureEnabled;
 
         private float TestTimeProvider()
         {
@@ -50,6 +51,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
             TestPoolItem.ResetIdCounter();
             GlobalPoolRegistry.Clear();
             GlobalPoolRegistry.ResetBudgetSettings();
+            PoolPurgeSettings.ResetToDefaults();
+            _wasMemoryPressureEnabled = MemoryPressureMonitor.Enabled;
             MemoryPressureMonitor.Enabled = false;
         }
 
@@ -58,7 +61,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
         {
             GlobalPoolRegistry.Clear();
             GlobalPoolRegistry.ResetBudgetSettings();
+            PoolPurgeSettings.ResetToDefaults();
             MemoryPressureMonitor.Reset();
+            MemoryPressureMonitor.Enabled = _wasMemoryPressureEnabled;
         }
 
         [Test]

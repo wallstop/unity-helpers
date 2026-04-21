@@ -18,17 +18,22 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
     [NUnit.Framework.Category("Fast")]
     public sealed class TypeAwarePoliciesTests
     {
+        private bool _wasMemoryPressureEnabled;
+
         [SetUp]
         public void SetUp()
         {
             PoolPurgeSettings.ResetToDefaults();
             PoolPurgeSettings.ReinitializeBuiltInDefaults();
+            _wasMemoryPressureEnabled = MemoryPressureMonitor.Enabled;
+            MemoryPressureMonitor.Enabled = false;
         }
 
         [TearDown]
         public void TearDown()
         {
             PoolPurgeSettings.ResetToDefaults();
+            MemoryPressureMonitor.Enabled = _wasMemoryPressureEnabled;
         }
 
         // ========================================

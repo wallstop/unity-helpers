@@ -33,6 +33,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         [SetUp]
         public void SetUp()
         {
+            PoolPurgeSettings.ResetToDefaults();
             _waitInstructionScope = Buffers.BeginWaitInstructionTestScope();
         }
 
@@ -40,6 +41,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         public void TearDown()
         {
             _waitInstructionScope?.Dispose();
+            PoolPurgeSettings.ResetToDefaults();
         }
 
         [Test]
