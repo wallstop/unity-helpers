@@ -152,6 +152,55 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
             Assert.IsTrue(ops.overridden);
         }
 
+        [Test]
+        public void ApplyDefaultPlatformSettingsCanBeUndone()
+        {
+            string texPath = (Root + "/api_tex_undo.png").SanitizePath();
+            CreatePng(texPath, 32, 32, Color.white);
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
+
+            TextureImporter importerBefore = AssetImporter.GetAtPath(texPath) as TextureImporter;
+            Assert.IsTrue(importerBefore != null, "Importer should exist before update.");
+
+            TextureImporterPlatformSettings before =
+                importerBefore.GetDefaultPlatformTextureSettings();
+            int originalMax = before.maxTextureSize;
+            int targetMax = originalMax == 64 ? 128 : 64;
+
+            TextureSettingsApplierAPI.Config config = new()
+            {
+                applyPlatformMaxTextureSize = true,
+                platformMaxTextureSize = targetMax,
+            };
+
+            bool changed = TextureSettingsApplierAPI.TryUpdateTextureSettings(
+                texPath,
+                in config,
+                out TextureImporter importerAfterApply
+            );
+            Assert.IsTrue(changed, "Expected settings update to apply.");
+            Assert.IsTrue(importerAfterApply != null);
+
+            importerAfterApply.SaveAndReimport();
+            TextureImporterPlatformSettings applied =
+                importerAfterApply.GetDefaultPlatformTextureSettings();
+            Assert.AreEqual(targetMax, applied.maxTextureSize, "Expected applied max size.");
+
+            Undo.PerformUndo();
+
+            TextureImporter importerAfterUndo = AssetImporter.GetAtPath(texPath) as TextureImporter;
+            Assert.IsTrue(importerAfterUndo != null, "Importer should exist after undo.");
+            importerAfterUndo.SaveAndReimport();
+
+            TextureImporterPlatformSettings undone =
+                importerAfterUndo.GetDefaultPlatformTextureSettings();
+            Assert.AreEqual(
+                originalMax,
+                undone.maxTextureSize,
+                "Expected undo to restore original max size."
+            );
+        }
+
         private void CreatePng(string relPath, int w, int h, Color c)
         {
             EnsureFolder(Path.GetDirectoryName(relPath).SanitizePath());

@@ -319,6 +319,17 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
         [Test]
         public void PurgeIsBlockedDuringHysteresis()
         {
+            // This test verifies the contract: after the rolling-window usage tracker detects
+            // a rental spike, explicit/capacity purges are blocked for HysteresisSeconds so the
+            // pool does not thrash freshly returned items that are likely to be re-rented.
+            //
+            // IdleTimeoutSeconds = 0f is required because idle-timeout purges are intentionally
+            // exempt from hysteresis (they are pool hygiene, not sizing), and would otherwise
+            // defeat the assertion.
+            //
+            // SpikeThresholdMultiplier = 1.5f is required because at 2.0f the monotonically
+            // increasing _currentlyRented sequence [1..N] never satisfies n > avg * 2 and so
+            // no spike would ever be recorded.
             List<TestPoolItem> purgedItems = new();
 
             using WallstopGenericPool<TestPoolItem> pool = new(
@@ -327,11 +338,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
                 {
                     Triggers = PurgeTrigger.Explicit,
                     UseIntelligentPurging = true,
-                    IdleTimeoutSeconds = 0.5f,
+                    IdleTimeoutSeconds = 0f,
                     HysteresisSeconds = 30f,
                     BufferMultiplier = 1.5f,
                     RollingWindowSeconds = 60f,
-                    SpikeThresholdMultiplier = 2.0f,
+                    SpikeThresholdMultiplier = 1.5f,
                     MaxPurgesPerOperation = 0,
                     TimeProvider = TestTimeProvider,
                     OnPurge = (item, _) => purgedItems.Add(item),
@@ -362,19 +373,38 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
             int purged = pool.Purge();
 
             TestContext.WriteLine(
-                $"Purge during hysteresis at t={_currentTime}: purged={purged}, pool.Count={pool.Count}"
+                $"Purge during hysteresis at t={_currentTime}: purged={purged}, pool.Count={pool.Count}, purgedItemsTotal={purgedItems.Count}"
             );
 
+            Assert.AreEqual(
+                0,
+                purged,
+                "Explicit purge during hysteresis should return 0 items purged"
+            );
             Assert.AreEqual(
                 countAfterReturn,
                 pool.Count,
                 "Pool should retain all items during hysteresis period (purge blocked)"
+            );
+            Assert.AreEqual(
+                0,
+                purgedItems.Count,
+                "No OnPurge callbacks should fire while hysteresis blocks purges"
             );
         }
 
         [Test]
         public void WarmRetainCountDominatesWhenPoolIsActive()
         {
+            // This test verifies that WarmRetainCount acts as a floor on the pool size
+            // while the pool is considered "active" (the last rental is within
+            // IdleTimeoutSeconds of the current time).
+            //
+            // IdleTimeoutSeconds must be large enough that currentTime - lastRentalTime
+            // is still within the active window at assert time. With the last rental at
+            // t = 1 + 9*0.01 = 1.09 and the purge at t = 4, we need IdleTimeoutSeconds >= 3f.
+            // 5f gives comfortable margin and matches the intent (pool is still in active
+            // use even after some idle returns).
             List<TestPoolItem> purgedItems = new();
 
             using WallstopGenericPool<TestPoolItem> pool = new(
@@ -384,7 +414,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
                     Triggers = PurgeTrigger.Explicit,
                     WarmRetainCount = 5,
                     MinRetainCount = 2,
-                    IdleTimeoutSeconds = 1f,
+                    IdleTimeoutSeconds = 5f,
                     MaxPurgesPerOperation = 0,
                     TimeProvider = TestTimeProvider,
                     OnPurge = (item, _) => purgedItems.Add(item),
@@ -418,7 +448,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
             }
 
             TestContext.WriteLine(
-                $"After purge at t={_currentTime}: pool.Count={pool.Count}, totalPurged={totalPurged}"
+                $"After purge at t={_currentTime}: pool.Count={pool.Count}, totalPurged={totalPurged}, purgedItemsTotal={purgedItems.Count}"
             );
 
             Assert.GreaterOrEqual(

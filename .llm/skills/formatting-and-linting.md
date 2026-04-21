@@ -42,11 +42,13 @@ bash scripts/install-hooks.sh
 3. Formats staged files with Prettier (Markdown, JSON, YAML, JS)
 4. Formats staged C# files with CSharpier
 5. Runs markdownlint on staged Markdown files
-6. Runs YAML lint, Dependabot config schema lint, spell check, LLM instruction lint, test lint
+6. Runs YAML lint, Dependabot config schema lint, spell check (with copy-pasteable cspell.json patch for unregistered lint-error-code prefixes), LLM instruction lint, test lint
 7. Checks for forbidden `#region` directives
 8. Checks drawer/editor files for missing multi-object editing support (GenericMenu without `hasMultipleDifferentValues`)
 9. Checks Odin drawer Undo safety (WeakTargets null-filtering before `Undo.RecordObjects`)
 10. Checks for missing `.meta` files on staged files (auto-stages existing `.meta` companions)
+
+The repository also installs a `pre-merge-commit` hook that delegates to `pre-commit`. Git does NOT run `pre-commit` on merge commits by default, so without this delegation any file introduced through a merge (including manual conflict resolution) would bypass every validation. The April 2026 `PWS001` regression is the concrete incident this guards against.
 
 ### If the Hook Wasn't Active
 

@@ -192,12 +192,16 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
 
             bool changed = false;
             bool settingsChanged = false;
+            bool undoRecorded = false;
+
+            TextureImporter localTextureImporter = textureImporter;
 
             // Importer-level fields
             if (config.applyReadWriteEnabled)
             {
                 if (textureImporter.isReadable != config.readWriteEnabled)
                 {
+                    EnsureUndoRecorded();
                     textureImporter.isReadable = config.readWriteEnabled;
                     changed = true;
                 }
@@ -206,6 +210,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             {
                 if (textureImporter.mipmapEnabled != config.generateMipMaps)
                 {
+                    EnsureUndoRecorded();
                     textureImporter.mipmapEnabled = config.generateMipMaps;
                     changed = true;
                 }
@@ -214,6 +219,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             {
                 if (textureImporter.wrapMode != config.wrapMode)
                 {
+                    EnsureUndoRecorded();
                     textureImporter.wrapMode = config.wrapMode;
                     changed = true;
                 }
@@ -222,6 +228,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             {
                 if (textureImporter.filterMode != config.filterMode)
                 {
+                    EnsureUndoRecorded();
                     textureImporter.filterMode = config.filterMode;
                     changed = true;
                 }
@@ -230,6 +237,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             {
                 if (textureImporter.textureCompression != config.compression)
                 {
+                    EnsureUndoRecorded();
                     textureImporter.textureCompression = config.compression;
                     changed = true;
                 }
@@ -238,6 +246,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             {
                 if (textureImporter.crunchedCompression != config.useCrunchCompression)
                 {
+                    EnsureUndoRecorded();
                     textureImporter.crunchedCompression = config.useCrunchCompression;
                     changed = true;
                 }
@@ -290,6 +299,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             }
             if (platformChanged)
             {
+                EnsureUndoRecorded();
                 textureImporter.SetPlatformTextureSettings(ps);
                 changed = true;
             }
@@ -345,6 +355,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                             po.name != TexturePlatformNameHelper.DefaultPlatformName
                                 ? true
                                 : ops.overridden;
+                        EnsureUndoRecorded();
                         textureImporter.SetPlatformTextureSettings(ops);
                         changed = true;
                     }
@@ -354,10 +365,22 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
             // We currently do not mutate buffer-only fields for non-sprite textures.
             if (settingsChanged)
             {
+                EnsureUndoRecorded();
                 textureImporter.SetTextureSettings(buffer);
             }
 
             return changed || settingsChanged;
+
+            void EnsureUndoRecorded()
+            {
+                if (undoRecorded)
+                {
+                    return;
+                }
+
+                Undo.RecordObject(localTextureImporter, "Apply Texture Settings");
+                undoRecorded = true;
+            }
         }
     }
 #endif

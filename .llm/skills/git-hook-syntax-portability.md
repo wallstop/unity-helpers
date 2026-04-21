@@ -87,6 +87,8 @@ yamllint -c .yamllint.yaml -- "${FILES[@]}"
 
 **Why**: A staged filename like `--plugin=./evil.js` would be parsed as a CLI flag without `--`. This is an option injection vulnerability.
 
+> **CAVEAT** — PowerShell's `-File` CLI does NOT honor POSIX `--` and will fail with "parameter name '' is ambiguous." When calling `pwsh -File <script>` or `powershell -File <script>` from bash, pass explicit named parameters instead (e.g. `-Paths "${ARR[@]}"`). See [bash-pwsh-invocation](./bash-pwsh-invocation.md) for the full rule and enforcement lint.
+
 ### Never Transport File Lists Through `echo ... | xargs`
 
 `echo "$FILES" | xargs tool ...` is unsafe for path lists. `xargs` re-splits on whitespace, so filenames with spaces are mangled, and newline-delimited shell variables are not a reliable file transport format.

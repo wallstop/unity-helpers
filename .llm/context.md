@@ -55,7 +55,7 @@ Invoke these skills for specific tasks.
 **Regenerate with**: `pwsh -NoProfile -File scripts/generate-skills-index.ps1`
 
 <!-- BEGIN GENERATED SKILLS INDEX -->
-<!-- Generated: 2026-03-25 02:24:06 UTC -->
+<!-- Generated: 2026-04-19 14:17:43 UTC -->
 <!-- Command: pwsh -NoProfile -File scripts/generate-skills-index.ps1 -->
 
 ### Core Skills (Always Consider)
@@ -66,6 +66,7 @@ Invoke these skills for specific tasks.
 | [ask-structured-questions](./skills/ask-structured-questions.md)                             | Present questions with context, options, and recommendations                           |
 | [avoid-magic-strings](./skills/avoid-magic-strings.md)                                       | ALL code - use nameof() not strings                                                    |
 | [avoid-reflection](./skills/avoid-reflection.md)                                             | ALL code - never reflect on our own types                                              |
+| [bash-pwsh-invocation](./skills/bash-pwsh-invocation.md)                                     | Calling .ps1 scripts from bash/hooks/workflows                                         |
 | [create-csharp-file](./skills/create-csharp-file.md)                                         | Creating any new .cs file                                                              |
 | [create-editor-tool](./skills/create-editor-tool.md)                                         | Creating Editor windows and inspectors                                                 |
 | [create-enum](./skills/create-enum.md)                                                       | Creating a new enum type                                                               |
@@ -80,6 +81,7 @@ Invoke these skills for specific tasks.
 | [editor-caching-patterns](./skills/editor-caching-patterns.md)                               | Caching strategies for Editor code                                                     |
 | [editor-multi-object-editing](./skills/editor-multi-object-editing.md)                       | Multi-object editing patterns and undo support for editor code                         |
 | [editor-singleton-patterns](./skills/editor-singleton-patterns.md)                           | Singleton asset management patterns for Editor code                                    |
+| [editor-undo-complete](./skills/editor-undo-complete.md)                                     | Complete undo policy for editor tooling with enforceable scope boundaries              |
 | [formatting](./skills/formatting.md)                                                         | After ANY file change (CSharpier/Prettier)                                             |
 | [formatting-and-linting](./skills/formatting-and-linting.md)                                 | Before committing, after editing files                                                 |
 | [git-hook-lifecycle-debugging](./skills/git-hook-lifecycle-debugging.md)                     | Hook validation philosophy, framework config, PowerShell exit codes, debugging         |
@@ -184,12 +186,13 @@ See [create-csharp-file](./skills/create-csharp-file.md) for detailed C# rules.
 6. One file per MonoBehaviour/ScriptableObject (production AND tests)
 7. NEVER use `?.`, `??`, `??=` on UnityEngine.Object types
 8. Minimal comments -- only explain **why**, never **what**
-9. Generate `.meta` files after creating ANY file/folder (see [create-unity-meta](./skills/create-unity-meta.md)); exception: no `.meta` for dot folders (`.llm/`, `.github/`, `.git/`, `.vscode/`). Use `./scripts/generate-meta.sh <path>`
+9. Generate `.meta` files after creating ANY file/folder (see [create-unity-meta](./skills/create-unity-meta.md)); exception: no `.meta` for dot folders (`.llm/`, `.github/`, `.git/`, `.vscode/`). Use `./scripts/generate-meta.sh <path>`, then run `npm run agent:preflight:fix` immediately.
 10. Enums: explicit values, `None`/`Unknown` = 0 with `[Obsolete]` (see [create-enum](./skills/create-enum.md))
 11. Never reflect on our own code; use `internal` + `[InternalsVisibleTo]` (see [avoid-reflection](./skills/avoid-reflection.md))
 12. Never use magic strings; use `nameof()` (see [avoid-magic-strings](./skills/avoid-magic-strings.md))
 13. All code must follow [high-performance-csharp](./skills/high-performance-csharp.md) and [defensive-programming](./skills/defensive-programming.md) (never throw from public APIs; use `TryXxx` patterns; handle all inputs gracefully)
 14. For forbidden patterns and alternatives, see [forbidden-patterns reference](./references/forbidden-patterns.md)
+15. All editor mutation paths must follow the complete undo policy (see [editor-undo-complete](./skills/editor-undo-complete.md)); classify paths as Tier A/B/C and never claim full reversal for Tier C file/reimport side effects
 
 ### Documentation Rules
 
@@ -216,6 +219,8 @@ Run formatters/linters **immediately after each file change**, not batched at ta
 - **Spelling**: `npm run lint:spelling` (add valid terms to `cspell.json`)
 - **Tests**: `pwsh -NoProfile -File scripts/lint-tests.ps1 -FixNullChecks -Paths <changed test files>`
 - **Skill files and [context](./context.md)**: `pwsh -NoProfile -File scripts/lint-skill-sizes.ps1` (500-line limit)
+- **Commit prep**: stage files, then run `npm run agent:preflight:fix` (includes changed markdown spelling checks) before any commit attempt
+- **Pre-push parity**: run `npm run validate:prepush` (includes full `lint:spelling`) before push; treat git hooks as last-resort only
 
 See [formatting](./skills/formatting.md) and [validate-before-commit](./skills/validate-before-commit.md) for details.
 
@@ -223,6 +228,8 @@ See [formatting](./skills/formatting.md) and [validate-before-commit](./skills/v
 
 - When editing `.gitignore`, validate with `git check-ignore -v <path>` and run `pwsh -NoProfile -File scripts/lint-gitignore-docs.ps1`
 - When adding abbreviations, add them to `cspell.json` (see [cspell dictionary categories](#cspell-dictionary-quick-reference))
+- When introducing ANY new all-caps token or acronym in a skill/doc/script (lint error code, new abbreviation, new API name), add it to the correct cspell dictionary category before committing. `npm run agent:preflight` catches this before pre-commit; the `validate-lint-error-codes` contract enforces lint-error-code families permanently
+- When introducing a new lint-error-code family (e.g., `UNH001`, `PWS002`), register the 2+ letter uppercase prefix in the root `words` array of `cspell.json`; `npm run validate:lint-error-codes` enforces this contract and fails with a copy-pasteable patch on drift
 - Verify GitHub Actions config files exist AND are on default branch
 - Never use `((var++))` in bash with `set -e`; use `var=$((var + 1))`
 - Line endings must be synchronized across `.gitattributes`, `.prettierrc.json`, `.yamllint.yaml`, `.editorconfig`
@@ -240,6 +247,7 @@ npm run hooks:install                                   # Install git hooks
 dotnet tool restore                                     # Restore .NET tools (CSharpier, etc.)
 
 # Formatting & Linting
+npm run agent:preflight:fix                            # Fast changed-file preflight with safe auto-fixes
 dotnet tool run csharpier format .                      # Format C#
 npm run lint:spelling                                   # Spell check
 npm run lint:docs                                       # Lint documentation links
@@ -285,12 +293,15 @@ See [unity-devcontainer-testing](./skills/unity-devcontainer-testing.md) for ful
 
 Add unknown words to the appropriate dictionary in `cspell.json`:
 
-| Dictionary      | Purpose                                  | Examples                                |
-| --------------- | ---------------------------------------- | --------------------------------------- |
-| `unity-terms`   | Unity Engine APIs, components, lifecycle | MonoBehaviour, GetComponent, OnValidate |
-| `csharp-terms`  | C# language features, .NET types         | readonly, nullable, LINQ, StringBuilder |
-| `package-terms` | This package's public API and type names | WallstopStudios, IRandom, SpatialHash   |
-| `tech-terms`    | General programming/tooling terms        | async, config, JSON, middleware         |
+| Dictionary      | Purpose                                                 | Examples                                |
+| --------------- | ------------------------------------------------------- | --------------------------------------- |
+| `unity-terms`   | Unity Engine APIs, components, lifecycle                | MonoBehaviour, GetComponent, OnValidate |
+| `csharp-terms`  | C# language features, .NET types                        | readonly, nullable, LINQ, StringBuilder |
+| `package-terms` | This package's public API and type names                | WallstopStudios, IRandom, SpatialHash   |
+| `tech-terms`    | General programming/tooling terms                       | async, config, JSON, middleware         |
+| root `words`    | Project-specific tokens, incl. lint-error-code prefixes | UNH, PWS (covers UNH001, PWS002…)       |
+
+Lint-error-code prefixes (`^[A-Z]{2,}\d{3}$` tokens like `UNH001`, `PWS002`) must be registered in the root `words` array. `npm run validate:lint-error-codes` is the contract test and will fail with a copy-pasteable patch on drift.
 
 ---
 

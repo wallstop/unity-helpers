@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 # =============================================================================
-# Test Script: validate-devcontainer-urls parser contracts
+# Test Script: validate-devcontainer-urls parser + contract checks
 # =============================================================================
-# Validates that scripts/validate-devcontainer-urls.sh continues to discover
-# required tool URL definitions from .devcontainer/Dockerfile.
+# Validates that scripts/validate-devcontainer-urls.sh continues to:
+# 1) Discover required tool URL definitions from .devcontainer/Dockerfile.
+# 2) Reject apt-based PowerShell installs in contract-only mode.
 #
 # Run: bash scripts/tests/test-validate-devcontainer-urls.sh
 # Exit codes: 0 = all tests pass, 1 = one or more tests fail
@@ -53,6 +54,31 @@ assert_file_contains_literal() {
     fi
 }
 
+assert_contract_exit_code() {
+    local fixture="$1"
+    local expected_rc="$2"
+    local test_name="$3"
+    local rc=0
+
+    if "$VALIDATOR" --contracts-only --dockerfile "$fixture" >/dev/null 2>&1; then
+        rc=0
+    else
+        rc=$?
+    fi
+
+    if [[ "$rc" -eq "$expected_rc" ]]; then
+        pass "$test_name"
+    else
+        fail "$test_name" "Expected exit code ${expected_rc}, got ${rc}"
+    fi
+}
+
+TMP_DIR="$(mktemp -d)"
+cleanup() {
+    rm -rf "$TMP_DIR"
+}
+trap cleanup EXIT
+
 echo -e "${BLUE}── validate-devcontainer-urls parser contracts ──${NC}"
 echo ""
 
@@ -100,6 +126,59 @@ if validator_output="$("$VALIDATOR" --dockerfile .devcontainer/Dockerfile 2>&1)"
 else
     fail "validator script exits successfully on current Dockerfile" "$validator_output"
 fi
+
+echo ""
+echo -e "${BLUE}── apt-based PowerShell regression contracts ──${NC}"
+
+fixture_fail="$TMP_DIR/fail-apt-powershell.Dockerfile"
+fixture_pass="$TMP_DIR/pass-release-tarball.Dockerfile"
+fixture_comment_ok="$TMP_DIR/pass-commented-apt.Dockerfile"
+fixture_case_fail="$TMP_DIR/fail-case-variant-apt.Dockerfile"
+fixture_chain_fail="$TMP_DIR/fail-chained-apt.Dockerfile"
+
+cat > "$fixture_fail" <<'EOT'
+FROM debian:12
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+    git \
+    powershell \
+    curl
+EOT
+
+cat > "$fixture_pass" <<'EOT'
+FROM debian:12
+ARG TARGETARCH
+RUN POWERSHELL_VERSION="7.5.3" \
+    && case "${TARGETARCH}" in \
+        amd64) POWERSHELL_ARCH="x64" ;; \
+        arm64) POWERSHELL_ARCH="arm64" ;; \
+        *) exit 1 ;; \
+    esac \
+    && curl -fsSL "https://github.com/PowerShell/PowerShell/releases/download/v${POWERSHELL_VERSION}/powershell-${POWERSHELL_VERSION}-linux-${POWERSHELL_ARCH}.tar.gz" \
+    | tar -xz -C /opt/pwsh
+EOT
+
+cat > "$fixture_comment_ok" <<'EOT'
+FROM debian:12
+# RUN apt-get install -y powershell
+RUN echo "no apt powershell here"
+EOT
+
+cat > "$fixture_case_fail" <<'EOT'
+FROM debian:12
+RUN apt-get install -y PowerShell
+EOT
+
+cat > "$fixture_chain_fail" <<'EOT'
+FROM debian:12
+RUN apt-get update && apt-get install -y git && apt-get install -y powershell
+EOT
+
+assert_contract_exit_code "$fixture_fail" 1 "validator rejects apt-based powershell install"
+assert_contract_exit_code "$fixture_pass" 0 "validator allows release tarball install"
+assert_contract_exit_code "$fixture_comment_ok" 0 "validator ignores commented apt install"
+assert_contract_exit_code "$fixture_case_fail" 1 "validator rejects case-variant apt powershell install"
+assert_contract_exit_code "$fixture_chain_fail" 1 "validator rejects chained apt powershell install"
 
 echo ""
 echo -e "${BLUE}── Summary ──${NC}"

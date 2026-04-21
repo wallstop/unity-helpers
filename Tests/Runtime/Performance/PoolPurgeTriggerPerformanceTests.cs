@@ -470,7 +470,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Performance
 #if !SINGLE_THREADED
         /// <summary>
         /// Validates that multi-threaded access with OnRent trigger completes within budget.
-        /// Proves the CAS-based throttle prevents pathological behavior under contention.
+        /// Exercises the healthy-pool fast path: the per-call throttle skip (a single
+        /// volatile read compared against MinAutoPurgeIntervalSeconds) prevents the
+        /// pathological O(n) rescan per Rent/Return under high contention.
         /// </summary>
         [Test]
         public void HighContentionOnRentTriggerCompletesWithinBudget()

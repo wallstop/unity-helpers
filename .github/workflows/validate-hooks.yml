@@ -9,6 +9,7 @@ on:
       - "scripts/validate-hook-sync-calls.ps1"
       - "scripts/validate-hook-permissions.sh"
       - "scripts/tests/test-hook-patterns.sh"
+      - "scripts/tests/test-precommit-integration.sh"
       - ".github/workflows/validate-hooks.yml"
   pull_request:
     paths:
@@ -16,6 +17,7 @@ on:
       - "scripts/validate-hook-sync-calls.ps1"
       - "scripts/validate-hook-permissions.sh"
       - "scripts/tests/test-hook-patterns.sh"
+      - "scripts/tests/test-precommit-integration.sh"
       - ".github/workflows/validate-hooks.yml"
 
 permissions:
@@ -30,6 +32,24 @@ jobs:
 
       - name: Test hook patterns
         run: bash scripts/tests/test-hook-patterns.sh
+
+      - name: Verify pwsh is available (precondition for integration tests)
+        # ubuntu-latest runners ship pwsh, but we assert explicitly so any
+        # future image drift is loud — a missing pwsh would otherwise silently
+        # all-skip the integration smoke tests.
+        run: |
+          if ! command -v pwsh >/dev/null 2>&1; then
+            echo "::error::pwsh is not available on this runner; cannot run pre-commit integration tests."
+            exit 1
+          fi
+          # shellcheck disable=SC2016
+          # $PSVersionTable is a PowerShell automatic variable; single quotes
+          # are required so bash does NOT interpolate it. Without this disable
+          # actionlint's embedded shellcheck flags SC2016 as a false positive.
+          pwsh -NoProfile -Command '$PSVersionTable.PSVersion | Out-String | Write-Host'
+
+      - name: Pre-commit integration smoke tests
+        run: bash scripts/tests/test-precommit-integration.sh
 
       - name: Validate hook permissions
         run: bash scripts/validate-hook-permissions.sh

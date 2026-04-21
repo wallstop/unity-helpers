@@ -198,11 +198,15 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
                 M64;
         }
 
+        private bool _wasMemoryPressureEnabled;
+
         [SetUp]
         public void SetUp()
         {
             PoolPurgeSettings.ResetToDefaults();
             PoolSizeEstimator.ClearCaches();
+            _wasMemoryPressureEnabled = MemoryPressureMonitor.Enabled;
+            MemoryPressureMonitor.Enabled = false;
         }
 
         [TearDown]
@@ -210,6 +214,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Pool
         {
             PoolPurgeSettings.ResetToDefaults();
             PoolSizeEstimator.ClearCaches();
+            MemoryPressureMonitor.Enabled = _wasMemoryPressureEnabled;
         }
 
         // ========================================

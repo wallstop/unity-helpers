@@ -1,5 +1,12 @@
 #!/usr/bin/env bash
-set -e
+# Upgrade from `set -e` to include pipefail so that pipelines fail when any
+# stage exits non-zero (not just the last). Without `pipefail`, a construct
+# like `cspell ... | tee "$capture"` silently passes when cspell fails because
+# tee's exit status is 0 — the exact regression seen when the Round 1 work
+# gated the spell-check failure path on `if ! ... | tee`. `-u` (nounset) is
+# intentionally omitted here: pre-commit legitimately dereferences arrays that
+# may be empty (e.g. `${STAGED_FILES_ARRAY[@]}` under `bash -u` + old bash).
+set -eo pipefail
 
 # Source git staging helpers for safe index.lock handling
 # This prevents "fatal: Unable to create '.git/index.lock': File exists" errors
@@ -10,22 +17,47 @@ if [[ -f "$HELPERS_PATH" ]]; then
     # shellcheck source=../scripts/git-staging-helpers.sh
     source "$HELPERS_PATH"
 else
-    echo "Warning: git-staging-helpers.sh not found at $HELPERS_PATH" >&2
-    echo "Falling back to basic git add (may cause index.lock errors)" >&2
-    # Fallback: define basic versions of the functions
-    git_add_with_retry() {
-        git add -- "$@"
-    }
-    ensure_no_index_lock() {
-        return 0  # No-op fallback
-    }
+    echo "Error: git-staging-helpers.sh not found at $HELPERS_PATH" >&2
+    echo "Pre-commit cannot safely stage files without lock-aware helpers." >&2
+    echo "Restore scripts/git-staging-helpers.sh before committing." >&2
+    exit 1
 fi
 
 # CRITICAL: Wait for any external tool (lazygit, IDE, etc.) to release the index.lock
 # before starting hook operations. This is the primary fix for index.lock contention.
 # Without this, the hook may start while lazygit is still holding the lock.
 ensure_no_index_lock || {
-    echo "Warning: index.lock still held after waiting. Proceeding anyway, but operations may fail." >&2
+  echo "Error: index.lock still held after waiting." >&2
+  echo "Close competing git tools (GUI, IDE git operations, lazygit) and retry commit." >&2
+  exit 1
+}
+
+# Stage files with retry and emit actionable diagnostics on failure.
+stage_with_retry_or_fail() {
+  local stage_context="$1"
+  shift
+
+  if [ "$#" -eq 0 ]; then
+    return 0
+  fi
+
+  if git_add_with_retry "$@"; then
+    return 0
+  fi
+
+  echo "" >&2
+  echo "=== Error: Failed to stage files ($stage_context) ===" >&2
+  echo "Files:" >&2
+  for path in "$@"; do
+    echo "  $path" >&2
+  done
+  echo "" >&2
+  echo "Recovery:" >&2
+  echo "  1. Close other git tools (GUI, IDE git operations, lazygit)." >&2
+  echo "  2. Retry the commit after a few seconds." >&2
+  echo "  3. Run npm run agent:preflight:fix before retrying to catch this earlier." >&2
+  echo "" >&2
+  exit 1
 }
 
 # 0) Sync version references (runs on every commit)
@@ -159,7 +191,7 @@ if [[ ${#NEWLINE_FIXED[@]} -gt 0 ]]; then
     for f in "${NEWLINE_FIXED[@]}"; do
         echo "  $f"
     done
-    git_add_with_retry "${NEWLINE_FIXED[@]}"
+  stage_with_retry_or_fail "final newline normalization" "${NEWLINE_FIXED[@]}"
 fi
 
 # Filter files into type-specific arrays
@@ -220,7 +252,7 @@ if [ ${#MD_FILES_ARRAY[@]} -gt 0 ]; then
     exit 1
   fi
   # Use git_add_with_retry to handle concurrent git operations safely
-  git_add_with_retry "${MD_FILES_ARRAY[@]}"
+  stage_with_retry_or_fail "Prettier re-stage (Markdown)" "${MD_FILES_ARRAY[@]}"
 fi
 
 if [ ${#JSON_FILES_ARRAY[@]} -gt 0 ]; then
@@ -231,7 +263,7 @@ if [ ${#JSON_FILES_ARRAY[@]} -gt 0 ]; then
     exit 1
   fi
   # Use git_add_with_retry to handle concurrent git operations safely
-  git_add_with_retry "${JSON_FILES_ARRAY[@]}"
+  stage_with_retry_or_fail "Prettier re-stage (JSON)" "${JSON_FILES_ARRAY[@]}"
 fi
 
 if [ ${#YAML_FILES_ARRAY[@]} -gt 0 ]; then
@@ -242,7 +274,7 @@ if [ ${#YAML_FILES_ARRAY[@]} -gt 0 ]; then
     exit 1
   fi
   # Use git_add_with_retry to handle concurrent git operations safely
-  git_add_with_retry "${YAML_FILES_ARRAY[@]}"
+  stage_with_retry_or_fail "Prettier re-stage (YAML)" "${YAML_FILES_ARRAY[@]}"
 fi
 
 if [ ${#JS_FILES_ARRAY[@]} -gt 0 ]; then
@@ -253,7 +285,7 @@ if [ ${#JS_FILES_ARRAY[@]} -gt 0 ]; then
     exit 1
   fi
   # Use git_add_with_retry to handle concurrent git operations safely
-  git_add_with_retry "${JS_FILES_ARRAY[@]}"
+  stage_with_retry_or_fail "Prettier re-stage (JS)" "${JS_FILES_ARRAY[@]}"
 fi
 
 # 6) Format staged C# files with CSharpier (if available) and re-stage
@@ -272,7 +304,7 @@ if [ ${#MD_FILES_ARRAY[@]} -gt 0 ]; then
   # First, auto-fix what can be fixed
   npx --no-install markdownlint --fix --config .markdownlint.json --ignore-path .markdownlintignore -- "${MD_FILES_ARRAY[@]}" || true
   # Re-stage the fixed files
-  git_add_with_retry "${MD_FILES_ARRAY[@]}"
+  stage_with_retry_or_fail "markdownlint auto-fix re-stage" "${MD_FILES_ARRAY[@]}"
   # Then run markdownlint again to catch any remaining unfixable issues
   npx --no-install markdownlint --config .markdownlint.json --ignore-path .markdownlintignore -- "${MD_FILES_ARRAY[@]}"
 fi
@@ -296,9 +328,9 @@ for f in "${YAML_FILES_ARRAY[@]}"; do
 done
 if [ ${#DEPENDABOT_FILES_ARRAY[@]} -gt 0 ]; then
   if command -v pwsh >/dev/null 2>&1; then
-    pwsh -NoProfile -File scripts/lint-dependabot.ps1 -- "${DEPENDABOT_FILES_ARRAY[@]}"
+    pwsh -NoProfile -File scripts/lint-dependabot.ps1 -Paths "${DEPENDABOT_FILES_ARRAY[@]}"
   elif command -v powershell >/dev/null 2>&1; then
-    powershell -NoProfile -ExecutionPolicy Bypass -File scripts/lint-dependabot.ps1 -- "${DEPENDABOT_FILES_ARRAY[@]}"
+    powershell -NoProfile -ExecutionPolicy Bypass -File scripts/lint-dependabot.ps1 -Paths "${DEPENDABOT_FILES_ARRAY[@]}"
   else
     echo "PowerShell not found; skipping dependabot schema check." >&2
   fi
@@ -318,8 +350,31 @@ if [ ${#SPELL_FILES_ARRAY[@]} -gt 0 ]; then
 
     trap 'rm -f "$SPELL_FILE_LIST"' EXIT
     printf '%s\n' "${SPELL_FILES_ARRAY[@]}" > "$SPELL_FILE_LIST"
-    # Use --no-must-find-files to avoid errors when files are filtered by cspell config
-    npx --no-install cspell lint --no-must-find-files --no-progress --show-suggestions --file-list "$SPELL_FILE_LIST" || {
+    # Capture cspell output so we can both display it AND scan it for
+    # lint-error-code-shaped tokens (the most common source of regression;
+    # see 2026-04-19 PWS001 incident documented in .githooks/pre-merge-commit).
+    # Use --no-must-find-files to avoid errors when files are filtered by cspell config.
+    SPELL_CAPTURE="$(mktemp 2>/dev/null || true)"
+    if [ -z "$SPELL_CAPTURE" ]; then
+      echo "Error: Failed to create temporary file for spell check output." >&2
+      exit 1
+    fi
+    # Extend the existing trap so both temp files are cleaned up.
+    trap 'rm -f "$SPELL_FILE_LIST" "$SPELL_CAPTURE"' EXIT
+    # IMPORTANT: do NOT use `if ! cspell ... | tee "$SPELL_CAPTURE"; then`.
+    # Even with pipefail enabled on the top of the file, keeping the
+    # explicit-exit-code form below is the paranoid belt-and-braces guard
+    # against a future revert of pipefail in this hook. The pattern is:
+    #   1. capture cspell output directly to the temp file,
+    #   2. capture cspell's exit status in SPELL_EXIT,
+    #   3. cat the capture so the user still sees the diagnostics,
+    #   4. branch on SPELL_EXIT only.
+    # This is the regression guard against P0-1 (Round 1 shipped the tee form
+    # on a `set -e`-only hook and silently passed every spelling failure).
+    SPELL_EXIT=0
+    npx --no-install cspell lint --no-must-find-files --no-progress --show-suggestions --file-list "$SPELL_FILE_LIST" >"$SPELL_CAPTURE" 2>&1 || SPELL_EXIT=$?
+    cat "$SPELL_CAPTURE"
+    if [ "$SPELL_EXIT" -ne 0 ]; then
       echo "" >&2
       echo "=== Spelling errors detected ===" >&2
       echo "Fix typos or add valid terms to the appropriate dictionary in cspell.json:" >&2
@@ -329,10 +384,32 @@ if [ ${#SPELL_FILES_ARRAY[@]} -gt 0 ]; then
       echo "  tech-terms    -- General programming/tooling terms (CRLF, NUL, ASCII, etc.)" >&2
       echo "  words (root)  -- Project-specific words that don't fit a category" >&2
       echo "" >&2
+      # Synthesize a copy-pasteable patch for lint-error-code-shaped unknowns.
+      # Extracts the "(TOKEN)" after "Unknown word" and keeps only tokens
+      # matching the lint-error-code prefix shape. This catches the common
+      # "new lint family -> new prefix -> missing cspell entry" regression.
+      # Width note: upper bound is unbounded (via {2,}) because cspell never
+      # emits monster tokens, and a narrow cap (originally 5) silently let
+      # longer prefixes like SHA256 or NOVELPFX slip past the patch emitter.
+      UNKNOWN_CODE_PREFIXES="$(grep -oE 'Unknown word \([A-Z]{2,}\)' "$SPELL_CAPTURE" 2>/dev/null | grep -oE '[A-Z]{2,}' | sort -u || true)"
+      if [ -n "$UNKNOWN_CODE_PREFIXES" ]; then
+        echo "=== Detected unregistered lint-error-code prefix(es) ===" >&2
+        echo "Copy-paste this patch into the root 'words' array in cspell.json" >&2
+        echo "(append each quoted prefix as a new array element):" >&2
+        echo "" >&2
+        while IFS= read -r prefix; do
+          [ -z "$prefix" ] && continue
+          echo "    \"$prefix\"," >&2
+        done <<< "$UNKNOWN_CODE_PREFIXES"
+        echo "" >&2
+        echo "See scripts/validate-lint-error-codes.ps1 for the contract that" >&2
+        echo "enforces this requirement once the prefix is registered." >&2
+        echo "" >&2
+      fi
       echo "Re-run locally: npm run lint:spelling" >&2
       echo "" >&2
       exit 1
-    }
+    fi
   else
     echo "cspell not found; skipping spell check (run 'npm install' to install)." >&2
   fi
@@ -354,7 +431,7 @@ if [ ${#LLM_FILES_ARRAY[@]} -gt 0 ]; then
     if ! pwsh -NoProfile -File scripts/lint-llm-instructions.ps1; then
       echo "LLM lint failed. Attempting auto-fix..." >&2
       if pwsh -NoProfile -File scripts/lint-llm-instructions.ps1 -Fix; then
-        git_add_with_retry .llm/context.md
+        stage_with_retry_or_fail "LLM auto-fix re-stage" .llm/context.md
         echo "LLM instructions auto-fixed and re-staged."
       else
         echo "LLM instructions auto-fix also failed." >&2
@@ -365,7 +442,7 @@ if [ ${#LLM_FILES_ARRAY[@]} -gt 0 ]; then
     if ! powershell -NoProfile -ExecutionPolicy Bypass -File scripts/lint-llm-instructions.ps1; then
       echo "LLM lint failed. Attempting auto-fix..." >&2
       if powershell -NoProfile -ExecutionPolicy Bypass -File scripts/lint-llm-instructions.ps1 -Fix; then
-        git_add_with_retry .llm/context.md
+        stage_with_retry_or_fail "LLM auto-fix re-stage" .llm/context.md
         echo "LLM instructions auto-fixed and re-staged."
       else
         echo "LLM instructions auto-fix also failed." >&2
@@ -395,12 +472,12 @@ done
 if [ ${#LLM_SIZE_CHECK_ARRAY[@]} -gt 0 ]; then
   echo "Checking skill and context file sizes..."
   if command -v pwsh >/dev/null 2>&1; then
-    pwsh -NoProfile -File scripts/lint-skill-sizes.ps1 || {
+    pwsh -NoProfile -File scripts/lint-skill-sizes.ps1 -Paths "${LLM_SIZE_CHECK_ARRAY[@]}" || {
       echo "File size check failed. Some files exceed 500 lines and must be split or reduced." >&2
       exit 1
     }
   elif command -v powershell >/dev/null 2>&1; then
-    powershell -NoProfile -ExecutionPolicy Bypass -File scripts/lint-skill-sizes.ps1 || {
+    powershell -NoProfile -ExecutionPolicy Bypass -File scripts/lint-skill-sizes.ps1 -Paths "${LLM_SIZE_CHECK_ARRAY[@]}" || {
       echo "File size check failed. Some files exceed 500 lines and must be split or reduced." >&2
       exit 1
     }
@@ -639,7 +716,26 @@ if [ ${#META_REQUIRED_FILES[@]} -gt 0 ]; then
         for meta in "${META_UNSTAGED[@]}"; do
             echo "  $meta"
         done
-        git_add_with_retry "${META_UNSTAGED[@]}"
+        if git_add_with_retry "${META_UNSTAGED[@]}"; then
+            echo "Successfully staged ${#META_UNSTAGED[@]} .meta file(s)."
+        else
+            echo "" >&2
+            echo "=== Error: Failed to auto-stage .meta files ===" >&2
+            echo "The hook could not stage one or more required .meta companions." >&2
+            echo "This is usually caused by git index.lock contention from another process." >&2
+            echo "" >&2
+            echo "Files that could not be staged:" >&2
+            for meta in "${META_UNSTAGED[@]}"; do
+                echo "  $meta" >&2
+            done
+            echo "" >&2
+            echo "Recovery:" >&2
+            echo "  1. Close other git tools (GUI, IDE git operations, lazygit)." >&2
+            echo "  2. Retry the commit after a few seconds." >&2
+            echo "  3. Run npm run agent:preflight:fix before retrying to catch this earlier." >&2
+            echo "" >&2
+            exit 1
+        fi
     fi
 
     if [ ${#META_MISSING[@]} -gt 0 ]; then
@@ -655,3 +751,6 @@ if [ ${#META_REQUIRED_FILES[@]} -gt 0 ]; then
         exit 1
     fi
 fi
+
+echo "Pre-commit checks passed."
+exit 0

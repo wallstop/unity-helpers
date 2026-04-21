@@ -1624,16 +1624,29 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                             continue;
                         }
 
+                        bool undoRecorded = false;
                         bool settingsActuallyModified = false;
+
+                        void EnsureUndoRecorded()
+                        {
+                            if (undoRecorded)
+                            {
+                                return;
+                            }
+                            Undo.RecordObject(importer, "Set Sprite Texture To Uncompressed");
+                            undoRecorded = true;
+                        }
 
                         if (importer.crunchedCompression)
                         {
+                            EnsureUndoRecorded();
                             importer.crunchedCompression = false;
                             settingsActuallyModified = true;
                         }
 
                         if (importer.textureCompression != TextureImporterCompression.Uncompressed)
                         {
+                            EnsureUndoRecorded();
                             importer.textureCompression = TextureImporterCompression.Uncompressed;
                             settingsActuallyModified = true;
                         }
@@ -1663,6 +1676,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
 
                         if (platformSettingsChangedThisTime || !platformSettings.overridden)
                         {
+                            EnsureUndoRecorded();
                             platformSettings.overridden = true;
                             importer.SetPlatformTextureSettings(platformSettings);
                             settingsActuallyModified = true;

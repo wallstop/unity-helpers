@@ -79,7 +79,8 @@ function Invoke-Linter {
   param(
     [string]$SkillsDir,
     [int]$ContextLines = 100,
-    [switch]$Verbose
+    [switch]$Verbose,
+    [string[]]$AdditionalArgs
   )
   # Run the linter against a custom skills directory by temporarily creating the expected structure
   $tempRoot = Join-Path ([System.IO.Path]::GetTempPath()) "test-skill-sizes-$([System.Guid]::NewGuid().ToString('N').Substring(0,8))"
@@ -117,6 +118,9 @@ function Invoke-Linter {
 
   $linterArgs = @((Join-Path $tempScriptsDir 'lint-skill-sizes.ps1'))
   if ($Verbose) { $linterArgs += '-VerboseOutput' }
+  if ($null -ne $AdditionalArgs -and $AdditionalArgs.Count -gt 0) {
+    $linterArgs += $AdditionalArgs
+  }
 
   try {
     $output = & pwsh -NoProfile -File @linterArgs 2>&1
@@ -336,6 +340,34 @@ Write-TestResult "SkillOverLimitWithContextOk_ExitCode1" ($result16.ExitCode -eq
 Write-TestResult "SkillOverLimitWithContextOk_SkillError" ($result16.Output -match '\[skill-sizes\] ERROR:') "Expected [skill-sizes] ERROR in output"
 Write-TestResult "SkillOverLimitWithContextOk_NoContextError" (-not ($result16.Output -match '\[context-size\] ERROR:')) "Unexpected [context-size] ERROR in output"
 Remove-Item -Path $tempDir16 -Recurse -Force -ErrorAction SilentlyContinue
+
+# Test 17: Path-scoped skill check should not fail for oversized context when context is not targeted
+Write-Host "`nTest group: Path-scoped validation" -ForegroundColor Magenta
+$tempDir17 = Join-Path ([System.IO.Path]::GetTempPath()) "skill-test-path-skill-only-$([System.Guid]::NewGuid().ToString('N').Substring(0,8))"
+New-Item -ItemType Directory -Path $tempDir17 -Force | Out-Null
+New-SkillFixture -Dir $tempDir17 -FileName "small-skill.md" -LineCount 120
+$result17 = Invoke-Linter -SkillsDir $tempDir17 -ContextLines 520 -AdditionalArgs @('-Paths', '.llm/skills/small-skill.md')
+Write-TestResult "PathScopedSkillOnly_IgnoresContext_ExitCode0" ($result17.ExitCode -eq 0) "Expected exit code 0, got $($result17.ExitCode)"
+Write-TestResult "PathScopedSkillOnly_NoContextErrors" (-not ($result17.Output -match '\[context-size\] ERROR:')) "Did not expect context-size ERROR output"
+Remove-Item -Path $tempDir17 -Recurse -Force -ErrorAction SilentlyContinue
+
+# Test 18: Path-scoped context check should fail when context is targeted and over limit
+$tempDir18 = Join-Path ([System.IO.Path]::GetTempPath()) "skill-test-path-context-only-$([System.Guid]::NewGuid().ToString('N').Substring(0,8))"
+New-Item -ItemType Directory -Path $tempDir18 -Force | Out-Null
+New-SkillFixture -Dir $tempDir18 -FileName "small-skill.md" -LineCount 120
+$result18 = Invoke-Linter -SkillsDir $tempDir18 -ContextLines 520 -AdditionalArgs @('-Paths', '.llm/context.md')
+Write-TestResult "PathScopedContextOnly_OverLimit_ExitCode1" ($result18.ExitCode -eq 1) "Expected exit code 1, got $($result18.ExitCode)"
+Write-TestResult "PathScopedContextOnly_ContextError" ($result18.Output -match '\[context-size\] ERROR:') "Expected context-size ERROR output"
+Remove-Item -Path $tempDir18 -Recurse -Force -ErrorAction SilentlyContinue
+
+# Test 19: FailOnCritical should fail on near-limit skill files
+$tempDir19 = Join-Path ([System.IO.Path]::GetTempPath()) "skill-test-fail-critical-$([System.Guid]::NewGuid().ToString('N').Substring(0,8))"
+New-Item -ItemType Directory -Path $tempDir19 -Force | Out-Null
+New-SkillFixture -Dir $tempDir19 -FileName "critical-skill.md" -LineCount 490
+$result19 = Invoke-Linter -SkillsDir $tempDir19 -ContextLines 100 -AdditionalArgs @('-Paths', '.llm/skills/critical-skill.md', '-FailOnCritical')
+Write-TestResult "FailOnCritical_CriticalSkill_ExitCode1" ($result19.ExitCode -eq 1) "Expected exit code 1, got $($result19.ExitCode)"
+Write-TestResult "FailOnCritical_CriticalMessagePresent" ($result19.Output -match '\[skill-sizes\] CRITICAL:') "Expected CRITICAL message in output"
+Remove-Item -Path $tempDir19 -Recurse -Force -ErrorAction SilentlyContinue
 
 # ---- Summary ----
 

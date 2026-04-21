@@ -22,7 +22,11 @@
 #>
 
 Param(
-    [switch]$VerboseOutput
+    [switch]$VerboseOutput,
+    [string[]]$Paths,
+    [switch]$FailOnCritical,
+    [Parameter(ValueFromRemainingArguments = $true)]
+    [string[]]$AdditionalPaths
 )
 
 Set-StrictMode -Version Latest
@@ -46,10 +50,59 @@ function Write-SuccessMsg($msg, $prefix = "[skill-sizes]") {
 
 $repoRoot = (Get-Item $PSScriptRoot).Parent.FullName
 $skillsDir = Join-Path -Path $repoRoot -ChildPath '.llm/skills'
+$contextFile = Join-Path -Path $repoRoot -ChildPath '.llm/context.md'
 $maxLines = 500
 $criticalLines = 480
 $warningLines = 300
 $exitCode = 0
+
+function Resolve-RepoRelativePath {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Path,
+        [Parameter(Mandatory = $true)]
+        [string]$Root
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Path)) {
+        return $null
+    }
+
+    $normalizedPath = $Path.Replace('\\', '/')
+    $normalizedRoot = $Root.Replace('\\', '/')
+
+    if ([System.IO.Path]::IsPathRooted($Path)) {
+        $fullPath = [System.IO.Path]::GetFullPath($Path)
+        $fullPathNormalized = $fullPath.Replace('\\', '/')
+        $rootPrefix = "$normalizedRoot/"
+        if ($fullPathNormalized -eq $normalizedRoot) {
+            return '.'
+        }
+        if ($fullPathNormalized.StartsWith($rootPrefix, [System.StringComparison]::OrdinalIgnoreCase)) {
+            return $fullPathNormalized.Substring($rootPrefix.Length)
+        }
+        return $null
+    }
+
+    if ($normalizedPath.StartsWith('./')) {
+        return $normalizedPath.Substring(2)
+    }
+
+    return $normalizedPath
+}
+
+function Get-LineCount {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Path
+    )
+
+    if (-not (Test-Path -Path $Path)) {
+        return 0
+    }
+
+    return @(Get-Content -Path $Path).Count
+}
 
 # Validate skills directory exists
 if (-not (Test-Path $skillsDir)) {
@@ -58,6 +111,40 @@ if (-not (Test-Path $skillsDir)) {
 }
 
 $skillFiles = @(Get-ChildItem -Path $skillsDir -Filter '*.md' -Recurse | Sort-Object FullName)
+$checkContext = $true
+
+if ($null -ne $Paths -and $Paths.Count -gt 0) {
+    $allScopedPaths = @($Paths)
+    if ($null -ne $AdditionalPaths -and $AdditionalPaths.Count -gt 0) {
+        $allScopedPaths += $AdditionalPaths
+    }
+
+    $selectedSkillFiles = New-Object System.Collections.Generic.List[object]
+    $checkContext = $false
+    $seen = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+
+    foreach ($rawPath in $allScopedPaths) {
+        $relativePath = Resolve-RepoRelativePath -Path $rawPath -Root $repoRoot
+        if ($null -eq $relativePath) {
+            continue
+        }
+
+        if ($relativePath -eq '.llm/context.md') {
+            $checkContext = $true
+            continue
+        }
+
+        if ($relativePath -like '.llm/skills/*.md') {
+            $fullPath = Join-Path -Path $repoRoot -ChildPath $relativePath
+            if ((Test-Path -Path $fullPath) -and $seen.Add($fullPath)) {
+                $selectedSkillFiles.Add((Get-Item -LiteralPath $fullPath)) | Out-Null
+            }
+        }
+    }
+
+    $skillFiles = @($selectedSkillFiles | Sort-Object FullName)
+}
+
 $errorCount = 0
 $criticalCount = 0
 $warningCount = 0
@@ -80,6 +167,9 @@ foreach ($file in $skillFiles) {
             Write-CriticalWarningMsg "${relativePath}: $lineCount lines - only $remaining lines from $maxLines limit! Consider splitting now"
         }
         $criticalCount++
+        if ($FailOnCritical) {
+            $exitCode = 1
+        }
     }
     elseif ($lineCount -gt $warningLines) {
         if ($VerboseOutput) {
@@ -96,16 +186,15 @@ foreach ($file in $skillFiles) {
 }
 
 # Check .llm/context.md
-$contextFile = Join-Path -Path $repoRoot -ChildPath '.llm/context.md'
 $contextErrorCount = 0
 $contextCriticalCount = 0
 $contextWarningCount = 0
 $contextOkCount = 0
 
 $contextFound = $false
-if (Test-Path $contextFile) {
+if ($checkContext -and (Test-Path $contextFile)) {
     $contextFound = $true
-    $contextLineCount = @(Get-Content $contextFile).Count
+    $contextLineCount = Get-LineCount -Path $contextFile
 
     if ($contextLineCount -gt $maxLines) {
         Write-ErrorMsg "context.md: $contextLineCount lines (max: $maxLines) - MUST reduce" "[context-size]"
@@ -120,6 +209,9 @@ if (Test-Path $contextFile) {
             Write-CriticalWarningMsg "context.md: $contextLineCount lines - only $remaining lines from $maxLines limit! Consider reducing now" "[context-size]"
         }
         $contextCriticalCount++
+        if ($FailOnCritical) {
+            $exitCode = 1
+        }
     }
     elseif ($contextLineCount -gt $warningLines) {
         if ($VerboseOutput) {
@@ -134,7 +226,7 @@ if (Test-Path $contextFile) {
         $contextOkCount++
     }
 }
-else {
+elseif ($checkContext) {
     Write-WarningMsg "context.md not found at: $contextFile" "[context-size]"
     $contextWarningCount++
 }
@@ -147,13 +239,13 @@ if ($VerboseOutput -or $criticalCount -gt 0 -or $errorCount -gt 0) {
     Write-Host "[skill-sizes]   OK: $okCount, Warnings: $warningCount, Critical: $criticalCount, Errors: $errorCount"
 }
 
-if ($contextFound) {
+if ($checkContext -and $contextFound) {
     Write-Host "[context-size] Summary: context.md checked ($contextLineCount lines)"
 }
-else {
+elseif ($checkContext) {
     Write-Host "[context-size] Summary: context.md not found"
 }
-if ($VerboseOutput -or $contextCriticalCount -gt 0 -or $contextErrorCount -gt 0) {
+if ($checkContext -and ($VerboseOutput -or $contextCriticalCount -gt 0 -or $contextErrorCount -gt 0)) {
     Write-Host "[context-size]   OK: $contextOkCount, Warnings: $contextWarningCount, Critical: $contextCriticalCount, Errors: $contextErrorCount"
 }
 

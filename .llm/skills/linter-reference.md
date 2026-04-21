@@ -34,23 +34,25 @@ npm run validate:prepush
 
 ### Individual Commands
 
-| Command                                         | Description                                 |
-| ----------------------------------------------- | ------------------------------------------- |
-| `npm run lint:spelling`                         | Spell check all documentation (CSpell)      |
-| `npm run lint:spelling:config`                  | Lint cspell.json for config issues          |
-| `npm run lint:spelling:config:fix`              | Auto-fix cspell.json config issues          |
-| `npm run lint:docs`                             | Check markdown links and backtick refs      |
-| `npm run lint:markdown`                         | Markdownlint structural rules               |
-| `npm run lint:yaml`                             | YAML syntax validation                      |
-| `npm run lint:dependabot`                       | Dependabot config schema validation         |
-| `npm run lint:csharp-naming`                    | C# naming conventions (method casing, etc.) |
-| `npm run format:md:check`                       | Check markdown formatting (Prettier)        |
-| `npm run format:json:check`                     | Check JSON/ASMDEF formatting (Prettier)     |
-| `npm run format:yaml:check`                     | Check YAML formatting (Prettier)            |
-| `npm run eol:check`                             | Line endings (CRLF) and BOM check           |
-| `npm run validate:tests`                        | Test lifecycle lint (Track() usage)         |
-| `npm run test:sync-script-contracts`            | Sync newline + cspell contract regressions  |
-| `bash scripts/audit-license-years.sh --summary` | License year header audit                   |
+| Command                                         | Description                                  |
+| ----------------------------------------------- | -------------------------------------------- |
+| `npm run lint:spelling`                         | Spell check all documentation (CSpell)       |
+| `npm run lint:spelling:config`                  | Lint cspell.json for config issues           |
+| `npm run lint:spelling:config:fix`              | Auto-fix cspell.json config issues           |
+| `npm run lint:docs`                             | Check markdown links and backtick refs       |
+| `npm run lint:markdown`                         | Markdownlint structural rules                |
+| `npm run lint:yaml`                             | YAML syntax validation                       |
+| `npm run lint:dependabot`                       | Dependabot config schema validation          |
+| `npm run lint:pwsh-invocations`                 | Bash->PowerShell invocation anti-patterns    |
+| `npm run validate:lint-error-codes`             | cspell coverage for lint-error-code prefixes |
+| `npm run lint:csharp-naming`                    | C# naming conventions (method casing, etc.)  |
+| `npm run format:md:check`                       | Check markdown formatting (Prettier)         |
+| `npm run format:json:check`                     | Check JSON/ASMDEF formatting (Prettier)      |
+| `npm run format:yaml:check`                     | Check YAML formatting (Prettier)             |
+| `npm run eol:check`                             | Line endings (CRLF) and BOM check            |
+| `npm run validate:tests`                        | Test lifecycle lint (Track() usage)          |
+| `npm run test:sync-script-contracts`            | Sync newline + cspell contract regressions   |
+| `bash scripts/audit-license-years.sh --summary` | License year header audit                    |
 
 ---
 
@@ -79,6 +81,11 @@ Add words to the appropriate categorized dictionary in `cspell.json`, not the ro
 
 When adding technical abbreviations (e.g., IVT for InternalsVisibleTo), place them in the matching category (`csharp-terms` for C# concepts, `tech-terms` for general tooling). Only use the root `words` array for project-specific words that don't fit any category.
 
+**Lint-error-code prefixes** (2 or more uppercase letters used in codes like
+`UNH001`, `PWS002`) belong in the root `words` array. Whenever a new lint
+script emits a new prefix, register the prefix in cspell and run
+`npm run validate:lint-error-codes` to confirm the contract still holds.
+
 Since `caseSensitive` is `false` in this project, only ONE case variant per word is needed (e.g., `ulf` covers `ULF`, `Ulf`, etc.).
 
 ### Config Lint
@@ -89,6 +96,10 @@ npm run lint:spelling:config:fix   # Auto-fix case-redundant entries
 ```
 
 The config linter catches case-redundant dictionary entries (error, blocking) and cross-dictionary duplicates (warning, non-blocking). It does not auto-classify root words into categorized dictionaries. That remains a review-time policy decision.
+
+### Lint-Error-Code Coverage (Contract)
+
+`npm run validate:lint-error-codes` enforces that every `^[A-Z]{2,}\d{3}$` token emitted by `scripts/lint-*.{ps1,js}`, `scripts/tests/test-lint-*.{ps1,js,sh}`, or `.githooks/*` has its prefix registered with cspell; on drift it prints a copy-pasteable JSON patch. Regression test: `scripts/tests/test-validate-lint-error-codes.ps1`. Wired into `validate:content`, `validate:tests`, and pre-push (when any file in those three scan roots, `cspell.json`, the validator, or its test changes).
 
 ### Inline Ignores
 

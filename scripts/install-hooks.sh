@@ -137,7 +137,14 @@ check_status() {
         print_error "pre-commit hook: MISSING"
         all_ok=false
     fi
-    
+
+    if [[ -f "$REPO_ROOT/.githooks/pre-merge-commit" ]]; then
+        print_success "pre-merge-commit hook: exists"
+    else
+        print_error "pre-merge-commit hook: MISSING"
+        all_ok=false
+    fi
+
     if [[ -f "$REPO_ROOT/.githooks/pre-push" ]]; then
         print_success "pre-push hook: exists"
     else
@@ -237,7 +244,12 @@ install_hooks() {
         chmod +x .githooks/pre-commit
         print_success "pre-commit hook is executable"
     fi
-    
+
+    if [[ -f ".githooks/pre-merge-commit" ]]; then
+        chmod +x .githooks/pre-merge-commit
+        print_success "pre-merge-commit hook is executable"
+    fi
+
     if [[ -f ".githooks/pre-push" ]]; then
         chmod +x .githooks/pre-push
         print_success "pre-push hook is executable"

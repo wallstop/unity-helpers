@@ -443,6 +443,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                                 {
                                     continue;
                                 }
+                                bool objectModified = false;
                                 SerializedObject so = new(o);
                                 SerializedProperty it = so.GetIterator();
                                 bool enter = true;
@@ -458,14 +459,15 @@ namespace WallstopStudios.UnityHelpers.Editor.Sprites
                                         )
                                         {
                                             it.objectReferenceValue = replacement;
-                                            assetModified = true;
+                                            objectModified = true;
                                         }
                                     }
                                 }
-                                if (assetModified)
+                                if (objectModified)
                                 {
-                                    so.ApplyModifiedPropertiesWithoutUndo();
+                                    so.ApplyModifiedProperties();
                                     EditorUtility.SetDirty(o);
+                                    assetModified = true;
                                 }
                             }
                             if (assetModified)

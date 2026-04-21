@@ -24,6 +24,16 @@
 .PARAMETER VerboseOutput
     Show verbose output including which files are being checked.
 
+.PARAMETER AdditionalPaths
+    INTERNAL — not intended for direct use. Without this catch-all parameter,
+    `pwsh -File` invocations that pass multiple values to -Paths (e.g.
+    `pwsh -File lint-dependabot.ps1 -Paths a.yml b.yml`) would bind only the
+    first value to -Paths and reject the rest as unknown positional arguments,
+    causing the script to fail at CLI-parse time. -AdditionalPaths uses
+    `ValueFromRemainingArguments` to swallow those trailing positionals; the
+    script concatenates -Paths and -AdditionalPaths before validating. See
+    .llm/skills/bash-pwsh-invocation.md for the full context.
+
 .EXAMPLE
     ./scripts/lint-dependabot.ps1
     Validate the default .github/dependabot.yml.
@@ -33,13 +43,17 @@
     Validate with verbose output.
 
 .EXAMPLE
-    ./scripts/lint-dependabot.ps1 -- .github/dependabot.yml other/dependabot.yml
+    ./scripts/lint-dependabot.ps1 -Paths .github/dependabot.yml other/dependabot.yml
     Validate multiple explicit paths.
 #>
 param(
     [switch]$VerboseOutput,
+    [string[]]$Paths,
+    # Catch any trailing positional args that PowerShell's -File CLI mode fails to
+    # bind to -Paths when multiple values follow. See lint-skill-sizes.ps1 for the
+    # same pattern and .llm/skills/bash-pwsh-invocation.md for rationale.
     [Parameter(ValueFromRemainingArguments = $true)]
-    [string[]]$Paths
+    [string[]]$AdditionalPaths
 )
 
 Set-StrictMode -Version Latest
@@ -54,7 +68,7 @@ function Write-Info($msg) {
 function Get-DependabotErrors {
     param([string]$FilePath)
 
-    $lines = Get-Content $FilePath
+    $lines = Get-Content -LiteralPath $FilePath
     $fileErrors = [System.Collections.Generic.List[string]]::new()
 
     # ── DEP001: version: 2 must appear before the updates: section ───────────
@@ -245,16 +259,18 @@ function Get-DependabotErrors {
 }
 
 # ── Build the list of files to validate ──────────────────────────────────────
+$allPaths = @()
+if ($Paths) { $allPaths += $Paths }
+if ($AdditionalPaths) { $allPaths += $AdditionalPaths }
+
 $filesToCheck = @()
-if ($Paths -and $Paths.Count -gt 0) {
-    foreach ($p in $Paths) {
-        if ($p -eq '--') { continue }
-        try {
-            $resolved = Resolve-Path $p -ErrorAction Stop
-            $filesToCheck += $resolved.Path
-        } catch {
-            Write-Info "Skipping path '$p' because it was not found."
-        }
+foreach ($p in $allPaths) {
+    if ([string]::IsNullOrWhiteSpace($p)) { continue }
+    try {
+        $resolved = Resolve-Path -LiteralPath $p -ErrorAction Stop
+        $filesToCheck += $resolved.Path
+    } catch {
+        Write-Info "Skipping path '$p' because it was not found."
     }
 }
 

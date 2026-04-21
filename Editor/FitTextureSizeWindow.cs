@@ -760,6 +760,7 @@ namespace WallstopStudios.UnityHelpers.Editor
                         continue;
                     }
 
+                    Undo.RecordObject(textureImporter, "Fit Texture Size");
                     textureImporter.maxTextureSize = targetTextureSize;
                     // Apply platform overrides if requested
                     ApplyPlatformOverride(textureImporter, "Standalone", targetTextureSize);

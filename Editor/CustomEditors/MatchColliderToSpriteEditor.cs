@@ -27,7 +27,20 @@ namespace WallstopStudios.UnityHelpers.Editor.CustomEditors
 
             if (GUILayout.Button("MatchColliderToSprite"))
             {
+                if (matchColliderToSprite.polygonCollider != null)
+                {
+                    Undo.RecordObject(
+                        matchColliderToSprite.polygonCollider,
+                        "Match Collider To Sprite"
+                    );
+                }
+                Undo.RecordObject(matchColliderToSprite, "Match Collider To Sprite");
                 matchColliderToSprite.OnValidate();
+                EditorUtility.SetDirty(matchColliderToSprite);
+                if (matchColliderToSprite.polygonCollider != null)
+                {
+                    EditorUtility.SetDirty(matchColliderToSprite.polygonCollider);
+                }
             }
         }
     }

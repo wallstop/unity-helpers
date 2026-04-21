@@ -10,6 +10,11 @@
 #
 # Environment variables:
 #   GIT_STAGING_VERBOSE   - Set to "1" to enable verbose logging for debugging
+#   GIT_LOCK_MAX_ATTEMPTS - Max retry attempts for git add (default: 30)
+#   GIT_LOCK_INITIAL_DELAY_MS - Initial retry delay in milliseconds (default: 50)
+#   GIT_LOCK_MAX_DELAY_MS - Max retry delay in milliseconds (default: 3000)
+#   GIT_LOCK_WAIT_TIMEOUT_MS - Max wait for index lock polling (default: 30000)
+#   GIT_LOCK_POLL_INTERVAL_MS - Lock polling interval in milliseconds (default: 50)
 #   GIT_LOCK_INITIAL_WAIT_MS - Initial wait for lock at hook start (default: 10000)
 #
 # Usage:
@@ -19,7 +24,32 @@
 
 # Script-scoped configuration
 $script:GitStagingVerbose = $env:GIT_STAGING_VERBOSE -eq "1"
-$script:GitLockInitialWaitMs = if ($env:GIT_LOCK_INITIAL_WAIT_MS) { [int]$env:GIT_LOCK_INITIAL_WAIT_MS } else { 10000 }
+
+function Get-EnvIntOrDefault {
+    param(
+        [string]$Name,
+        [int]$DefaultValue
+    )
+
+    $raw = [Environment]::GetEnvironmentVariable($Name)
+    if ([string]::IsNullOrWhiteSpace($raw)) {
+        return $DefaultValue
+    }
+
+    $value = 0
+    if ([int]::TryParse($raw, [ref]$value) -and $value -gt 0) {
+        return $value
+    }
+
+    return $DefaultValue
+}
+
+$script:GitLockMaxAttempts = Get-EnvIntOrDefault -Name 'GIT_LOCK_MAX_ATTEMPTS' -DefaultValue 30
+$script:GitLockInitialDelayMs = Get-EnvIntOrDefault -Name 'GIT_LOCK_INITIAL_DELAY_MS' -DefaultValue 50
+$script:GitLockMaxDelayMs = Get-EnvIntOrDefault -Name 'GIT_LOCK_MAX_DELAY_MS' -DefaultValue 3000
+$script:GitLockWaitTimeoutMs = Get-EnvIntOrDefault -Name 'GIT_LOCK_WAIT_TIMEOUT_MS' -DefaultValue 30000
+$script:GitLockPollIntervalMs = Get-EnvIntOrDefault -Name 'GIT_LOCK_POLL_INTERVAL_MS' -DefaultValue 50
+$script:GitLockInitialWaitMs = Get-EnvIntOrDefault -Name 'GIT_LOCK_INITIAL_WAIT_MS' -DefaultValue 10000
 
 # Script-scoped mutex for coordinating git operations within the same PowerShell session.
 # This prevents race conditions when multiple hooks run in parallel within a single process.
@@ -93,8 +123,8 @@ function Get-GitRepositoryInfo {
 function Wait-ForGitIndexLock {
     param(
         [string]$IndexLockPath,
-        [int]$MaxWaitMilliseconds = 30000,
-        [int]$PollIntervalMilliseconds = 50
+        [int]$MaxWaitMilliseconds = $script:GitLockWaitTimeoutMs,
+        [int]$PollIntervalMilliseconds = $script:GitLockPollIntervalMs
     )
 
     if (-not $IndexLockPath) {
@@ -141,7 +171,7 @@ function Wait-ForGitIndexLock {
 function Invoke-EnsureNoIndexLock {
     param(
         [int]$MaxWaitMilliseconds = $script:GitLockInitialWaitMs,
-        [int]$PollIntervalMilliseconds = 50
+        [int]$PollIntervalMilliseconds = $script:GitLockPollIntervalMs
     )
 
     try {
@@ -241,9 +271,9 @@ function Invoke-GitAddWithRetry {
     param(
         [string[]]$Items,
         [string]$IndexLockPath,
-        [int]$MaxAttempts = 30,
-        [int]$InitialDelayMilliseconds = 50,
-        [int]$MaxDelayMilliseconds = 3000,
+        [int]$MaxAttempts = $script:GitLockMaxAttempts,
+        [int]$InitialDelayMilliseconds = $script:GitLockInitialDelayMs,
+        [int]$MaxDelayMilliseconds = $script:GitLockMaxDelayMs,
         [switch]$Quiet
     )
 
@@ -319,7 +349,13 @@ function Invoke-GitAddWithRetry {
                 if ($shouldRetry -and $attempt -lt $MaxAttempts) {
                     # Exponential backoff with jitter, capped at MaxDelayMilliseconds
                     $baseDelay = [Math]::Min($InitialDelayMilliseconds * [Math]::Pow(1.4, $attempt - 1), $MaxDelayMilliseconds)
-                    $jitter = Get-Random -Minimum 0 -Maximum ([int]($baseDelay * 0.4))
+                    $maxJitter = [int]([Math]::Floor($baseDelay * 0.4))
+                    $jitter = if ($maxJitter -gt 0) {
+                        Get-Random -Minimum 0 -Maximum ($maxJitter + 1)
+                    }
+                    else {
+                        0
+                    }
                     $delay = [int]$baseDelay + $jitter
                     if (-not $Quiet) {
                         Write-GitStagingWarning "git add failed (exit code $exitCode), retrying in ${delay}ms (attempt $attempt/$MaxAttempts)..."

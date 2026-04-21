@@ -1656,10 +1656,19 @@ namespace WallstopStudios.UnityHelpers.Utils
 
             // Time-based throttling: automatic (non-explicit) purge operations are rate-limited
             // to avoid O(n) work on every Rent/Return. Inspired by Caffeine's amortized maintenance.
-            // Explicit purges, force-full-purges, and pending gradual purges bypass the throttle.
+            // Pools that are over-capacity bypass the throttle so returns cannot accumulate
+            // beyond MaxPoolSize within a single tick of a coarse virtual clock — the throttle's
+            // purpose is to amortize scan cost for healthy pools, not to allow unbounded growth.
             if (!isExplicit && !forceFullPurge && !_hasPendingPurges)
             {
-                if (currentTime - _lastAutoPurgeTime < MinAutoPurgeIntervalSeconds)
+                int configuredMaxPoolSize = MaxPoolSize;
+                bool appearsOverCapacity =
+                    configuredMaxPoolSize > 0 && _pool.Count > configuredMaxPoolSize;
+
+                if (
+                    !appearsOverCapacity
+                    && currentTime - _lastAutoPurgeTime < MinAutoPurgeIntervalSeconds
+                )
                 {
                     return 0;
                 }
@@ -1833,7 +1842,15 @@ namespace WallstopStudios.UnityHelpers.Utils
                 }
             }
 
-            _lastAutoPurgeTime = currentTime;
+            // Advance the auto-purge throttle clock after a completed scan, regardless of
+            // whether this scan removed items. Advancing on no-op scans preserves the
+            // fast-path skip for healthy pools in tight Rent/Return loops; correctness for
+            // over-capacity pools is maintained by the upstream over-capacity bypass, which
+            // lets returns at the same tick re-enter the scan as needed.
+            if (currentTime > _lastAutoPurgeTime)
+            {
+                _lastAutoPurgeTime = currentTime;
+            }
 
             return purged;
         }
@@ -2666,22 +2683,28 @@ namespace WallstopStudios.UnityHelpers.Utils
                 }
             }
 
+            // Time-based throttling: automatic (non-explicit) purge operations are rate-limited
+            // to avoid O(n) work on every Rent/Return. Inspired by Caffeine's amortized maintenance.
+            // Pools that appear over-capacity bypass the throttle so returns cannot accumulate
+            // beyond MaxPoolSize within a single tick of a coarse virtual clock — the throttle's
+            // purpose is to amortize scan cost for healthy pools, not to allow unbounded growth.
+            // Reading _pool.Count outside the lock is a benign race (identical rationale to the
+            // empty-pool fast-path above): a stale value merely means we might take the lock
+            // unnecessarily, or defer one call by a tick; correctness is re-verified inside the lock.
             if (!isExplicit && !forceFullPurge && Volatile.Read(ref _hasPendingPurges) == 0)
             {
-                float lastPurge = Volatile.Read(ref _lastAutoPurgeTime);
-                if (currentTime - lastPurge < MinAutoPurgeIntervalSeconds)
+                int configuredMaxPoolSize = MaxPoolSize;
+                int sizeHint = _pool.Count;
+                bool appearsOverCapacity =
+                    configuredMaxPoolSize > 0 && sizeHint > configuredMaxPoolSize;
+
+                if (!appearsOverCapacity)
                 {
-                    return 0;
-                }
-                // CAS to ensure only one thread proceeds past the throttle check
-                float original = Interlocked.CompareExchange(
-                    ref _lastAutoPurgeTime,
-                    currentTime,
-                    lastPurge
-                );
-                if (original != lastPurge)
-                {
-                    return 0;
+                    float lastPurge = Volatile.Read(ref _lastAutoPurgeTime);
+                    if (currentTime - lastPurge < MinAutoPurgeIntervalSeconds)
+                    {
+                        return 0;
+                    }
                 }
             }
 
@@ -2855,7 +2878,34 @@ namespace WallstopStudios.UnityHelpers.Utils
                 }
             }
 
-            Volatile.Write(ref _lastAutoPurgeTime, currentTime);
+            // Advance the auto-purge throttle clock after a completed scan, regardless of
+            // whether this scan removed items. Advancing on no-op scans is what preserves the
+            // fast-path skip for healthy pools under high contention; correctness for
+            // over-capacity pools is maintained by the upstream over-capacity bypass, which
+            // lets returns at the same tick re-enter the scan as needed.
+            //
+            // Use CAS max-semantics to prevent clock regression: two concurrent callers may
+            // read different currentTime values (the time provider is queried outside the
+            // lock), serialize through the lock in arbitrary order, and reach this write with
+            // the earlier timestamp landing last. Without max-semantics, that write would
+            // regress the throttle clock and re-permit a hot-loop scan.
+            while (true)
+            {
+                float current = Volatile.Read(ref _lastAutoPurgeTime);
+                if (currentTime <= current)
+                {
+                    break;
+                }
+                float observed = Interlocked.CompareExchange(
+                    ref _lastAutoPurgeTime,
+                    currentTime,
+                    current
+                );
+                if (observed == current)
+                {
+                    break;
+                }
+            }
 
             return purgeCount;
         }

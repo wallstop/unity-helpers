@@ -270,14 +270,17 @@ git_add_with_retry() {
         fi
     fi
 
-    # Cleanup function to release flock
+    # Cleanup function to release flock.
+    # IMPORTANT: avoid "exec ... 2>/dev/null" on the current shell, which can
+    # permanently redirect stderr for the caller and hide downstream errors.
     cleanup_flock() {
         if [[ $flock_acquired -eq 1 ]]; then
-            exec 200>&- 2>/dev/null || true
+            { exec 200>&-; } 2>/dev/null || true
+            flock_acquired=0
             log_verbose "Released cross-process flock"
         fi
+        return 0
     }
-    trap cleanup_flock RETURN
 
     while [[ $attempt -le $GIT_LOCK_MAX_ATTEMPTS ]]; do
         # Wait for any existing lock to be released before attempting
@@ -291,13 +294,13 @@ git_add_with_retry() {
         fi
 
         # Attempt to add files - capture both stdout and stderr for debugging
-        local git_output
         local git_stderr_file
         git_stderr_file=$(mktemp 2>/dev/null || echo "/tmp/git_add_stderr_$$")
 
         if git add -- "${files[@]}" 2>"$git_stderr_file"; then
             log_verbose "git add succeeded on attempt $attempt"
             rm -f "$git_stderr_file" 2>/dev/null || true
+            cleanup_flock
             return 0
         fi
 
@@ -341,11 +344,13 @@ git_add_with_retry() {
         if [[ -n "$git_stderr" ]]; then
             log_error "git add failed with non-retryable error: $git_stderr"
         fi
+        cleanup_flock
         return $exit_code
     done
 
     # Exhausted all attempts
     log_error "git add failed after $GIT_LOCK_MAX_ATTEMPTS attempts"
+    cleanup_flock
     return 128
 }
 
@@ -433,7 +438,8 @@ acquire_git_lock() {
 release_git_lock() {
     # Release is automatic when the file descriptor is closed
     # or when the script exits
-    exec 200>&- 2>/dev/null || true
+    { exec 200>&-; } 2>/dev/null || true
+    return 0
 }
 
 # Example usage (uncomment to test):

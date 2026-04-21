@@ -66,23 +66,24 @@ function Write-TestResult {
     }
 }
 
-$lintScriptPath = Join-Path $PSScriptRoot '..' 'lint-dependabot.ps1'
+$lintScriptPath = (Resolve-Path (Join-Path $PSScriptRoot '..' 'lint-dependabot.ps1')).Path
 
 # Use a temp directory for fixture files
 $tempBase = if ($env:TEMP) { $env:TEMP } elseif ($env:TMPDIR) { $env:TMPDIR } else { '/tmp' }
 $tempDir = Join-Path $tempBase "test-lint-dependabot-$(Get-Random)"
 New-Item -ItemType Directory -Path $tempDir -Force | Out-Null
 
-Write-Host "Testing lint-dependabot.ps1..." -ForegroundColor White
-
-# Helper: run the lint script against a fixture string, return exit code + output
+# Helper: invoke the lint script via `pwsh -NoProfile -File` — the SAME invocation
+# path the pre-commit hook uses in production. Using the in-process call operator `&`
+# tolerates arg-binding patterns (like POSIX `--`) that `pwsh -File` does NOT, so
+# previous versions of this test masked a real CLI bug. See bash-pwsh-invocation skill.
 function Invoke-LintOnContent {
     param([string]$YamlContent)
     $fixturePath = Join-Path $tempDir "dependabot-$(Get-Random).yml"
     Set-Content -Path $fixturePath -Value $YamlContent -NoNewline
     Write-Info "Testing fixture: $fixturePath"
     try {
-        $output = & $lintScriptPath -- $fixturePath *>&1
+        $output = & pwsh -NoProfile -File $lintScriptPath -Paths $fixturePath *>&1
         $exitCode = $LASTEXITCODE
         return @{ ExitCode = $exitCode; Output = ($output | Out-String) }
     } catch {
@@ -90,7 +91,7 @@ function Invoke-LintOnContent {
     }
 }
 
-# Helper: run the lint script against two fixture strings, return exit code + output
+# Helper: run the lint script against two fixture strings, via pwsh -File
 function Invoke-LintOnTwoContents {
     param([string]$YamlContent1, [string]$YamlContent2)
     $fixturePath1 = Join-Path $tempDir "dependabot-$(Get-Random).yml"
@@ -99,13 +100,15 @@ function Invoke-LintOnTwoContents {
     Set-Content -Path $fixturePath2 -Value $YamlContent2 -NoNewline
     Write-Info "Testing fixtures: $fixturePath1 and $fixturePath2"
     try {
-        $output = & $lintScriptPath -- $fixturePath1 $fixturePath2 *>&1
+        $output = & pwsh -NoProfile -File $lintScriptPath -Paths $fixturePath1 $fixturePath2 *>&1
         $exitCode = $LASTEXITCODE
         return @{ ExitCode = $exitCode; Output = ($output | Out-String) }
     } catch {
         return @{ ExitCode = -1; Output = "Exception invoking linter: $_" }
     }
 }
+
+Write-Host "Testing lint-dependabot.ps1..." -ForegroundColor White
 
 try {
 
