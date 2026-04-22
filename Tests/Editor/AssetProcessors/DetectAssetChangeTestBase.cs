@@ -36,6 +36,17 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
             TestRoot + "/AlternatePayload.asset";
 
         /// <summary>
+        /// Path prefixes this fixture family is allowed to drive the processor through.
+        /// Scoped to <see cref="TestRoot"/> so assets created by any OTHER fixture are
+        /// structurally ignored even when
+        /// <see cref="DetectAssetChangeProcessor.IncludeTestAssets"/> is <see langword="true"/>.
+        /// Every setup / reset path in this base class and its derivatives must restore
+        /// this allowlist after calling
+        /// <see cref="DetectAssetChangeProcessor.ResetForTesting()"/> (which clears it).
+        /// </summary>
+        protected static readonly string[] FixtureAllowlist = { TestRoot + "/" };
+
+        /// <summary>
         /// Cleans up all test folders including any duplicates created due to AssetDatabase issues.
         /// This handles scenarios like "__DetectAssetChangedTests__ 1", "__DetectAssetChangedTests__ 2", etc.
         /// </summary>
@@ -134,21 +145,31 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
 
         /// <summary>
         /// Clears all test handler state to ensure clean test isolation.
-        /// Override in derived classes to add additional handler clearing.
+        /// Delegates to the centralized <see cref="AssetPostprocessorTestHandlers.FlushAndClearAll"/>
+        /// helper so every <c>[DetectAssetChanged]</c> handler in the test assemblies is
+        /// cleared — not just the ones this fixture personally uses. The helper
+        /// internally flushes any pending <see cref="AssetPostprocessorDeferral"/>
+        /// drains first so a late-arriving drain cannot re-populate the statics we
+        /// just cleared.
+        ///
+        /// <para>Relationship to the teardown-flush contract: the contract test
+        /// <c>TestTeardownsThatClearHandlerStateFlushDeferralsFirst</c> accepts
+        /// three call sites as flush-equivalents — a direct
+        /// <c>AssetPostprocessorDeferral.FlushForTesting()</c> call,
+        /// <see cref="AssetPostprocessorTestHandlers.FlushAndClearAll"/>, or
+        /// <see cref="AssetPostprocessorTestHandlers.AssertCleanAndClearAll"/>.
+        /// Because this method's body IS a call to <c>FlushAndClearAll</c>,
+        /// calling <c>ClearTestState()</c> (or <c>base.ClearTestState()</c>)
+        /// from a derived fixture also satisfies the contract transitively;
+        /// the scanner additionally whitelists the literal token
+        /// <c>ClearTestState(</c> as flush-equivalent for that reason. The
+        /// transitive delegation is guarded by
+        /// <c>CentralizedClearHelpersActuallyFlush</c>, which fails loudly if
+        /// this body ever stops routing through a terminal flush root.</para>
         /// </summary>
         protected virtual void ClearTestState()
         {
-            TestDetectAssetChangeHandler.Clear();
-            TestDetailedSignatureHandler.Clear();
-            TestStaticAssetChangeHandler.Clear();
-            TestMultiAttributeHandler.Clear();
-            TestReentrantHandler.Clear();
-            TestLoopingHandler.Clear();
-            TestAssignableAssetChangeHandler.Clear();
-            TestExceptionThrowingHandler.Clear();
-            // Disable exception throwing by default to avoid unexpected log errors in most tests.
-            // Tests that need to verify exception handling behavior should explicitly enable it.
-            TestExceptionThrowingHandler.ShouldThrow = false;
+            AssetPostprocessorTestHandlers.FlushAndClearAll();
         }
 
         /// <summary>
@@ -156,12 +177,16 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
         /// This method should be called when a test needs to reinitialize the processor after the
         /// standard SetUp has already run. It ensures the test folder exists before enabling test
         /// asset inclusion to avoid "Folder not found" warnings from AssetDatabase.FindAssets.
+        /// Re-applies <see cref="FixtureAllowlist"/> after the reset so the structural
+        /// defense against cross-fixture pollution is preserved for the remainder of
+        /// the test.
         /// </summary>
         protected static void ResetProcessorWithCleanState()
         {
             DetectAssetChangeProcessor.ResetForTesting();
             EnsureTestFolder();
             DetectAssetChangeProcessor.IncludeTestAssets = true;
+            DetectAssetChangeProcessor.TestAssetFolderAllowlist = FixtureAllowlist;
         }
 
         /// <summary>

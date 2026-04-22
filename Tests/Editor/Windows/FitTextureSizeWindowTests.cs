@@ -13,6 +13,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
     using WallstopStudios.UnityHelpers.Editor;
     using WallstopStudios.UnityHelpers.Editor.AssetProcessors;
     using WallstopStudios.UnityHelpers.Editor.Utils;
+    using WallstopStudios.UnityHelpers.Tests.AssetProcessors;
     using WallstopStudios.UnityHelpers.Tests.Core;
     using WallstopStudios.UnityHelpers.Tests.Core.TestUtils;
     using WallstopStudios.UnityHelpers.Tests.Editor.TestAssets;
@@ -38,6 +39,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Windows
         [SetUp]
         public override void BaseSetUp()
         {
+            // Canonical cross-fixture pollution tripwire: pins leaked handler
+            // state to its true source rather than rolling it forward invisibly
+            // into this fixture. Must precede base.BaseSetUp() to match the
+            // placement contract enforced by
+            // AssetContextFixturesCallCrossFixturePollutionTripwire.
+            AssetPostprocessorTestHandlers.AssertCleanAndClearAll();
             base.BaseSetUp();
             // Reset the DetectAssetChangeProcessor to avoid triggering loop protection
             // when running many texture-related tests in succession

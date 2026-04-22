@@ -35,6 +35,158 @@ if (Test-Path (Join-Path (Get-Location).Path 'package.json')) {
   }
 }
 
+# Removes C# string literals, character literals, and single-line/block comments
+# from a source string so downstream regex/bracket analysis ignores their contents.
+# - Normal "..." strings honor \" escapes; verbatim @"..." strings honor "" escapes.
+# - Character literals '...' have their content blanked (handles '\'' and '\\').
+# - The content of each literal is replaced with same-length whitespace so column
+#   positions (and therefore line counts) are preserved.
+# - Single-line // comments and single-line /* ... */ block comments are stripped
+#   AFTER literals are blanked, so a "//" inside a string is never mistaken for
+#   the start of a comment.
+# Known limitations (tolerated because all are vanishingly rare inside
+# test attribute arguments; robust handling costs more than the benefit).
+# If a false negative is observed in practice, file a bug and we'll
+# reconsider:
+#   - Multi-line /* ... */ block comments: per-line scrubbing cannot track
+#     "inside a block comment" state across physical lines. Single-line
+#     /* ... */ on one line is handled.
+#   - C# 11 raw string literals ("""..."""): treated as three consecutive
+#     "" strings rather than one raw literal. Unlikely in [Test] args.
+#   - Interpolated strings ($"..." and $@"..."): the leading '$' is not
+#     recognized as a string prefix; the '"' that follows enters the
+#     normal or verbatim state, so interpolation braces inside are not
+#     specially handled. Attribute arguments aren't evaluated expressions,
+#     so interpolated strings don't appear there in practice.
+#   - Verbatim strings with internal "" escapes (e.g. @"has""quote") are
+#     handled for the common case.
+function Remove-CsStringLiteralsAndLineComments([string]$text) {
+  if ([string]::IsNullOrEmpty($text)) { return $text }
+  $sb = New-Object System.Text.StringBuilder ($text.Length)
+  $i = 0
+  $n = $text.Length
+  while ($i -lt $n) {
+    $c = $text[$i]
+    $next = if ($i + 1 -lt $n) { $text[$i + 1] } else { [char]0 }
+
+    # Verbatim string: @"..."
+    if ($c -eq '@' -and $next -eq '"') {
+      [void]$sb.Append('@')
+      [void]$sb.Append('"')
+      $i += 2
+      while ($i -lt $n) {
+        $ch = $text[$i]
+        if ($ch -eq '"') {
+          if ($i + 1 -lt $n -and $text[$i + 1] -eq '"') {
+            # Escaped doubled quote — blank both and continue
+            [void]$sb.Append(' ')
+            [void]$sb.Append(' ')
+            $i += 2
+            continue
+          }
+          [void]$sb.Append('"')
+          $i++
+          break
+        }
+        if ($ch -eq "`n" -or $ch -eq "`r") {
+          [void]$sb.Append($ch)
+        } else {
+          [void]$sb.Append(' ')
+        }
+        $i++
+      }
+      continue
+    }
+
+    # Normal string: "..."
+    if ($c -eq '"') {
+      [void]$sb.Append('"')
+      $i++
+      while ($i -lt $n) {
+        $ch = $text[$i]
+        if ($ch -eq '\') {
+          [void]$sb.Append(' ')
+          if ($i + 1 -lt $n) { [void]$sb.Append(' '); $i += 2 } else { $i++ }
+          continue
+        }
+        if ($ch -eq '"') {
+          [void]$sb.Append('"')
+          $i++
+          break
+        }
+        if ($ch -eq "`n" -or $ch -eq "`r") {
+          [void]$sb.Append($ch)
+        } else {
+          [void]$sb.Append(' ')
+        }
+        $i++
+      }
+      continue
+    }
+
+    # Character literal: '...'
+    if ($c -eq "'") {
+      [void]$sb.Append("'")
+      $i++
+      while ($i -lt $n) {
+        $ch = $text[$i]
+        if ($ch -eq '\') {
+          [void]$sb.Append(' ')
+          if ($i + 1 -lt $n) { [void]$sb.Append(' '); $i += 2 } else { $i++ }
+          continue
+        }
+        if ($ch -eq "'") {
+          [void]$sb.Append("'")
+          $i++
+          break
+        }
+        if ($ch -eq "`n" -or $ch -eq "`r") {
+          [void]$sb.Append($ch)
+        } else {
+          [void]$sb.Append(' ')
+        }
+        $i++
+      }
+      continue
+    }
+
+    # Single-line // comment (strings already handled above)
+    if ($c -eq '/' -and $next -eq '/') {
+      while ($i -lt $n -and $text[$i] -ne "`n" -and $text[$i] -ne "`r") {
+        [void]$sb.Append(' ')
+        $i++
+      }
+      continue
+    }
+
+    # Single-line /* ... */ block comment (best-effort; multi-line rare in attrs)
+    if ($c -eq '/' -and $next -eq '*') {
+      [void]$sb.Append(' ')
+      [void]$sb.Append(' ')
+      $i += 2
+      while ($i -lt $n) {
+        if ($text[$i] -eq '*' -and $i + 1 -lt $n -and $text[$i + 1] -eq '/') {
+          [void]$sb.Append(' ')
+          [void]$sb.Append(' ')
+          $i += 2
+          break
+        }
+        if ($text[$i] -eq "`n" -or $text[$i] -eq "`r") {
+          [void]$sb.Append($text[$i])
+        } else {
+          [void]$sb.Append(' ')
+        }
+        $i++
+      }
+      continue
+    }
+
+    [void]$sb.Append($c)
+    $i++
+  }
+  return $sb.ToString()
+}
+
 $destroyPattern = [regex]'\b(?:UnityEngine\.)?Object\.(?:DestroyImmediate|Destroy)\s*\((?<arg>[^)]*)\)'
 $createAssignObjectPattern = [regex]'(?<var>\b\w+)\s*=\s*new\s+(?<type>GameObject|Texture2D|Material|Mesh|Camera)\s*\('
 $createInlineTrackPattern = [regex]'\bTrack\s*\(\s*new\s+(?:GameObject|Texture2D|Material|Mesh|Camera)\s*\('
@@ -47,6 +199,37 @@ $testNameUnderscorePattern = [regex]'TestName\s*=\s*@?"[^"]*_[^"]*"'
 $setNameUnderscorePattern = [regex]'\.SetName\s*\(\s*@?"[^"]*_[^"]*"\s*\)'
 # Matches: TestCaseSource method names with underscores (nameof(Some_Method) or "Some_Method")
 $testCaseSourcePattern = [regex]'\[TestCaseSource\s*\(\s*(?:nameof\s*\(\s*(?<methodName>\w+)\s*\)|"(?<stringName>\w+)")\s*\)\]'
+# Matches a C# method signature line and captures its name. Tolerates modifiers
+# (public/private/internal/protected/static/async/override/virtual/sealed/new/extern/unsafe/partial),
+# generic type parameters on the return type, ref/namespace-qualified return types, and
+# optional leading attribute(s) on the same line (e.g. "[Test] public void Inline_Test()").
+# Deliberately anchored to lines that end with "(" so we don't match variable
+# declarations or calls. We re-check the body context before reporting.
+$methodDeclPattern = [regex]'^\s*(?:\[[^\]]+\]\s*)*(?:(?:public|private|protected|internal|static|async|override|virtual|sealed|new|extern|unsafe|partial)\s+)+(?<retType>[\w\.\<\>\,\s\?\[\]]+?)\s+(?<name>[A-Za-z_]\w*)\s*\('
+# Recognizes an attribute block (possibly multi-line, reconstructed with
+# bracket-balance joining) whose FIRST attribute is a test-eligible attribute.
+# Used against already-reconstructed attribute-block text, not raw lines.
+# Accepts an optional "global::" root-namespace prefix, an optional
+# namespace-qualified prefix (e.g. "NUnit.Framework."), and an optional
+# "Attribute" suffix (NUnit allows both short and long forms).
+$testAttributeLinePattern = [regex]'^\s*\[\s*(?:global\s*::\s*)?(?:[A-Za-z_][\w\.]*\.)?(?:Test|TestCase|TestCaseSource|UnityTest)(?:Attribute)?(?:\s*\(|\s*\]|\s*,)'
+# Recognizes a reconstructed attribute-block (one or more [Attr(...)] on the
+# same logical line, possibly followed by whitespace and an optional
+# trailing // comment). Used on the reconstructed joined line, so multi-line
+# attribute arguments are already collapsed by the bracket-balance walker.
+$anyAttributeLinePattern = [regex]'^\s*\[[^\]]+\](?:\s*\[[^\]]+\])*\s*(?://.*)?$'
+# Recognizes a same-line leading test attribute prefix on the signature line
+# itself (e.g. "[Test] public void Inline_Test() { }"). Matches qualified and
+# long-form attribute names consistent with $testAttributeLinePattern. Also
+# recognizes the comma form inside a single bracket (e.g.
+# "[Test, Category(\"Fast\")] public void Foo()").
+$inlineTestAttributePattern = [regex]'^\s*\[\s*(?:global\s*::\s*)?(?:[A-Za-z_][\w\.]*\.)?(?:Test|TestCase|TestCaseSource|UnityTest)(?:Attribute)?(?:\s*\(|\s*\]|\s*,)'
+# Detects a test-eligible attribute appearing anywhere on the signature line,
+# not just as the first attribute. Catches stacked-inline forms like
+# "[Category(\"Fast\")][Test] public void Foo()" that the anchored variant
+# misses. Operates on a SCRUBBED line so "[Test]" inside a string literal
+# cannot match.
+$inlineTestAttributeAnywherePattern = [regex]'\[\s*(?:global\s*::\s*)?(?:[A-Za-z_][\w\.]*\.)?(?:Test|TestCase|TestCaseSource|UnityTest)(?:Attribute)?(?:\s*\(|\s*\]|\s*,)'
 
 # UNH005: Assert.IsNull/IsNotNull patterns (should use Assert.IsTrue for Unity null checks)
 $assertIsNullPattern = [regex]'Assert\.IsNull\s*\('
@@ -143,7 +326,11 @@ foreach ($file in $filesToScan) {
   $rel = Get-RelativePath $file
   if (Is-AllowlistedFile $rel) { continue }
 
-  $content = Get-Content $file
+  # Force array semantics: Get-Content returns $null for empty files and a bare
+  # [string] for single-line files; under Set-StrictMode either of those will
+  # throw when we access .Count on non-array values. Wrapping with @(...) is the
+  # idiomatic fix and is a no-op for arrays.
+  $content = @(Get-Content $file)
   $text = $content -join "`n"
 
   if ($FixNullChecks) {
@@ -288,6 +475,130 @@ foreach ($file in $filesToScan) {
         })
       }
     }
+  }
+
+  # UNH004: Check for underscores in method names decorated with
+  # [Test], [TestCase(...)], [TestCaseSource(...)], or [UnityTest]. The Unity
+  # runtime test TestNamingConventionTests.TestMethodNamesDoNotContainUnderscores
+  # catches this at test time, but we also enforce it here so the pre-commit
+  # hook blocks the violation before it ever reaches CI.
+  #
+  # Walker strategy: walk upward from the signature line over attribute blocks.
+  # Multi-line attribute arguments (e.g. "[TestCase(\n    1,\n    2)]") are
+  # handled by bracket-balance joining: when we see a line that doesn't close
+  # its own brackets, we keep accumulating lines upward until the '[' and '(' on
+  # that block are all matched. That reconstructed logical line is then tested
+  # against the test-attribute and any-attribute patterns. Trailing "// reason"
+  # comments on attribute lines and standalone "// explanation" comment lines
+  # between attributes and the signature are tolerated.
+  for ($i = 0; $i -lt $content.Count; $i++) {
+    $line = $content[$i]
+    $declMatch = $methodDeclPattern.Match($line)
+    if (-not $declMatch.Success) { continue }
+    $methodName = $declMatch.Groups['name'].Value
+    if ($methodName -notmatch '_') { continue }
+    # Avoid false positives on keywords that the regex's modifier-greedy match
+    # could theoretically align to (belt-and-braces; the modifier list is fixed).
+    if ($methodName -in @('if','for','foreach','while','switch','using','return','new','base','this')) { continue }
+
+    $isTest = $false
+    $attrLine = -1
+    # For inline/prefix matching, scrub the signature line so that "[" or "("
+    # inside string/char literals can't fool the test-attribute regex.
+    $lineScrubbed = Remove-CsStringLiteralsAndLineComments $line
+    # Bound the scan to the portion of the signature line BEFORE the method
+    # declaration's opening '('. $methodDeclPattern matches up to and
+    # including that opening paren, so taking Substring(0, Index + Length)
+    # yields the attribute/modifier/return-type/name prefix and EXCLUDES any
+    # parameter-level attributes (e.g. "void Foo(int x, [Test] int y)" has a
+    # C# parameter attribute that is NOT a test-declaration attribute).
+    # Without this bound, $inlineTestAttributeAnywherePattern would raise a
+    # false UNH004 on such methods.
+    $lineScrubbedPrefix = $lineScrubbed.Substring(0, $declMatch.Index + $declMatch.Length)
+    # Same-line prefix: "[Test] public void Foo_Bar() { }" (anchored) OR a
+    # stacked-inline form where the test attribute is not the first bracket,
+    # e.g. "[Category(\"Fast\")][Test] public void Foo()". The scrubber has
+    # already blanked string/char literals, so a non-anchored search cannot
+    # be tricked by "[Test]" appearing inside a string. The anchored form is
+    # retained alongside the anywhere form for clarity/robustness: it asserts
+    # '^\s*\[' at the prefix start, which matters if the bounded prefix is
+    # ever extended to start mid-line.
+    if ($inlineTestAttributePattern.IsMatch($lineScrubbedPrefix) -or $inlineTestAttributeAnywherePattern.IsMatch($lineScrubbedPrefix)) {
+      $isTest = $true
+      $attrLine = $i
+    } else {
+      # Walk upward over attribute-only blocks (stacked attributes are allowed
+      # in any order) until we find a test attribute, a non-attribute line,
+      # or the top of the file. Attribute blocks may span multiple physical
+      # lines when their arguments wrap; we accumulate lines upward until the
+      # bracket balance of the joined block is zero.
+      #
+      # Bracket/comment analysis is done on a SCRUBBED copy of each line
+      # (strings/chars blanked, comments stripped) so that "[", "]", "(", ")",
+      # and "//" inside literals can't bypass the walker. Reported line
+      # numbers still reference the ORIGINAL source lines.
+      $j = $i - 1
+      while ($j -ge 0) {
+        $above = $content[$j]
+        $aboveScrubbed = Remove-CsStringLiteralsAndLineComments $above
+        if ([string]::IsNullOrWhiteSpace($aboveScrubbed)) { $j--; continue }
+        # Single-line comments (both "//" and "///") between attributes and
+        # the signature are allowed. After scrubbing, pure-comment lines
+        # become blank, so this branch mainly catches any residual whitespace
+        # check above; keep it for robustness against lines beginning with "//".
+        if ($above -match '^\s*//') { $j--; continue }
+
+        # If this line already balances its own brackets, treat it as a single
+        # logical line. Otherwise walk upward accumulating until balance hits 0.
+        $joinedScrubbed = $aboveScrubbed
+        $top = $j
+        $openBr = ([regex]::Matches($joinedScrubbed, '\[')).Count - ([regex]::Matches($joinedScrubbed, '\]')).Count
+        $openPr = ([regex]::Matches($joinedScrubbed, '\(')).Count - ([regex]::Matches($joinedScrubbed, '\)')).Count
+        while (($openBr -ne 0 -or $openPr -ne 0) -and $top -gt 0) {
+          $top--
+          $prevScrubbed = Remove-CsStringLiteralsAndLineComments $content[$top]
+          $joinedScrubbed = "$prevScrubbed`n$joinedScrubbed"
+          $openBr = ([regex]::Matches($joinedScrubbed, '\[')).Count - ([regex]::Matches($joinedScrubbed, '\]')).Count
+          $openPr = ([regex]::Matches($joinedScrubbed, '\(')).Count - ([regex]::Matches($joinedScrubbed, '\)')).Count
+        }
+        # Collapse to a single-line string for the regex match. The scrubbed
+        # text has already had //-comments stripped, so no extra strip pass.
+        $flat = ($joinedScrubbed -replace "\r?\n",' ').Trim()
+
+        # Match the test-attribute anchored pattern OR the non-anchored
+        # "anywhere" variant so that stacked attribute blocks like
+        # "[Category(\"Fast\")][Test]" on a line ABOVE the signature are
+        # detected when [Test] is not first. Using the anywhere pattern is
+        # safe here because $flat is attribute-only reconstructed text — no
+        # method parameter list is included — so the parameter-attribute
+        # false-positive concern that bounds the same-line check does NOT
+        # apply to the walker.
+        if ($testAttributeLinePattern.IsMatch($flat) -or $inlineTestAttributeAnywherePattern.IsMatch($flat)) {
+          $isTest = $true
+          $attrLine = $top
+          break
+        }
+        if ($anyAttributeLinePattern.IsMatch($flat)) {
+          $j = $top - 1
+          continue
+        }
+        # Anything else terminates the attribute block.
+        break
+      }
+    }
+    if (-not $isTest) { continue }
+    # UNH-SUPPRESS honored on either the method signature line or any line of
+    # the attribute block (including multi-line continuations and comments).
+    $suppressed = ($line -match 'UNH-SUPPRESS')
+    if (-not $suppressed -and $attrLine -ge 0) {
+      for ($k = $attrLine; $k -le $i; $k++) {
+        if ($content[$k] -match 'UNH-SUPPRESS') { $suppressed = $true; break }
+      }
+    }
+    if ($suppressed) { continue }
+    $violations += (@{
+      Path=$rel; Line=($i + 1); Message="UNH004: Test method name '$methodName' contains underscore. Use PascalCase."
+    })
   }
 
   # UNH005: Check for Assert.IsNull (should use Assert.IsTrue(x == null) for Unity null checks)

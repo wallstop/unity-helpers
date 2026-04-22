@@ -55,7 +55,7 @@ Invoke these skills for specific tasks.
 **Regenerate with**: `pwsh -NoProfile -File scripts/generate-skills-index.ps1`
 
 <!-- BEGIN GENERATED SKILLS INDEX -->
-<!-- Generated: 2026-04-19 14:17:43 UTC -->
+<!-- Generated: 2026-04-21 18:45:10 UTC -->
 <!-- Command: pwsh -NoProfile -File scripts/generate-skills-index.ps1 -->
 
 ### Core Skills (Always Consider)
@@ -64,6 +64,7 @@ Invoke these skills for specific tasks.
 | -------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
 | [apply-completeness](./skills/apply-completeness.md)                                         | Always do the complete thing when cost is near-zero                                    |
 | [ask-structured-questions](./skills/ask-structured-questions.md)                             | Present questions with context, options, and recommendations                           |
+| [asset-postprocessor-safety](./skills/asset-postprocessor-safety.md)                         | AssetPostprocessor callbacks - avoid SendMessage warnings                              |
 | [avoid-magic-strings](./skills/avoid-magic-strings.md)                                       | ALL code - use nameof() not strings                                                    |
 | [avoid-reflection](./skills/avoid-reflection.md)                                             | ALL code - never reflect on our own types                                              |
 | [bash-pwsh-invocation](./skills/bash-pwsh-invocation.md)                                     | Calling .ps1 scripts from bash/hooks/workflows                                         |
@@ -193,6 +194,7 @@ See [create-csharp-file](./skills/create-csharp-file.md) for detailed C# rules.
 13. All code must follow [high-performance-csharp](./skills/high-performance-csharp.md) and [defensive-programming](./skills/defensive-programming.md) (never throw from public APIs; use `TryXxx` patterns; handle all inputs gracefully)
 14. For forbidden patterns and alternatives, see [forbidden-patterns reference](./references/forbidden-patterns.md)
 15. All editor mutation paths must follow the complete undo policy (see [editor-undo-complete](./skills/editor-undo-complete.md)); classify paths as Tier A/B/C and never claim full reversal for Tier C file/reimport side effects
+16. `AssetPostprocessor` callbacks MUST defer non-trivial work through `AssetPostprocessorDeferral.Schedule` to avoid `SendMessage cannot be called...` warnings during Unity's import phase (see [asset-postprocessor-safety](./skills/asset-postprocessor-safety.md))
 
 ### Documentation Rules
 

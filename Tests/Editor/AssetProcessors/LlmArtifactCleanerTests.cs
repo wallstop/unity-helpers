@@ -24,6 +24,16 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
         [SetUp]
         public override void BaseSetUp()
         {
+            // Canonical cross-fixture pollution tripwire. See
+            // AssetPostprocessorTestHandlers.AssertCleanAndClearAll XML doc for
+            // the rationale (why this runs FIRST, before any asset mutation in
+            // this SetUp — EnsureFolder below is a mutation and would shift
+            // attribution if pollution were snapshotted after it). Placed
+            // BEFORE base.BaseSetUp() to match the convention enforced by
+            // AssetContextFixturesCallCrossFixturePollutionTripwire: pollution
+            // must be snapshotted before the base class can perform any asset
+            // mutation that would shift attribution.
+            AssetPostprocessorTestHandlers.AssertCleanAndClearAll();
             base.BaseSetUp();
             EnsureFolder(AssetsRoot);
         }
@@ -34,6 +44,9 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
             CleanupTrackedFoldersAndAssets();
             AssetDatabaseBatchHelper.RefreshIfNotBatching();
             base.TearDown();
+            // LlmArtifactCleaner.OnPostprocessAllAssets schedules drains on every
+            // asset op above; flush here so they don't leak into the next fixture.
+            AssetPostprocessorDeferral.FlushForTesting();
         }
 
         [Test]

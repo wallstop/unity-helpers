@@ -13,6 +13,9 @@ namespace WallstopStudios.UnityHelpers.Editor.AssetProcessors
 
     public sealed class SpriteLabelProcessor : AssetPostprocessor
     {
+        private static readonly List<string> PendingImportedPaths = new();
+        private static readonly Action DrainAction = DrainPendingImports;
+
         private static void OnPostprocessAllAssets(
             string[] importedAssets,
             string[] deletedAssets,
@@ -25,23 +28,65 @@ namespace WallstopStudios.UnityHelpers.Editor.AssetProcessors
                 return;
             }
 
+            if (importedAssets == null || importedAssets.Length == 0)
+            {
+                return;
+            }
+
+            for (int i = 0; i < importedAssets.Length; i++)
+            {
+                string path = importedAssets[i];
+                if (!IsCandidatePath(path))
+                {
+                    continue;
+                }
+
+                PendingImportedPaths.Add(path);
+            }
+
+            if (PendingImportedPaths.Count == 0)
+            {
+                return;
+            }
+
+            AssetPostprocessorDeferral.Schedule(DrainAction);
+        }
+
+        private static bool IsCandidatePath(string path)
+        {
+            if (string.IsNullOrEmpty(path))
+            {
+                return false;
+            }
+
+            if (!path.StartsWith("Assets", StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+
+            return path.EndsWith(".png", StringComparison.OrdinalIgnoreCase)
+                || path.EndsWith(".jpg", StringComparison.OrdinalIgnoreCase)
+                || path.EndsWith(".jpeg", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static void DrainPendingImports()
+        {
+            if (PendingImportedPaths.Count == 0)
+            {
+                return;
+            }
+
+            string[] batch = PendingImportedPaths.ToArray();
+            PendingImportedPaths.Clear();
+            ProcessImportedPaths(batch);
+        }
+
+        private static void ProcessImportedPaths(string[] paths)
+        {
             bool anyChanged = Helpers.CachedLabels.Count == 0;
 
-            foreach (string path in importedAssets)
+            foreach (string path in paths)
             {
-                if (!path.StartsWith("Assets", StringComparison.OrdinalIgnoreCase))
-                {
-                    continue;
-                }
-                if (
-                    !path.EndsWith(".png", StringComparison.OrdinalIgnoreCase)
-                    && !path.EndsWith(".jpg", StringComparison.OrdinalIgnoreCase)
-                    && !path.EndsWith(".jpeg", StringComparison.OrdinalIgnoreCase)
-                )
-                {
-                    continue;
-                }
-
                 TextureImporter ti = AssetImporter.GetAtPath(path) as TextureImporter;
                 if (ti == null || ti.textureType != TextureImporterType.Sprite)
                 {

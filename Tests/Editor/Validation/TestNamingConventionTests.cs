@@ -19,6 +19,11 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Validation
     /// - Test method names
     /// - TestName attribute values
     /// - SetName() method calls
+    /// - TestCaseSource method names
+    ///
+    /// These tests are the runtime second line of defense. The primary gate
+    /// is <c>scripts/lint-tests.ps1</c> (UNH004), which runs in the pre-commit
+    /// hook and blocks offending names from ever landing on the branch.
     /// </summary>
     [TestFixture]
     [Category("Fast")]
@@ -40,8 +45,6 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Validation
             RegexOptions.Compiled
         );
 
-        private static readonly Regex UnderscorePattern = new(@"_", RegexOptions.Compiled);
-
         /// <summary>
         /// Verifies that test method names do not contain underscores.
         /// </summary>
@@ -49,63 +52,25 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Validation
         public void TestMethodNamesDoNotContainUnderscores()
         {
             List<string> violations = new();
-            List<Assembly> testAssemblies = GetTestAssemblies();
-
-            foreach (Assembly assembly in testAssemblies)
-            {
-                Type[] types;
-                try
+            List<string> scannedAssemblies = ScanTestMethods(
+                (assemblyName, type, method) =>
                 {
-                    types = assembly.GetTypes();
-                }
-                catch (ReflectionTypeLoadException ex)
-                {
-                    types = ex.Types;
-                }
-
-                foreach (Type type in types)
-                {
-                    if (type == null)
+                    if (method.Name.Contains('_'))
                     {
-                        continue;
-                    }
-
-                    MethodInfo[] methods;
-                    try
-                    {
-                        methods = type.GetMethods(
-                            BindingFlags.Public
-                                | BindingFlags.NonPublic
-                                | BindingFlags.Instance
-                                | BindingFlags.Static
+                        string typeName = type.FullName ?? type.Name;
+                        violations.Add(
+                            $"Method '{typeName}.{method.Name}' in assembly '{assemblyName}' "
+                                + "contains underscores. Use PascalCase without underscores."
                         );
                     }
-                    catch
-                    {
-                        continue;
-                    }
-
-                    foreach (MethodInfo method in methods)
-                    {
-                        if (!IsTestMethod(method))
-                        {
-                            continue;
-                        }
-
-                        if (UnderscorePattern.IsMatch(method.Name))
-                        {
-                            violations.Add(
-                                $"Method '{type.FullName}.{method.Name}' contains underscores. "
-                                    + "Use PascalCase without underscores."
-                            );
-                        }
-                    }
                 }
-            }
+            );
 
             Assert.IsEmpty(
                 violations,
-                $"Found {violations.Count} test method(s) with underscores in their names:\n"
+                $"Found {violations.Count} test method(s) with underscores in their names "
+                    + $"(scanned {scannedAssemblies.Count} assembly/ies: "
+                    + $"{string.Join(", ", scannedAssemblies)}):\n"
                     + string.Join("\n", violations)
             );
         }
@@ -124,46 +89,17 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Validation
                 return;
             }
 
-            string testsPath = Path.Combine(packagePath, "Tests");
-            if (!Directory.Exists(testsPath))
-            {
-                Assert.Inconclusive("Tests directory not found at: " + testsPath);
-                return;
-            }
-
             List<string> violations = new();
-            string[] testFiles = Directory.GetFiles(testsPath, "*.cs", SearchOption.AllDirectories);
-
-            foreach (string filePath in testFiles)
-            {
-                if (filePath.EndsWith(".meta"))
+            string scannedRoot = ScanTestFiles(
+                packagePath,
+                (relativePath, lineNumber, line) =>
                 {
-                    continue;
-                }
-
-                string[] lines;
-                try
-                {
-                    lines = File.ReadAllLines(filePath);
-                }
-                catch
-                {
-                    continue;
-                }
-
-                string relativePath = GetRelativePath(filePath, packagePath);
-
-                for (int lineIndex = 0; lineIndex < lines.Length; lineIndex++)
-                {
-                    string line = lines[lineIndex];
                     MatchCollection matches = TestNameAttributePattern.Matches(line);
-
                     foreach (Match match in matches)
                     {
                         string testName = match.Groups[1].Value;
-                        if (UnderscorePattern.IsMatch(testName))
+                        if (testName.Contains('_'))
                         {
-                            int lineNumber = lineIndex + 1;
                             violations.Add(
                                 $"{relativePath}:{lineNumber}: TestName=\"{testName}\" contains underscores. "
                                     + "Use dot notation (e.g., \"Input.Null.ReturnsFalse\") or PascalCase."
@@ -171,11 +107,17 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Validation
                         }
                     }
                 }
+            );
+
+            if (scannedRoot == null)
+            {
+                Assert.Inconclusive("Tests directory not found under: " + packagePath);
+                return;
             }
 
             Assert.IsEmpty(
                 violations,
-                $"Found {violations.Count} TestName value(s) with underscores:\n"
+                $"Found {violations.Count} TestName value(s) with underscores (scanned {scannedRoot}):\n"
                     + string.Join("\n", violations)
             );
         }
@@ -194,46 +136,17 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Validation
                 return;
             }
 
-            string testsPath = Path.Combine(packagePath, "Tests");
-            if (!Directory.Exists(testsPath))
-            {
-                Assert.Inconclusive("Tests directory not found at: " + testsPath);
-                return;
-            }
-
             List<string> violations = new();
-            string[] testFiles = Directory.GetFiles(testsPath, "*.cs", SearchOption.AllDirectories);
-
-            foreach (string filePath in testFiles)
-            {
-                if (filePath.EndsWith(".meta"))
+            string scannedRoot = ScanTestFiles(
+                packagePath,
+                (relativePath, lineNumber, line) =>
                 {
-                    continue;
-                }
-
-                string[] lines;
-                try
-                {
-                    lines = File.ReadAllLines(filePath);
-                }
-                catch
-                {
-                    continue;
-                }
-
-                string relativePath = GetRelativePath(filePath, packagePath);
-
-                for (int lineIndex = 0; lineIndex < lines.Length; lineIndex++)
-                {
-                    string line = lines[lineIndex];
                     MatchCollection matches = SetNameMethodPattern.Matches(line);
-
                     foreach (Match match in matches)
                     {
                         string setNameValue = match.Groups[1].Value;
-                        if (UnderscorePattern.IsMatch(setNameValue))
+                        if (setNameValue.Contains('_'))
                         {
-                            int lineNumber = lineIndex + 1;
                             violations.Add(
                                 $"{relativePath}:{lineNumber}: SetName(\"{setNameValue}\") contains underscores. "
                                     + "Use dot notation (e.g., \"Input.Null.ReturnsFalse\") or PascalCase."
@@ -241,11 +154,17 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Validation
                         }
                     }
                 }
+            );
+
+            if (scannedRoot == null)
+            {
+                Assert.Inconclusive("Tests directory not found under: " + packagePath);
+                return;
             }
 
             Assert.IsEmpty(
                 violations,
-                $"Found {violations.Count} SetName() value(s) with underscores:\n"
+                $"Found {violations.Count} SetName() value(s) with underscores (scanned {scannedRoot}):\n"
                     + string.Join("\n", violations)
             );
         }
@@ -257,94 +176,82 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Validation
         public void TestCaseSourceMethodNamesDoNotContainUnderscores()
         {
             List<string> violations = new();
-            List<Assembly> testAssemblies = GetTestAssemblies();
-
-            foreach (Assembly assembly in testAssemblies)
-            {
-                Type[] types;
-                try
+            Dictionary<string, (string AssemblyName, HashSet<string> Sources)> sourcesByType =
+                new();
+            List<string> scannedAssemblies = ScanTestMethods(
+                (assemblyName, type, method) =>
                 {
-                    types = assembly.GetTypes();
-                }
-                catch (ReflectionTypeLoadException ex)
-                {
-                    types = ex.Types;
-                }
-
-                foreach (Type type in types)
-                {
-                    if (type == null)
-                    {
-                        continue;
-                    }
-
-                    MethodInfo[] methods;
+                    object[] attributes;
                     try
                     {
-                        methods = type.GetMethods(
-                            BindingFlags.Public
-                                | BindingFlags.NonPublic
-                                | BindingFlags.Instance
-                                | BindingFlags.Static
-                        );
+                        attributes = method.GetCustomAttributes(true);
                     }
                     catch
                     {
-                        continue;
+                        return;
                     }
 
-                    HashSet<string> testCaseSourceNames = new();
-                    foreach (MethodInfo method in methods)
+                    foreach (object attribute in attributes)
                     {
-                        object[] attributes;
-                        try
-                        {
-                            attributes = method.GetCustomAttributes(true);
-                        }
-                        catch
+                        Type attributeType = attribute.GetType();
+                        if (attributeType.Name != "TestCaseSourceAttribute")
                         {
                             continue;
                         }
 
-                        foreach (object attribute in attributes)
+                        PropertyInfo sourceNameProperty = attributeType.GetProperty("SourceName");
+                        if (sourceNameProperty == null)
                         {
-                            Type attributeType = attribute.GetType();
-                            if (attributeType.Name == "TestCaseSourceAttribute")
+                            continue;
+                        }
+
+                        object value = sourceNameProperty.GetValue(attribute);
+                        if (value is string sourceName && !string.IsNullOrEmpty(sourceName))
+                        {
+                            // type.FullName can be null for open generics and
+                            // global-namespace types; fall back to Name.
+                            string typeName = type.FullName ?? type.Name;
+                            if (
+                                !sourcesByType.TryGetValue(
+                                    typeName,
+                                    out (string AssemblyName, HashSet<string> Sources) entry
+                                )
+                            )
                             {
-                                PropertyInfo sourceNameProperty = attributeType.GetProperty(
-                                    "SourceName"
-                                );
-                                if (sourceNameProperty != null)
-                                {
-                                    object value = sourceNameProperty.GetValue(attribute);
-                                    if (
-                                        value is string sourceName
-                                        && !string.IsNullOrEmpty(sourceName)
-                                    )
-                                    {
-                                        testCaseSourceNames.Add(sourceName);
-                                    }
-                                }
+                                entry = (assemblyName, new HashSet<string>());
+                                sourcesByType[typeName] = entry;
                             }
+                            entry.Sources.Add(sourceName);
                         }
                     }
+                }
+            );
 
-                    foreach (string sourceName in testCaseSourceNames)
+            foreach (
+                KeyValuePair<
+                    string,
+                    (string AssemblyName, HashSet<string> Sources)
+                > pair in sourcesByType
+            )
+            {
+                foreach (string sourceName in pair.Value.Sources)
+                {
+                    if (sourceName.Contains('_'))
                     {
-                        if (UnderscorePattern.IsMatch(sourceName))
-                        {
-                            violations.Add(
-                                $"TestCaseSource method '{type.FullName}.{sourceName}' contains underscores. "
-                                    + "Use PascalCase without underscores."
-                            );
-                        }
+                        violations.Add(
+                            $"TestCaseSource method '{pair.Key}.{sourceName}' in assembly "
+                                + $"'{pair.Value.AssemblyName}' contains underscores. "
+                                + "Use PascalCase without underscores."
+                        );
                     }
                 }
             }
 
             Assert.IsEmpty(
                 violations,
-                $"Found {violations.Count} TestCaseSource method name(s) with underscores:\n"
+                $"Found {violations.Count} TestCaseSource method name(s) with underscores "
+                    + $"(scanned {scannedAssemblies.Count} assembly/ies: "
+                    + $"{string.Join(", ", scannedAssemblies)}):\n"
                     + string.Join("\n", violations)
             );
         }
@@ -362,19 +269,86 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Validation
                 return;
             }
 
-            string testsPath = Path.Combine(packagePath, "Tests");
-            if (!Directory.Exists(testsPath))
-            {
-                Assert.Inconclusive("Tests directory not found at: " + testsPath);
-                return;
-            }
-
             StringBuilder violations = new();
             int violationCount = 0;
 
-            List<Assembly> testAssemblies = GetTestAssemblies();
-            foreach (Assembly assembly in testAssemblies)
+            List<string> scannedAssemblies = ScanTestMethods(
+                (assemblyName, type, method) =>
+                {
+                    if (method.Name.Contains('_'))
+                    {
+                        string typeName = type.FullName ?? type.Name;
+                        violations.AppendLine(
+                            $"  - Method: {typeName}.{method.Name} [{assemblyName}]"
+                        );
+                        violationCount++;
+                    }
+                }
+            );
+
+            string scannedRoot = ScanTestFiles(
+                packagePath,
+                (relativePath, lineNumber, line) =>
+                {
+                    MatchCollection testNameMatches = TestNameAttributePattern.Matches(line);
+                    foreach (Match match in testNameMatches)
+                    {
+                        string testName = match.Groups[1].Value;
+                        if (testName.Contains('_'))
+                        {
+                            violations.AppendLine(
+                                $"  - {relativePath}:{lineNumber}: TestName=\"{testName}\""
+                            );
+                            violationCount++;
+                        }
+                    }
+
+                    MatchCollection setNameMatches = SetNameMethodPattern.Matches(line);
+                    foreach (Match match in setNameMatches)
+                    {
+                        string setNameValue = match.Groups[1].Value;
+                        if (setNameValue.Contains('_'))
+                        {
+                            violations.AppendLine(
+                                $"  - {relativePath}:{lineNumber}: SetName(\"{setNameValue}\")"
+                            );
+                            violationCount++;
+                        }
+                    }
+                }
+            );
+
+            if (scannedRoot == null)
             {
+                Assert.Inconclusive("Tests directory not found under: " + packagePath);
+                return;
+            }
+
+            Assert.IsEmpty(
+                violations.ToString(),
+                $"Found {violationCount} naming convention violation(s) (underscores not allowed). "
+                    + $"Scanned {scannedAssemblies.Count} assembly/ies "
+                    + $"({string.Join(", ", scannedAssemblies)}) and source tree at {scannedRoot}:\n"
+                    + violations
+            );
+        }
+
+        /// <summary>
+        /// Iterates every public/non-public/instance/static method on every type of
+        /// every loaded assembly whose name starts with a test-assembly prefix, and
+        /// invokes <paramref name="visitor"/> for each method that is annotated with
+        /// <c>[Test]</c>, <c>[TestCase]</c>, <c>[TestCaseSource]</c>, or
+        /// <c>[UnityTest]</c>. Returns the list of assembly names that were scanned
+        /// so callers can include that context in failure messages.
+        /// </summary>
+        private static List<string> ScanTestMethods(Action<string, Type, MethodInfo> visitor)
+        {
+            List<string> scannedAssemblies = new();
+            foreach (Assembly assembly in GetTestAssemblies())
+            {
+                string assemblyName = assembly.GetName().Name;
+                scannedAssemblies.Add(assemblyName);
+
                 Type[] types;
                 try
                 {
@@ -414,13 +388,27 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Validation
                             continue;
                         }
 
-                        if (UnderscorePattern.IsMatch(method.Name))
-                        {
-                            violations.AppendLine($"  - Method: {type.FullName}.{method.Name}");
-                            violationCount++;
-                        }
+                        visitor(assemblyName, type, method);
                     }
                 }
+            }
+
+            return scannedAssemblies;
+        }
+
+        /// <summary>
+        /// Iterates every <c>.cs</c> file under <c>&lt;packagePath&gt;/Tests</c>
+        /// and invokes <paramref name="visitor"/> with the relative file path,
+        /// 1-based line number, and line text. Returns the absolute path of the
+        /// tests directory that was scanned, or <see langword="null"/> if no
+        /// tests directory was found beneath <paramref name="packagePath"/>.
+        /// </summary>
+        private static string ScanTestFiles(string packagePath, Action<string, int, string> visitor)
+        {
+            string testsPath = Path.Combine(packagePath, "Tests");
+            if (!Directory.Exists(testsPath))
+            {
+                return null;
             }
 
             string[] testFiles = Directory.GetFiles(testsPath, "*.cs", SearchOption.AllDirectories);
@@ -442,45 +430,13 @@ namespace WallstopStudios.UnityHelpers.Tests.Editor.Validation
                 }
 
                 string relativePath = GetRelativePath(filePath, packagePath);
-
                 for (int lineIndex = 0; lineIndex < lines.Length; lineIndex++)
                 {
-                    string line = lines[lineIndex];
-                    int lineNumber = lineIndex + 1;
-
-                    MatchCollection testNameMatches = TestNameAttributePattern.Matches(line);
-                    foreach (Match match in testNameMatches)
-                    {
-                        string testName = match.Groups[1].Value;
-                        if (UnderscorePattern.IsMatch(testName))
-                        {
-                            violations.AppendLine(
-                                $"  - {relativePath}:{lineNumber}: TestName=\"{testName}\""
-                            );
-                            violationCount++;
-                        }
-                    }
-
-                    MatchCollection setNameMatches = SetNameMethodPattern.Matches(line);
-                    foreach (Match match in setNameMatches)
-                    {
-                        string setNameValue = match.Groups[1].Value;
-                        if (UnderscorePattern.IsMatch(setNameValue))
-                        {
-                            violations.AppendLine(
-                                $"  - {relativePath}:{lineNumber}: SetName(\"{setNameValue}\")"
-                            );
-                            violationCount++;
-                        }
-                    }
+                    visitor(relativePath, lineIndex + 1, lines[lineIndex]);
                 }
             }
 
-            Assert.IsEmpty(
-                violations.ToString(),
-                $"Found {violationCount} naming convention violation(s) (underscores not allowed):\n"
-                    + violations
-            );
+            return testsPath;
         }
 
         private static List<Assembly> GetTestAssemblies()

@@ -419,6 +419,473 @@ try {
 
 Remove-Item -Recurse -Force $staleTempDir -ErrorAction SilentlyContinue
 
+# ── Test 11: UNH004 method-name variants ─────────────────────────────────────
+Write-Host "`n  Section: UNH004 method-name detection" -ForegroundColor White
+
+function Invoke-LintOnFixture {
+  param(
+    [string]$FixtureRelativePath,
+    [string]$FixtureContent
+  )
+  $path = Join-Path $tempTestDir $FixtureRelativePath
+  Set-Content -Path $path -Value $FixtureContent -NoNewline
+  try {
+    Push-Location $tempDir
+    $out = & $lintScriptPath -Paths (Join-Path 'Tests' 'Editor' $FixtureRelativePath) *>&1
+    $exit = $LASTEXITCODE
+    Pop-Location
+    return [pscustomobject]@{ ExitCode = $exit; Output = ($out | Out-String) }
+  } catch {
+    Pop-Location
+    return [pscustomobject]@{ ExitCode = -1; Output = "Exception: $_" }
+  }
+}
+
+# Case 1: Underscore in [Test] method name
+$case1 = @'
+namespace WallstopStudios.UnityHelpers.Tests
+{
+    using NUnit.Framework;
+
+    public sealed class Case1 : CommonTestBase
+    {
+        [Test]
+        public void Snake_Case_Test() { }
+    }
+}
+'@
+$r = Invoke-LintOnFixture -FixtureRelativePath 'Case1.cs' -FixtureContent $case1
+$ok = ($r.ExitCode -ne 0) -and ($r.Output -match 'UNH004') -and ($r.Output -match 'Snake_Case_Test')
+Write-TestResult "UNH004.MethodName.DetectsUnderscoreInTestMethod" $ok "Exit: $($r.ExitCode), Output: $($r.Output)"
+
+# Case 2: Stacked attributes
+$case2 = @'
+namespace WallstopStudios.UnityHelpers.Tests
+{
+    using NUnit.Framework;
+
+    public sealed class Case2 : CommonTestBase
+    {
+        [Test]
+        [Category("Fast")]
+        public void Stacked_Test() { }
+    }
+}
+'@
+$r = Invoke-LintOnFixture -FixtureRelativePath 'Case2.cs' -FixtureContent $case2
+$ok = ($r.ExitCode -ne 0) -and ($r.Output -match 'UNH004') -and ($r.Output -match 'Stacked_Test')
+Write-TestResult "UNH004.MethodName.DetectsInStackedAttributes" $ok "Exit: $($r.ExitCode), Output: $($r.Output)"
+
+# Case 3: Same-line attribute
+$case3 = @'
+namespace WallstopStudios.UnityHelpers.Tests
+{
+    using NUnit.Framework;
+
+    public sealed class Case3 : CommonTestBase
+    {
+        [Test] public void Inline_Test() { }
+    }
+}
+'@
+$r = Invoke-LintOnFixture -FixtureRelativePath 'Case3.cs' -FixtureContent $case3
+$ok = ($r.ExitCode -ne 0) -and ($r.Output -match 'UNH004') -and ($r.Output -match 'Inline_Test')
+Write-TestResult "UNH004.MethodName.DetectsInSameLineAttribute" $ok "Exit: $($r.ExitCode), Output: $($r.Output)"
+
+# Case 4: Multi-line attribute args
+$case4 = @'
+namespace WallstopStudios.UnityHelpers.Tests
+{
+    using NUnit.Framework;
+
+    public sealed class Case4 : CommonTestBase
+    {
+        [TestCase(
+            1,
+            2)]
+        public void Multi_Line_Test(int a, int b) { }
+    }
+}
+'@
+$r = Invoke-LintOnFixture -FixtureRelativePath 'Case4.cs' -FixtureContent $case4
+$ok = ($r.ExitCode -ne 0) -and ($r.Output -match 'UNH004') -and ($r.Output -match 'Multi_Line_Test')
+Write-TestResult "UNH004.MethodName.DetectsWithMultiLineAttributeArgs" $ok "Exit: $($r.ExitCode), Output: $($r.Output)"
+
+# Case 5: // comment between attribute and signature
+$case5 = @'
+namespace WallstopStudios.UnityHelpers.Tests
+{
+    using NUnit.Framework;
+
+    public sealed class Case5 : CommonTestBase
+    {
+        [Test]
+        // why
+        public void Comment_Between() { }
+    }
+}
+'@
+$r = Invoke-LintOnFixture -FixtureRelativePath 'Case5.cs' -FixtureContent $case5
+$ok = ($r.ExitCode -ne 0) -and ($r.Output -match 'UNH004') -and ($r.Output -match 'Comment_Between')
+Write-TestResult "UNH004.MethodName.DetectsWithCommentBetweenAttrAndSignature" $ok "Exit: $($r.ExitCode), Output: $($r.Output)"
+
+# Case 6: Trailing // reason on attribute line
+$case6 = @'
+namespace WallstopStudios.UnityHelpers.Tests
+{
+    using NUnit.Framework;
+
+    public sealed class Case6 : CommonTestBase
+    {
+        [Test]
+        [Category("Fast")] // reason
+        public void Trailing_Comment() { }
+    }
+}
+'@
+$r = Invoke-LintOnFixture -FixtureRelativePath 'Case6.cs' -FixtureContent $case6
+$ok = ($r.ExitCode -ne 0) -and ($r.Output -match 'UNH004') -and ($r.Output -match 'Trailing_Comment')
+Write-TestResult "UNH004.MethodName.DetectsWithTrailingCommentOnAttr" $ok "Exit: $($r.ExitCode), Output: $($r.Output)"
+
+# Case 7: Non-test method with underscore is NOT flagged
+$case7 = @'
+namespace WallstopStudios.UnityHelpers.Tests
+{
+    using NUnit.Framework;
+
+    public sealed class Case7 : CommonTestBase
+    {
+        private void Helper_Method() { }
+
+        [Test]
+        public void LegitTest()
+        {
+            Helper_Method();
+        }
+    }
+}
+'@
+$r = Invoke-LintOnFixture -FixtureRelativePath 'Case7.cs' -FixtureContent $case7
+$ok = ($r.ExitCode -eq 0)
+Write-TestResult "UNH004.MethodName.DoesNotFlagNonTestMethods" $ok "Exit: $($r.ExitCode), Output: $($r.Output)"
+
+# Case 8: UNH-SUPPRESS honors
+$case8 = @'
+namespace WallstopStudios.UnityHelpers.Tests
+{
+    using NUnit.Framework;
+
+    public sealed class Case8 : CommonTestBase
+    {
+        [Test] // UNH-SUPPRESS
+        public void Suppressed_Underscore() { }
+    }
+}
+'@
+$r = Invoke-LintOnFixture -FixtureRelativePath 'Case8.cs' -FixtureContent $case8
+$ok = ($r.ExitCode -eq 0)
+Write-TestResult "UNH004.MethodName.HonorsUnhSuppress" $ok "Exit: $($r.ExitCode), Output: $($r.Output)"
+
+# Case 9: PascalCase not flagged
+$case9 = @'
+namespace WallstopStudios.UnityHelpers.Tests
+{
+    using NUnit.Framework;
+
+    public sealed class Case9 : CommonTestBase
+    {
+        [Test] public void PascalCaseIsFine() { }
+    }
+}
+'@
+$r = Invoke-LintOnFixture -FixtureRelativePath 'Case9.cs' -FixtureContent $case9
+$ok = ($r.ExitCode -eq 0)
+Write-TestResult "UNH004.MethodName.DoesNotFlagPascalCase" $ok "Exit: $($r.ExitCode), Output: $($r.Output)"
+
+# Case 10: Empty file does not crash
+$emptyFile = Join-Path $tempTestDir 'EmptyFixture.cs'
+Set-Content -Path $emptyFile -Value '' -NoNewline
+try {
+  Push-Location $tempDir
+  $out = & $lintScriptPath -Paths (Join-Path 'Tests' 'Editor' 'EmptyFixture.cs') *>&1
+  $exit = $LASTEXITCODE
+  Pop-Location
+  $outStr = $out | Out-String
+  $ok = ($exit -eq 0) -and ($outStr -notmatch 'cannot be found on this object')
+  Write-TestResult "StrictMode.EmptyFileDoesNotCrashLinter" $ok "Exit: $exit, Output: $outStr"
+} catch {
+  Pop-Location
+  Write-TestResult "StrictMode.EmptyFileDoesNotCrashLinter" $false "Exception: $_"
+}
+
+# Case 11: Single-line file does not crash
+$singleFile = Join-Path $tempTestDir 'SingleLineFixture.cs'
+Set-Content -Path $singleFile -Value '// a comment' -NoNewline
+try {
+  Push-Location $tempDir
+  $out = & $lintScriptPath -Paths (Join-Path 'Tests' 'Editor' 'SingleLineFixture.cs') *>&1
+  $exit = $LASTEXITCODE
+  Pop-Location
+  $outStr = $out | Out-String
+  $ok = ($exit -eq 0) -and ($outStr -notmatch 'cannot be found on this object')
+  Write-TestResult "StrictMode.SingleLineFileDoesNotCrashLinter" $ok "Exit: $exit, Output: $outStr"
+} catch {
+  Pop-Location
+  Write-TestResult "StrictMode.SingleLineFileDoesNotCrashLinter" $false "Exception: $_"
+}
+
+# ── Test 12: UNH004 string-literal bypass + long-form/qualified attributes ────
+Write-Host "`n  Section: UNH004 method-name bypass resistance" -ForegroundColor White
+
+# Case 12a: Trailing-comment stripper corruption via "//" in string literal
+$caseSlashSlash = @'
+namespace WallstopStudios.UnityHelpers.Tests
+{
+    using NUnit.Framework;
+
+    public sealed class CaseSlashSlash : CommonTestBase
+    {
+        [Test]
+        [Category("http://example.com")]
+        public void Url_Category_Underscore() { }
+    }
+}
+'@
+$r = Invoke-LintOnFixture -FixtureRelativePath 'CaseSlashSlash.cs' -FixtureContent $caseSlashSlash
+$ok = ($r.ExitCode -ne 0) -and ($r.Output -match 'UNH004') -and ($r.Output -match 'Url_Category_Underscore')
+Write-TestResult "UNH004.MethodName.DetectsWithStringContainingSlashSlash" $ok "Exit: $($r.ExitCode), Output: $($r.Output)"
+
+# Case 12b: Open bracket inside string literal
+$caseOpenBracket = @'
+namespace WallstopStudios.UnityHelpers.Tests
+{
+    using NUnit.Framework;
+
+    public sealed class CaseOpenBracket : CommonTestBase
+    {
+        [TestCase("[bracket")]
+        public void Open_Bracket_In_String(string s) { }
+    }
+}
+'@
+$r = Invoke-LintOnFixture -FixtureRelativePath 'CaseOpenBracket.cs' -FixtureContent $caseOpenBracket
+$ok = ($r.ExitCode -ne 0) -and ($r.Output -match 'UNH004') -and ($r.Output -match 'Open_Bracket_In_String')
+Write-TestResult "UNH004.MethodName.DetectsWithStringContainingOpenBracket" $ok "Exit: $($r.ExitCode), Output: $($r.Output)"
+
+# Case 12c: Close bracket inside string literal
+$caseCloseBracket = @'
+namespace WallstopStudios.UnityHelpers.Tests
+{
+    using NUnit.Framework;
+
+    public sealed class CaseCloseBracket : CommonTestBase
+    {
+        [TestCase("bracket]")]
+        public void Close_Bracket_In_String(string s) { }
+    }
+}
+'@
+$r = Invoke-LintOnFixture -FixtureRelativePath 'CaseCloseBracket.cs' -FixtureContent $caseCloseBracket
+$ok = ($r.ExitCode -ne 0) -and ($r.Output -match 'UNH004') -and ($r.Output -match 'Close_Bracket_In_String')
+Write-TestResult "UNH004.MethodName.DetectsWithStringContainingCloseBracket" $ok "Exit: $($r.ExitCode), Output: $($r.Output)"
+
+# Case 12d: Open paren inside string literal
+$caseOpenParen = @'
+namespace WallstopStudios.UnityHelpers.Tests
+{
+    using NUnit.Framework;
+
+    public sealed class CaseOpenParen : CommonTestBase
+    {
+        [TestCase("(paren")]
+        public void Open_Paren_In_String(string s) { }
+    }
+}
+'@
+$r = Invoke-LintOnFixture -FixtureRelativePath 'CaseOpenParen.cs' -FixtureContent $caseOpenParen
+$ok = ($r.ExitCode -ne 0) -and ($r.Output -match 'UNH004') -and ($r.Output -match 'Open_Paren_In_String')
+Write-TestResult "UNH004.MethodName.DetectsWithStringContainingOpenParen" $ok "Exit: $($r.ExitCode), Output: $($r.Output)"
+
+# Case 12e: Close paren inside string literal
+$caseCloseParen = @'
+namespace WallstopStudios.UnityHelpers.Tests
+{
+    using NUnit.Framework;
+
+    public sealed class CaseCloseParen : CommonTestBase
+    {
+        [TestCase("paren)")]
+        public void Close_Paren_In_String(string s) { }
+    }
+}
+'@
+$r = Invoke-LintOnFixture -FixtureRelativePath 'CaseCloseParen.cs' -FixtureContent $caseCloseParen
+$ok = ($r.ExitCode -ne 0) -and ($r.Output -match 'UNH004') -and ($r.Output -match 'Close_Paren_In_String')
+Write-TestResult "UNH004.MethodName.DetectsWithStringContainingCloseParen" $ok "Exit: $($r.ExitCode), Output: $($r.Output)"
+
+# Case 12f: Long-form [TestAttribute]
+$caseLongForm = @'
+namespace WallstopStudios.UnityHelpers.Tests
+{
+    using NUnit.Framework;
+
+    public sealed class CaseLongForm : CommonTestBase
+    {
+        [TestAttribute]
+        public void Long_Form_Test() { }
+    }
+}
+'@
+$r = Invoke-LintOnFixture -FixtureRelativePath 'CaseLongForm.cs' -FixtureContent $caseLongForm
+$ok = ($r.ExitCode -ne 0) -and ($r.Output -match 'UNH004') -and ($r.Output -match 'Long_Form_Test')
+Write-TestResult "UNH004.MethodName.DetectsLongFormTestAttribute" $ok "Exit: $($r.ExitCode), Output: $($r.Output)"
+
+# Case 12g: Fully-qualified [NUnit.Framework.Test]
+$caseQualified = @'
+namespace WallstopStudios.UnityHelpers.Tests
+{
+    public sealed class CaseQualified : CommonTestBase
+    {
+        [NUnit.Framework.Test]
+        public void Qualified_Test() { }
+    }
+}
+'@
+$r = Invoke-LintOnFixture -FixtureRelativePath 'CaseQualified.cs' -FixtureContent $caseQualified
+$ok = ($r.ExitCode -ne 0) -and ($r.Output -match 'UNH004') -and ($r.Output -match 'Qualified_Test')
+Write-TestResult "UNH004.MethodName.DetectsQualifiedTestAttribute" $ok "Exit: $($r.ExitCode), Output: $($r.Output)"
+
+# Case 12h: Fully-qualified [NUnit.Framework.TestCase(1, 2)]
+$caseQualifiedTestCase = @'
+namespace WallstopStudios.UnityHelpers.Tests
+{
+    public sealed class CaseQualifiedTestCase : CommonTestBase
+    {
+        [NUnit.Framework.TestCase(1, 2)]
+        public void Qualified_TestCase(int a, int b) { }
+    }
+}
+'@
+$r = Invoke-LintOnFixture -FixtureRelativePath 'CaseQualifiedTestCase.cs' -FixtureContent $caseQualifiedTestCase
+$ok = ($r.ExitCode -ne 0) -and ($r.Output -match 'UNH004') -and ($r.Output -match 'Qualified_TestCase')
+Write-TestResult "UNH004.MethodName.DetectsQualifiedTestCaseAttribute" $ok "Exit: $($r.ExitCode), Output: $($r.Output)"
+
+# Case 12i: Character literal containing '['
+$caseCharBracket = @'
+namespace WallstopStudios.UnityHelpers.Tests
+{
+    using NUnit.Framework;
+
+    public sealed class CaseCharBracket : CommonTestBase
+    {
+        [TestCase('[')]
+        public void Char_Bracket(char c) { }
+    }
+}
+'@
+$r = Invoke-LintOnFixture -FixtureRelativePath 'CaseCharBracket.cs' -FixtureContent $caseCharBracket
+$ok = ($r.ExitCode -ne 0) -and ($r.Output -match 'UNH004') -and ($r.Output -match 'Char_Bracket')
+Write-TestResult "UNH004.MethodName.DetectsCharLiteralBracket" $ok "Exit: $($r.ExitCode), Output: $($r.Output)"
+
+# Case 12j: Inline comma form: "[Test, Category("Fast")] public void Foo()"
+$caseInlineComma = @'
+namespace WallstopStudios.UnityHelpers.Tests
+{
+    using NUnit.Framework;
+
+    public sealed class CaseInlineComma : CommonTestBase
+    {
+        [Test, Category("Fast")] public void Inline_Comma_Test() { }
+    }
+}
+'@
+$r = Invoke-LintOnFixture -FixtureRelativePath 'CaseInlineComma.cs' -FixtureContent $caseInlineComma
+$ok = ($r.ExitCode -ne 0) -and ($r.Output -match 'UNH004') -and ($r.Output -match 'Inline_Comma_Test')
+Write-TestResult "UNH004.MethodName.DetectsInlineCommaStackedAttribute" $ok "Exit: $($r.ExitCode), Output: $($r.Output)"
+
+# Case 12k: Stacked inline attributes where [Test] is NOT first
+$caseStackedInline = @'
+namespace WallstopStudios.UnityHelpers.Tests
+{
+    using NUnit.Framework;
+
+    public sealed class CaseStackedInline : CommonTestBase
+    {
+        [Category("Fast")][Test] public void Stacked_Inline_Test() { }
+    }
+}
+'@
+$r = Invoke-LintOnFixture -FixtureRelativePath 'CaseStackedInline.cs' -FixtureContent $caseStackedInline
+$ok = ($r.ExitCode -ne 0) -and ($r.Output -match 'UNH004') -and ($r.Output -match 'Stacked_Inline_Test')
+Write-TestResult "UNH004.MethodName.DetectsStackedInlineAttribute" $ok "Exit: $($r.ExitCode), Output: $($r.Output)"
+
+# Bug 1 regression: parameter-level [Test] must NOT be treated as a test-method
+# attribute. C# allows parameter attributes like "void Foo(int x, [Test] int y)"
+# — the method is not a test, so UNH004 must not fire. The anywhere pattern
+# would otherwise match the "[Test]" inside the parameter list.
+$caseParamAttr = @'
+namespace WallstopStudios.UnityHelpers.Tests
+{
+    using NUnit.Framework;
+
+    public sealed class CaseParamAttr : CommonTestBase
+    {
+        public void Not_A_Test(int x, [Test] int y) { }
+    }
+}
+'@
+$r = Invoke-LintOnFixture -FixtureRelativePath 'CaseParamAttr.cs' -FixtureContent $caseParamAttr
+$ok = ($r.ExitCode -eq 0) -and ($r.Output -notmatch 'UNH004')
+Write-TestResult "UNH004.MethodName.DoesNotFlagMethodWithParameterAttribute" $ok "Exit: $($r.ExitCode), Output: $($r.Output)"
+
+# Bug 2 regression: stacked attributes on a single line ABOVE the signature
+# where [Test] is NOT first. The walker previously used only the anchored
+# pattern on the reconstructed attribute block, so "[Category(\"Fast\")][Test]"
+# above the signature slipped through. Must now be flagged.
+$caseStackedNonInline = @'
+namespace WallstopStudios.UnityHelpers.Tests
+{
+    using NUnit.Framework;
+
+    public sealed class CaseStackedNonInline : CommonTestBase
+    {
+        [Category("Fast")][Test]
+        public void stacked_non_inline_bad_name() { }
+    }
+}
+'@
+$r = Invoke-LintOnFixture -FixtureRelativePath 'CaseStackedNonInline.cs' -FixtureContent $caseStackedNonInline
+$ok = ($r.ExitCode -ne 0) -and ($r.Output -match 'UNH004') -and ($r.Output -match 'stacked_non_inline_bad_name')
+Write-TestResult "UNH004.MethodName.DetectsStackedNonInlineTestAttribute" $ok "Exit: $($r.ExitCode), Output: $($r.Output)"
+
+# Case 12l: global::-qualified attribute
+$caseGlobalQualified = @'
+namespace WallstopStudios.UnityHelpers.Tests
+{
+    public sealed class CaseGlobalQualified : CommonTestBase
+    {
+        [global::NUnit.Framework.Test] public void Qualified_Global_Test() { }
+    }
+}
+'@
+$r = Invoke-LintOnFixture -FixtureRelativePath 'CaseGlobalQualified.cs' -FixtureContent $caseGlobalQualified
+$ok = ($r.ExitCode -ne 0) -and ($r.Output -match 'UNH004') -and ($r.Output -match 'Qualified_Global_Test')
+Write-TestResult "UNH004.MethodName.DetectsGlobalQualifiedAttribute" $ok "Exit: $($r.ExitCode), Output: $($r.Output)"
+
+# Case 12m: global::-qualified TestCase attribute
+$caseGlobalQualifiedTestCase = @'
+namespace WallstopStudios.UnityHelpers.Tests
+{
+    public sealed class CaseGlobalQualifiedTestCase : CommonTestBase
+    {
+        [global::NUnit.Framework.TestCase(1)] public void Global_Inline_TestCase_Name(int a) { }
+    }
+}
+'@
+$r = Invoke-LintOnFixture -FixtureRelativePath 'CaseGlobalQualifiedTestCase.cs' -FixtureContent $caseGlobalQualifiedTestCase
+$ok = ($r.ExitCode -ne 0) -and ($r.Output -match 'UNH004') -and ($r.Output -match 'Global_Inline_TestCase_Name')
+Write-TestResult "UNH004.MethodName.DetectsGlobalQualifiedInlineTestCase" $ok "Exit: $($r.ExitCode), Output: $($r.Output)"
+
 } finally {
   # ── Cleanup ──────────────────────────────────────────────────────────────────
   Remove-Item -Recurse -Force $tempDir -ErrorAction SilentlyContinue

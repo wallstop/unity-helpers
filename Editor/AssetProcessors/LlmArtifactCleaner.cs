@@ -4,6 +4,7 @@
 namespace WallstopStudios.UnityHelpers.Editor.AssetProcessors
 {
     using System;
+    using System.Collections.Generic;
     using UnityEditor;
 
     internal sealed class LlmArtifactCleaner : AssetPostprocessor
@@ -12,6 +13,8 @@ namespace WallstopStudios.UnityHelpers.Editor.AssetProcessors
         private const string LlmPrefix = "_llm_";
 
         private static readonly string[] BlockedSegments = { LlmPrefix };
+        private static readonly List<string> PendingDeletions = new();
+        private static readonly Action DrainAction = DrainPendingDeletions;
 
         private static bool _isDeleting;
 
@@ -22,8 +25,14 @@ namespace WallstopStudios.UnityHelpers.Editor.AssetProcessors
             string[] movedFromAssetPaths
         )
         {
-            DeleteBlockedAssets(importedAssets);
-            DeleteBlockedAssets(movedAssets);
+            EnqueueBlockedAssets(importedAssets);
+            EnqueueBlockedAssets(movedAssets);
+            if (PendingDeletions.Count == 0)
+            {
+                return;
+            }
+
+            AssetPostprocessorDeferral.Schedule(DrainAction);
         }
 
         internal static void DeleteBlockedAssets(string[] assetPaths)
@@ -86,6 +95,37 @@ namespace WallstopStudios.UnityHelpers.Editor.AssetProcessors
             }
 
             return false;
+        }
+
+        private static void EnqueueBlockedAssets(string[] assetPaths)
+        {
+            if (assetPaths == null || assetPaths.Length == 0)
+            {
+                return;
+            }
+
+            for (int i = 0; i < assetPaths.Length; i++)
+            {
+                string assetPath = assetPaths[i];
+                if (!ShouldDelete(assetPath))
+                {
+                    continue;
+                }
+
+                PendingDeletions.Add(assetPath);
+            }
+        }
+
+        private static void DrainPendingDeletions()
+        {
+            if (PendingDeletions.Count == 0)
+            {
+                return;
+            }
+
+            string[] batch = PendingDeletions.ToArray();
+            PendingDeletions.Clear();
+            DeleteBlockedAssets(batch);
         }
 
         private static void DeleteAsset(string assetPath)

@@ -116,6 +116,25 @@ public override VisualElement CreatePropertyGUI(SerializedProperty property)
 
 ---
 
+## Forbidden during AssetPostprocessor callbacks
+
+`AssetPostprocessor` callbacks (`OnPostprocessAllAssets`, `OnPreprocessTexture`, `OnPostprocessPrefab`, etc.) run inside Unity's asset-import phase. While the import is active, `SendMessage` is forbidden — but Unity's own sprite/renderer lifecycle relays (`OnSpriteRendererBoundsChanged`, `OnSpriteTilingPropertyChange`, `OnValidate`, etc.) use `SendMessage` when we force deserialization or component inspection.
+
+Any of the following called synchronously from an AssetPostprocessor callback will produce
+
+> `SendMessage cannot be called during Awake, CheckConsistency, or OnValidate`
+
+warnings in the Unity console (see [#234](https://github.com/wallstop/unity-helpers/issues/234)):
+
+- `AssetDatabase.LoadAssetAtPath` / `LoadAllAssetsAtPath` / `LoadMainAssetAtPath`
+- `GetComponentsInChildren` / `GetComponents<T>` on loaded prefabs or scene roots
+- `AddComponent` / `Instantiate` / `DestroyImmediate`
+- `MethodInfo.Invoke` dispatching user callbacks
+
+**Rule:** AssetPostprocessor callbacks must only enqueue work. Route the actual work through [AssetPostprocessorDeferral.Schedule](../../Editor/AssetProcessors/AssetPostprocessorDeferral.cs) so it runs one editor tick later, after the import phase exits. See [asset-postprocessor-safety](./asset-postprocessor-safety.md) for the full pattern and hygiene test recipe.
+
+---
+
 ## Unity String Serialization: Null-to-Empty Conversion
 
 **CRITICAL**: `SerializedProperty.stringValue` **always converts null strings to `""`**. This is a fundamental Unity serialization behavior that affects all property drawers and editor code.
@@ -135,6 +154,7 @@ public override VisualElement CreatePropertyGUI(SerializedProperty property)
 
 ## Related Skills
 
+- [asset-postprocessor-safety](./asset-postprocessor-safety.md) - AssetPostprocessor import-phase rules (avoiding SendMessage warnings)
 - [defensive-editor-programming](./defensive-editor-programming.md) - Overview of all defensive editor patterns
 - [editor-multi-object-editing](./editor-multi-object-editing.md) - Multi-object editing and undo patterns
 - [create-property-drawer](./create-property-drawer.md) - PropertyDrawer creation patterns
