@@ -178,7 +178,9 @@ function Test-Status {
 
     Push-Location $RepoRoot
     try {
-        $autoSetup = git config --local --get push.autoSetupRemote 2>$null
+        # Trim defensively — some git builds emit trailing whitespace / CR
+        # (especially on Windows / MSYS mounts) and we compare to bare literals.
+        $autoSetup = ([string](git config --local --get push.autoSetupRemote 2>$null)).Trim()
         if ($autoSetup -eq "true") {
             Write-Success "push.autoSetupRemote: true"
         }
@@ -187,7 +189,7 @@ function Test-Status {
             Write-Warning "push.autoSetupRemote: $display (run without -Check to configure)"
         }
 
-        $pushDefault = git config --local --get push.default 2>$null
+        $pushDefault = ([string](git config --local --get push.default 2>$null)).Trim()
         if ($pushDefault -eq "simple") {
             Write-Success "push.default: simple"
         }
@@ -335,15 +337,20 @@ function Install-GitHooks {
 function Set-GitPushDefaults {
     Write-Header "Configuring Git Push Defaults"
 
-    $configureScript = Join-Path $ScriptDir 'configure-git-defaults.ps1'
-    if (Test-Path $configureScript) {
-        & pwsh -NoProfile -File $configureScript -RepoRoot $RepoRoot
-        if ($LASTEXITCODE -ne 0) {
-            Write-Warning "configure-git-defaults.ps1 exited with code $LASTEXITCODE"
-        }
+    # Dot-source the shared helper rather than invoking `pwsh -NoProfile -File`
+    # on a sibling script. The subprocess form breaks on Windows PowerShell 5.1
+    # hosts that do not have pwsh on PATH; the in-process form uses whichever
+    # shell already loaded this install-hooks.ps1 script.
+    $helperScript = Join-Path $ScriptDir 'git-push-defaults-helpers.ps1'
+    if (-not (Test-Path $helperScript)) {
+        Write-Warning "scripts/git-push-defaults-helpers.ps1 not found; skipping push defaults configuration"
+        return
     }
-    else {
-        Write-Warning "scripts/configure-git-defaults.ps1 not found; skipping push defaults configuration"
+
+    . $helperScript
+    $result = Set-RepoGitPushDefaults -RepoRoot $RepoRoot
+    if (-not $result.Success) {
+        Write-Warning "Set-RepoGitPushDefaults did not complete successfully; see errors above."
     }
 }
 

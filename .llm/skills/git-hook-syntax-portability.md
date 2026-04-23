@@ -221,6 +221,43 @@ file_path="${file_path#* }"
 
 ---
 
+## `git check-ignore` Requires Repo-Relative POSIX Paths (CRITICAL)
+
+> **CRITICAL**: `git check-ignore` silently **misclassifies** absolute paths — especially on Windows — by returning "not ignored" (exit 1) for files that ARE gitignored.
+
+This matters because safety gates (e.g., `agent-preflight.ps1`'s auto-delete guard) refuse to remove files that appear "not gitignored." A silent misclassification turns a cleanable stray artifact into a permanent manual-review task.
+
+**The rule**: always normalize to **repo-relative POSIX** (forward-slash) before invoking `git check-ignore`. The same rule applies to any git plumbing command documented as repo-relative (`git ls-files -- <path>`, `git diff --relative`, etc.).
+
+```powershell
+# WRONG - absolute Windows-style path; git check-ignore may misclassify.
+& git -C $repoRoot check-ignore -q -- "C:\repo\scripts\pre-commit.log"
+
+# CORRECT - normalize first via scripts/git-path-helpers.ps1.
+. (Join-Path $PSScriptRoot 'git-path-helpers.ps1')
+$relative = ConvertTo-GitRelativePosixPath -Path $absPath -RepoRoot $repoRoot
+if ($null -eq $relative) {
+    # Path is outside the repo root — refuse the auto-delete gate.
+    $unignoredFiles.Add($absPath) | Out-Null
+    continue
+}
+& git -C $repoRoot check-ignore -q -- "$relative"
+$checkExit = $LASTEXITCODE
+# Exit codes: 0 = ignored, 1 = not ignored, 128 = error.
+```
+
+Reference helper: `scripts/git-path-helpers.ps1` — exposes `ConvertTo-GitRelativePosixPath -Path <abs-or-rel> -RepoRoot <abs>`:
+
+- Absolute path inside repo → repo-relative POSIX (`scripts/foo.ps1`).
+- Absolute path outside repo → `$null` (caller must refuse the gate).
+- Relative path with `\` separators → forward-slash POSIX.
+- Repo root itself → `.`.
+- Case-insensitive prefix match on Windows (NTFS).
+
+Regression tests: `scripts/tests/test-git-path-helpers.ps1` covers the helper in isolation; `scripts/tests/test-agent-preflight.ps1`'s `PathNormalize_*` cases exercise the end-to-end call path with a gitignored-stray fixture.
+
+---
+
 ## Related Skills
 
 - [git-hook-patterns](./git-hook-patterns.md) - Hub: all hook pattern categories

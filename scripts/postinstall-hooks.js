@@ -6,10 +6,13 @@
 //
 // Idempotent: if core.hooksPath is already `.githooks`, does nothing.
 //
-// Safe in CI / non-repo checkouts:
-//   - Skip when not inside a git work tree.
-//   - Skip when CI=true (CI images install hooks explicitly if needed).
-//   - Skip when NPM_CONFIG_IGNORE_SCRIPTS or HUSKY=0 equivalents requested.
+// Safe in CI / non-repo checkouts. Skip triggers (each logs a clear reason):
+//   - CI=true or CI=1 (CI images install hooks explicitly if needed)
+//   - SKIP_POSTINSTALL_HOOKS=1 (opt-out for local workflows)
+//   - NPM_CONFIG_IGNORE_SCRIPTS=true|1 (npm's --ignore-scripts, the standard
+//     way to opt out of postinstall logic)
+//   - HUSKY=0 (industry-standard opt-out popularized by Husky)
+//   - Not inside a git work tree
 //   - Never fails npm install: any error is logged and we exit 0.
 //
 // Cross-platform: the chmod is best-effort; on Windows, git-bash/cmd do not
@@ -27,6 +30,24 @@ function skipReason() {
   }
   if (process.env.SKIP_POSTINSTALL_HOOKS === "1") {
     return "SKIP_POSTINSTALL_HOOKS=1 — skipping";
+  }
+  // Honor `npm install --ignore-scripts`. npm exports the config as the
+  // lower-case form `npm_config_ignore_scripts` when it spawns lifecycle
+  // scripts (so `npm install --ignore-scripts` skips postinstall entirely
+  // via that path). A contributor re-running the node script directly after
+  // `export NPM_CONFIG_IGNORE_SCRIPTS=1` only has the upper-case form
+  // visible. Check both so either manual spelling is honored.
+  // Accept both common boolean-ish spellings.
+  const ignoreScripts =
+    process.env.NPM_CONFIG_IGNORE_SCRIPTS || process.env.npm_config_ignore_scripts;
+  if (ignoreScripts === "true" || ignoreScripts === "1") {
+    return `npm_config_ignore_scripts=${ignoreScripts} — skipping`;
+  }
+  // Industry-standard opt-out popularized by Husky. Respecting it lets
+  // contributors who never want hook install (Docker images, ephemeral
+  // CI checkouts) keep using the familiar flag.
+  if (process.env.HUSKY === "0") {
+    return "HUSKY=0 — skipping";
   }
   return null;
 }

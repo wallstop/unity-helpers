@@ -17,6 +17,8 @@ Param()
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+. (Join-Path $PSScriptRoot 'git-path-helpers.ps1')
+
 $repoRoot = (Get-Item $PSScriptRoot).Parent.FullName
 
 function Write-Info($Message) {
@@ -46,6 +48,10 @@ try {
     foreach ($key in $expected.Keys) {
         $actual = & git config --local --get $key 2>$null
         if ($LASTEXITCODE -ne 0) { $actual = '' }
+        # Trim defensively — some git builds emit trailing CR/whitespace
+        # (especially on Windows / MSYS mounts) and we compare against a
+        # bare literal like 'true' / 'simple'.
+        $actual = ([string]$actual).Trim()
         if ($actual -ne $expected[$key]) {
             $display = if ([string]::IsNullOrWhiteSpace($actual)) { 'unset' } else { $actual }
             $mismatches.Add("$key is '$display' (expected '$($expected[$key])')") | Out-Null
@@ -109,11 +115,23 @@ if ($uniqueStrayFiles.Count -gt 0) {
     # delete) from files that merely match the error-log pattern but are NOT
     # gitignored (must be reviewed manually — may be user-authored artifacts).
     # git check-ignore exit codes: 0 = ignored, 1 = not ignored, 128 = error.
+    #
+    # IMPORTANT: git check-ignore expects REPO-RELATIVE paths with POSIX
+    # forward-slash separators. Absolute Windows paths (with `\`) can be
+    # silently misclassified. Normalize via ConvertTo-GitRelativePosixPath
+    # (scripts/git-path-helpers.ps1) before every call.
     $ignoredFiles = New-Object System.Collections.Generic.List[string]
     $unignoredFiles = New-Object System.Collections.Generic.List[string]
     $checkIgnoreErrors = New-Object System.Collections.Generic.List[string]
     foreach ($file in $uniqueStrayFiles) {
-        & git -C $repoRoot check-ignore -q -- "$file" 2>$null
+        $relative = ConvertTo-GitRelativePosixPath -Path $file -RepoRoot $repoRoot
+        if ([string]::IsNullOrWhiteSpace($relative) -or $relative -eq '.') {
+            $checkIgnoreErrors.Add("${file}: cannot resolve repo-relative path") | Out-Null
+            $unignoredFiles.Add($file) | Out-Null
+            continue
+        }
+
+        & git -C $repoRoot check-ignore -q -- "$relative" 2>$null
         $checkExit = $LASTEXITCODE
         switch ($checkExit) {
             0 { $ignoredFiles.Add($file) | Out-Null }

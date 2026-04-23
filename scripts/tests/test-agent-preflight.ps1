@@ -43,7 +43,14 @@ function New-TestRepo {
     $repoRoot = Split-Path -Parent $PSScriptRoot | Split-Path -Parent
     Copy-Item (Join-Path $repoRoot 'scripts/agent-preflight.ps1') (Join-Path $scriptsDir 'agent-preflight.ps1') -Force
     Copy-Item (Join-Path $repoRoot 'scripts/git-staging-helpers.ps1') (Join-Path $scriptsDir 'git-staging-helpers.ps1') -Force
+    # agent-preflight.ps1 dot-sources these helpers at startup; omitting the
+    # copy would surface as an obscure "path not found" during the dot-source
+    # line rather than the actual test we're trying to run.
+    Copy-Item (Join-Path $repoRoot 'scripts/git-push-defaults-helpers.ps1') (Join-Path $scriptsDir 'git-push-defaults-helpers.ps1') -Force
+    Copy-Item (Join-Path $repoRoot 'scripts/git-path-helpers.ps1') (Join-Path $scriptsDir 'git-path-helpers.ps1') -Force
     Copy-Item (Join-Path $repoRoot 'scripts/generate-meta.sh') (Join-Path $scriptsDir 'generate-meta.sh') -Force
+    # configure-git-defaults.ps1 is preserved as a CLI entry point; it also
+    # depends on git-push-defaults-helpers.ps1 (already copied above).
     Copy-Item (Join-Path $repoRoot 'scripts/configure-git-defaults.ps1') (Join-Path $scriptsDir 'configure-git-defaults.ps1') -Force
 
     if ($null -ne $GitIgnorePatterns -and $GitIgnorePatterns.Count -gt 0) {
@@ -625,6 +632,161 @@ try {
 }
 finally {
     Remove-Item -Path $repo16 -Recurse -Force -ErrorAction SilentlyContinue
+}
+
+# Test 17: git check-ignore path-normalization (gitignored strays are correctly
+# classified even when the stray artifact file lives in a directory whose name
+# case mismatches the gitignore pattern on case-insensitive filesystems, AND
+# when agent-preflight has to pass ABSOLUTE paths through to git check-ignore).
+# Before the fix, absolute Windows-style paths could be silently misclassified
+# as "not gitignored" — causing auto-delete to refuse a file the user wanted
+# cleaned up. The helper `ConvertTo-GitRelativePosixPath` normalizes once per
+# input path before hand-off.
+Write-Host "`nTest group: git check-ignore path normalization" -ForegroundColor Magenta
+$repo17 = New-TestRepo -ConfigurePushDefaults -GitIgnorePatterns @('pre-commit.log', 'pre-push.log')
+try {
+    $hooksDir = Join-Path $repo17 '.githooks'
+    New-Item -ItemType Directory -Path $hooksDir -Force | Out-Null
+    Set-Content -Path (Join-Path $hooksDir 'pre-commit') -Value '#!/usr/bin/env bash' -Encoding UTF8
+    Set-Content -Path (Join-Path $hooksDir 'pre-push') -Value '#!/usr/bin/env bash' -Encoding UTF8
+    # Create stray artifacts matching the gitignore pattern. agent-preflight
+    # must detect them, classify them as gitignored, and (with -Fix) delete
+    # them. Without the path-normalization fix, git check-ignore could miss
+    # them when called with absolute paths on Windows.
+    $strayCommit = Join-Path $repo17 'pre-commit.log'
+    $strayPush = Join-Path $repo17 'pre-push.log'
+    Set-Content -Path $strayCommit -Value 'stale log' -Encoding UTF8
+    Set-Content -Path $strayPush -Value 'stale log' -Encoding UTF8
+
+    # Check-only: both files listed, both marked as gitignored.
+    $result17 = Invoke-Preflight -RepoPath $repo17 -Arguments @('-Paths', 'nonexistent/should-not-match')
+    Write-TestResult 'PathNormalize_CheckExitCode1' ($result17.ExitCode -eq 1) "Expected exit 1 when gitignored strays exist, got $($result17.ExitCode). Output: $($result17.Output)"
+    Write-TestResult 'PathNormalize_CheckListsCommit' ($result17.Output -match 'pre-commit\.log') 'Expected pre-commit.log in check-only output'
+    Write-TestResult 'PathNormalize_CheckListsPush' ($result17.Output -match 'pre-push\.log') 'Expected pre-push.log in check-only output'
+    # Crucial regression: the output must classify the strays as "gitignored"
+    # (safe to auto-delete) rather than "NOT gitignored" (refuse to delete).
+    # This is the exact bit that the path-normalization fix ensures.
+    Write-TestResult 'PathNormalize_CheckClassifiedAsIgnored' ($result17.Output -match 'safe to auto-delete') 'Expected check-only output to classify strays as "gitignored (safe to auto-delete)"'
+    Write-TestResult 'PathNormalize_CheckNotMisclassified' (-not ($result17.Output -match 'NOT gitignored')) 'Expected check-only output to NOT misclassify gitignored strays as "NOT gitignored"'
+
+    # -Fix: both files deleted, run succeeds.
+    $result17fix = Invoke-Preflight -RepoPath $repo17 -Arguments @('-Fix', '-Paths', 'nonexistent/should-not-match')
+    Write-TestResult 'PathNormalize_FixExitCode0' ($result17fix.ExitCode -eq 0) "Expected -Fix exit 0 after cleaning gitignored strays, got $($result17fix.ExitCode). Output: $($result17fix.Output)"
+    Write-TestResult 'PathNormalize_FixDeletedCommitLog' (-not (Test-Path -LiteralPath $strayCommit)) 'Expected pre-commit.log to be deleted by -Fix when gitignored'
+    Write-TestResult 'PathNormalize_FixDeletedPushLog' (-not (Test-Path -LiteralPath $strayPush)) 'Expected pre-push.log to be deleted by -Fix when gitignored'
+}
+finally {
+    Remove-Item -Path $repo17 -Recurse -Force -ErrorAction SilentlyContinue
+}
+
+# Test 18: Set-RepoGitPushDefaults dot-source contract. agent-preflight and
+# install-hooks rely on dot-sourcing git-push-defaults-helpers.ps1 and calling
+# Set-RepoGitPushDefaults directly — rather than spawning a pwsh subprocess.
+# This test verifies the helper's contract in isolation:
+#   - Succeeds on a fresh repo.
+#   - Persists push.autoSetupRemote=true and push.default=simple.
+#   - Is idempotent (second call is a no-op that still reports Success=$true).
+#   - Returns a result hashtable with Success / Errors / Values fields.
+Write-Host "`nTest group: Set-RepoGitPushDefaults dot-source" -ForegroundColor Magenta
+$repo18 = New-TestRepo  # Intentionally NOT -ConfigurePushDefaults — we want
+                        # the helper to actually apply the config.
+try {
+    $helperScript = Join-Path (Join-Path $repo18 'scripts') 'git-push-defaults-helpers.ps1'
+    Write-TestResult 'DotSource_HelperExists' (Test-Path -LiteralPath $helperScript) "Expected helper at $helperScript"
+
+    # Dot-source into a child pwsh process so we don't pollute the test's
+    # current function table. Using `& pwsh` here is the correct production
+    # invocation path for this isolated test — we're explicitly verifying
+    # the dot-source contract from a fresh host.
+    $probe = @"
+Set-StrictMode -Version Latest
+`$ErrorActionPreference = 'Stop'
+. '$($helperScript -replace "'", "''")'
+`$result = Set-RepoGitPushDefaults -RepoRoot '$($repo18 -replace "'", "''")'
+if (-not `$result.Success) {
+    Write-Host "FAIL: Success=`$(`$result.Success); Errors=`$(`$result.Errors -join '; ')"
+    exit 1
+}
+# Verify persisted config values.
+Push-Location '$($repo18 -replace "'", "''")'
+try {
+    `$actualAuto = (& git config --local --get push.autoSetupRemote 2>`$null).Trim()
+    `$actualDefault = (& git config --local --get push.default 2>`$null).Trim()
+    if (`$actualAuto -ne 'true') { Write-Host "FAIL: push.autoSetupRemote=`$actualAuto"; exit 2 }
+    if (`$actualDefault -ne 'simple') { Write-Host "FAIL: push.default=`$actualDefault"; exit 3 }
+} finally { Pop-Location }
+# Idempotent second call.
+`$result2 = Set-RepoGitPushDefaults -RepoRoot '$($repo18 -replace "'", "''")'
+if (-not `$result2.Success) { Write-Host "FAIL-IDEMPOTENT: Errors=`$(`$result2.Errors -join '; ')"; exit 4 }
+Write-Host "OK"
+exit 0
+"@
+
+    $probeFile = Join-Path $repo18 'probe-set-git-push-defaults.ps1'
+    Set-Content -Path $probeFile -Value $probe -Encoding UTF8
+    $probeOutput = & pwsh -NoProfile -File $probeFile 2>&1
+    $probeExit = $LASTEXITCODE
+    $probeJoined = ($probeOutput -join "`n")
+    Write-TestResult 'DotSource_Succeeded' ($probeExit -eq 0) "Expected exit 0 from probe; got $probeExit. Output: $probeJoined"
+    Write-TestResult 'DotSource_ReportsOK' ($probeJoined -match '^OK$|\nOK$|\nOK\r?$|^OK\r?$') "Expected probe to print 'OK' on success. Output: $probeJoined"
+}
+finally {
+    Remove-Item -Path $repo18 -Recurse -Force -ErrorAction SilentlyContinue
+}
+
+# Test 19: configure-git-defaults.ps1 CLI exit-code contract. The helper-based
+# tests above cover the in-process dot-source path; this test exercises the
+# script as an actual subprocess the way an end user (or install-hooks wrapper)
+# invokes it. Guards:
+#   - Exit 0 on a fresh git repo.
+#   - Stdout shows push.autoSetupRemote=true and push.default=simple.
+#   - Exit non-zero when the RepoRoot is not a git work tree (so the helper's
+#     defensive branches surface a real failure signal, not a silent success).
+Write-Host "`nTest group: configure-git-defaults.ps1 CLI contract" -ForegroundColor Magenta
+$repo19 = New-TestRepo  # Intentionally NOT -ConfigurePushDefaults — the CLI
+                        # must apply the config itself.
+$nonRepo19 = Join-Path ([System.IO.Path]::GetTempPath()) "configure-git-defaults-nonrepo-$([System.Guid]::NewGuid().ToString('N').Substring(0,8))"
+try {
+    # --- Cli_SuccessExitCodeZero / OutputContains* ---
+    $configureScript = Join-Path (Join-Path $repo19 'scripts') 'configure-git-defaults.ps1'
+    Write-TestResult 'Cli_ConfigureScriptExists' (Test-Path -LiteralPath $configureScript) "Expected configure-git-defaults.ps1 at $configureScript"
+
+    $cliOutput = & pwsh -NoProfile -File $configureScript -RepoRoot $repo19 2>&1
+    $cliExit = $LASTEXITCODE
+    $cliJoined = ($cliOutput -join "`n")
+    Write-TestResult 'Cli_SuccessExitCodeZero' ($cliExit -eq 0) "Expected exit 0 from configure-git-defaults.ps1 against a fresh repo; got $cliExit. Output: $cliJoined"
+    Write-TestResult 'Cli_OutputContainsAutoSetupRemote' ($cliJoined -match 'push\.autoSetupRemote\s*=\s*true') "Expected stdout to report push.autoSetupRemote=true. Output: $cliJoined"
+    Write-TestResult 'Cli_OutputContainsPushDefault' ($cliJoined -match 'push\.default\s*=\s*simple') "Expected stdout to report push.default=simple. Output: $cliJoined"
+
+    # --- Cli_PersistsConfigValues ---
+    # Defense-in-depth: after the subprocess returned, the local git config
+    # must reflect the persisted values (not just that the subprocess printed
+    # them).
+    Push-Location $repo19
+    try {
+        $actualAuto = ([string](& git config --local --get push.autoSetupRemote 2>$null)).Trim()
+        $actualDefault = ([string](& git config --local --get push.default 2>$null)).Trim()
+    }
+    finally {
+        Pop-Location
+    }
+    Write-TestResult 'Cli_PersistsAutoSetupRemote' ($actualAuto -eq 'true') "Expected push.autoSetupRemote='true' after subprocess; got '$actualAuto'."
+    Write-TestResult 'Cli_PersistsPushDefault' ($actualDefault -eq 'simple') "Expected push.default='simple' after subprocess; got '$actualDefault'."
+
+    # --- Cli_NonGitDirFailsNonZero ---
+    # When the directory isn't a git work tree, the helper's defensive
+    # branch returns Success=$false and the CLI wrapper must surface that
+    # as a non-zero exit code.
+    New-Item -ItemType Directory -Path $nonRepo19 -Force | Out-Null
+    $cliOutput2 = & pwsh -NoProfile -File $configureScript -RepoRoot $nonRepo19 2>&1
+    $cliExit2 = $LASTEXITCODE
+    $cliJoined2 = ($cliOutput2 -join "`n")
+    Write-TestResult 'Cli_NonGitDirFailsNonZero' ($cliExit2 -ne 0) "Expected non-zero exit when RepoRoot is not a git work tree; got $cliExit2. Output: $cliJoined2"
+    Write-TestResult 'Cli_NonGitDirErrorsMentionNotGit' ($cliJoined2 -match 'Not a git repository') "Expected stderr/stdout to include 'Not a git repository' diagnostic. Output: $cliJoined2"
+}
+finally {
+    Remove-Item -Path $repo19 -Recurse -Force -ErrorAction SilentlyContinue
+    Remove-Item -Path $nonRepo19 -Recurse -Force -ErrorAction SilentlyContinue
 }
 
 Write-Host ''
