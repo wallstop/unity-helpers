@@ -328,6 +328,7 @@ However, for consistency, you may still use the helpers in CI scripts. The overh
 - [git-hook-patterns](./git-hook-patterns.md) - Pre-commit hook safety and configuration
 - [validate-before-commit](./validate-before-commit.md) - Pre-commit validation commands
 - [formatting](./formatting.md) - CSharpier, Prettier, markdownlint workflow
+- [ship-changes Step 9: Push to Remote](./ship-changes.md#step-9-push-to-remote) - push.autoSetupRemote policy, forbidden output redirection, hook bypass ban
 
 ## Related Files
 

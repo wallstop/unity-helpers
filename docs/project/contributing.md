@@ -72,6 +72,7 @@ What does not auto‑fix:
 - Install tools once:
   - `npm ci` (or `npm i --no-audit --no-fund`)
   - `dotnet tool restore`
+  - `npm run hooks:install` — installs git hooks. The install script also configures `push.autoSetupRemote=true` and `push.default=simple` locally, so `git push` on a new branch sets tracking automatically.
 - Verify all tools: `npm run verify:tools`
 - Format C#: `dotnet tool run csharpier format`
 - Check docs/JSON/YAML: `npm run validate:content`

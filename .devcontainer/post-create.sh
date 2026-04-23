@@ -118,6 +118,19 @@ log_step "Installing git hooks"
 npm run hooks:install
 log_ok "Git hooks installed"
 
+# ── Step 4b: Configure git push defaults ─────────────────────────────────────
+# Sets push.autoSetupRemote=true and push.default=simple locally so that
+# `git push` on a new branch works without --set-upstream flags.
+
+log_step "Configuring git push defaults"
+
+if WORKSPACE_DIR_FOR_GIT="$(git rev-parse --show-toplevel 2>/dev/null)"; then
+    bash "$WORKSPACE_DIR_FOR_GIT/scripts/configure-git-defaults.sh" "$WORKSPACE_DIR_FOR_GIT"
+    log_ok "Git push defaults configured"
+else
+    log_warn "Not inside a git working tree; skipping push defaults configuration"
+fi
+
 # ── Step 5: Mark workspace as safe directory ─────────────────────────────────
 # Required when the workspace is bind-mounted and may be owned by a different
 # UID on the host.
