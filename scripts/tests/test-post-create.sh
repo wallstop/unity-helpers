@@ -210,12 +210,17 @@ else
         # e.g., /home/vscode/.nuget/packages is covered by /home/vscode/.nuget
 
         # Check post-create.sh references this path in a chown/VOLUME_DIRS context
-        # (not just in comments). We search non-comment lines for the path or a parent.
+        # (not just in comments). Precompute non-comment body to avoid a
+        # `grep -v ... | grep -q ...` pipeline — under `set -o pipefail`,
+        # `grep -q` closes the pipe on first match, which can deliver SIGPIPE
+        # to the upstream `grep -v` and mark the whole pipeline as failed.
+        post_create_body="$(grep -v '^[[:space:]]*#' "$POST_CREATE" || true)"
+        dockerfile_body="$(grep -v '^[[:space:]]*#' "$DOCKERFILE" || true)"
+
         found_in_script=false
         check_path="$target"
         while [[ "$check_path" != "/" && "$check_path" != "/home/vscode" && "$check_path" != "/home" ]]; do
-            # Match the path in non-comment lines (lines not starting with #)
-            if grep -v '^[[:space:]]*#' "$POST_CREATE" | grep -qF -- "$check_path"; then
+            if printf '%s\n' "$post_create_body" | grep -qF -- "$check_path"; then
                 found_in_script=true
                 break
             fi
@@ -233,7 +238,7 @@ else
         found_in_dockerfile=false
         check_path="$target"
         while [[ "$check_path" != "/" && "$check_path" != "/home/vscode" && "$check_path" != "/home" ]]; do
-            if grep -v '^[[:space:]]*#' "$DOCKERFILE" | grep -qF -- "$check_path"; then
+            if printf '%s\n' "$dockerfile_body" | grep -qF -- "$check_path"; then
                 found_in_dockerfile=true
                 break
             fi

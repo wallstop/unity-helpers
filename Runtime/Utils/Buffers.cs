@@ -1814,7 +1814,7 @@ namespace WallstopStudios.UnityHelpers.Utils
                     {
                         // Back-to-front RemoveAt is O(1) for the last element and removes
                         // the entry before callbacks, making inline callback invocation
-                        // reentrancy-safe (re-entrant Get/Return only touches higher indices).
+                        // reentrancy-safe (reentrant Get/Return only touches higher indices).
                         // This differs from the front-to-back idle-timeout path which uses
                         // batched RemoveRange and deferred callbacks.
                         _pool.RemoveAt(i);

@@ -97,7 +97,7 @@ namespace WallstopStudios.UnityHelpers.Editor.AssetProcessors
         /// Safety cap on <see cref="FlushForTesting"/> iterations. A handler whose
         /// drain re-schedules itself (directly or transitively) would loop forever;
         /// <see cref="FlushIterationCap"/> bounds that to the smallest number that
-        /// still absorbs realistic re-entrant fan-out (tests that create N assets,
+        /// still absorbs realistic reentrant fan-out (tests that create N assets,
         /// each of whose handlers re-schedules a cleanup). Reaching the cap surfaces
         /// a warning so the caller can investigate rather than silently leaking drains.
         /// </summary>
@@ -105,7 +105,7 @@ namespace WallstopStudios.UnityHelpers.Editor.AssetProcessors
 
         /// <summary>
         /// Synchronously drains any pending actions, iterating until the queue is
-        /// stable so a drain that re-entrantly calls <see cref="Schedule"/> does
+        /// stable so a drain that reentrantly calls <see cref="Schedule"/> does
         /// not leave items in the queue for the next test's setup to inherit.
         /// Intended for tests to avoid yielding an editor frame.
         ///
@@ -122,7 +122,7 @@ namespace WallstopStudios.UnityHelpers.Editor.AssetProcessors
         /// subscription for the next editor tick. This loop then drains that
         /// queue synchronously in the next iteration, so the delayCall (when it
         /// eventually fires) observes an empty queue and returns as a harmless
-        /// no-op. Within a single re-entrant iteration, at most ONE dormant
+        /// no-op. Within a single reentrant iteration, at most ONE dormant
         /// delayCall is registered: both <see cref="Schedule"/> and
         /// <see cref="DrainPending"/> gate on <c>_scheduled</c> and will not
         /// double-register. Across a full flush cycle, however, the top of each
@@ -132,7 +132,7 @@ namespace WallstopStudios.UnityHelpers.Editor.AssetProcessors
         /// — each one a harmless no-op when it fires. Editor-tick telemetry may
         /// therefore show between zero and <see cref="FlushIterationCap"/>
         /// no-op <c>DrainScheduled</c> invocations per flush cycle (zero when
-        /// no re-entrant appends happened, one per iteration that had them).
+        /// no reentrant appends happened, one per iteration that had them).
         /// </summary>
         internal static void FlushForTesting()
         {
@@ -144,7 +144,7 @@ namespace WallstopStudios.UnityHelpers.Editor.AssetProcessors
                 // notices. We still return early — throwing would abort the outer
                 // drain mid-iteration.
                 Debug.LogWarning(
-                    "FlushForTesting called re-entrantly during drain — flush is a no-op; "
+                    "FlushForTesting called reentrantly during drain — flush is a no-op; "
                         + "ensure tests don't call FlushForTesting from a handler callback."
                 );
                 return;
@@ -153,8 +153,8 @@ namespace WallstopStudios.UnityHelpers.Editor.AssetProcessors
             for (int iteration = 0; iteration < FlushIterationCap; iteration++)
             {
                 // Clear the scheduled flag before draining so the invariant holds
-                // even if a drain action calls Schedule() re-entrantly (the
-                // re-entrant Schedule will append to PendingDrains and re-arm the
+                // even if a drain action calls Schedule() reentrantly (the
+                // reentrant Schedule will append to PendingDrains and re-arm the
                 // delayCall via DrainPending's fallback).
                 _scheduled = false;
                 DrainPending();
@@ -164,7 +164,7 @@ namespace WallstopStudios.UnityHelpers.Editor.AssetProcessors
                     _scheduled = false;
                     return;
                 }
-                // Re-entrant append(s) happened — DrainPending re-armed delayCall
+                // Reentrant append(s) happened — DrainPending re-armed delayCall
                 // to fire them in the next editor tick. Clear the flag so the next
                 // loop iteration takes ownership synchronously rather than racing
                 // the tick.
@@ -201,11 +201,11 @@ namespace WallstopStudios.UnityHelpers.Editor.AssetProcessors
             _draining = true;
             try
             {
-                // Iterate by index over the list, then clear. Re-entrant Schedule()
+                // Iterate by index over the list, then clear. Reentrant Schedule()
                 // calls during a drain will append to PendingDrains; those appended
                 // entries are intentionally NOT observed by this loop (we captured
                 // Count at entry). Clearing after the loop discards only the entries
-                // we ran; to preserve re-entrant additions we snapshot length first
+                // we ran; to preserve reentrant additions we snapshot length first
                 // and remove the processed range.
                 int initialCount = PendingDrains.Count;
                 for (int i = 0; i < initialCount; i++)
@@ -213,7 +213,7 @@ namespace WallstopStudios.UnityHelpers.Editor.AssetProcessors
                     RunSafely(PendingDrains[i]);
                 }
 
-                // Remove the processed prefix, keeping any re-entrant appends.
+                // Remove the processed prefix, keeping any reentrant appends.
                 if (initialCount == PendingDrains.Count)
                 {
                     PendingDrains.Clear();
@@ -221,7 +221,7 @@ namespace WallstopStudios.UnityHelpers.Editor.AssetProcessors
                 else
                 {
                     PendingDrains.RemoveRange(0, initialCount);
-                    // If re-entrant additions happened, re-arm the delayCall so they
+                    // If reentrant additions happened, re-arm the delayCall so they
                     // fire in the next tick rather than staying stranded.
                     if (!_scheduled)
                     {

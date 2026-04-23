@@ -164,7 +164,13 @@ for file in "${ALL_CHANGED_FILES[@]}"; do
 done
 
 CHANGED_PRETTIER=("${CHANGED_MD[@]}" "${CHANGED_JSON[@]}" "${CHANGED_YAML[@]}" "${CHANGED_JS[@]}")
-CHANGED_SPELL=("${CHANGED_MD[@]}" "${CHANGED_CS[@]}" "${CHANGED_JSON[@]}")
+# Spell-check scope MUST mirror pre-commit's SPELL_FILES_ARRAY (MD + JSON +
+# YAML + JS + CS). Keeping the two hooks in strict parity prevents the class
+# of failure where a commit slips past pre-commit (different host, wrong
+# hooksPath, --no-verify) and only surfaces at pre-push with a narrower
+# safety net. cspell.json's `files` glob still governs which of these are
+# actually linted, so widening the pass-through list is free speed-wise.
+CHANGED_SPELL=("${CHANGED_MD[@]}" "${CHANGED_JSON[@]}" "${CHANGED_YAML[@]}" "${CHANGED_JS[@]}" "${CHANGED_CS[@]}")
 CHANGED_EOL=("${ALL_CHANGED_FILES[@]}")
 
 # ---- Track parallel job failures ----

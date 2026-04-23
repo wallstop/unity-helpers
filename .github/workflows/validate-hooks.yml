@@ -9,6 +9,7 @@ on:
       - "scripts/validate-hook-sync-calls.ps1"
       - "scripts/validate-hook-permissions.sh"
       - "scripts/tests/test-hook-patterns.sh"
+      - "scripts/tests/test-hook-spell-parity.sh"
       - "scripts/tests/test-precommit-integration.sh"
       - ".github/workflows/validate-hooks.yml"
   pull_request:
@@ -17,6 +18,7 @@ on:
       - "scripts/validate-hook-sync-calls.ps1"
       - "scripts/validate-hook-permissions.sh"
       - "scripts/tests/test-hook-patterns.sh"
+      - "scripts/tests/test-hook-spell-parity.sh"
       - "scripts/tests/test-precommit-integration.sh"
       - ".github/workflows/validate-hooks.yml"
 
@@ -57,3 +59,9 @@ jobs:
       - name: Validate hook sync calls
         shell: pwsh
         run: ./scripts/validate-hook-sync-calls.ps1 -VerboseOutput
+
+      - name: Validate pre-commit / pre-push spell-check parity
+        # Guards against --no-verify drift between the two hooks. Local contributors
+        # get this check through validate:prepush; CI needs it too because
+        # --no-verify bypasses the local gate entirely.
+        run: bash scripts/tests/test-hook-spell-parity.sh

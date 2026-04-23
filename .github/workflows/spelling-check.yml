@@ -2,8 +2,8 @@ name: Spelling Check
 
 on:
   push:
-    branches:
-      - main
+    # Run on every branch so --no-verify feature-branch pushes still get spell-checked
+    # even if they never open a PR. Paths-scoping keeps runs cheap.
     paths:
       - "docs/**/*.md"
       - "README.md"

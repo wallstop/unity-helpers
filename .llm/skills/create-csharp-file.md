@@ -283,7 +283,15 @@ See [integrate-optional-dependency](./integrate-optional-dependency.md) for comp
    dotnet tool run csharpier format .
    ```
 
-3. **Add XML documentation** for all public types and members:
+3. **Spell-check** (cspell lints C# comments, XML docs, and log strings):
+
+   ```bash
+   npm run lint:spelling
+   ```
+
+   See [Rule 4: Spell-Check Every Change cspell Covers](./validate-before-commit.md#rule-4-spell-check-every-change-cspell-covers) for the failure-recovery decision tree.
+
+4. **Add XML documentation** for all public types and members:
 
    ```csharp
    /// <summary>
@@ -296,12 +304,12 @@ See [integrate-optional-dependency](./integrate-optional-dependency.md) for comp
 
    > See [update-documentation](./update-documentation.md) for XML doc standards.
 
-4. **Update CHANGELOG** for user-facing changes:
+5. **Update CHANGELOG** for user-facing changes:
    - New features → `### Added` section
    - Bug fixes → `### Fixed` section
    - See [update-documentation](./update-documentation.md) for format
 
-5. **Verify no errors**:
+6. **Verify no errors**:
    - Check IDE for compilation errors
    - Ensure `.asmdef` references are correct if adding new namespaces
 

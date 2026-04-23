@@ -221,7 +221,7 @@ The ordering is enforced by two contracts in [AssetPostprocessorContractTests](.
 
 ## Behavioral Unit Tests for the Deferral Primitive Itself
 
-Tests that exercise `AssetPostprocessorDeferral` internals directly (re-entrant drains, iteration-cap warning, dedup) must:
+Tests that exercise `AssetPostprocessorDeferral` internals directly (reentrant drains, iteration-cap warning, dedup) must:
 
 1. Call `AssetPostprocessorDeferral.ResetForTesting()` in both `SetUp` AND `TearDown`. SetUp guards against inherited pollution; TearDown is required for tests that deliberately leave the queue in a post-cap state.
 2. Mirror the `SkipIfDeferralDisabled()` pattern — when the setting is off, `Schedule` runs drains inline. A cap-hit test would then recurse unboundedly and crash Unity via `StackOverflowException` (not catchable by `RunSafely`).

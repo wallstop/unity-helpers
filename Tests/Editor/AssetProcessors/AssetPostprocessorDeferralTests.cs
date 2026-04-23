@@ -15,9 +15,9 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
 
     /// <summary>
     /// Behavioral unit tests for <see cref="AssetPostprocessorDeferral"/>. Focuses
-    /// on the re-entrant fan-out boundary (successful drain vs. iteration-cap
+    /// on the reentrant fan-out boundary (successful drain vs. iteration-cap
     /// warning) so that a future refactor that silently changes the cap, the
-    /// re-entrant append handling, or the dedup logic is caught by a dedicated
+    /// reentrant append handling, or the dedup logic is caught by a dedicated
     /// regression test rather than by downstream fixture flakiness.
     /// </summary>
     [TestFixture]
@@ -70,9 +70,9 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
         }
 
         /// <summary>
-        /// Verifies the re-entrant fan-out happy path: when a drain re-schedules
+        /// Verifies the reentrant fan-out happy path: when a drain re-schedules
         /// a fresh delegate (distinct from itself, so the per-caller dedup does
-        /// not short-circuit the append), each re-entrant append is processed in
+        /// not short-circuit the append), each reentrant append is processed in
         /// a subsequent iteration of <c>FlushForTesting</c>'s outer loop. With a
         /// finite fan-out well below the cap, the queue drains cleanly with no
         /// warning and no items remaining.
@@ -102,7 +102,7 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
 
             AssetPostprocessorDeferral.FlushForTesting();
 
-            Assert.AreEqual(10, callCount, "All 10 re-entrant drains should have executed.");
+            Assert.AreEqual(10, callCount, "All 10 reentrant drains should have executed.");
             Assert.AreEqual(0, remaining, "Re-schedule counter should have exhausted.");
             Assert.AreEqual(
                 0,

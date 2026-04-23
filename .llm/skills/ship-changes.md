@@ -34,13 +34,20 @@ Run the full validation suite:
 npm run validate:prepush
 ```
 
-This executes all linting, formatting, and convention checks. **All must pass.**
+This executes all linting, formatting, and convention checks (including `lint:spelling` over C#, markdown, CHANGELOG, and JSON). **All must pass.**
+
+**Blocker rule — do NOT push if any of these fail:**
+
+- `lint:spelling` — a spelling failure blocks both pre-push (local) and CI. Fix at Step 1, never at push time.
+- `lint:spelling:config` — cspell.json itself must be clean.
+- `eol:check`, `validate:content`, `validate:tests`, `lint:csharp-naming` — all mandatory.
 
 If any check fails:
 
-1. Fix the issue
-2. Re-run the failing check
-3. When all pass, proceed
+1. Fix the issue (see [validate-before-commit](./validate-before-commit.md#rule-4-spell-check-every-change-cspell-covers) for the spelling decision tree)
+2. Re-run the failing check in isolation
+3. When all pass, re-run `npm run validate:prepush` end-to-end
+4. Only then proceed
 
 ### Step 2: Test Verification
 
