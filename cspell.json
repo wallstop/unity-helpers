@@ -17,22 +17,27 @@
     "*.png",
     "*.gif",
     "*.jpg",
-    "*.jpeg"
+    "*.jpeg",
+    ".venv/**",
+    ".vscode/**",
+    ".idea/**",
+    ".vs/**",
+    ".pytest_cache/**",
+    ".codex/**",
+    "site/**",
+    "_site/**",
+    "**/*.min.js",
+    "**/*.min.css",
+    "Samples~/**/Library/**",
+    "Samples~/**/Temp/**",
+    "Samples~/**/obj/**"
   ],
   "files": [
-    "docs/**/*.md",
-    "README.md",
-    "CHANGELOG.md",
-    "PLAN.md",
-    ".llm/**/*.md",
-    ".llm/code-samples/**/*.cs",
-    ".github/**/*.md",
-    ".github/workflows/**/*.yml",
-    "AGENTS.md",
-    "CLAUDE.md",
-    "Runtime/**/*.cs",
-    "Editor/**/*.cs",
-    "Tests/**/*.cs"
+    "**/*.{md,markdown}",
+    "**/*.cs",
+    "**/*.{yml,yaml}",
+    "**/*.{json,jsonc,asmdef,asmref}",
+    "**/*.js"
   ],
   "dictionaries": ["en_us", "unity-terms", "csharp-terms", "package-terms", "tech-terms"],
   "languageSettings": [
@@ -789,7 +794,17 @@
         "tolower",
         "ibiqlik",
         "ver",
-        "NTFS"
+        "NTFS",
+        "toc",
+        "xmark",
+        "pymdownx",
+        "arithmatex",
+        "twemoji",
+        "linenums",
+        "pygments",
+        "inlinehilite",
+        "kwds",
+        "LSP"
       ]
     }
   ],
@@ -1048,7 +1063,9 @@
     "tgz",
     "buildalon",
     "nographics",
-    "tzf"
+    "tzf",
+    "nogit",
+    "Dups"
   ],
   "flagWords": [],
   "minWordLength": 3,
