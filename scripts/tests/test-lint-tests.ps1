@@ -401,6 +401,13 @@ $staleLintContent = $lintContent -replace [regex]::Escape("'Tests/Core/TextureTe
 $staleLintPath = Join-Path $staleTempDir 'lint-tests-stale.ps1'
 Set-Content -Path $staleLintPath -Value $staleLintContent -NoNewline
 
+# lint-tests.ps1 now dot-sources scripts/comment-stripping.ps1 relative to
+# $PSScriptRoot. Copy the helper next to the staged copy so the dot-source
+# resolves inside the tempdir. Without this, the dot-source fails with
+# "term is not recognized" before the allowlist validation runs.
+$helperSrc = Join-Path $PSScriptRoot '..' 'comment-stripping.ps1'
+Copy-Item -LiteralPath $helperSrc -Destination (Join-Path $staleTempDir 'comment-stripping.ps1') -Force
+
 $staleCleanFile = Join-Path $staleTestDir 'Clean.cs'
 Set-Content -Path $staleCleanFile -Value $cleanContent -NoNewline
 
@@ -885,6 +892,45 @@ namespace WallstopStudios.UnityHelpers.Tests
 $r = Invoke-LintOnFixture -FixtureRelativePath 'CaseGlobalQualifiedTestCase.cs' -FixtureContent $caseGlobalQualifiedTestCase
 $ok = ($r.ExitCode -ne 0) -and ($r.Output -match 'UNH004') -and ($r.Output -match 'Global_Inline_TestCase_Name')
 Write-TestResult "UNH004.MethodName.DetectsGlobalQualifiedInlineTestCase" $ok "Exit: $($r.ExitCode), Output: $($r.Output)"
+
+# ── Test 13: Multi-line /* */ block comment is now fully masked ──────────────
+# Round 6 migration: lint-tests.ps1 now dot-sources comment-stripping.ps1,
+# so multi-line block comments are correctly masked across line boundaries.
+#
+# Load-bearing: under the pre-migration scrubber, per-line scrubbing could
+# not track "inside a block comment" state across physical lines, so the
+# body of a multi-line `/* ... */` block comment was visible to downstream
+# regex matching. A comment containing `Object.Destroy(x)` would trip the
+# UNH001 destroy pattern even though the call is commented out. Under the
+# fix, the helper masks the full comment span and the linter does NOT
+# flag the commented-out Destroy call.
+Write-Host "`n  Section: Multi-line block comment masking (helper migration)" -ForegroundColor White
+
+$caseMultiLineBlock = @'
+namespace WallstopStudios.UnityHelpers.Tests
+{
+    using NUnit.Framework;
+    using UnityEngine;
+
+    public sealed class CaseMultiLineBlock : CommonTestBase
+    {
+        [Test]
+        public void MyTest()
+        {
+            var go = Track(new GameObject("test"));
+            /*
+             * Historical note: we used to destroy directly here.
+             * Object.DestroyImmediate(go);
+             * Do NOT re-introduce — teardown via Track handles it.
+             */
+            Assert.IsTrue(go != null);
+        }
+    }
+}
+'@
+$r = Invoke-LintOnFixture -FixtureRelativePath 'CaseMultiLineBlock.cs' -FixtureContent $caseMultiLineBlock
+$ok = ($r.ExitCode -eq 0) -and ($r.Output -notmatch 'UNH001')
+Write-TestResult "MultiLineBlockComment.DoesNotFlagCommentedOutDestroy" $ok "Exit: $($r.ExitCode), Output: $($r.Output)"
 
 } finally {
   # ── Cleanup ──────────────────────────────────────────────────────────────────

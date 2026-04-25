@@ -7,6 +7,8 @@ Param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+. (Join-Path $PSScriptRoot 'comment-stripping.ps1')
+
 function Write-Info($msg) {
   if ($VerboseOutput) { Write-Host "[lint-tests] $msg" -ForegroundColor Cyan }
 }
@@ -35,49 +37,100 @@ if (Test-Path (Join-Path (Get-Location).Path 'package.json')) {
   }
 }
 
-# Removes C# string literals, character literals, and single-line/block comments
-# from a source string so downstream regex/bracket analysis ignores their contents.
-# - Normal "..." strings honor \" escapes; verbatim @"..." strings honor "" escapes.
-# - Character literals '...' have their content blanked (handles '\'' and '\\').
-# - The content of each literal is replaced with same-length whitespace so column
-#   positions (and therefore line counts) are preserved.
-# - Single-line // comments and single-line /* ... */ block comments are stripped
-#   AFTER literals are blanked, so a "//" inside a string is never mistaken for
-#   the start of a comment.
-# Known limitations (tolerated because all are vanishingly rare inside
-# test attribute arguments; robust handling costs more than the benefit).
-# If a false negative is observed in practice, file a bug and we'll
-# reconsider:
-#   - Multi-line /* ... */ block comments: per-line scrubbing cannot track
-#     "inside a block comment" state across physical lines. Single-line
-#     /* ... */ on one line is handled.
-#   - C# 11 raw string literals ("""..."""): treated as three consecutive
-#     "" strings rather than one raw literal. Unlikely in [Test] args.
-#   - Interpolated strings ($"..." and $@"..."): the leading '$' is not
-#     recognized as a string prefix; the '"' that follows enters the
-#     normal or verbatim state, so interpolation braces inside are not
-#     specially handled. Attribute arguments aren't evaluated expressions,
-#     so interpolated strings don't appear there in practice.
-#   - Verbatim strings with internal "" escapes (e.g. @"has""quote") are
-#     handled for the common case.
+# Removes C# string literals, character literals, and comments from a source
+# string so downstream regex/bracket analysis ignores their contents. The
+# content of each literal/comment is replaced with same-length whitespace so
+# column positions (and therefore line counts) are preserved.
+#
+# Two-pass implementation:
+#   1. Delegate comment masking (//, /* */ single- AND multi-line, /// XML
+#      doc) to the shared helper in comment-stripping.ps1. The helper
+#      additionally handles C# 11 raw string literals (""".."""), verbatim
+#      strings (@"..."") with "" escapes, and interpolated strings ($"..."
+#      and $@"...""), so no comment delimiter inside any string form can be
+#      mistaken for a real comment opener.
+#   2. Walk the comment-masked text to blank string contents: normal "..."
+#      strings honor \" escapes; verbatim @"..." strings honor "" escapes;
+#      character literals '...' have their content blanked.
+#
+# See scripts/comment-stripping.ps1 for the comment-masking language rules.
 function Remove-CsStringLiteralsAndLineComments([string]$text) {
   if ([string]::IsNullOrEmpty($text)) { return $text }
-  $sb = New-Object System.Text.StringBuilder ($text.Length)
-  $i = 0
-  $n = $text.Length
-  while ($i -lt $n) {
-    $c = $text[$i]
-    $next = if ($i + 1 -lt $n) { $text[$i + 1] } else { [char]0 }
 
-    # Verbatim string: @"..."
+  # Pass 1: mask comments via the shared helper. Splitting on "`n" then
+  # rejoining on "`n" preserves total length because Get-CommentMaskedLines
+  # masks comment chars with spaces while preserving newlines. When the
+  # source uses CRLF, the "`r" on each line survives the split/join and
+  # column counts are unchanged.
+  $lines = $text -split "`n", -1
+  $maskedLines = Get-CommentMaskedLines -Lines $lines -Language 'csharp'
+  $commentMasked = [string]::Join("`n", $maskedLines)
+
+  # Defensive: if the helper ever changed length (e.g. trailing newline
+  # handling quirk), fall back to the original text for pass 2 rather than
+  # corrupt column offsets. In practice this branch is unreachable.
+  if ($commentMasked.Length -ne $text.Length) {
+    $commentMasked = $text
+  }
+
+  # Pass 2: blank string/char literal contents.
+  $sb = New-Object System.Text.StringBuilder ($commentMasked.Length)
+  $i = 0
+  $n = $commentMasked.Length
+  while ($i -lt $n) {
+    $c = $commentMasked[$i]
+    $next = if ($i + 1 -lt $n) { $commentMasked[$i + 1] } else { [char]0 }
+
+    # Raw string literal: """...""" (C# 11). Opens with N >= 3 consecutive
+    # `"` and closes with the same count. Content is blanked so embedded
+    # code-like text (e.g. `[Test]`, `Object.Destroy(x)`) cannot match
+    # downstream regexes. Newlines are preserved to keep line numbers.
+    if ($c -eq '"' -and $next -eq '"' -and ($i + 2) -lt $n -and $commentMasked[$i + 2] -eq '"') {
+      $quoteCount = 0
+      $j = $i
+      while ($j -lt $n -and $commentMasked[$j] -eq '"') { $quoteCount++; $j++ }
+      # Emit the opening quote run verbatim.
+      for ($q = 0; $q -lt $quoteCount; $q++) { [void]$sb.Append('"') }
+      $i = $j
+      while ($i -lt $n) {
+        if ($commentMasked[$i] -eq '"') {
+          $endCount = 0
+          $k = $i
+          while ($k -lt $n -and $commentMasked[$k] -eq '"') { $endCount++; $k++ }
+          if ($endCount -ge $quoteCount) {
+            # Emit the closing quote run verbatim; any trailing quotes
+            # beyond $quoteCount belong to surrounding code and are
+            # appended as-is so column offsets stay intact.
+            for ($q = 0; $q -lt $endCount; $q++) { [void]$sb.Append('"') }
+            $i = $k
+            break
+          }
+          # Fewer than $quoteCount quotes — part of the body; blank them.
+          for ($q = 0; $q -lt $endCount; $q++) { [void]$sb.Append(' ') }
+          $i = $k
+          continue
+        }
+        if ($commentMasked[$i] -eq "`n" -or $commentMasked[$i] -eq "`r") {
+          [void]$sb.Append($commentMasked[$i])
+        } else {
+          [void]$sb.Append(' ')
+        }
+        $i++
+      }
+      continue
+    }
+
+    # Verbatim string: @"..." (possibly $@"..." interpolated verbatim).
+    # The leading "$" on $@"..." is unremarkable to the blanker — we match
+    # on @" and handle the string body the same way either form enters.
     if ($c -eq '@' -and $next -eq '"') {
       [void]$sb.Append('@')
       [void]$sb.Append('"')
       $i += 2
       while ($i -lt $n) {
-        $ch = $text[$i]
+        $ch = $commentMasked[$i]
         if ($ch -eq '"') {
-          if ($i + 1 -lt $n -and $text[$i + 1] -eq '"') {
+          if ($i + 1 -lt $n -and $commentMasked[$i + 1] -eq '"') {
             # Escaped doubled quote — blank both and continue
             [void]$sb.Append(' ')
             [void]$sb.Append(' ')
@@ -98,12 +151,14 @@ function Remove-CsStringLiteralsAndLineComments([string]$text) {
       continue
     }
 
-    # Normal string: "..."
+    # Normal string: "..." (also reached for $"..." interpolated strings;
+    # the leading "$" is passed through unchanged and the string body is
+    # blanked the same way).
     if ($c -eq '"') {
       [void]$sb.Append('"')
       $i++
       while ($i -lt $n) {
-        $ch = $text[$i]
+        $ch = $commentMasked[$i]
         if ($ch -eq '\') {
           [void]$sb.Append(' ')
           if ($i + 1 -lt $n) { [void]$sb.Append(' '); $i += 2 } else { $i++ }
@@ -129,7 +184,7 @@ function Remove-CsStringLiteralsAndLineComments([string]$text) {
       [void]$sb.Append("'")
       $i++
       while ($i -lt $n) {
-        $ch = $text[$i]
+        $ch = $commentMasked[$i]
         if ($ch -eq '\') {
           [void]$sb.Append(' ')
           if ($i + 1 -lt $n) { [void]$sb.Append(' '); $i += 2 } else { $i++ }
@@ -142,37 +197,6 @@ function Remove-CsStringLiteralsAndLineComments([string]$text) {
         }
         if ($ch -eq "`n" -or $ch -eq "`r") {
           [void]$sb.Append($ch)
-        } else {
-          [void]$sb.Append(' ')
-        }
-        $i++
-      }
-      continue
-    }
-
-    # Single-line // comment (strings already handled above)
-    if ($c -eq '/' -and $next -eq '/') {
-      while ($i -lt $n -and $text[$i] -ne "`n" -and $text[$i] -ne "`r") {
-        [void]$sb.Append(' ')
-        $i++
-      }
-      continue
-    }
-
-    # Single-line /* ... */ block comment (best-effort; multi-line rare in attrs)
-    if ($c -eq '/' -and $next -eq '*') {
-      [void]$sb.Append(' ')
-      [void]$sb.Append(' ')
-      $i += 2
-      while ($i -lt $n) {
-        if ($text[$i] -eq '*' -and $i + 1 -lt $n -and $text[$i + 1] -eq '/') {
-          [void]$sb.Append(' ')
-          [void]$sb.Append(' ')
-          $i += 2
-          break
-        }
-        if ($text[$i] -eq "`n" -or $text[$i] -eq "`r") {
-          [void]$sb.Append($text[$i])
         } else {
           [void]$sb.Append(' ')
         }
@@ -343,14 +367,34 @@ foreach ($file in $filesToScan) {
     }
   }
 
+  # Scrubbed view: string literals and comments (including multi-line block
+  # comments via comment-stripping.ps1) replaced with whitespace, preserving
+  # line count and column offsets. Used by per-line pattern checks so that
+  # e.g. `Object.Destroy(x)` inside a `/* ... */` comment or a string does
+  # not trip UNH001. Falls back to raw content on unexpected length drift.
+  # NOTE: an if/else expression that produces an @(...)-wrapped array
+  # unwraps it to a bare string when the array has length 1 under certain
+  # pipeline conditions, which then fails the `.Count` access under
+  # StrictMode. Build the array imperatively and re-wrap to guarantee
+  # array semantics for downstream `.Count` / indexing access.
+  $scrubbedText = Remove-CsStringLiteralsAndLineComments $text
+  if ($null -eq $scrubbedText) {
+    $scrubbedContent = $content
+  } else {
+    $scrubbedContent = @($scrubbedText -split "`n")
+  }
+  $scrubbedContent = @($scrubbedContent)
+  if ($scrubbedContent.Count -ne $content.Count) { $scrubbedContent = $content }
+
   # Check destroy calls; allow if argument var was tracked earlier in file
   $lineIndex = 0
   foreach ($line in $content) {
     $lineIndex++
     # Skip lines with UNH-SUPPRESS comment
     if ($line -match 'UNH-SUPPRESS') { continue }
-    if ($destroyPattern.IsMatch($line)) {
-      $m = $destroyPattern.Match($line)
+    $scrubbedLine = $scrubbedContent[$lineIndex - 1]
+    if ($destroyPattern.IsMatch($scrubbedLine)) {
+      $m = $destroyPattern.Match($scrubbedLine)
       $arg = ($m.Groups['arg'].Value).Trim()
       # Extract variable token before any commas or closing paren
       $varName = $arg -replace ',.*','' -replace '\)',''

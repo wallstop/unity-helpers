@@ -263,6 +263,19 @@ function Get-TargetFiles {
 # marker or the line immediately after one (heuristic, since CBH content lives
 # inside the `<# ... #>` wrapper anyway — this is a second-level safety net for
 # inline documentation).
+#
+# Why we keep a coarse per-line boolean instead of migrating to
+# scripts/comment-stripping.ps1 (Get-CommentMaskedLines / Get-CommentRanges):
+# this linter does PER-LINE regex scans across MIXED file types — bash with
+# `\` continuations, YAML `run: >` folded block scalars, package.json, and
+# .ps1 — each with bespoke join/folding semantics that comment-stripping
+# does not model (heredocs, folded scalars, line-continuation joining are
+# lexed line-by-line here). The byte-accurate column preservation that
+# comment-stripping offers is unused by this linter (we report whole-line
+# matches, not column ranges). Migrating would require porting every join
+# pass to operate on a masked-text view AND reproducing or replacing the
+# bespoke continuation semantics. The 36+ existing regression tests cover
+# the present coarse map, so this stays line-based by design.
 function Get-CommentBlockMap {
     param([string[]]$Lines)
 

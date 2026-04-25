@@ -4,7 +4,11 @@ on:
   push:
     branches:
       - main
+  # Run on every PR: doc-link rot can be introduced by changes to any file type.
   pull_request:
+
+permissions:
+  contents: read
 
 jobs:
   lint:
@@ -12,6 +16,14 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+
+      - name: Test comment stripping
+        shell: pwsh
+        run: ./scripts/tests/test-comment-stripping.ps1 -VerboseOutput
+
+      - name: Test doc-link linter
+        shell: pwsh
+        run: ./scripts/tests/test-lint-doc-links.ps1 -VerboseOutput
 
       - name: Run Markdown link linter
         shell: pwsh

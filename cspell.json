@@ -804,7 +804,22 @@
         "pygments",
         "inlinehilite",
         "kwds",
-        "LSP"
+        "LSP",
+        "pscustomobject",
+        "psm",
+        "psd",
+        "csproj",
+        "csx",
+        "mjs",
+        "cjs",
+        "jsx",
+        "tsx",
+        "shebang",
+        "shebangs",
+        "env",
+        "tmpdir",
+        "instanceof",
+        "TMPDIR"
       ]
     }
   ],

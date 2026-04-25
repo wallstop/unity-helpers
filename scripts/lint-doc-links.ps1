@@ -3,7 +3,57 @@ Param(
 )
 
 $ErrorActionPreference = 'Stop'
-$repoRoot = (Resolve-Path -LiteralPath '.').Path
+Set-StrictMode -Version Latest
+if ($VerboseOutput) { $VerbosePreference = 'Continue' }
+. (Join-Path $PSScriptRoot 'comment-stripping.ps1')
+$repoRoot = Split-Path -Parent $PSScriptRoot
+
+function Test-PathWithCase {
+    param(
+        [string]$FullPath,
+        [string]$RepoRoot
+    )
+
+    if ([string]::IsNullOrWhiteSpace($FullPath)) { return $false }
+    if (-not (Test-Path -LiteralPath $FullPath)) { return $false }
+
+    try {
+        $resolved = [System.IO.Path]::GetFullPath($FullPath)
+    } catch {
+        return $false
+    }
+
+    $repoRootResolved = $null
+    if (-not [string]::IsNullOrEmpty($RepoRoot)) {
+        try {
+            $repoRootResolved = [System.IO.Path]::GetFullPath($RepoRoot)
+            # GetFullPath preserves a trailing separator on inputs like 'C:\repo\'.
+            # Strip it so the `-ceq` short-circuit comparison below matches the
+            # repo-root marker `current` (which never carries a trailing sep).
+            $repoRootResolved = $repoRootResolved.TrimEnd([IO.Path]::DirectorySeparatorChar, '/')
+        } catch { $repoRootResolved = $null }
+    }
+
+    $current = $resolved
+    while ($true) {
+        # Stop at $RepoRoot — trust the repo root exists with correct case.
+        if ($repoRootResolved -and ($current -ceq $repoRootResolved)) { break }
+
+        $parent = [System.IO.Path]::GetDirectoryName($current)
+        if ([string]::IsNullOrEmpty($parent) -or $parent -eq $current) { break }
+        $leaf = [System.IO.Path]::GetFileName($current)
+        if ([string]::IsNullOrEmpty($leaf)) { break }
+        try {
+            $entries = Get-ChildItem -LiteralPath $parent -Force -ErrorAction Stop
+        } catch {
+            return $false
+        }
+        $match = $entries | Where-Object { $_.Name -ceq $leaf }
+        if (-not $match) { return $false }
+        $current = $parent
+    }
+    return $true
+}
 
 function Write-Violation {
     param(
@@ -113,14 +163,14 @@ function Resolve-LocalPath {
     $sourceDirectory = Split-Path -Path $SourceFile -Parent
     $candidate = [System.IO.Path]::GetFullPath([System.IO.Path]::Combine($sourceDirectory, $normalized))
 
-    if (Test-Path -LiteralPath $candidate) {
+    if (Test-PathWithCase -FullPath $candidate -RepoRoot $RepoRoot) {
         return $candidate
     }
 
     if ($normalized.Length -gt 0 -and $normalized[0] -ne '.') {
         $rootRelative = $normalized.TrimStart($separator)
         $candidateFromRoot = [System.IO.Path]::GetFullPath([System.IO.Path]::Combine($RepoRoot, $rootRelative))
-        if (Test-Path -LiteralPath $candidateFromRoot) {
+        if (Test-PathWithCase -FullPath $candidateFromRoot -RepoRoot $RepoRoot) {
             return $candidateFromRoot
         }
     }
@@ -170,7 +220,12 @@ $mdFiles | ForEach-Object {
     $relativePath = $_
     $file = Join-Path $repoRoot $relativePath
     if (-not (Test-Path -LiteralPath $file)) { return }
-    $lines = Get-Content -LiteralPath $file
+    # Wrap with @() so single-line files (or files with no trailing newline that
+    # collapse to a bare scalar under Set-StrictMode) are still treated as a
+    # one-element array. Without this, `.Length` would yield character count and
+    # `$lines[$index]` would return a [char], which the regex engine would coerce
+    # to a single-character string and silently miss every match.
+    $lines = @(Get-Content -LiteralPath $file)
     $lineCount = $lines.Length
     $linkDefinitions = New-Object 'System.Collections.Generic.Dictionary[string,object]' ([System.StringComparer]::OrdinalIgnoreCase)
     $inFence = $false
@@ -331,19 +386,18 @@ $mdFiles | ForEach-Object {
     }
 }
 
-# Process code files for docs references
-# Exclude test files and wiki scripts which contain example paths that aren't meant to resolve
+# Process code files for docs references.
+# Comment-stripping handles fictional paths in language comments and docstrings
+# (e.g., PowerShell <# .EXAMPLE #>, C# /// xml-doc, Python triple-quote module docs).
+# Test files remain excluded because their fixture content is encoded as live string
+# literals — masking only protects comments, and rewriting every fictional fixture
+# string is out of scope for this lint.
 $codeFiles = $gitFiles | Where-Object {
     $ext = [System.IO.Path]::GetExtension($_)
     if (-not ($codeFileExtensions -contains $ext)) { return $false }
-    # Exclude files in test(s) directories
     if ($_ -match '(?i)(^|[\\/])tests?[\\/]') { return $false }
-    # Exclude test_*.py files (Python test files)
-    if ($_ -match '(?i)[\\/]test_[^\\/]+\.py$') { return $false }
-    # Exclude *_test.py files (alternative Python test naming)
-    if ($_ -match '(?i)[\\/][^\\/]+_test\.py$') { return $false }
-    # Exclude wiki generation scripts (contain example paths in docstrings)
-    if ($_ -match '(?i)scripts[\\/]wiki[\\/]') { return $false }
+    if ($_ -match '(?i)(^|[\\/])test_[^\\/]+\.py$') { return $false }
+    if ($_ -match '(?i)(^|[\\/])[^\\/]+_test\.py$') { return $false }
     return $true
 }
 
@@ -351,17 +405,22 @@ $codeFiles | ForEach-Object {
     $relativePath = $_
     $file = Join-Path $repoRoot $relativePath
     if (-not (Test-Path -LiteralPath $file)) { return }
-    $lines = Get-Content -LiteralPath $file
+    $language = Get-LanguageFromExtension -Path $file
+    if (-not $language) { return }
+    Write-Verbose "Scanning code file: $relativePath (language: $language)"
+    $lines = @(Get-Content -LiteralPath $file)
+    $maskedLines = Get-CommentMaskedLines -Lines $lines -Language $language
     for ($index = 0; $index -lt $lines.Length; $index++) {
-        $line = $lines[$index]
+        $originalLine = $lines[$index]
+        $scanLine = if ($index -lt $maskedLines.Length) { $maskedLines[$index] } else { $originalLine }
         $lineNo = $index + 1
-        foreach ($match in $codeDocsPattern.Matches($line)) {
+        foreach ($match in $codeDocsPattern.Matches($scanLine)) {
             $rawTarget = $match.Value
             $normalizedTarget = $rawTarget -replace '\\', '/'
             $resolvedPath = Resolve-LocalPath -SourceFile $file -Target $normalizedTarget -RepoRoot $repoRoot
             if (-not $resolvedPath) {
                 $violationCount++
-                Write-Violation -File $file -LineNumber $lineNo -Message "Source reference '$normalizedTarget' does not resolve to an existing markdown file" -Line $line
+                Write-Violation -File $file -LineNumber $lineNo -Message "Source reference '$normalizedTarget' does not resolve to an existing markdown file" -Line $originalLine
             }
         }
     }
