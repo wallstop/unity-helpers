@@ -511,8 +511,7 @@ Unity Helpers automatically detects which one you're using.
 
 **Zenject Documentation:**
 
-- [Zenject GitHub](https://github.com/modesttree/Zenject) - Official Zenject documentation
-- [Extenject GitHub](https://github.com/svermeulen/Extenject) - Community fork with updates
+- [Zenject GitHub](https://github.com/modesttree/Zenject) - Official Zenject documentation and the current home of the former Extenject fork
 
 **Troubleshooting:**
 

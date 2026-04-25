@@ -57,7 +57,7 @@ namespace WallstopStudios.UnityHelpers.Core.Random
         RandomQuality.Fair,
         "Classic 32-bit xorshift; known to fail portions of TestU01 and PractRand, acceptable for lightweight effects only.",
         "Marsaglia 2003",
-        "https://www.jstatsoft.org/article/view/v008i14"
+        "https://doi.org/10.18637/jss.v008.i14"
     )]
     [Serializable]
     [DataContract]

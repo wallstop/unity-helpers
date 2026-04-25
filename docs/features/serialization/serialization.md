@@ -427,9 +427,9 @@ However, this is error-prone. **Start with `preserve="all"` and optimize later i
 
 **Related documentation:**
 
-- [Unity Manual: Managed Code Stripping](https://docs.unity3d.com/Manual/ManagedCodeStripping.html)
-- [Protobuf-net IL2CPP Guide](https://github.com/protobuf-net/protobuf-net#il2cpp)
-- [Unity Forum: link.xml best practices](https://forum.unity.com/)
+- [Unity Manual: Managed Code Stripping](https://docs.unity3d.com/Manual/managed-code-stripping.html)
+- [protobuf-net documentation](https://protobuf-net.github.io/protobuf-net/)
+- [Unity Discussions: link.xml best practices](https://discussions.unity.com/)
 
 ````text
 
