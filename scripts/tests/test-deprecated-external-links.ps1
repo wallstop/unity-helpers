@@ -10,6 +10,14 @@ $script:TestsFailed = 0
 $script:FailedTests = @()
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..' '..')).Path
+$currentScriptRelativePath = ((Resolve-Path $PSCommandPath).Path.Substring($repoRoot.Length)).TrimStart(
+    [IO.Path]::DirectorySeparatorChar,
+    [IO.Path]::AltDirectorySeparatorChar
+).Replace('\', '/')
+
+if ([string]::IsNullOrWhiteSpace($currentScriptRelativePath)) {
+    throw "Failed to resolve the current script path relative to the repository root."
+}
 
 function Write-Info {
     param([string]$Message)
@@ -41,11 +49,21 @@ function Write-TestResult {
 }
 
 function Find-TrackedMatches {
-    param([string]$Url)
+    param(
+        [string]$Url,
+        [string[]]$ExcludePaths = @()
+    )
 
     Push-Location $repoRoot
     try {
-        $matches = @(& git grep -n --fixed-strings -- $Url 2>$null)
+        $normalizedExcludePaths = @(
+            $ExcludePaths |
+                Where-Object { -not [string]::IsNullOrWhiteSpace($_) } |
+                ForEach-Object { $_.Replace('\\', '/') } |
+                Sort-Object -Unique
+        )
+
+        $matches = @(& git grep -n --full-name --fixed-strings -- $Url 2>$null)
         $exitCode = $LASTEXITCODE
     } finally {
         Pop-Location
@@ -59,10 +77,51 @@ function Find-TrackedMatches {
         throw "git grep failed for $Url with exit code $exitCode"
     }
 
-    return ,$matches
+    return @(
+        $matches |
+            Where-Object {
+                $matchPath = ($_ -split ':', 2)[0]
+                $normalizedExcludePaths -notcontains $matchPath
+            }
+    )
+}
+
+function Get-SearchExcludePaths {
+    param([pscustomobject]$Case)
+
+    $paths = @($currentScriptRelativePath)
+
+    if ($Case.PSObject.Properties['SearchExcludePaths']) {
+        $paths += @($Case.SearchExcludePaths)
+    }
+
+    return @(
+        $paths |
+            Where-Object { -not [string]::IsNullOrWhiteSpace($_) } |
+            Sort-Object -Unique
+    )
+}
+
+function Format-MatchSummary {
+    param([string[]]$Matches)
+
+    $matchCount = $Matches.Count
+    $fileCount = @(
+        $Matches |
+            ForEach-Object { ($_ -split ':', 2)[0] } |
+            Sort-Object -Unique
+    ).Count
+    $matchPreview = ($Matches | Select-Object -First 5) -join '; '
+
+    if ($matchCount -le 5) {
+        return "$matchCount match(es) across $fileCount file(s): $matchPreview"
+    }
+
+    return "$matchCount match(es) across $fileCount file(s). First matches: $matchPreview"
 }
 
 Write-Host "Testing deprecated external links..." -ForegroundColor White
+Write-Info "Ignoring rule-definition files during tracked searches: $currentScriptRelativePath"
 
 $deprecatedLinkCases = @(
     [pscustomobject]@{
@@ -122,16 +181,16 @@ $deprecatedLinkCases = @(
 )
 
 foreach ($case in $deprecatedLinkCases) {
-    Write-Info "Scanning for deprecated URL: $($case.DeprecatedUrl)"
-    $matches = @(Find-TrackedMatches -Url $case.DeprecatedUrl)
+    $excludePaths = @(Get-SearchExcludePaths -Case $case)
+    Write-Info "Scanning for deprecated URL: $($case.DeprecatedUrl) (excluding: $($excludePaths -join ', '))"
+    $matches = @(Find-TrackedMatches -Url $case.DeprecatedUrl -ExcludePaths $excludePaths)
 
     if ($matches.Count -eq 0) {
         Write-TestResult -TestName $case.Name -Passed $true
         continue
     }
 
-    $matchPreview = ($matches | Select-Object -First 5) -join '; '
-    $message = "$($case.Reason) Replace with $($case.ReplacementUrl). Matches: $matchPreview"
+    $message = "$($case.Reason) Replace with $($case.ReplacementUrl). $(Format-MatchSummary -Matches $matches)"
     Write-TestResult -TestName $case.Name -Passed $false -Message $message
 }
 
