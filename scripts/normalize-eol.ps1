@@ -5,6 +5,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+$repoRoot = (Get-Item $PSScriptRoot).Parent.FullName
 
 # =============================================================================
 # LINE ENDING POLICY (must match .gitattributes, .prettierrc.json, .yamllint.yaml)
@@ -61,7 +62,7 @@ function Test-ShouldUseLf([string]$path) {
 }
 
 function Get-TrackedFiles {
-    $files = (git ls-files -z) -split "`0" | Where-Object { $_ -ne '' }
+    $files = (& git -C $repoRoot ls-files -z) -split "`0" | Where-Object { $_ -ne '' }
     return $files | Where-Object {
         $ext = [System.IO.Path]::GetExtension($_).TrimStart('.').ToLowerInvariant()
         $extensions -contains $ext
@@ -73,7 +74,6 @@ function Get-TargetFiles([string[]]$paths, [string[]]$trackedFiles) {
         return $trackedFiles
     }
 
-    $repoRoot = (Get-Location).Path
     $trackedSet = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
     foreach ($file in $trackedFiles) { $trackedSet.Add($file) | Out-Null }
 
@@ -112,7 +112,8 @@ $modified = New-Object System.Collections.Generic.List[string]
 $tracked = Get-TrackedFiles
 $targets = Get-TargetFiles $Paths $tracked
 foreach ($path in $targets) {
-    try { $bytes = [System.IO.File]::ReadAllBytes($path) } catch { continue }
+    $fullPath = Join-Path $repoRoot $path
+    try { $bytes = [System.IO.File]::ReadAllBytes($fullPath) } catch { continue }
 
     $hasBom = $false
     if ($bytes.Length -ge 3) {
@@ -137,7 +138,7 @@ foreach ($path in $targets) {
     if ($fileChanged) {
         if (-not $DryRun) {
             # Write UTF-8 without BOM
-            [System.IO.File]::WriteAllBytes($path, [System.Text.Encoding]::UTF8.GetBytes($normalized))
+            [System.IO.File]::WriteAllBytes($fullPath, [System.Text.Encoding]::UTF8.GetBytes($normalized))
         }
         $changed++
         $modified.Add($path) | Out-Null

@@ -327,7 +327,6 @@
         "DataMember",
         "JsonSerializer",
         "JsonSerializerOptions",
-        "JsonConverter",
         "ProtoContract",
         "ProtoMember",
         "ProtoInclude",
@@ -817,7 +816,6 @@
         "shebang",
         "shebangs",
         "env",
-        "tmpdir",
         "instanceof",
         "TMPDIR"
       ]

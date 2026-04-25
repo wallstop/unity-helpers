@@ -14,8 +14,8 @@
 //   words                                                 -> root `words` array
 //
 // Exit codes:
-//   0 success (or no-op if word already present)
-//   1 usage / validation error
+//   0 success (or no-op if word is already present in the target bucket)
+//   1 usage / validation error, including cross-bucket duplicates
 
 "use strict";
 
@@ -103,6 +103,10 @@ function getBucketWords(config, bucket) {
   return dict.words;
 }
 
+function getTargetLocation(bucket) {
+  return bucket === ROOT_BUCKET ? "root:words" : `dictionary:${bucket}`;
+}
+
 function main() {
   const { bucket, words, dryRun } = parseArgs(process.argv);
 
@@ -113,9 +117,11 @@ function main() {
 
   const { raw, config } = loadConfig();
   const targetWords = getBucketWords(config, bucket);
+  const targetLocation = getTargetLocation(bucket);
 
   const added = [];
-  const skipped = [];
+  const alreadyPresentInTarget = [];
+  const crossBucketDuplicates = [];
   for (const word of words) {
     if (!word || /\s/.test(word)) {
       console.error(`Error: refusing to add empty or whitespace-containing word: '${word}'`);
@@ -124,15 +130,21 @@ function main() {
     const lower = word.toLowerCase();
     const existingLocations = findWordLocations(config, lower);
     if (existingLocations.length > 0) {
-      skipped.push({ word, locations: existingLocations });
+      const isTargetOnly = existingLocations.every((location) => location === targetLocation);
+      if (isTargetOnly) {
+        alreadyPresentInTarget.push(word);
+        continue;
+      }
+
+      crossBucketDuplicates.push({ word, locations: existingLocations });
       continue;
     }
     targetWords.push(word);
     added.push(word);
   }
 
-  if (skipped.length > 0) {
-    for (const s of skipped) {
+  if (crossBucketDuplicates.length > 0) {
+    for (const s of crossBucketDuplicates) {
       console.error(
         `Error: '${s.word}' already present in: ${s.locations.join(", ")}. Refusing duplicate.`
       );
@@ -141,7 +153,13 @@ function main() {
   }
 
   if (added.length === 0) {
-    console.log("No new words to add.");
+    if (alreadyPresentInTarget.length > 0) {
+      console.log(
+        `No new words to add. Already present in '${bucket}': ${alreadyPresentInTarget.join(", ")}`
+      );
+    } else {
+      console.log("No new words to add.");
+    }
     process.exit(0);
   }
 

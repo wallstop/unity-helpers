@@ -4,6 +4,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+$repoRoot = (Get-Item $PSScriptRoot).Parent.FullName
 
 # =============================================================================
 # LINE ENDING POLICY (must match .gitattributes, .prettierrc.json, .yamllint.yaml)
@@ -66,7 +67,7 @@ function Get-TrackedFiles {
             $extensions -contains $ext
         }
     }
-    $files = (git ls-files -z) -split "`0" | Where-Object { $_ -ne '' }
+    $files = (& git -C $repoRoot ls-files -z) -split "`0" | Where-Object { $_ -ne '' }
     return $files | Where-Object {
         $ext = [System.IO.Path]::GetExtension($_).TrimStart('.').ToLowerInvariant()
         $extensions -contains $ext
@@ -95,7 +96,8 @@ $eolIssues = New-Object System.Collections.Generic.List[string]
 $bomIssues = New-Object System.Collections.Generic.List[string]
 
 foreach ($path in Get-TrackedFiles) {
-    try { $bytes = [System.IO.File]::ReadAllBytes($path) } catch { continue }
+    $fullPath = Join-Path $repoRoot $path
+    try { $bytes = [System.IO.File]::ReadAllBytes($fullPath) } catch { continue }
     # BOM (flag any file that contains a UTF-8 BOM — we require NO BOM)
     $hasBom = $false
     if ($bytes.Length -ge 3) { $hasBom = ($bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF) }

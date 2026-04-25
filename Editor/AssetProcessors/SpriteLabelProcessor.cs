@@ -13,7 +13,9 @@ namespace WallstopStudios.UnityHelpers.Editor.AssetProcessors
 
     public sealed class SpriteLabelProcessor : AssetPostprocessor
     {
-        private static readonly List<string> PendingImportedPaths = new();
+        private static readonly HashSet<string> PendingImportedPaths = new(
+            StringComparer.OrdinalIgnoreCase
+        );
         private static readonly Action DrainAction = DrainPendingImports;
 
         private static void OnPostprocessAllAssets(
@@ -69,6 +71,40 @@ namespace WallstopStudios.UnityHelpers.Editor.AssetProcessors
                 || path.EndsWith(".jpeg", StringComparison.OrdinalIgnoreCase);
         }
 
+        internal static int PendingImportedPathCountForTesting
+        {
+            get { return PendingImportedPaths.Count; }
+        }
+
+        internal static string[] SnapshotPendingImportedPathsForTesting()
+        {
+            string[] snapshot = new string[PendingImportedPaths.Count];
+            PendingImportedPaths.CopyTo(snapshot);
+            return snapshot;
+        }
+
+        internal static void EnqueueImportedPathsForTesting(string[] importedAssets)
+        {
+            if (importedAssets == null || importedAssets.Length == 0)
+            {
+                return;
+            }
+
+            for (int i = 0; i < importedAssets.Length; i++)
+            {
+                string path = importedAssets[i];
+                if (IsCandidatePath(path))
+                {
+                    PendingImportedPaths.Add(path);
+                }
+            }
+        }
+
+        internal static void ResetForTesting()
+        {
+            PendingImportedPaths.Clear();
+        }
+
         private static void DrainPendingImports()
         {
             if (PendingImportedPaths.Count == 0)
@@ -76,7 +112,8 @@ namespace WallstopStudios.UnityHelpers.Editor.AssetProcessors
                 return;
             }
 
-            string[] batch = PendingImportedPaths.ToArray();
+            string[] batch = new string[PendingImportedPaths.Count];
+            PendingImportedPaths.CopyTo(batch);
             PendingImportedPaths.Clear();
             ProcessImportedPaths(batch);
         }

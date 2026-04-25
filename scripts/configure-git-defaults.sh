@@ -42,6 +42,16 @@ print_info() {
     echo -e "${BLUE}ℹ${NC} $1"
 }
 
+normalize_git_config_value() {
+    local value="$1"
+
+    value="${value//$'\r'/}"
+    value="${value#"${value%%[![:space:]]*}"}"
+    value="${value%"${value##*[![:space:]]}"}"
+
+    printf '%s' "$value"
+}
+
 if ! command -v git >/dev/null 2>&1; then
     print_error "git is not installed or not on PATH."
     exit 1
@@ -71,8 +81,8 @@ git -C "$REPO_ROOT" config --local push.default simple
 print_success "push.default = simple"
 
 # Echo the resulting values so callers/tests can assert behavior.
-final_auto_setup="$(git -C "$REPO_ROOT" config --local --get push.autoSetupRemote || echo '')"
-final_default="$(git -C "$REPO_ROOT" config --local --get push.default || echo '')"
+final_auto_setup="$(normalize_git_config_value "$(git -C "$REPO_ROOT" config --local --get push.autoSetupRemote || echo '')")"
+final_default="$(normalize_git_config_value "$(git -C "$REPO_ROOT" config --local --get push.default || echo '')")"
 
 echo "push.autoSetupRemote=$final_auto_setup"
 echo "push.default=$final_default"

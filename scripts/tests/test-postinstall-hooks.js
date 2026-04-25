@@ -21,8 +21,8 @@
 //   - All skip triggers exit 0 (never fail npm install).
 //
 // The tests DO NOT modify the live repo's git config: each case either uses
-// a skip trigger (which never calls `git config`), or runs in a freshly-
-// created tempdir that is not inside any git work tree.
+// a skip trigger (which never calls `git config`), or exercises non-git
+// behavior via a copied script inside a freshly-created tempdir.
 //
 // Node's built-in assert + child_process means zero external test deps.
 
@@ -187,35 +187,6 @@ runTest("Pass_HuskyOneDoesNotSkip", () => {
 });
 
 console.log("\n  Section: Non-repo execution (safety net)");
-
-runTest("Pass_NonGitDirectoryIsSafe", () => {
-  // Run from a tempdir that is NOT a git work tree. The script should
-  // emit "not a git work tree — skipping" and exit 0 without touching
-  // any git config.
-  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "postinstall-hooks-test-"));
-  try {
-    // Without any skip env — the script will do isGitRepo() which returns
-    // false, and print the skip message.
-    const r = runScript({}, tempDir);
-    assert.strictEqual(r.status, 0, `exit ${r.status} (stderr: ${r.stderr})`);
-    // The message can be either "not a git work tree" (expected) or
-    // ".githooks directory not present" depending on cwd relative to
-    // __dirname. Because the script resolves its own hooksDir from
-    // __dirname, not process.cwd(), it WILL find the real repo's
-    // .githooks — then it checks isGitRepo(repoRoot) which returns true
-    // for the REAL repo (because we invoked the real script path from
-    // the temp cwd). To exercise the "not a git repo" branch cleanly,
-    // we would need to copy the script too. Instead, assert the less
-    // strict invariant: the script exits 0 and does NOT claim to have
-    // installed hooks (idempotent on the real repo, or skipped).
-    assert.ok(
-      !r.stdout.includes("git hooks installed"),
-      `script must be idempotent from a tempdir cwd; stdout: ${r.stdout}`
-    );
-  } finally {
-    fs.rmSync(tempDir, { recursive: true, force: true });
-  }
-});
 
 runTest("Pass_NonGitDirectoryEmitsNotWorkTreeSkip", () => {
   // Fully exercise the "not a git work tree — skipping" branch by

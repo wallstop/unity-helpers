@@ -105,10 +105,14 @@ function Save-FixtureFiles {
 }
 
 function Invoke-LintInFixture {
-    param([string]$FixtureRoot)
+    param(
+        [string]$FixtureRoot,
+        [string]$WorkingDirectory = $FixtureRoot
+    )
+
     $lintCopy = Join-Path $FixtureRoot 'scripts/lint-doc-links.ps1'
     Save-FixtureFiles -Root $FixtureRoot
-    Push-Location $FixtureRoot
+    Push-Location $WorkingDirectory
     try {
         $output = & pwsh -NoProfile -File $lintCopy *>&1
         $exitCode = $LASTEXITCODE
@@ -133,7 +137,15 @@ function Invoke-TestCase {
             if ($file.PSObject.Properties['NoNewline']) { $noNewline = [bool]$file.NoNewline }
             Add-FixtureFile -Root $root -RelativePath $file.Path -Content $file.Content -NoNewline:$noNewline
         }
-        $result = Invoke-LintInFixture $root
+        $workingDirectory = $root
+        if ($Case.PSObject.Properties['WorkingDirectoryRelativePath']) {
+            $workingDirectory = Join-Path $root $Case.WorkingDirectoryRelativePath
+            if (-not (Test-Path -LiteralPath $workingDirectory)) {
+                New-Item -ItemType Directory -Path $workingDirectory -Force | Out-Null
+            }
+        }
+
+        $result = Invoke-LintInFixture -FixtureRoot $root -WorkingDirectory $workingDirectory
 
         $reasons = @()
 
@@ -469,6 +481,16 @@ class Foo {
                 [pscustomobject]@{ Path = 'docs/readme.md'; Content = "# Readme`n" }
                 [pscustomobject]@{ Path = 'README.md'; Content = "See [readme](./docs/readme.md).`n" }
             )
+            ExpectedExit = 0
+            ExpectedOutputContains = @('Markdown link lint passed')
+        }
+        [pscustomobject]@{
+            Name = 'Pass_SubdirectoryInvocationUsesRepoRootAnchoring'
+            Files = @(
+                [pscustomobject]@{ Path = 'docs/readme.md'; Content = "# Readme`n" }
+                [pscustomobject]@{ Path = 'README.md'; Content = "See [readme](./docs/readme.md).`n" }
+            )
+            WorkingDirectoryRelativePath = 'docs'
             ExpectedExit = 0
             ExpectedOutputContains = @('Markdown link lint passed')
         }

@@ -219,6 +219,33 @@ file_path="${file_path#* }"
 
 **Rule**: When parsing `git ls-files -s` or similar output, treat the path as the remainder after the metadata fields, not as a fixed single field.
 
+### Repo-Root Anchoring for `git ls-files` and Similar Commands
+
+If a script derives `REPO_ROOT` / `$repoRoot` from its own location, every git command that enumerates repo-relative paths must be anchored to that root as well. Otherwise, invoking the script from a subdirectory silently changes the meaning of the returned paths.
+
+```bash
+# WRONG - output becomes relative to the caller's cwd
+git ls-files -z -- '*.md'
+
+# CORRECT - anchor git's working directory at the repository root
+git -C "$REPO_ROOT" ls-files -z -- '*.md'
+
+# ALSO CORRECT - cd once at script startup, then run relative git commands
+cd "$REPO_ROOT"
+git ls-files -z -- '*.md'
+```
+
+```powershell
+# WRONG - relative paths depend on the caller's cwd
+$gitFiles = git ls-files --cached --others --exclude-standard
+
+# CORRECT - anchor git and any filesystem fallback at the repository root
+$gitFiles = & git -C $repoRoot ls-files --cached --others --exclude-standard
+$fallback = Get-ChildItem -Path $repoRoot -Recurse -File
+```
+
+**Rule**: If the script later resolves those paths with `Join-Path $repoRoot ...` or `"$REPO_ROOT/$path"`, you MUST either `cd` to the repo root first or pass `-C $repoRoot` on the git command. Do not mix repo-root-derived filesystem paths with caller-cwd-derived git output.
+
 ---
 
 ## `git check-ignore` Requires Repo-Relative POSIX Paths (CRITICAL)

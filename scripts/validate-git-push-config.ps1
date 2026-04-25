@@ -100,7 +100,7 @@ if (Test-Path -LiteralPath $hooksDir -PathType Container) {
         }
     }
 
-    $hooksScanExts = @('tmp', 'log', 'out', 'err')
+    $hooksScanExts = @('txt', 'tmp', 'log', 'out', 'err')
     foreach ($ext in $hooksScanExts) {
         $matched = Get-ChildItem -LiteralPath $hooksDir -Filter "*.$ext" -File -ErrorAction SilentlyContinue
         foreach ($file in $matched) {

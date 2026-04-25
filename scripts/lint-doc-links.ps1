@@ -6,7 +6,7 @@ $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 if ($VerboseOutput) { $VerbosePreference = 'Continue' }
 . (Join-Path $PSScriptRoot 'comment-stripping.ps1')
-$repoRoot = Split-Path -Parent $PSScriptRoot
+$repoRoot = (Get-Item $PSScriptRoot).Parent.FullName
 
 function Test-PathWithCase {
     param(
@@ -207,11 +207,15 @@ $violationCount = 0
 $codeDocsPattern = [regex]'(?i)docs[\\/][A-Za-z0-9._/\\-]+\.md(?:#[A-Za-z0-9_\-]+)?'
 $codeFileExtensions = @('.cs', '.csproj', '.props', '.targets', '.ps1', '.psm1', '.psd1', '.py', '.ts', '.tsx', '.js', '.jsx', '.json', '.yml', '.yaml', '.sh', '.cmd')
 
-# Use git ls-files for efficiency and to respect .gitignore
-$gitFiles = git ls-files --cached --others --exclude-standard 2>$null
+# Use git ls-files for efficiency and to respect .gitignore.
+# Always anchor at the repository root so invoking this script from a
+# subdirectory still yields repo-relative paths.
+$gitFiles = & git -C $repoRoot ls-files --cached --others --exclude-standard 2>$null
 if (-not $gitFiles) {
     Write-Host "Warning: Not in a git repository or git not available, falling back to filesystem scan" -ForegroundColor Yellow
-    $gitFiles = Get-ChildItem -Path . -Recurse -File | ForEach-Object { $_.FullName.Substring($repoRoot.Length + 1) }
+    $gitFiles = Get-ChildItem -Path $repoRoot -Recurse -File | ForEach-Object {
+        [System.IO.Path]::GetRelativePath($repoRoot, $_.FullName) -replace '\\', '/'
+    }
 }
 
 $mdFiles = $gitFiles | Where-Object { $_ -match '\.md$' }

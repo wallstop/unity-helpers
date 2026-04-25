@@ -199,6 +199,9 @@ if [[ ${#VOLUME_TARGETS[@]} -eq 0 ]]; then
 else
     pass "devcontainer.json has ${#VOLUME_TARGETS[@]} volume mount(s)"
 
+    post_create_body="$(grep -v '^[[:space:]]*#' "$POST_CREATE" || true)"
+    dockerfile_body="$(grep -v '^[[:space:]]*#' "$DOCKERFILE" || true)"
+
     for target in "${VOLUME_TARGETS[@]}"; do
         # Skip system-managed volumes (e.g., /var/lib/docker from DinD feature)
         if is_system_managed "$target"; then
@@ -210,17 +213,14 @@ else
         # e.g., /home/vscode/.nuget/packages is covered by /home/vscode/.nuget
 
         # Check post-create.sh references this path in a chown/VOLUME_DIRS context
-        # (not just in comments). Precompute non-comment body to avoid a
-        # `grep -v ... | grep -q ...` pipeline — under `set -o pipefail`,
-        # `grep -q` closes the pipe on first match, which can deliver SIGPIPE
-        # to the upstream `grep -v` and mark the whole pipeline as failed.
-        post_create_body="$(grep -v '^[[:space:]]*#' "$POST_CREATE" || true)"
-        dockerfile_body="$(grep -v '^[[:space:]]*#' "$DOCKERFILE" || true)"
+        # (not just in comments). Reuse precomputed non-comment bodies to avoid
+        # writer -> grep -q pipelines under `set -o pipefail`; a successful match
+        # must not be turned into a false negative by SIGPIPE.
 
         found_in_script=false
         check_path="$target"
         while [[ "$check_path" != "/" && "$check_path" != "/home/vscode" && "$check_path" != "/home" ]]; do
-            if printf '%s\n' "$post_create_body" | grep -qF -- "$check_path"; then
+            if grep -qF -- "$check_path" <<<"$post_create_body"; then
                 found_in_script=true
                 break
             fi
@@ -238,7 +238,7 @@ else
         found_in_dockerfile=false
         check_path="$target"
         while [[ "$check_path" != "/" && "$check_path" != "/home/vscode" && "$check_path" != "/home" ]]; do
-            if printf '%s\n' "$dockerfile_body" | grep -qF -- "$check_path"; then
+            if grep -qF -- "$check_path" <<<"$dockerfile_body"; then
                 found_in_dockerfile=true
                 break
             fi
@@ -302,7 +302,7 @@ fi
 echo -e "${BLUE}Checking sudo usage...${NC}"
 
 # chown on volume dirs requires sudo since we run as vscode user
-if grep -v '^[[:space:]]*#' "$POST_CREATE" | grep -q 'sudo chown'; then
+if grep -q 'sudo chown' <<<"$post_create_body"; then
     pass "post-create.sh uses sudo with chown"
 else
     fail "post-create.sh uses sudo with chown" \
