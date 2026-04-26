@@ -18,11 +18,22 @@
       PWS002 - In-process `& <script>.ps1 --` inside scripts/tests/*.ps1
                (tests MUST exercise the same invocation path production uses;
                the in-process call operator masks CLI-binding bugs)
+      PWS003 - A scripts/<name>.ps1 file invokes `pwsh|powershell -NoProfile
+               -File scripts/<sibling>.ps1` via subprocess when it already
+               runs inside a PowerShell host. Windows PowerShell 5.1 hosts
+               may not have pwsh on PATH, and the subprocess boundary wastes
+               startup time; dot-source a shared helper or use in-process
+               `&` with a function that does not call `exit` instead.
+               Opt-out per file: add a top-of-file comment marker
+               `# lint-pwsh-invocations: allow-subprocess-pwsh` with a
+               one-line rationale (e.g. "called script uses `exit` heavily;
+               subprocess isolation required").
 
     Scanned paths:
       - *.sh
       - .githooks/*
       - .github/workflows/*.yml
+      - scripts/*.ps1                (for PWS003 only)
       - scripts/tests/*.ps1
       - package.json
 
@@ -98,6 +109,94 @@ $pws001ArrayPattern = '"\$\{[A-Z][A-Z0-9_]*\[@\]\}"\s+(?:\S+\s+)*?\S+\.ps1(?:\s+
 # invocations that take `--` as the first argument.
 $pws002Pattern = '&\s+(?:\$[A-Za-z_][A-Za-z0-9_]*(?:Path|Script|Ps1|Cmd|Tool)?|["''][^"'']*\.ps1["'']|[^\s"'']+\.ps1)\s+--(?=\s|$|")'
 
+# PWS003: a scripts/<name>.ps1 file that invokes pwsh|powershell -NoProfile
+# -File scripts/<sibling>.ps1 via subprocess. On Windows PowerShell 5.1 hosts
+# this is a hard fail (no pwsh on PATH); even where it works, the subprocess
+# boundary wastes startup time and drops the parent session's variables.
+# Preferred alternatives: dot-source a shared helper module, or invoke an
+# in-process function with `&` (when the callee is refactored to not call
+# `exit`).
+#
+# Regex shape:
+#   - Optional leading `&` call operator or line-start whitespace.
+#   - pwsh OR powershell as a word.
+#   - Any combination of intervening flags (greedy-nonconsuming).
+#   - `-File` followed by a script path whose first segment is `scripts/` OR
+#     the fragment `$PSScriptRoot` (the canonical PS idiom for "this
+#     script's directory" — which IS scripts/ when the caller IS
+#     scripts/<name>.ps1).
+#
+# Double-quoted and single-quoted paths are both accepted. Bare tokens too.
+# Anchors preceding the pwsh/powershell token. We deliberately REFUSE to match
+# when the token sits inside a single or double-quoted string literal because
+# Write-Host "... pwsh -NoProfile -File scripts/foo.ps1 ..." is help text, not
+# an invocation. Accepted prefixes: start-of-line, whitespace, `&` call operator,
+# `;` statement separator, `|` pipe, or `(` grouping. Explicitly NOT accepted:
+# `"` or `'` (inside string literal).
+#
+# Additional guard: `$generateScript = Join-Path ... 'generate-doc-metadata.ps1'`
+# style assignments where a `.ps1` path shows up in a quoted STRING but no
+# `pwsh|powershell -File` precedes it — already excluded because we anchor on
+# `pwsh|powershell`.
+$pws003Pattern = '(?:^|[\s;&|`(])(pwsh|powershell)\b(?:\s+-[A-Za-z][A-Za-z0-9]*(?:\s+\S+)?)*?\s+-File\s+(?:"(?:[^"]*?[/\\])?(?:\$PSScriptRoot|scripts)[/\\][^"]+\.ps1"|''(?:[^'']*?[/\\])?(?:\$PSScriptRoot|scripts)[/\\][^'']+\.ps1''|(?:\S*[/\\])?(?:\$PSScriptRoot|scripts)[/\\]\S+\.ps1|\$\w+)'
+
+# PWS003 opt-out marker: a single-line comment at the top of a scripts/<name>.ps1
+# file that explicitly acknowledges the subprocess boundary. Must appear on its
+# own line in the first 40 lines of the file. Rationale is required (callers
+# should explain WHY subprocess isolation is needed — e.g. the called script
+# uses `exit` heavily, or it must run in a fresh PS session).
+$pws003AllowMarker = 'lint-pwsh-invocations:\s*allow-subprocess-pwsh'
+
+# Strips PowerShell string literals (double-quoted and single-quoted) from a
+# line, replacing each literal with a same-length sequence of spaces so that
+# column offsets of surrounding code are preserved. Used to suppress false
+# positives where the pwsh/powershell token appears INSIDE a string (e.g.
+# `Write-Host "  pwsh -NoProfile -File scripts/foo.ps1"`).
+#
+# Caveats:
+#   - Does NOT attempt to parse here-strings (@" ... "@ / @' ... '@) since
+#     those are not used for the Write-Host style help text we need to mask.
+#     A here-string containing the pattern would still be a false positive —
+#     accepted as a known-small edge case.
+#   - Does NOT model PowerShell escape semantics (``"` inside `"..."`) since
+#     we simply want to mask the visible text. A mismatched quote on a line
+#     leaves the tail unmasked; acceptable for our lint purposes.
+function Hide-PowerShellStringLiterals {
+    param([string]$Line)
+
+    if ([string]::IsNullOrEmpty($Line)) {
+        return $Line
+    }
+
+    $chars = $Line.ToCharArray()
+    $n = $chars.Length
+    $inDouble = $false
+    $inSingle = $false
+    for ($ci = 0; $ci -lt $n; $ci++) {
+        $c = $chars[$ci]
+        if ($inDouble) {
+            if ($c -eq '"') {
+                $inDouble = $false
+                # The closing quote itself is not string content — leave it.
+                continue
+            }
+            $chars[$ci] = ' '
+            continue
+        }
+        if ($inSingle) {
+            if ($c -eq "'") {
+                $inSingle = $false
+                continue
+            }
+            $chars[$ci] = ' '
+            continue
+        }
+        if ($c -eq '"') { $inDouble = $true; continue }
+        if ($c -eq "'") { $inSingle = $true; continue }
+    }
+    return -join $chars
+}
+
 function Get-RepoRelativePath {
     param([string]$FullPath)
     $normalized = $FullPath.Replace('\', '/')
@@ -135,6 +234,15 @@ function Get-TargetFiles {
             ForEach-Object { $results.Add($_.FullName) | Out-Null }
     }
 
+    # scripts/*.ps1 (non-recursive top-level scripts, for PWS003 detection).
+    # scripts/tests/ files are captured below via an explicit recursive sweep of
+    # the tests directory.
+    $scriptsDir = Join-Path $repoRoot 'scripts'
+    if (Test-Path $scriptsDir) {
+        Get-ChildItem -Path $scriptsDir -File -Filter '*.ps1' -ErrorAction SilentlyContinue |
+            ForEach-Object { $results.Add($_.FullName) | Out-Null }
+    }
+
     # scripts/tests/*.ps1
     $testsDir = Join-Path (Join-Path $repoRoot 'scripts') 'tests'
     if (Test-Path $testsDir) {
@@ -155,6 +263,19 @@ function Get-TargetFiles {
 # marker or the line immediately after one (heuristic, since CBH content lives
 # inside the `<# ... #>` wrapper anyway — this is a second-level safety net for
 # inline documentation).
+#
+# Why we keep a coarse per-line boolean instead of migrating to
+# scripts/comment-stripping.ps1 (Get-CommentMaskedLines / Get-CommentRanges):
+# this linter does PER-LINE regex scans across MIXED file types — bash with
+# `\` continuations, YAML `run: >` folded block scalars, package.json, and
+# .ps1 — each with bespoke join/folding semantics that comment-stripping
+# does not model (heredocs, folded scalars, line-continuation joining are
+# lexed line-by-line here). The byte-accurate column preservation that
+# comment-stripping offers is unused by this linter (we report whole-line
+# matches, not column ranges). Migrating would require porting every join
+# pass to operate on a masked-text view AND reproducing or replacing the
+# bespoke continuation semantics. The 36+ existing regression tests cover
+# the present coarse map, so this stays line-based by design.
 function Get-CommentBlockMap {
     param([string[]]$Lines)
 
@@ -217,6 +338,25 @@ foreach ($file in $targets) {
     $commentMap = $null
     if ($isPs1) {
         $commentMap = Get-CommentBlockMap -Lines $lines
+    }
+
+    # PWS003 applies ONLY to non-test scripts/*.ps1 files — i.e. repo-relative
+    # path begins with `scripts/` but does not also begin with `scripts/tests/`.
+    # The lint script and its own test are excluded above in the outer loop.
+    $pws003Applies = $isPs1 -and ($rel -like 'scripts/*.ps1') -and ($rel -notlike 'scripts/tests/*')
+
+    # Detect the per-file allowlist marker for PWS003. Scan only the first
+    # 40 physical lines — the marker is meant to be a top-of-file opt-out with
+    # a one-line rationale, not buried inside the body of the script.
+    $pws003Allowed = $false
+    if ($pws003Applies) {
+        $scanLimit = [Math]::Min(40, $lines.Length)
+        for ($m = 0; $m -lt $scanLimit; $m++) {
+            if ($lines[$m] -match $pws003AllowMarker) {
+                $pws003Allowed = $true
+                break
+            }
+        }
     }
 
     # Build a "logically joined" view that merges physical lines ending in `\`
@@ -326,6 +466,19 @@ foreach ($file in $targets) {
                 }) | Out-Null
             }
         }
+
+        if ($pws003Applies -and -not $pws003Allowed) {
+            $pws003Candidate = Hide-PowerShellStringLiterals -Line $line
+            if ($pws003Candidate -match $pws003Pattern) {
+                $violations.Add(@{
+                    Path = $rel
+                    Line = $lineNum
+                    Code = 'PWS003'
+                    Message = "scripts/*.ps1 invokes 'pwsh|powershell -NoProfile -File <sibling>.ps1' via subprocess. This fails on Windows PowerShell 5.1 hosts (no pwsh on PATH) and drops the parent session's state. Prefer dot-sourcing a shared helper module, or refactor the callee into an in-process function. If subprocess isolation is truly required, opt out with a top-of-file comment '# lint-pwsh-invocations: allow-subprocess-pwsh <rationale>'."
+                    Content = $line.Trim()
+                }) | Out-Null
+            }
+        }
     }
 
     # Second pass: logically-joined lines. Only consider entries actually built
@@ -370,6 +523,19 @@ foreach ($file in $targets) {
                     Line = $startLine
                     Code = 'PWS002'
                     Message = "Test invokes .ps1 via in-process '&' with '--' (multi-line with '\' continuation); tests must exercise the same invocation path production uses ('pwsh -NoProfile -File ... -Paths ...'), otherwise CLI-binding bugs are masked."
+                    Content = $joined.Trim()
+                }) | Out-Null
+            }
+        }
+
+        if ($pws003Applies -and -not $pws003Allowed) {
+            $pws003JoinedCandidate = Hide-PowerShellStringLiterals -Line $joined
+            if ($pws003JoinedCandidate -match $pws003Pattern) {
+                $violations.Add(@{
+                    Path = $rel
+                    Line = $startLine
+                    Code = 'PWS003'
+                    Message = "scripts/*.ps1 invokes 'pwsh|powershell -NoProfile -File <sibling>.ps1' via subprocess (multi-line with '\' continuation). This fails on Windows PowerShell 5.1 hosts (no pwsh on PATH) and drops the parent session's state. Prefer dot-sourcing a shared helper module, or refactor the callee into an in-process function. If subprocess isolation is truly required, opt out with a top-of-file comment '# lint-pwsh-invocations: allow-subprocess-pwsh <rationale>'."
                     Content = $joined.Trim()
                 }) | Out-Null
             }

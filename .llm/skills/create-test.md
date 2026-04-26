@@ -432,6 +432,14 @@ Every test MUST be completely independent:
    pwsh -NoProfile -File scripts/lint-tests.ps1
    ```
 
+4. Spell-check (cspell lints test comments and string literals):
+
+   ```bash
+   npm run lint:spelling
+   ```
+
+   See [Rule 4: Spell-Check Every Change cspell Covers](./validate-before-commit.md#rule-4-spell-check-every-change-cspell-covers) for the failure-recovery decision tree.
+
 ---
 
 ## Quick Reference: Test Case Categories

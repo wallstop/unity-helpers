@@ -90,9 +90,11 @@ function Invoke-Linter {
   New-Item -ItemType Directory -Path $tempSkillsDir -Force | Out-Null
   New-Item -ItemType Directory -Path $tempScriptsDir -Force | Out-Null
 
-  # Copy the linter script
+  # Copy the linter script and its helper dependencies (dot-sourced at startup)
   $lintScript = Join-Path $PSScriptRoot '..' 'lint-skill-sizes.ps1'
-  Copy-Item $lintScript (Join-Path $tempScriptsDir 'lint-skill-sizes.ps1')
+  $gitPathHelpers = Join-Path $PSScriptRoot '..' 'git-path-helpers.ps1'
+  Copy-Item $lintScript (Join-Path $tempScriptsDir 'lint-skill-sizes.ps1') -Force
+  Copy-Item $gitPathHelpers (Join-Path $tempScriptsDir 'git-path-helpers.ps1') -Force
 
   # Copy fixture files
   Get-ChildItem -Path $SkillsDir -Filter '*.md' -Recurse | ForEach-Object {

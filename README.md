@@ -22,7 +22,7 @@
 
 <p align="left">
   <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-blue.svg" /></a><br/>
-  <a href="https://unity.com/releases/2021-lts"><img alt="Unity 2021.3+" src="https://img.shields.io/badge/Unity-2021.3%2B-000000?logo=unity&amp;logoColor=white" /></a><br/>
+  <a href="https://docs.unity3d.com/2021.3/Documentation/Manual/UnityManual.html"><img alt="Unity 2021.3+" src="https://img.shields.io/badge/Unity-2021.3%2B-000000?logo=unity&amp;logoColor=white" /></a><br/>
   <a href="https://openupm.com/packages/com.wallstop-studios.unity-helpers/"><img alt="OpenUPM" src="https://img.shields.io/npm/v/com.wallstop-studios.unity-helpers?label=openupm&amp;registry_uri=https://package.openupm.com" /></a>
   <a href="https://www.npmjs.com/package/com.wallstop-studios.unity-helpers"><img alt="npm version" src="https://img.shields.io/npm/v/com.wallstop-studios.unity-helpers" /></a>
   <a href="https://github.com/wallstop/unity-helpers/releases"><img alt="GitHub release version" src="https://img.shields.io/github/v/release/wallstop/unity-helpers" /></a><br/>
@@ -585,8 +585,8 @@ Create a `link.xml` file in your `Assets` folder to prevent stripping:
 
 **Related documentation:**
 
-- [Unity Manual: Managed Code Stripping](https://docs.unity3d.com/Manual/ManagedCodeStripping.html)
-- [Protobuf-net and IL2CPP](https://github.com/protobuf-net/protobuf-net#il2cpp)
+- [Unity Manual: Managed Code Stripping](https://docs.unity3d.com/Manual/managed-code-stripping.html)
+- [protobuf-net documentation](https://protobuf-net.github.io/protobuf-net/)
 - [Serialization Guide: IL2CPP Warning](./docs/features/serialization/serialization.md#-il2cpp-and-code-stripping-warning)
 - [Reflection Helpers: IL2CPP Warning](./docs/features/utilities/reflection-helpers.md#-il2cpp-code-stripping-considerations)
 

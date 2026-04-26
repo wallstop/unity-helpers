@@ -151,7 +151,27 @@ check_status() {
         print_error "pre-push hook: MISSING"
         all_ok=false
     fi
-    
+
+    echo ""
+    echo "Git Push Defaults:"
+    echo "------------------"
+
+    local auto_setup
+    auto_setup=$(git -C "$REPO_ROOT" config --local --get push.autoSetupRemote 2>/dev/null || echo "")
+    if [[ "$auto_setup" == "true" ]]; then
+        print_success "push.autoSetupRemote: true"
+    else
+        print_warning "push.autoSetupRemote: ${auto_setup:-unset} (run without --check to configure)"
+    fi
+
+    local push_default
+    push_default=$(git -C "$REPO_ROOT" config --local --get push.default 2>/dev/null || echo "")
+    if [[ "$push_default" == "simple" ]]; then
+        print_success "push.default: simple"
+    else
+        print_warning "push.default: ${push_default:-unset} (run without --check to configure)"
+    fi
+
     echo ""
     echo "Node.js Dependencies:"
     echo "---------------------"
@@ -253,6 +273,16 @@ install_hooks() {
     if [[ -f ".githooks/pre-push" ]]; then
         chmod +x .githooks/pre-push
         print_success "pre-push hook is executable"
+    fi
+}
+
+configure_git_defaults() {
+    print_header "Configuring Git Push Defaults"
+
+    if [[ -f "$REPO_ROOT/scripts/configure-git-defaults.sh" ]]; then
+        bash "$REPO_ROOT/scripts/configure-git-defaults.sh" "$REPO_ROOT"
+    else
+        print_warning "scripts/configure-git-defaults.sh not found; skipping push defaults configuration"
     fi
 }
 
@@ -365,6 +395,7 @@ main() {
     echo ""
     
     install_hooks
+    configure_git_defaults
     install_node_deps
     install_dotnet_tools
     show_optional_tools

@@ -55,7 +55,7 @@ Invoke these skills for specific tasks.
 **Regenerate with**: `pwsh -NoProfile -File scripts/generate-skills-index.ps1`
 
 <!-- BEGIN GENERATED SKILLS INDEX -->
-<!-- Generated: 2026-04-19 14:17:43 UTC -->
+<!-- Generated: 2026-04-21 18:45:10 UTC -->
 <!-- Command: pwsh -NoProfile -File scripts/generate-skills-index.ps1 -->
 
 ### Core Skills (Always Consider)
@@ -64,6 +64,7 @@ Invoke these skills for specific tasks.
 | -------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
 | [apply-completeness](./skills/apply-completeness.md)                                         | Always do the complete thing when cost is near-zero                                    |
 | [ask-structured-questions](./skills/ask-structured-questions.md)                             | Present questions with context, options, and recommendations                           |
+| [asset-postprocessor-safety](./skills/asset-postprocessor-safety.md)                         | AssetPostprocessor callbacks - avoid SendMessage warnings                              |
 | [avoid-magic-strings](./skills/avoid-magic-strings.md)                                       | ALL code - use nameof() not strings                                                    |
 | [avoid-reflection](./skills/avoid-reflection.md)                                             | ALL code - never reflect on our own types                                              |
 | [bash-pwsh-invocation](./skills/bash-pwsh-invocation.md)                                     | Calling .ps1 scripts from bash/hooks/workflows                                         |
@@ -193,6 +194,7 @@ See [create-csharp-file](./skills/create-csharp-file.md) for detailed C# rules.
 13. All code must follow [high-performance-csharp](./skills/high-performance-csharp.md) and [defensive-programming](./skills/defensive-programming.md) (never throw from public APIs; use `TryXxx` patterns; handle all inputs gracefully)
 14. For forbidden patterns and alternatives, see [forbidden-patterns reference](./references/forbidden-patterns.md)
 15. All editor mutation paths must follow the complete undo policy (see [editor-undo-complete](./skills/editor-undo-complete.md)); classify paths as Tier A/B/C and never claim full reversal for Tier C file/reimport side effects
+16. `AssetPostprocessor` callbacks MUST defer non-trivial work through `AssetPostprocessorDeferral.Schedule` to avoid `SendMessage cannot be called...` warnings during Unity's import phase (see [asset-postprocessor-safety](./skills/asset-postprocessor-safety.md))
 
 ### Documentation Rules
 
@@ -216,11 +218,11 @@ Run formatters/linters **immediately after each file change**, not batched at ta
 - **Non-C#** (`.md`, `.json`, `.yaml`, `.yml`): `npx prettier --write -- <file>`
 - **Markdown**: `npm run lint:docs` + `npm run lint:markdown`
 - **YAML**: `npm run lint:yaml` (then `actionlint` for workflows)
-- **Spelling**: `npm run lint:spelling` (add valid terms to `cspell.json`)
+- **Spelling**: `npm run lint:spelling` (add valid terms to `cspell.json`). A Claude Code PostToolUse hook (`scripts/hooks/cspell-post-edit.js`, registered in the tracked [`.claude/settings.json`](../.claude/settings.json) which ships with the repo) auto-runs cspell after every Edit/Write/MultiEdit/NotebookEdit, so typos surface immediately; manual invocation before completion remains the expectation (the hook is a safety net, not a substitute -- it does not fire in CI or when editing outside Claude Code)
 - **Tests**: `pwsh -NoProfile -File scripts/lint-tests.ps1 -FixNullChecks -Paths <changed test files>`
 - **Skill files and [context](./context.md)**: `pwsh -NoProfile -File scripts/lint-skill-sizes.ps1` (500-line limit)
 - **Commit prep**: stage files, then run `npm run agent:preflight:fix` (includes changed markdown spelling checks) before any commit attempt
-- **Pre-push parity**: run `npm run validate:prepush` (includes full `lint:spelling`) before push; treat git hooks as last-resort only
+- **Pre-push parity**: run `npm run validate:prepush` (includes full `lint:spelling`) before push; treat git hooks as last-resort only. For the push step itself (setup, redirection, rejection handling) follow [ship-changes Step 9](./skills/ship-changes.md#step-9-push-to-remote)
 
 See [formatting](./skills/formatting.md) and [validate-before-commit](./skills/validate-before-commit.md) for details.
 
@@ -234,8 +236,10 @@ See [formatting](./skills/formatting.md) and [validate-before-commit](./skills/v
 - Never use `((var++))` in bash with `set -e`; use `var=$((var + 1))`
 - Line endings must be synchronized across `.gitattributes`, `.prettierrc.json`, `.yamllint.yaml`, `.editorconfig`
 - Git hook regex patterns use single backslashes, not double-escaped
+- If a script derives `REPO_ROOT` / `$repoRoot` from its own location, every `git ls-files` / `git diff --relative` / similar repo-relative git call must also be anchored there (`git -C "$REPO_ROOT" ...` or `cd "$REPO_ROOT"` first). Never combine repo-root-derived filesystem paths with caller-cwd-derived git output.
 - When adding formatter support for a new language, add explicit `[language]` entry in `devcontainer.json`
 - When adding new script calls to git hooks, update the hook's step comments AND the "What the Hook Does" list in [formatting-and-linting](./skills/formatting-and-linting.md)
+- Never redirect git command output to files in the working tree (e.g. `git push 2> pre-push.txt`) — creates gitignored pollution. Let errors stream to stderr; `npm run agent:preflight` detects and `npm run agent:preflight:fix` removes these artifacts
 
 ---
 

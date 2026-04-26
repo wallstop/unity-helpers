@@ -5,6 +5,9 @@ Param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+# Shared comment-masking helper: avoids matching `property.intValue =` etc.
+# that appear inside XML-doc or block comments (those are not real writes).
+. (Join-Path $PSScriptRoot 'comment-stripping.ps1')
 
 function Write-Info($msg) {
   if ($VerboseOutput) { Write-Host "[lint-drawer-multiobject] $msg" -ForegroundColor Cyan }
@@ -173,15 +176,23 @@ foreach ($file in $filesToScan) {
   if ($file -like '*.meta') { continue }
   $rel = Get-RelativePath $file
 
-  $content = Get-Content $file
-  $text = $content -join "`n"
+  $rawContent = Get-Content $file
+  $text = $rawContent -join "`n"
+
+  # Mask comments so XML-doc / block-comment text doesn't trigger pattern matches.
+  # The UNH-SUPPRESS marker lives in `//` comments so it must be checked against
+  # the raw line, not the masked one.
+  $masked = Get-CommentMaskedLines -Lines $rawContent -Language 'csharp'
+  if ($null -eq $masked) { $masked = $rawContent }
+  $content = $masked
 
   $lineIndex = 0
   foreach ($line in $content) {
     $lineIndex++
+    $rawLine = $rawContent[$lineIndex - 1]
 
-    # Skip lines with UNH-SUPPRESS comment
-    if ($suppressPattern.IsMatch($line)) { continue }
+    # Skip lines with UNH-SUPPRESS comment (check raw, not masked)
+    if ($suppressPattern.IsMatch($rawLine)) { continue }
 
     # Pattern 1: Property write during render (outside callbacks and apply methods)
     if ($propertyWritePattern.IsMatch($line)) {

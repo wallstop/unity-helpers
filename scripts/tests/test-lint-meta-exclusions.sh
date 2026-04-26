@@ -159,17 +159,55 @@ else
   # Sets up a source root dir with its .meta file
   create_workspace() {
     local ws
-    ws=$(mktemp -d)
-    git init "$ws" >/dev/null 2>&1
-    git -C "$ws" config user.email "test@test.com" >/dev/null 2>&1
-    git -C "$ws" config user.name "Test" >/dev/null 2>&1
-    git -C "$ws" config core.excludesFile "" >/dev/null 2>&1
+    ws=$(mktemp -d) || {
+      echo "ERROR: Failed to create temporary workspace" >&2
+      return 97
+    }
+
+    if ! git init "$ws" >/dev/null 2>&1; then
+      echo "ERROR: Failed to initialize git repository: $ws" >&2
+      rm -rf "$ws" 2>/dev/null || true
+      return 97
+    fi
+
+    if ! git -C "$ws" config user.email "test@test.com" >/dev/null 2>&1; then
+      echo "ERROR: Failed to configure git user.email in workspace: $ws" >&2
+      rm -rf "$ws" 2>/dev/null || true
+      return 97
+    fi
+
+    if ! git -C "$ws" config user.name "Test" >/dev/null 2>&1; then
+      echo "ERROR: Failed to configure git user.name in workspace: $ws" >&2
+      rm -rf "$ws" 2>/dev/null || true
+      return 97
+    fi
+
+    if ! git -C "$ws" config core.excludesFile "" >/dev/null 2>&1; then
+      echo "ERROR: Failed to clear git excludesFile in workspace: $ws" >&2
+      rm -rf "$ws" 2>/dev/null || true
+      return 97
+    fi
+
+    # Keep script-derived repo root behavior intact by running a workspace-local copy.
+    if ! mkdir -p "$ws/lint-runner"; then
+      echo "ERROR: Failed to create lint runner directory in workspace: $ws" >&2
+      rm -rf "$ws" 2>/dev/null || true
+      return 97
+    fi
+
+    if ! cp "$LINT_SCRIPT" "$ws/lint-runner/lint-meta-files.ps1"; then
+      echo "ERROR: Failed to copy lint script into workspace: $ws" >&2
+      rm -rf "$ws" 2>/dev/null || true
+      return 97
+    fi
+
     CLEANUP_DIRS+=("$ws")
     echo "$ws"
   }
 
   # Lint output captured for diagnostics on failure
   LINT_OUTPUT=""
+  LINT_DIAGNOSTICS=""
 
   CLEANUP_DIRS=()
   cleanup_workspaces() {
@@ -184,12 +222,37 @@ else
   # Returns: exit code of lint script
   run_lint() {
     local ws="$1"
+    local lint_script_path="$ws/lint-runner/lint-meta-files.ps1"
+    local git_root=""
+    local tracked_count="0"
+    local tracked_preview="<none>"
+    local tracked_files=""
     local exit_code=0
+
     if ! git -C "$ws" rev-parse --git-dir >/dev/null 2>&1; then
       LINT_OUTPUT="ERROR: Workspace is not a git repository: $ws"
+      LINT_DIAGNOSTICS="workspace=$ws"
       return 99
     fi
-    LINT_OUTPUT=$(cd "$ws" && pwsh -NoProfile -File "$LINT_SCRIPT" 2>&1) || exit_code=$?
+
+    if [[ ! -f "$lint_script_path" ]]; then
+      LINT_OUTPUT="ERROR: Workspace-local lint script missing: $lint_script_path"
+      LINT_DIAGNOSTICS="workspace=$ws; source_lint_script=$LINT_SCRIPT"
+      return 98
+    fi
+
+    git_root=$(git -C "$ws" rev-parse --show-toplevel 2>/dev/null || echo "<unknown>")
+    tracked_files=$(git -C "$ws" ls-files 2>/dev/null || true)
+    if [[ -n "$tracked_files" ]]; then
+      tracked_count=$(printf '%s\n' "$tracked_files" | wc -l | tr -d ' ')
+      tracked_preview=$(printf '%s\n' "$tracked_files" | head -n 12 | tr '\n' '; ')
+    else
+      tracked_count="0"
+      tracked_preview="<none>"
+    fi
+
+    LINT_OUTPUT=$(cd "$ws" && pwsh -NoProfile -File "$lint_script_path" -VerboseOutput 2>&1) || exit_code=$?
+    LINT_DIAGNOSTICS="workspace=$ws; git_root=$git_root; lint_script=$lint_script_path; tracked_count=$tracked_count; tracked_preview=$tracked_preview"
     return $exit_code
   }
 
@@ -197,52 +260,112 @@ else
   # Args: $1=test name, $2...=setup commands
   test_exclusion() {
     local test_name="$1"
-    shift
+    local setup_fn="$2"
     run_test
 
-    local ws
-    ws=$(create_workspace)
+    local ws=""
+    if ! ws=$(create_workspace 2>&1); then
+      fail "$test_name" "TEST_HARNESS: Workspace creation failed. Detail: $ws"
+      return
+    fi
 
-    # Run the setup commands
-    "$@" "$ws"
+    if ! "$setup_fn" "$ws"; then
+      local setup_exit=$?
+      rm -rf "$ws"
+      fail "$test_name" "TEST_HARNESS: Setup function '$setup_fn' failed with code $setup_exit"
+      return
+    fi
 
-    (cd "$ws" && git add -A) >/dev/null 2>&1
+    if ! (cd "$ws" && git add -A >/dev/null 2>&1); then
+      local status_preview=""
+      status_preview=$(cd "$ws" && git status --short 2>&1 | head -n 20)
+      rm -rf "$ws"
+      fail "$test_name" "TEST_HARNESS: git add -A failed. Workspace: $ws. Git status: ${status_preview:-<empty>}"
+      return
+    fi
 
     local exit_code=0
     run_lint "$ws" || exit_code=$?
 
     rm -rf "$ws"
 
-    if [ "$exit_code" -eq 0 ]; then
+    if [ "$exit_code" -eq 98 ] || [ "$exit_code" -eq 99 ]; then
+      fail "$test_name" "Test harness error (exit code $exit_code). Diagnostics: ${LINT_DIAGNOSTICS:-<none>}. Lint output: ${LINT_OUTPUT:-<empty>}"
+    elif [ "$exit_code" -eq 0 ]; then
       pass "$test_name"
     else
-      fail "$test_name" "Lint exited with code $exit_code (expected 0). Lint output: ${LINT_OUTPUT:-<empty>}"
+      fail "$test_name" "Lint exited with code $exit_code (expected 0). Diagnostics: ${LINT_DIAGNOSTICS:-<none>}. Lint output: ${LINT_OUTPUT:-<empty>}"
     fi
   }
 
   # Helper: test that non-excluded items DO cause lint failure
   test_detected() {
     local test_name="$1"
-    shift
+    local setup_fn="$2"
     run_test
 
-    local ws
-    ws=$(create_workspace)
+    local ws=""
+    if ! ws=$(create_workspace 2>&1); then
+      fail "$test_name" "TEST_HARNESS: Workspace creation failed. Detail: $ws"
+      return
+    fi
 
-    "$@" "$ws"
+    if ! "$setup_fn" "$ws"; then
+      local setup_exit=$?
+      rm -rf "$ws"
+      fail "$test_name" "TEST_HARNESS: Setup function '$setup_fn' failed with code $setup_exit"
+      return
+    fi
 
-    (cd "$ws" && git add -A) >/dev/null 2>&1
+    if ! (cd "$ws" && git add -A >/dev/null 2>&1); then
+      local status_preview=""
+      status_preview=$(cd "$ws" && git status --short 2>&1 | head -n 20)
+      rm -rf "$ws"
+      fail "$test_name" "TEST_HARNESS: git add -A failed. Workspace: $ws. Git status: ${status_preview:-<empty>}"
+      return
+    fi
 
     local exit_code=0
     run_lint "$ws" || exit_code=$?
 
     rm -rf "$ws"
 
-    if [ "$exit_code" -ne 0 ]; then
+    if [ "$exit_code" -eq 98 ] || [ "$exit_code" -eq 99 ]; then
+      fail "$test_name" "Test harness error (exit code $exit_code). Diagnostics: ${LINT_DIAGNOSTICS:-<none>}. Lint output: ${LINT_OUTPUT:-<empty>}"
+    elif [ "$exit_code" -ne 0 ]; then
       pass "$test_name"
     else
-      fail "$test_name" "Expected lint failure but it passed. Lint output: ${LINT_OUTPUT:-<empty>}"
+      fail "$test_name" "Expected lint failure but it passed. Diagnostics: ${LINT_DIAGNOSTICS:-<none>}. Lint output: ${LINT_OUTPUT:-<empty>}"
     fi
+  }
+
+  run_case_group() {
+    local heading="$1"
+    local runner="$2"
+    shift 2
+
+    echo ""
+    echo "--- $heading ---"
+
+    local case_entry=""
+    local case_name=""
+    local setup_fn=""
+    for case_entry in "$@"; do
+      case_name="${case_entry%%|*}"
+      setup_fn="${case_entry#*|}"
+
+      if [[ -z "$case_name" || -z "$setup_fn" || "$case_name" == "$setup_fn" ]]; then
+        fail "Case definition format" "Expected '<name>|<setup_fn>' but got: $case_entry"
+        continue
+      fi
+
+      if ! declare -f "$setup_fn" >/dev/null 2>&1; then
+        fail "Case definition format" "Setup function '$setup_fn' is not defined for case '$case_name'"
+        continue
+      fi
+
+      "$runner" "$case_name" "$setup_fn"
+    done
   }
 
   # -------------------------------------------------------------------------
@@ -445,46 +568,55 @@ else
   # Run directory exclusion tests
   # -------------------------------------------------------------------------
 
-  echo "--- Excluded directories (functional) ---"
-  test_exclusion ".pytest_cache excluded from scripts/"   setup_pytest_cache
-  test_exclusion "__pycache__ excluded from scripts/"     setup_pycache
-  test_exclusion ".mypy_cache excluded from scripts/"     setup_mypy_cache
-  test_exclusion "node_modules excluded from scripts/"    setup_node_modules
-  test_exclusion "obj/ and bin/ excluded from Runtime/"   setup_obj_bin
+  excluded_directory_cases=(
+    ".pytest_cache excluded from scripts/|setup_pytest_cache"
+    "__pycache__ excluded from scripts/|setup_pycache"
+    ".mypy_cache excluded from scripts/|setup_mypy_cache"
+    "node_modules excluded from scripts/|setup_node_modules"
+    "obj/ and bin/ excluded from Runtime/|setup_obj_bin"
+  )
 
-  echo ""
-  echo "--- Excluded file patterns (functional) ---"
-  test_exclusion ".gitkeep excluded from docs/"           setup_gitkeep
-  test_exclusion ".DS_Store excluded from Runtime/"       setup_ds_store
-  test_exclusion "Thumbs.db excluded from Editor/"        setup_thumbs_db
-  test_exclusion "*.pyc and *.pyo excluded from scripts/" setup_pyc_files
-  test_exclusion "*.swp and *.swo excluded from Runtime/" setup_vim_swap
-  test_exclusion "*.tmp excluded from scripts/"           setup_tmp_files
-  test_exclusion "package-lock.json excluded"             setup_package_lock
-  test_exclusion "Gemfile.lock excluded"                  setup_gemfile_lock
+  excluded_file_pattern_cases=(
+    ".gitkeep excluded from docs/|setup_gitkeep"
+    ".DS_Store excluded from Runtime/|setup_ds_store"
+    "Thumbs.db excluded from Editor/|setup_thumbs_db"
+    "*.pyc and *.pyo excluded from scripts/|setup_pyc_files"
+    "*.swp and *.swo excluded from Runtime/|setup_vim_swap"
+    "*.tmp excluded from scripts/|setup_tmp_files"
+    "package-lock.json excluded|setup_package_lock"
+    "Gemfile.lock excluded|setup_gemfile_lock"
+  )
 
-  echo ""
-  echo "--- Detection tests (non-excluded items flagged) ---"
-  test_detected  "Normal .cs file without .meta detected" setup_normal_file_no_meta
-  test_detected  "Normal dir without .meta detected"      setup_normal_dir_no_meta
-  test_detected  "Orphaned .meta without source detected"  setup_orphaned_meta_no_source
+  detection_cases=(
+    "Normal .cs file without .meta detected|setup_normal_file_no_meta"
+    "Normal dir without .meta detected|setup_normal_dir_no_meta"
+    "Orphaned .meta without source detected|setup_orphaned_meta_no_source"
+  )
 
-  echo ""
-  echo "--- Directory pattern exclusions (functional) ---"
-  test_exclusion "Samples~ dir excluded (no .meta needed)" setup_samples_tilde
+  directory_pattern_cases=(
+    "Samples~ dir excluded (no .meta needed)|setup_samples_tilde"
+  )
 
-  echo ""
-  echo "--- Orphaned .meta for excluded items ---"
-  test_exclusion "Orphaned .meta for excluded .pytest_cache" setup_orphaned_meta_excluded
-  test_exclusion "Orphaned .meta for excluded file patterns" setup_orphaned_meta_excluded_file_pattern
+  orphaned_excluded_cases=(
+    "Orphaned .meta for excluded .pytest_cache|setup_orphaned_meta_excluded"
+    "Orphaned .meta for excluded file patterns|setup_orphaned_meta_excluded_file_pattern"
+  )
 
-  echo ""
-  echo "--- Deeply nested exclusions ---"
-  test_exclusion "Deeply nested .pytest_cache excluded"    setup_deeply_nested_exclusion
+  nested_exclusion_cases=(
+    "Deeply nested .pytest_cache excluded|setup_deeply_nested_exclusion"
+  )
 
-  echo ""
-  echo "--- Edge cases ---"
-  test_exclusion "Empty workspace (no source roots)"      setup_empty
+  edge_cases=(
+    "Empty workspace (no source roots)|setup_empty"
+  )
+
+  run_case_group "Excluded directories (functional)" test_exclusion "${excluded_directory_cases[@]}"
+  run_case_group "Excluded file patterns (functional)" test_exclusion "${excluded_file_pattern_cases[@]}"
+  run_case_group "Detection tests (non-excluded items flagged)" test_detected "${detection_cases[@]}"
+  run_case_group "Directory pattern exclusions (functional)" test_exclusion "${directory_pattern_cases[@]}"
+  run_case_group "Orphaned .meta for excluded items" test_exclusion "${orphaned_excluded_cases[@]}"
+  run_case_group "Deeply nested exclusions" test_exclusion "${nested_exclusion_cases[@]}"
+  run_case_group "Edge cases" test_exclusion "${edge_cases[@]}"
 
 fi
 

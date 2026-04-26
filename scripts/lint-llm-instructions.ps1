@@ -19,7 +19,7 @@
     pwsh -NoProfile -File scripts/lint-llm-instructions.ps1
     pwsh -NoProfile -File scripts/lint-llm-instructions.ps1 -Fix
 #>
-
+# lint-pwsh-invocations: allow-subprocess-pwsh generate-skills-index.ps1 produces structured stdout captured into $expectedIndex; subprocess isolation keeps the captured text free of parent-session side-output and preserves the child's `exit` semantics.
 Param(
     [switch]$Fix,
     [switch]$VerboseOutput

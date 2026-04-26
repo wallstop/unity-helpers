@@ -34,13 +34,20 @@ Run the full validation suite:
 npm run validate:prepush
 ```
 
-This executes all linting, formatting, and convention checks. **All must pass.**
+This executes all linting, formatting, and convention checks (including `lint:spelling` over C#, markdown, CHANGELOG, and JSON). **All must pass.**
+
+**Blocker rule — do NOT push if any of these fail:**
+
+- `lint:spelling` — a spelling failure blocks both pre-push (local) and CI. Fix at Step 1, never at push time.
+- `lint:spelling:config` — cspell.json itself must be clean.
+- `eol:check`, `validate:content`, `validate:tests`, `lint:csharp-naming` — all mandatory.
 
 If any check fails:
 
-1. Fix the issue
-2. Re-run the failing check
-3. When all pass, proceed
+1. Fix the issue (see [validate-before-commit](./validate-before-commit.md#rule-4-spell-check-every-change-cspell-covers) for the spelling decision tree)
+2. Re-run the failing check in isolation
+3. When all pass, re-run `npm run validate:prepush` end-to-end
+4. Only then proceed
 
 ### Step 2: Test Verification
 
@@ -116,6 +123,31 @@ Ship Summary:
   Commits: N commits, all bisectable
   Ready to merge: YES | NO (blockers: list)
 ```
+
+### Step 9: Push to Remote
+
+The repo pre-configures `push.autoSetupRemote=true` and `push.default=simple`
+locally during `npm run hooks:install` (and the devcontainer post-create), so
+`git push` on a new branch sets upstream automatically — **do not** pass
+`--set-upstream` / `-u` flags and never run wrapper scripts around `git push`.
+
+Rules when pushing:
+
+| Rule                           | Why                                                                          |
+| ------------------------------ | ---------------------------------------------------------------------------- |
+| **Never redirect output**      | `git push 2> pre-push.txt` creates gitignored pollution that confuses agents |
+| **Never use `--no-verify`**    | Bypassing the pre-push hook defeats pre-push parity (see Step 1)             |
+| **Let stderr stream normally** | Errors must be visible in the live output, not hidden in files               |
+
+If `fatal: The current branch <x> has no upstream branch` appears, the local
+config is missing. Remediation: `npm run agent:preflight:fix` (restores
+`push.autoSetupRemote=true` and removes any stray `<hook-name>.{txt,log,tmp}`
+artifact files). Do **not** work around it with `git push -u origin <branch>`
+— fix the config once so every future push is clean.
+
+If a push is rejected for non-fast-forward reasons, prefer
+`git pull --rebase`. Stash any unrelated local changes manually first; never
+silently clobber history with `--force` without explicit user consent.
 
 ---
 

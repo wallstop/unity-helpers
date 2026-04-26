@@ -4,6 +4,7 @@ Param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+$repoRoot = (Get-Item $PSScriptRoot).Parent.FullName
 
 function Write-Info($msg) {
   if ($VerboseOutput) { Write-Host "[lint-meta-files] $msg" -ForegroundColor Cyan }
@@ -39,7 +40,7 @@ $excludeDirPatterns = @(
 )
 
 function Get-RelativePath([string]$path) {
-  $root = (Get-Location).Path
+  $root = $repoRoot
   if ($path.StartsWith($root)) {
     $relative = $path.Substring($root.Length).TrimStart([System.IO.Path]::DirectorySeparatorChar)
     # Normalize to forward slashes for consistency
@@ -92,10 +93,10 @@ function Get-AllItems {
   }
 
   # Single git ls-files call for all roots (replaces N recursive Get-ChildItem traversals)
-  $existingRoots = @($roots | Where-Object { Test-Path $_ })
+  $existingRoots = @($roots | Where-Object { Test-Path (Join-Path $repoRoot $_) })
   if ($existingRoots.Count -eq 0) { return $items }
 
-  $trackedFiles = (git ls-files -z -- @existingRoots) -split "`0" | Where-Object { $_ -ne '' }
+  $trackedFiles = (& git -C $repoRoot ls-files -z -- @existingRoots) -split "`0" | Where-Object { $_ -ne '' }
 
   # Collect unique directories from tracked file paths
   $dirSet = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
@@ -105,7 +106,7 @@ function Get-AllItems {
     # the missing-meta loop already skips *.meta on its own.
     $isMeta = $rel -like '*.meta'
     if ($isMeta -or -not (Test-ShouldExclude $rel $false)) {
-      $fullPath = Join-Path (Get-Location).Path $rel
+      $fullPath = Join-Path $repoRoot $rel
       $items.Files += @{
         FullPath = $fullPath
         RelativePath = ($rel -replace '\\', '/')
@@ -122,7 +123,7 @@ function Get-AllItems {
 
   foreach ($dirRel in $dirSet) {
     if (-not (Test-ShouldExclude $dirRel $true)) {
-      $fullPath = Join-Path (Get-Location).Path $dirRel
+      $fullPath = Join-Path $repoRoot $dirRel
       if (Test-Path -LiteralPath $fullPath -PathType Container) {
         $items.Directories += @{
           FullPath = $fullPath
@@ -146,11 +147,12 @@ $allDirectories = @()
 
 # Add root directories themselves (if they exist and aren't excluded)
 foreach ($root in $sourceRoots) {
-  if (Test-Path $root) {
+  $fullRoot = Join-Path $repoRoot $root
+  if (Test-Path $fullRoot) {
     $rootRel = $root -replace '\\', '/'
     if (-not (Test-ShouldExclude $rootRel $true)) {
       $allDirectories += @{
-        FullPath = (Resolve-Path $root).Path
+        FullPath = (Resolve-Path $fullRoot).Path
         RelativePath = $rootRel
       }
     }

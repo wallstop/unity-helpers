@@ -26,7 +26,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
         private const string LegacyAssetImportWorkerEnvVar = "UNITY_ASSETIMPORT_WORKER";
         private const int MaxRetryAttempts = 10;
 
-        // Prevents re-entrant execution during domain reloads/asset refreshes
+        // Prevents reentrant execution during domain reloads/asset refreshes
         private static bool _isEnsuring;
         private static bool _ensureScheduled;
         private static int _retryAttempts;

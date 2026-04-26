@@ -56,6 +56,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         public const float DefaultDetectAssetChangeLoopWindowSeconds = 15f;
         public const float MinDetectAssetChangeLoopWindowSeconds = 1f;
         public const float MaxDetectAssetChangeLoopWindowSeconds = 120f;
+        public const bool DefaultDeferAssetPostprocessorCallbacks = true;
         private static readonly Color DefaultLightThemeGroupBackground = new(
             0.82f,
             0.82f,
@@ -352,6 +353,11 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             EditorGUIUtility.TrTextContent(
                 "Window (s)",
                 "Time window (in seconds) used to detect repeated DetectAssetChanged callbacks before loop suppression disables them."
+            );
+        private static readonly GUIContent DeferAssetPostprocessorCallbacksContent =
+            EditorGUIUtility.TrTextContent(
+                "Defer Post-process Callbacks",
+                "Defer DetectAssetChanged and related asset-processor callbacks out of Unity's import phase to avoid 'SendMessage cannot be called...' warnings. Disable only if you need synchronous callback invocation and have audited your handlers for SendMessage safety."
             );
         private static readonly GUIContent SerializableSetDuplicateTweenEnabledContent =
             EditorGUIUtility.TrTextContent(
@@ -843,11 +849,17 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
         [WGroup(
             "Detect Asset Changes",
             displayName: "Detect Asset Changes",
-            autoIncludeCount: 1,
+            autoIncludeCount: 2,
             collapsible: true
         )]
         private float _detectAssetChangeLoopWindowSeconds =
             DefaultDetectAssetChangeLoopWindowSeconds;
+
+        [SerializeField]
+        [Tooltip(
+            "Defer DetectAssetChanged and related asset-processor callbacks out of Unity's import phase to avoid 'SendMessage cannot be called...' warnings. Disable only if you need synchronous callback invocation and have audited your handlers for SendMessage safety."
+        )]
+        private bool _deferAssetPostprocessorCallbacks = DefaultDeferAssetPostprocessorCallbacks;
 
         [FormerlySerializedAs("serializableTypeIgnorePatterns")]
         [SerializeField]
@@ -1732,6 +1744,29 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             }
         }
 
+        /// <summary>
+        /// When true, DetectAssetChanged and related editor asset-processor callbacks are
+        /// deferred out of Unity's asset-import phase. Prevents spurious
+        /// "SendMessage cannot be called during Awake, CheckConsistency, or OnValidate"
+        /// warnings that Unity emits when our processors call
+        /// <c>AssetDatabase.LoadAllAssetsAtPath</c> / <c>GetComponentsInChildren</c>
+        /// synchronously from <c>OnPostprocessAllAssets</c>.
+        /// </summary>
+        public bool DeferAssetPostprocessorCallbacks
+        {
+            get => _deferAssetPostprocessorCallbacks;
+            set
+            {
+                if (_deferAssetPostprocessorCallbacks == value)
+                {
+                    return;
+                }
+
+                _deferAssetPostprocessorCallbacks = value;
+                SaveSettings();
+            }
+        }
+
         internal IReadOnlyList<string> GetSerializableTypeIgnorePatterns()
         {
             if (
@@ -1913,6 +1948,17 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                 MinDetectAssetChangeLoopWindowSeconds,
                 MaxDetectAssetChangeLoopWindowSeconds
             );
+        }
+
+        public static bool GetDeferAssetPostprocessorCallbacks()
+        {
+            UnityHelpersSettings settings = instance;
+            if (settings == null)
+            {
+                return DefaultDeferAssetPostprocessorCallbacks;
+            }
+
+            return settings.DeferAssetPostprocessorCallbacks;
         }
 
         public static WGroupAutoIncludeConfiguration GetWGroupAutoIncludeConfiguration()
@@ -2479,6 +2525,9 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
             internal const string DetectAssetChangeLoopWindowSeconds = nameof(
                 _detectAssetChangeLoopWindowSeconds
             );
+            internal const string DeferAssetPostprocessorCallbacks = nameof(
+                _deferAssetPostprocessorCallbacks
+            );
 #pragma warning disable CS0618 // Type or member is obsolete
             internal const string WButtonPriority = nameof(WButtonPriorityColor._priority);
 #pragma warning restore CS0618 // Type or member is obsolete
@@ -2539,6 +2588,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                     nameof(SerializableSortedSetFoldoutSpeed) => SerializableSortedSetFoldoutSpeed,
                     nameof(DetectAssetChangeLoopWindowSeconds) =>
                         DetectAssetChangeLoopWindowSeconds,
+                    nameof(DeferAssetPostprocessorCallbacks) => DeferAssetPostprocessorCallbacks,
                     nameof(WButtonPriority) => WButtonPriority,
                     nameof(WButtonCustomColorButton) => WButtonCustomColorButton,
                     nameof(WButtonCustomColorText) => WButtonCustomColorText,
@@ -4951,6 +5001,23 @@ namespace WallstopStudios.UnityHelpers.Editor.Settings
                                     MaxDetectAssetChangeLoopWindowSeconds,
                                     value => settings._detectAssetChangeLoopWindowSeconds = value,
                                     true
+                                );
+                                dataChanged |= changed;
+                                return true;
+                            }
+
+                            if (
+                                string.Equals(
+                                    property.propertyPath,
+                                    nameof(_deferAssetPostprocessorCallbacks),
+                                    StringComparison.Ordinal
+                                )
+                            )
+                            {
+                                bool changed = DrawToggleField(
+                                    DeferAssetPostprocessorCallbacksContent,
+                                    settings._deferAssetPostprocessorCallbacks,
+                                    value => settings._deferAssetPostprocessorCallbacks = value
                                 );
                                 dataChanged |= changed;
                                 return true;

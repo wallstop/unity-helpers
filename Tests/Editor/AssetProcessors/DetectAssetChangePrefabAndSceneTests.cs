@@ -29,6 +29,20 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
 
         private readonly List<GameObject> _instantiatedSceneObjects = new();
 
+        /// <summary>
+        /// Folder prefixes this fixture is allowed to drive the processor through.
+        /// Covers (a) the fixture's own test root for payload assets, (b) the
+        /// committed shared-prefab fixtures under Packages, and (c) the dynamic
+        /// prefab workspace. Everything else is structurally ignored even with
+        /// <see cref="DetectAssetChangeProcessor.IncludeTestAssets"/> on.
+        /// </summary>
+        private static readonly string[] PrefabSceneFixtureAllowlist =
+        {
+            TestRoot + "/",
+            "Packages/com.wallstop-studios.unity-helpers/Tests/Editor/TestAssets/Prefabs/",
+            "Assets/Temp/DynamicPrefabFixtures/",
+        };
+
         [OneTimeSetUp]
         public override void CommonOneTimeSetUp()
         {
@@ -36,6 +50,11 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
             SharedPrefabTestFixtures.AcquireFixtures();
             CleanupTestFolders();
             AssetDatabaseBatchHelper.RefreshIfNotBatching();
+            // Drain any AssetPostprocessor deferrals scheduled by the folder
+            // cleanup/refresh above before the first test's SetUp runs. Without
+            // this, a late-arriving drain lands mid-first-test and pollutes its
+            // handler statics.
+            AssetPostprocessorDeferral.FlushForTesting();
         }
 
         [OneTimeTearDown]
@@ -45,6 +64,13 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
             CleanupTestFolders();
             SharedPrefabTestFixtures.ReleaseFixtures();
             CleanupDeferredAssetsAndFolders();
+            // The CleanupTestFolders / ReleaseFixtures / CleanupDeferred* calls above
+            // all mutate the AssetDatabase (DeleteAsset, Refresh) and each schedules a
+            // drain via AssetPostprocessorDeferral. Without an explicit flush here, a
+            // late-arriving drain fires during the next fixture's SetUp and pollutes
+            // its handler statics. The OneTimeLifecycleMethodsWithAssetMutationsFlushDeferrals
+            // contract enforces this at the source-scan level — do not remove.
+            AssetPostprocessorDeferral.FlushForTesting();
         }
 
         private GameObject InstantiateInScene(GameObject prefab)
@@ -72,23 +98,57 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
         [SetUp]
         public override void BaseSetUp()
         {
+            // Canonical cross-fixture pollution tripwire. See
+            // AssetPostprocessorTestHandlers.AssertCleanAndClearAll XML doc for
+            // the rationale (why this runs FIRST, before any asset mutation or
+            // processor configuration in this SetUp — the mutation sources here
+            // are EnsureTestFolder, SharedPrefabTestFixtures.ForceCleanup, and
+            // ResetProcessor*). Placed BEFORE base.BaseSetUp() to match the
+            // placement convention enforced by
+            // AssetContextFixturesCallCrossFixturePollutionTripwire.
+            AssetPostprocessorTestHandlers.AssertCleanAndClearAll();
+
             base.BaseSetUp();
+
             EnsureTestFolder();
-            DetectAssetChangeProcessor.IncludeTestAssets = true;
 
             // Clean up any dynamic prefab fixtures from prior tests BEFORE clearing handler state
             // This prevents dynamic prefabs from prior tests from being found during processor reset
             SharedPrefabTestFixtures.ForceCleanup();
 
-            // Assert clean state BEFORE any test operations to detect pollution from prior tests
-            AssertAllHandlersCleanAndClear();
+            // Drains scheduled by EnsureTestFolder / ForceCleanup above may land
+            // during the test body otherwise. The helper internally flushes then
+            // clears, so a separate FlushForTesting() call here would be
+            // redundant.
+            AssetPostprocessorTestHandlers.FlushAndClearAll();
+
+            // ResetForTesting clears everything including the allowlist, so this
+            // helper re-applies it after — and IncludeTestAssets is set inside
+            // the helper. Configure the processor LAST so the allowlist isn't
+            // already armed when the flush above fires drains.
+            ResetProcessorWithPrefabSceneFixtureAllowlist();
+        }
+
+        /// <summary>
+        /// Resets the processor to a clean state while preserving this fixture's
+        /// <see cref="PrefabSceneFixtureAllowlist"/>. Every in-test call site that resets the
+        /// processor MUST go through this helper — calling
+        /// <see cref="DetectAssetChangeProcessor.ResetForTesting()"/> directly drops
+        /// the allowlist, which silently opens the structural defense against
+        /// cross-fixture pollution for the remainder of that test.
+        /// </summary>
+        private static void ResetProcessorWithPrefabSceneFixtureAllowlist()
+        {
             DetectAssetChangeProcessor.ResetForTesting();
+            DetectAssetChangeProcessor.IncludeTestAssets = true;
+            DetectAssetChangeProcessor.TestAssetFolderAllowlist = PrefabSceneFixtureAllowlist;
         }
 
         [TearDown]
         public override void TearDown()
         {
             DetectAssetChangeProcessor.IncludeTestAssets = false;
+            DetectAssetChangeProcessor.TestAssetFolderAllowlist = null;
 
             // Clean up tracked scene objects directly - no FindObjectsByType!
             foreach (GameObject go in _instantiatedSceneObjects)
@@ -108,9 +168,13 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
 
             CleanupTestFolders();
             AssetDatabaseBatchHelper.RefreshIfNotBatching();
-            ClearTestState();
 
+            // ClearTestState() must run AFTER base.TearDown() because base destroys
+            // tracked assets, which schedules additional drains. The helper flushes
+            // those drains before clearing handler statics, so placing it last
+            // covers every drain source with a single call.
             base.TearDown();
+            ClearTestState();
         }
 
         [Test]
@@ -131,8 +195,7 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
             ClearTestState();
 
             // Need to reset processor so it finds the handler
-            DetectAssetChangeProcessor.ResetForTesting();
-            DetectAssetChangeProcessor.IncludeTestAssets = true;
+            ResetProcessorWithPrefabSceneFixtureAllowlist();
 
             // Act
             DetectAssetChangeProcessor.ProcessChangesForTesting(
@@ -180,8 +243,7 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
             ClearTestState();
 
             // Reset processor so it finds the handler
-            DetectAssetChangeProcessor.ResetForTesting();
-            DetectAssetChangeProcessor.IncludeTestAssets = true;
+            ResetProcessorWithPrefabSceneFixtureAllowlist();
 
             // First process creation to track the asset
             DetectAssetChangeProcessor.ProcessChangesForTesting(
@@ -228,8 +290,7 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
             CreatePayloadAsset();
             ClearTestState();
 
-            DetectAssetChangeProcessor.ResetForTesting();
-            DetectAssetChangeProcessor.IncludeTestAssets = true;
+            ResetProcessorWithPrefabSceneFixtureAllowlist();
 
             // Act
             DetectAssetChangeProcessor.ProcessChangesForTesting(
@@ -267,8 +328,7 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
             CreatePayloadAsset();
             ClearTestState();
 
-            DetectAssetChangeProcessor.ResetForTesting();
-            DetectAssetChangeProcessor.IncludeTestAssets = true;
+            ResetProcessorWithPrefabSceneFixtureAllowlist();
 
             // Act
             DetectAssetChangeProcessor.ProcessChangesForTesting(
@@ -327,8 +387,7 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
             CreatePayloadAsset();
             ClearTestState();
 
-            DetectAssetChangeProcessor.ResetForTesting();
-            DetectAssetChangeProcessor.IncludeTestAssets = true;
+            ResetProcessorWithPrefabSceneFixtureAllowlist();
 
             // Act
             DetectAssetChangeProcessor.ProcessChangesForTesting(
@@ -368,8 +427,7 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
             CreatePayloadAsset();
             ClearTestState();
 
-            DetectAssetChangeProcessor.ResetForTesting();
-            DetectAssetChangeProcessor.IncludeTestAssets = true;
+            ResetProcessorWithPrefabSceneFixtureAllowlist();
 
             // Act
             DetectAssetChangeProcessor.ProcessChangesForTesting(
@@ -400,8 +458,7 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
             CreatePayloadAsset();
             ClearTestState();
 
-            DetectAssetChangeProcessor.ResetForTesting();
-            DetectAssetChangeProcessor.IncludeTestAssets = true;
+            ResetProcessorWithPrefabSceneFixtureAllowlist();
 
             // Act
             DetectAssetChangeProcessor.ProcessChangesForTesting(
@@ -439,8 +496,7 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
             CreatePayloadAsset();
             ClearTestState();
 
-            DetectAssetChangeProcessor.ResetForTesting();
-            DetectAssetChangeProcessor.IncludeTestAssets = true;
+            ResetProcessorWithPrefabSceneFixtureAllowlist();
 
             // First process creation
             DetectAssetChangeProcessor.ProcessChangesForTesting(
@@ -498,8 +554,7 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
             CreatePayloadAsset();
             ClearTestState();
 
-            DetectAssetChangeProcessor.ResetForTesting();
-            DetectAssetChangeProcessor.IncludeTestAssets = true;
+            ResetProcessorWithPrefabSceneFixtureAllowlist();
 
             // Act
             DetectAssetChangeProcessor.ProcessChangesForTesting(
@@ -542,8 +597,7 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
             CreatePayloadAsset();
             ClearTestState();
 
-            DetectAssetChangeProcessor.ResetForTesting();
-            DetectAssetChangeProcessor.IncludeTestAssets = true;
+            ResetProcessorWithPrefabSceneFixtureAllowlist();
 
             // Act
             DetectAssetChangeProcessor.ProcessChangesForTesting(
@@ -589,8 +643,7 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
             CreatePayloadAsset();
             ClearTestState();
 
-            DetectAssetChangeProcessor.ResetForTesting();
-            DetectAssetChangeProcessor.IncludeTestAssets = true;
+            ResetProcessorWithPrefabSceneFixtureAllowlist();
 
             // Act
             DetectAssetChangeProcessor.ProcessChangesForTesting(
@@ -646,8 +699,7 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
             CreatePayloadAsset();
             ClearTestState();
 
-            DetectAssetChangeProcessor.ResetForTesting();
-            DetectAssetChangeProcessor.IncludeTestAssets = true;
+            ResetProcessorWithPrefabSceneFixtureAllowlist();
 
             // Act
             DetectAssetChangeProcessor.ProcessChangesForTesting(
@@ -710,8 +762,7 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
             CreatePayloadAsset();
             ClearTestState();
 
-            DetectAssetChangeProcessor.ResetForTesting();
-            DetectAssetChangeProcessor.IncludeTestAssets = true;
+            ResetProcessorWithPrefabSceneFixtureAllowlist();
 
             // Act
             DetectAssetChangeProcessor.ProcessChangesForTesting(
@@ -742,8 +793,7 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
             CreatePayloadAsset();
             ClearTestState();
 
-            DetectAssetChangeProcessor.ResetForTesting();
-            DetectAssetChangeProcessor.IncludeTestAssets = true;
+            ResetProcessorWithPrefabSceneFixtureAllowlist();
 
             // Act - Should not throw
             Assert.DoesNotThrow(() =>
@@ -764,8 +814,7 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
             CreatePayloadAsset();
             ClearTestState();
 
-            DetectAssetChangeProcessor.ResetForTesting();
-            DetectAssetChangeProcessor.IncludeTestAssets = true;
+            ResetProcessorWithPrefabSceneFixtureAllowlist();
 
             // Act - Should not throw even with no scene handlers
             Assert.DoesNotThrow(() =>
@@ -789,8 +838,7 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
             CreatePayloadAsset();
             ClearTestState();
 
-            DetectAssetChangeProcessor.ResetForTesting();
-            DetectAssetChangeProcessor.IncludeTestAssets = true;
+            ResetProcessorWithPrefabSceneFixtureAllowlist();
 
             // Destroy before processing - the object is tracked so cleanup will handle it
             // if DestroyImmediate fails for any reason
@@ -816,8 +864,7 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
             CreatePayloadAsset();
             ClearTestState();
 
-            DetectAssetChangeProcessor.ResetForTesting();
-            DetectAssetChangeProcessor.IncludeTestAssets = true;
+            ResetProcessorWithPrefabSceneFixtureAllowlist();
 
             // Act - Should complete normally
             Assert.DoesNotThrow(() =>
@@ -876,8 +923,7 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
             CreatePayloadAsset();
             ClearTestState();
 
-            DetectAssetChangeProcessor.ResetForTesting();
-            DetectAssetChangeProcessor.IncludeTestAssets = true;
+            ResetProcessorWithPrefabSceneFixtureAllowlist();
 
             // Act
             DetectAssetChangeProcessor.ProcessChangesForTesting(
@@ -904,63 +950,40 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
             );
         }
 
-        [Test]
-        public void PrefabComponentCanBeAddedToGameObject()
+        private static readonly (Type HandlerType, string HumanName)[] HandlerTypesUnderTest =
         {
-            // This test verifies that TestPrefabAssetChangeHandler is NOT in an Editor folder
-            // and can be properly added to GameObjects (a prerequisite for all prefab tests)
-            GameObject go = CreateTrackedSceneObject("TestAddComponent");
-            TestPrefabAssetChangeHandler handler = go.AddComponent<TestPrefabAssetChangeHandler>();
-            Assert.IsTrue(
-                handler != null,
-                "TestPrefabAssetChangeHandler must NOT be in an Editor folder. "
-                    + "MonoBehaviours in Editor folders cannot be attached to GameObjects. "
-                    + "Move TestPrefabAssetChangeHandler to a non-Editor folder (e.g., Tests/Runtime/)."
-            );
+            (typeof(TestPrefabAssetChangeHandler), "TestPrefabAssetChangeHandler"),
+            (typeof(TestSceneAssetChangeHandler), "TestSceneAssetChangeHandler"),
+            (typeof(TestCombinedSearchHandler), "TestCombinedSearchHandler"),
+            (typeof(TestNestedPrefabHandler), "TestNestedPrefabHandler"),
+        };
+
+        public static IEnumerable<TestCaseData> HandlerCanBeAddedToGameObjectCases()
+        {
+            foreach ((Type handlerType, string humanName) in HandlerTypesUnderTest)
+            {
+                yield return new TestCaseData(handlerType).SetName(
+                    $"HandlerCanBeAddedToGameObject({humanName})"
+                );
+            }
         }
 
+        /// <summary>
+        /// Verifies that each MonoBehaviour handler test double lives in a non-Editor
+        /// folder so Unity permits attaching it to GameObjects. Consolidated from four
+        /// copy-pasted tests via <see cref="TestCaseSourceAttribute"/>.
+        /// </summary>
         [Test]
-        public void SceneComponentCanBeAddedToGameObject()
+        [TestCaseSource(nameof(HandlerCanBeAddedToGameObjectCases))]
+        public void HandlerCanBeAddedToGameObject(Type handlerType)
         {
-            // This test verifies that TestSceneAssetChangeHandler is NOT in an Editor folder
-            // and can be properly added to GameObjects (a prerequisite for all scene handler tests)
             GameObject go = CreateTrackedSceneObject("TestAddComponent");
-            TestSceneAssetChangeHandler handler = go.AddComponent<TestSceneAssetChangeHandler>();
+            Component handler = go.AddComponent(handlerType);
             Assert.IsTrue(
                 handler != null,
-                "TestSceneAssetChangeHandler must NOT be in an Editor folder. "
+                $"{handlerType.Name} must NOT be in an Editor folder. "
                     + "MonoBehaviours in Editor folders cannot be attached to GameObjects. "
-                    + "Move TestSceneAssetChangeHandler to a non-Editor folder (e.g., Tests/Runtime/)."
-            );
-        }
-
-        [Test]
-        public void CombinedComponentCanBeAddedToGameObject()
-        {
-            // This test verifies that TestCombinedSearchHandler is NOT in an Editor folder
-            // and can be properly added to GameObjects (a prerequisite for all combined handler tests)
-            GameObject go = CreateTrackedSceneObject("TestAddComponent");
-            TestCombinedSearchHandler handler = go.AddComponent<TestCombinedSearchHandler>();
-            Assert.IsTrue(
-                handler != null,
-                "TestCombinedSearchHandler must NOT be in an Editor folder. "
-                    + "MonoBehaviours in Editor folders cannot be attached to GameObjects. "
-                    + "Move TestCombinedSearchHandler to a non-Editor folder (e.g., Tests/Runtime/)."
-            );
-        }
-
-        [Test]
-        public void NestedComponentCanBeAddedToGameObject()
-        {
-            // This test verifies that TestNestedPrefabHandler is NOT in an Editor folder
-            // and can be properly added to GameObjects (a prerequisite for all nested handler tests)
-            GameObject go = CreateTrackedSceneObject("TestAddComponent");
-            TestNestedPrefabHandler handler = go.AddComponent<TestNestedPrefabHandler>();
-            Assert.IsTrue(
-                handler != null,
-                "TestNestedPrefabHandler must NOT be in an Editor folder. "
-                    + "MonoBehaviours in Editor folders cannot be attached to GameObjects. "
-                    + "Move TestNestedPrefabHandler to a non-Editor folder (e.g., Tests/Runtime/)."
+                    + "Move it to a non-Editor folder (e.g., Tests/Runtime/)."
             );
         }
 
@@ -1010,18 +1033,6 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
                 sceneHandler.GetComponent<TestSceneAssetChangeHandler>() != null,
                 "SceneHandler fixture missing TestSceneAssetChangeHandler component"
             );
-        }
-
-        /// <summary>
-        /// Clears prefab and scene handler test state in addition to base handler state.
-        /// </summary>
-        protected override void ClearTestState()
-        {
-            base.ClearTestState();
-            TestPrefabAssetChangeHandler.Clear();
-            TestSceneAssetChangeHandler.Clear();
-            TestCombinedSearchHandler.Clear();
-            TestNestedPrefabHandler.Clear();
         }
 
         /// <summary>
@@ -1086,85 +1097,6 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
                 }
             }
             return result;
-        }
-
-        /// <summary>
-        /// Asserts that all handler test doubles have clean state (no recorded data),
-        /// then clears them. Use at the start of tests to detect test pollution.
-        /// This will FAIL if any handler has leftover state from a prior test.
-        /// </summary>
-        private void AssertAllHandlersCleanAndClear()
-        {
-            List<string> pollutionErrors = new();
-
-            // Check each handler and collect any pollution
-            if (
-                TestPrefabAssetChangeHandler.RecordedContexts.Count > 0
-                || TestPrefabAssetChangeHandler.RecordedInstances.Count > 0
-            )
-            {
-                pollutionErrors.Add(
-                    $"TestPrefabAssetChangeHandler pollution: "
-                        + $"RecordedContexts.Count={TestPrefabAssetChangeHandler.RecordedContexts.Count}, "
-                        + $"RecordedInstances.Count={TestPrefabAssetChangeHandler.RecordedInstances.Count}, "
-                        + $"Contexts=[{string.Join(", ", TestPrefabAssetChangeHandler.RecordedContexts.Select(c => $"Flags={c.Flags}"))}], "
-                        + $"InstanceIDs=[{string.Join(", ", TestPrefabAssetChangeHandler.RecordedInstances.Select(i => i.GetInstanceID()))}]"
-                );
-            }
-
-            if (
-                TestSceneAssetChangeHandler.RecordedContexts.Count > 0
-                || TestSceneAssetChangeHandler.RecordedInstances.Count > 0
-            )
-            {
-                pollutionErrors.Add(
-                    $"TestSceneAssetChangeHandler pollution: "
-                        + $"RecordedContexts.Count={TestSceneAssetChangeHandler.RecordedContexts.Count}, "
-                        + $"RecordedInstances.Count={TestSceneAssetChangeHandler.RecordedInstances.Count}, "
-                        + $"Contexts=[{string.Join(", ", TestSceneAssetChangeHandler.RecordedContexts.Select(c => $"Flags={c.Flags}"))}], "
-                        + $"InstanceIDs=[{string.Join(", ", TestSceneAssetChangeHandler.RecordedInstances.Select(i => i.GetInstanceID()))}]"
-                );
-            }
-
-            if (
-                TestCombinedSearchHandler.RecordedContexts.Count > 0
-                || TestCombinedSearchHandler.RecordedInstances.Count > 0
-            )
-            {
-                pollutionErrors.Add(
-                    $"TestCombinedSearchHandler pollution: "
-                        + $"RecordedContexts.Count={TestCombinedSearchHandler.RecordedContexts.Count}, "
-                        + $"RecordedInstances.Count={TestCombinedSearchHandler.RecordedInstances.Count}, "
-                        + $"Contexts=[{string.Join(", ", TestCombinedSearchHandler.RecordedContexts.Select(c => $"Flags={c.Flags}"))}], "
-                        + $"InstanceIDs=[{string.Join(", ", TestCombinedSearchHandler.RecordedInstances.Select(i => i.GetInstanceID()))}]"
-                );
-            }
-
-            if (
-                TestNestedPrefabHandler.RecordedContexts.Count > 0
-                || TestNestedPrefabHandler.RecordedInstances.Count > 0
-            )
-            {
-                pollutionErrors.Add(
-                    $"TestNestedPrefabHandler pollution: "
-                        + $"RecordedContexts.Count={TestNestedPrefabHandler.RecordedContexts.Count}, "
-                        + $"RecordedInstances.Count={TestNestedPrefabHandler.RecordedInstances.Count}, "
-                        + $"Contexts=[{string.Join(", ", TestNestedPrefabHandler.RecordedContexts.Select(c => $"Flags={c.Flags}"))}], "
-                        + $"InstanceIDs=[{string.Join(", ", TestNestedPrefabHandler.RecordedInstances.Select(i => i.GetInstanceID()))}]"
-                );
-            }
-
-            // Always clear after checking
-            ClearTestState();
-
-            // Fail if any pollution was detected
-            if (pollutionErrors.Count > 0)
-            {
-                Assert.Fail(
-                    $"Test pollution detected from prior test. Handler state was not clean at test start:\n"
-                        + string.Join("\n", pollutionErrors)
-                );
-            }
         }
     }
 }

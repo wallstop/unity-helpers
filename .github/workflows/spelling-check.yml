@@ -2,8 +2,8 @@ name: Spelling Check
 
 on:
   push:
-    branches:
-      - main
+    # Run on every branch so --no-verify feature-branch pushes still get spell-checked
+    # even if they never open a PR. Paths-scoping keeps runs cheap.
     paths:
       - "docs/**/*.md"
       - "README.md"
@@ -15,7 +15,10 @@ on:
       - "Runtime/**/*.cs"
       - "Editor/**/*.cs"
       - "Tests/**/*.cs"
+      - "scripts/add-cspell-word.js"
+      - "scripts/tests/test-add-cspell-word.js"
       - "cspell.json"
+      - "package.json"
       - ".github/workflows/spelling-check.yml"
   pull_request:
     paths:
@@ -29,7 +32,10 @@ on:
       - "Runtime/**/*.cs"
       - "Editor/**/*.cs"
       - "Tests/**/*.cs"
+      - "scripts/add-cspell-word.js"
+      - "scripts/tests/test-add-cspell-word.js"
       - "cspell.json"
+      - "package.json"
       - ".github/workflows/spelling-check.yml"
 
 permissions:
@@ -57,6 +63,9 @@ jobs:
           else
             npm i --no-audit --no-fund
           fi
+
+      - name: Test cspell word helper
+        run: node scripts/tests/test-add-cspell-word.js
 
       - name: Run spell check
         id: spellcheck

@@ -41,7 +41,10 @@ logs_extracted*
 
 *.rsp.meta
 
+# Claude Code config: ignore per-dev overrides but TRACK shared team config.
 .claude/*
+!.claude/settings.json
+!.claude/.gitkeep
 .codex/*
 _llm_*
 _llm_*.meta
@@ -384,7 +387,9 @@ BACKUP_PLAN.md*
 artifacts*/
 artifacts/**
 artifacts.meta
-.claude*/
+.claude*/**
+!.claude/settings.json
+!.claude/.gitkeep
 .claude*.meta
 .codex*/
 .codex*.meta
@@ -404,3 +409,4 @@ site/
 pre-commit.txt*
 pre-push.txt*
 benchmarks/
+pr-description.md*

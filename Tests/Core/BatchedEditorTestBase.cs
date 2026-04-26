@@ -7,6 +7,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Core
     using System;
     using NUnit.Framework;
     using UnityEditor;
+    using WallstopStudios.UnityHelpers.Editor.AssetProcessors;
     using WallstopStudios.UnityHelpers.Editor.Utils;
 
     /// <summary>
@@ -67,7 +68,19 @@ namespace WallstopStudios.UnityHelpers.Tests.Core
             }
             finally
             {
-                base.OneTimeTearDown();
+                try
+                {
+                    base.OneTimeTearDown();
+                }
+                finally
+                {
+                    // Drain any AssetPostprocessor deferrals scheduled by the asset
+                    // deletes/refresh above (including those inside base.OneTimeTearDown)
+                    // before the next fixture's OneTimeSetUp runs. Without this, a drain
+                    // lands mid-next-fixture and pollutes its handler statics.
+                    // Nested so the flush still runs if base.OneTimeTearDown throws.
+                    AssetPostprocessorDeferral.FlushForTesting();
+                }
             }
         }
 

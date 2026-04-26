@@ -38,7 +38,7 @@ function Write-Warning {
     Write-Host "⚠ $Message" -ForegroundColor Yellow
 }
 
-function Write-Error {
+function Write-ErrorMsg {
     param([string]$Message)
     Write-Host "✗ $Message" -ForegroundColor Red
 }
@@ -98,7 +98,7 @@ function Test-Status {
         Write-Success "git: $(Get-CommandVersion 'git' @('--version'))"
     }
     else {
-        Write-Error "git: NOT FOUND"
+        Write-ErrorMsg "git: NOT FOUND"
         $allOk = $false
     }
     
@@ -107,7 +107,7 @@ function Test-Status {
         Write-Success "node: $(Get-CommandVersion 'node' @('--version'))"
     }
     else {
-        Write-Error "node: NOT FOUND"
+        Write-ErrorMsg "node: NOT FOUND"
         $allOk = $false
     }
     
@@ -115,7 +115,7 @@ function Test-Status {
         Write-Success "npm: $(Get-CommandVersion 'npm' @('--version'))"
     }
     else {
-        Write-Error "npm: NOT FOUND"
+        Write-ErrorMsg "npm: NOT FOUND"
         $allOk = $false
     }
     
@@ -152,7 +152,7 @@ function Test-Status {
         Write-Success "pre-commit hook: exists"
     }
     else {
-        Write-Error "pre-commit hook: MISSING"
+        Write-ErrorMsg "pre-commit hook: MISSING"
         $allOk = $false
     }
 
@@ -160,7 +160,7 @@ function Test-Status {
         Write-Success "pre-merge-commit hook: exists"
     }
     else {
-        Write-Error "pre-merge-commit hook: MISSING"
+        Write-ErrorMsg "pre-merge-commit hook: MISSING"
         $allOk = $false
     }
 
@@ -168,10 +168,40 @@ function Test-Status {
         Write-Success "pre-push hook: exists"
     }
     else {
-        Write-Error "pre-push hook: MISSING"
+        Write-ErrorMsg "pre-push hook: MISSING"
         $allOk = $false
     }
-    
+
+    Write-Host ""
+    Write-Host "Git Push Defaults:"
+    Write-Host "------------------"
+
+    Push-Location $RepoRoot
+    try {
+        # Trim defensively — some git builds emit trailing whitespace / CR
+        # (especially on Windows / MSYS mounts) and we compare to bare literals.
+        $autoSetup = ([string](git config --local --get push.autoSetupRemote 2>$null)).Trim()
+        if ($autoSetup -eq "true") {
+            Write-Success "push.autoSetupRemote: true"
+        }
+        else {
+            $display = if ([string]::IsNullOrWhiteSpace($autoSetup)) { "unset" } else { $autoSetup }
+            Write-Warning "push.autoSetupRemote: $display (run without -Check to configure)"
+        }
+
+        $pushDefault = ([string](git config --local --get push.default 2>$null)).Trim()
+        if ($pushDefault -eq "simple") {
+            Write-Success "push.default: simple"
+        }
+        else {
+            $display = if ([string]::IsNullOrWhiteSpace($pushDefault)) { "unset" } else { $pushDefault }
+            Write-Warning "push.default: $display (run without -Check to configure)"
+        }
+    }
+    finally {
+        Pop-Location
+    }
+
     Write-Host ""
     Write-Host "Node.js Dependencies:"
     Write-Host "---------------------"
@@ -304,11 +334,31 @@ function Install-GitHooks {
     }
 }
 
+function Set-GitPushDefaults {
+    Write-Header "Configuring Git Push Defaults"
+
+    # Dot-source the shared helper rather than invoking `pwsh -NoProfile -File`
+    # on a sibling script. The subprocess form breaks on Windows PowerShell 5.1
+    # hosts that do not have pwsh on PATH; the in-process form uses whichever
+    # shell already loaded this install-hooks.ps1 script.
+    $helperScript = Join-Path $ScriptDir 'git-push-defaults-helpers.ps1'
+    if (-not (Test-Path $helperScript)) {
+        Write-Warning "scripts/git-push-defaults-helpers.ps1 not found; skipping push defaults configuration"
+        return
+    }
+
+    . $helperScript
+    $result = Set-RepoGitPushDefaults -RepoRoot $RepoRoot
+    if (-not $result.Success) {
+        Write-Warning "Set-RepoGitPushDefaults did not complete successfully; see errors above."
+    }
+}
+
 function Install-NodeDeps {
     Write-Header "Installing Node.js Dependencies"
     
     if (-not (Test-Command "npm")) {
-        Write-Error "npm is not installed. Please install Node.js first."
+        Write-ErrorMsg "npm is not installed. Please install Node.js first."
         Write-Info "Visit: https://nodejs.org/"
         return
     }
@@ -425,6 +475,7 @@ function Main {
     Write-Host ""
     
     Install-GitHooks
+    Set-GitPushDefaults
     Install-NodeDeps
     Install-DotNetTools
     Show-OptionalTools

@@ -225,6 +225,8 @@ See [ObjectsHashCodePattern.cs](../code-samples/patterns/ObjectsHashCodePattern.
 | `SendMessage()`      | Direct interface call               | Up to 1000x slower (reflection) |
 | `BroadcastMessage()` | Events/delegates or interface calls | Up to 1000x slower (reflection) |
 
+`SendMessage` / `BroadcastMessage` (and anything Unity relays internally through them, including sprite/renderer lifecycle notifications like `OnSpriteRendererBoundsChanged` and `OnValidate`) are **additionally forbidden during `AssetPostprocessor` callbacks**. Calling `AssetDatabase.Load*`, `GetComponentsInChildren`, or user callbacks synchronously from `OnPostprocessAllAssets` triggers these relays and produces `SendMessage cannot be called during Awake, CheckConsistency, or OnValidate` warnings. Defer the work via [AssetPostprocessorDeferral.Schedule](../../Editor/AssetProcessors/AssetPostprocessorDeferral.cs). See [asset-postprocessor-safety](../skills/asset-postprocessor-safety.md).
+
 ### Materials
 
 | Forbidden                                 | Use Instead                    | Reason                          |

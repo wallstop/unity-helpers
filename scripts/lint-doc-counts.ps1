@@ -9,6 +9,7 @@
 .EXAMPLE
     pwsh -NoProfile -File scripts/lint-doc-counts.ps1
 #>
+# lint-pwsh-invocations: allow-subprocess-pwsh sync-doc-counts.ps1 uses `exit` extensively for CI exit-code propagation; subprocess isolation preserves that contract without tangling parent host state.
 [CmdletBinding()]
 param()
 
