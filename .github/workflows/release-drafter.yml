@@ -98,31 +98,33 @@ jobs:
           if printf '%s\n' "$CHANGELOG_FIRST_HEADER" | grep -Eq "$SEMVER_HEADER_REGEX"; then
             CHANGELOG_VERSION="$(printf '%s\n' "$CHANGELOG_FIRST_HEADER" | sed -E 's/^## \[([^]]+)\].*$/\1/')"
           elif printf '%s\n' "$CHANGELOG_FIRST_HEADER" | grep -Eqi '^## \[Unreleased\]'; then
-            CHANGELOG_NEXT_SEMVER_HEADER="$(
-              awk '
-                BEGIN { seen_first = 0 }
-                /^## \[/ {
-                  if (!seen_first) {
-                    seen_first = 1
-                    next
-                  }
-                  if (match($0, /^## \[[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?\]/)) {
-                    print
-                    exit
-                  }
-                }
-              ' CHANGELOG.md
-            )"
-
-            if [ -n "$CHANGELOG_NEXT_SEMVER_HEADER" ]; then
-              CHANGELOG_VERSION="$(printf '%s\n' "$CHANGELOG_NEXT_SEMVER_HEADER" | sed -E 's/^## \[([^]]+)\].*$/\1/')"
-              echo "::notice::First changelog header is Unreleased; using next semver header '$CHANGELOG_VERSION'"
-            elif [ -n "$DRAFTER_TAG" ] && printf '%s\n' "$DRAFTER_TAG" | grep -Eq "$DRAFTER_TAG_SEMVER_REGEX"; then
+            if [ -n "$DRAFTER_TAG" ] && printf '%s\n' "$DRAFTER_TAG" | grep -Eq "$DRAFTER_TAG_SEMVER_REGEX"; then
               CHANGELOG_VERSION="$DRAFTER_TAG"
-              echo "::notice::First changelog header is Unreleased and no next semver header found; using semver-like release-drafter tag '$CHANGELOG_VERSION'"
+              echo "::notice::First changelog header is Unreleased; using semver-like release-drafter tag '$CHANGELOG_VERSION'"
             else
-              echo "::error::First changelog header is Unreleased and no valid next semver header or semver-like release-drafter tag was found"
-              exit 1
+              CHANGELOG_NEXT_SEMVER_HEADER="$(
+                awk '
+                  BEGIN { seen_first = 0 }
+                  /^## \[/ {
+                    if (!seen_first) {
+                      seen_first = 1
+                      next
+                    }
+                    if (match($0, /^## \[[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?\]/)) {
+                      print
+                      exit
+                    }
+                  }
+                ' CHANGELOG.md
+              )"
+
+              if [ -n "$CHANGELOG_NEXT_SEMVER_HEADER" ]; then
+                CHANGELOG_VERSION="$(printf '%s\n' "$CHANGELOG_NEXT_SEMVER_HEADER" | sed -E 's/^## \[([^]]+)\].*$/\1/')"
+                echo "::notice::First changelog header is Unreleased and release-drafter tag is not semver-like; using next semver header '$CHANGELOG_VERSION'"
+              else
+                echo "::error::First changelog header is Unreleased and no semver-like release-drafter tag or next semver header was found"
+                exit 1
+              fi
             fi
           else
             echo "::error::Unsupported changelog header format: $CHANGELOG_FIRST_HEADER"

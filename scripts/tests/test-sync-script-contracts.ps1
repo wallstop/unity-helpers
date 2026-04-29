@@ -282,18 +282,18 @@ function Run-ReleaseDrafterChangelogVersionContractTests {
     -Message 'Expected VERSION assignment from CHANGELOG_VERSION was not found.'
 
   Write-TestResult `
-    -TestName 'release-drafter derives version from next semver header when first header is Unreleased' `
-    -Passed ($workflowContent.Contains('if [ -n "$CHANGELOG_NEXT_SEMVER_HEADER" ]; then') -and $workflowContent.Contains("First changelog header is Unreleased; using next semver header")) `
-    -Message 'Expected next semver header derivation for Unreleased changelog header was not found.'
+    -TestName 'release-drafter uses semver-like release-drafter tag when first header is Unreleased' `
+    -Passed ($workflowContent.Contains("First changelog header is Unreleased; using semver-like release-drafter tag")) `
+    -Message 'Expected semver-like release-drafter tag preference for Unreleased changelog header was not found.'
 
   Write-TestResult `
-    -TestName 'release-drafter only falls back to semver-like release-drafter tag when changelog cannot provide version' `
-    -Passed ($workflowContent.Contains('DRAFTER_TAG_SEMVER_REGEX') -and $workflowContent.Contains("using semver-like release-drafter tag")) `
-    -Message 'Expected semver-validated release-drafter tag fallback was not found.'
+    -TestName 'release-drafter falls back to next semver changelog header when Unreleased and release-drafter tag is not semver-like' `
+    -Passed ($workflowContent.Contains('if [ -n "$CHANGELOG_NEXT_SEMVER_HEADER" ]; then') -and $workflowContent.Contains("release-drafter tag is not semver-like; using next semver header")) `
+    -Message 'Expected fallback to next semver changelog header was not found.'
 
   Write-TestResult `
     -TestName 'release-drafter errors when changelog is Unreleased and no semver version source exists' `
-    -Passed ($workflowContent.Contains('no valid next semver header or semver-like release-drafter tag was found')) `
+    -Passed ($workflowContent.Contains('no semver-like release-drafter tag or next semver header was found')) `
     -Message 'Expected hard failure for unresolved Unreleased changelog version was not found.'
 
   Write-TestResult `
