@@ -852,6 +852,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
             bool alwaysOpen =
                 foldoutBehavior == UnityHelpersSettings.WButtonFoldoutBehavior.AlwaysOpen;
             bool expanded = alwaysOpen || GetFoldoutState(foldoutStates, groupKey, foldoutBehavior);
+            bool currentExpanded = expanded;
             bool tweenEnabled = UnityHelpersSettings.ShouldTweenWButtonFoldouts();
             AnimBool foldoutAnim =
                 alwaysOpen || !tweenEnabled ? null : GetFoldoutAnim(groupKey, expanded);
@@ -879,8 +880,6 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
             {
                 GUILayout.Label(header, WButtonStyles.HeaderStyle);
                 EditorGUILayout.Space(WButtonStyles.FoldoutContentSpacing);
-                DrawConflictWarnings(groupKey);
-                DrawGroupContent(groupKey, contexts, paginationStates, triggeredContexts);
             }
             else
             {
@@ -910,21 +909,24 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
                 {
                     foldoutAnim.target = newExpanded;
                 }
+                currentExpanded = newExpanded;
 
                 EditorGUILayout.Space(WButtonStyles.FoldoutContentSpacing);
-                DrawConflictWarnings(groupKey);
+            }
 
-                float fade = foldoutAnim?.faded ?? (newExpanded ? 1f : 0f);
+            DrawConflictWarnings(groupKey);
+            if (alwaysOpen)
+            {
+                DrawGroupContent(groupKey, contexts, paginationStates, triggeredContexts);
+            }
+            else
+            {
+                float fade = foldoutAnim?.faded ?? (currentExpanded ? 1f : 0f);
                 if (foldoutAnim == null)
                 {
-                    if (newExpanded)
+                    if (currentExpanded)
                     {
-                        DrawGroupContent(
-                            groupKey,
-                            contexts,
-                            paginationStates,
-                            triggeredContexts
-                        );
+                        DrawGroupContent(groupKey, contexts, paginationStates, triggeredContexts);
                     }
                 }
                 else
@@ -932,12 +934,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
                     bool visible = EditorGUILayout.BeginFadeGroup(fade);
                     if (visible)
                     {
-                        DrawGroupContent(
-                            groupKey,
-                            contexts,
-                            paginationStates,
-                            triggeredContexts
-                        );
+                        DrawGroupContent(groupKey, contexts, paginationStates, triggeredContexts);
                     }
                     EditorGUILayout.EndFadeGroup();
                 }

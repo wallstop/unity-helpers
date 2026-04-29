@@ -226,7 +226,7 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
         }
 
         [Test]
-        public void PlacementConflictWarningTextIsCachedWhenGroupStartsCollapsed()
+        public void PlacementConflictWarningIsRenderedWhenGroupStartsCollapsed()
         {
             CreateAssetAndEditor<WButtonGroupPlacementConflictTarget>(out Editor editor);
             Dictionary<WButtonGroupKey, WButtonPaginationState> paginationStates = new();
@@ -253,7 +253,7 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
         }
 
         [Test]
-        public void PriorityConflictWarningTextIsCachedWhenGroupStartsCollapsed()
+        public void PriorityConflictWarningIsRenderedWhenGroupStartsCollapsed()
         {
             CreateAssetAndEditor<WButtonGroupPriorityConflictTarget>(out Editor editor);
             Dictionary<WButtonGroupKey, WButtonPaginationState> paginationStates = new();
@@ -280,7 +280,7 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
         }
 
         [Test]
-        public void DrawOrderConflictWarningTextIsCachedWhenGroupStartsCollapsed()
+        public void DrawOrderConflictWarningIsRenderedWhenGroupStartsCollapsed()
         {
             CreateAssetAndEditor<WButtonConflictingDrawOrderTarget>(out Editor editor);
             Dictionary<WButtonGroupKey, WButtonPaginationState> paginationStates = new();
