@@ -115,8 +115,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Runtime.Performance
             return $"    <tr>"
                 + $"<td>{name}</td>"
                 + $"<td align=\"right\">{opsPerSecond}</td>"
-                + $"<td>{speedLabel}</td>"
-                + $"<td>{qualityLabel}</td>"
+                + $"<td data-sort-value=\"{result.SpeedBucketSortValue}\">{speedLabel}</td>"
+                + $"<td data-sort-value=\"{result.QualitySortValue}\">{qualityLabel}</td>"
                 + $"<td>{notes}</td>"
                 + "</tr>";
         }

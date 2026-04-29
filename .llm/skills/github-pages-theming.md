@@ -229,6 +229,24 @@ table[data-sortable] th[aria-sort]:not([aria-sort="none"])::after {
 
 ---
 
+## Preserve Semantic Sort Order with `data-sort-value`
+
+For categorical table values (for example `Fastest`, `Very Fast`, `Very Slow`), lexical sorting is usually wrong.
+Emit an explicit semantic key in markup and prefer it in the sorter:
+
+```html
+<td data-sort-value="6">Fastest</td>
+<td data-sort-value="1">Very Slow</td>
+```
+
+```js
+const valueA = (cellA.getAttribute("data-sort-value") || cellA.textContent).trim();
+```
+
+This keeps display labels user-friendly while ensuring GitHub Pages sorting remains numerically meaningful.
+
+---
+
 ## Related Skills
 
 - [github-pages](./github-pages.md) — Jekyll configuration, markdown links, CI/CD validation

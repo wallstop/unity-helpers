@@ -132,8 +132,8 @@
 
         if (!cellA || !cellB) return 0;
 
-        const valueA = cellA.textContent.trim();
-        const valueB = cellB.textContent.trim();
+        const valueA = getSortableCellValue(cellA);
+        const valueB = getSortableCellValue(cellB);
 
         // Try to parse as numbers (handle commas, percentages, units)
         const numA = parseNumericValue(valueA);
@@ -155,6 +155,10 @@
       rows.forEach((row) => {
         tbody.appendChild(row);
       });
+    }
+
+    function getSortableCellValue(cell) {
+      return (cell.getAttribute("data-sort-value") || cell.textContent || "").trim();
     }
 
     function parseNumericValue(value) {
