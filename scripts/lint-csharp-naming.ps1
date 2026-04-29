@@ -9,6 +9,10 @@ $ErrorActionPreference = 'Stop'
 # Load shared git helpers for safe index operations
 $helpersPath = Join-Path -Path $PSScriptRoot -ChildPath 'git-staging-helpers.ps1'
 . $helpersPath
+# Load shared comment-masking helper so XML doc/block-comment text doesn't
+# trigger the method-declaration regex (e.g., method names referenced in
+# `<see cref="Foo_Bar"/>` should not be flagged as underscore violations).
+. (Join-Path $PSScriptRoot 'comment-stripping.ps1')
 
 # Get repository info for lock handling
 $script:RepositoryInfo = $null
@@ -83,7 +87,12 @@ $excludeDirs = @('node_modules', '.git', 'obj', 'bin', 'Library', 'Temp')
 # - Opening parenthesis for parameters
 # The key improvement: return type must start with uppercase letter (valid C# type)
 # or be a keyword like void, int, bool, etc.
-$methodPattern = [regex]'(?m)^\s*(?:(?:\[[\w\s,\(\)\"=\.]+\]\s*)*)(?:(?<access>public|private|protected|internal)\s+)?(?:(?<modifiers>(?:(?:static|virtual|override|abstract|sealed|async|new|extern|partial|unsafe|readonly)\s+)*))(?<return>(?:void|bool|byte|sbyte|char|decimal|double|float|int|uint|long|ulong|short|ushort|string|object|dynamic|var|(?:[A-Z]\w*(?:\s*<[^>]+>)?(?:\s*\[\s*,?\s*\])*(?:\s*\?)?)))(?:\s+)(?<name>[A-Z]\w*)\s*(?:<[^>]+>)?\s*\('
+# IMPORTANT: leading indent uses `[ \t]*` (NOT `\s*`) so the regex anchors at
+# the actual method-declaration line. With `\s*`, masked `///` lines collapse to
+# whitespace; `\s` matches `\n`, so the engine would consume newlines and report
+# the line number of the preceding doc-comment block instead of the method
+# itself. `[ \t]*` keeps each match within a single line.
+$methodPattern = [regex]'(?m)^[ \t]*(?:(?:\[[\w\s,\(\)\"=\.]+\][ \t]*)*)(?:(?<access>public|private|protected|internal)\s+)?(?:(?<modifiers>(?:(?:static|virtual|override|abstract|sealed|async|new|extern|partial|unsafe|readonly)\s+)*))(?<return>(?:void|bool|byte|sbyte|char|decimal|double|float|int|uint|long|ulong|short|ushort|string|object|dynamic|var|(?:[A-Z]\w*(?:\s*<[^>]+>)?(?:\s*\[\s*,?\s*\])*(?:\s*\?)?)))(?:\s+)(?<name>[A-Z]\w*)\s*(?:<[^>]+>)?\s*\('
 
 # Pattern specifically for underscore in method name
 $underscoreInNamePattern = [regex]'_'
@@ -148,8 +157,23 @@ foreach ($file in $files) {
   $content = Get-Content $filePath -Raw
   if ([string]::IsNullOrWhiteSpace($content)) { continue }
 
-  # Find all method declarations
-  $matches = $methodPattern.Matches($content)
+  # Mask comments so XML-doc references / block comments don't get scanned for
+  # method declarations. Use Get-CommentRanges so we can mask in-place against
+  # $content directly — preserves CRLF, offsets, and length exactly.
+  $maskedContent = $content
+  $commentRanges = Get-CommentRanges -Text $content -Language 'csharp'
+  $chars = $maskedContent.ToCharArray()
+  $hasRanges = $false
+  foreach ($range in $commentRanges) {
+    $hasRanges = $true
+    for ($k = $range.Start; $k -lt $range.End -and $k -lt $chars.Length; $k++) {
+      if ($chars[$k] -ne "`n" -and $chars[$k] -ne "`r") { $chars[$k] = ' ' }
+    }
+  }
+  if ($hasRanges) { $maskedContent = -join $chars }
+
+  # Find all method declarations against the masked content
+  $matches = $methodPattern.Matches($maskedContent)
 
   foreach ($m in $matches) {
     $methodName = $m.Groups['name'].Value

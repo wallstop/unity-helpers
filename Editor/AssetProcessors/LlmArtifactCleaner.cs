@@ -4,6 +4,7 @@
 namespace WallstopStudios.UnityHelpers.Editor.AssetProcessors
 {
     using System;
+    using System.Collections.Generic;
     using UnityEditor;
 
     internal sealed class LlmArtifactCleaner : AssetPostprocessor
@@ -12,8 +13,13 @@ namespace WallstopStudios.UnityHelpers.Editor.AssetProcessors
         private const string LlmPrefix = "_llm_";
 
         private static readonly string[] BlockedSegments = { LlmPrefix };
+        private static readonly HashSet<string> PendingDeletions = new(
+            StringComparer.OrdinalIgnoreCase
+        );
+        private static readonly Action DrainAction = DrainPendingDeletions;
 
         private static bool _isDeleting;
+        private static Action<string> DeleteAssetOverrideForTesting;
 
         private static void OnPostprocessAllAssets(
             string[] importedAssets,
@@ -22,32 +28,37 @@ namespace WallstopStudios.UnityHelpers.Editor.AssetProcessors
             string[] movedFromAssetPaths
         )
         {
-            DeleteBlockedAssets(importedAssets);
-            DeleteBlockedAssets(movedAssets);
+            EnqueueBlockedAssets(importedAssets);
+            EnqueueBlockedAssets(movedAssets);
+            if (PendingDeletions.Count == 0)
+            {
+                return;
+            }
+
+            AssetPostprocessorDeferral.Schedule(DrainAction);
         }
 
         internal static void DeleteBlockedAssets(string[] assetPaths)
         {
-            if (assetPaths == null || assetPaths.Length == 0)
-            {
-                return;
-            }
+            EnqueueBlockedAssets(assetPaths);
+            DrainPendingDeletions();
+        }
 
-            if (_isDeleting)
-            {
-                return;
-            }
+        internal static int PendingDeletionCountForTesting
+        {
+            get { return PendingDeletions.Count; }
+        }
 
-            for (int i = 0; i < assetPaths.Length; i++)
-            {
-                string assetPath = assetPaths[i];
-                if (!ShouldDelete(assetPath))
-                {
-                    continue;
-                }
+        internal static void ResetForTesting()
+        {
+            PendingDeletions.Clear();
+            DeleteAssetOverrideForTesting = null;
+            _isDeleting = false;
+        }
 
-                DeleteAsset(assetPath);
-            }
+        internal static void SetDeleteAssetOverrideForTesting(Action<string> deleteAction)
+        {
+            DeleteAssetOverrideForTesting = deleteAction;
         }
 
         internal static bool ShouldDelete(string assetPath)
@@ -88,14 +99,26 @@ namespace WallstopStudios.UnityHelpers.Editor.AssetProcessors
             return false;
         }
 
-        private static void DeleteAsset(string assetPath)
+        private static void EnqueueBlockedAssets(string[] assetPaths)
         {
-            if (string.IsNullOrEmpty(assetPath))
+            if (assetPaths == null || assetPaths.Length == 0)
             {
                 return;
             }
 
-            if (_isDeleting)
+            for (int i = 0; i < assetPaths.Length; i++)
+            {
+                string assetPath = assetPaths[i];
+                if (ShouldDelete(assetPath))
+                {
+                    PendingDeletions.Add(assetPath);
+                }
+            }
+        }
+
+        private static void DrainPendingDeletions()
+        {
+            if (PendingDeletions.Count == 0 || _isDeleting)
             {
                 return;
             }
@@ -103,12 +126,38 @@ namespace WallstopStudios.UnityHelpers.Editor.AssetProcessors
             _isDeleting = true;
             try
             {
-                AssetDatabase.DeleteAsset(assetPath);
+                while (PendingDeletions.Count > 0)
+                {
+                    string[] batch = new string[PendingDeletions.Count];
+                    PendingDeletions.CopyTo(batch);
+                    PendingDeletions.Clear();
+
+                    for (int i = 0; i < batch.Length; i++)
+                    {
+                        DeleteAsset(batch[i]);
+                    }
+                }
             }
             finally
             {
                 _isDeleting = false;
             }
+        }
+
+        private static void DeleteAsset(string assetPath)
+        {
+            if (string.IsNullOrEmpty(assetPath))
+            {
+                return;
+            }
+
+            if (DeleteAssetOverrideForTesting != null)
+            {
+                DeleteAssetOverrideForTesting(assetPath);
+                return;
+            }
+
+            AssetDatabase.DeleteAsset(assetPath);
         }
     }
 }

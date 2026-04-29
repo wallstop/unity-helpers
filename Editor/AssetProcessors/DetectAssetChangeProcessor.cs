@@ -59,6 +59,7 @@ namespace WallstopStudios.UnityHelpers.Editor.AssetProcessors
             internal Queue<PendingAssetChangeSet> PendingAssetChanges { get; set; } = new();
             internal bool Initialized { get; set; }
             internal bool IncludeTestAssets { get; set; }
+            internal IReadOnlyList<string> TestAssetFolderAllowlist { get; set; }
             internal bool ProcessingAssetChanges { get; set; }
             internal bool LoopProtectionActive { get; set; }
             internal int ConsecutiveChangeBatches { get; set; }
@@ -126,6 +127,7 @@ namespace WallstopStudios.UnityHelpers.Editor.AssetProcessors
         private static readonly Queue<PendingAssetChangeSet> PendingAssetChanges = new();
         private static bool _initialized;
         private static bool _includeTestAssets;
+        private static List<string> _testAssetFolderAllowlist;
         private static bool _processingAssetChanges;
         private static bool _loopProtectionActive;
         private static int _consecutiveChangeBatches;
@@ -133,6 +135,11 @@ namespace WallstopStudios.UnityHelpers.Editor.AssetProcessors
         private static Func<double> _timeProvider = DefaultTimeProvider;
         private static double? _loopWindowSecondsOverride;
         private static bool _diagnosticsEnabled;
+
+        // Declared after other static fields so its delegate target (ProcessPendingAssetChangesCore)
+        // is fully visible to the compiler at field initialization order — avoids any surprise
+        // from forward references in the field-init sequence.
+        private static readonly Action DrainPendingChangesAction = ProcessPendingAssetChangesCore;
 
         internal static Func<double> TimeProvider
         {
@@ -150,6 +157,20 @@ namespace WallstopStudios.UnityHelpers.Editor.AssetProcessors
         {
             get => _includeTestAssets;
             set => _includeTestAssets = value;
+        }
+
+        /// <summary>
+        /// Test-only: when non-null AND <see cref="IncludeTestAssets"/> is <see langword="true"/>,
+        /// asset paths not starting with any of the listed prefixes are skipped. Lets each
+        /// test fixture declare its own folder so cross-fixture pollution is structurally
+        /// impossible even if <c>Clear()</c> is forgotten. Production code never sets this,
+        /// and <see cref="ShouldSkipPath"/> treats <see langword="null"/> as "no allowlist —
+        /// preserve legacy include-all-test-assets behavior."
+        /// </summary>
+        internal static IReadOnlyList<string> TestAssetFolderAllowlist
+        {
+            get => _testAssetFolderAllowlist;
+            set => _testAssetFolderAllowlist = value == null ? null : new List<string>(value);
         }
 
         /// <summary>
@@ -179,7 +200,8 @@ namespace WallstopStudios.UnityHelpers.Editor.AssetProcessors
                 imported ?? Array.Empty<string>(),
                 deleted ?? Array.Empty<string>(),
                 moved ?? Array.Empty<string>(),
-                movedFrom ?? Array.Empty<string>()
+                movedFrom ?? Array.Empty<string>(),
+                deferProcessing: false
             );
         }
 
@@ -189,6 +211,10 @@ namespace WallstopStudios.UnityHelpers.Editor.AssetProcessors
             {
                 Initialized = _initialized,
                 IncludeTestAssets = _includeTestAssets,
+                TestAssetFolderAllowlist =
+                    _testAssetFolderAllowlist == null
+                        ? null
+                        : new List<string>(_testAssetFolderAllowlist),
                 WatchersByAssetType = new Dictionary<Type, AssetWatcher>(WatchersByAssetType),
                 PendingAssetChanges = new Queue<PendingAssetChangeSet>(PendingAssetChanges),
                 ProcessingAssetChanges = _processingAssetChanges,
@@ -205,6 +231,10 @@ namespace WallstopStudios.UnityHelpers.Editor.AssetProcessors
         {
             _initialized = settings?.Initialized ?? false;
             IncludeTestAssets = settings?.IncludeTestAssets ?? false;
+            _testAssetFolderAllowlist =
+                settings?.TestAssetFolderAllowlist == null
+                    ? null
+                    : new List<string>(settings.TestAssetFolderAllowlist);
             WatchersByAssetType.Clear();
             foreach (
                 var kvp in settings?.WatchersByAssetType
@@ -280,14 +310,21 @@ namespace WallstopStudios.UnityHelpers.Editor.AssetProcessors
                 return;
             }
 
-            EnqueueAssetChanges(importedAssets, deletedAssets, movedAssets, movedFromAssetPaths);
+            EnqueueAssetChanges(
+                importedAssets,
+                deletedAssets,
+                movedAssets,
+                movedFromAssetPaths,
+                deferProcessing: true
+            );
         }
 
         private static void EnqueueAssetChanges(
             IReadOnlyList<string> importedAssets,
             IReadOnlyList<string> deletedAssets,
             IReadOnlyList<string> movedAssets,
-            IReadOnlyList<string> movedFromAssetPaths
+            IReadOnlyList<string> movedFromAssetPaths,
+            bool deferProcessing
         )
         {
             if (_loopProtectionActive)
@@ -304,10 +341,21 @@ namespace WallstopStudios.UnityHelpers.Editor.AssetProcessors
                     movedFromAssetPaths
                 )
             );
-            ProcessPendingAssetChanges();
+
+            if (deferProcessing)
+            {
+                // Defer out of the asset-import phase: AssetDatabase.LoadAllAssetsAtPath
+                // and GetComponentsInChildren (used during callback resolution) trigger
+                // Unity's internal sprite/renderer lifecycle relays, which emit
+                // "SendMessage cannot be called..." warnings while the import is active.
+                AssetPostprocessorDeferral.Schedule(DrainPendingChangesAction);
+                return;
+            }
+
+            ProcessPendingAssetChangesCore();
         }
 
-        private static void ProcessPendingAssetChanges()
+        private static void ProcessPendingAssetChangesCore()
         {
             if (_loopProtectionActive)
             {
@@ -1490,6 +1538,32 @@ namespace WallstopStudios.UnityHelpers.Editor.AssetProcessors
             if (string.IsNullOrWhiteSpace(assetPath))
             {
                 return true;
+            }
+
+            // Test-only fixture-scoped allowlist: when tests declare a specific test-asset
+            // folder via `TestAssetFolderAllowlist`, paths outside the allowlisted
+            // prefixes are skipped even with `IncludeTestAssets = true`. This keeps one
+            // fixture's asset mutations from triggering handler invocations for another
+            // fixture's committed prefabs (the prior cause of cross-fixture pollution).
+            if (_includeTestAssets && _testAssetFolderAllowlist != null)
+            {
+                bool allowed = false;
+                for (int i = 0; i < _testAssetFolderAllowlist.Count; i++)
+                {
+                    string prefix = _testAssetFolderAllowlist[i];
+                    if (
+                        !string.IsNullOrEmpty(prefix)
+                        && assetPath.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)
+                    )
+                    {
+                        allowed = true;
+                        break;
+                    }
+                }
+                if (!allowed)
+                {
+                    return true;
+                }
             }
 
             if (

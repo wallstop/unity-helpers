@@ -446,6 +446,17 @@ Runs these in sequence:
 
 ---
 
+## Shared Helpers
+
+| Helper                          | Purpose                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `scripts/comment-stripping.ps1` | Language-aware comment masker used by `lint-doc-links`, `lint-csharp-naming`, `lint-odin-undo-safety`, `lint-drawer-multiobject`, `lint-tests`. Replaces comment characters with spaces while preserving line/column offsets so downstream regex scans don't false-positive on commented-out code. Public API: `Get-LanguageFromExtension`, `Get-CommentMaskedLines`, `Get-CommentRanges`. Pinned by `scripts/tests/test-comment-stripping.ps1`. |
+| `scripts/git-path-helpers.ps1`  | Normalizes filesystem paths to repo-relative POSIX form for safe use with `git check-ignore` and related plumbing.                                                                                                                                                                                                                                                                                                                               |
+
+When adding a new lint script that scans source-code text, prefer dot-sourcing `comment-stripping.ps1` over hand-rolling a comment scrubber.
+
+---
+
 ## Configuration File Locations
 
 | Tool         | Config File          | Purpose                |

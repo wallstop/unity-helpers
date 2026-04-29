@@ -13,6 +13,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
     using WallstopStudios.UnityHelpers.Editor.AssetProcessors;
     using WallstopStudios.UnityHelpers.Editor.Sprites;
     using WallstopStudios.UnityHelpers.Editor.Utils;
+    using WallstopStudios.UnityHelpers.Tests.AssetProcessors;
     using WallstopStudios.UnityHelpers.Tests.Core;
     using WallstopStudios.UnityHelpers.Tests.Core.TestUtils;
     using Object = UnityEngine.Object;
@@ -27,6 +28,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Sprites
         [SetUp]
         public override void BaseSetUp()
         {
+            // Canonical cross-fixture pollution tripwire: pins leaked handler
+            // state to its true source rather than rolling it forward invisibly
+            // into this fixture. Must precede base.BaseSetUp() to match the
+            // placement contract enforced by
+            // AssetContextFixturesCallCrossFixturePollutionTripwire.
+            AssetPostprocessorTestHandlers.AssertCleanAndClearAll();
             base.BaseSetUp();
             EnsureFolder(Root);
         }

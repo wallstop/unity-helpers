@@ -13,6 +13,7 @@
     pwsh -NoProfile -File scripts/sync-doc-counts.ps1
     pwsh -NoProfile -File scripts/sync-doc-counts.ps1 -Check
 #>
+# lint-pwsh-invocations: allow-subprocess-pwsh generate-doc-metadata.ps1 writes JSON to stdout; subprocess isolation prevents the parent pipeline from being polluted by `Write-Host` or other ambient output from the parent session.
 [CmdletBinding()]
 param(
     [switch]$Check

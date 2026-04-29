@@ -24,7 +24,7 @@ This package contains third-party software components governed by the license(s)
 - Description: Serializable dictionary implementation enabling Unity serialization of generic dictionaries.
 - Upstream: [GitHub repository](https://github.com/JDSherbert/Unity-Serializable-Dictionary)
 - License: MIT License
-- License URL: [MIT License](https://opensource.org/licenses/MIT)
+- License URL: [MIT License](https://opensource.org/license/MIT)
 - Notes: Adapted naming and serialization cache handling to align with Wallstop Studios Unity Helpers conventions.
 
 ### Unity Editor Toolbox (Inline Editor)
@@ -32,7 +32,7 @@ This package contains third-party software components governed by the license(s)
 - Description: Inline inspector drawer inspiration for editing object references in-place.
 - Upstream: [GitHub repository](https://github.com/arimger/Unity-Editor-Toolbox)
 - License: MIT License
-- License URL: [MIT License](https://opensource.org/licenses/MIT)
+- License URL: [MIT License](https://opensource.org/license/MIT)
 - Notes: Portions of `WInLineEditorDrawer` build upon concepts from the toolbox's InlineEditor drawer implementation.
 
 ## Sorting Algorithms
@@ -155,7 +155,7 @@ The following algorithms are based on well-known academic work and are implement
 
 ### Random Number Generators
 
-- **XorShift**: Classic PRNG by George Marsaglia (2003). [Paper](https://www.jstatsoft.org/article/view/v008i14)
+- **XorShift**: Classic PRNG by George Marsaglia (2003). [Paper](https://doi.org/10.18637/jss.v008.i14)
 - **Linear Congruential Generator**: Park-Miller variant (1988). "Random Number Generators: Good Ones Are Hard to Find" Communications of the ACM 31(10):1192-1201
 - **Squirrel Noise**: Hash-based noise function by Squirrel Eiserloh. [GDC Talk](https://youtu.be/LWFzPP8ZbdU?t=2673)
 

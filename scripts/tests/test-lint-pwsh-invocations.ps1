@@ -496,6 +496,147 @@ PWSH_CMD=(pwsh -NoProfile -File)
     $result = Invoke-LintInFixture $root
     Write-TestResult "Pass_ArrayIndirectionWithPaths" ($result.ExitCode -eq 0) "Expected exit 0 on array-indirection with -Paths. Exit: $($result.ExitCode). Output: $($result.Output)"
 
+    Write-Host "`n  Section: PWS003 — subprocess pwsh from scripts/*.ps1" -ForegroundColor White
+
+    # --- Fail_Pws003SubprocessPwshInScriptPs1 ---
+    # A scripts/*.ps1 file invokes `& pwsh -NoProfile -File scripts/sibling.ps1`
+    # for a sibling script. This fails on Windows PowerShell 5.1 (no pwsh on
+    # PATH) and wastes startup time; must trigger PWS003.
+    #
+    # Fixture content deliberately includes a LASTEXITCODE check: the `& pwsh`
+    # on the line immediately under inspection will otherwise be treated as
+    # a shell-portability D1 violation (section D of test-shell-portability.sh
+    # does not track here-string context). Also realistic — real subprocess
+    # pwsh call sites should always inspect the child's exit code.
+    $root = New-FixtureRoot
+    Set-Content -LiteralPath (Join-Path $root 'scripts/runs-sibling.ps1') -Value @'
+Set-StrictMode -Version Latest
+$ErrorActionPreference = 'Stop'
+$sibling = Join-Path $PSScriptRoot 'sibling.ps1'
+& pwsh -NoProfile -File $sibling
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+'@
+    $result = Invoke-LintInFixture $root
+    $hasPws003 = $result.Output -match 'PWS003' -and $result.Output -match 'runs-sibling\.ps1'
+    Write-TestResult "Fail_Pws003SubprocessPwshInScriptPs1" ($result.ExitCode -ne 0 -and $hasPws003) "Expected exit != 0 + PWS003 when scripts/*.ps1 invokes pwsh -File for a sibling. Exit: $($result.ExitCode). Output: $($result.Output)"
+
+    # --- Fail_Pws003SubprocessPwshWithLiteralSiblingPath ---
+    # Same as above but the sibling path is written as a literal string
+    # (scripts/sibling.ps1), not a variable. Must also trigger PWS003.
+    $root = New-FixtureRoot
+    Set-Content -LiteralPath (Join-Path $root 'scripts/runs-literal.ps1') -Value @'
+Set-StrictMode -Version Latest
+& pwsh -NoProfile -File scripts/sibling.ps1
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+'@
+    $result = Invoke-LintInFixture $root
+    $hasPws003 = $result.Output -match 'PWS003' -and $result.Output -match 'runs-literal\.ps1'
+    Write-TestResult "Fail_Pws003SubprocessPwshWithLiteralSiblingPath" ($result.ExitCode -ne 0 -and $hasPws003) "Expected exit != 0 + PWS003 on literal scripts/sibling.ps1 invocation. Exit: $($result.ExitCode). Output: $($result.Output)"
+
+    # --- Pass_Pws003AllowlistMarker ---
+    # The top-of-file allowlist marker opts the file out of PWS003 with a
+    # human-readable rationale. Must NOT trigger PWS003.
+    $root = New-FixtureRoot
+    Set-Content -LiteralPath (Join-Path $root 'scripts/allowed.ps1') -Value @'
+# lint-pwsh-invocations: allow-subprocess-pwsh child writes structured JSON to stdout; subprocess isolation required.
+Set-StrictMode -Version Latest
+$ErrorActionPreference = 'Stop'
+$sibling = Join-Path $PSScriptRoot 'sibling.ps1'
+& pwsh -NoProfile -File $sibling
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+'@
+    $result = Invoke-LintInFixture $root
+    Write-TestResult "Pass_Pws003AllowlistMarker" ($result.ExitCode -eq 0) "Expected exit 0 when the allowlist marker is present. Exit: $($result.ExitCode). Output: $($result.Output)"
+
+    # --- Fail_Pws003AllowlistMarkerMalformedUnderscores ---
+    # Negative test for the allowlist marker contract: the canonical form is
+    # `allow-subprocess-pwsh` with hyphens. A typo'd `allow_subprocess_pwsh`
+    # (underscores) must NOT exempt the file — otherwise silent typos in
+    # future markers would become invisible escape hatches. The violation
+    # must still be flagged as PWS003.
+    $root = New-FixtureRoot
+    Set-Content -LiteralPath (Join-Path $root 'scripts/bad-marker-underscores.ps1') -Value @'
+# lint-pwsh-invocations: allow_subprocess_pwsh child writes structured JSON to stdout; subprocess isolation required.
+Set-StrictMode -Version Latest
+$ErrorActionPreference = 'Stop'
+$sibling = Join-Path $PSScriptRoot 'sibling.ps1'
+& pwsh -NoProfile -File $sibling
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+'@
+    $result = Invoke-LintInFixture $root
+    $hasPws003 = $result.Output -match 'PWS003' -and $result.Output -match 'bad-marker-underscores\.ps1'
+    Write-TestResult "Fail_Pws003AllowlistMarkerMalformedUnderscores" ($result.ExitCode -ne 0 -and $hasPws003) "Expected exit != 0 + PWS003 when the allowlist marker uses underscores instead of hyphens. Exit: $($result.ExitCode). Output: $($result.Output)"
+
+    # --- Fail_Pws003AllowlistMarkerSingularKey ---
+    # Another typo variant: `lint-pwsh-invocation:` (singular) instead of the
+    # canonical plural `lint-pwsh-invocations:`. Must not exempt the file.
+    $root = New-FixtureRoot
+    Set-Content -LiteralPath (Join-Path $root 'scripts/bad-marker-singular.ps1') -Value @'
+# lint-pwsh-invocation: allow-subprocess-pwsh child writes structured JSON to stdout; subprocess isolation required.
+Set-StrictMode -Version Latest
+$ErrorActionPreference = 'Stop'
+$sibling = Join-Path $PSScriptRoot 'sibling.ps1'
+& pwsh -NoProfile -File $sibling
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+'@
+    $result = Invoke-LintInFixture $root
+    $hasPws003 = $result.Output -match 'PWS003' -and $result.Output -match 'bad-marker-singular\.ps1'
+    Write-TestResult "Fail_Pws003AllowlistMarkerSingularKey" ($result.ExitCode -ne 0 -and $hasPws003) "Expected exit != 0 + PWS003 when the allowlist key is singular 'lint-pwsh-invocation' instead of plural. Exit: $($result.ExitCode). Output: $($result.Output)"
+
+    # --- Pass_Pws003TestsDirExempt ---
+    # scripts/tests/*.ps1 is NOT scanned for PWS003 (tests need subprocess
+    # isolation to exercise CLI-binding semantics — the very thing PWS002 guards).
+    $root = New-FixtureRoot
+    Set-Content -LiteralPath (Join-Path $root 'scripts/tests/test-thing.ps1') -Value @'
+Set-StrictMode -Version Latest
+$script = Join-Path $PSScriptRoot '..' 'foo.ps1'
+$output = & pwsh -NoProfile -File $script -Paths bar *>&1
+$exitCode = $LASTEXITCODE
+'@
+    $result = Invoke-LintInFixture $root
+    Write-TestResult "Pass_Pws003TestsDirExempt" ($result.ExitCode -eq 0) "Expected exit 0 — scripts/tests/*.ps1 is exempt from PWS003. Exit: $($result.ExitCode). Output: $($result.Output)"
+
+    # --- Pass_Pws003StringLiteralNotFlagged ---
+    # pwsh invocation text appearing INSIDE a double-quoted or single-quoted
+    # string literal (e.g. Write-Host help text) must NOT trigger PWS003.
+    $root = New-FixtureRoot
+    Set-Content -LiteralPath (Join-Path $root 'scripts/help-text.ps1') -Value @'
+Set-StrictMode -Version Latest
+Write-Host "  pwsh -NoProfile -File scripts/thing.ps1"
+Write-Host '    pwsh -NoProfile -File scripts/other.ps1'
+$example = "Run: pwsh -NoProfile -File scripts/yet-another.ps1"
+'@
+    $result = Invoke-LintInFixture $root
+    Write-TestResult "Pass_Pws003StringLiteralNotFlagged" ($result.ExitCode -eq 0) "Expected exit 0 — pwsh inside a quoted string literal must not trigger PWS003. Exit: $($result.ExitCode). Output: $($result.Output)"
+
+    # --- Pass_Pws003CommentBlockExempt ---
+    # PowerShell comment-based-help blocks that DOCUMENT the anti-pattern
+    # must NOT trigger PWS003 (they're documentation, not an invocation).
+    $root = New-FixtureRoot
+    Set-Content -LiteralPath (Join-Path $root 'scripts/docs.ps1') -Value @'
+<#
+.SYNOPSIS
+    Example invocation:
+        pwsh -NoProfile -File scripts/thing.ps1
+#>
+param()
+Write-Host "ok"
+'@
+    $result = Invoke-LintInFixture $root
+    Write-TestResult "Pass_Pws003CommentBlockExempt" ($result.ExitCode -eq 0) "Expected exit 0 — <# #> help block documenting the anti-pattern must not trigger PWS003. Exit: $($result.ExitCode). Output: $($result.Output)"
+
+    # --- Pass_Pws003PowerShellCommandAlsoCovered ---
+    # `powershell` (not just `pwsh`) — Windows PowerShell 5.1 form — must
+    # also trigger PWS003 when invoked from a scripts/*.ps1 file.
+    $root = New-FixtureRoot
+    Set-Content -LiteralPath (Join-Path $root 'scripts/runs-psexe.ps1') -Value @'
+Set-StrictMode -Version Latest
+& powershell -NoProfile -ExecutionPolicy Bypass -File scripts/sibling.ps1
+'@
+    $result = Invoke-LintInFixture $root
+    $hasPws003 = $result.Output -match 'PWS003' -and $result.Output -match 'runs-psexe\.ps1'
+    Write-TestResult "Fail_Pws003PowerShellCommandAlsoCovered" ($result.ExitCode -ne 0 -and $hasPws003) "Expected exit != 0 + PWS003 for 'powershell -File' form. Exit: $($result.ExitCode). Output: $($result.Output)"
+
 } finally {
     Remove-Item -Recurse -Force $tempRoot -ErrorAction SilentlyContinue
 }

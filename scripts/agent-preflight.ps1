@@ -10,6 +10,8 @@ Param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'git-staging-helpers.ps1')
+. (Join-Path $PSScriptRoot 'git-push-defaults-helpers.ps1')
+. (Join-Path $PSScriptRoot 'git-path-helpers.ps1')
 
 function Write-Info($Message) {
     if ($VerboseOutput) {
@@ -23,42 +25,6 @@ function Write-ErrorMsg($Message) {
 
 function Write-WarningMsg($Message) {
     Write-Host "[agent-preflight] WARNING: $Message" -ForegroundColor Yellow
-}
-
-function Resolve-RepoRelativePath {
-    param(
-        [Parameter(Mandatory = $true)]
-        [string]$Path,
-        [Parameter(Mandatory = $true)]
-        [string]$RepoRoot
-    )
-
-    if ([string]::IsNullOrWhiteSpace($Path)) {
-        return $null
-    }
-
-    $normalizedRepoRoot = [System.IO.Path]::GetFullPath($RepoRoot)
-    $normalizedRepoRoot = $normalizedRepoRoot.Replace('\\', '/')
-
-    if ([System.IO.Path]::IsPathRooted($Path)) {
-        $fullPath = [System.IO.Path]::GetFullPath($Path)
-        $fullPath = $fullPath.Replace('\\', '/')
-        $repoPrefix = "$normalizedRepoRoot/"
-        if ($fullPath -eq $normalizedRepoRoot) {
-            return '.'
-        }
-        if (-not $fullPath.StartsWith($repoPrefix, [System.StringComparison]::OrdinalIgnoreCase)) {
-            return $null
-        }
-        return $fullPath.Substring($repoPrefix.Length)
-    }
-
-    $normalizedPath = $Path.Replace('\\', '/')
-    if ($normalizedPath.StartsWith('./')) {
-        return $normalizedPath.Substring(2)
-    }
-
-    return $normalizedPath
 }
 
 function Get-GitChangedPaths {
@@ -117,7 +83,7 @@ function Get-GitStagedPaths {
                 continue
             }
 
-            $normalizedPath = $line.Replace('\\', '/')
+            $normalizedPath = $line.Replace('\', '/')
             $stagedPaths.Add($normalizedPath) | Out-Null
         }
     }
@@ -151,6 +117,268 @@ function Add-PathsToGitIndexWithRetry {
     finally {
         Pop-Location
     }
+}
+
+function Test-GitPushConfig {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$RepoRoot,
+        [Parameter(Mandatory = $true)]
+        [ref]$FailureCount,
+        [switch]$Fix
+    )
+
+    $expected = @{
+        'push.autoSetupRemote' = 'true'
+        'push.default' = 'simple'
+    }
+
+    $mismatches = New-Object System.Collections.Generic.List[string]
+
+    Push-Location $RepoRoot
+    try {
+        foreach ($key in $expected.Keys) {
+            $actual = & git config --local --get $key 2>$null
+            if ($LASTEXITCODE -ne 0) { $actual = '' }
+            # Trim defensively — git may emit trailing CR/whitespace
+            # (especially on Windows / MSYS mounts) and we compare against
+            # bare literals.
+            $actual = ([string]$actual).Trim()
+            if ($actual -ne $expected[$key]) {
+                $display = if ([string]::IsNullOrWhiteSpace($actual)) { 'unset' } else { $actual }
+                $mismatches.Add("$key is '$display' (expected '$($expected[$key])')") | Out-Null
+            }
+        }
+    }
+    finally {
+        Pop-Location
+    }
+
+    if ($mismatches.Count -eq 0) {
+        Write-Info 'Git push defaults OK (push.autoSetupRemote=true, push.default=simple).'
+        return
+    }
+
+    if ($Fix) {
+        Write-Host '[agent-preflight] Fixing git push defaults via Set-RepoGitPushDefaults...' -ForegroundColor Blue
+
+        # Use the dot-sourced helper directly instead of spawning a subprocess
+        # (`pwsh -NoProfile -File scripts/configure-git-defaults.ps1`). The
+        # subprocess form breaks on Windows PowerShell 5.1 hosts that do not
+        # have pwsh on PATH; the in-process form reuses whichever shell
+        # already loaded agent-preflight.ps1.
+        $helperResult = Set-RepoGitPushDefaults -RepoRoot $RepoRoot
+        if (-not $helperResult.Success) {
+            Write-ErrorMsg 'Set-RepoGitPushDefaults failed; git push defaults were NOT applied.'
+            foreach ($err in $helperResult.Errors) {
+                Write-Host "  $err" -ForegroundColor Yellow
+            }
+            $FailureCount.Value++
+            return
+        }
+
+        # Defense-in-depth: re-read both local config values one more time.
+        # The helper already verified persistence internally, but this extra
+        # check catches anything weird that could happen between the helper's
+        # verify pass and this point (e.g., a concurrent external edit).
+        $verifyMismatches = New-Object System.Collections.Generic.List[string]
+        Push-Location $RepoRoot
+        try {
+            foreach ($key in $expected.Keys) {
+                $verified = & git config --local --get $key 2>$null
+                if ($LASTEXITCODE -ne 0) { $verified = '' }
+                $verified = ([string]$verified).Trim()
+                if ($verified -ne $expected[$key]) {
+                    $display = if ([string]::IsNullOrWhiteSpace($verified)) { 'unset' } else { $verified }
+                    $verifyMismatches.Add("$key is '$display' (expected '$($expected[$key])')") | Out-Null
+                }
+            }
+        }
+        finally {
+            Pop-Location
+        }
+
+        if ($verifyMismatches.Count -gt 0) {
+            Write-ErrorMsg 'Set-RepoGitPushDefaults reported success but git push defaults did NOT persist:'
+            foreach ($item in $verifyMismatches) {
+                Write-Host "  $item" -ForegroundColor Yellow
+            }
+            Write-Host 'Inspect .git/config for permission or wrapper issues. You can also invoke scripts/configure-git-defaults.ps1 directly to reproduce.' -ForegroundColor Cyan
+            $FailureCount.Value++
+            return
+        }
+
+        Write-Host '[agent-preflight] Git push defaults applied and verified.' -ForegroundColor Green
+        return
+    }
+
+    Write-ErrorMsg 'Git push defaults are not configured for this repository:'
+    foreach ($item in $mismatches) {
+        Write-Host "  $item" -ForegroundColor Yellow
+    }
+    Write-Host 'Run: npm run agent:preflight:fix, or manually: git config --local push.autoSetupRemote true && git config --local push.default simple' -ForegroundColor Cyan
+    $FailureCount.Value++
+}
+
+function Test-StrayArtifactFiles {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$RepoRoot,
+        [Parameter(Mandatory = $true)]
+        [ref]$FailureCount,
+        [switch]$Fix
+    )
+
+    $hooksDir = Join-Path $RepoRoot '.githooks'
+    if (-not (Test-Path -LiteralPath $hooksDir -PathType Container)) {
+        return
+    }
+
+    $hookNames = @(
+        Get-ChildItem -LiteralPath $hooksDir -File -ErrorAction SilentlyContinue |
+            Where-Object { $_.Name -notlike '*.sample' } |
+            ForEach-Object {
+                if ($_.Name -like '*.*') {
+                    [System.IO.Path]::GetFileNameWithoutExtension($_.Name)
+                }
+                else {
+                    $_.Name
+                }
+            } |
+            Where-Object { -not [string]::IsNullOrWhiteSpace($_) } |
+            Sort-Object -Unique
+    )
+
+    $artifactExtensions = @('txt', 'log', 'out', 'err', 'tmp')
+    $strayFiles = New-Object System.Collections.Generic.List[string]
+
+    foreach ($hook in $hookNames) {
+        foreach ($ext in $artifactExtensions) {
+            $candidate = Join-Path $RepoRoot "$hook.$ext"
+            if (Test-Path -LiteralPath $candidate -PathType Leaf) {
+                $strayFiles.Add($candidate) | Out-Null
+            }
+        }
+    }
+
+    $hooksScanExts = @('tmp', 'log', 'out', 'err')
+    foreach ($ext in $hooksScanExts) {
+        $matched = Get-ChildItem -LiteralPath $hooksDir -Filter "*.$ext" -File -ErrorAction SilentlyContinue
+        foreach ($file in $matched) {
+            $strayFiles.Add($file.FullName) | Out-Null
+        }
+    }
+
+    $uniqueStrayFiles = @($strayFiles | Sort-Object -Unique)
+    if ($uniqueStrayFiles.Count -eq 0) {
+        return
+    }
+
+    # Safety gate: only delete files that git confirms are gitignored. A file
+    # matching the error-log pattern that is NOT gitignored may be a legitimate
+    # user artifact (e.g. a committed or intentionally-tracked "pre-commit.log"
+    # note) and must not be silently removed.
+    #
+    # IMPORTANT: git check-ignore expects REPO-RELATIVE paths with POSIX
+    # forward-slash separators. On Windows, the absolute paths we build via
+    # `Join-Path $RepoRoot ...` and `.FullName` contain backslashes, which
+    # git check-ignore may silently MISCLASSIFY (reporting "not ignored"
+    # for a file that is in fact gitignored). A misclassification here
+    # would cause the safety gate below to refuse auto-delete of legitimate
+    # stray files. Use ConvertTo-GitRelativePosixPath (from
+    # scripts/git-path-helpers.ps1) to normalize before every call.
+    #
+    # git check-ignore exit codes:
+    #   0   -> ignored
+    #   1   -> not ignored
+    #   128 -> error (e.g. not a git repo, IO failure)
+    $ignoredFiles = New-Object System.Collections.Generic.List[string]
+    $unignoredFiles = New-Object System.Collections.Generic.List[string]
+    $checkIgnoreErrors = New-Object System.Collections.Generic.List[string]
+    foreach ($file in $uniqueStrayFiles) {
+        $relative = ConvertTo-GitRelativePosixPath -Path $file -RepoRoot $RepoRoot
+        if ([string]::IsNullOrWhiteSpace($relative) -or $relative -eq '.') {
+            # File is outside the repo root (should not happen for strays that
+            # we discovered under $RepoRoot or .githooks/) or normalization
+            # failed — refuse to delete without a clean ignore confirmation.
+            $checkIgnoreErrors.Add("${file}: cannot resolve repo-relative path") | Out-Null
+            $unignoredFiles.Add($file) | Out-Null
+            continue
+        }
+
+        & git -C $RepoRoot check-ignore -q -- "$relative" 2>$null
+        $checkExit = $LASTEXITCODE
+        switch ($checkExit) {
+            0 { $ignoredFiles.Add($file) | Out-Null }
+            1 { $unignoredFiles.Add($file) | Out-Null }
+            default {
+                # Treat check-ignore failures as "unsafe to delete". The file is
+                # still a match for an error-log pattern so we surface it, but
+                # we refuse to delete it without a clean ignore confirmation.
+                $checkIgnoreErrors.Add("${file}: git check-ignore exit $checkExit") | Out-Null
+                $unignoredFiles.Add($file) | Out-Null
+            }
+        }
+    }
+
+    if ($Fix) {
+        if ($ignoredFiles.Count -gt 0) {
+            Write-Host '[agent-preflight] Removing stray git-hook artifact file(s) (verified gitignored):' -ForegroundColor Blue
+            foreach ($file in $ignoredFiles) {
+                try {
+                    Remove-Item -LiteralPath $file -Force -ErrorAction Stop
+                    Write-Host "  removed: $file" -ForegroundColor Green
+                }
+                catch {
+                    Write-ErrorMsg "Failed to remove ${file}: $($_.Exception.Message)"
+                    $FailureCount.Value++
+                }
+            }
+        }
+
+        if ($unignoredFiles.Count -gt 0) {
+            Write-WarningMsg 'Skipped deletion of stray artifact file(s) not confirmed as gitignored:'
+            foreach ($file in $unignoredFiles) {
+                Write-Host "  $file" -ForegroundColor Yellow
+            }
+            if ($checkIgnoreErrors.Count -gt 0) {
+                Write-Host 'git check-ignore encountered errors on:' -ForegroundColor Yellow
+                foreach ($entry in $checkIgnoreErrors) {
+                    Write-Host "  $entry" -ForegroundColor Yellow
+                }
+            }
+            Write-Host 'These files match an error-log pattern but are not gitignored. Delete manually if stale, or add a .gitignore entry and re-run.' -ForegroundColor Cyan
+            $FailureCount.Value++
+        }
+        return
+    }
+
+    Write-ErrorMsg 'Stray git-hook artifact file(s) detected (likely redirected hook output):'
+    if ($ignoredFiles.Count -gt 0) {
+        Write-Host '  gitignored (safe to auto-delete with -Fix):' -ForegroundColor Yellow
+        foreach ($file in $ignoredFiles) {
+            Write-Host "    $file" -ForegroundColor Yellow
+        }
+    }
+    if ($unignoredFiles.Count -gt 0) {
+        Write-Host '  NOT gitignored (manual review required):' -ForegroundColor Yellow
+        foreach ($file in $unignoredFiles) {
+            Write-Host "    $file" -ForegroundColor Yellow
+        }
+    }
+    if ($checkIgnoreErrors.Count -gt 0) {
+        Write-Host '  git check-ignore errors:' -ForegroundColor Yellow
+        foreach ($entry in $checkIgnoreErrors) {
+            Write-Host "    $entry" -ForegroundColor Yellow
+        }
+    }
+    if ($ignoredFiles.Count -gt 0) {
+        Write-Host 'Run with -Fix to delete the gitignored files (npm run agent:preflight:fix). Never redirect git command output to files in the working tree.' -ForegroundColor Cyan
+    }
+    if ($unignoredFiles.Count -gt 0) {
+        Write-Host 'Files matching an error-log pattern but not gitignored will NOT be auto-deleted - delete manually if stale, or add a .gitignore entry and re-run.' -ForegroundColor Cyan
+    }
+    $FailureCount.Value++
 }
 
 function Test-MetaRequiredPath {
@@ -187,6 +415,11 @@ if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
     exit 1
 }
 
+$failureCount = 0
+
+Test-GitPushConfig -RepoRoot $repoRoot -FailureCount ([ref]$failureCount) -Fix:$Fix
+Test-StrayArtifactFiles -RepoRoot $repoRoot -FailureCount ([ref]$failureCount) -Fix:$Fix
+
 $candidatePaths = if ($null -ne $Paths -and $Paths.Count -gt 0) {
     $resolved = @($Paths)
     if ($null -ne $AdditionalPaths -and $AdditionalPaths.Count -gt 0) {
@@ -202,7 +435,7 @@ $dedupedPaths = [System.Collections.Generic.HashSet[string]]::new([System.String
 $relativePaths = New-Object System.Collections.Generic.List[string]
 
 foreach ($candidate in $candidatePaths) {
-    $relative = Resolve-RepoRelativePath -Path $candidate -RepoRoot $repoRoot
+    $relative = ConvertTo-GitRelativePosixPath -Path $candidate -RepoRoot $repoRoot
     if ($null -eq $relative -or [string]::IsNullOrWhiteSpace($relative) -or $relative -eq '.') {
         continue
     }
@@ -213,6 +446,10 @@ foreach ($candidate in $candidatePaths) {
 }
 
 if ($relativePaths.Count -eq 0) {
+    if ($failureCount -gt 0) {
+        Write-Host "[agent-preflight] Failed with $failureCount check group(s) reporting issues." -ForegroundColor Red
+        exit 1
+    }
     Write-Host '[agent-preflight] No changed files detected. Nothing to validate.' -ForegroundColor Green
     exit 0
 }
@@ -236,8 +473,6 @@ if ($metaRelevantPaths.Count -gt 0 -and -not (Invoke-EnsureNoIndexLock)) {
         Write-WarningMsg 'index.lock is currently held by another process. Read-only checks can pass while commit-time auto-stage fails. Close competing git tools and run npm run agent:preflight:fix before committing.'
     }
 }
-
-$failureCount = 0
 
 if ($llmSizeTargets.Count -gt 0) {
     Write-Host '[agent-preflight] Checking changed skill/context file sizes...' -ForegroundColor Blue
@@ -479,7 +714,7 @@ if ($metaRelevantPaths.Count -gt 0) {
                 $stagedPath
             }
             else {
-                (Split-Path -Path $stagedPath -Parent).Replace('\\', '/')
+                (Split-Path -Path $stagedPath -Parent).Replace('\', '/')
             }
 
             while (-not [string]::IsNullOrWhiteSpace($directory) -and $directory -ne '.') {
@@ -495,7 +730,7 @@ if ($metaRelevantPaths.Count -gt 0) {
 
                 $directory = Split-Path -Path $directory -Parent
                 if (-not [string]::IsNullOrWhiteSpace($directory)) {
-                    $directory = $directory.Replace('\\', '/')
+                    $directory = $directory.Replace('\', '/')
                 }
             }
         }

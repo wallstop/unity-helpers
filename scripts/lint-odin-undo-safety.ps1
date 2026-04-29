@@ -5,6 +5,9 @@ Param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+# Shared comment-masking helper: avoids flagging WeakTargets/Undo references
+# that appear inside `///` xml-doc or `/* ... */` block comments.
+. (Join-Path $PSScriptRoot 'comment-stripping.ps1')
 
 function Write-Info($msg) {
   if ($VerboseOutput) { Write-Host "[lint-odin-undo-safety] $msg" -ForegroundColor Cyan }
@@ -95,21 +98,30 @@ foreach ($file in $filesToScan) {
   if ($file -like '*.meta') { continue }
   $rel = Get-RelativePath $file
 
-  $content = Get-Content $file
-  if ($content.Count -eq 0) { continue }
+  $rawContent = Get-Content $file
+  if ($rawContent.Count -eq 0) { continue }
+
+  # Replace comments with spaces so unsafe-cast patterns inside XML-doc/block
+  # comments don't trigger false positives. Pattern-match against masked lines,
+  # but check UNH-SUPPRESS against the ORIGINAL (since the suppress marker
+  # itself lives in a comment).
+  $masked = Get-CommentMaskedLines -Lines $rawContent -Language 'csharp'
+  if ($null -eq $masked) { $masked = $rawContent }
 
   Write-Info "Scanning $rel"
 
   $lineIndex = 0
-  foreach ($line in $content) {
+  foreach ($line in $masked) {
     $lineIndex++
+    $rawLine = $rawContent[$lineIndex - 1]
 
-    # Skip lines with UNH-SUPPRESS comment
-    if ($suppressPattern.IsMatch($line)) { continue }
+    # Skip lines with UNH-SUPPRESS comment (check the raw line: suppress marker
+    # lives inside `//` and would be masked away on $line)
+    if ($suppressPattern.IsMatch($rawLine)) { continue }
 
     # Pattern 1: Direct cast of WeakTargets to UnityEngine.Object[]
     if ($unsafeCastPattern.IsMatch($line)) {
-      $hasSafe = Test-SafeFilter $content $lineIndex 10
+      $hasSafe = Test-SafeFilter $masked $lineIndex 10
 
       if (-not $hasSafe) {
         $violations += @{
@@ -122,7 +134,7 @@ foreach ($file in $filesToScan) {
 
     # Pattern 2: "as UnityEngine.Object" cast without pattern-match filter
     if ($unsafeAsCastPattern.IsMatch($line)) {
-      $hasSafe = Test-SafeFilter $content $lineIndex 10
+      $hasSafe = Test-SafeFilter $masked $lineIndex 10
 
       if (-not $hasSafe) {
         $violations += @{

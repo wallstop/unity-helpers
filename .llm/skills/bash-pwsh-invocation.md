@@ -85,11 +85,12 @@ See [`lint-skill-sizes.ps1`](../../scripts/lint-skill-sizes.ps1) and [`lint-depe
 
 ## What The Lint Catches
 
-| Code   | Pattern                                                     | File types                                       |
-| ------ | ----------------------------------------------------------- | ------------------------------------------------ |
-| PWS001 | `pwsh -File <script> --` or `powershell -File ... --`       | `*.sh`, `.githooks/*`, workflows, `package.json` |
-| PWS001 | `"${PWSH_CMD[@]}" <script>.ps1 --` (bash array indirection) | `*.sh`, `.githooks/*`, workflows, `package.json` |
-| PWS002 | `& <script-var-or-path>.ps1 --` in tests                    | `scripts/tests/*.ps1`                            |
+| Code   | Pattern                                                               | File types                                       |
+| ------ | --------------------------------------------------------------------- | ------------------------------------------------ |
+| PWS001 | `pwsh -File <script> --` or `powershell -File ... --`                 | `*.sh`, `.githooks/*`, workflows, `package.json` |
+| PWS001 | `"${PWSH_CMD[@]}" <script>.ps1 --` (bash array indirection)           | `*.sh`, `.githooks/*`, workflows, `package.json` |
+| PWS002 | `& <script-var-or-path>.ps1 --` in tests                              | `scripts/tests/*.ps1`                            |
+| PWS003 | `scripts/*.ps1` invokes `pwsh\|powershell -NoProfile -File <sibling>` | `scripts/*.ps1` (excludes `scripts/tests/*`)     |
 
 Detection beyond a single physical line:
 
@@ -97,7 +98,38 @@ Detection beyond a single physical line:
 - **YAML folded scalars (`run: >`)** — indented block bodies are folded into one command and scanned.
 - **Comment exclusions** — a physical line whose first non-whitespace char is `#` (in `.sh`, `.yml`, `.yaml`, `.ps1`) is skipped.
 
-Strings inside `<# ... #>` comment-based help blocks in `.ps1` files are exempt (so documentation can still show historical bad patterns).
+Strings inside `<# ... #>` comment-based help blocks in `.ps1` files are exempt (so documentation can still show historical bad patterns). PWS003 additionally skips matches inside `"..."` / `'...'` string literals so `Write-Host` help text that references an invocation is not flagged.
+
+---
+
+## PWS003: Prefer Dot-Source Over Subprocess Pwsh Inside `scripts/*.ps1`
+
+When one `scripts/<name>.ps1` script needs behavior from a sibling, the Windows-portable choice is to **dot-source a shared helper module**, not to spawn a `pwsh -NoProfile -File` subprocess. Windows PowerShell 5.1 hosts (the default `powershell.exe`) do not ship with `pwsh` on PATH; a subprocess call with the `pwsh` executable silently fails on those hosts. Even where both hosts are present, the subprocess boundary drops the parent session's variables, doubles startup cost, and makes dependency graphs harder to reason about.
+
+```powershell
+# WRONG - PWS003. Breaks on Windows PowerShell 5.1 (no pwsh on PATH).
+& pwsh -NoProfile -File $PSScriptRoot\configure-git-defaults.ps1 -RepoRoot $repoRoot
+
+# CORRECT - dot-source a helper module that exports a function.
+. (Join-Path $PSScriptRoot 'git-push-defaults-helpers.ps1')
+$result = Set-RepoGitPushDefaults -RepoRoot $repoRoot
+if (-not $result.Success) { # handle errors }
+```
+
+The refactoring recipe:
+
+1. Extract the reusable logic into `scripts/<name>-helpers.ps1` that exposes one or more functions (never calling `exit` itself).
+2. Keep the original CLI script as a thin wrapper that dot-sources the helper and translates function results to process exit codes.
+3. Replace every `& pwsh -NoProfile -File <sibling>.ps1 ...` call in `scripts/*.ps1` with `. (Join-Path $PSScriptRoot '<sibling>-helpers.ps1')` + function call.
+4. Keep tests invoking the CLI wrapper via subprocess (tests belong under `scripts/tests/` and are exempt from PWS003 by design — they need to exercise the production CLI surface).
+
+**Allowlist**: when subprocess isolation is genuinely required (e.g., the callee writes structured JSON to stdout and must not be polluted by the parent host's ambient `Write-Host` output, or the callee uses `exit` extensively and cannot be refactored cheaply), opt out with a top-of-file marker:
+
+```powershell
+# lint-pwsh-invocations: allow-subprocess-pwsh <one-line rationale>
+```
+
+The rationale is required — the marker without an explanation is a maintenance hazard.
 
 ---
 
@@ -124,3 +156,4 @@ Strings inside `<# ... #>` comment-based help blocks in `.ps1` files are exempt 
 ## History
 
 - **2026-04-19**: Skill created after the `-- "${DEPENDABOT_FILES_ARRAY[@]}"` regression in `.githooks/pre-commit`. The bug reached production because `scripts/tests/test-lint-dependabot.ps1` used the in-process `&` operator (which tolerates `--`), while the hook used `pwsh -File` (which does not). Fix + prevention infrastructure: `scripts/lint-pwsh-invocations.ps1`, `.github/workflows/pwsh-invocations-lint.yml`, `scripts/tests/test-precommit-integration.sh`.
+- **2026-04-23**: Added **PWS003** — flags `scripts/*.ps1` that shell out to sibling scripts via `pwsh -NoProfile -File`. Motivated by Copilot feedback on `scripts/install-hooks.ps1` and `scripts/agent-preflight.ps1`: both ran `& pwsh -NoProfile -File scripts/configure-git-defaults.ps1`, which fails on Windows PowerShell 5.1 hosts (no `pwsh` on PATH). Fix: extracted `Set-RepoGitPushDefaults` into `scripts/git-push-defaults-helpers.ps1` and switched both callers to dot-source. Allowlist marker added for the three scripts whose callees legitimately need subprocess isolation (structured stdout / heavy `exit` use). Regression coverage in `scripts/tests/test-lint-pwsh-invocations.ps1`.

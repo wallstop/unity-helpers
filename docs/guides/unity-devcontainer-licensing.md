@@ -29,7 +29,7 @@ Set up secrets in GitHub first:
 3. Choose `Codespaces` (for Codespaces-only secrets) or `Actions` (for repository-level secrets reused by workflows).
 4. Select `New repository secret` and add each value below.
 
-Reference: [Managing encrypted secrets for your codespaces](https://docs.github.com/en/codespaces/managing-your-codespaces/managing-encrypted-secrets-for-your-codespaces)
+Reference: [Managing encrypted secrets for your codespaces](https://docs.github.com/en/codespaces/managing-your-codespaces/managing-your-account-specific-secrets-for-github-codespaces)
 
 Codespaces injects these secrets as environment variables inside the devcontainer.
 `run-unity-docker.sh` reads them and forwards them into the Unity container via

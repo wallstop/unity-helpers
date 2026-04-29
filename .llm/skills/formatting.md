@@ -217,9 +217,14 @@ npm run eol:fix
 # 4. Generate meta files for any new files
 ./scripts/generate-meta.sh <new-file-path>
 
-# 5. Run all validations
+# 5. Spell-check any file covered by cspell (C#, tests, JSON, YAML, CHANGELOG, skills, docs)
+npm run lint:spelling
+
+# 6. Run all validations
 npm run validate:prepush
 ```
+
+See [Rule 4: Spell-Check Every Change cspell Covers](./validate-before-commit.md#rule-4-spell-check-every-change-cspell-covers) for the spell-check failure-recovery decision tree.
 
 ---
 

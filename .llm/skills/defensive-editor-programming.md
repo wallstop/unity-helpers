@@ -13,6 +13,7 @@ Use this skill when:
 - Creating custom PropertyDrawers or Editors
 - Working with SerializedProperty and SerializedObject
 - Loading or manipulating assets via AssetDatabase
+- Writing or editing an `AssetPostprocessor` subclass (see [asset-postprocessor-safety](./asset-postprocessor-safety.md) - every import-phase callback must defer work)
 - Caching editor state that may be invalidated by Unity reloads
 - Handling serialization in editor contexts
 - Writing event/callback handlers in editor tools
@@ -117,6 +118,7 @@ Before submitting editor code, verify:
 
 ## Related Skills
 
+- [asset-postprocessor-safety](./asset-postprocessor-safety.md) - AssetPostprocessor import-phase rules (avoiding SendMessage warnings)
 - [editor-multi-object-editing](./editor-multi-object-editing.md) - Multi-object editing patterns and undo support
 - [editor-api-rules](./editor-api-rules.md) - Forbidden APIs and value handling rules
 - [editor-singleton-patterns](./editor-singleton-patterns.md) - Singleton asset management patterns

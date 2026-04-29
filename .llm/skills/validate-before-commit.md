@@ -1,6 +1,6 @@
 # Skill: Validate Before Commit
 
-<!-- trigger: validate, commit, lint, check, verify | Before completing any task (run linters!) | Core -->
+<!-- trigger: validate, commit, lint, check, verify, spell, cspell, spelling | Before completing any task (run linters!) | Core -->
 
 **Trigger**: **MANDATORY** before completing any task that modifies code or documentation.
 
@@ -32,6 +32,8 @@ npm run validate:prepush
 
 Use `agent:preflight:fix` continuously while working to catch hook-class failures early on changed files.
 Use `validate:prepush` for full CI parity before push.
+
+**C#/tests/JSON/YAML/skill/CHANGELOG edits: run `npm run lint:spelling`** — cspell covers every file matching its `files` glob, not just Markdown. See [Rule 4: Spell-Check EVERY Change cspell Covers](#rule-4-spell-check-every-change-cspell-covers) for the failure-recovery decision tree. To add a new word: `npm run lint:spelling:add -- <bucket> <word>`.
 
 ---
 
@@ -112,12 +114,70 @@ For detailed workflow patterns and more examples, see [formatting](./formatting.
 
 ## Workflow by File Type
 
+### Rule 4: Spell-Check EVERY Change cspell Covers
+
+**MANDATORY, NOT just for docs.** cspell's `files` glob in [cspell.json](../../cspell.json) covers every file extension the pre-push and pre-commit hooks spell-check:
+
+- Markdown: `**/*.{md,markdown}` (docs tree, root README/CHANGELOG/PLAN/AGENTS/CLAUDE, LLM instruction tree, GitHub templates)
+- C#: `**/*.cs` (every source file under `Runtime/`, `Editor/`, `Tests/`, samples, and scripts)
+- YAML: `**/*.{yml,yaml}` (workflows, yamllint config, any config YAML)
+- JSON-family: `**/*.{json,jsonc,asmdef,asmref}` (package.json, `.asmdef`/`.asmref`, tool configs)
+- JavaScript: `**/*.js` (scripts/ helpers, tests, hook scripts)
+
+The `cspell.json` `files` glob and the hooks' pass-through list are kept in lock-step by `scripts/tests/test-cspell-hook-files-parity.sh` (run via `npm run validate:cspell-files-parity`). If you see drift, fix `cspell.json`'s `files` glob -- never narrow the hook pass-through.
+
+If you modified ANY file in that set -- C# sources, tests, CHANGELOG, skill files, docs, YAML, JSON, `.asmdef`/`.asmref`, `.js` scripts -- you MUST run `npm run lint:spelling` before declaring work complete. The pre-push hook runs cspell on the same set and rejects the push on failure. Running it locally after each edit is faster and less disruptive than fighting the hook at the last moment. Do NOT mentally gate "this is a code change, no spelling matters" -- cspell lints identifiers in comments, XML docs, and log strings, which is where most typos actually land.
+
+A Claude Code PostToolUse hook (`scripts/hooks/cspell-post-edit.js`, registered in the tracked [`.claude/settings.json`](../../.claude/settings.json)) auto-runs cspell after every Edit/Write/MultiEdit/NotebookEdit. The hook ships with the repo via `$CLAUDE_PROJECT_DIR`, so teammates and fresh clones inherit it automatically -- there is no per-dev setup to forget. If you skip running `npm run lint:spelling` manually, the PostToolUse hook surfaces the feedback immediately instead of waiting for pre-push rejection.
+
+PostToolUse semantics: the edit has ALREADY happened when the hook fires. Claude Code's docs ([hooks reference](https://code.claude.com/docs/en/hooks)) say exit 2 on PostToolUse surfaces stderr to Claude (the model sees it and can fix in a follow-up edit) -- it does NOT undo the edit. The hook therefore acts as fast feedback, not a gate. Fix reported issues before moving to the next file, just as you would if you had run the linter manually.
+
+Treat the hook as a SAFETY NET, not a substitute for manual validation. It does NOT fire when:
+
+- CI runs (the hook is Claude Code specific).
+- You edit files outside Claude Code (another IDE, scripted edits, `git rebase -i` edits).
+- Node or `node_modules/.bin/cspell` is missing (fresh clones before `npm install` degrade silently -- run `npm install` to activate).
+- The hook itself is disabled locally (see below).
+
+For those scenarios -- and as a defense-in-depth check before declaring work complete -- run `npm run lint:spelling` manually. Manual invocation before completion remains the expectation.
+
+To disable the hook temporarily (for noisy refactors, debugging the hook itself, or cspell upgrades), create `.claude/settings.local.json` (gitignored) with:
+
+```json
+{ "hooks": { "PostToolUse": [] } }
+```
+
+The local file overrides the shared one. Delete it when done to re-enable.
+
+Failure-recovery decision tree (when cspell reports `Unknown word`):
+
+1. Is it a typo? Fix the source file. Done.
+2. Is it a valid term already in a dictionary, just in a different case? cspell is case-insensitive here, so this should not happen — re-read the error.
+3. Is it a valid term missing from the dictionary? Pick the right bucket using [linter-reference](./linter-reference.md#adding-words-to-dictionary):
+   - Unity engine API → `unity-terms`
+   - C# language / BCL type → `csharp-terms`
+   - This package's public symbol → `package-terms`
+   - General programming/tooling → `tech-terms`
+   - Lint-error-code prefix (e.g. `UNH`, `PWS`) → root `words`
+   - Project-specific, none of the above → root `words`
+4. To add a word, prefer the helper script over editing `cspell.json` by hand:
+
+   ```bash
+   npm run lint:spelling:add -- <bucket> <word> [<word>...]
+   # Example: npm run lint:spelling:add -- tech-terms reentrant reentrantly
+   ```
+
+   Buckets: `unity-terms`, `csharp-terms`, `package-terms`, `tech-terms`, `words` (root). The helper deduplicates, validates JSON round-trip, and rejects cross-bucket duplicates.
+
+5. After editing `cspell.json`, re-run `npm run lint:spelling` AND `npm run lint:spelling:config` to catch case-redundant and cross-dictionary duplicates.
+
 ### C# Changes
 
 ```bash
 # After EVERY .cs file modification (even single-line edits):
 dotnet tool run csharpier format .
 npm run lint:csharp-naming
+npm run lint:spelling    # 🚨 MANDATORY — cspell lints C# comments/XML-doc/log-strings
 ```
 
 Also verify license headers on new or modified files — see [license-headers](./license-headers.md).
@@ -130,6 +190,14 @@ npx prettier --write -- <file>
 npm run lint:spelling    # 🚨 #1 CI failure cause!
 npm run lint:docs         # Validates links
 npm run lint:markdown     # Structural rules
+```
+
+### CHANGELOG or Project JSON Changes
+
+```bash
+# After EVERY CHANGELOG.md / package.json / asmdef / asmref edit:
+npx prettier --write -- <file>
+npm run lint:spelling    # 🚨 pre-push spell-checks CHANGELOG + JSON
 ```
 
 ### YAML Changes
@@ -155,6 +223,7 @@ npm run agent:preflight:fix
 # Also run standard C# formatting:
 dotnet tool run csharpier format .
 npm run lint:csharp-naming
+npm run lint:spelling    # 🚨 MANDATORY — cspell lints test comments + strings
 ```
 
 **CRITICAL**: The test linter is **MANDATORY** for any test file changes (files in `Tests/` directory). You **MUST** run it **IMMEDIATELY** after each test file modification — do NOT batch these checks at the end of your task.

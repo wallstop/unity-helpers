@@ -31,6 +31,7 @@ Param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'git-path-helpers.ps1')
 
 function Write-ErrorMsg($msg, $prefix = "[skill-sizes]") {
     Write-Host "$prefix ERROR: $msg" -ForegroundColor Red
@@ -55,41 +56,6 @@ $maxLines = 500
 $criticalLines = 480
 $warningLines = 300
 $exitCode = 0
-
-function Resolve-RepoRelativePath {
-    param(
-        [Parameter(Mandatory = $true)]
-        [string]$Path,
-        [Parameter(Mandatory = $true)]
-        [string]$Root
-    )
-
-    if ([string]::IsNullOrWhiteSpace($Path)) {
-        return $null
-    }
-
-    $normalizedPath = $Path.Replace('\\', '/')
-    $normalizedRoot = $Root.Replace('\\', '/')
-
-    if ([System.IO.Path]::IsPathRooted($Path)) {
-        $fullPath = [System.IO.Path]::GetFullPath($Path)
-        $fullPathNormalized = $fullPath.Replace('\\', '/')
-        $rootPrefix = "$normalizedRoot/"
-        if ($fullPathNormalized -eq $normalizedRoot) {
-            return '.'
-        }
-        if ($fullPathNormalized.StartsWith($rootPrefix, [System.StringComparison]::OrdinalIgnoreCase)) {
-            return $fullPathNormalized.Substring($rootPrefix.Length)
-        }
-        return $null
-    }
-
-    if ($normalizedPath.StartsWith('./')) {
-        return $normalizedPath.Substring(2)
-    }
-
-    return $normalizedPath
-}
 
 function Get-LineCount {
     param(
@@ -124,7 +90,7 @@ if ($null -ne $Paths -and $Paths.Count -gt 0) {
     $seen = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
 
     foreach ($rawPath in $allScopedPaths) {
-        $relativePath = Resolve-RepoRelativePath -Path $rawPath -Root $repoRoot
+        $relativePath = ConvertTo-GitRelativePosixPath -Path $rawPath -RepoRoot $repoRoot
         if ($null -eq $relativePath) {
             continue
         }

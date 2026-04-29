@@ -409,6 +409,25 @@ namespace WallstopStudios.UnityHelpers.Tests.Core
                 }
             }
 
+#if UNITY_EDITOR
+            // Asset deletions above can schedule AssetPostprocessor drains. Flush them
+            // synchronously so a late-arriving drain cannot land in the next fixture's
+            // setup and pollute its handler statics. Covers fixtures that inherit
+            // directly from CommonTestBase (not BatchedEditorTestBase) and would
+            // otherwise escape the OneTime-flush discipline.
+            try
+            {
+                WallstopStudios.UnityHelpers.Editor.AssetProcessors.AssetPostprocessorDeferral.FlushForTesting();
+            }
+            catch (Exception ex)
+                when (ex is not OutOfMemoryException and not StackOverflowException)
+            {
+                // Best-effort during teardown — surface via log so diagnostics survive
+                // without aborting the remainder of cleanup.
+                Debug.LogException(ex);
+            }
+#endif
+
             if (_trackedDisposables.Count > 0)
             {
                 for (int i = _trackedDisposables.Count - 1; i >= 0; i--)
