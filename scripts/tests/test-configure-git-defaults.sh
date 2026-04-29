@@ -8,6 +8,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 CONFIGURE_SCRIPT="$REPO_ROOT/scripts/configure-git-defaults.sh"
+INSTALL_HOOKS_SCRIPT="$REPO_ROOT/scripts/install-hooks.sh"
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -166,6 +167,69 @@ if grep -q 'push.autoSetupRemote=true' <<<"$cr_output" && grep -q 'push.default=
     pass "Normalized values remain human-readable"
 else
     fail "Normalized values remain human-readable" "$cr_output"
+fi
+
+echo -e "${BLUE}Section: install-hooks --check normalization${NC}"
+install_stub_bin="$temp_stub_root/install-bin"
+mkdir -p "$install_stub_bin"
+cat >"$install_stub_bin/git" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ "${1:-}" == "--version" ]]; then
+    echo "git version 2.44.0"
+    exit 0
+fi
+
+if [[ "${1:-}" == "-C" ]]; then
+    shift 2
+fi
+
+if [[ "${1:-}" == "config" && "${2:-}" == "--get" && "${3:-}" == "core.hooksPath" ]]; then
+    printf '.\\.githooks\\\r\n'
+    exit 0
+fi
+
+if [[ "${1:-}" == "config" && "${2:-}" == "--local" && "${3:-}" == "--get" && "${4:-}" == "push.autoSetupRemote" ]]; then
+    printf 'true\r\n'
+    exit 0
+fi
+
+if [[ "${1:-}" == "config" && "${2:-}" == "--local" && "${3:-}" == "--get" && "${4:-}" == "push.default" ]]; then
+    printf ' simple \r\n'
+    exit 0
+fi
+
+echo "unexpected git invocation: $*" >&2
+exit 1
+EOF
+chmod +x "$install_stub_bin/git"
+
+install_output_file="$temp_stub_root/install-check-output.txt"
+if run_command_capture "$install_output_file" env PATH="$install_stub_bin:$PATH" bash "$INSTALL_HOOKS_SCRIPT" --check; then
+    install_output="$(cat -- "$install_output_file")"
+    pass "install-hooks --check succeeds with normalized git outputs"
+else
+    install_output="$(cat -- "$install_output_file")"
+    fail "install-hooks --check succeeds with normalized git outputs" "$install_output"
+fi
+
+if grep -q 'Git hooks path: .githooks' <<<"$install_output"; then
+    pass "install-hooks recognizes equivalent hooksPath forms"
+else
+    fail "install-hooks recognizes equivalent hooksPath forms" "$install_output"
+fi
+
+if grep -q 'push.autoSetupRemote: true' <<<"$install_output" && grep -q 'push.default: simple' <<<"$install_output"; then
+    pass "install-hooks normalizes push defaults before comparison"
+else
+    fail "install-hooks normalizes push defaults before comparison" "$install_output"
+fi
+
+if grep -qE 'push\.autoSetupRemote: .*unset|push\.default: .*unset' <<<"$install_output"; then
+    fail "install-hooks avoids false unset warnings after normalization" "$install_output"
+else
+    pass "install-hooks avoids false unset warnings after normalization"
 fi
 
 echo ""

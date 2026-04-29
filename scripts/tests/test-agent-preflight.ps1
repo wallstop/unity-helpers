@@ -517,8 +517,8 @@ try {
 
     Push-Location $repo12
     try {
-        $autoSetup = git config --local --get push.autoSetupRemote 2>$null
-        $pushDefault = git config --local --get push.default 2>$null
+        $autoSetup = ([string](git config --local --get push.autoSetupRemote 2>$null)).Trim()
+        $pushDefault = ([string](git config --local --get push.default 2>$null)).Trim()
     }
     finally {
         Pop-Location

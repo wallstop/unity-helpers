@@ -84,6 +84,32 @@ function Get-CommandVersion {
     }
 }
 
+function Normalize-GitConfigValue {
+    param([string]$Value)
+
+    return ([string]$Value).Trim()
+}
+
+function Normalize-HooksPath {
+    param([string]$Value)
+
+    $normalized = Normalize-GitConfigValue -Value $Value
+    if ([string]::IsNullOrWhiteSpace($normalized)) {
+        return ""
+    }
+
+    $normalized = $normalized.Replace("\", "/")
+    while ($normalized.StartsWith("./")) {
+        $normalized = $normalized.Substring(2)
+    }
+
+    while ($normalized.EndsWith("/")) {
+        $normalized = $normalized.Substring(0, $normalized.Length - 1)
+    }
+
+    return $normalized
+}
+
 function Test-Status {
     Write-Header "Installation Status Check"
     
@@ -134,12 +160,16 @@ function Test-Status {
     # Check git hooks path
     Push-Location $RepoRoot
     try {
-        $hooksPath = git config --get core.hooksPath 2>$null
+        $hooksPathRaw = [string](git config --get core.hooksPath 2>$null)
+        $hooksPath = Normalize-HooksPath -Value $hooksPathRaw
         if ($hooksPath -eq ".githooks") {
             Write-Success "Git hooks path: .githooks"
         }
         else {
-            $displayPath = if ($hooksPath) { $hooksPath } else { "default (.git/hooks)" }
+            $displayPath = Normalize-GitConfigValue -Value $hooksPathRaw
+            if ([string]::IsNullOrWhiteSpace($displayPath)) {
+                $displayPath = "default (.git/hooks)"
+            }
             Write-Warning "Git hooks path: $displayPath"
         }
     }

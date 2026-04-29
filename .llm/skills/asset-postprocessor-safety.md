@@ -237,6 +237,8 @@ A drain handler that re-schedules itself (directly or transitively) would loop f
 
 When dedup collapses duplicate schedules of the same delegate, preserve the first-insertion order. The primitive uses a `ReferenceEquals` scan (not `List<Action>.Contains`, which would invoke `Delegate.Equals` and collapse structurally-equal-but-distinct lambdas — two `() => Drain()` expressions share Method+Target and would be coalesced). Scheduling `A, B, A` drains as `[A, B]` — the second `A` is skipped by reference-equality dedup. This is why the drain delegate MUST be cached in a `static readonly` field (see the minimal example above): reference equality can only dedup against a stable reference, and allocating a fresh `new Action(Drain)` per call would defeat it. A future refactor to `HashSet<Action>` (structural hash) or "last-wins" replacement would invert ordering silently, or (if the hash is structural) would recurse the compiler-lambda-coalescing bug; pin both the ordering and the reference-equality semantic with dedicated tests.
 
+When implementing the deferral primitive itself, drain a snapshot (`ToArray`) and clear `PendingDrains` before invoking callbacks. If the currently-draining delegate re-schedules itself, dedup must see an empty pending queue so the next-iteration run is enqueued instead of dropped.
+
 ---
 
 ## Opt-Out Setting

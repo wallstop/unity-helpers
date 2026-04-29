@@ -201,33 +201,24 @@ namespace WallstopStudios.UnityHelpers.Editor.AssetProcessors
             _draining = true;
             try
             {
-                // Iterate by index over the list, then clear. Reentrant Schedule()
-                // calls during a drain will append to PendingDrains; those appended
-                // entries are intentionally NOT observed by this loop (we captured
-                // Count at entry). Clearing after the loop discards only the entries
-                // we ran; to preserve reentrant additions we snapshot length first
-                // and remove the processed range.
-                int initialCount = PendingDrains.Count;
-                for (int i = 0; i < initialCount; i++)
+                // Drain a snapshot and clear the pending queue before invocation so
+                // reentrant Schedule() calls can enqueue the next batch (including
+                // self-reschedules of the currently-running delegate) rather than
+                // being deduplicated against the active batch.
+                Action[] drainsToRun = PendingDrains.ToArray();
+                PendingDrains.Clear();
+
+                for (int i = 0; i < drainsToRun.Length; i++)
                 {
-                    RunSafely(PendingDrains[i]);
+                    RunSafely(drainsToRun[i]);
                 }
 
-                // Remove the processed prefix, keeping any reentrant appends.
-                if (initialCount == PendingDrains.Count)
+                // Reentrant additions happened while draining. Re-arm delayCall so
+                // they run in the next editor tick.
+                if (PendingDrains.Count > 0 && !_scheduled)
                 {
-                    PendingDrains.Clear();
-                }
-                else
-                {
-                    PendingDrains.RemoveRange(0, initialCount);
-                    // If reentrant additions happened, re-arm the delayCall so they
-                    // fire in the next tick rather than staying stranded.
-                    if (!_scheduled)
-                    {
-                        _scheduled = true;
-                        EditorApplication.delayCall += DrainScheduled;
-                    }
+                    _scheduled = true;
+                    EditorApplication.delayCall += DrainScheduled;
                 }
             }
             finally

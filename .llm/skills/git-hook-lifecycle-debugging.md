@@ -103,6 +103,17 @@ Step 0 runs two PowerShell scripts on every commit:
 
 Both scripts auto-stage modified files.
 
+## `core.hooksPath` Idempotency Normalization
+
+When checking whether hooks are already installed, normalize `core.hooksPath` before comparison:
+
+- trim leading/trailing whitespace and `\r`
+- normalize `\` to `/`
+- strip leading `./`
+- strip trailing `/`
+
+This keeps installers idempotent for equivalent values like `.githooks/`, `./.githooks`, or `.\.githooks\` while still preserving truly custom paths.
+
 ---
 
 ## CI/CD Environments

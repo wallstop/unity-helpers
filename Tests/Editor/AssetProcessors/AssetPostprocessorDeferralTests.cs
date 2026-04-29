@@ -178,6 +178,50 @@ namespace WallstopStudios.UnityHelpers.Tests.AssetProcessors
         }
 
         /// <summary>
+        /// Verifies that a delegate can safely schedule itself while it is
+        /// being drained. The reentrant schedule must enqueue a next-iteration
+        /// run rather than being dropped by dedup against the currently-running
+        /// batch.
+        /// </summary>
+        [Test]
+        public void ScheduleSameDelegateDuringDrainReschedulesForNextIteration()
+        {
+            int callCount = 0;
+            int remaining = 5;
+
+            Action drain = null;
+            drain = () =>
+            {
+                callCount++;
+                remaining--;
+                if (remaining > 0)
+                {
+                    AssetPostprocessorDeferral.Schedule(drain);
+                }
+            };
+
+            AssetPostprocessorDeferral.Schedule(drain);
+
+            AssetPostprocessorDeferral.FlushForTesting();
+
+            Assert.AreEqual(
+                5,
+                callCount,
+                "Self-rescheduled drain should run once per requested iteration."
+            );
+            Assert.AreEqual(
+                0,
+                remaining,
+                "Re-schedule loop should exhaust all planned iterations."
+            );
+            Assert.AreEqual(
+                0,
+                AssetPostprocessorDeferral.PendingDrainCountForTesting,
+                "Queue should be empty after all self-rescheduled iterations run."
+            );
+        }
+
+        /// <summary>
         /// Pins the ordering semantic of dedup: scheduling A, B, A should keep
         /// A in its original position and drop the second A. Protects against
         /// a refactor that moves dedup to a <c>HashSet&lt;Action&gt;</c> with

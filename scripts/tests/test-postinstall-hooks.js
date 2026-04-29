@@ -57,7 +57,7 @@ function runTest(name, fn) {
   }
 }
 
-function runScript(env, cwd) {
+function runScriptAtPath(targetScriptPath, env, cwd) {
   // Clear the inherited env to isolate each case — otherwise a test for
   // `CI=true` could accidentally also have HUSKY=0 set from the parent
   // shell and mask the actual trigger path. We start from an empty object
@@ -71,7 +71,7 @@ function runScript(env, cwd) {
     },
     env || {}
   );
-  const result = spawnSync(process.execPath, [scriptPath], {
+  const result = spawnSync(process.execPath, [targetScriptPath], {
     cwd: cwd || repoRoot,
     env: isolatedEnv,
     encoding: "utf8"
@@ -81,6 +81,28 @@ function runScript(env, cwd) {
     stdout: result.stdout || "",
     stderr: result.stderr || ""
   };
+}
+
+function runScript(env, cwd) {
+  return runScriptAtPath(scriptPath, env, cwd);
+}
+
+function createCopiedRepoHarness(prefix) {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), prefix));
+  const scriptsDir = path.join(tempDir, "scripts");
+  fs.mkdirSync(scriptsDir);
+  fs.mkdirSync(path.join(tempDir, ".githooks"));
+
+  const copiedScript = path.join(scriptsDir, "postinstall-hooks.js");
+  fs.copyFileSync(scriptPath, copiedScript);
+
+  const init = spawnSync("git", ["init", "-q"], {
+    cwd: tempDir,
+    encoding: "utf8"
+  });
+  assert.strictEqual(init.status, 0, `git init failed: ${init.stderr || ""}`);
+
+  return { tempDir, copiedScript };
 }
 
 console.log("Testing scripts/postinstall-hooks.js skip triggers...");
@@ -184,6 +206,59 @@ runTest("Pass_HuskyOneDoesNotSkip", () => {
     !r.stdout.includes("HUSKY=1"),
     `HUSKY=1 must not be a recognized skip value; stdout: ${r.stdout}`
   );
+});
+
+console.log("\n  Section: hooksPath idempotency normalization");
+
+runTest("Pass_EquivalentHooksPathFormsAreTreatedAsInstalled", () => {
+  const harness = createCopiedRepoHarness("postinstall-hooks-equivalent-");
+  const equivalentForms = [".githooks/", "./.githooks", ".\\.githooks\\", " .githooks/ "];
+  try {
+    for (const value of equivalentForms) {
+      const setResult = spawnSync("git", ["config", "core.hooksPath", value], {
+        cwd: harness.tempDir,
+        encoding: "utf8"
+      });
+      assert.strictEqual(
+        setResult.status,
+        0,
+        `failed setting core.hooksPath=${value}: ${setResult.stderr || ""}`
+      );
+
+      const r = runScriptAtPath(harness.copiedScript, {}, harness.tempDir);
+      assert.strictEqual(r.status, 0, `exit ${r.status} for value ${value}`);
+      assert.ok(
+        !r.stdout.includes("leaving unchanged"),
+        `equivalent value ${value} should not be treated as custom hooksPath. stdout: ${r.stdout}`
+      );
+      assert.ok(
+        !r.stdout.includes("git hooks installed"),
+        `equivalent value ${value} should be a no-op, not a reinstall. stdout: ${r.stdout}`
+      );
+    }
+  } finally {
+    fs.rmSync(harness.tempDir, { recursive: true, force: true });
+  }
+});
+
+runTest("Pass_CustomHooksPathStillLeftUnchanged", () => {
+  const harness = createCopiedRepoHarness("postinstall-hooks-custom-");
+  try {
+    const setResult = spawnSync("git", ["config", "core.hooksPath", ".husky"], {
+      cwd: harness.tempDir,
+      encoding: "utf8"
+    });
+    assert.strictEqual(setResult.status, 0, `failed setting custom hooksPath: ${setResult.stderr}`);
+
+    const r = runScriptAtPath(harness.copiedScript, {}, harness.tempDir);
+    assert.strictEqual(r.status, 0, `exit ${r.status}`);
+    assert.ok(
+      r.stdout.includes('core.hooksPath is ".husky"') && r.stdout.includes("leaving unchanged"),
+      `custom hooksPath should be preserved with warning. stdout: ${r.stdout}`
+    );
+  } finally {
+    fs.rmSync(harness.tempDir, { recursive: true, force: true });
+  }
 });
 
 console.log("\n  Section: Non-repo execution (safety net)");

@@ -4,7 +4,8 @@
 // postinstall hook: ensure git hooks are installed for local contributors so
 // `npm install` is sufficient to get pre-commit / pre-push safety nets.
 //
-// Idempotent: if core.hooksPath is already `.githooks`, does nothing.
+// Idempotent: if core.hooksPath resolves to `.githooks` (including common
+// equivalent forms like trailing slash or Windows separators), does nothing.
 //
 // Safe in CI / non-repo checkouts. Skip triggers (each logs a clear reason):
 //   - CI=true or CI=1 (CI images install hooks explicitly if needed)
@@ -71,6 +72,25 @@ function currentHooksPath(cwd) {
   return String(result.stdout).trim();
 }
 
+function normalizeHooksPath(value) {
+  if (!value) {
+    return "";
+  }
+
+  let normalized = String(value).replace(/\r/g, "").trim();
+  normalized = normalized.replace(/\\/g, "/");
+
+  while (normalized.startsWith("./")) {
+    normalized = normalized.slice(2);
+  }
+
+  while (normalized.endsWith("/")) {
+    normalized = normalized.slice(0, -1);
+  }
+
+  return normalized;
+}
+
 function main() {
   const reason = skipReason();
   if (reason) {
@@ -92,12 +112,14 @@ function main() {
   }
 
   const existing = currentHooksPath(repoRoot);
-  if (existing === ".githooks") {
+  const normalizedExisting = normalizeHooksPath(existing);
+  const expectedHooksPath = normalizeHooksPath(".githooks");
+  if (normalizedExisting === expectedHooksPath) {
     // Already configured — idempotent no-op.
     return;
   }
 
-  if (existing !== "") {
+  if (normalizedExisting !== "") {
     // A custom hooksPath is already set (power-user config) — do NOT overwrite.
     // Surface a hint so the contributor can opt in explicitly if they want this
     // repo's hooks.
