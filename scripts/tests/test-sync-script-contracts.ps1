@@ -256,6 +256,94 @@ function Run-AgentValidationContractTests {
     -Message 'Expected AGENT_PREFLIGHT_NPX_COMMAND override support was not found.'
 }
 
+function Run-ReleaseDrafterChangelogVersionContractTests {
+  Write-Host ""
+  Write-Host "Release drafter changelog version contracts:" -ForegroundColor Magenta
+  Write-Host ""
+
+  $repoRoot = Get-RepoRoot
+  $workflowPath = Join-Path $repoRoot '.github/workflows/release-drafter.yml'
+
+  if (-not (Test-Path $workflowPath)) {
+    Write-TestResult -TestName 'release-drafter workflow exists for version extraction contracts' -Passed $false -Message "Missing file: $workflowPath"
+    return
+  }
+
+  $workflowContent = Get-Content -Path $workflowPath -Raw
+
+  Write-TestResult `
+    -TestName 'release-drafter extracts latest changelog header before version selection' `
+    -Passed ($workflowContent.Contains('CHANGELOG_FIRST_HEADER=')) `
+    -Message 'Expected CHANGELOG_FIRST_HEADER assignment was not found.'
+
+  Write-TestResult `
+    -TestName 'release-drafter assigns VERSION from CHANGELOG_VERSION' `
+    -Passed ($workflowContent.Contains('VERSION="${CHANGELOG_VERSION}"')) `
+    -Message 'Expected VERSION assignment from CHANGELOG_VERSION was not found.'
+
+  Write-TestResult `
+    -TestName 'release-drafter derives version from next semver header when first header is Unreleased' `
+    -Passed ($workflowContent.Contains('if [ -n "$CHANGELOG_NEXT_SEMVER_HEADER" ]; then') -and $workflowContent.Contains("First changelog header is Unreleased; using next semver header")) `
+    -Message 'Expected next semver header derivation for Unreleased changelog header was not found.'
+
+  Write-TestResult `
+    -TestName 'release-drafter only falls back to semver-like release-drafter tag when changelog cannot provide version' `
+    -Passed ($workflowContent.Contains('DRAFTER_TAG_SEMVER_REGEX') -and $workflowContent.Contains("using semver-like release-drafter tag")) `
+    -Message 'Expected semver-validated release-drafter tag fallback was not found.'
+
+  Write-TestResult `
+    -TestName 'release-drafter errors when changelog is Unreleased and no semver version source exists' `
+    -Passed ($workflowContent.Contains('no valid next semver header or semver-like release-drafter tag was found')) `
+    -Message 'Expected hard failure for unresolved Unreleased changelog version was not found.'
+
+  Write-TestResult `
+    -TestName 'release-drafter refuses literal Unreleased for release tag/name version' `
+    -Passed ($workflowContent.Contains("grep -Eqi '^unreleased$'") -and $workflowContent.Contains('Refusing to use literal Unreleased as release tag/name')) `
+    -Message 'Expected explicit guard against literal Unreleased release tag/name was not found.'
+
+  Write-TestResult `
+    -TestName 'release-drafter parses semver from changelog header' `
+    -Passed ($workflowContent.Contains('CHANGELOG_FIRST_HEADER') -and $workflowContent.Contains('sed -E')) `
+    -Message 'Expected semver changelog header parsing command was not found.'
+
+  Write-TestResult `
+    -TestName 'release-drafter does not trust tag_name output for VERSION assignment' `
+    -Passed (-not ($workflowContent -match 'VERSION=.*steps\.release_drafter\.outputs\.tag_name')) `
+    -Message 'Found direct VERSION assignment from release-drafter tag_name output.'
+
+  Write-TestResult `
+    -TestName 'release-drafter updates release tag/name using changelog-derived version' `
+    -Passed ($workflowContent -match '-F tag_name="\$VERSION"' -and $workflowContent -match '-F name="\$VERSION"') `
+    -Message 'Expected release PATCH request to include tag_name/name fields from VERSION.'
+
+  $workflowLines = @($workflowContent -split "`r?`n")
+  $earlyExitAfterChangelogNotice = $false
+  for ($i = 0; $i -lt $workflowLines.Count; $i++) {
+    if ($workflowLines[$i] -match 'Changelog section already exists') {
+      $windowEnd = [Math]::Min($workflowLines.Count - 1, $i + 10)
+      for ($j = $i + 1; $j -le $windowEnd; $j++) {
+        if ($workflowLines[$j] -match '^\s*exit\s+0\s*$') {
+          $earlyExitAfterChangelogNotice = $true
+          break
+        }
+      }
+      if ($earlyExitAfterChangelogNotice) {
+        break
+      }
+    }
+  }
+
+  Write-TestResult `
+    -TestName 'release-drafter does not early-exit before PATCH when changelog section already exists' `
+    -Passed (-not $earlyExitAfterChangelogNotice) `
+    -Message 'Found early-exit path that can skip tag/name PATCH when changelog section already exists.'
+
+  Write-TestResult `
+    -TestName 'release-drafter preserves existing release body when changelog section already exists' `
+    -Passed ($workflowContent.Contains('cp "${RUNNER_TEMP}/current_body.md" "${RUNNER_TEMP}/new_body.md"')) `
+    -Message 'Expected current release body to be preserved when changelog section already exists.'
+}
+
 function Print-SummaryAndExit {
   Write-Host ""
   Write-Host "Results:" -ForegroundColor Magenta
@@ -277,4 +365,5 @@ function Print-SummaryAndExit {
 Run-SyncScriptContractTests
 Run-CspellContractTests
 Run-AgentValidationContractTests
+Run-ReleaseDrafterChangelogVersionContractTests
 Print-SummaryAndExit
