@@ -226,6 +226,87 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
         }
 
         [Test]
+        public void PlacementConflictWarningTextIsCachedWhenGroupStartsCollapsed()
+        {
+            CreateAssetAndEditor<WButtonGroupPlacementConflictTarget>(out Editor editor);
+            Dictionary<WButtonGroupKey, WButtonPaginationState> paginationStates = new();
+            Dictionary<WButtonGroupKey, bool> foldoutStates = new();
+
+            WButtonGUI.DrawButtons(
+                editor,
+                WButtonPlacement.Top,
+                paginationStates,
+                foldoutStates,
+                UnityHelpersSettings.WButtonFoldoutBehavior.StartCollapsed,
+                triggeredContexts: null,
+                globalPlacementIsTop: true
+            );
+
+            bool hasCachedWarning = WButtonGUI.TryGetGroupPlacementWarningTextForTesting(
+                "ConflictGroup",
+                out string warningText
+            );
+
+            Assert.IsTrue(hasCachedWarning, "Collapsed groups should still render placement warnings.");
+            StringAssert.Contains("Conflicting groupPlacement values", warningText);
+            StringAssert.Contains("Using Top from first declared button.", warningText);
+        }
+
+        [Test]
+        public void PriorityConflictWarningTextIsCachedWhenGroupStartsCollapsed()
+        {
+            CreateAssetAndEditor<WButtonGroupPriorityConflictTarget>(out Editor editor);
+            Dictionary<WButtonGroupKey, WButtonPaginationState> paginationStates = new();
+            Dictionary<WButtonGroupKey, bool> foldoutStates = new();
+
+            WButtonGUI.DrawButtons(
+                editor,
+                WButtonPlacement.Top,
+                paginationStates,
+                foldoutStates,
+                UnityHelpersSettings.WButtonFoldoutBehavior.StartCollapsed,
+                triggeredContexts: null,
+                globalPlacementIsTop: true
+            );
+
+            bool hasCachedWarning = WButtonGUI.TryGetGroupPriorityWarningTextForTesting(
+                "ConflictGroup",
+                out string warningText
+            );
+
+            Assert.IsTrue(hasCachedWarning, "Collapsed groups should still render priority warnings.");
+            StringAssert.Contains("Conflicting groupPriority values", warningText);
+            StringAssert.Contains("Using 0 from first declared button.", warningText);
+        }
+
+        [Test]
+        public void DrawOrderConflictWarningTextIsCachedWhenGroupStartsCollapsed()
+        {
+            CreateAssetAndEditor<WButtonConflictingDrawOrderTarget>(out Editor editor);
+            Dictionary<WButtonGroupKey, WButtonPaginationState> paginationStates = new();
+            Dictionary<WButtonGroupKey, bool> foldoutStates = new();
+
+            WButtonGUI.DrawButtons(
+                editor,
+                WButtonPlacement.Top,
+                paginationStates,
+                foldoutStates,
+                UnityHelpersSettings.WButtonFoldoutBehavior.StartCollapsed,
+                triggeredContexts: null,
+                globalPlacementIsTop: true
+            );
+
+            bool hasCachedWarning = WButtonGUI.TryGetDrawOrderWarningTextForTesting(
+                "Setup",
+                out string warningText
+            );
+
+            Assert.IsTrue(hasCachedWarning, "Collapsed groups should still render draw-order warnings.");
+            StringAssert.Contains("Conflicting drawOrder values", warningText);
+            StringAssert.Contains("from first declared button.", warningText);
+        }
+
+        [Test]
         [TestCaseSource(nameof(PriorityConflictDetectionCases))]
         public void PriorityConflictWarningHandlesAllScenarios(
             Type targetType,
