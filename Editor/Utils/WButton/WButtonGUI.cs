@@ -852,7 +852,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
             bool alwaysOpen =
                 foldoutBehavior == UnityHelpersSettings.WButtonFoldoutBehavior.AlwaysOpen;
             bool expanded = alwaysOpen || GetFoldoutState(foldoutStates, groupKey, foldoutBehavior);
-            bool currentExpanded = expanded;
+            bool effectiveExpanded = expanded;
             bool tweenEnabled = UnityHelpersSettings.ShouldTweenWButtonFoldouts();
             AnimBool foldoutAnim =
                 alwaysOpen || !tweenEnabled ? null : GetFoldoutAnim(groupKey, expanded);
@@ -909,7 +909,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
                 {
                     foldoutAnim.target = newExpanded;
                 }
-                currentExpanded = newExpanded;
+                effectiveExpanded = newExpanded;
 
                 EditorGUILayout.Space(WButtonStyles.FoldoutContentSpacing);
             }
@@ -921,10 +921,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
             }
             else
             {
-                float fade = foldoutAnim?.faded ?? (currentExpanded ? 1f : 0f);
+                float fade = foldoutAnim?.faded ?? (effectiveExpanded ? 1f : 0f);
                 if (foldoutAnim == null)
                 {
-                    if (currentExpanded)
+                    if (effectiveExpanded)
                     {
                         DrawGroupContent(groupKey, contexts, paginationStates, triggeredContexts);
                     }
