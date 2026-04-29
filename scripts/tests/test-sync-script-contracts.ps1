@@ -287,6 +287,53 @@ function Run-ReleaseDrafterChangelogVersionContractTests {
     -Message 'Expected semver-like release-drafter tag preference for Unreleased changelog header was not found.'
 
   Write-TestResult `
+    -TestName 'release-drafter normalizes semver-like drafter tag by stripping leading v/V' `
+    -Passed ($workflowContent.Contains("DRAFTER_TAG_NORMALIZED") -and $workflowContent.Contains("sed -E 's/^[vV]//'") -and $workflowContent.Contains('CHANGELOG_VERSION="$DRAFTER_TAG_NORMALIZED"')) `
+    -Message 'Expected normalization of semver-like release-drafter tag to unprefixed version was not found.'
+
+  Write-TestResult `
+    -TestName 'release-drafter semver-like drafter tag regex accepts optional v or V prefix' `
+    -Passed ($workflowContent.Contains("DRAFTER_TAG_SEMVER_REGEX='^[vV]?[0-9]+")) `
+    -Message 'Expected semver-like release-drafter tag regex with optional v/V prefix was not found.'
+
+  Write-TestResult `
+    -TestName 'release-drafter compares normalized drafter tag against VERSION before mismatch notice' `
+    -Passed ($workflowContent.Contains('if [ -n "$DRAFTER_TAG" ] && [ "$DRAFTER_TAG_NORMALIZED" != "$VERSION" ]; then')) `
+    -Message 'Expected mismatch comparison to use DRAFTER_TAG_NORMALIZED was not found.'
+
+  $semverLikeTags = @(
+    @{ Input = 'v1.2.3'; Expected = '1.2.3' },
+    @{ Input = 'V1.2.3'; Expected = '1.2.3' },
+    @{ Input = '1.2.3'; Expected = '1.2.3' },
+    @{ Input = 'v1.2.3-beta'; Expected = '1.2.3-beta' }
+  )
+  $semverLikeRegex = $null
+  $regexMatch = [regex]::Match($workflowContent, "DRAFTER_TAG_SEMVER_REGEX='([^']+)'")
+  if ($regexMatch.Success) {
+    $semverLikeRegex = $regexMatch.Groups[1].Value
+  }
+  $normalizationPasses = $true
+  if ([string]::IsNullOrWhiteSpace($semverLikeRegex)) {
+    $normalizationPasses = $false
+  }
+  foreach ($case in $semverLikeTags) {
+    if ($case.Input -notmatch $semverLikeRegex) {
+      $normalizationPasses = $false
+      break
+    }
+    $normalizedTag = ($case.Input -replace '^[vV]', '')
+    if ($normalizedTag -cne $case.Expected) {
+      $normalizationPasses = $false
+      break
+    }
+  }
+
+  Write-TestResult `
+    -TestName 'release-drafter semver-like tag normalization behavior strips leading v/V only' `
+    -Passed $normalizationPasses `
+    -Message 'Expected v/V-prefixed semver-like tags to normalize to unprefixed versions while preserving already-unprefixed tags.'
+
+  Write-TestResult `
     -TestName 'release-drafter falls back to next semver changelog header when Unreleased and release-drafter tag is not semver-like' `
     -Passed ($workflowContent.Contains('if [ -n "$CHANGELOG_NEXT_SEMVER_HEADER" ]; then') -and $workflowContent.Contains("release-drafter tag is not semver-like; using next semver header")) `
     -Message 'Expected fallback to next semver changelog header was not found.'

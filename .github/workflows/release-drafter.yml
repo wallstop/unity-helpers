@@ -93,13 +93,17 @@ jobs:
             exit 1
           fi
 
-          DRAFTER_TAG_SEMVER_REGEX='^v?[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$'
+          DRAFTER_TAG_SEMVER_REGEX='^[vV]?[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$'
+          DRAFTER_TAG_NORMALIZED="$DRAFTER_TAG"
+          if [ -n "$DRAFTER_TAG" ] && printf '%s\n' "$DRAFTER_TAG" | grep -Eq "$DRAFTER_TAG_SEMVER_REGEX"; then
+            DRAFTER_TAG_NORMALIZED="$(printf '%s\n' "$DRAFTER_TAG" | sed -E 's/^[vV]//')"
+          fi
 
           if printf '%s\n' "$CHANGELOG_FIRST_HEADER" | grep -Eq "$SEMVER_HEADER_REGEX"; then
             CHANGELOG_VERSION="$(printf '%s\n' "$CHANGELOG_FIRST_HEADER" | sed -E 's/^## \[([^]]+)\].*$/\1/')"
           elif printf '%s\n' "$CHANGELOG_FIRST_HEADER" | grep -Eqi '^## \[Unreleased\]'; then
             if [ -n "$DRAFTER_TAG" ] && printf '%s\n' "$DRAFTER_TAG" | grep -Eq "$DRAFTER_TAG_SEMVER_REGEX"; then
-              CHANGELOG_VERSION="$DRAFTER_TAG"
+              CHANGELOG_VERSION="$DRAFTER_TAG_NORMALIZED"
               echo "::notice::First changelog header is Unreleased; using semver-like release-drafter tag '$CHANGELOG_VERSION'"
             else
               CHANGELOG_NEXT_SEMVER_HEADER="$(
@@ -137,7 +141,7 @@ jobs:
             exit 1
           fi
 
-          if [ -n "$DRAFTER_TAG" ] && [ "$DRAFTER_TAG" != "$VERSION" ]; then
+          if [ -n "$DRAFTER_TAG" ] && [ "$DRAFTER_TAG_NORMALIZED" != "$VERSION" ]; then
             echo "::notice::release-drafter tag_name '$DRAFTER_TAG' differs from changelog version '$VERSION'; using changelog version"
           fi
 
