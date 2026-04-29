@@ -84,12 +84,65 @@ jobs:
             exit 1
           fi
 
-          # Get the version from release-drafter output
-          VERSION="${{ steps.release_drafter.outputs.tag_name }}"
+          DRAFTER_TAG="${{ steps.release_drafter.outputs.tag_name }}"
+          CHANGELOG_FIRST_HEADER="$(awk '/^## \[/ { print; exit }' CHANGELOG.md)"
+          SEMVER_HEADER_REGEX='^## \[[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?\]'
 
-          if [ -z "$VERSION" ]; then
-            echo "::error::release-drafter did not return a tag_name"
+          if [ -z "$CHANGELOG_FIRST_HEADER" ]; then
+            echo "::error::Unable to find a changelog version header (## [...])"
             exit 1
+          fi
+
+          DRAFTER_TAG_SEMVER_REGEX='^[vV]?[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$'
+          DRAFTER_TAG_NORMALIZED="$DRAFTER_TAG"
+          if [ -n "$DRAFTER_TAG" ] && printf '%s\n' "$DRAFTER_TAG" | grep -Eq "$DRAFTER_TAG_SEMVER_REGEX"; then
+            DRAFTER_TAG_NORMALIZED="$(printf '%s\n' "$DRAFTER_TAG" | sed -E 's/^[vV]//')"
+          fi
+
+          if printf '%s\n' "$CHANGELOG_FIRST_HEADER" | grep -Eq "$SEMVER_HEADER_REGEX"; then
+            CHANGELOG_VERSION="$(printf '%s\n' "$CHANGELOG_FIRST_HEADER" | sed -E 's/^## \[([^]]+)\].*$/\1/')"
+          elif printf '%s\n' "$CHANGELOG_FIRST_HEADER" | grep -Eqi '^## \[Unreleased\]'; then
+            if [ -n "$DRAFTER_TAG" ] && printf '%s\n' "$DRAFTER_TAG" | grep -Eq "$DRAFTER_TAG_SEMVER_REGEX"; then
+              CHANGELOG_VERSION="$DRAFTER_TAG_NORMALIZED"
+              echo "::notice::First changelog header is Unreleased; using semver-like release-drafter tag '$CHANGELOG_VERSION'"
+            else
+              CHANGELOG_NEXT_SEMVER_HEADER="$(
+                awk '
+                  BEGIN { seen_first = 0 }
+                  /^## \[/ {
+                    if (!seen_first) {
+                      seen_first = 1
+                      next
+                    }
+                    if (match($0, /^## \[[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?\]/)) {
+                      print
+                      exit
+                    }
+                  }
+                ' CHANGELOG.md
+              )"
+
+              if [ -n "$CHANGELOG_NEXT_SEMVER_HEADER" ]; then
+                CHANGELOG_VERSION="$(printf '%s\n' "$CHANGELOG_NEXT_SEMVER_HEADER" | sed -E 's/^## \[([^]]+)\].*$/\1/')"
+                echo "::notice::First changelog header is Unreleased and release-drafter tag is not semver-like; using next semver header '$CHANGELOG_VERSION'"
+              else
+                echo "::error::First changelog header is Unreleased and no semver-like release-drafter tag or next semver header was found"
+                exit 1
+              fi
+            fi
+          else
+            echo "::error::Unsupported changelog header format: $CHANGELOG_FIRST_HEADER"
+            exit 1
+          fi
+
+          VERSION="${CHANGELOG_VERSION}"
+          if printf '%s\n' "$VERSION" | grep -Eqi '^unreleased$'; then
+            echo "::error::Refusing to use literal Unreleased as release tag/name"
+            exit 1
+          fi
+
+          if [ -n "$DRAFTER_TAG" ] && [ "$DRAFTER_TAG_NORMALIZED" != "$VERSION" ]; then
+            echo "::notice::release-drafter tag_name '$DRAFTER_TAG' differs from changelog version '$VERSION'; using changelog version"
           fi
 
           echo "Extracting changelog for version: $VERSION"
@@ -154,22 +207,22 @@ jobs:
             : > "${RUNNER_TEMP}/current_body.md"
           fi
 
-          # Check if changelog section already exists to prevent duplicate additions
-          # Use -E for extended regex, -i for case-insensitive, allow optional leading whitespace
+          # Check if changelog section already exists to prevent duplicate additions.
+          # Even when it already exists, still PATCH tag/name so release metadata stays in sync.
+          # Use -E for extended regex, -i for case-insensitive, allow optional leading whitespace.
           if grep -qiE '^\s*## Changelog' "${RUNNER_TEMP}/current_body.md"; then
-            echo "::notice::Changelog section already exists in release body, skipping update"
-            echo "Release $RELEASE_ID already contains changelog for version $VERSION"
-            exit 0
+            echo "::notice::Changelog section already exists in release body; preserving existing body"
+            cp "${RUNNER_TEMP}/current_body.md" "${RUNNER_TEMP}/new_body.md"
+          else
+            # Build new body using file concatenation (no embedded whitespace issues)
+            {
+              echo "## Changelog"
+              echo ""
+              cat "${RUNNER_TEMP}/changelog_content.md"
+              echo ""
+              cat "${RUNNER_TEMP}/current_body.md"
+            } > "${RUNNER_TEMP}/new_body.md"
           fi
-
-          # Build new body using file concatenation (no embedded whitespace issues)
-          {
-            echo "## Changelog"
-            echo ""
-            cat "${RUNNER_TEMP}/changelog_content.md"
-            echo ""
-            cat "${RUNNER_TEMP}/current_body.md"
-          } > "${RUNNER_TEMP}/new_body.md"
 
           echo "Updating release with changelog..."
 
@@ -180,6 +233,8 @@ jobs:
           for attempt in $(seq 1 $MAX_ATTEMPTS); do
             if gh api "repos/${{ github.repository }}/releases/$RELEASE_ID" \
               -X PATCH \
+              -F tag_name="$VERSION" \
+              -F name="$VERSION" \
               -F body=@"${RUNNER_TEMP}/new_body.md"; then
               echo "Release API update succeeded on attempt $attempt"
               break
