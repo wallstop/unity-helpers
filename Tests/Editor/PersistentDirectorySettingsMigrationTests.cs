@@ -12,6 +12,7 @@ namespace WallstopStudios.UnityHelpers.Tests
     using UnityEditor;
     using UnityEngine;
     using UnityEngine.TestTools;
+    using WallstopStudios.UnityHelpers.Editor.AssetProcessors;
     using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Editor;
     using WallstopStudios.UnityHelpers.Editor.Utils;
@@ -24,6 +25,36 @@ namespace WallstopStudios.UnityHelpers.Tests
     [NUnit.Framework.Category("Integration")]
     public sealed class PersistentDirectorySettingsMigrationTests : CommonTestBase
     {
+        private const string WallstopRoot = "Assets/Resources/Wallstop Studios";
+
+        private static readonly string[] FixtureOwnedCleanupFolders =
+        {
+            PersistentDirectorySettings.TargetFolder,
+            PersistentDirectorySettings.LegacyFolder,
+            WallstopRoot + "/Old",
+            WallstopRoot + "/HasAsset",
+            WallstopRoot + "/EmptyFolder",
+            WallstopRoot + "/ToDelete",
+            WallstopRoot + "/Branch1",
+            WallstopRoot + "/Branch2",
+            WallstopRoot + "/Branch3",
+            WallstopRoot + "/EmptyBranch",
+            WallstopRoot + "/FilledBranch",
+            WallstopRoot + "/OldStuff",
+            WallstopRoot + "/OtherTool",
+            WallstopRoot + "/DeepEmpty",
+            WallstopRoot + "/TestCleanup",
+            WallstopRoot + "/Empty1",
+            WallstopRoot + "/Empty2",
+            WallstopRoot + "/Empty3",
+        };
+
+        private static readonly string[] FixtureOwnedParentFolders =
+        {
+            WallstopRoot + "/Unity Helpers",
+            WallstopRoot,
+        };
+
         private readonly List<string> _createdAssets = new();
         private readonly List<string> _createdFolders = new();
         private bool _previousEditorUiSuppress;
@@ -55,6 +86,8 @@ namespace WallstopStudios.UnityHelpers.Tests
             }
             _createdFolders.Clear();
             EditorUi.Suppress = _previousEditorUiSuppress;
+            AssetPostprocessorDeferral.FlushForTesting();
+            yield return null;
         }
 
         [UnityTest]
@@ -88,7 +121,7 @@ namespace WallstopStudios.UnityHelpers.Tests
             );
             legacy.RecordPath("TestTool", "Context", "Assets/TestPath");
             AssetDatabase.CreateAsset(legacy, PersistentDirectorySettings.LegacyAssetPath);
-            AssetDatabaseBatchHelper.SaveAndRefreshIfNotBatching();
+            SaveAndRefreshFixtureAssets();
             yield return null;
 
             Assert.IsTrue(
@@ -147,7 +180,7 @@ namespace WallstopStudios.UnityHelpers.Tests
             AssetDatabase.CreateAsset(legacy, PersistentDirectorySettings.LegacyAssetPath);
             yield return null;
 
-            AssetDatabaseBatchHelper.SaveAndRefreshIfNotBatching();
+            SaveAndRefreshFixtureAssets();
             yield return null;
 
             PersistentDirectorySettings result = PersistentDirectorySettings.RunMigration();
@@ -208,7 +241,7 @@ namespace WallstopStudios.UnityHelpers.Tests
             _createdAssets.Add(customAssetPath);
             yield return null;
 
-            AssetDatabaseBatchHelper.SaveAndRefreshIfNotBatching();
+            SaveAndRefreshFixtureAssets();
             yield return null;
 
             PersistentDirectorySettings result = PersistentDirectorySettings.RunMigration();
@@ -294,7 +327,7 @@ namespace WallstopStudios.UnityHelpers.Tests
                 ScriptableObject.CreateInstance<PersistentDirectorySettings>()
             );
             AssetDatabase.CreateAsset(legacy, PersistentDirectorySettings.LegacyAssetPath);
-            AssetDatabaseBatchHelper.SaveAndRefreshIfNotBatching();
+            SaveAndRefreshFixtureAssets();
             yield return null;
 
             Assert.IsTrue(
@@ -331,7 +364,7 @@ namespace WallstopStudios.UnityHelpers.Tests
             legacy.RecordPath("ExportTool", "Default", "Assets/Exports");
             legacy.RecordPath("ImportTool", "Audio", "Assets/Audio/Import");
             AssetDatabase.CreateAsset(legacy, PersistentDirectorySettings.LegacyAssetPath);
-            AssetDatabaseBatchHelper.SaveAndRefreshIfNotBatching();
+            SaveAndRefreshFixtureAssets();
             yield return null;
 
             PersistentDirectorySettings result = PersistentDirectorySettings.RunMigration();
@@ -480,7 +513,7 @@ namespace WallstopStudios.UnityHelpers.Tests
             AssetDatabase.CreateAsset(legacy, PersistentDirectorySettings.LegacyAssetPath);
             yield return null;
 
-            AssetDatabaseBatchHelper.SaveAndRefreshIfNotBatching();
+            SaveAndRefreshFixtureAssets();
             yield return null;
 
             PersistentDirectorySettings result = PersistentDirectorySettings.RunMigration();
@@ -512,7 +545,7 @@ namespace WallstopStudios.UnityHelpers.Tests
             _createdFolders.Add("Assets/Resources/Wallstop Studios");
             yield return null;
 
-            AssetDatabaseBatchHelper.SaveAndRefreshIfNotBatching();
+            SaveAndRefreshFixtureAssets();
             yield return null;
 
             Assert.IsTrue(
@@ -539,7 +572,7 @@ namespace WallstopStudios.UnityHelpers.Tests
             _createdFolders.Add("Assets/Resources/Wallstop Studios");
             yield return null;
 
-            AssetDatabaseBatchHelper.SaveAndRefreshIfNotBatching();
+            SaveAndRefreshFixtureAssets();
             yield return null;
 
             Assert.IsTrue(
@@ -580,7 +613,7 @@ namespace WallstopStudios.UnityHelpers.Tests
             EnsureFolderExists(emptyFolder);
             yield return null;
 
-            AssetDatabaseBatchHelper.SaveAndRefreshIfNotBatching();
+            SaveAndRefreshFixtureAssets();
             yield return null;
 
             PersistentDirectorySettings.CleanupLegacyEmptyFolders();
@@ -616,7 +649,7 @@ namespace WallstopStudios.UnityHelpers.Tests
             EnsureFolderExists(legacyFolder);
             yield return null;
 
-            AssetDatabaseBatchHelper.SaveAndRefreshIfNotBatching();
+            SaveAndRefreshFixtureAssets();
             yield return null;
 
             PersistentDirectorySettings.CleanupLegacyEmptyFolders();
@@ -642,7 +675,7 @@ namespace WallstopStudios.UnityHelpers.Tests
             _createdFolders.Add("Assets/Resources/Wallstop Studios");
             yield return null;
 
-            AssetDatabaseBatchHelper.SaveAndRefreshIfNotBatching();
+            SaveAndRefreshFixtureAssets();
             yield return null;
 
             PersistentDirectorySettings.CleanupLegacyEmptyFolders();
@@ -670,7 +703,7 @@ namespace WallstopStudios.UnityHelpers.Tests
             EnsureFolderExists(wallstopRoot);
             yield return null;
 
-            AssetDatabaseBatchHelper.SaveAndRefreshIfNotBatching();
+            SaveAndRefreshFixtureAssets();
             yield return null;
 
             Assert.IsTrue(
@@ -708,7 +741,7 @@ namespace WallstopStudios.UnityHelpers.Tests
             _createdFolders.Add(wallstopRoot);
             yield return null;
 
-            AssetDatabaseBatchHelper.SaveAndRefreshIfNotBatching();
+            SaveAndRefreshFixtureAssets();
             yield return null;
 
             Assert.IsTrue(
@@ -737,8 +770,17 @@ namespace WallstopStudios.UnityHelpers.Tests
             );
         }
 
+        private static IEnumerable<int> RootCleanupInvocationCounts()
+        {
+            yield return 1;
+            yield return 5;
+            yield return 25;
+        }
+
         [UnityTest]
-        public IEnumerator CleanupLegacyEmptyFoldersCalledMultipleTimesNeverDeletesRoot()
+        public IEnumerator CleanupLegacyEmptyFoldersCalledMultipleTimesNeverDeletesRoot(
+            [ValueSource(nameof(RootCleanupInvocationCounts))] int cleanupInvocationCount
+        )
         {
             yield return CleanupAllPersistentDirectorySettingsAssets();
 
@@ -748,14 +790,16 @@ namespace WallstopStudios.UnityHelpers.Tests
             _createdFolders.Add(wallstopRoot);
             yield return null;
 
-            for (int i = 0; i < 5; i++)
+            for (int i = 0; i < cleanupInvocationCount; i++)
             {
                 PersistentDirectorySettings.CleanupLegacyEmptyFolders();
                 yield return null;
 
+                string diagnostics = GetWallstopRootDiagnostics();
                 Assert.IsTrue(
                     AssetDatabase.IsValidFolder(wallstopRoot),
-                    $"CRITICAL: Wallstop Studios root folder must NEVER be deleted (iteration {i + 1})"
+                    $"CRITICAL: Wallstop Studios root folder must NEVER be deleted (iteration {i + 1}/{cleanupInvocationCount}). "
+                        + $"Diagnostics: {diagnostics}"
                 );
             }
         }
@@ -779,7 +823,7 @@ namespace WallstopStudios.UnityHelpers.Tests
             DeleteFolderIfExists(PersistentDirectorySettings.WallstopStudiosRoot);
             yield return null;
 
-            AssetDatabaseBatchHelper.SaveAndRefreshIfNotBatching();
+            SaveAndRefreshFixtureAssets();
             yield return null;
 
             Assert.DoesNotThrow(
@@ -819,7 +863,7 @@ namespace WallstopStudios.UnityHelpers.Tests
             _createdFolders.Add(wallstopRoot);
             yield return null;
 
-            AssetDatabaseBatchHelper.SaveAndRefreshIfNotBatching();
+            SaveAndRefreshFixtureAssets();
             yield return null;
 
             Assert.IsTrue(
@@ -877,7 +921,7 @@ namespace WallstopStudios.UnityHelpers.Tests
             _createdAssets.Add(dummyPath);
             yield return null;
 
-            AssetDatabaseBatchHelper.SaveAndRefreshIfNotBatching();
+            SaveAndRefreshFixtureAssets();
             yield return null;
 
             PersistentDirectorySettings.CleanupLegacyEmptyFolders();
@@ -919,7 +963,7 @@ namespace WallstopStudios.UnityHelpers.Tests
             );
             legacy.RecordPath("Tool", "Ctx", "Assets/Path");
             AssetDatabase.CreateAsset(legacy, PersistentDirectorySettings.LegacyAssetPath);
-            AssetDatabaseBatchHelper.SaveAndRefreshIfNotBatching();
+            SaveAndRefreshFixtureAssets();
             yield return null;
 
             PersistentDirectorySettings result = PersistentDirectorySettings.RunMigration();
@@ -967,7 +1011,7 @@ namespace WallstopStudios.UnityHelpers.Tests
                 ScriptableObject.CreateInstance<PersistentDirectorySettings>()
             );
             AssetDatabase.CreateAsset(legacy, PersistentDirectorySettings.LegacyAssetPath);
-            AssetDatabaseBatchHelper.SaveAndRefreshIfNotBatching();
+            SaveAndRefreshFixtureAssets();
             yield return null;
 
             Assert.IsTrue(
@@ -1012,7 +1056,7 @@ namespace WallstopStudios.UnityHelpers.Tests
             AssetDatabase.CreateAsset(legacy, PersistentDirectorySettings.LegacyAssetPath);
             yield return null;
 
-            AssetDatabaseBatchHelper.SaveAndRefreshIfNotBatching();
+            SaveAndRefreshFixtureAssets();
             yield return null;
 
             Assert.IsTrue(
@@ -1067,7 +1111,7 @@ namespace WallstopStudios.UnityHelpers.Tests
             legacy.RecordPath("ExportTool", "Audio", "Assets/Audio/Export");
             legacy.RecordPath("ImportTool", "Default", "Assets/Import");
             AssetDatabase.CreateAsset(legacy, PersistentDirectorySettings.LegacyAssetPath);
-            AssetDatabaseBatchHelper.SaveAndRefreshIfNotBatching();
+            SaveAndRefreshFixtureAssets();
             yield return null;
 
             PersistentDirectorySettings result = PersistentDirectorySettings.RunMigration();
@@ -1120,6 +1164,8 @@ namespace WallstopStudios.UnityHelpers.Tests
 
         private IEnumerator CleanupAllPersistentDirectorySettingsAssets()
         {
+            string beforeDiagnostics = GetWallstopRootDiagnostics();
+
             string[] guids = AssetDatabase.FindAssets("t:" + nameof(PersistentDirectorySettings));
             foreach (string guid in guids)
             {
@@ -1131,60 +1177,52 @@ namespace WallstopStudios.UnityHelpers.Tests
                 }
             }
 
-            DeleteFolderIfExists(PersistentDirectorySettings.LegacyFolder);
-            yield return null;
-            DeleteFolderIfExists("Assets/Resources/Wallstop Studios/Editor");
+            for (int i = 0; i < FixtureOwnedCleanupFolders.Length; i++)
+            {
+                DeleteFolderIfExists(FixtureOwnedCleanupFolders[i]);
+                yield return null;
+            }
+
+            for (int i = 0; i < FixtureOwnedParentFolders.Length; i++)
+            {
+                TryDeleteEmptyFolder(FixtureOwnedParentFolders[i]);
+                yield return null;
+            }
+
+            AssetDatabase.SaveAssets();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
+            AssetPostprocessorDeferral.FlushForTesting();
             yield return null;
 
-            DeleteFolderIfExists(PersistentDirectorySettings.TargetFolder);
-            yield return null;
-            TryDeleteEmptyFolder("Assets/Resources/Wallstop Studios/Unity Helpers");
-            yield return null;
+            string remainingFixtureFolders = GetExistingFixtureOwnedFolderDiagnostics();
+            string afterDiagnostics = GetWallstopRootDiagnostics();
+            string unexpectedSubFolders = GetUnexpectedWallstopSubFolderDiagnostics();
+            if (!string.Equals(remainingFixtureFolders, "(none)", StringComparison.Ordinal))
+            {
+                TestContext.WriteLine(
+                    "CleanupAllPersistentDirectorySettingsAssets left fixture folders behind. "
+                        + $"Before: {beforeDiagnostics}. "
+                        + $"After: {afterDiagnostics}. "
+                        + $"Remaining: {remainingFixtureFolders}"
+                );
+            }
 
-            DeleteAllContentsRecursively("Assets/Resources/Wallstop Studios");
-            yield return null;
-
-            TryDeleteEmptyFolder("Assets/Resources/Wallstop Studios");
-            yield return null;
-            TryDeleteEmptyFolder("Assets/Resources");
-            yield return null;
-
-            AssetDatabaseBatchHelper.SaveAndRefreshIfNotBatching();
-            yield return null;
+            if (!string.Equals(unexpectedSubFolders, "(none)", StringComparison.Ordinal))
+            {
+                TestContext.WriteLine(
+                    "CleanupAllPersistentDirectorySettingsAssets observed unexpected Wallstop root subfolders. "
+                        + $"Unexpected: {unexpectedSubFolders}. "
+                        + $"After: {afterDiagnostics}"
+                );
+            }
         }
 
-        private static void DeleteAllContentsRecursively(string folderPath)
+        private static void SaveAndRefreshFixtureAssets()
         {
-            if (string.IsNullOrWhiteSpace(folderPath) || !AssetDatabase.IsValidFolder(folderPath))
-            {
-                return;
-            }
-
-            string[] subFolders = AssetDatabase.GetSubFolders(folderPath);
-            if (subFolders != null)
-            {
-                foreach (string subFolder in subFolders)
-                {
-                    DeleteAllContentsRecursively(subFolder);
-                    if (AssetDatabase.IsValidFolder(subFolder))
-                    {
-                        AssetDatabase.DeleteAsset(subFolder);
-                    }
-                }
-            }
-
-            string[] assetGuids = AssetDatabase.FindAssets(string.Empty, new[] { folderPath });
-            if (assetGuids != null)
-            {
-                foreach (string guid in assetGuids)
-                {
-                    string assetPath = AssetDatabase.GUIDToAssetPath(guid);
-                    if (!string.IsNullOrEmpty(assetPath) && !AssetDatabase.IsValidFolder(assetPath))
-                    {
-                        AssetDatabase.DeleteAsset(assetPath);
-                    }
-                }
-            }
+            AssetDatabase.SaveAssets();
+            AssetPostprocessorDeferral.FlushForTesting();
+            AssetDatabaseBatchHelper.RefreshIfNotBatching();
+            AssetPostprocessorDeferral.FlushForTesting();
         }
 
         private static void EnsureFolderExists(string folderPath)
@@ -1272,6 +1310,95 @@ namespace WallstopStudios.UnityHelpers.Tests
             AssetDatabase.DeleteAsset(folderPath);
         }
 
+        private static string GetWallstopRootDiagnostics()
+        {
+            if (!AssetDatabase.IsValidFolder(WallstopRoot))
+            {
+                return WallstopRoot + " [missing]";
+            }
+
+            string[] subFolders = AssetDatabase.GetSubFolders(WallstopRoot);
+            string subFolderList =
+                subFolders != null && subFolders.Length > 0
+                    ? string.Join(", ", subFolders)
+                    : "(none)";
+
+            string[] assets = AssetDatabase.FindAssets(string.Empty, new[] { WallstopRoot });
+            int assetCount = assets != null ? assets.Length : 0;
+
+            return WallstopRoot + $" [subfolders: {subFolderList}] [assetGuids: {assetCount}]";
+        }
+
+        private static string GetExistingFixtureOwnedFolderDiagnostics()
+        {
+            List<string> existing = new();
+            for (int i = 0; i < FixtureOwnedCleanupFolders.Length; i++)
+            {
+                string folderPath = FixtureOwnedCleanupFolders[i];
+                if (AssetDatabase.IsValidFolder(folderPath))
+                {
+                    existing.Add(folderPath);
+                }
+            }
+
+            return existing.Count > 0 ? string.Join(", ", existing) : "(none)";
+        }
+
+        private static string GetUnexpectedWallstopSubFolderDiagnostics()
+        {
+            if (!AssetDatabase.IsValidFolder(WallstopRoot))
+            {
+                return "(none)";
+            }
+
+            string[] subFolders = AssetDatabase.GetSubFolders(WallstopRoot);
+            if (subFolders == null || subFolders.Length == 0)
+            {
+                return "(none)";
+            }
+
+            List<string> unexpected = new();
+            for (int i = 0; i < subFolders.Length; i++)
+            {
+                string subFolder = subFolders[i];
+                if (
+                    string.Equals(
+                        subFolder,
+                        WallstopRoot + "/Unity Helpers",
+                        StringComparison.OrdinalIgnoreCase
+                    )
+                )
+                {
+                    continue;
+                }
+
+                bool isFixtureOwned = false;
+                string prefix = subFolder + "/";
+                for (int j = 0; j < FixtureOwnedCleanupFolders.Length; j++)
+                {
+                    string fixtureFolder = FixtureOwnedCleanupFolders[j];
+                    if (string.Equals(subFolder, fixtureFolder, StringComparison.OrdinalIgnoreCase))
+                    {
+                        isFixtureOwned = true;
+                        break;
+                    }
+
+                    if (fixtureFolder.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                    {
+                        isFixtureOwned = true;
+                        break;
+                    }
+                }
+
+                if (!isFixtureOwned)
+                {
+                    unexpected.Add(subFolder);
+                }
+            }
+
+            return unexpected.Count > 0 ? string.Join(", ", unexpected) : "(none)";
+        }
+
         public sealed class CleanupScenario
         {
             public string Description { get; }
@@ -1279,13 +1406,15 @@ namespace WallstopStudios.UnityHelpers.Tests
             public string[] AssetPaths { get; }
             public string[] ExpectedDeleted { get; }
             public string[] ExpectedPreserved { get; }
+            public int CleanupInvocationCount { get; }
 
             public CleanupScenario(
                 string description,
                 string[] foldersToCreate,
                 string[] assetPaths,
                 string[] expectedDeleted,
-                string[] expectedPreserved
+                string[] expectedPreserved,
+                int cleanupInvocationCount = 1
             )
             {
                 Description = description;
@@ -1293,6 +1422,7 @@ namespace WallstopStudios.UnityHelpers.Tests
                 AssetPaths = assetPaths ?? Array.Empty<string>();
                 ExpectedDeleted = expectedDeleted ?? Array.Empty<string>();
                 ExpectedPreserved = expectedPreserved ?? Array.Empty<string>();
+                CleanupInvocationCount = cleanupInvocationCount > 0 ? cleanupInvocationCount : 1;
             }
 
             public override string ToString() => Description;
@@ -1423,6 +1553,20 @@ namespace WallstopStudios.UnityHelpers.Tests
                 },
                 new[] { "Assets/Resources/Wallstop Studios" }
             );
+
+            yield return new CleanupScenario(
+                "Repeated cleanup invocations stay idempotent",
+                new[] { "Assets/Resources/Wallstop Studios/TestCleanup/Repeat/Leaf" },
+                Array.Empty<string>(),
+                new[]
+                {
+                    "Assets/Resources/Wallstop Studios/TestCleanup/Repeat/Leaf",
+                    "Assets/Resources/Wallstop Studios/TestCleanup/Repeat",
+                    "Assets/Resources/Wallstop Studios/TestCleanup",
+                },
+                new[] { "Assets/Resources/Wallstop Studios" },
+                cleanupInvocationCount: 4
+            );
         }
 
         [UnityTest]
@@ -1452,7 +1596,7 @@ namespace WallstopStudios.UnityHelpers.Tests
             }
             yield return null;
 
-            AssetDatabaseBatchHelper.SaveAndRefreshIfNotBatching();
+            SaveAndRefreshFixtureAssets();
             yield return null;
 
             string[] subFoldersBeforeCleanup = AssetDatabase.IsValidFolder(
@@ -1466,8 +1610,11 @@ namespace WallstopStudios.UnityHelpers.Tests
                 + $"FoldersCreated: [{string.Join(", ", scenario.FoldersToCreate)}], "
                 + $"AssetsCreated: [{string.Join(", ", scenario.AssetPaths)}]";
 
-            PersistentDirectorySettings.CleanupLegacyEmptyFolders();
-            yield return null;
+            for (int i = 0; i < scenario.CleanupInvocationCount; i++)
+            {
+                PersistentDirectorySettings.CleanupLegacyEmptyFolders();
+                yield return null;
+            }
 
             string[] subFoldersAfterCleanup = AssetDatabase.IsValidFolder(
                 "Assets/Resources/Wallstop Studios"
@@ -1481,6 +1628,7 @@ namespace WallstopStudios.UnityHelpers.Tests
                     AssetDatabase.IsValidFolder(expectedDeleted),
                     $"[{scenario.Description}] Folder should be deleted: {expectedDeleted}. "
                         + $"{diagnosticInfo}. "
+                        + $"CleanupInvocationCount: {scenario.CleanupInvocationCount}. "
                         + $"After cleanup - SubFolders: [{string.Join(", ", subFoldersAfterCleanup)}]"
                 );
             }
@@ -1491,6 +1639,7 @@ namespace WallstopStudios.UnityHelpers.Tests
                     AssetDatabase.IsValidFolder(expectedPreserved),
                     $"[{scenario.Description}] Folder should be preserved: {expectedPreserved}. "
                         + $"{diagnosticInfo}. "
+                        + $"CleanupInvocationCount: {scenario.CleanupInvocationCount}. "
                         + $"After cleanup - SubFolders: [{string.Join(", ", subFoldersAfterCleanup)}]"
                 );
             }

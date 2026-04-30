@@ -16,7 +16,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
     using UnityEngine.TestTools;
     using WallstopStudios.UnityHelpers.Core.Attributes;
     using WallstopStudios.UnityHelpers.Core.Helper;
+    using WallstopStudios.UnityHelpers.Editor.AssetProcessors;
     using WallstopStudios.UnityHelpers.Editor.Utils;
+    using WallstopStudios.UnityHelpers.Tests.AssetProcessors;
     using WallstopStudios.UnityHelpers.Tests.Core;
     using WallstopStudios.UnityHelpers.Tests.Core.TestTypes;
     using Object = UnityEngine.Object;
@@ -68,6 +70,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         [UnitySetUp]
         public IEnumerator SetUp()
         {
+            AssetPostprocessorTestHandlers.AssertCleanAndClearAll();
+
             _previousEditorUiSuppress = EditorUi.Suppress;
             EditorUi.Suppress = true;
             _previousIncludeTestAssemblies = ScriptableObjectSingletonCreator.IncludeTestAssemblies;
@@ -99,6 +103,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
 
             // Clean up all known test folders including duplicates
             CleanupAllKnownTestFolders();
+            AssetPostprocessorDeferral.FlushForTesting();
+            yield return null;
         }
 
         public override void OneTimeTearDown()
