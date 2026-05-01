@@ -805,9 +805,119 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
             yield return new TestCaseData(true).SetName("Negative.DestroyedEditor.NoThrow");
         }
 
+        [UnityTest]
+        public IEnumerator InvalidEnumValuesHandledGracefully()
+        {
+            CreateAssetAndEditor<WButtonInvalidPlacementConflictTarget>(out Editor editor);
+            Dictionary<WButtonGroupKey, WButtonPaginationState> paginationStates = new();
+            Dictionary<WButtonGroupKey, bool> foldoutStates = new();
+
+            WButtonGroupPlacement invalidPlacement = (WButtonGroupPlacement)999;
+            bool drawCompleted = false;
+            Exception drawException = null;
+
+            yield return TestIMGUIExecutor.Run(() =>
+            {
+                try
+                {
+                    drawCompleted = WButtonGUI.DrawButtons(
+                        editor,
+                        WButtonPlacement.Bottom,
+                        paginationStates,
+                        foldoutStates,
+                        UnityHelpersSettings.WButtonFoldoutBehavior.StartCollapsed,
+                        triggeredContexts: null,
+                        globalPlacementIsTop: true
+                    );
+                }
+                catch (Exception ex)
+                {
+                    drawException = ex;
+                }
+            });
+
+            Assert.IsTrue(
+                drawException == null,
+                $"Expected DrawButtons to handle metadata-derived invalid groupPlacement values without throwing. Exception: {drawException}"
+            );
+            Assert.IsTrue(
+                drawCompleted,
+                "Expected DrawButtons to render at least one group when the canonical group placement is an invalid enum value."
+            );
+
+            Dictionary<WButtonGroupKey, int> groupCounts = WButtonGUI.GetGroupCountsForTesting();
+            int invalidPlacementGroupCount = 0;
+            foreach (KeyValuePair<WButtonGroupKey, int> entry in groupCounts)
+            {
+                if (
+                    string.Equals(
+                        entry.Key._groupName,
+                        "InvalidPlacementGroup",
+                        StringComparison.Ordinal
+                    )
+                )
+                {
+                    invalidPlacementGroupCount++;
+                    Assert.AreEqual(
+                        invalidPlacement,
+                        entry.Key._groupPlacement,
+                        "Expected canonical group key to preserve the first-declared invalid groupPlacement value."
+                    );
+                }
+            }
+            Assert.AreEqual(
+                1,
+                invalidPlacementGroupCount,
+                $"Expected exactly one InvalidPlacementGroup key. Available group keys: [{string.Join(", ", groupCounts.Keys)}]"
+            );
+
+            IReadOnlyDictionary<string, WButtonGUI.GroupPlacementConflictInfo> placementWarnings =
+                GetPlacementWarnings();
+            Assert.IsTrue(
+                placementWarnings.ContainsKey("InvalidPlacementGroup"),
+                $"Expected placement warnings to include 'InvalidPlacementGroup' after drawing. Available groups: [{string.Join(", ", placementWarnings.Keys)}]"
+            );
+
+            WButtonGUI.GroupPlacementConflictInfo conflict = placementWarnings[
+                "InvalidPlacementGroup"
+            ];
+            Assert.AreEqual(
+                invalidPlacement,
+                conflict._canonicalGroupPlacement,
+                "Expected placement warning canonical value to preserve invalid first-declared placement."
+            );
+            Assert.IsTrue(
+                conflict._allGroupPlacements.Contains(invalidPlacement),
+                "Expected conflict values to include the invalid enum value."
+            );
+            Assert.IsTrue(
+                conflict._allGroupPlacements.Contains(WButtonGroupPlacement.Top),
+                "Expected conflict values to include the explicit Top placement."
+            );
+
+            bool hasCachedWarning = WButtonGUI.TryGetGroupPlacementWarningTextForTesting(
+                "InvalidPlacementGroup",
+                out string warningText
+            );
+            LogWarningDiagnostics(
+                "placement",
+                UnityHelpersSettings.WButtonFoldoutBehavior.StartCollapsed,
+                "InvalidPlacementGroup",
+                hasCachedWarning
+            );
+            Assert.IsTrue(
+                hasCachedWarning,
+                "Expected placement warning text cache to be populated after IMGUI draw with metadata-derived invalid enum values."
+            );
+            StringAssert.Contains("Conflicting groupPlacement values", warningText);
+            StringAssert.Contains("Using 999 from first declared button.", warningText);
+            StringAssert.Contains("Top", warningText);
+            StringAssert.Contains("999", warningText);
+        }
+
         [Test]
         [TestCaseSource(nameof(InvalidEnumValueCases))]
-        public void InvalidEnumValuesHandledGracefully(
+        public void InvalidEnumBackedKeysRemainStableForCompareAndHashCode(
             WButtonGroupPlacement invalidPlacement,
             int invalidPriority
         )
@@ -826,10 +936,15 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
                 1,
                 WButtonGroupPlacement.UseGlobalSetting
             );
+            Dictionary<WButtonGroupKey, WButtonPaginationState> paginationStates = new();
             Dictionary<WButtonGroupKey, bool> foldoutStates = new();
 
             Assert.DoesNotThrow(() =>
             {
+                paginationStates[invalidKey] = new WButtonPaginationState
+                {
+                    _pageIndex = int.MaxValue,
+                };
                 foldoutStates[invalidKey] = true;
                 _ = invalidKey.CompareTo(canonicalKey);
                 _ = invalidKey.GetHashCode();
@@ -837,17 +952,21 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
 
             Assert.IsTrue(
                 foldoutStates.ContainsKey(invalidKey),
-                "Expected dictionary lookups using invalid enum-backed keys to remain stable."
+                "Expected foldout-state dictionary lookups using invalid enum-backed keys to remain stable."
+            );
+            Assert.IsTrue(
+                paginationStates.ContainsKey(invalidKey),
+                "Expected pagination-state dictionary lookups using invalid enum-backed keys to remain stable."
             );
         }
 
         private static IEnumerable<TestCaseData> InvalidEnumValueCases()
         {
             yield return new TestCaseData((WButtonGroupPlacement)999, int.MinValue).SetName(
-                "Impossible.InvalidEnumValues.HandledGracefully"
+                "Impossible.InvalidEnumValues.KeyComparison.Stable"
             );
             yield return new TestCaseData((WButtonGroupPlacement)(-1), int.MaxValue).SetName(
-                "Impossible.NegativeEnumValue.HandledGracefully"
+                "Impossible.NegativeEnumValue.KeyComparison.Stable"
             );
         }
 
