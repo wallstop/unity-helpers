@@ -309,6 +309,38 @@ if [ ${#MD_FILES_ARRAY[@]} -gt 0 ]; then
   npx --no-install markdownlint --config .markdownlint.json --ignore-path .markdownlintignore -- "${MD_FILES_ARRAY[@]}"
 fi
 
+# 7b) CHANGELOG lint when CHANGELOG.md is staged
+CHANGELOG_STAGED=false
+for file in "${STAGED_FILES_ARRAY[@]}"; do
+  if [[ "$file" == "CHANGELOG.md" ]]; then
+    CHANGELOG_STAGED=true
+    break
+  fi
+done
+
+if [ "$CHANGELOG_STAGED" = true ]; then
+  echo "Running CHANGELOG linter..."
+  if command -v pwsh >/dev/null 2>&1; then
+    pwsh -NoProfile -File scripts/lint-changelog.ps1 || {
+      echo "" >&2
+      echo "=== CHANGELOG lint failed ===" >&2
+      echo "Fix CHANGELOG.md structure issues before committing." >&2
+      echo "" >&2
+      exit 1
+    }
+  elif command -v powershell >/dev/null 2>&1; then
+    powershell -NoProfile -ExecutionPolicy Bypass -File scripts/lint-changelog.ps1 || {
+      echo "" >&2
+      echo "=== CHANGELOG lint failed ===" >&2
+      echo "Fix CHANGELOG.md structure issues before committing." >&2
+      echo "" >&2
+      exit 1
+    }
+  else
+    echo "PowerShell not found. Skipping CHANGELOG lint." >&2
+  fi
+fi
+
 # 8) YAML lint on staged YAML files
 if [ ${#YAML_FILES_ARRAY[@]} -gt 0 ]; then
   if command -v yamllint >/dev/null 2>&1; then
@@ -555,7 +587,31 @@ if [ ${#TEST_FILES_ARRAY[@]} -gt 0 ]; then
   fi
 fi
 
-# 13) Check for forbidden #region/#endregion directives in C# files
+# 13) Check for duplicate using directives in staged C# files
+if [ ${#CS_FILES_ARRAY[@]} -gt 0 ]; then
+  echo "Checking for duplicate C# using directives..."
+  if command -v pwsh >/dev/null 2>&1; then
+    pwsh -NoProfile -File scripts/lint-duplicate-usings.ps1 -Paths "${CS_FILES_ARRAY[@]}" || {
+      echo "" >&2
+      echo "=== Duplicate using directive lint failed (UNH007) ===" >&2
+      echo "Remove duplicate using directives within each namespace/file scope." >&2
+      echo "" >&2
+      exit 1
+    }
+  elif command -v powershell >/dev/null 2>&1; then
+    powershell -NoProfile -ExecutionPolicy Bypass -File scripts/lint-duplicate-usings.ps1 -Paths "${CS_FILES_ARRAY[@]}" || {
+      echo "" >&2
+      echo "=== Duplicate using directive lint failed (UNH007) ===" >&2
+      echo "Remove duplicate using directives within each namespace/file scope." >&2
+      echo "" >&2
+      exit 1
+    }
+  else
+    echo "PowerShell not found. Skipping duplicate using directive lint." >&2
+  fi
+fi
+
+# 14) Check for forbidden #region/#endregion directives in C# files
 # Regions are forbidden in this codebase - see .llm/skills/no-regions.md
 if [ ${#CS_FILES_ARRAY[@]} -gt 0 ]; then
   echo "Checking for forbidden #region directives..."
@@ -583,7 +639,7 @@ if [ ${#CS_FILES_ARRAY[@]} -gt 0 ]; then
   fi
 fi
 
-# 14) Lint property drawers for multi-object editing issues (warnings only, non-blocking)
+# 15) Lint property drawers for multi-object editing issues (warnings only, non-blocking)
 DRAWER_FILES_ARRAY=()
 for file in "${CS_FILES_ARRAY[@]}"; do
     case "$file" in
@@ -604,7 +660,7 @@ if [ ${#DRAWER_FILES_ARRAY[@]} -gt 0 ]; then
   fi
 fi
 
-# 15) Check Odin drawer Undo safety (WeakTargets must be null-filtered before Undo.RecordObjects)
+# 16) Check Odin drawer Undo safety (WeakTargets must be null-filtered before Undo.RecordObjects)
 ODIN_DRAWER_FILES=()
 for file in "${CS_FILES_ARRAY[@]}"; do
     case "$file" in
@@ -635,7 +691,7 @@ if [ ${#ODIN_DRAWER_FILES[@]} -gt 0 ]; then
   fi
 fi
 
-# 16) Check for missing .meta files on staged files
+# 17) Check for missing .meta files on staged files
 # Files in source roots (Runtime, Editor, Tests, docs, scripts, etc.) require .meta companions
 META_REQUIRED_FILES=()
 for file in "${STAGED_FILES_ARRAY[@]}"; do

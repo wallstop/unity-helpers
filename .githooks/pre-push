@@ -22,13 +22,16 @@ set -euo pipefail
 #   5. Gitignore docs safety (no docs/ files accidentally gitignored)
 #   6. Unity meta file lint (missing/orphaned .meta files)
 #   7. EOL verification
-#   8. yamllint (if installed)
-#   9. actionlint (if installed and workflow files changed)
-#  10. External link check with lychee (if installed)
-#  11. Test lifecycle lint
-#  12. License year audit (with cache)
-#  13. Hook pattern tests (if hook files changed)
-#  14. LLM instructions validation
+#   8. CHANGELOG structure lint (when CHANGELOG.md changes)
+#   9. yamllint (if installed)
+#  10. actionlint (if installed and workflow files changed)
+#  11. External link check with lychee (if installed)
+#  12. Test lifecycle lint
+#  13. Duplicate C# using directive lint
+#  14. License year audit (with cache)
+#  15. #region guard on changed C# files
+#  16. Hook pattern tests (if hook files changed)
+#  17. LLM instructions validation
 #
 # To skip in emergencies: git push --no-verify
 #   (CI will still validate all checks)
@@ -127,6 +130,7 @@ CHANGED_WORKFLOWS=()
 CHANGED_WIKI=()
 CHANGED_HOOK_FILES=()
 CHANGED_LINT_TEST=()
+CHANGED_LINT_DUPLICATE_USINGS=()
 CHANGED_GITIGNORE_DOCS_LINT=()
 CHANGED_SYNC_SCRIPT_CONTRACTS=()
 CHANGED_LINT_ERROR_CODE_SCRIPTS=()
@@ -146,6 +150,7 @@ for file in "${ALL_CHANGED_FILES[@]}"; do
   [[ "$file" =~ ^(scripts/wiki/.*|scripts/tests/test-wiki-generation\.sh|\.github/workflows/deploy-wiki\.yml)$ ]] && CHANGED_WIKI+=("$file")
   [[ "$file" =~ ^(\.githooks/.*|scripts/tests/test-hook-patterns\.sh)$ ]] && CHANGED_HOOK_FILES+=("$file")
   [[ "$file" =~ ^(scripts/lint-tests\.ps1|scripts/tests/test-lint-tests\.ps1)$ ]] && CHANGED_LINT_TEST+=("$file")
+  [[ "$file" =~ ^(scripts/lint-duplicate-usings\.ps1|scripts/tests/test-lint-duplicate-usings\.ps1)$ ]] && CHANGED_LINT_DUPLICATE_USINGS+=("$file")
   [[ "$file" =~ ^(scripts/lint-gitignore-docs\.ps1|scripts/tests/test-gitignore-docs\.ps1)$ ]] && CHANGED_GITIGNORE_DOCS_LINT+=("$file")
   [[ "$file" =~ ^(scripts/sync-doc-counts\.ps1|scripts/sync-banner-version\.ps1|scripts/lint-cspell-config\.js|scripts/tests/test-sync-script-contracts\.ps1)$ ]] && CHANGED_SYNC_SCRIPT_CONTRACTS+=("$file")
   # Run the lint-error-code cspell contract test whenever any file in the
@@ -346,7 +351,20 @@ run_pwsh_checks() {
     }
   fi
 
-  # 11) Test lifecycle lint (only if test files changed)
+  # 8) CHANGELOG lint when CHANGELOG.md is part of the push
+  if array_contains_exact "CHANGELOG.md" "${ALL_CHANGED_FILES[@]}"; then
+    echo "Checking CHANGELOG structure..."
+    "${PWSH_CMD[@]}" scripts/lint-changelog.ps1 || {
+      echo ""
+      echo "=== CHANGELOG lint failed ==="
+      echo "Fix CHANGELOG.md structure issues before pushing."
+      echo ""
+      return 1
+    }
+    echo "✓ CHANGELOG structure OK"
+  fi
+
+  # 12) Test lifecycle lint (only if test files changed)
   if [ ${#CHANGED_TESTS[@]} -gt 0 ]; then
     "${PWSH_CMD[@]}" scripts/lint-tests.ps1 -VerboseOutput -Paths "${CHANGED_TESTS[@]}" || {
       echo ""
@@ -355,6 +373,19 @@ run_pwsh_checks() {
       echo ""
       return 1
     }
+  fi
+
+  # 13) Duplicate using directive lint (only if C# files changed)
+  if [ ${#CHANGED_CS[@]} -gt 0 ]; then
+    echo "Checking duplicate C# using directives..."
+    "${PWSH_CMD[@]}" scripts/lint-duplicate-usings.ps1 -Paths "${CHANGED_CS[@]}" || {
+      echo ""
+      echo "=== Duplicate using directive lint failed (UNH007) ==="
+      echo "Remove duplicate using directives within each namespace/file scope."
+      echo ""
+      return 1
+    }
+    echo "✓ Duplicate using directives OK"
   fi
 
   # LLM instructions validation (only if .llm or skills changed)
@@ -375,7 +406,7 @@ run_pwsh_checks() {
 
 # ---- Group C: Bash/native checks (run in parallel) ----
 run_bash_checks() {
-  # 12) License year audit (only if .cs files changed, uses cache)
+  # 14) License year audit (only if .cs files changed, uses cache)
   if [ ${#CHANGED_CS[@]} -gt 0 ]; then
     echo "Checking license year headers..."
     if ! bash scripts/audit-license-years.sh --summary --paths "${CHANGED_CS[@]}"; then
@@ -388,7 +419,7 @@ run_bash_checks() {
     echo "✓ License year headers OK"
   fi
 
-  # 13) Check for #region directives (only in changed .cs files)
+  # 15) Check for #region directives (only in changed .cs files)
   if [ ${#CHANGED_CS[@]} -gt 0 ]; then
     echo "Checking for forbidden #region directives..."
     REGION_VIOLATIONS=$(grep -E -n -i '^[[:space:]]*#[[:space:]]*(region|endregion)' -- "${CHANGED_CS[@]}" 2>/dev/null || true)
@@ -449,6 +480,21 @@ run_conditional_tests() {
       echo "Running lint-tests.ps1 test suite..."
       "${PWSH_CMD[@]}" scripts/tests/test-lint-tests.ps1 || return 1
       echo "✓ Lint test suite OK"
+    fi
+  fi
+
+  # Duplicate-using linter test suite
+  if [ ${#CHANGED_LINT_DUPLICATE_USINGS[@]} -gt 0 ]; then
+    PWSH_CMD=()
+    if command -v pwsh >/dev/null 2>&1; then
+      PWSH_CMD=(pwsh -NoProfile -File)
+    elif command -v powershell >/dev/null 2>&1; then
+      PWSH_CMD=(powershell -NoProfile -ExecutionPolicy Bypass -File)
+    fi
+    if [ ${#PWSH_CMD[@]} -gt 0 ]; then
+      echo "Running lint-duplicate-usings.ps1 test suite..."
+      "${PWSH_CMD[@]}" scripts/tests/test-lint-duplicate-usings.ps1 || return 1
+      echo "✓ Duplicate-using linter test suite OK"
     fi
   fi
 
