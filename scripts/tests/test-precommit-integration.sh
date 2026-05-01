@@ -270,6 +270,39 @@ EOF
 }
 
 # -----------------------------------------------------------------------------
+# Test: lint-duplicate-usings.ps1 invocation (hook branch 13)
+# -----------------------------------------------------------------------------
+test_duplicate_usings_branch() {
+    local name="lint-duplicate-usings.ps1 branch (*.cs staged)"
+    if [[ ! -f "$REPO_ROOT/scripts/lint-duplicate-usings.ps1" ]]; then
+        skip "$name" "no scripts/lint-duplicate-usings.ps1"; return
+    fi
+
+    local fixture="$TEMPDIR/SampleDuplicateUsingFixture.cs"
+    cat > "$fixture" <<'EOF'
+namespace WallstopStudios.UnityHelpers.Tests
+{
+    using System;
+    using System;
+
+    internal sealed class Sample
+    {
+    }
+}
+EOF
+
+    local out
+    out=$(pwsh -NoProfile -File "$REPO_ROOT/scripts/lint-duplicate-usings.ps1" -Paths "$fixture" 2>&1 || true)
+    if echo "$out" | grep -q "Parameter cannot be processed"; then
+        fail "$name" "PWS001-style param binding failure: $out"
+    elif ! echo "$out" | grep -q "UNH007"; then
+        fail "$name" "Expected UNH007 duplicate-using violation not detected: $out"
+    else
+        pass "$name"
+    fi
+}
+
+# -----------------------------------------------------------------------------
 # Test: sync scripts invoked by the hook do not fail to bind params
 # -----------------------------------------------------------------------------
 test_sync_scripts_branch() {
@@ -575,6 +608,7 @@ test_skill_sizes_branch
 test_lint_tests_branch
 test_format_staged_csharp_branch
 test_drawer_branch
+test_duplicate_usings_branch
 test_sync_scripts_branch
 test_antipattern_lint_clean
 test_precommit_spellcheck_regression

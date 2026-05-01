@@ -5,7 +5,6 @@
 namespace WallstopStudios.UnityHelpers.Tests.WButton
 {
     using System;
-    using System;
     using System.Collections;
     using System.Collections.Generic;
     using NUnit.Framework;
@@ -16,7 +15,6 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
     using WallstopStudios.UnityHelpers.Editor.Settings;
     using WallstopStudios.UnityHelpers.Editor.Utils.WButton;
     using WallstopStudios.UnityHelpers.Tests.Core;
-    using WallstopStudios.UnityHelpers.Tests.Editor.TestTypes;
     using WallstopStudios.UnityHelpers.Tests.Editor.TestTypes;
     using WallstopStudios.UnityHelpers.Tests.EditorFramework;
 
@@ -805,6 +803,87 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
         {
             yield return new TestCaseData(false).SetName("Negative.ValidEditor.NoThrow");
             yield return new TestCaseData(true).SetName("Negative.DestroyedEditor.NoThrow");
+        }
+
+        [Test]
+        [TestCaseSource(nameof(InvalidEnumValueCases))]
+        public void InvalidEnumValuesHandledGracefully(
+            WButtonGroupPlacement invalidPlacement,
+            int invalidPriority
+        )
+        {
+            WButtonGroupKey invalidKey = new(
+                invalidPriority,
+                0,
+                "InvalidGroup",
+                0,
+                invalidPlacement
+            );
+            WButtonGroupKey canonicalKey = new(
+                WButtonAttribute.NoGroupPriority,
+                0,
+                "InvalidGroup",
+                1,
+                WButtonGroupPlacement.UseGlobalSetting
+            );
+            Dictionary<WButtonGroupKey, bool> foldoutStates = new();
+
+            Assert.DoesNotThrow(() =>
+            {
+                foldoutStates[invalidKey] = true;
+                _ = invalidKey.CompareTo(canonicalKey);
+                _ = invalidKey.GetHashCode();
+            });
+
+            Assert.IsTrue(
+                foldoutStates.ContainsKey(invalidKey),
+                "Expected dictionary lookups using invalid enum-backed keys to remain stable."
+            );
+        }
+
+        private static IEnumerable<TestCaseData> InvalidEnumValueCases()
+        {
+            yield return new TestCaseData((WButtonGroupPlacement)999, int.MinValue).SetName(
+                "Impossible.InvalidEnumValues.HandledGracefully"
+            );
+            yield return new TestCaseData((WButtonGroupPlacement)(-1), int.MaxValue).SetName(
+                "Impossible.NegativeEnumValue.HandledGracefully"
+            );
+        }
+
+        [UnityTest]
+        [TestCaseSource(nameof(ExtremeScaleTestCases))]
+        public IEnumerator ExtremeScaleHandledCorrectly(int drawIterations)
+        {
+            CreateAssetAndEditor<WButtonThreeWayConflictTarget>(out Editor editor);
+            Dictionary<WButtonGroupKey, WButtonPaginationState> paginationStates = new();
+            Dictionary<WButtonGroupKey, bool> foldoutStates = new();
+
+            yield return TestIMGUIExecutor.Run(() =>
+            {
+                for (int i = 0; i < drawIterations; i++)
+                {
+                    DrawButtonsWithDefaults(editor, paginationStates, foldoutStates);
+                }
+            });
+
+            IReadOnlyDictionary<string, WButtonGUI.DrawOrderConflictInfo> drawOrderWarnings =
+                GetDrawOrderWarnings();
+
+            Assert.IsTrue(
+                drawOrderWarnings.ContainsKey("Actions"),
+                $"Expected draw-order warning for 'Actions' group after {drawIterations} draw iterations. Available groups: [{string.Join(", ", drawOrderWarnings.Keys)}]"
+            );
+        }
+
+        private static IEnumerable<TestCaseData> ExtremeScaleTestCases()
+        {
+            yield return new TestCaseData(250).SetName(
+                "Extreme.DrawLoop.TwoHundredFiftyIterations.Stable"
+            );
+            yield return new TestCaseData(1000).SetName(
+                "Extreme.DrawLoop.ThousandIterations.Stable"
+            );
         }
     }
 }
