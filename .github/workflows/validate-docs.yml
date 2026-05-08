@@ -289,9 +289,7 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Validate GitHub Pages CSS
-        run: |
-          chmod +x ./scripts/validate-github-pages-css.sh
-          ./scripts/validate-github-pages-css.sh
+        run: bash scripts/validate-github-pages-css.sh
 
   code-fence-syntax:
     name: Code Fence Syntax
@@ -302,9 +300,9 @@ jobs:
 
       - name: Check code fence syntax
         id: check-fences
+        shell: bash
         run: |
-          chmod +x ./scripts/check-code-fence-syntax.sh
-          if ./scripts/check-code-fence-syntax.sh 2>&1 | tee /tmp/fence-output.txt; then
+          if bash scripts/check-code-fence-syntax.sh 2>&1 | tee /tmp/fence-output.txt; then
             echo "status=success" >> "$GITHUB_OUTPUT"
           else
             echo "status=failure" >> "$GITHUB_OUTPUT"

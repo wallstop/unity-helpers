@@ -88,6 +88,64 @@ fail() {
     fi
 }
 
+relative_path() {
+    local file_path="$1"
+    printf '%s\n' "${file_path#"$REPO_ROOT"/}"
+}
+
+git_index_mode() {
+    local file_path="$1"
+    local rel_path
+    rel_path="$(relative_path "$file_path")"
+
+    git -C "$REPO_ROOT" ls-files -s -- "$rel_path" 2>/dev/null | sed -E 's/^([0-9]+).*/\1/' | head -n 1
+}
+
+permission_diagnostics() {
+    local file_path="$1"
+    local rel_path
+    local local_mode
+    local index_entry
+    rel_path="$(relative_path "$file_path")"
+    local_mode="$(stat -c '%A %a' "$file_path" 2>/dev/null || ls -l "$file_path" 2>/dev/null || echo 'unavailable')"
+    index_entry="$(git -C "$REPO_ROOT" ls-files -s -- "$rel_path" 2>/dev/null || true)"
+
+    printf 'Filesystem mode: %s; git index: %s' "$local_mode" "${index_entry:-untracked}"
+}
+
+assert_bash_script_contracts() {
+    local file_path="$1"
+    local display_name="$2"
+    local shebang
+    local index_mode
+
+    if bash -n "$file_path" 2>/dev/null; then
+        pass "$display_name passes bash -n syntax check"
+    else
+        fail "$display_name passes bash -n syntax check" "$(bash -n "$file_path" 2>&1)"
+    fi
+
+    index_mode="$(git_index_mode "$file_path")"
+    if [[ -x "$file_path" && "$index_mode" == "100755" ]]; then
+        pass "$display_name is executable"
+    else
+        fail "$display_name is executable" "$(permission_diagnostics "$file_path")"
+    fi
+
+    shebang=$(head -1 "$file_path")
+    if [[ "$shebang" == "#!/usr/bin/env bash" ]] || [[ "$shebang" == "#!/bin/bash" ]]; then
+        pass "$display_name has valid bash shebang"
+    else
+        fail "$display_name has valid bash shebang" "Got: $shebang"
+    fi
+
+    if grep -q 'set -euo pipefail' "$file_path"; then
+        pass "$display_name uses 'set -euo pipefail'"
+    else
+        fail "$display_name uses 'set -euo pipefail'" "Missing strict error handling"
+    fi
+}
+
 # ── Prerequisite Checks ─────────────────────────────────────────────────────
 
 echo -e "${BLUE}── Post-Create Script Validation ──${NC}"
@@ -153,142 +211,30 @@ fi
 
 echo -e "${BLUE}Checking script syntax...${NC}"
 
-if bash -n "$POST_CREATE" 2>/dev/null; then
-    pass "post-create.sh passes bash -n syntax check"
-else
-    fail "post-create.sh passes bash -n syntax check" "$(bash -n "$POST_CREATE" 2>&1)"
-fi
-
 # ── Test 2: Executable permission ────────────────────────────────────────────
 
 echo -e "${BLUE}Checking permissions...${NC}"
-
-if [[ -x "$POST_CREATE" ]]; then
-    pass "post-create.sh is executable"
-else
-    fail "post-create.sh is executable" "Missing +x permission"
-fi
 
 # ── Test 3: Proper shebang ───────────────────────────────────────────────────
 
 echo -e "${BLUE}Checking shebang...${NC}"
 
-SHEBANG=$(head -1 "$POST_CREATE")
-if [[ "$SHEBANG" == "#!/usr/bin/env bash" ]] || [[ "$SHEBANG" == "#!/bin/bash" ]]; then
-    pass "post-create.sh has valid bash shebang"
-else
-    fail "post-create.sh has valid bash shebang" "Got: $SHEBANG"
-fi
-
 # ── Test 4: Uses set -euo pipefail ───────────────────────────────────────────
 
 echo -e "${BLUE}Checking error handling...${NC}"
 
-if grep -q 'set -euo pipefail' "$POST_CREATE"; then
-    pass "post-create.sh uses 'set -euo pipefail'"
-else
-    fail "post-create.sh uses 'set -euo pipefail'" "Missing strict error handling"
-fi
+SCRIPT_CONTRACTS=(
+    "$POST_CREATE|post-create.sh"
+    "$POST_START|post-start.sh"
+    "$INSTALL_CODEX|install-codex.sh"
+    "$CODEX_LOGIN_WRAPPER|codex-login.sh"
+    "$CODEX_YOLO_WRAPPER|codex-yolo.sh"
+)
 
-if bash -n "$POST_START" 2>/dev/null; then
-    pass "post-start.sh passes bash -n syntax check"
-else
-    fail "post-start.sh passes bash -n syntax check" "$(bash -n "$POST_START" 2>&1)"
-fi
-
-if [[ -x "$POST_START" ]]; then
-    pass "post-start.sh is executable"
-else
-    fail "post-start.sh is executable" "Missing +x permission"
-fi
-
-SHEBANG=$(head -1 "$POST_START")
-if [[ "$SHEBANG" == "#!/usr/bin/env bash" ]] || [[ "$SHEBANG" == "#!/bin/bash" ]]; then
-    pass "post-start.sh has valid bash shebang"
-else
-    fail "post-start.sh has valid bash shebang" "Got: $SHEBANG"
-fi
-
-if grep -q 'set -euo pipefail' "$POST_START"; then
-    pass "post-start.sh uses 'set -euo pipefail'"
-else
-    fail "post-start.sh uses 'set -euo pipefail'" "Missing strict error handling"
-fi
-
-if bash -n "$INSTALL_CODEX" 2>/dev/null; then
-    pass "install-codex.sh passes bash -n syntax check"
-else
-    fail "install-codex.sh passes bash -n syntax check" "$(bash -n "$INSTALL_CODEX" 2>&1)"
-fi
-
-if [[ -x "$INSTALL_CODEX" ]]; then
-    pass "install-codex.sh is executable"
-else
-    fail "install-codex.sh is executable" "Missing +x permission"
-fi
-
-SHEBANG=$(head -1 "$INSTALL_CODEX")
-if [[ "$SHEBANG" == "#!/usr/bin/env bash" ]] || [[ "$SHEBANG" == "#!/bin/bash" ]]; then
-    pass "install-codex.sh has valid bash shebang"
-else
-    fail "install-codex.sh has valid bash shebang" "Got: $SHEBANG"
-fi
-
-if grep -q 'set -euo pipefail' "$INSTALL_CODEX"; then
-    pass "install-codex.sh uses 'set -euo pipefail'"
-else
-    fail "install-codex.sh uses 'set -euo pipefail'" "Missing strict error handling"
-fi
-
-if bash -n "$CODEX_LOGIN_WRAPPER" 2>/dev/null; then
-    pass "codex-login.sh passes bash -n syntax check"
-else
-    fail "codex-login.sh passes bash -n syntax check" "$(bash -n "$CODEX_LOGIN_WRAPPER" 2>&1)"
-fi
-
-if [[ -x "$CODEX_LOGIN_WRAPPER" ]]; then
-    pass "codex-login.sh is executable"
-else
-    fail "codex-login.sh is executable" "Missing +x permission"
-fi
-
-SHEBANG=$(head -1 "$CODEX_LOGIN_WRAPPER")
-if [[ "$SHEBANG" == "#!/usr/bin/env bash" ]] || [[ "$SHEBANG" == "#!/bin/bash" ]]; then
-    pass "codex-login.sh has valid bash shebang"
-else
-    fail "codex-login.sh has valid bash shebang" "Got: $SHEBANG"
-fi
-
-if grep -q 'set -euo pipefail' "$CODEX_LOGIN_WRAPPER"; then
-    pass "codex-login.sh uses 'set -euo pipefail'"
-else
-    fail "codex-login.sh uses 'set -euo pipefail'" "Missing strict error handling"
-fi
-
-if bash -n "$CODEX_YOLO_WRAPPER" 2>/dev/null; then
-    pass "codex-yolo.sh passes bash -n syntax check"
-else
-    fail "codex-yolo.sh passes bash -n syntax check" "$(bash -n "$CODEX_YOLO_WRAPPER" 2>&1)"
-fi
-
-if [[ -x "$CODEX_YOLO_WRAPPER" ]]; then
-    pass "codex-yolo.sh is executable"
-else
-    fail "codex-yolo.sh is executable" "Missing +x permission"
-fi
-
-SHEBANG=$(head -1 "$CODEX_YOLO_WRAPPER")
-if [[ "$SHEBANG" == "#!/usr/bin/env bash" ]] || [[ "$SHEBANG" == "#!/bin/bash" ]]; then
-    pass "codex-yolo.sh has valid bash shebang"
-else
-    fail "codex-yolo.sh has valid bash shebang" "Got: $SHEBANG"
-fi
-
-if grep -q 'set -euo pipefail' "$CODEX_YOLO_WRAPPER"; then
-    pass "codex-yolo.sh uses 'set -euo pipefail'"
-else
-    fail "codex-yolo.sh uses 'set -euo pipefail'" "Missing strict error handling"
-fi
+for contract in "${SCRIPT_CONTRACTS[@]}"; do
+    IFS='|' read -r script_path display_name <<< "$contract"
+    assert_bash_script_contracts "$script_path" "$display_name"
+done
 
 # ── Test 5: No hardcoded UID/GID ─────────────────────────────────────────────
 

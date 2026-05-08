@@ -37,10 +37,10 @@ jobs:
         run: ./scripts/validate-devcontainer-config.ps1 -VerboseOutput
 
       - name: Validate Dockerfile download URLs
-        run: ./scripts/validate-devcontainer-urls.sh
+        run: bash scripts/validate-devcontainer-urls.sh
 
       - name: Test devcontainer URL validation contracts
-        run: ./scripts/tests/test-validate-devcontainer-urls.sh
+        run: bash scripts/tests/test-validate-devcontainer-urls.sh
 
       - name: Validate post-create script
-        run: ./scripts/tests/test-post-create.sh --verbose
+        run: bash scripts/tests/test-post-create.sh --verbose

@@ -465,6 +465,49 @@ else
 fi
 
 # =============================================================================
+# Section F: Tracked executable modes for shell entrypoints
+# =============================================================================
+echo ""
+echo '=== Section F: Shell executable mode metadata ==='
+
+echo ""
+echo '--- F1: Shell scripts with shebangs are tracked executable ---'
+
+f1_violations=""
+# Repository convention: a tracked shell file with a shebang is directly
+# runnable, even when it is also safe to source from another script.
+while IFS= read -r -d '' tracked_path; do
+    case "$tracked_path" in
+        *.sh|.githooks/*) ;;
+        *) continue ;;
+    esac
+
+    absolute_path="$REPO_ROOT/$tracked_path"
+    [[ -f "$absolute_path" ]] || continue
+
+    first_line="$(head -n 1 "$absolute_path" 2>/dev/null || true)"
+    case "$first_line" in
+        '#!'*) ;;
+        *) continue ;;
+    esac
+
+    index_entry="$(git -C "$REPO_ROOT" ls-files -s -- "$tracked_path" 2>/dev/null || true)"
+    index_mode="${index_entry%% *}"
+    filesystem_mode="$(stat -c '%A %a' "$absolute_path" 2>/dev/null || ls -l "$absolute_path" 2>/dev/null || echo 'unavailable')"
+
+    if [[ "$index_mode" != "100755" || ! -x "$absolute_path" ]]; then
+        f1_violations="${f1_violations}  ${tracked_path}: filesystem=${filesystem_mode}; git-index=${index_entry:-untracked}"$'\n'
+    fi
+done < <(git -C "$REPO_ROOT" ls-files -z -- .devcontainer .githooks scripts)
+
+run_test
+if [[ -z "$f1_violations" ]]; then
+    pass "All tracked shell entrypoints are executable in filesystem and git index"
+else
+    fail "Found shell entrypoints without executable git metadata:" "$f1_violations"
+fi
+
+# =============================================================================
 # Summary
 # =============================================================================
 echo ""
