@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 See [the roadmap](./docs/overview/roadmap.md) for details
 
+## [3.3.0]
+
 ### Added
 
 - **Failed Tests Exporter**: New editor utility that hooks into the Unity Test Runner to automatically capture test failures and export them to timestamped text files

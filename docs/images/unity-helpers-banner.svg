@@ -1,202 +1,165 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 200" width="800" height="200" role="img" aria-label="Unity Helpers - Professional Unity development utilities by Wallstop Studios" style="background:transparent" focusable="false">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 200" width="800" height="200" style="background:transparent" role="img" aria-label="Unity Helpers — Stop writing boilerplate. Start shipping features. By Wallstop Studios">
+  <title>Unity Helpers — Stop writing boilerplate. Start shipping features.</title>
   <defs>
-    <!-- Accent gradient -->
-    <linearGradient id="accentGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-      <stop offset="0%" style="stop-color:#e94560;stop-opacity:1" />
-      <stop offset="50%" style="stop-color:#f39c12;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#00d9ff;stop-opacity:1" />
+    <!-- Warm-to-cool divider line: celebrates the breadth of capabilities -->
+    <linearGradient id="lineGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#e94560;stop-opacity:0"/>
+      <stop offset="12%" style="stop-color:#e94560"/>
+      <stop offset="32%" style="stop-color:#f39c12"/>
+      <stop offset="55%" style="stop-color:#00d9ff"/>
+      <stop offset="82%" style="stop-color:#2ecc71"/>
+      <stop offset="100%" style="stop-color:#2ecc71;stop-opacity:0"/>
     </linearGradient>
-    <!-- Wallstop logo gradient -->
-    <linearGradient id="wallstopGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#e94560;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#f39c12;stop-opacity:1" />
+
+    <!-- Warm hex/W gradient (Wallstop brand red-to-amber) -->
+    <linearGradient id="hexGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#e94560"/>
+      <stop offset="100%" style="stop-color:#f39c12"/>
     </linearGradient>
-    <!-- Secondary gradient for depth -->
-    <linearGradient id="wallstopGradient2" x1="0%" y1="100%" x2="100%" y2="0%">
-      <stop offset="0%" style="stop-color:#00d9ff;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#2ecc71;stop-opacity:1" />
+
+    <!-- Title gradient: white through warm cream to cool cyan -->
+    <linearGradient id="titleGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#ffffff"/>
+      <stop offset="45%" style="stop-color:#ffe9c4"/>
+      <stop offset="100%" style="stop-color:#00d9ff"/>
     </linearGradient>
-    <!-- Logo inner fill gradient (subtle dark for contrast) -->
-    <linearGradient id="logoInnerGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#1a1a2e;stop-opacity:0.8" />
-      <stop offset="100%" style="stop-color:#16213e;stop-opacity:0.8" />
-    </linearGradient>
-    <!-- Combined glow and shadow filter for main title -->
-    <filter id="glowWithShadow" x="-50%" y="-50%" width="200%" height="200%">
+
+    <!-- Soft glow on the title -->
+    <filter id="titleGlow" x="-10%" y="-40%" width="120%" height="180%">
       <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
-      <feDropShadow dx="0" dy="1" stdDeviation="2" flood-color="rgba(0,0,0,0.7)" flood-opacity="0.7" result="shadow"/>
-      <feMerge>
-        <feMergeNode in="shadow"/>
-        <feMergeNode in="coloredBlur"/>
-        <feMergeNode in="SourceGraphic"/>
-      </feMerge>
-    </filter>
-    <!-- Icon glow -->
-    <filter id="iconGlow" x="-50%" y="-50%" width="200%" height="200%">
-      <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
       <feMerge>
         <feMergeNode in="coloredBlur"/>
         <feMergeNode in="SourceGraphic"/>
       </feMerge>
     </filter>
-    <!-- Background gradient for content backdrop - neutral and subtle for any background -->
-    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#2a2a3a;stop-opacity:0.6" />
-      <stop offset="50%" style="stop-color:#252535;stop-opacity:0.6" />
-      <stop offset="100%" style="stop-color:#202030;stop-opacity:0.6" />
-    </linearGradient>
-    <!-- Text shadow filter for contrast on light backgrounds -->
-    <filter id="textShadow" x="-20%" y="-20%" width="140%" height="140%">
-      <feDropShadow dx="0" dy="1" stdDeviation="2" flood-color="rgba(0,0,0,0.7)" flood-opacity="0.7"/>
+
+    <!-- Subtle drop shadow so light text reads on light backgrounds -->
+    <filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="1" stdDeviation="2" flood-color="#000000" flood-opacity="0.6"/>
     </filter>
   </defs>
 
-  <!-- Decorative grid pattern (using accent colors for visibility on any background) -->
-  <g opacity="0.12">
-    <line x1="0" y1="50" x2="800" y2="50" stroke="url(#accentGradient)" stroke-width="1"/>
-    <line x1="0" y1="100" x2="800" y2="100" stroke="url(#accentGradient)" stroke-width="1"/>
-    <line x1="0" y1="150" x2="800" y2="150" stroke="url(#accentGradient)" stroke-width="1"/>
-    <line x1="100" y1="0" x2="100" y2="200" stroke="url(#accentGradient)" stroke-width="1"/>
-    <line x1="200" y1="0" x2="200" y2="200" stroke="url(#accentGradient)" stroke-width="1"/>
-    <line x1="300" y1="0" x2="300" y2="200" stroke="url(#accentGradient)" stroke-width="1"/>
-    <line x1="400" y1="0" x2="400" y2="200" stroke="url(#accentGradient)" stroke-width="1"/>
-    <line x1="500" y1="0" x2="500" y2="200" stroke="url(#accentGradient)" stroke-width="1"/>
-    <line x1="600" y1="0" x2="600" y2="200" stroke="url(#accentGradient)" stroke-width="1"/>
-    <line x1="700" y1="0" x2="700" y2="200" stroke="url(#accentGradient)" stroke-width="1"/>
+  <!-- ============================================================== -->
+  <!-- Hex-W shield (left, vertically centered)                        -->
+  <!-- ============================================================== -->
+  <g transform="translate(50, 100)" filter="url(#softShadow)">
+    <!-- Outer hexagon outline -->
+    <polygon points="0,-45 39,-22.5 39,22.5 0,45 -39,22.5 -39,-22.5"
+             fill="none" stroke="url(#hexGradient)" stroke-width="2.5" opacity="0.95"/>
+    <!-- Inner hexagon tint -->
+    <polygon points="0,-32 27.7,-16 27.7,16 0,32 -27.7,16 -27.7,-16"
+             fill="url(#hexGradient)" opacity="0.28"/>
+    <!-- Single clean letterform W (path-rendered for font independence) -->
+    <path d="M-15,-12 L-9,12 L0,-3 L9,12 L15,-12"
+          fill="none" stroke="url(#hexGradient)" stroke-width="3.5"
+          stroke-linejoin="round" stroke-linecap="round"/>
   </g>
 
-  <!--
-    Subtle content backdrop for text contrast (low opacity blends with any background)
-    Opacity math: 60% gradient stop-opacity × 35% element opacity = ~21% effective opacity
-    This provides readable text contrast while remaining visually subtle on any background.
-  -->
-  <rect x="0" y="0" width="800" height="200" fill="url(#bgGradient)" rx="12" ry="12" opacity="0.35"/>
-
-  <!-- Wallstop Studios Logo - Stylized W in hexagonal shield -->
-  <g transform="translate(40, 50)">
-    <!-- Outer hexagonal shield (stop sign inspired) -->
-    <polygon points="45,0 80,15 80,65 45,80 10,65 10,15" fill="none" stroke="url(#wallstopGradient)" stroke-width="3" opacity="0.8"/>
-    
-    <!-- Inner glow ring -->
-    <polygon points="45,8 72,20 72,60 45,72 18,60 18,20" fill="url(#logoInnerGradient)" stroke="url(#wallstopGradient2)" stroke-width="1.5" opacity="0.6"/>
-    
-    <!-- Stylized W made of brick-like segments -->
-    <!-- Left outer stroke of W (descending from top-left) -->
-    <rect x="20" y="22" width="8" height="10" fill="url(#wallstopGradient)" rx="1"/>
-    <rect x="23" y="34" width="8" height="10" fill="url(#wallstopGradient)" rx="1" opacity="0.9"/>
-    <rect x="26" y="46" width="8" height="12" fill="url(#wallstopGradient)" rx="1" opacity="0.8"/>
-    
-    <!-- Left inner stroke of W (ascending to center peak) -->
-    <rect x="34" y="42" width="7" height="10" fill="url(#wallstopGradient2)" rx="1" opacity="0.85"/>
-    <rect x="38" y="32" width="7" height="10" fill="url(#wallstopGradient2)" rx="1" opacity="0.9"/>
-    
-    <!-- Center peak of W (points UP) -->
-    <rect x="41" y="22" width="8" height="10" fill="#ffffff" rx="1" opacity="0.95"/>
-    
-    <!-- Right inner stroke of W (descending from center peak) -->
-    <rect x="45" y="32" width="7" height="10" fill="url(#wallstopGradient2)" rx="1" opacity="0.9"/>
-    <rect x="49" y="42" width="7" height="10" fill="url(#wallstopGradient2)" rx="1" opacity="0.85"/>
-    
-    <!-- Right outer stroke of W (descending from top-right) -->
-    <rect x="62" y="22" width="8" height="10" fill="url(#wallstopGradient)" rx="1"/>
-    <rect x="59" y="34" width="8" height="10" fill="url(#wallstopGradient)" rx="1" opacity="0.9"/>
-    <rect x="56" y="46" width="8" height="12" fill="url(#wallstopGradient)" rx="1" opacity="0.8"/>
-    
-    <!-- Decorative corner accents -->
-    <circle cx="45" cy="4" r="2" fill="url(#accentGradient)"/>
-    <circle cx="45" cy="76" r="2" fill="url(#accentGradient)"/>
-  </g>
-
-  <!-- Main title -->
-  <text x="150" y="85" font-family="'Segoe UI', 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif" font-size="48" font-weight="700" fill="white" filter="url(#glowWithShadow)" letter-spacing="1">
-    Unity Helpers
-  </text>
+  <!-- ============================================================== -->
+  <!-- Title                                                            -->
+  <!-- ============================================================== -->
+  <text x="120" y="75"
+        font-family="'Segoe UI', 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif"
+        font-size="52" font-weight="700"
+        fill="url(#titleGradient)" filter="url(#titleGlow)" letter-spacing="1"
+        paint-order="stroke" stroke="#000000" stroke-width="2" stroke-opacity="0.32" stroke-linejoin="round">Unity Helpers</text>
 
   <!-- Tagline -->
-  <text x="150" y="115" font-family="'Segoe UI', 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif" font-size="16" fill="#8892b0" letter-spacing="0.5">
-    Stop writing boilerplate. Start shipping features.
-  </text>
+  <text x="120" y="110"
+        font-family="'Segoe UI', 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif"
+        font-size="14" fill="#e8d5a8" letter-spacing="0.5"
+        paint-order="stroke" stroke="#000000" stroke-width="2.5" stroke-opacity="0.7" stroke-linejoin="round">Stop writing boilerplate. Start shipping features.</text>
 
-  <!-- Accent line under title -->
-  <rect x="150" y="125" width="300" height="3" fill="url(#accentGradient)" rx="1.5" ry="1.5"/>
+  <!-- Warm-to-cool divider -->
+  <line x1="120" y1="124" x2="600" y2="124" stroke="url(#lineGradient)" stroke-width="2" stroke-linecap="round" opacity="0.85"/>
 
-  <!-- Feature icons row -->
-  <g transform="translate(150, 150)">
-    <!-- Inspector icon (palette) -->
-    <g transform="translate(0, 0)" filter="url(#iconGlow)">
-      <circle cx="12" cy="12" r="14" fill="none" stroke="#e94560" stroke-width="2" opacity="0.3"/>
-      <circle cx="12" cy="12" r="10" fill="#e94560" opacity="0.2"/>
-      <text x="12" y="17" font-size="14" text-anchor="middle" fill="#e94560">🎨</text>
+  <!-- ============================================================== -->
+  <!-- Capability icon row (inline emoji + label groups)               -->
+  <!-- Six capabilities, custom offsets for equal optical label gaps   -->
+  <!-- ============================================================== -->
+  <g transform="translate(120, 150)"
+     font-family="'Segoe UI', 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif"
+     font-size="12" font-weight="600" letter-spacing="0.3">
+
+    <!-- 🎨 Inspector -->
+    <g transform="translate(0, 0)">
+      <text x="0" y="15" font-size="14">🎨</text>
+      <text x="20" y="13" fill="#e94560" paint-order="stroke" stroke="#000000" stroke-width="2.5" stroke-opacity="0.7" stroke-linejoin="round">Inspector</text>
     </g>
-    <text x="12" y="38" font-size="9" text-anchor="middle" fill="#8892b0" letter-spacing="0.3">Inspector</text>
 
-    <!-- Components icon (plug) -->
-    <g transform="translate(70, 0)" filter="url(#iconGlow)">
-      <circle cx="12" cy="12" r="14" fill="none" stroke="#f39c12" stroke-width="2" opacity="0.3"/>
-      <circle cx="12" cy="12" r="10" fill="#f39c12" opacity="0.2"/>
-      <text x="12" y="17" font-size="14" text-anchor="middle" fill="#f39c12">🔌</text>
+    <!-- ✨ Effects -->
+    <g transform="translate(90, 0)">
+      <text x="0" y="15" font-size="14">✨️</text>
+      <text x="20" y="13" fill="#00d9ff" paint-order="stroke" stroke="#000000" stroke-width="2.5" stroke-opacity="0.7" stroke-linejoin="round">Effects</text>
     </g>
-    <text x="82" y="38" font-size="9" text-anchor="middle" fill="#8892b0" letter-spacing="0.3">Auto-Wire</text>
 
-    <!-- Spatial icon (tree) -->
-    <g transform="translate(140, 0)" filter="url(#iconGlow)">
-      <circle cx="12" cy="12" r="14" fill="none" stroke="#2ecc71" stroke-width="2" opacity="0.3"/>
-      <circle cx="12" cy="12" r="10" fill="#2ecc71" opacity="0.2"/>
-      <text x="12" y="17" font-size="14" text-anchor="middle" fill="#2ecc71">🌳</text>
+    <!-- 🔌 Auto-Wire -->
+    <g transform="translate(168, 0)">
+      <text x="0" y="15" font-size="14">🔌</text>
+      <text x="20" y="13" fill="#f39c12" paint-order="stroke" stroke="#000000" stroke-width="2.5" stroke-opacity="0.7" stroke-linejoin="round">Auto-Wire</text>
     </g>
-    <text x="152" y="38" font-size="9" text-anchor="middle" fill="#8892b0" letter-spacing="0.3">Spatial</text>
 
-    <!-- PRNG icon (dice) -->
-    <g transform="translate(210, 0)" filter="url(#iconGlow)">
-      <circle cx="12" cy="12" r="14" fill="none" stroke="#9b59b6" stroke-width="2" opacity="0.3"/>
-      <circle cx="12" cy="12" r="10" fill="#9b59b6" opacity="0.2"/>
-      <text x="12" y="17" font-size="14" text-anchor="middle" fill="#9b59b6">🎲</text>
+    <!-- 🎲 PRNG -->
+    <g transform="translate(262, 0)">
+      <text x="0" y="15" font-size="14">🎲</text>
+      <text x="20" y="13" fill="#2ecc71" paint-order="stroke" stroke="#000000" stroke-width="2.5" stroke-opacity="0.7" stroke-linejoin="round">PRNG</text>
     </g>
-    <text x="222" y="38" font-size="9" text-anchor="middle" fill="#8892b0" letter-spacing="0.3">PRNG</text>
 
-    <!-- Effects icon (gamepad) -->
-    <g transform="translate(280, 0)" filter="url(#iconGlow)">
-      <circle cx="12" cy="12" r="14" fill="none" stroke="#00d9ff" stroke-width="2" opacity="0.3"/>
-      <circle cx="12" cy="12" r="10" fill="#00d9ff" opacity="0.2"/>
-      <text x="12" y="17" font-size="14" text-anchor="middle" fill="#00d9ff">🎮</text>
+    <!-- 🌳 Spatial -->
+    <g transform="translate(332, 0)">
+      <text x="0" y="15" font-size="14">🌳</text>
+      <text x="20" y="13" fill="#f1c40f" paint-order="stroke" stroke="#000000" stroke-width="2.5" stroke-opacity="0.7" stroke-linejoin="round">Spatial</text>
     </g>
-    <text x="292" y="38" font-size="9" text-anchor="middle" fill="#8892b0" letter-spacing="0.3">Effects</text>
 
-    <!-- Tools icon (wrench) -->
-    <g transform="translate(350, 0)" filter="url(#iconGlow)">
-      <circle cx="12" cy="12" r="14" fill="none" stroke="#e74c3c" stroke-width="2" opacity="0.3"/>
-      <circle cx="12" cy="12" r="10" fill="#e74c3c" opacity="0.2"/>
-      <text x="12" y="17" font-size="14" text-anchor="middle" fill="#e74c3c">🛠️</text>
+    <!-- 🧰 Utilities -->
+    <g transform="translate(406, 0)">
+      <text x="0" y="15" font-size="14">🧰</text>
+      <text x="20" y="13" fill="#9b59b6" paint-order="stroke" stroke="#000000" stroke-width="2.5" stroke-opacity="0.7" stroke-linejoin="round">Utilities</text>
     </g>
-    <text x="362" y="38" font-size="9" text-anchor="middle" fill="#8892b0" letter-spacing="0.3">Tools</text>
   </g>
 
-  <!-- Stats badges on right side -->
-  <g transform="translate(555, 50)">
-    <!-- Unity version badge -->
-    <rect x="0" y="0" width="130" height="28" rx="14" ry="14" fill="#2ecc71" opacity="0.2"/>
-    <rect x="0" y="0" width="130" height="28" rx="14" ry="14" fill="none" stroke="#2ecc71" stroke-width="1.5" opacity="0.5"/>
-    <text x="65" y="18" font-family="'SF Mono', 'Fira Code', monospace" font-size="11" text-anchor="middle" fill="#2ecc71" font-weight="600" letter-spacing="0.3">🎮 Unity 2021.3+</text>
+  <!-- ============================================================== -->
+  <!-- Right-side capability pill badges                               -->
+  <!-- Dark fill, warm orange-bordered, warm-tinted text               -->
+  <!-- ============================================================== -->
+  <g transform="translate(632, 56)"
+     font-family="'SF Mono', 'Fira Code', 'Consolas', monospace"
+     font-size="11" font-weight="600" letter-spacing="0.3">
 
-    <!-- Tests badge -->
-    <rect x="0" y="38" width="130" height="28" rx="14" ry="14" fill="#3498db" opacity="0.2"/>
-    <rect x="0" y="38" width="130" height="28" rx="14" ry="14" fill="none" stroke="#3498db" stroke-width="1.5" opacity="0.5"/>
-    <text x="65" y="56" font-family="'SF Mono', 'Fira Code', monospace" font-size="11" text-anchor="middle" fill="#3498db" font-weight="600" letter-spacing="0.3">✅ 11,000+ tests</text>
+    <!-- Unity 2021.3+ -->
+    <rect x="0" y="0" width="150" height="26" rx="13" ry="13" fill="#1a1a2e" opacity="0.88"/>
+    <rect x="0" y="0" width="150" height="26" rx="13" ry="13"
+          fill="none" stroke="#f39c12" stroke-width="1.4" opacity="0.85"/>
+    <text x="75" y="17" text-anchor="middle" fill="#ffd9b5">🎮 Unity 2021.3+</text>
 
-    <!-- High performance badge -->
-    <rect x="0" y="76" width="130" height="28" rx="14" ry="14" fill="#9b59b6" opacity="0.2"/>
-    <rect x="0" y="76" width="130" height="28" rx="14" ry="14" fill="none" stroke="#9b59b6" stroke-width="1.5" opacity="0.5"/>
-    <text x="65" y="94" font-family="'SF Mono', 'Fira Code', monospace" font-size="11" text-anchor="middle" fill="#9b59b6" font-weight="600" letter-spacing="0.3">⚡ High perf</text>
+    <!-- 11,000+ tests -->
+    <rect x="0" y="43" width="150" height="26" rx="13" ry="13" fill="#1a1a2e" opacity="0.88"/>
+    <rect x="0" y="43" width="150" height="26" rx="13" ry="13"
+          fill="none" stroke="#e94560" stroke-width="1.4" opacity="0.85"/>
+    <text x="75" y="60" text-anchor="middle" fill="#ffd9b5">✅️ 11,000+ tests</text>
+
+    <!-- Performant -->
+    <rect x="0" y="86" width="150" height="26" rx="13" ry="13" fill="#1a1a2e" opacity="0.88"/>
+    <rect x="0" y="86" width="150" height="26" rx="13" ry="13"
+          fill="none" stroke="#2ecc71" stroke-width="1.4" opacity="0.85"/>
+    <text x="75" y="103" text-anchor="middle" fill="#ffd9b5">⚡️ Performant</text>
   </g>
 
-  <!-- Version indicator -->
-  <g transform="translate(700, 15)">
-    <rect x="0" y="0" width="85" height="22" rx="11" ry="11" fill="#e94560" opacity="0.9"/>
-    <text x="42" y="15" font-family="'SF Mono', 'Fira Code', monospace" font-size="11" text-anchor="middle" fill="white" font-weight="600" letter-spacing="0.5" filter="url(#textShadow)">v3.2.1</text>
+  <!-- ============================================================== -->
+  <!-- Version pill (top-right, brand red accent)                      -->
+  <!-- ============================================================== -->
+  <g transform="translate(720, 18)">
+    <rect x="0" y="0" width="62" height="22" rx="11" ry="11" fill="#e94560" opacity="0.95"/>
+    <text x="31" y="15" text-anchor="middle"
+          font-family="'SF Mono', 'Fira Code', 'Consolas', monospace"
+          font-size="11" font-weight="700" fill="#ffffff" letter-spacing="0.5">v3.3.0</text>
   </g>
 
-  <!-- Wallstop Studios branding -->
-  <text x="785" y="190" font-family="'Segoe UI', sans-serif" font-size="10" text-anchor="end" fill="#4a5568" opacity="0.7" letter-spacing="0.3">
-    Wallstop Studios
-  </text>
+  <!-- ============================================================== -->
+  <!-- Wallstop Studios attribution (bottom-right)                     -->
+  <!-- ============================================================== -->
+  <text x="782" y="192" text-anchor="end"
+        font-family="'Segoe UI', 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif"
+        font-size="10" fill="#9aa3b8" letter-spacing="0.6"
+        paint-order="stroke" stroke="#000000" stroke-width="2" stroke-opacity="0.7" stroke-linejoin="round">Wallstop Studios</text>
 </svg>
