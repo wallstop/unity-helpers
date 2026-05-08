@@ -85,18 +85,20 @@ namespace WallstopStudios.UnityHelpers.Editor.Tags
                 AutoLoadSingletonEntry[] autoLoadEntries = BuildAutoLoadSingletonEntries();
 
                 // Get or create the cache asset
-                AttributeMetadataCache cache = GetOrCreateCache();
+                AttributeMetadataCache cache = GetOrCreateCache(out bool metadataChanged);
 
                 // Update the cache
-                cache.SetMetadata(
+                bool changed = cache.SetMetadata(
                     sortedAttributeNames,
                     typeMetadataList.ToArray(),
                     relationalMetadataList.ToArray(),
                     autoLoadEntries
                 );
 
-                // Save the asset
-                AssetDatabase.SaveAssets();
+                if (changed || metadataChanged)
+                {
+                    AssetDatabase.SaveAssets();
+                }
             }
             catch (Exception ex)
             {
@@ -361,8 +363,10 @@ namespace WallstopStudios.UnityHelpers.Editor.Tags
             return type.AssemblyQualifiedName ?? type.FullName ?? string.Empty;
         }
 
-        private static AttributeMetadataCache GetOrCreateCache()
+        private static AttributeMetadataCache GetOrCreateCache(out bool metadataChanged)
         {
+            metadataChanged = false;
+
             // Try loading from the expected path first
             const string assetPath =
                 "Assets/Resources/Wallstop Studios/Unity Helpers/AttributeMetadataCache.asset";
@@ -375,7 +379,11 @@ namespace WallstopStudios.UnityHelpers.Editor.Tags
             );
             if (cache != null)
             {
-                UpdateMetadataEntry(assetPath, resourcesLoadPath, resourcesFolder);
+                metadataChanged = UpdateMetadataEntry(
+                    assetPath,
+                    resourcesLoadPath,
+                    resourcesFolder
+                );
                 return cache;
             }
 
@@ -389,7 +397,11 @@ namespace WallstopStudios.UnityHelpers.Editor.Tags
                 string instancePath = AssetDatabase.GetAssetPath(cache);
                 if (string.Equals(instancePath, assetPath, StringComparison.OrdinalIgnoreCase))
                 {
-                    UpdateMetadataEntry(assetPath, resourcesLoadPath, resourcesFolder);
+                    metadataChanged = UpdateMetadataEntry(
+                        assetPath,
+                        resourcesLoadPath,
+                        resourcesFolder
+                    );
                     return cache;
                 }
 
@@ -475,12 +487,12 @@ namespace WallstopStudios.UnityHelpers.Editor.Tags
             // instead of returning the stale null cached during the earlier Instance lookup above.
             WallstopStudios.UnityHelpers.Utils.ScriptableObjectSingleton<AttributeMetadataCache>.ClearInstance();
 
-            UpdateMetadataEntry(assetPath, resourcesLoadPath, resourcesFolder);
+            metadataChanged = UpdateMetadataEntry(assetPath, resourcesLoadPath, resourcesFolder);
 
             return cache;
         }
 
-        private static void UpdateMetadataEntry(
+        private static bool UpdateMetadataEntry(
             string assetPath,
             string resourcesLoadPath,
             string resourcesFolder
@@ -489,13 +501,15 @@ namespace WallstopStudios.UnityHelpers.Editor.Tags
             string guid = AssetDatabase.AssetPathToGUID(assetPath);
             if (!string.IsNullOrEmpty(guid))
             {
-                ScriptableObjectSingletonMetadataUtility.UpdateEntry(
+                return ScriptableObjectSingletonMetadataUtility.UpdateEntry(
                     typeof(AttributeMetadataCache),
                     resourcesLoadPath,
                     resourcesFolder,
                     guid
                 );
             }
+
+            return false;
         }
     }
 }

@@ -42,11 +42,12 @@ bash scripts/install-hooks.sh
 3. Formats staged files with Prettier (Markdown, JSON, YAML, JS)
 4. Formats staged C# files with CSharpier
 5. Runs markdownlint on staged Markdown files
-6. Runs YAML lint, Dependabot config schema lint, spell check (with copy-pasteable cspell.json patch for unregistered lint-error-code prefixes), LLM instruction lint, test lint
-7. Checks for forbidden `#region` directives
-8. Checks drawer/editor files for missing multi-object editing support (GenericMenu without `hasMultipleDifferentValues`)
-9. Checks Odin drawer Undo safety (WeakTargets null-filtering before `Undo.RecordObjects`)
-10. Checks for missing `.meta` files on staged files (auto-stages existing `.meta` companions)
+6. Runs CHANGELOG lint when [CHANGELOG](../../CHANGELOG.md) is staged, plus YAML lint, Dependabot config schema lint, spell check (with copy-pasteable cspell.json patch for unregistered lint-error-code prefixes), LLM instruction lint, and test lint
+7. Checks staged C# files for duplicate using directives (`UNH007`)
+8. Checks for forbidden `#region` directives
+9. Checks drawer/editor files for missing multi-object editing support (GenericMenu without `hasMultipleDifferentValues`)
+10. Checks Odin drawer Undo safety (WeakTargets null-filtering before `Undo.RecordObjects`)
+11. Checks for missing `.meta` files on staged files (auto-stages existing `.meta` companions)
 
 The repository also installs a `pre-merge-commit` hook that delegates to `pre-commit`. Git does NOT run `pre-commit` on merge commits by default, so without this delegation any file introduced through a merge (including manual conflict resolution) would bypass every validation. The April 2026 `PWS001` regression is the concrete incident this guards against.
 
@@ -86,14 +87,14 @@ See [formatting-and-linting](./formatting-and-linting.md) for details.
 ### Markdown Files
 
 ```bash
-npx prettier --write -- "path/to/file.md"
+node scripts/run-prettier.js --write -- "path/to/file.md"
 ```
 
 ### JSON / Assembly Definition Files
 
 ```bash
-npx prettier --write -- "path/to/file.json"
-npx prettier --write -- "path/to/file.asmdef"
+node scripts/run-prettier.js --write -- "path/to/file.json"
+node scripts/run-prettier.js --write -- "path/to/file.asmdef"
 ```
 
 ### All Files at Once

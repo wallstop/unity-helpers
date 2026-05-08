@@ -121,19 +121,12 @@ function isInsideRepo(absPath, repoRoot) {
   return rel !== "" && !rel.startsWith("..") && !path.isAbsolute(rel);
 }
 
-function resolveCspellBinary(repoRoot) {
-  const binDir = path.join(repoRoot, "node_modules", ".bin");
-  const candidates =
-    process.platform === "win32"
-      ? ["cspell.cmd", "cspell.CMD", "cspell.exe", "cspell"]
-      : ["cspell"];
-  for (const name of candidates) {
-    const p = path.join(binDir, name);
-    if (fs.existsSync(p)) {
-      return p;
-    }
+function resolveNodeToolRunner(repoRoot) {
+  const runner = path.join(repoRoot, "scripts", "run-node-bin.js");
+  if (!fs.existsSync(runner)) {
+    return null;
   }
-  return null;
+  return runner;
 }
 
 function main() {
@@ -142,7 +135,7 @@ function main() {
   // unexpected.
   let repoRoot;
   let absPath;
-  let cspellBin;
+  let nodeToolRunner;
   try {
     repoRoot = findRepoRoot(process.cwd());
     if (!repoRoot) {
@@ -186,8 +179,8 @@ function main() {
       return 0;
     }
 
-    cspellBin = resolveCspellBinary(repoRoot);
-    if (!cspellBin) {
+    nodeToolRunner = resolveNodeToolRunner(repoRoot);
+    if (!nodeToolRunner) {
       // Fresh clone before `npm install` — degrade silently.
       return 0;
     }
@@ -200,14 +193,22 @@ function main() {
   let result;
   try {
     result = spawnSync(
-      cspellBin,
-      ["lint", "--no-progress", "--show-suggestions", "--no-must-find-files", "--", absPath],
+      process.execPath,
+      [
+        nodeToolRunner,
+        "cspell",
+        "lint",
+        "--no-progress",
+        "--show-suggestions",
+        "--no-must-find-files",
+        "--",
+        absPath
+      ],
       {
         cwd: repoRoot,
         encoding: "utf8",
         timeout: CSPELL_TIMEOUT_MS,
-        windowsHide: true,
-        shell: process.platform === "win32"
+        windowsHide: true
       }
     );
   } catch {

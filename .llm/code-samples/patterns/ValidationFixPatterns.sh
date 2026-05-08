@@ -20,10 +20,10 @@ crlf_aware_append_newline() {
 # --- Fix Prettier Formatting ---
 # Fix a single file or all files
 prettier_fix_file() {
-    npx prettier --write -- "$1"
+    node scripts/run-prettier.js --write -- "$1"
 }
 prettier_fix_all() {
-    npx prettier --write -- .
+    node scripts/run-prettier.js --write -- .
 }
 
 # --- Fix Line Endings ---
@@ -50,7 +50,7 @@ check_preexisting() {
 
 # --- Quick Recovery (run all fixes) ---
 quick_recovery() {
-    npx prettier --write -- .           # Fix all formatting
+    node scripts/run-prettier.js --write -- .           # Fix all formatting
     npm run eol:fix                     # Fix line endings
     dotnet tool run csharpier format .  # Format C#
     npm run validate:prepush            # Full validation

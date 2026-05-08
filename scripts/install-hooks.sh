@@ -212,7 +212,7 @@ check_status() {
         # Check specific packages
         if [[ -d "$REPO_ROOT/node_modules/prettier" ]]; then
             local prettier_ver
-            prettier_ver=$(npx --no-install prettier --version 2>/dev/null || echo "unknown")
+            prettier_ver=$(node "$REPO_ROOT/scripts/run-prettier.js" --version 2>/dev/null || echo "unknown")
             print_success "prettier: $prettier_ver"
         else
             print_warning "prettier: NOT INSTALLED"
@@ -332,17 +332,17 @@ install_node_deps() {
     print_success "Node.js dependencies installed"
     
     # Verify installations
-    if check_command npx; then
+    if check_command node; then
         echo ""
         print_info "Installed tools:"
-        if npx --no-install prettier --version >/dev/null 2>&1; then
-            print_success "  prettier: $(npx --no-install prettier --version)"
+        if node "$REPO_ROOT/scripts/run-prettier.js" --version >/dev/null 2>&1; then
+            print_success "  prettier: $(node "$REPO_ROOT/scripts/run-prettier.js" --version)"
         fi
-        if npx --no-install markdownlint --version >/dev/null 2>&1; then
-            print_success "  markdownlint-cli: $(npx --no-install markdownlint --version)"
+        if node "$REPO_ROOT/scripts/run-node-bin.js" markdownlint --version >/dev/null 2>&1; then
+            print_success "  markdownlint-cli: $(node "$REPO_ROOT/scripts/run-node-bin.js" markdownlint --version)"
         fi
-        if npx --no-install cspell --version >/dev/null 2>&1; then
-            print_success "  cspell: $(npx --no-install cspell --version)"
+        if node "$REPO_ROOT/scripts/run-node-bin.js" cspell --version >/dev/null 2>&1; then
+            print_success "  cspell: $(node "$REPO_ROOT/scripts/run-node-bin.js" cspell --version)"
         fi
     fi
 }

@@ -143,6 +143,11 @@ for ($i = 0; $i -lt $lines.Count; $i++) {
     $errorList += "Line $lineNumber`: Malformed header - missing space after ## or ###"
   }
 
+  # Empty bullets (`-` / `*` with no content) usually indicate accidental entry deletion.
+  if ($line -match '^\s*[-*]\s*$') {
+    $errorList += "Line $lineNumber`: Empty bullet list item detected. Remove the stray list marker or add entry text."
+  }
+
   # Check for version headers without brackets
   if ($line -match '^##\s+\d+\.\d+\.\d+') {
     $warningList += "Line $lineNumber`: Version should be in brackets, e.g., '## [1.0.0] - YYYY-MM-DD'"

@@ -93,7 +93,12 @@ namespace WallstopStudios.UnityHelpers.Utils
         }
 
 #if UNITY_EDITOR
-        public void SetOrUpdateEntry(Entry entry)
+        /// <summary>
+        /// Adds or updates a singleton metadata entry.
+        /// </summary>
+        /// <param name="entry">The entry to store.</param>
+        /// <returns><c>true</c> when the serialized metadata changed; otherwise, <c>false</c>.</returns>
+        public bool SetOrUpdateEntry(Entry entry)
         {
             _entries ??= new List<Entry>();
 
@@ -108,12 +113,34 @@ namespace WallstopStudios.UnityHelpers.Utils
                     )
                 )
                 {
+                    if (EntriesEqual(_entries[i], entry))
+                    {
+                        return false;
+                    }
+
                     _entries[i] = entry;
-                    return;
+                    return true;
                 }
             }
 
             _entries.Add(entry);
+            return true;
+        }
+
+        private static bool EntriesEqual(Entry left, Entry right)
+        {
+            return string.Equals(
+                    left.assemblyQualifiedTypeName,
+                    right.assemblyQualifiedTypeName,
+                    StringComparison.Ordinal
+                )
+                && string.Equals(
+                    left.resourcesLoadPath,
+                    right.resourcesLoadPath,
+                    StringComparison.Ordinal
+                )
+                && string.Equals(left.resourcesPath, right.resourcesPath, StringComparison.Ordinal)
+                && string.Equals(left.assetGuid, right.assetGuid, StringComparison.Ordinal);
         }
 
         /// <summary>

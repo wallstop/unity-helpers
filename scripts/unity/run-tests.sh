@@ -81,6 +81,20 @@ if [[ -n "${ASSEMBLY}" ]]; then
     echo "==> [run-tests] Test assembly: ${ASSEMBLY}"
 fi
 
+# Validate the results path before creating the test project. Writing a Unity
+# project or test output under WORKSPACE_DIR makes those generated files part of
+# the imported package and can trigger Unity import-loop failures.
+RESULTS_DIR="${UNITY_TEST_PROJECT_DIR}/test-results"
+workspace_realpath="$(cd "${WORKSPACE_DIR}" && pwd -P)"
+results_realpath="$(realpath -m "${RESULTS_DIR}")"
+case "${results_realpath}" in
+    "${workspace_realpath}"|"${workspace_realpath}"/*)
+        echo "ERROR: Refusing to write Unity test results inside the package root: ${results_realpath}"
+        echo "ERROR: Set UNITY_TEST_PROJECT_DIR outside ${workspace_realpath} to avoid Unity package import loops."
+        exit 1
+        ;;
+esac
+
 # Step 1: Ensure test project exists
 echo "==> [run-tests] Step 1: Ensuring test project exists..."
 if [[ -n "${CLEAN_FLAG}" ]]; then
@@ -89,14 +103,22 @@ else
     "${SCRIPT_DIR}/create-test-project.sh"
 fi
 
-# Create test results directory inside the test project (writable Docker mount)
-RESULTS_DIR="${UNITY_TEST_PROJECT_DIR}/test-results"
+# Create test results directory inside the test project (writable Docker mount).
+# Keep generated results outside WORKSPACE_DIR: the Unity test project imports
+# this package via file:/workspace, so result files or symlinks in the package
+# root become package assets and can trigger import-loop errors while tests run.
 mkdir -p "${RESULTS_DIR}"
+echo "==> [run-tests] Results directory: ${RESULTS_DIR}"
 
-# Also create a symlink from workspace for convenience
+# Remove the legacy workspace-root symlink created by older versions of this
+# script. A real directory is left intact so user-authored artifacts are not
+# deleted implicitly; the results location is printed above instead.
 WORKSPACE_RESULTS="${WORKSPACE_DIR}/test-results"
-if [[ ! -e "${WORKSPACE_RESULTS}" ]]; then
-    ln -sf "${RESULTS_DIR}" "${WORKSPACE_RESULTS}" 2>/dev/null || true
+if [[ -L "${WORKSPACE_RESULTS}" ]]; then
+    rm -f "${WORKSPACE_RESULTS}"
+elif [[ -e "${WORKSPACE_RESULTS}" ]]; then
+    echo "WARNING: ${WORKSPACE_RESULTS} exists inside the Unity package root."
+    echo "WARNING: Generated test results should live at ${RESULTS_DIR} to avoid Unity package import loops."
 fi
 
 ###############################################################################

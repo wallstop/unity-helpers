@@ -907,6 +907,37 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             }
         }
 
+        [Test]
+        public void MetadataEntryUpdateReturnsFalseWhenEntryIsUnchanged()
+        {
+            ScriptableObjectSingletonMetadata metadata = Track(
+                ScriptableObject.CreateInstance<ScriptableObjectSingletonMetadata>()
+            );
+            ScriptableObjectSingletonMetadata.Entry entry = new()
+            {
+                assemblyQualifiedTypeName = typeof(TestSingleton).AssemblyQualifiedName,
+                resourcesLoadPath = "TestSingleton",
+                resourcesPath = string.Empty,
+                assetGuid = "guid-a",
+            };
+            ScriptableObjectSingletonMetadata.Entry updatedEntry = new()
+            {
+                assemblyQualifiedTypeName = typeof(TestSingleton).AssemblyQualifiedName,
+                resourcesLoadPath = "Other/TestSingleton",
+                resourcesPath = "Other",
+                assetGuid = "guid-b",
+            };
+
+            bool firstChanged = metadata.SetOrUpdateEntry(entry);
+            bool secondChanged = metadata.SetOrUpdateEntry(entry);
+            bool thirdChanged = metadata.SetOrUpdateEntry(updatedEntry);
+
+            Assert.IsTrue(firstChanged);
+            Assert.IsFalse(secondChanged);
+            Assert.IsTrue(thirdChanged);
+            Assert.IsTrue(metadata.TryGetEntry(typeof(TestSingleton), out _));
+        }
+
         [UnityTest]
         public IEnumerator MultipleAssetsLogWarningAndSelectDeterministically()
         {

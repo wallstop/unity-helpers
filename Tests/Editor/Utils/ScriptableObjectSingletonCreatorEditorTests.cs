@@ -14,7 +14,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
     using UnityEngine;
     using UnityEngine.TestTools;
     using WallstopStudios.UnityHelpers.Core.Helper;
+    using WallstopStudios.UnityHelpers.Editor.AssetProcessors;
     using WallstopStudios.UnityHelpers.Editor.Utils;
+    using WallstopStudios.UnityHelpers.Tests.AssetProcessors;
     using WallstopStudios.UnityHelpers.Tests.Core;
     using Object = UnityEngine.Object;
 
@@ -40,6 +42,8 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
         [UnitySetUp]
         public IEnumerator UnitySetUp()
         {
+            AssetPostprocessorTestHandlers.AssertCleanAndClearAll();
+
             _previousEditorUiSuppress = EditorUi.Suppress;
             EditorUi.Suppress = true;
             ScriptableObjectSingletonCreator.IncludeTestAssemblies = true;
@@ -74,7 +78,9 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
             DeleteFolderHierarchy(NestedTargetFolder);
             yield return null;
             AssetDatabase.SaveAssets();
-            ImportFolderIfExists(ResourcesRoot);
+            AssetDatabaseBatchHelper.RefreshIfNotBatching(
+                ImportAssetOptions.ForceSynchronousImport
+            );
             yield return null;
         }
 
@@ -113,25 +119,12 @@ namespace WallstopStudios.UnityHelpers.Tests.Utils
                 _previousIgnoreCompilationState;
             ScriptableObjectSingletonCreator.ResetRetryStateForTests();
             AssetDatabase.SaveAssets();
-            ImportFolderIfExists(ResourcesRoot);
+            AssetDatabaseBatchHelper.RefreshIfNotBatching(
+                ImportAssetOptions.ForceSynchronousImport
+            );
+            AssetPostprocessorDeferral.FlushForTesting();
             EditorUi.Suppress = _previousEditorUiSuppress;
             yield return null;
-        }
-
-        private static void ImportFolderIfExists(string folderPath)
-        {
-            if (string.IsNullOrEmpty(folderPath))
-            {
-                return;
-            }
-
-            if (AssetDatabase.IsValidFolder(folderPath))
-            {
-                AssetDatabase.ImportAsset(
-                    folderPath,
-                    ImportAssetOptions.ForceSynchronousImport | ImportAssetOptions.ImportRecursive
-                );
-            }
         }
 
         [UnityTest]

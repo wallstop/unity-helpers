@@ -208,6 +208,36 @@ else
     fail "Found hardcoded paths (should use \${VAR:-default} pattern):" "$b1_violations"
 fi
 
+# B2: Unity test runner must not place generated test results inside the package root
+echo ""
+echo "--- B2: Unity test results stay outside imported package root ---"
+
+run_test
+unity_run_tests="$REPO_ROOT/scripts/unity/run-tests.sh"
+if grep -qE 'ln[[:space:]]+-s[f]?[[:space:]]+\$?\{?RESULTS_DIR' "$unity_run_tests"; then
+    fail "Unity test runner creates a workspace test-results symlink" \
+        "Generated result files under the package root are imported by Unity and can trigger infinite import-loop errors."
+elif grep -qE 'ln[[:space:]]+-s[f]?[[:space:]]+.*WORKSPACE_RESULTS' "$unity_run_tests"; then
+    fail "Unity test runner creates a workspace-root symlink" \
+        "Generated result files under the package root are imported by Unity and can trigger infinite import-loop errors."
+else
+    pass "Unity test runner does not create generated result symlinks in the package root"
+fi
+
+run_test
+guard_line=$(grep -n 'Refusing to write Unity test results inside the package root' "$unity_run_tests" | head -n 1 | cut -d: -f1)
+create_line=$(grep -n 'create-test-project\.sh' "$unity_run_tests" | head -n 1 | cut -d: -f1)
+mkdir_line=$(grep -n 'mkdir -p "\${RESULTS_DIR}"' "$unity_run_tests" | head -n 1 | cut -d: -f1)
+if [[ -z "$guard_line" || -z "$create_line" || -z "$mkdir_line" ]]; then
+    fail "Unity test runner package-root guard is missing expected structure" \
+        "guard_line='${guard_line}', create_line='${create_line}', mkdir_line='${mkdir_line}'"
+elif (( guard_line < create_line && guard_line < mkdir_line )); then
+    pass "Unity test runner validates results path before creating projects or result directories"
+else
+    fail "Unity test runner validates results path too late" \
+        "Guard line ${guard_line}, create-test-project line ${create_line}, mkdir line ${mkdir_line}"
+fi
+
 # =============================================================================
 # Section C: Inappropriate stderr suppression in git hooks
 # =============================================================================
@@ -432,6 +462,49 @@ if [[ -z "$e3_violations" ]]; then
     pass "No fragile awk field parsing for git paths found"
 else
     fail "Found fragile awk field parsing for git paths:" "$e3_violations"
+fi
+
+# =============================================================================
+# Section F: Tracked executable modes for shell entrypoints
+# =============================================================================
+echo ""
+echo '=== Section F: Shell executable mode metadata ==='
+
+echo ""
+echo '--- F1: Shell scripts with shebangs are tracked executable ---'
+
+f1_violations=""
+# Repository convention: a tracked shell file with a shebang is directly
+# runnable, even when it is also safe to source from another script.
+while IFS= read -r -d '' tracked_path; do
+    case "$tracked_path" in
+        *.sh|.githooks/*) ;;
+        *) continue ;;
+    esac
+
+    absolute_path="$REPO_ROOT/$tracked_path"
+    [[ -f "$absolute_path" ]] || continue
+
+    first_line="$(head -n 1 "$absolute_path" 2>/dev/null || true)"
+    case "$first_line" in
+        '#!'*) ;;
+        *) continue ;;
+    esac
+
+    index_entry="$(git -C "$REPO_ROOT" ls-files -s -- "$tracked_path" 2>/dev/null || true)"
+    index_mode="${index_entry%% *}"
+    filesystem_mode="$(stat -c '%A %a' "$absolute_path" 2>/dev/null || ls -l "$absolute_path" 2>/dev/null || echo 'unavailable')"
+
+    if [[ "$index_mode" != "100755" || ! -x "$absolute_path" ]]; then
+        f1_violations="${f1_violations}  ${tracked_path}: filesystem=${filesystem_mode}; git-index=${index_entry:-untracked}"$'\n'
+    fi
+done < <(git -C "$REPO_ROOT" ls-files -z -- .devcontainer .githooks scripts)
+
+run_test
+if [[ -z "$f1_violations" ]]; then
+    pass "All tracked shell entrypoints are executable in filesystem and git index"
+else
+    fail "Found shell entrypoints without executable git metadata:" "$f1_violations"
 fi
 
 # =============================================================================

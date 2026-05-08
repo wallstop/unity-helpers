@@ -8,7 +8,7 @@ Each run updates the table for the current operating system only. Sections that 
 
 <!-- REFLECTION_PERFORMANCE_WINDOWS_START -->
 
-Generated on 2026-04-22 22:11:32 UTC
+Generated on 2026-05-08 04:08:17 UTC
 
 ### Strategy: Default (auto)
 
@@ -24,17 +24,17 @@ Generated on 2026-04-22 22:11:32 UTC
     </tr>
   </thead>
   <tbody>
-    <tr><td align="left">Instance Field Get (boxed)</td><td align="right">22.62M</td><td align="right">7.27M</td><td align="right">3.11x</td></tr>
-    <tr><td align="left">Instance Field Set (boxed)</td><td align="right">21.97M</td><td align="right">5.47M</td><td align="right">4.02x</td></tr>
-    <tr><td align="left">Static Field Get (boxed)</td><td align="right">21.09M</td><td align="right">8.59M</td><td align="right">2.45x</td></tr>
-    <tr><td align="left">Static Field Set (boxed)</td><td align="right">22.83M</td><td align="right">6.14M</td><td align="right">3.72x</td></tr>
-    <tr><td align="left">Instance Property Get (boxed)</td><td align="right">23.39M</td><td align="right">21.74M</td><td align="right">1.08x</td></tr>
-    <tr><td align="left">Instance Property Set (boxed)</td><td align="right">21.72M</td><td align="right">2.06M</td><td align="right">10.54x</td></tr>
-    <tr><td align="left">Static Property Get (boxed)</td><td align="right">20.11M</td><td align="right">21.72M</td><td align="right">0.93x</td></tr>
-    <tr><td align="left">Static Property Set (boxed)</td><td align="right">23.22M</td><td align="right">2.89M</td><td align="right">8.03x</td></tr>
-    <tr><td align="left">Instance Method Invoke (boxed)</td><td align="right">15.03M</td><td align="right">1.98M</td><td align="right">7.58x</td></tr>
-    <tr><td align="left">Static Method Invoke (boxed)</td><td align="right">22.70M</td><td align="right">2.66M</td><td align="right">8.55x</td></tr>
-    <tr><td align="left">Constructor Invoke (boxed)</td><td align="right">22.47M</td><td align="right">2.58M</td><td align="right">8.70x</td></tr>
+    <tr><td align="left">Instance Field Get (boxed)</td><td align="right">23.81M</td><td align="right">4.99M</td><td align="right">4.77x</td></tr>
+    <tr><td align="left">Instance Field Set (boxed)</td><td align="right">23.25M</td><td align="right">5.47M</td><td align="right">4.25x</td></tr>
+    <tr><td align="left">Static Field Get (boxed)</td><td align="right">23.45M</td><td align="right">8.68M</td><td align="right">2.70x</td></tr>
+    <tr><td align="left">Static Field Set (boxed)</td><td align="right">23.68M</td><td align="right">5.56M</td><td align="right">4.26x</td></tr>
+    <tr><td align="left">Instance Property Get (boxed)</td><td align="right">23.64M</td><td align="right">22.38M</td><td align="right">1.06x</td></tr>
+    <tr><td align="left">Instance Property Set (boxed)</td><td align="right">20.22M</td><td align="right">1.96M</td><td align="right">10.29x</td></tr>
+    <tr><td align="left">Static Property Get (boxed)</td><td align="right">18.00M</td><td align="right">19.96M</td><td align="right">0.90x</td></tr>
+    <tr><td align="left">Static Property Set (boxed)</td><td align="right">20.67M</td><td align="right">2.90M</td><td align="right">7.11x</td></tr>
+    <tr><td align="left">Instance Method Invoke (boxed)</td><td align="right">14.26M</td><td align="right">2.01M</td><td align="right">7.10x</td></tr>
+    <tr><td align="left">Static Method Invoke (boxed)</td><td align="right">19.86M</td><td align="right">2.73M</td><td align="right">7.27x</td></tr>
+    <tr><td align="left">Constructor Invoke (boxed)</td><td align="right">18.76M</td><td align="right">2.60M</td><td align="right">7.23x</td></tr>
   </tbody>
 </table>
 
@@ -52,16 +52,16 @@ Generated on 2026-04-22 22:11:32 UTC
     </tr>
   </thead>
   <tbody>
-    <tr><td align="left">Instance Field Get (typed)</td><td align="right">606.46M</td><td align="right">658.01M</td><td align="right">7.27M</td><td align="right">0.92x</td><td align="right">83.42x</td></tr>
-    <tr><td align="left">Instance Field Set (typed)</td><td align="right">637.35M</td><td align="right">656.91M</td><td align="right">5.47M</td><td align="right">0.97x</td><td align="right">116.55x</td></tr>
-    <tr><td align="left">Static Field Get (typed)</td><td align="right">621.85M</td><td align="right">692.09M</td><td align="right">8.59M</td><td align="right">0.90x</td><td align="right">72.35x</td></tr>
-    <tr><td align="left">Static Field Set (typed)</td><td align="right">625.47M</td><td align="right">671.36M</td><td align="right">6.14M</td><td align="right">0.93x</td><td align="right">101.80x</td></tr>
-    <tr><td align="left">Instance Property Get (typed)</td><td align="right">600.74M</td><td align="right">688.18M</td><td align="right">21.74M</td><td align="right">0.87x</td><td align="right">27.63x</td></tr>
-    <tr><td align="left">Instance Property Set (typed)</td><td align="right">624.84M</td><td align="right">691.35M</td><td align="right">2.06M</td><td align="right">0.90x</td><td align="right">303.38x</td></tr>
-    <tr><td align="left">Static Property Get (typed)</td><td align="right">612.86M</td><td align="right">683.35M</td><td align="right">21.72M</td><td align="right">0.90x</td><td align="right">28.22x</td></tr>
-    <tr><td align="left">Static Property Set (typed)</td><td align="right">611.11M</td><td align="right">654.86M</td><td align="right">2.89M</td><td align="right">0.93x</td><td align="right">211.28x</td></tr>
-    <tr><td align="left">Instance Method Invoke (typed)</td><td align="right">590.08M</td><td align="right">678.28M</td><td align="right">1.98M</td><td align="right">0.87x</td><td align="right">297.48x</td></tr>
-    <tr><td align="left">Static Method Invoke (typed)</td><td align="right">625.72M</td><td align="right">676.09M</td><td align="right">2.66M</td><td align="right">0.93x</td><td align="right">235.57x</td></tr>
+    <tr><td align="left">Instance Field Get (typed)</td><td align="right">682.40M</td><td align="right">672.50M</td><td align="right">4.99M</td><td align="right">1.01x</td><td align="right">136.65x</td></tr>
+    <tr><td align="left">Instance Field Set (typed)</td><td align="right">655.28M</td><td align="right">666.57M</td><td align="right">5.47M</td><td align="right">0.98x</td><td align="right">119.89x</td></tr>
+    <tr><td align="left">Static Field Get (typed)</td><td align="right">662.61M</td><td align="right">704.40M</td><td align="right">8.68M</td><td align="right">0.94x</td><td align="right">76.35x</td></tr>
+    <tr><td align="left">Static Field Set (typed)</td><td align="right">666.25M</td><td align="right">673.08M</td><td align="right">5.56M</td><td align="right">0.99x</td><td align="right">119.78x</td></tr>
+    <tr><td align="left">Instance Property Get (typed)</td><td align="right">682.28M</td><td align="right">691.91M</td><td align="right">22.38M</td><td align="right">0.99x</td><td align="right">30.49x</td></tr>
+    <tr><td align="left">Instance Property Set (typed)</td><td align="right">618.65M</td><td align="right">699.50M</td><td align="right">1.96M</td><td align="right">0.88x</td><td align="right">315.03x</td></tr>
+    <tr><td align="left">Static Property Get (typed)</td><td align="right">670.50M</td><td align="right">691.80M</td><td align="right">19.96M</td><td align="right">0.97x</td><td align="right">33.59x</td></tr>
+    <tr><td align="left">Static Property Set (typed)</td><td align="right">653.06M</td><td align="right">663.93M</td><td align="right">2.90M</td><td align="right">0.98x</td><td align="right">224.83x</td></tr>
+    <tr><td align="left">Instance Method Invoke (typed)</td><td align="right">641.83M</td><td align="right">687.16M</td><td align="right">2.01M</td><td align="right">0.93x</td><td align="right">319.63x</td></tr>
+    <tr><td align="left">Static Method Invoke (typed)</td><td align="right">660.03M</td><td align="right">687.85M</td><td align="right">2.73M</td><td align="right">0.96x</td><td align="right">241.58x</td></tr>
   </tbody>
 </table>
 
@@ -79,17 +79,17 @@ Generated on 2026-04-22 22:11:32 UTC
     </tr>
   </thead>
   <tbody>
-    <tr><td align="left">Instance Field Get (boxed)</td><td align="right">23.47M</td><td align="right">7.32M</td><td align="right">3.21x</td></tr>
-    <tr><td align="left">Instance Field Set (boxed)</td><td align="right">23.17M</td><td align="right">5.44M</td><td align="right">4.26x</td></tr>
-    <tr><td align="left">Static Field Get (boxed)</td><td align="right">22.07M</td><td align="right">8.60M</td><td align="right">2.57x</td></tr>
-    <tr><td align="left">Static Field Set (boxed)</td><td align="right">10.70M</td><td align="right">2.36M</td><td align="right">4.54x</td></tr>
-    <tr><td align="left">Instance Property Get (boxed)</td><td align="right">9.42M</td><td align="right">20.66M</td><td align="right">0.46x</td></tr>
-    <tr><td align="left">Instance Property Set (boxed)</td><td align="right">21.57M</td><td align="right">2.05M</td><td align="right">10.50x</td></tr>
-    <tr><td align="left">Static Property Get (boxed)</td><td align="right">20.44M</td><td align="right">23.00M</td><td align="right">0.89x</td></tr>
-    <tr><td align="left">Static Property Set (boxed)</td><td align="right">23.55M</td><td align="right">2.87M</td><td align="right">8.19x</td></tr>
-    <tr><td align="left">Instance Method Invoke (boxed)</td><td align="right">17.58M</td><td align="right">1.95M</td><td align="right">9.03x</td></tr>
-    <tr><td align="left">Static Method Invoke (boxed)</td><td align="right">22.43M</td><td align="right">2.66M</td><td align="right">8.42x</td></tr>
-    <tr><td align="left">Constructor Invoke (boxed)</td><td align="right">23.28M</td><td align="right">2.55M</td><td align="right">9.12x</td></tr>
+    <tr><td align="left">Instance Field Get (boxed)</td><td align="right">18.84M</td><td align="right">3.12M</td><td align="right">6.04x</td></tr>
+    <tr><td align="left">Instance Field Set (boxed)</td><td align="right">1.90M</td><td align="right">5.46M</td><td align="right">0.35x</td></tr>
+    <tr><td align="left">Static Field Get (boxed)</td><td align="right">23.16M</td><td align="right">8.68M</td><td align="right">2.67x</td></tr>
+    <tr><td align="left">Static Field Set (boxed)</td><td align="right">21.85M</td><td align="right">6.17M</td><td align="right">3.54x</td></tr>
+    <tr><td align="left">Instance Property Get (boxed)</td><td align="right">20.84M</td><td align="right">19.82M</td><td align="right">1.05x</td></tr>
+    <tr><td align="left">Instance Property Set (boxed)</td><td align="right">21.13M</td><td align="right">2.05M</td><td align="right">10.31x</td></tr>
+    <tr><td align="left">Static Property Get (boxed)</td><td align="right">16.07M</td><td align="right">19.55M</td><td align="right">0.82x</td></tr>
+    <tr><td align="left">Static Property Set (boxed)</td><td align="right">21.60M</td><td align="right">2.90M</td><td align="right">7.46x</td></tr>
+    <tr><td align="left">Instance Method Invoke (boxed)</td><td align="right">16.21M</td><td align="right">1.97M</td><td align="right">8.21x</td></tr>
+    <tr><td align="left">Static Method Invoke (boxed)</td><td align="right">19.85M</td><td align="right">2.73M</td><td align="right">7.27x</td></tr>
+    <tr><td align="left">Constructor Invoke (boxed)</td><td align="right">21.50M</td><td align="right">2.61M</td><td align="right">8.23x</td></tr>
   </tbody>
 </table>
 
@@ -107,16 +107,16 @@ Generated on 2026-04-22 22:11:32 UTC
     </tr>
   </thead>
   <tbody>
-    <tr><td align="left">Instance Field Get (typed)</td><td align="right">586.62M</td><td align="right">653.32M</td><td align="right">7.32M</td><td align="right">0.90x</td><td align="right">80.18x</td></tr>
-    <tr><td align="left">Instance Field Set (typed)</td><td align="right">637.71M</td><td align="right">664.97M</td><td align="right">5.44M</td><td align="right">0.96x</td><td align="right">117.24x</td></tr>
-    <tr><td align="left">Static Field Get (typed)</td><td align="right">621.80M</td><td align="right">692.98M</td><td align="right">8.60M</td><td align="right">0.90x</td><td align="right">72.28x</td></tr>
-    <tr><td align="left">Static Field Set (typed)</td><td align="right">611.56M</td><td align="right">652.12M</td><td align="right">2.36M</td><td align="right">0.94x</td><td align="right">259.56x</td></tr>
-    <tr><td align="left">Instance Property Get (typed)</td><td align="right">594.57M</td><td align="right">696.32M</td><td align="right">20.66M</td><td align="right">0.85x</td><td align="right">28.77x</td></tr>
-    <tr><td align="left">Instance Property Set (typed)</td><td align="right">628.75M</td><td align="right">694.19M</td><td align="right">2.05M</td><td align="right">0.91x</td><td align="right">306.18x</td></tr>
-    <tr><td align="left">Static Property Get (typed)</td><td align="right">613.37M</td><td align="right">681.83M</td><td align="right">23.00M</td><td align="right">0.90x</td><td align="right">26.67x</td></tr>
-    <tr><td align="left">Static Property Set (typed)</td><td align="right">612.51M</td><td align="right">654.56M</td><td align="right">2.87M</td><td align="right">0.94x</td><td align="right">213.09x</td></tr>
-    <tr><td align="left">Instance Method Invoke (typed)</td><td align="right">583.62M</td><td align="right">677.29M</td><td align="right">1.95M</td><td align="right">0.86x</td><td align="right">299.64x</td></tr>
-    <tr><td align="left">Static Method Invoke (typed)</td><td align="right">628.39M</td><td align="right">683.12M</td><td align="right">2.66M</td><td align="right">0.92x</td><td align="right">235.84x</td></tr>
+    <tr><td align="left">Instance Field Get (typed)</td><td align="right">680.40M</td><td align="right">701.15M</td><td align="right">3.12M</td><td align="right">0.97x</td><td align="right">218.25x</td></tr>
+    <tr><td align="left">Instance Field Set (typed)</td><td align="right">651.97M</td><td align="right">670.03M</td><td align="right">5.46M</td><td align="right">0.97x</td><td align="right">119.51x</td></tr>
+    <tr><td align="left">Static Field Get (typed)</td><td align="right">656.65M</td><td align="right">704.16M</td><td align="right">8.68M</td><td align="right">0.93x</td><td align="right">75.65x</td></tr>
+    <tr><td align="left">Static Field Set (typed)</td><td align="right">695.48M</td><td align="right">667.70M</td><td align="right">6.17M</td><td align="right">1.04x</td><td align="right">112.79x</td></tr>
+    <tr><td align="left">Instance Property Get (typed)</td><td align="right">688.73M</td><td align="right">700.55M</td><td align="right">19.82M</td><td align="right">0.98x</td><td align="right">34.76x</td></tr>
+    <tr><td align="left">Instance Property Set (typed)</td><td align="right">625.16M</td><td align="right">711.76M</td><td align="right">2.05M</td><td align="right">0.88x</td><td align="right">305.00x</td></tr>
+    <tr><td align="left">Static Property Get (typed)</td><td align="right">666.70M</td><td align="right">693.34M</td><td align="right">19.55M</td><td align="right">0.96x</td><td align="right">34.11x</td></tr>
+    <tr><td align="left">Static Property Set (typed)</td><td align="right">651.20M</td><td align="right">664.29M</td><td align="right">2.90M</td><td align="right">0.98x</td><td align="right">224.90x</td></tr>
+    <tr><td align="left">Instance Method Invoke (typed)</td><td align="right">639.52M</td><td align="right">692.53M</td><td align="right">1.97M</td><td align="right">0.92x</td><td align="right">323.96x</td></tr>
+    <tr><td align="left">Static Method Invoke (typed)</td><td align="right">661.92M</td><td align="right">685.72M</td><td align="right">2.73M</td><td align="right">0.97x</td><td align="right">242.33x</td></tr>
   </tbody>
 </table>
 
@@ -134,17 +134,17 @@ Generated on 2026-04-22 22:11:32 UTC
     </tr>
   </thead>
   <tbody>
-    <tr><td align="left">Instance Field Get (boxed)</td><td align="right">23.05M</td><td align="right">7.29M</td><td align="right">3.16x</td></tr>
-    <tr><td align="left">Instance Field Set (boxed)</td><td align="right">23.24M</td><td align="right">5.43M</td><td align="right">4.28x</td></tr>
-    <tr><td align="left">Static Field Get (boxed)</td><td align="right">21.82M</td><td align="right">8.59M</td><td align="right">2.54x</td></tr>
-    <tr><td align="left">Static Field Set (boxed)</td><td align="right">23.74M</td><td align="right">6.16M</td><td align="right">3.86x</td></tr>
-    <tr><td align="left">Instance Property Get (boxed)</td><td align="right">23.17M</td><td align="right">22.17M</td><td align="right">1.05x</td></tr>
-    <tr><td align="left">Instance Property Set (boxed)</td><td align="right">21.90M</td><td align="right">2.05M</td><td align="right">10.67x</td></tr>
-    <tr><td align="left">Static Property Get (boxed)</td><td align="right">19.71M</td><td align="right">21.61M</td><td align="right">0.91x</td></tr>
-    <tr><td align="left">Static Property Set (boxed)</td><td align="right">23.43M</td><td align="right">2.93M</td><td align="right">7.99x</td></tr>
-    <tr><td align="left">Instance Method Invoke (boxed)</td><td align="right">15.77M</td><td align="right">1.99M</td><td align="right">7.92x</td></tr>
-    <tr><td align="left">Static Method Invoke (boxed)</td><td align="right">21.32M</td><td align="right">1.75M</td><td align="right">12.19x</td></tr>
-    <tr><td align="left">Constructor Invoke (boxed)</td><td align="right">3.11M</td><td align="right">1.30M</td><td align="right">2.39x</td></tr>
+    <tr><td align="left">Instance Field Get (boxed)</td><td align="right">22.39M</td><td align="right">7.23M</td><td align="right">3.09x</td></tr>
+    <tr><td align="left">Instance Field Set (boxed)</td><td align="right">22.97M</td><td align="right">5.44M</td><td align="right">4.22x</td></tr>
+    <tr><td align="left">Static Field Get (boxed)</td><td align="right">23.13M</td><td align="right">8.62M</td><td align="right">2.68x</td></tr>
+    <tr><td align="left">Static Field Set (boxed)</td><td align="right">21.14M</td><td align="right">3.73M</td><td align="right">5.66x</td></tr>
+    <tr><td align="left">Instance Property Get (boxed)</td><td align="right">21.67M</td><td align="right">21.01M</td><td align="right">1.03x</td></tr>
+    <tr><td align="left">Instance Property Set (boxed)</td><td align="right">21.50M</td><td align="right">2.04M</td><td align="right">10.52x</td></tr>
+    <tr><td align="left">Static Property Get (boxed)</td><td align="right">19.17M</td><td align="right">4.00M</td><td align="right">4.79x</td></tr>
+    <tr><td align="left">Static Property Set (boxed)</td><td align="right">1.46M</td><td align="right">2.14M</td><td align="right">0.68x</td></tr>
+    <tr><td align="left">Instance Method Invoke (boxed)</td><td align="right">17.48M</td><td align="right">1.99M</td><td align="right">8.76x</td></tr>
+    <tr><td align="left">Static Method Invoke (boxed)</td><td align="right">22.05M</td><td align="right">2.76M</td><td align="right">8.00x</td></tr>
+    <tr><td align="left">Constructor Invoke (boxed)</td><td align="right">21.97M</td><td align="right">2.60M</td><td align="right">8.45x</td></tr>
   </tbody>
 </table>
 
@@ -162,16 +162,16 @@ Generated on 2026-04-22 22:11:32 UTC
     </tr>
   </thead>
   <tbody>
-    <tr><td align="left">Instance Field Get (typed)</td><td align="right">611.96M</td><td align="right">651.59M</td><td align="right">7.29M</td><td align="right">0.94x</td><td align="right">83.98x</td></tr>
-    <tr><td align="left">Instance Field Set (typed)</td><td align="right">626.22M</td><td align="right">656.37M</td><td align="right">5.43M</td><td align="right">0.95x</td><td align="right">115.34x</td></tr>
-    <tr><td align="left">Static Field Get (typed)</td><td align="right">608.85M</td><td align="right">680.73M</td><td align="right">8.59M</td><td align="right">0.89x</td><td align="right">70.89x</td></tr>
-    <tr><td align="left">Static Field Set (typed)</td><td align="right">624.15M</td><td align="right">652.36M</td><td align="right">6.16M</td><td align="right">0.96x</td><td align="right">101.37x</td></tr>
-    <tr><td align="left">Instance Property Get (typed)</td><td align="right">588.35M</td><td align="right">682.49M</td><td align="right">22.17M</td><td align="right">0.86x</td><td align="right">26.54x</td></tr>
-    <tr><td align="left">Instance Property Set (typed)</td><td align="right">624.70M</td><td align="right">694.66M</td><td align="right">2.05M</td><td align="right">0.90x</td><td align="right">304.30x</td></tr>
-    <tr><td align="left">Static Property Get (typed)</td><td align="right">613.69M</td><td align="right">681.86M</td><td align="right">21.61M</td><td align="right">0.90x</td><td align="right">28.40x</td></tr>
-    <tr><td align="left">Static Property Set (typed)</td><td align="right">613.09M</td><td align="right">655.63M</td><td align="right">2.93M</td><td align="right">0.94x</td><td align="right">209.14x</td></tr>
-    <tr><td align="left">Instance Method Invoke (typed)</td><td align="right">584.07M</td><td align="right">677.66M</td><td align="right">1.99M</td><td align="right">0.86x</td><td align="right">293.52x</td></tr>
-    <tr><td align="left">Static Method Invoke (typed)</td><td align="right">628.55M</td><td align="right">676.39M</td><td align="right">1.75M</td><td align="right">0.93x</td><td align="right">359.42x</td></tr>
+    <tr><td align="left">Instance Field Get (typed)</td><td align="right">674.63M</td><td align="right">671.86M</td><td align="right">7.23M</td><td align="right">1.00x</td><td align="right">93.25x</td></tr>
+    <tr><td align="left">Instance Field Set (typed)</td><td align="right">650.59M</td><td align="right">666.95M</td><td align="right">5.44M</td><td align="right">0.98x</td><td align="right">119.54x</td></tr>
+    <tr><td align="left">Static Field Get (typed)</td><td align="right">664.67M</td><td align="right">705.04M</td><td align="right">8.62M</td><td align="right">0.94x</td><td align="right">77.15x</td></tr>
+    <tr><td align="left">Static Field Set (typed)</td><td align="right">668.36M</td><td align="right">666.33M</td><td align="right">3.73M</td><td align="right">1.00x</td><td align="right">179.07x</td></tr>
+    <tr><td align="left">Instance Property Get (typed)</td><td align="right">685.34M</td><td align="right">696.24M</td><td align="right">21.01M</td><td align="right">0.98x</td><td align="right">32.62x</td></tr>
+    <tr><td align="left">Instance Property Set (typed)</td><td align="right">624.44M</td><td align="right">703.63M</td><td align="right">2.04M</td><td align="right">0.89x</td><td align="right">305.67x</td></tr>
+    <tr><td align="left">Static Property Get (typed)</td><td align="right">666.45M</td><td align="right">693.56M</td><td align="right">4.00M</td><td align="right">0.96x</td><td align="right">166.47x</td></tr>
+    <tr><td align="left">Static Property Set (typed)</td><td align="right">649.92M</td><td align="right">663.82M</td><td align="right">2.14M</td><td align="right">0.98x</td><td align="right">303.92x</td></tr>
+    <tr><td align="left">Instance Method Invoke (typed)</td><td align="right">628.36M</td><td align="right">687.84M</td><td align="right">1.99M</td><td align="right">0.91x</td><td align="right">315.12x</td></tr>
+    <tr><td align="left">Static Method Invoke (typed)</td><td align="right">661.83M</td><td align="right">685.32M</td><td align="right">2.76M</td><td align="right">0.97x</td><td align="right">240.04x</td></tr>
   </tbody>
 </table>
 
@@ -189,17 +189,17 @@ Generated on 2026-04-22 22:11:32 UTC
     </tr>
   </thead>
   <tbody>
-    <tr><td align="left">Instance Field Get (boxed)</td><td align="right">7.10M</td><td align="right">7.28M</td><td align="right">0.97x</td></tr>
-    <tr><td align="left">Instance Field Set (boxed)</td><td align="right">5.42M</td><td align="right">4.59M</td><td align="right">1.18x</td></tr>
-    <tr><td align="left">Static Field Get (boxed)</td><td align="right">6.58M</td><td align="right">8.60M</td><td align="right">0.76x</td></tr>
-    <tr><td align="left">Static Field Set (boxed)</td><td align="right">6.12M</td><td align="right">4.11M</td><td align="right">1.49x</td></tr>
-    <tr><td align="left">Instance Property Get (boxed)</td><td align="right">23.01M</td><td align="right">22.00M</td><td align="right">1.05x</td></tr>
-    <tr><td align="left">Instance Property Set (boxed)</td><td align="right">2.04M</td><td align="right">2.07M</td><td align="right">0.98x</td></tr>
-    <tr><td align="left">Static Property Get (boxed)</td><td align="right">17.69M</td><td align="right">22.30M</td><td align="right">0.79x</td></tr>
-    <tr><td align="left">Static Property Set (boxed)</td><td align="right">2.87M</td><td align="right">2.91M</td><td align="right">0.98x</td></tr>
-    <tr><td align="left">Instance Method Invoke (boxed)</td><td align="right">1.97M</td><td align="right">1.95M</td><td align="right">1.01x</td></tr>
-    <tr><td align="left">Static Method Invoke (boxed)</td><td align="right">2.63M</td><td align="right">2.66M</td><td align="right">0.99x</td></tr>
-    <tr><td align="left">Constructor Invoke (boxed)</td><td align="right">2.33M</td><td align="right">1.32M</td><td align="right">1.77x</td></tr>
+    <tr><td align="left">Instance Field Get (boxed)</td><td align="right">7.47M</td><td align="right">7.34M</td><td align="right">1.02x</td></tr>
+    <tr><td align="left">Instance Field Set (boxed)</td><td align="right">3.57M</td><td align="right">5.40M</td><td align="right">0.66x</td></tr>
+    <tr><td align="left">Static Field Get (boxed)</td><td align="right">8.75M</td><td align="right">8.61M</td><td align="right">1.02x</td></tr>
+    <tr><td align="left">Static Field Set (boxed)</td><td align="right">3.65M</td><td align="right">6.16M</td><td align="right">0.59x</td></tr>
+    <tr><td align="left">Instance Property Get (boxed)</td><td align="right">18.75M</td><td align="right">19.68M</td><td align="right">0.95x</td></tr>
+    <tr><td align="left">Instance Property Set (boxed)</td><td align="right">2.07M</td><td align="right">2.06M</td><td align="right">1.00x</td></tr>
+    <tr><td align="left">Static Property Get (boxed)</td><td align="right">13.46M</td><td align="right">19.11M</td><td align="right">0.70x</td></tr>
+    <tr><td align="left">Static Property Set (boxed)</td><td align="right">2.80M</td><td align="right">2.89M</td><td align="right">0.97x</td></tr>
+    <tr><td align="left">Instance Method Invoke (boxed)</td><td align="right">1.96M</td><td align="right">2.00M</td><td align="right">0.98x</td></tr>
+    <tr><td align="left">Static Method Invoke (boxed)</td><td align="right">2.72M</td><td align="right">2.72M</td><td align="right">1.00x</td></tr>
+    <tr><td align="left">Constructor Invoke (boxed)</td><td align="right">1.80M</td><td align="right">1.97M</td><td align="right">0.91x</td></tr>
   </tbody>
 </table>
 
@@ -217,16 +217,16 @@ Generated on 2026-04-22 22:11:32 UTC
     </tr>
   </thead>
   <tbody>
-    <tr><td align="left">Instance Field Get (typed)</td><td align="right">7.18M</td><td align="right">659.87M</td><td align="right">7.28M</td><td align="right">0.01x</td><td align="right">0.99x</td></tr>
-    <tr><td align="left">Instance Field Set (typed)</td><td align="right">5.46M</td><td align="right">656.66M</td><td align="right">4.59M</td><td align="right">0.01x</td><td align="right">1.19x</td></tr>
-    <tr><td align="left">Static Field Get (typed)</td><td align="right">8.23M</td><td align="right">681.48M</td><td align="right">8.60M</td><td align="right">0.01x</td><td align="right">0.96x</td></tr>
-    <tr><td align="left">Static Field Set (typed)</td><td align="right">4.17M</td><td align="right">652.72M</td><td align="right">4.11M</td><td align="right">0.01x</td><td align="right">1.01x</td></tr>
-    <tr><td align="left">Instance Property Get (typed)</td><td align="right">588.37M</td><td align="right">685.00M</td><td align="right">22.00M</td><td align="right">0.86x</td><td align="right">26.74x</td></tr>
-    <tr><td align="left">Instance Property Set (typed)</td><td align="right">624.63M</td><td align="right">690.38M</td><td align="right">2.07M</td><td align="right">0.90x</td><td align="right">301.69x</td></tr>
-    <tr><td align="left">Static Property Get (typed)</td><td align="right">610.71M</td><td align="right">682.48M</td><td align="right">22.30M</td><td align="right">0.89x</td><td align="right">27.38x</td></tr>
-    <tr><td align="left">Static Property Set (typed)</td><td align="right">614.38M</td><td align="right">655.45M</td><td align="right">2.91M</td><td align="right">0.94x</td><td align="right">210.91x</td></tr>
-    <tr><td align="left">Instance Method Invoke (typed)</td><td align="right">573.44M</td><td align="right">678.96M</td><td align="right">1.95M</td><td align="right">0.84x</td><td align="right">294.38x</td></tr>
-    <tr><td align="left">Static Method Invoke (typed)</td><td align="right">628.94M</td><td align="right">675.41M</td><td align="right">2.66M</td><td align="right">0.93x</td><td align="right">236.59x</td></tr>
+    <tr><td align="left">Instance Field Get (typed)</td><td align="right">7.47M</td><td align="right">671.96M</td><td align="right">7.34M</td><td align="right">0.01x</td><td align="right">1.02x</td></tr>
+    <tr><td align="left">Instance Field Set (typed)</td><td align="right">5.40M</td><td align="right">666.41M</td><td align="right">5.40M</td><td align="right">0.01x</td><td align="right">1.00x</td></tr>
+    <tr><td align="left">Static Field Get (typed)</td><td align="right">8.74M</td><td align="right">704.42M</td><td align="right">8.61M</td><td align="right">0.01x</td><td align="right">1.02x</td></tr>
+    <tr><td align="left">Static Field Set (typed)</td><td align="right">4.23M</td><td align="right">668.03M</td><td align="right">6.16M</td><td align="right">0.01x</td><td align="right">0.69x</td></tr>
+    <tr><td align="left">Instance Property Get (typed)</td><td align="right">683.71M</td><td align="right">697.33M</td><td align="right">19.68M</td><td align="right">0.98x</td><td align="right">34.73x</td></tr>
+    <tr><td align="left">Instance Property Set (typed)</td><td align="right">625.56M</td><td align="right">704.49M</td><td align="right">2.06M</td><td align="right">0.89x</td><td align="right">303.34x</td></tr>
+    <tr><td align="left">Static Property Get (typed)</td><td align="right">653.67M</td><td align="right">693.08M</td><td align="right">19.11M</td><td align="right">0.94x</td><td align="right">34.20x</td></tr>
+    <tr><td align="left">Static Property Set (typed)</td><td align="right">672.77M</td><td align="right">663.41M</td><td align="right">2.89M</td><td align="right">1.01x</td><td align="right">233.07x</td></tr>
+    <tr><td align="left">Instance Method Invoke (typed)</td><td align="right">640.56M</td><td align="right">688.12M</td><td align="right">2.00M</td><td align="right">0.93x</td><td align="right">320.73x</td></tr>
+    <tr><td align="left">Static Method Invoke (typed)</td><td align="right">663.79M</td><td align="right">685.82M</td><td align="right">2.72M</td><td align="right">0.97x</td><td align="right">244.25x</td></tr>
   </tbody>
 </table>
 

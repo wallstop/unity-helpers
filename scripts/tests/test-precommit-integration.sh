@@ -10,8 +10,8 @@
 #     1. The bug this test primarily guards against (PWS001 / the dependabot
 #        branch) is a CLI-arg-binding bug. Running the invocation line itself
 #        reproduces the failure exactly.
-#     2. Running the FULL hook requires pwsh + npx + prettier + markdownlint
-#        + cspell + yamllint + dotnet + node all installed, and also mutates
+#     2. Running the FULL hook requires pwsh + repo-local Node tools
+#        (Prettier, markdownlint, cspell) + yamllint + dotnet installed, and also mutates
 #        the working tree (files are formatted in place). That is fragile,
 #        slow, and noisy for a regression guard.
 #     3. This approach needs ZERO copying of config/source files and leaves
@@ -30,6 +30,8 @@
 # =============================================================================
 
 set -euo pipefail
+
+# cspell:ignore ZZQWERTYNOISE gpgsign
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -270,6 +272,39 @@ EOF
 }
 
 # -----------------------------------------------------------------------------
+# Test: lint-duplicate-usings.ps1 invocation (hook branch 13)
+# -----------------------------------------------------------------------------
+test_duplicate_usings_branch() {
+    local name="lint-duplicate-usings.ps1 branch (*.cs staged)"
+    if [[ ! -f "$REPO_ROOT/scripts/lint-duplicate-usings.ps1" ]]; then
+        skip "$name" "no scripts/lint-duplicate-usings.ps1"; return
+    fi
+
+    local fixture="$TEMPDIR/SampleDuplicateUsingFixture.cs"
+    cat > "$fixture" <<'EOF'
+namespace WallstopStudios.UnityHelpers.Tests
+{
+    using System;
+    using System;
+
+    internal sealed class Sample
+    {
+    }
+}
+EOF
+
+    local out
+    out=$(pwsh -NoProfile -File "$REPO_ROOT/scripts/lint-duplicate-usings.ps1" -Paths "$fixture" 2>&1 || true)
+    if echo "$out" | grep -q "Parameter cannot be processed"; then
+        fail "$name" "PWS001-style param binding failure: $out"
+    elif ! echo "$out" | grep -q "UNH007"; then
+        fail "$name" "Expected UNH007 duplicate-using violation not detected: $out"
+    else
+        pass "$name"
+    fi
+}
+
+# -----------------------------------------------------------------------------
 # Test: sync scripts invoked by the hook do not fail to bind params
 # -----------------------------------------------------------------------------
 test_sync_scripts_branch() {
@@ -361,6 +396,8 @@ test_precommit_spellcheck_regression() {
     # Copy the real cspell.json so the fixture is scanned under the real
     # project configuration (same dictionaries, same files: restrictions).
     cp "$REPO_ROOT/cspell.json" "$sandbox/cspell.json"
+    mkdir -p "$sandbox/scripts"
+    cp "$REPO_ROOT/scripts/run-node-bin.js" "$sandbox/scripts/run-node-bin.js"
 
     # Synthetic markdown fixture under docs/ — matches cspell.json's
     # `files: ["docs/**/*.md", ...]` entry so cspell actually scans it. A
@@ -409,7 +446,7 @@ trap 'rm -f "\$SPELL_CAPTURE"' EXIT
 # Round 1 regression) would set SPELL_EXIT=0 even when cspell fails,
 # because tee always exits 0.
 SPELL_EXIT=0
-npx --no-install cspell lint --no-must-find-files --no-progress --show-suggestions -- '$fixture_rel' >"\$SPELL_CAPTURE" 2>&1 || SPELL_EXIT=\$?
+node scripts/run-node-bin.js cspell lint --no-must-find-files --no-progress --show-suggestions -- '$fixture_rel' >"\$SPELL_CAPTURE" 2>&1 || SPELL_EXIT=\$?
 cat "\$SPELL_CAPTURE"
 if [ "\$SPELL_EXIT" -ne 0 ]; then
   echo "=== Spelling errors detected ===" >&2
@@ -575,6 +612,7 @@ test_skill_sizes_branch
 test_lint_tests_branch
 test_format_staged_csharp_branch
 test_drawer_branch
+test_duplicate_usings_branch
 test_sync_scripts_branch
 test_antipattern_lint_clean
 test_precommit_spellcheck_regression

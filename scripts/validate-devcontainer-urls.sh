@@ -7,6 +7,7 @@
 #   ./scripts/validate-devcontainer-urls.sh
 #   ./scripts/validate-devcontainer-urls.sh --dockerfile .devcontainer/Dockerfile
 #   ./scripts/validate-devcontainer-urls.sh --contracts-only
+#   ./scripts/validate-devcontainer-urls.sh --list-tools
 #
 # Requires: bash 4+, curl, sed
 
@@ -21,6 +22,7 @@ NC='\033[0m' # No Color
 # Default Dockerfile path (relative to repo root)
 DOCKERFILE=".devcontainer/Dockerfile"
 CONTRACTS_ONLY=0
+LIST_TOOLS=0
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
@@ -33,8 +35,12 @@ while [[ $# -gt 0 ]]; do
             CONTRACTS_ONLY=1
             shift
             ;;
+        --list-tools)
+            LIST_TOOLS=1
+            shift
+            ;;
         *)
-            echo "Usage: $0 [--dockerfile <path>] [--contracts-only]" >&2
+            echo "Usage: $0 [--dockerfile <path>] [--contracts-only] [--list-tools]" >&2
             exit 1
             ;;
     esac
@@ -225,6 +231,15 @@ extract_tools
 if [ ${#tools[@]} -eq 0 ]; then
     echo "Warning: No tool definitions found in Dockerfile" >&2
     exit 1
+fi
+
+if [ "$LIST_TOOLS" -eq 1 ]; then
+    echo "Found ${#tools[@]} tools"
+    for entry in "${tools[@]}"; do
+        IFS='|' read -r tool_name version amd64_arch arm64_arch url_template <<< "$entry"
+        printf '%s|%s|%s|%s|%s\n' "$tool_name" "$version" "$amd64_arch" "$arm64_arch" "$url_template"
+    done
+    exit 0
 fi
 
 echo "Found ${#tools[@]} tools to validate"

@@ -3,7 +3,7 @@
 # Run this after building the container to ensure everything is properly installed.
 #
 # NOTE: Some tools are only installed in the dev container (actionlint, shellcheck,
-# yamllint, lychee, and high-performance CLI tools). These are marked as optional
+# yamllint, lychee, codex, and high-performance CLI tools). These are marked as optional
 # when running outside the container. The git hooks gracefully skip these tools
 # if not present - CI will catch any issues.
 
@@ -13,7 +13,6 @@ set -e
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Detect if running in dev container
@@ -65,14 +64,21 @@ check_npm_tool() {
     local name="$1"
     local cmd="$2"
     local version_flag="${3:---version}"
+    local output=""
+    local status=0
 
     printf "%-20s" "$name:"
-    if npx --no-install "$cmd" $version_flag >/dev/null 2>&1; then
-        version=$(npx --no-install "$cmd" $version_flag 2>&1 | head -1)
+    if output="$(timeout 30s npx --no-install "$cmd" $version_flag 2>&1)"; then
+        version=$(printf '%s\n' "$output" | head -1)
         printf "${GREEN}✓${NC} %s (via npx)\n" "$version"
         return 0
     else
-        printf "${RED}✗ NOT FOUND - run 'npm install'${NC}\n"
+        status=$?
+        if [ "$status" -eq 124 ]; then
+            printf "${RED}✗ TIMED OUT - npx %s %s${NC}\n" "$cmd" "$version_flag"
+        else
+            printf "${RED}✗ NOT FOUND - run 'npm install'${NC}\n"
+        fi
         FAILED=$((FAILED + 1))
         return 1
     fi
@@ -127,6 +133,10 @@ check_tool "pwsh" "pwsh" "--version"
 check_tool "python3" "python3" "--version"
 check_tool "git" "git" "--version"
 check_tool "gh" "gh" "--version"
+echo ""
+
+echo "=== AI CLI Tools (container-only) ==="
+check_tool "codex" "codex" "--version" "$IN_CONTAINER"
 echo ""
 
 echo "=== High-Performance CLI Tools (container-only) ==="

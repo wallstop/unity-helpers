@@ -195,7 +195,7 @@ function main() {
       console.warn(`[${label}] skipped: ${err.message}`);
     }
   };
-  runOptional("prettier", "npx --no-install prettier --write -- cspell.json");
+  runOptional("prettier", "node scripts/run-prettier.js --write -- cspell.json");
   runOptional("lint:spelling:config", "node scripts/lint-cspell-config.js");
   // Preserve original raw for diagnostics in case a caller wants diff
   void raw;

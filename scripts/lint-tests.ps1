@@ -258,6 +258,9 @@ $inlineTestAttributeAnywherePattern = [regex]'\[\s*(?:global\s*::\s*)?(?:[A-Za-z
 # UNH005: Assert.IsNull/IsNotNull patterns (should use Assert.IsTrue for Unity null checks)
 $assertIsNullPattern = [regex]'Assert\.IsNull\s*\('
 $assertIsNotNullPattern = [regex]'Assert\.IsNotNull\s*\('
+$testCaseDataReturnsNullPattern = [regex]'(?ms)\.Returns\s*\(\s*null\s*\)'
+$unityTestAttributePattern = [regex]'\[\s*(?:global\s*::\s*)?(?:[A-Za-z_][\w\.]*\.)?UnityTest(?:Attribute)?(?:\s*\(|\s*\])'
+$coroutineMethodPattern = [regex]'\bIEnumerator\s+(?<name>\w+)\s*\('
 
 # Returns true if line contains an allowlisted helper file path
 function Is-AllowlistedFile([string]$relPath) {
@@ -320,6 +323,182 @@ function Fix-UnityNullAssertions {
     Text = $Text
     Modified = $modified
   }
+}
+
+function Get-TestCaseSourceBody {
+  Param(
+    [string[]]$Lines,
+    [string[]]$ScrubbedLines,
+    [string]$SourceName
+  )
+
+  $escapedSourceName = [regex]::Escape($SourceName)
+  $sourceDeclarationPattern = [regex](
+    "(?:IEnumerable\s*<\s*TestCaseData\s*>|IEnumerable|TestCaseData\s*\[\]|List\s*<\s*TestCaseData\s*>)\s+$escapedSourceName\b"
+  )
+
+  for ($lineIndex = 0; $lineIndex -lt $ScrubbedLines.Count; $lineIndex++) {
+    if ($ScrubbedLines[$lineIndex] -match 'TestCaseSource') { continue }
+    if (-not $sourceDeclarationPattern.IsMatch($ScrubbedLines[$lineIndex])) { continue }
+
+    $braceDepth = 0
+    $bodyStart = -1
+    for ($bodyIndex = $lineIndex; $bodyIndex -lt $ScrubbedLines.Count; $bodyIndex++) {
+      $scrubbedLine = $ScrubbedLines[$bodyIndex]
+      for ($charIndex = 0; $charIndex -lt $scrubbedLine.Length; $charIndex++) {
+        if ($scrubbedLine[$charIndex] -eq '{') {
+          if ($bodyStart -lt 0) { $bodyStart = $bodyIndex }
+          $braceDepth++
+        } elseif ($scrubbedLine[$charIndex] -eq '}') {
+          if ($bodyStart -ge 0) {
+            $braceDepth--
+            if ($braceDepth -eq 0) {
+              return [pscustomobject]@{
+                Text = [string]::Join("`n", $Lines[$bodyStart..$bodyIndex])
+                ScrubbedText = [string]::Join("`n", $ScrubbedLines[$bodyStart..$bodyIndex])
+                StartLine = $bodyStart + 1
+              }
+            }
+          }
+        }
+      }
+
+      if ($bodyStart -lt 0 -and $scrubbedLine -match ';') {
+        return [pscustomobject]@{
+          Text = [string]::Join("`n", $Lines[$lineIndex..$bodyIndex])
+          ScrubbedText = [string]::Join("`n", $ScrubbedLines[$lineIndex..$bodyIndex])
+          StartLine = $lineIndex + 1
+        }
+      }
+    }
+  }
+
+  return $null
+}
+
+function Get-TestCaseDataChains {
+  Param(
+    [string]$Text,
+    [int]$StartLine
+  )
+
+  $chains = @()
+  $matches = [regex]::Matches($Text, 'new\s+TestCaseData\s*\(')
+  foreach ($match in $matches) {
+    $depth = 0
+    $endIndex = $Text.Length - 1
+    for ($charIndex = $match.Index; $charIndex -lt $Text.Length; $charIndex++) {
+      $char = $Text[$charIndex]
+      if ($char -eq '(' -or $char -eq '[' -or $char -eq '{') {
+        $depth++
+        continue
+      }
+      if ($char -eq ')' -or $char -eq ']' -or $char -eq '}') {
+        if ($depth -gt 0) {
+          $depth--
+          continue
+        }
+        $endIndex = $charIndex
+        break
+      }
+      if (($char -eq ';' -or $char -eq ',') -and $depth -eq 0) {
+        $endIndex = $charIndex
+        break
+      }
+    }
+
+    $prefix = $Text.Substring(0, $match.Index)
+    $sourceLine = $StartLine + (($prefix -split "`n").Length) - 1
+    $chains += [pscustomobject]@{
+      Text = $Text.Substring($match.Index, $endIndex - $match.Index)
+      Line = $sourceLine
+    }
+  }
+
+  return $chains
+}
+
+function Get-TestAttributeBlockForMethod {
+  Param(
+    [string[]]$Lines,
+    [string[]]$ScrubbedLines,
+    [int]$MethodLineIndex
+  )
+
+  $originalParts = New-Object System.Collections.Generic.List[string]
+  $scrubbedParts = New-Object System.Collections.Generic.List[string]
+
+  $methodLine = $ScrubbedLines[$MethodLineIndex]
+  $methodMatch = $coroutineMethodPattern.Match($methodLine)
+  if ($methodMatch.Success -and $methodMatch.Index -gt 0) {
+    $inlineOriginal = $Lines[$MethodLineIndex].Substring(0, $methodMatch.Index)
+    $inlineScrubbed = $methodLine.Substring(0, $methodMatch.Index)
+    if (-not [string]::IsNullOrWhiteSpace($inlineScrubbed)) {
+      $originalParts.Insert(0, $inlineOriginal)
+      $scrubbedParts.Insert(0, $inlineScrubbed)
+    }
+  }
+
+  $lineIndex = $MethodLineIndex - 1
+  while ($lineIndex -ge 0) {
+    $above = $Lines[$lineIndex]
+    $aboveScrubbed = $ScrubbedLines[$lineIndex]
+    if ([string]::IsNullOrWhiteSpace($aboveScrubbed)) {
+      $lineIndex--
+      continue
+    }
+    if ($above -match '^\s*//') {
+      $lineIndex--
+      continue
+    }
+
+    $joinedOriginal = $above
+    $joinedScrubbed = $aboveScrubbed
+    $top = $lineIndex
+    $openBr = ([regex]::Matches($joinedScrubbed, '\[')).Count - ([regex]::Matches($joinedScrubbed, '\]')).Count
+    $openPr = ([regex]::Matches($joinedScrubbed, '\(')).Count - ([regex]::Matches($joinedScrubbed, '\)')).Count
+    while (($openBr -ne 0 -or $openPr -ne 0) -and $top -gt 0) {
+      $top--
+      $joinedOriginal = "$($Lines[$top])`n$joinedOriginal"
+      $joinedScrubbed = "$($ScrubbedLines[$top])`n$joinedScrubbed"
+      $openBr = ([regex]::Matches($joinedScrubbed, '\[')).Count - ([regex]::Matches($joinedScrubbed, '\]')).Count
+      $openPr = ([regex]::Matches($joinedScrubbed, '\(')).Count - ([regex]::Matches($joinedScrubbed, '\)')).Count
+    }
+
+    $flat = ($joinedScrubbed -replace "\r?\n",' ').Trim()
+    if (-not $anyAttributeLinePattern.IsMatch($flat)) { break }
+
+    $originalParts.Insert(0, $joinedOriginal)
+    $scrubbedParts.Insert(0, $joinedScrubbed)
+    $lineIndex = $top - 1
+  }
+
+  return [pscustomobject]@{
+    OriginalText = [string]::Join("`n", $originalParts)
+    ScrubbedText = [string]::Join("`n", $scrubbedParts)
+  }
+}
+
+function Get-TestCaseSourceNamesFromAttributeBlock {
+  Param(
+    [string]$AttributeText
+  )
+
+  $sourceNames = @()
+  $matches = [regex]::Matches(
+    $AttributeText,
+    '(?ms)\bTestCaseSource(?:Attribute)?\s*\(\s*(?:nameof\s*\(\s*(?<methodName>\w+)\s*\)|"(?<stringName>[^"]+)")'
+  )
+  foreach ($match in $matches) {
+    $sourceName = $match.Groups['methodName'].Value
+    if ([string]::IsNullOrWhiteSpace($sourceName)) {
+      $sourceName = $match.Groups['stringName'].Value
+    }
+    if (-not [string]::IsNullOrWhiteSpace($sourceName)) {
+      $sourceNames += $sourceName
+    }
+  }
+  return $sourceNames
 }
 
 $violations = @()
@@ -643,6 +822,32 @@ foreach ($file in $filesToScan) {
     $violations += (@{
       Path=$rel; Line=($i + 1); Message="UNH004: Test method name '$methodName' contains underscore. Use PascalCase."
     })
+  }
+
+  # UNH006: Unity coroutine tests with TestCaseSource must use
+  # TestCaseData.Returns(null), otherwise NUnit reports:
+  # "Method has non-void return value, but no result is expected."
+  for ($lineIndex = 0; $lineIndex -lt $scrubbedContent.Count; $lineIndex++) {
+    if ($content[$lineIndex] -match 'UNH-SUPPRESS') { continue }
+    if (-not $coroutineMethodPattern.IsMatch($scrubbedContent[$lineIndex])) { continue }
+
+    $attributeBlock = Get-TestAttributeBlockForMethod -Lines $content -ScrubbedLines $scrubbedContent -MethodLineIndex $lineIndex
+    if (-not $unityTestAttributePattern.IsMatch($attributeBlock.ScrubbedText)) { continue }
+
+    $sourceNames = Get-TestCaseSourceNamesFromAttributeBlock -AttributeText $attributeBlock.OriginalText
+    foreach ($sourceName in $sourceNames) {
+      $sourceBody = Get-TestCaseSourceBody -Lines $content -ScrubbedLines $scrubbedContent -SourceName $sourceName
+      if ($null -eq $sourceBody) { continue }
+
+      $chains = Get-TestCaseDataChains -Text $sourceBody.ScrubbedText -StartLine $sourceBody.StartLine
+      foreach ($chain in $chains) {
+        if ($testCaseDataReturnsNullPattern.IsMatch($chain.Text)) { continue }
+
+        $violations += (@{
+          Path=$rel; Line=$chain.Line; Message="UNH006: TestCaseData used by [UnityTest] coroutine source '$sourceName' must call .Returns(null)."
+        })
+      }
+    }
   }
 
   # UNH005: Check for Assert.IsNull (should use Assert.IsTrue(x == null) for Unity null checks)

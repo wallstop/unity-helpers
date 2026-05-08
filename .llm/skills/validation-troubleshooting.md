@@ -28,15 +28,15 @@ For detailed linter commands, see [linter-reference](./linter-reference.md).
 **Fix**: Run Prettier to auto-fix:
 
 ```bash
-npx prettier --write -- <file>
+node scripts/run-prettier.js --write -- <file>
 # Or fix all:
-npx prettier --write -- .
+node scripts/run-prettier.js --write -- .
 ```
 
 **Common gotchas**:
 
-- **Missing final newline**: Prettier requires files to end with a newline. Fix with `npx prettier --write -- <file>` or `printf '\n' >> <file>`
-- **devcontainer.json**: Arrays within `printWidth: 100` get collapsed. Fix with `npx prettier --write -- .devcontainer/devcontainer.json`
+- **Missing final newline**: Prettier requires files to end with a newline. Fix with `node scripts/run-prettier.js --write -- <file>` or `printf '\n' >> <file>`
+- **devcontainer.json**: Arrays within `printWidth: 100` get collapsed. Fix with `node scripts/run-prettier.js --write -- .devcontainer/devcontainer.json`
 - **dotnet-tools.json**: LF line endings from Linux. Fix with `npm run format:json -- .config/dotnet-tools.json`; if persists, run `pwsh -NoProfile -File scripts/normalize-eol.ps1 -VerboseOutput`
 
 ### 3. Markdownlint Violations
@@ -378,7 +378,7 @@ Several `scripts/*.ps1` files end without an explicit `exit 0` on their success 
 ## Quick Recovery Commands
 
 See [`quick_recovery`](../code-samples/patterns/ValidationFixPatterns.sh) for the full script, or run individually:
-`npx prettier --write -- .` | `npm run eol:fix` | `dotnet tool run csharpier format .` | `npm run validate:prepush`
+`node scripts/run-prettier.js --write -- .` | `npm run eol:fix` | `dotnet tool run csharpier format .` | `npm run validate:prepush`
 
 ---
 

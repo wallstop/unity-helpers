@@ -49,7 +49,7 @@ for file in "${ALL_CHANGED_FILES[@]}"; do
 done
 
 if [ ${#CHANGED_MD[@]} -gt 0 ]; then
-    markdownlint --config .markdownlint.json -- "${CHANGED_MD[@]}"
+    node scripts/run-node-bin.js markdownlint --config .markdownlint.json -- "${CHANGED_MD[@]}"
 fi
 ```
 

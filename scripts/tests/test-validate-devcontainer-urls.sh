@@ -73,6 +73,31 @@ assert_contract_exit_code() {
     fi
 }
 
+relative_path() {
+    local file_path="$1"
+    printf '%s\n' "${file_path#"$REPO_ROOT"/}"
+}
+
+git_index_mode() {
+    local file_path="$1"
+    local rel_path
+    rel_path="$(relative_path "$file_path")"
+
+    git -C "$REPO_ROOT" ls-files -s -- "$rel_path" 2>/dev/null | sed -E 's/^([0-9]+).*/\1/' | head -n 1
+}
+
+permission_diagnostics() {
+    local file_path="$1"
+    local rel_path
+    local local_mode
+    local index_entry
+    rel_path="$(relative_path "$file_path")"
+    local_mode="$(stat -c '%A %a' "$file_path" 2>/dev/null || ls -l "$file_path" 2>/dev/null || echo 'unavailable')"
+    index_entry="$(git -C "$REPO_ROOT" ls-files -s -- "$rel_path" 2>/dev/null || true)"
+
+    printf 'Filesystem mode: %s; git index: %s' "$local_mode" "${index_entry:-untracked}"
+}
+
 TMP_DIR="$(mktemp -d)"
 cleanup() {
     rm -rf "$TMP_DIR"
@@ -82,10 +107,10 @@ trap cleanup EXIT
 echo -e "${BLUE}── validate-devcontainer-urls parser contracts ──${NC}"
 echo ""
 
-if [[ -x "$VALIDATOR" ]]; then
+if [[ -x "$VALIDATOR" && "$(git_index_mode "$VALIDATOR")" == "100755" ]]; then
     pass "validate-devcontainer-urls.sh is executable"
 else
-    fail "validate-devcontainer-urls.sh is executable" "Expected +x permission on scripts/validate-devcontainer-urls.sh"
+    fail "validate-devcontainer-urls.sh is executable" "$(permission_diagnostics "$VALIDATOR")"
 fi
 
 if [[ -f "$DOCKERFILE" ]]; then
@@ -116,15 +141,15 @@ assert_file_contains_literal "$DOCKERFILE" \
     "Dockerfile verifies PowerShell tarball checksum" \
     "Expected checksum verification for PowerShell download"
 
-# Contract: validator parser should still discover powershell tool entry from Dockerfile.
-if validator_output="$("$VALIDATOR" --dockerfile .devcontainer/Dockerfile 2>&1)"; then
-    if grep -Fiq -- 'powershell' <<< "$validator_output"; then
+# Contract: validator parser should still discover powershell tool entry from Dockerfile without live URL probes.
+if validator_output="$("$VALIDATOR" --list-tools --dockerfile .devcontainer/Dockerfile 2>&1)"; then
+    if grep -Fiq -- 'powershell|' <<< "$validator_output"; then
         pass "validator output includes powershell tool entry"
     else
         fail "validator output includes powershell tool entry" "Validator succeeded but did not report powershell entry. Output: $validator_output"
     fi
 else
-    fail "validator script exits successfully on current Dockerfile" "$validator_output"
+    fail "validator lists tools from current Dockerfile" "$validator_output"
 fi
 
 echo ""

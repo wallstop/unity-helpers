@@ -932,6 +932,240 @@ $r = Invoke-LintOnFixture -FixtureRelativePath 'CaseMultiLineBlock.cs' -FixtureC
 $ok = ($r.ExitCode -eq 0) -and ($r.Output -notmatch 'UNH001')
 Write-TestResult "MultiLineBlockComment.DoesNotFlagCommentedOutDestroy" $ok "Exit: $($r.ExitCode), Output: $($r.Output)"
 
+# ── Test 14: UNH006 UnityTest TestCaseSource return metadata ─────────────────
+Write-Host "`n  Section: UNH006 UnityTest TestCaseSource return metadata" -ForegroundColor White
+
+$caseUnityTestMissingReturnsNull = @'
+namespace WallstopStudios.UnityHelpers.Tests
+{
+    using System.Collections;
+    using System.Collections.Generic;
+    using NUnit.Framework;
+    using UnityEngine.TestTools;
+
+    public sealed class CaseUnityTestMissingReturnsNull : CommonTestBase
+    {
+        private static IEnumerable<TestCaseData> MissingReturnsNullCases()
+        {
+            yield return new TestCaseData(250).SetName("Extreme.DrawLoop.TwoHundredFiftyIterations.Stable");
+            yield return new TestCaseData(1000).Returns(null).SetName("Extreme.DrawLoop.ThousandIterations.Stable");
+        }
+
+        [UnityTest]
+        [TestCaseSource(nameof(MissingReturnsNullCases))]
+        public IEnumerator ParameterizedCoroutineTest(int count)
+        {
+            yield return null;
+        }
+    }
+}
+'@
+$r = Invoke-LintOnFixture -FixtureRelativePath 'CaseUnityTestMissingReturnsNull.cs' -FixtureContent $caseUnityTestMissingReturnsNull
+$ok = ($r.ExitCode -ne 0) -and ($r.Output -match 'UNH006') -and ($r.Output -match 'MissingReturnsNullCases')
+Write-TestResult "UNH006.DetectsMissingReturnsNullForUnityTestCaseSource" $ok "Exit: $($r.ExitCode), Output: $($r.Output)"
+
+$caseUnityTestWithReturnsNull = @'
+namespace WallstopStudios.UnityHelpers.Tests
+{
+    using System.Collections;
+    using System.Collections.Generic;
+    using NUnit.Framework;
+    using UnityEngine.TestTools;
+
+    public sealed class CaseUnityTestWithReturnsNull : CommonTestBase
+    {
+        private static IEnumerable<TestCaseData> WithReturnsNullCases()
+        {
+            yield return new TestCaseData(250).Returns(null).SetName("Extreme.DrawLoop.TwoHundredFiftyIterations.Stable");
+            yield return new TestCaseData(1000).Returns(null).SetName("Extreme.DrawLoop.ThousandIterations.Stable");
+        }
+
+        [UnityTest]
+        [TestCaseSource(nameof(WithReturnsNullCases))]
+        public IEnumerator ParameterizedCoroutineTest(int count)
+        {
+            yield return null;
+        }
+    }
+}
+'@
+$r = Invoke-LintOnFixture -FixtureRelativePath 'CaseUnityTestWithReturnsNull.cs' -FixtureContent $caseUnityTestWithReturnsNull
+$ok = ($r.ExitCode -eq 0) -and ($r.Output -notmatch 'UNH006')
+Write-TestResult "UNH006.AllowsReturnsNullForUnityTestCaseSource" $ok "Exit: $($r.ExitCode), Output: $($r.Output)"
+
+$caseSynchronousTestCaseSourceWithoutReturnsNull = @'
+namespace WallstopStudios.UnityHelpers.Tests
+{
+    using System.Collections.Generic;
+    using NUnit.Framework;
+
+    public sealed class CaseSynchronousTestCaseSourceWithoutReturnsNull : CommonTestBase
+    {
+        private static IEnumerable<TestCaseData> SynchronousCases()
+        {
+            yield return new TestCaseData(250).SetName("Extreme.DrawLoop.TwoHundredFiftyIterations.Stable");
+        }
+
+        [Test]
+        [TestCaseSource(nameof(SynchronousCases))]
+        public void SynchronousTest(int count)
+        {
+            Assert.IsTrue(count > 0);
+        }
+    }
+}
+'@
+$r = Invoke-LintOnFixture -FixtureRelativePath 'CaseSynchronousTestCaseSourceWithoutReturnsNull.cs' -FixtureContent $caseSynchronousTestCaseSourceWithoutReturnsNull
+$ok = ($r.ExitCode -eq 0) -and ($r.Output -notmatch 'UNH006')
+Write-TestResult "UNH006.DoesNotRequireReturnsNullForSynchronousTestCaseSource" $ok "Exit: $($r.ExitCode), Output: $($r.Output)"
+
+$caseUnityTestReversedAttributeOrder = @'
+namespace WallstopStudios.UnityHelpers.Tests
+{
+    using System.Collections;
+    using System.Collections.Generic;
+    using NUnit.Framework;
+    using UnityEngine.TestTools;
+
+    public sealed class CaseUnityTestReversedAttributeOrder : CommonTestBase
+    {
+        private static IEnumerable<TestCaseData> ReversedAttributeOrderCases()
+        {
+            yield return new TestCaseData(250).SetName("Extreme.DrawLoop.TwoHundredFiftyIterations.Stable");
+        }
+
+        [TestCaseSource(nameof(ReversedAttributeOrderCases))]
+        [UnityTest]
+        public IEnumerator ParameterizedCoroutineTest(int count)
+        {
+            yield return null;
+        }
+    }
+}
+'@
+$r = Invoke-LintOnFixture -FixtureRelativePath 'CaseUnityTestReversedAttributeOrder.cs' -FixtureContent $caseUnityTestReversedAttributeOrder
+$ok = ($r.ExitCode -ne 0) -and ($r.Output -match 'UNH006') -and ($r.Output -match 'ReversedAttributeOrderCases')
+Write-TestResult "UNH006.DetectsMissingReturnsNullWithReversedAttributeOrder" $ok "Exit: $($r.ExitCode), Output: $($r.Output)"
+
+$caseUnityTestArraySource = @'
+namespace WallstopStudios.UnityHelpers.Tests
+{
+    using System.Collections;
+    using NUnit.Framework;
+    using UnityEngine.TestTools;
+
+    public sealed class CaseUnityTestArraySource : CommonTestBase
+    {
+        private static readonly TestCaseData[] ArrayCases =
+        {
+            new TestCaseData(250).SetName("Extreme.DrawLoop.TwoHundredFiftyIterations.Stable"),
+            new TestCaseData(1000).Returns(null).SetName("Extreme.DrawLoop.ThousandIterations.Stable"),
+        };
+
+        [UnityTest]
+        [TestCaseSource(nameof(ArrayCases))]
+        public IEnumerator ParameterizedCoroutineTest(int count)
+        {
+            yield return null;
+        }
+    }
+}
+'@
+$r = Invoke-LintOnFixture -FixtureRelativePath 'CaseUnityTestArraySource.cs' -FixtureContent $caseUnityTestArraySource
+$ok = ($r.ExitCode -ne 0) -and ($r.Output -match 'UNH006') -and ($r.Output -match 'ArrayCases')
+Write-TestResult "UNH006.DetectsMissingReturnsNullForArraySource" $ok "Exit: $($r.ExitCode), Output: $($r.Output)"
+
+$caseUnityTestLongFormAttribute = @'
+namespace WallstopStudios.UnityHelpers.Tests
+{
+    using System.Collections;
+    using System.Collections.Generic;
+    using NUnit.Framework;
+    using UnityEngine.TestTools;
+
+    public sealed class CaseUnityTestLongFormAttribute : CommonTestBase
+    {
+        private static IEnumerable<TestCaseData> LongFormAttributeCases()
+        {
+            yield return new TestCaseData(250).SetName("Extreme.DrawLoop.TwoHundredFiftyIterations.Stable");
+        }
+
+        [UnityTestAttribute]
+        [TestCaseSourceAttribute(nameof(LongFormAttributeCases))]
+        public IEnumerator ParameterizedCoroutineTest(int count)
+        {
+            yield return null;
+        }
+    }
+}
+'@
+$r = Invoke-LintOnFixture -FixtureRelativePath 'CaseUnityTestLongFormAttribute.cs' -FixtureContent $caseUnityTestLongFormAttribute
+$ok = ($r.ExitCode -ne 0) -and ($r.Output -match 'UNH006') -and ($r.Output -match 'LongFormAttributeCases')
+Write-TestResult "UNH006.DetectsMissingReturnsNullForLongFormAttributes" $ok "Exit: $($r.ExitCode), Output: $($r.Output)"
+
+$caseUnityTestWrappedSourceAttribute = @'
+namespace WallstopStudios.UnityHelpers.Tests
+{
+    using System.Collections;
+    using System.Collections.Generic;
+    using NUnit.Framework;
+    using UnityEngine.TestTools;
+
+    public sealed class CaseUnityTestWrappedSourceAttribute : CommonTestBase
+    {
+        private static IEnumerable<TestCaseData> WrappedSourceAttributeCases()
+        {
+            yield return new TestCaseData(250).SetName("Extreme.DrawLoop.TwoHundredFiftyIterations.Stable");
+        }
+
+        [UnityTest]
+        [TestCaseSource(
+            nameof(WrappedSourceAttributeCases)
+        )]
+        public IEnumerator ParameterizedCoroutineTest(int count)
+        {
+            yield return null;
+        }
+    }
+}
+'@
+$r = Invoke-LintOnFixture -FixtureRelativePath 'CaseUnityTestWrappedSourceAttribute.cs' -FixtureContent $caseUnityTestWrappedSourceAttribute
+$ok = ($r.ExitCode -ne 0) -and ($r.Output -match 'UNH006') -and ($r.Output -match 'WrappedSourceAttributeCases')
+Write-TestResult "UNH006.DetectsMissingReturnsNullForWrappedSourceAttribute" $ok "Exit: $($r.ExitCode), Output: $($r.Output)"
+
+$caseNearbyUnityTestDoesNotBleedIntoNonUnityCoroutine = @'
+namespace WallstopStudios.UnityHelpers.Tests
+{
+    using System.Collections;
+    using System.Collections.Generic;
+    using NUnit.Framework;
+    using UnityEngine.TestTools;
+
+    public sealed class CaseNearbyUnityTestDoesNotBleedIntoNonUnityCoroutine : CommonTestBase
+    {
+        private static IEnumerable<TestCaseData> NonUnityCoroutineCases()
+        {
+            yield return new TestCaseData(250).SetName("Extreme.DrawLoop.TwoHundredFiftyIterations.Stable");
+        }
+
+        [UnityTest]
+        public IEnumerator PlainUnityCoroutine()
+        {
+            yield return null;
+        }
+
+        [TestCaseSource(nameof(NonUnityCoroutineCases))]
+        public IEnumerator NonUnityParameterizedCoroutineTest(int count)
+        {
+            yield return null;
+        }
+    }
+}
+'@
+$r = Invoke-LintOnFixture -FixtureRelativePath 'CaseNearbyUnityTestDoesNotBleedIntoNonUnityCoroutine.cs' -FixtureContent $caseNearbyUnityTestDoesNotBleedIntoNonUnityCoroutine
+$ok = ($r.ExitCode -eq 0) -and ($r.Output -notmatch 'UNH006')
+Write-TestResult "UNH006.DoesNotUseNearbyUnityTestAttribute" $ok "Exit: $($r.ExitCode), Output: $($r.Output)"
+
 } finally {
   # ── Cleanup ──────────────────────────────────────────────────────────────────
   Remove-Item -Recurse -Force $tempDir -ErrorAction SilentlyContinue

@@ -852,6 +852,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
             bool alwaysOpen =
                 foldoutBehavior == UnityHelpersSettings.WButtonFoldoutBehavior.AlwaysOpen;
             bool expanded = alwaysOpen || GetFoldoutState(foldoutStates, groupKey, foldoutBehavior);
+            bool effectiveExpanded = expanded;
             bool tweenEnabled = UnityHelpersSettings.ShouldTweenWButtonFoldouts();
             AnimBool foldoutAnim =
                 alwaysOpen || !tweenEnabled ? null : GetFoldoutAnim(groupKey, expanded);
@@ -879,7 +880,6 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
             {
                 GUILayout.Label(header, WButtonStyles.HeaderStyle);
                 EditorGUILayout.Space(WButtonStyles.FoldoutContentSpacing);
-                DrawGroupContent(groupKey, contexts, paginationStates, triggeredContexts);
             }
             else
             {
@@ -909,13 +909,22 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
                 {
                     foldoutAnim.target = newExpanded;
                 }
+                effectiveExpanded = newExpanded;
 
                 EditorGUILayout.Space(WButtonStyles.FoldoutContentSpacing);
+            }
 
-                float fade = foldoutAnim?.faded ?? (newExpanded ? 1f : 0f);
+            DrawConflictWarnings(groupKey);
+            if (alwaysOpen)
+            {
+                DrawGroupContent(groupKey, contexts, paginationStates, triggeredContexts);
+            }
+            else
+            {
+                float fade = foldoutAnim?.faded ?? (effectiveExpanded ? 1f : 0f);
                 if (foldoutAnim == null)
                 {
-                    if (newExpanded)
+                    if (effectiveExpanded)
                     {
                         DrawGroupContent(groupKey, contexts, paginationStates, triggeredContexts);
                     }
@@ -950,7 +959,6 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
             );
 
             DrawPaginationControls(state, contexts.Count, pageSize);
-            DrawConflictWarnings(groupKey);
 
             int startIndex = state._pageIndex * pageSize;
             int endIndex = Mathf.Min(startIndex + pageSize, contexts.Count);
@@ -1154,6 +1162,63 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils.WButton
             ConflictWarningTextCache.Clear();
             GroupPriorityWarningTextCache.Clear();
             GroupPlacementWarningTextCache.Clear();
+        }
+
+        /// <summary>
+        /// Gets cached group placement warning text by group name. Used for testing.
+        /// </summary>
+        internal static bool TryGetGroupPlacementWarningTextForTesting(
+            string groupName,
+            out string warningText
+        )
+        {
+            if (string.IsNullOrEmpty(groupName))
+            {
+                warningText = null;
+                return false;
+            }
+
+            return GroupPlacementWarningTextCache.TryGetValue(
+                "placement_" + groupName,
+                out warningText
+            );
+        }
+
+        /// <summary>
+        /// Gets cached group priority warning text by group name. Used for testing.
+        /// </summary>
+        internal static bool TryGetGroupPriorityWarningTextForTesting(
+            string groupName,
+            out string warningText
+        )
+        {
+            if (string.IsNullOrEmpty(groupName))
+            {
+                warningText = null;
+                return false;
+            }
+
+            return GroupPriorityWarningTextCache.TryGetValue(
+                "priority_" + groupName,
+                out warningText
+            );
+        }
+
+        /// <summary>
+        /// Gets cached draw order warning text by group name. Used for testing.
+        /// </summary>
+        internal static bool TryGetDrawOrderWarningTextForTesting(
+            string groupName,
+            out string warningText
+        )
+        {
+            if (string.IsNullOrEmpty(groupName))
+            {
+                warningText = null;
+                return false;
+            }
+
+            return ConflictWarningTextCache.TryGetValue(groupName, out warningText);
         }
 
         private static bool GetFoldoutState(

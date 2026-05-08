@@ -7,6 +7,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Core
     using System;
     using System.Collections;
     using System.Collections.Generic;
+    using System.IO;
     using System.Reflection;
     using System.Threading.Tasks;
     using NUnit.Framework;
@@ -73,6 +74,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Core
             EnsureReflexSettings();
 #endif
 #if UNITY_EDITOR
+            CleanupPackageRootGeneratedArtifacts();
             _previousEditorUiSuppress = EditorUi.Suppress;
             EditorUi.Suppress = true;
 
@@ -334,6 +336,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Core
         public virtual void CommonOneTimeSetUp()
         {
 #if UNITY_EDITOR
+            CleanupPackageRootGeneratedArtifacts();
             // Reset counters only (not Unity state) to handle domain reload scenarios.
             // After a domain reload, Unity's internal AssetDatabase state is reset to zero,
             // but our static counters may persist with stale values from previous sessions.
@@ -351,6 +354,148 @@ namespace WallstopStudios.UnityHelpers.Tests.Core
 #endif
             // Subclasses can override to create shared test assets using BeginBatch()
         }
+
+#if UNITY_EDITOR
+        private static void CleanupPackageRootGeneratedArtifacts()
+        {
+            string packageRoot = GetPackageRoot();
+            if (!string.IsNullOrWhiteSpace(packageRoot))
+            {
+                CleanupPackageRootGeneratedArtifactWithMeta(
+                    Path.Combine(packageRoot, "test-results")
+                );
+            }
+
+            string packagesFolder = Path.GetFullPath(
+                Path.Combine(Application.dataPath, "..", "Packages")
+            );
+            string packageFolder = Path.Combine(
+                packagesFolder,
+                "com.wallstop-studios.unity-helpers"
+            );
+
+            CleanupPackageRootGeneratedArtifactWithMeta(
+                Path.Combine(packageFolder, "test-results")
+            );
+        }
+
+        private static string GetPackageRoot()
+        {
+            try
+            {
+                UnityEditor.PackageManager.PackageInfo packageInfo =
+                    UnityEditor.PackageManager.PackageInfo.FindForAssembly(
+                        typeof(CommonTestBase).Assembly
+                    );
+                if (packageInfo == null || string.IsNullOrWhiteSpace(packageInfo.resolvedPath))
+                {
+                    return string.Empty;
+                }
+
+                return packageInfo.resolvedPath;
+            }
+            catch (Exception ex)
+            {
+                TestContext.WriteLine(
+                    $"Failed to resolve unity-helpers package root for generated artifact cleanup: {ex.Message}"
+                );
+                return string.Empty;
+            }
+        }
+
+        private static void CleanupPackageRootGeneratedArtifactWithMeta(string absolutePath)
+        {
+            if (ShouldPreservePackageRootArtifact(absolutePath))
+            {
+                return;
+            }
+
+            CleanupPackageRootGeneratedArtifact(absolutePath);
+            CleanupPackageRootGeneratedArtifact(absolutePath + ".meta");
+        }
+
+        private static bool ShouldPreservePackageRootArtifact(string absolutePath)
+        {
+            if (string.IsNullOrWhiteSpace(absolutePath))
+            {
+                return true;
+            }
+
+            try
+            {
+                FileAttributes attributes = File.GetAttributes(absolutePath);
+                bool isDirectory = (attributes & FileAttributes.Directory) != 0;
+                bool isReparsePoint = (attributes & FileAttributes.ReparsePoint) != 0;
+                return isDirectory && !isReparsePoint;
+            }
+            catch (FileNotFoundException)
+            {
+                return false;
+            }
+            catch (DirectoryNotFoundException)
+            {
+                return false;
+            }
+            catch (Exception ex)
+            {
+                TestContext.WriteLine(
+                    $"Failed to inspect generated package-root test artifact '{absolutePath}': {ex.Message}"
+                );
+                return true;
+            }
+        }
+
+        private static void CleanupPackageRootGeneratedArtifact(string absolutePath)
+        {
+            if (string.IsNullOrWhiteSpace(absolutePath))
+            {
+                return;
+            }
+
+            try
+            {
+                FileAttributes attributes;
+                try
+                {
+                    attributes = File.GetAttributes(absolutePath);
+                }
+                catch (FileNotFoundException)
+                {
+                    return;
+                }
+                catch (DirectoryNotFoundException)
+                {
+                    return;
+                }
+
+                bool isDirectory = (attributes & FileAttributes.Directory) != 0;
+                bool isReparsePoint = (attributes & FileAttributes.ReparsePoint) != 0;
+                if (isDirectory && !isReparsePoint)
+                {
+                    return;
+                }
+
+                if (isDirectory)
+                {
+                    Directory.Delete(absolutePath);
+                }
+                else
+                {
+                    File.Delete(absolutePath);
+                }
+
+                TestContext.WriteLine(
+                    $"Removed generated package-root test artifact: {absolutePath}"
+                );
+            }
+            catch (Exception ex)
+            {
+                TestContext.WriteLine(
+                    $"Failed to remove generated package-root test artifact '{absolutePath}': {ex.Message}"
+                );
+            }
+        }
+#endif
 
         [OneTimeTearDown]
         public virtual void OneTimeTearDown()

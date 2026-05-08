@@ -113,8 +113,8 @@ function Run-PreCommitEndOfOptionsTests {
 
   $content = Get-Content $preCommitPath -Raw
 
-  # All prettier invocations should have -- before file arrays
-  $prettierLines = @(Get-Content $preCommitPath | Where-Object { $_ -match 'npx\s+--no-install\s+prettier' })
+  # All Prettier invocations should have -- before file arrays
+  $prettierLines = @(Get-Content $preCommitPath | Where-Object { $_ -match '(run_prettier|node\s+scripts/run-prettier\.js)' -and $_ -match '--(?:write|check)' })
   Write-Info "Found $($prettierLines.Count) prettier invocation(s)"
 
   $allPrettierSafe = $true
@@ -130,7 +130,7 @@ function Run-PreCommitEndOfOptionsTests {
     -Message "Unsafe lines: $($unsafePrettierLines -join '; ')"
 
   # All markdownlint invocations should have -- before file arrays
-  $markdownlintLines = @(Get-Content $preCommitPath | Where-Object { $_ -match 'npx\s+--no-install\s+markdownlint' })
+  $markdownlintLines = @(Get-Content $preCommitPath | Where-Object { $_ -match 'run_node_tool\s+markdownlint' })
   Write-Info "Found $($markdownlintLines.Count) markdownlint invocation(s)"
 
   $allMarkdownlintSafe = $true
@@ -239,8 +239,8 @@ function Run-PrePushEndOfOptionsTests {
 
   $lines = @(Get-Content $prePushPath)
 
-  # All prettier invocations should have -- before file arguments
-  $prettierLines = @($lines | Where-Object { $_ -match 'npx\s+--no-install\s+prettier' -and $_ -notmatch '--version' })
+  # All Prettier invocations should have -- before file arguments
+  $prettierLines = @($lines | Where-Object { $_ -match 'node\s+scripts/run-prettier\.js' -and $_ -match '--(?:write|check)' -and $_ -notmatch '^\s*echo\s+' })
   Write-Info "Found $($prettierLines.Count) prettier invocation(s) in pre-push"
 
   $allPrettierSafe = $true
@@ -256,7 +256,7 @@ function Run-PrePushEndOfOptionsTests {
     -Message "Unsafe lines: $($unsafePrettierLines -join '; ')"
 
   # All markdownlint invocations should have -- before file arguments
-  $markdownlintLines = @($lines | Where-Object { $_ -match 'npx\s+--no-install\s+markdownlint' -and $_ -notmatch '--version' })
+  $markdownlintLines = @($lines | Where-Object { $_ -match 'run_node_tool\s+markdownlint' -and $_ -notmatch '--version' })
   Write-Info "Found $($markdownlintLines.Count) markdownlint invocation(s) in pre-push"
 
   $allMarkdownlintSafe = $true
@@ -332,7 +332,7 @@ function Run-WorkflowEndOfOptionsTests {
       if ($line -match '^\s*#') { continue }
       if ($line -match '--version') { continue }
 
-      # Check prettier invocations (npx prettier or npx --yes prettier@...)
+      # Check Prettier invocations (repo-local launcher or pinned workflow npx)
       if ($line -match 'prettier\S*\s+--(?:write|check)') {
         if ($line -notmatch '--\s+"' -and $line -notmatch '--\s+\.') {
           $allSafe = $false

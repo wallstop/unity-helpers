@@ -24,16 +24,14 @@ if ($existingPaths.Count -eq 0) {
   exit 0
 }
 
-$npx = Get-Command npx -ErrorAction SilentlyContinue
-if (-not $npx) {
-  Write-Error "npx not found; install Node.js to run markdownlint."
+$node = Get-Command node -ErrorAction SilentlyContinue
+if (-not $node) {
+  Write-Error "node not found; install Node.js and run npm install to run markdownlint."
   exit 1
 }
 
-$npxArgs = @(
-  '--yes',
-  '--package',
-  'markdownlint-cli',
+$markdownlintArgs = @(
+  (Join-Path -Path $repositoryInfo.RepositoryRoot -ChildPath 'scripts/run-node-bin.js'),
   'markdownlint',
   '--config',
   '.markdownlint.json',
@@ -41,9 +39,9 @@ $npxArgs = @(
   '.markdownlintignore',
   '--fix'
 )
-$npxArgs += '--'
-$npxArgs += $existingPaths
-& npx @npxArgs
+$markdownlintArgs += '--'
+$markdownlintArgs += $existingPaths
+& node @markdownlintArgs
 if ($LASTEXITCODE -ne 0) {
   Write-Error "markdownlint failed with exit code $LASTEXITCODE."
   exit $LASTEXITCODE

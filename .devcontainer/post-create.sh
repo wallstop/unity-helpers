@@ -22,6 +22,13 @@
 
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+NPM_PREFIX="${NPM_CONFIG_PREFIX:-${HOME}/.local}"
+CODEX_VERSION_TIMEOUT_SECONDS="${CODEX_VERSION_TIMEOUT_SECONDS:-10}"
+CODEX_LOGIN_STATUS_TIMEOUT_SECONDS="${CODEX_LOGIN_STATUS_TIMEOUT_SECONDS:-5}"
+
+export PATH="${NPM_PREFIX}/bin:${PATH}"
+
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
 log_step() {
@@ -110,7 +117,30 @@ else
     log_ok "npm install succeeded (no lockfile)"
 fi
 
-# ── Step 4: Install git hooks ────────────────────────────────────────────────
+# ── Step 4: Install/update OpenAI Codex CLI ──────────────────────────────────
+# Ensures `codex` is installed globally and current on first container create.
+# Failures are non-fatal and retried again from post-start.
+
+log_step "Installing OpenAI Codex CLI"
+
+if bash "$SCRIPT_DIR/install-codex.sh" --force-latest-check && command -v codex >/dev/null 2>&1 && timeout "${CODEX_VERSION_TIMEOUT_SECONDS}" codex --version >/dev/null 2>&1; then
+    log_ok "OpenAI Codex CLI is available"
+else
+    log_warn "OpenAI Codex CLI is not currently available (non-fatal). It will retry on next container start."
+fi
+
+# ── Step 4b: Check Codex authentication state ───────────────────────────────
+# Login remains browser-first. This is advisory and never blocks setup.
+
+log_step "Checking Codex authentication status"
+
+if command -v codex >/dev/null 2>&1 && timeout "${CODEX_LOGIN_STATUS_TIMEOUT_SECONDS}" codex login status >/dev/null 2>&1; then
+    log_ok "Codex is already authenticated"
+else
+    log_warn "Codex is not logged in yet. Run: npm run codex:login"
+fi
+
+# ── Step 5: Install git hooks ────────────────────────────────────────────────
 # Sets core.hooksPath and makes hook scripts executable.
 
 log_step "Installing git hooks"
@@ -118,7 +148,7 @@ log_step "Installing git hooks"
 npm run hooks:install
 log_ok "Git hooks installed"
 
-# ── Step 4b: Configure git push defaults ─────────────────────────────────────
+# ── Step 5b: Configure git push defaults ─────────────────────────────────────
 # Sets push.autoSetupRemote=true and push.default=simple locally so that
 # `git push` on a new branch works without --set-upstream flags.
 
@@ -131,7 +161,7 @@ else
     log_warn "Not inside a git working tree; skipping push defaults configuration"
 fi
 
-# ── Step 5: Mark workspace as safe directory ─────────────────────────────────
+# ── Step 6: Mark workspace as safe directory ─────────────────────────────────
 # Required when the workspace is bind-mounted and may be owned by a different
 # UID on the host.
 
@@ -145,12 +175,12 @@ if WORKSPACE_DIR="$(git rev-parse --show-toplevel 2>/dev/null)"; then
 elif [ -n "${CODESPACE_VSCODE_FOLDER:-}" ]; then
     WORKSPACE_DIR="$CODESPACE_VSCODE_FOLDER"
 else
-    WORKSPACE_DIR="/workspaces/com.wallstop-studios.unity-helpers"
+    WORKSPACE_DIR="$(pwd)"
 fi
 git config --global --add safe.directory "$WORKSPACE_DIR"
 log_ok "Marked $WORKSPACE_DIR as safe directory"
 
-# ── Step 6: Pre-pull Unity Docker image (background) ─────────────────────────
+# ── Step 7: Pre-pull Unity Docker image (background) ─────────────────────────
 # Pre-pulls the GameCI Unity Editor Docker image so that unity test/compile
 # scripts can run immediately without waiting for the image download.
 # This runs in the background and is non-fatal (the image will be pulled

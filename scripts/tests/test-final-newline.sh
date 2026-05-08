@@ -38,6 +38,8 @@ files_checked=0
 files_passed=0
 files_failed=0
 failed_files=()
+declare -A checked_files=()
+declare -A file_sources=()
 
 # ============================================================================
 # CRLF Detection Helper
@@ -60,16 +62,52 @@ file_uses_crlf() {
 }
 
 # ---------------------------------------------------------------------------
+# print_file_diagnostics: show high-signal details for failed files
+# ---------------------------------------------------------------------------
+print_file_diagnostics() {
+    local file="$1"
+    local line_ending="LF"
+    local byte_count
+    local tail_hex
+
+    if file_uses_crlf "$file"; then
+        line_ending="CRLF"
+    fi
+
+    byte_count="$(wc -c < "$file" | tr -d '[:space:]')"
+    tail_hex="$(tail -c 16 -- "$file" | od -An -tx1 | tr '\n' ' ' | sed 's/^ *//;s/ *$//')"
+
+    echo -e "      Detected: $line_ending | Bytes: $byte_count | Sources: ${file_sources["$file"]}"
+    if [[ -n "$tail_hex" ]]; then
+        echo -e "      Tail hex: $tail_hex"
+    fi
+}
+
+# ---------------------------------------------------------------------------
 # check_file: verify a single file ends with a newline
 # ---------------------------------------------------------------------------
 check_file() {
     local file="$1"
+    local source="${2:-unknown}"
 
     # Skip if file does not exist or is empty
     if [[ ! -s "$file" ]]; then
         return
     fi
 
+    if [[ -n "${file_sources["$file"]+x}" ]]; then
+        file_sources["$file"]="${file_sources["$file"]},${source}"
+    else
+        file_sources["$file"]="$source"
+    fi
+
+    # Check each file only once to avoid duplicate failures from overlapping
+    # selectors (for example explicit config list + JSON glob).
+    if [[ -n "${checked_files["$file"]+x}" ]]; then
+        return
+    fi
+
+    checked_files["$file"]=1
     files_checked=$((files_checked + 1))
 
     if [[ "$(tail -c 1 -- "$file" | wc -l)" -eq 0 ]]; then
@@ -81,6 +119,7 @@ check_file() {
         else
             echo -e "  ${RED}FAIL${NC} $file (LF)"
         fi
+        print_file_diagnostics "$file"
     else
         files_passed=$((files_passed + 1))
         if [[ $VERBOSE -eq 1 ]]; then
@@ -102,7 +141,7 @@ check_glob() {
             case "$file" in
                 node_modules/*|site/*|.git/*) continue ;;
             esac
-            check_file "$file"
+            check_file "$file" "glob:$pattern"
         done < <(git ls-files -z -- "$pattern" 2>/dev/null)
     else
         while IFS= read -r file; do
@@ -110,7 +149,7 @@ check_glob() {
             case "$file" in
                 node_modules/*|site/*|.git/*) continue ;;
             esac
-            check_file "$file"
+            check_file "$file" "glob:$pattern"
         done < <(find . -name "$pattern" -not -path './node_modules/*' -not -path './site/*' -not -path './.git/*' -type f 2>/dev/null | sort)
     fi
 }
@@ -132,7 +171,7 @@ for cfg in \
     _config.yml \
     Gemfile \
     requirements-docs.txt; do
-    check_file "$cfg"
+    check_file "$cfg" "config-list"
 done
 
 # 2) GitHub workflow files
