@@ -73,10 +73,10 @@ Preferred commit prep order:
 
 **Do NOT batch formatting at the end of a task.** Format immediately after each file modification.
 
-| File Type       | Formatter | Command                              |
-| --------------- | --------- | ------------------------------------ |
-| C# (`.cs`)      | CSharpier | `dotnet tool run csharpier format .` |
-| Everything else | Prettier  | `npx prettier --write -- <file>`     |
+| File Type       | Formatter | Command                                          |
+| --------------- | --------- | ------------------------------------------------ |
+| C# (`.cs`)      | CSharpier | `dotnet tool run csharpier format .`             |
+| Everything else | Prettier  | `node scripts/run-prettier.js --write -- <file>` |
 
 ### Rule 2: Run Linters IMMEDIATELY After Every Change
 
@@ -103,9 +103,9 @@ Preferred commit prep order:
 
 **Correct** (format immediately after each):
 
-1. Edit markdown -> `npx prettier --write -- <file>` -> `npm run lint:markdown`
+1. Edit markdown -> `node scripts/run-prettier.js --write -- <file>` -> `npm run lint:markdown`
 2. Edit C# -> `dotnet tool run csharpier format .`
-3. Edit YAML -> `npx prettier --write -- <file>` -> `npm run lint:yaml`
+3. Edit YAML -> `node scripts/run-prettier.js --write -- <file>` -> `npm run lint:yaml`
 4. Edit test file -> `pwsh -NoProfile -File scripts/lint-tests.ps1` -> `dotnet tool run csharpier format .`
 
 For detailed workflow patterns and more examples, see [formatting](./formatting.md).
@@ -136,7 +136,7 @@ Treat the hook as a SAFETY NET, not a substitute for manual validation. It does 
 
 - CI runs (the hook is Claude Code specific).
 - You edit files outside Claude Code (another IDE, scripted edits, `git rebase -i` edits).
-- Node or `node_modules/.bin/cspell` is missing (fresh clones before `npm install` degrade silently -- run `npm install` to activate).
+- Node or the repo-local cspell package is missing (fresh clones before `npm install` degrade silently -- run `npm install` to activate).
 - The hook itself is disabled locally (see below).
 
 For those scenarios -- and as a defense-in-depth check before declaring work complete -- run `npm run lint:spelling` manually. Manual invocation before completion remains the expectation.
@@ -186,7 +186,7 @@ Also verify license headers on new or modified files — see [license-headers](.
 
 ```bash
 # After EVERY .md file modification:
-npx prettier --write -- <file>
+node scripts/run-prettier.js --write -- <file>
 npm run lint:spelling    # 🚨 #1 CI failure cause!
 npm run lint:docs         # Validates links
 npm run lint:markdown     # Structural rules
@@ -196,7 +196,7 @@ npm run lint:markdown     # Structural rules
 
 ```bash
 # After EVERY CHANGELOG.md / package.json / asmdef / asmref edit:
-npx prettier --write -- <file>
+node scripts/run-prettier.js --write -- <file>
 npm run lint:spelling    # 🚨 pre-push spell-checks CHANGELOG + JSON
 ```
 
@@ -204,7 +204,7 @@ npm run lint:spelling    # 🚨 pre-push spell-checks CHANGELOG + JSON
 
 ```bash
 # After EVERY .yml/.yaml file modification:
-npx prettier --write -- <file>
+node scripts/run-prettier.js --write -- <file>
 npm run lint:yaml
 
 # For workflow files (.github/workflows/*.yml), also run:
@@ -237,7 +237,7 @@ npm run lint:spelling    # 🚨 MANDATORY — cspell lints test comments + strin
 pwsh -NoProfile -File scripts/lint-asmdef.ps1
 
 # Also run standard JSON formatting:
-npx prettier --write -- <file>
+node scripts/run-prettier.js --write -- <file>
 ```
 
 **CRITICAL**: The asmdef linter checks that assemblies with `overrideReferences: true` referencing `WallstopStudios.UnityHelpers` include `Sirenix.Serialization.dll` in `precompiledReferences`. Missing this causes CS0012/CS0311 compilation errors when Odin Inspector is installed. See [manage-assembly-definitions](./manage-assembly-definitions.md) for the standard template.
@@ -253,7 +253,7 @@ pwsh -NoProfile -File scripts/lint-skill-sizes.ps1
 npm run agent:preflight
 
 # Also run standard markdown formatting:
-npx prettier --write -- <file>
+node scripts/run-prettier.js --write -- <file>
 npm run lint:markdown
 ```
 
@@ -325,10 +325,10 @@ Before completing ANY task:
 
 ### Prettier Self-Check (MANDATORY)
 
-- [ ] Did I run `npx prettier --write -- <file>` IMMEDIATELY after EVERY non-C# file?
-- [ ] Did I verify each file with `npx prettier --check -- <file>`?
+- [ ] Did I run `node scripts/run-prettier.js --write -- <file>` IMMEDIATELY after EVERY non-C# file?
+- [ ] Did I verify each file with `node scripts/run-prettier.js --check -- <file>`?
 - [ ] Did I check config files too? (`.devcontainer/devcontainer.json`, `package.json`, etc.)
-- [ ] Final check: `npx prettier --check -- .` passes?
+- [ ] Final check: `node scripts/run-prettier.js --check -- .` passes?
 
 ### For New Features
 
@@ -375,22 +375,22 @@ Without `--`, a staged filename like `--plugin=./evil.js` or `--config=malicious
 
 ```bash
 # WRONG - filenames can be interpreted as options
-npx --no-install prettier --write "${FILES[@]}"
+node scripts/run-prettier.js --write "${FILES[@]}"
 
 # CORRECT - `--` prevents filenames from being treated as options
-npx --no-install prettier --write -- "${FILES[@]}"
+node scripts/run-prettier.js --write -- "${FILES[@]}"
 ```
 
 This applies to ALL tools that accept file arguments:
 
-- `prettier --write -- "${FILES[@]}"`
-- `markdownlint --fix --config X -- "${FILES[@]}"`
+- `node scripts/run-prettier.js --write -- "${FILES[@]}"`
+- `node scripts/run-node-bin.js markdownlint --fix --config X -- "${FILES[@]}"`
 - `yamllint -c config.yaml -- "${FILES[@]}"`
 
 In PowerShell scripts, add `'--'` to argument arrays before file paths:
 
 ```powershell
-$cmdArgs = @('--yes', 'prettier', '--write', '--') + $filePaths
+$cmdArgs = @((Join-Path $repoRoot 'scripts/run-node-bin.js'), 'markdownlint', '--fix', '--config', '.markdownlint.json', '--') + $filePaths
 ```
 
 ---

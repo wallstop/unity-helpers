@@ -6,6 +6,7 @@ namespace WallstopStudios.UnityHelpers.Tests.Tags
     using System;
     using NUnit.Framework;
     using UnityEngine;
+    using WallstopStudios.UnityHelpers.Core.Helper;
     using WallstopStudios.UnityHelpers.Tags;
     using WallstopStudios.UnityHelpers.Tests.Core;
     using WallstopStudios.UnityHelpers.Tests.Editor.TestTypes;
@@ -100,12 +101,14 @@ namespace WallstopStudios.UnityHelpers.Tests.Tags
                 alphaTypeMetadata,
             };
 
-            cache.SetMetadata(
+            bool changed = cache.SetMetadata(
                 attributeNames,
                 typeMetadata,
                 relationalMetadata,
                 Array.Empty<AttributeMetadataCache.AutoLoadSingletonEntry>()
             );
+
+            Assert.IsTrue(changed);
 
             string[] storedAttributeNames = cache.SerializedAttributeNames;
             Assert.That(storedAttributeNames, Is.EqualTo(new[] { "Alpha", "Beta", "Gamma" }));
@@ -147,6 +150,84 @@ namespace WallstopStudios.UnityHelpers.Tests.Tags
                 storedRelationalMetadata[1].fields[1].fieldName,
                 Is.EqualTo("zetaRelation")
             );
+        }
+
+        [Test]
+        public void SetMetadataReturnsFalseWhenNormalizedContentIsUnchanged()
+        {
+            AttributeMetadataCache cache = Track(
+                ScriptableObject.CreateInstance<AttributeMetadataCache>()
+            );
+
+            string alphaAttributesTypeName =
+                typeof(AlphaAttributesComponent).AssemblyQualifiedName ?? string.Empty;
+            AttributeMetadataCache.TypeFieldMetadata alphaTypeMetadata = new(
+                alphaAttributesTypeName,
+                new[] { "zetaField", "alphaField" }
+            );
+
+            AttributeMetadataCache.RelationalFieldMetadata relationalField = new(
+                "target",
+                AttributeMetadataCache.RelationalAttributeKind.Child,
+                AttributeMetadataCache.FieldKind.Single,
+                typeof(Transform).AssemblyQualifiedName ?? string.Empty,
+                false
+            );
+
+            AttributeMetadataCache.RelationalTypeMetadata relationalMetadata = new(
+                typeof(AlphaRelationalComponent).AssemblyQualifiedName ?? string.Empty,
+                new[] { relationalField }
+            );
+
+            AttributeMetadataCache.AutoLoadSingletonEntry autoLoad = new(
+                typeof(AttributeMetadataCache).AssemblyQualifiedName ?? string.Empty,
+                SingletonAutoLoadKind.ScriptableObject,
+                RuntimeInitializeLoadType.AfterSceneLoad
+            );
+
+            bool firstChanged = cache.SetMetadata(
+                new[] { "Bravo", "Alpha" },
+                new[] { alphaTypeMetadata },
+                new[] { relationalMetadata },
+                new[] { autoLoad }
+            );
+            bool secondChanged = cache.SetMetadata(
+                new[] { "Alpha", "Bravo" },
+                new[]
+                {
+                    new AttributeMetadataCache.TypeFieldMetadata(
+                        alphaAttributesTypeName,
+                        new[] { "alphaField", "zetaField" }
+                    ),
+                },
+                new[]
+                {
+                    new AttributeMetadataCache.RelationalTypeMetadata(
+                        typeof(AlphaRelationalComponent).AssemblyQualifiedName ?? string.Empty,
+                        new[]
+                        {
+                            new AttributeMetadataCache.RelationalFieldMetadata(
+                                "target",
+                                AttributeMetadataCache.RelationalAttributeKind.Child,
+                                AttributeMetadataCache.FieldKind.Single,
+                                typeof(Transform).AssemblyQualifiedName ?? string.Empty,
+                                false
+                            ),
+                        }
+                    ),
+                },
+                new[]
+                {
+                    new AttributeMetadataCache.AutoLoadSingletonEntry(
+                        typeof(AttributeMetadataCache).AssemblyQualifiedName ?? string.Empty,
+                        SingletonAutoLoadKind.ScriptableObject,
+                        RuntimeInitializeLoadType.AfterSceneLoad
+                    ),
+                }
+            );
+
+            Assert.IsTrue(firstChanged);
+            Assert.IsFalse(secondChanged);
         }
 
         private sealed class AlphaAttributesComponent : AttributesComponent { }

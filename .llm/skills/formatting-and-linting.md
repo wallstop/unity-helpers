@@ -87,14 +87,14 @@ See [formatting-and-linting](./formatting-and-linting.md) for details.
 ### Markdown Files
 
 ```bash
-npx prettier --write -- "path/to/file.md"
+node scripts/run-prettier.js --write -- "path/to/file.md"
 ```
 
 ### JSON / Assembly Definition Files
 
 ```bash
-npx prettier --write -- "path/to/file.json"
-npx prettier --write -- "path/to/file.asmdef"
+node scripts/run-prettier.js --write -- "path/to/file.json"
+node scripts/run-prettier.js --write -- "path/to/file.asmdef"
 ```
 
 ### All Files at Once

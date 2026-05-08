@@ -242,9 +242,9 @@ echo ""
 echo "=== Testing validation-only behavior ==="
 
 run_test
-# Check that the hook does not EXECUTE prettier --write (auto-fix)
-# Mentioning it in user-facing hints (echo "Run: npx prettier --write") is fine
-if grep -v '^[[:space:]]*echo' "$PRE_PUSH" | grep -q 'prettier --write'; then
+# Check that the hook does not EXECUTE Prettier with --write (auto-fix)
+# Mentioning it in user-facing hints is fine.
+if grep -v '^[[:space:]]*echo' "$PRE_PUSH" | grep -Eiq '(prettier|run-prettier\.js).*--write'; then
     fail "No prettier --write execution in pre-push" "no auto-fix" "prettier --write found"
 else
     pass "No prettier --write execution in pre-push (validation-only)"

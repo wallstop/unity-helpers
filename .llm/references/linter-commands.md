@@ -6,18 +6,18 @@ This document provides a comprehensive reference for all formatting and linting 
 
 ## Quick Reference
 
-| Tool         | File Types                | Check Command                                  | Fix Command                          |
-| ------------ | ------------------------- | ---------------------------------------------- | ------------------------------------ |
-| CSharpier    | `.cs`                     | `dotnet tool run csharpier check .`            | `dotnet tool run csharpier format .` |
-| Prettier     | `.md`, `.json`, `.yml`    | `npx prettier --check -- .`                    | `npx prettier --write -- <file>`     |
-| markdownlint | `.md`                     | `npm run lint:markdown`                        | Manual fixes required                |
-| yamllint     | `.yml`, `.yaml`           | `npm run lint:yaml`                            | Manual fixes required                |
-| actionlint   | `.github/workflows/*.yml` | `actionlint`                                   | Manual fixes required                |
-| cspell       | All text files            | `npm run lint:spelling`                        | Add terms to `cspell.json`           |
-| Test Linter  | `Tests/**/*.cs`           | `pwsh -NoProfile -File scripts/lint-tests.ps1` | Manual fixes required                |
-| Doc Links    | `.md`                     | `npm run lint:docs`                            | Manual fixes required                |
-| C# Naming    | `.cs`                     | `npm run lint:csharp-naming`                   | Rename methods manually              |
-| EOL Check    | All files                 | `npm run eol:check`                            | `npm run eol:fix`                    |
+| Tool         | File Types                | Check Command                                  | Fix Command                                      |
+| ------------ | ------------------------- | ---------------------------------------------- | ------------------------------------------------ |
+| CSharpier    | `.cs`                     | `dotnet tool run csharpier check .`            | `dotnet tool run csharpier format .`             |
+| Prettier     | `.md`, `.json`, `.yml`    | `node scripts/run-prettier.js --check -- .`    | `node scripts/run-prettier.js --write -- <file>` |
+| markdownlint | `.md`                     | `npm run lint:markdown`                        | Manual fixes required                            |
+| yamllint     | `.yml`, `.yaml`           | `npm run lint:yaml`                            | Manual fixes required                            |
+| actionlint   | `.github/workflows/*.yml` | `actionlint`                                   | Manual fixes required                            |
+| cspell       | All text files            | `npm run lint:spelling`                        | Add terms to `cspell.json`                       |
+| Test Linter  | `Tests/**/*.cs`           | `pwsh -NoProfile -File scripts/lint-tests.ps1` | Manual fixes required                            |
+| Doc Links    | `.md`                     | `npm run lint:docs`                            | Manual fixes required                            |
+| C# Naming    | `.cs`                     | `npm run lint:csharp-naming`                   | Rename methods manually                          |
+| EOL Check    | All files                 | `npm run eol:check`                            | `npm run eol:fix`                                |
 
 ---
 
@@ -67,24 +67,24 @@ dotnet tool restore
 
 ```bash
 # Format a specific file (RECOMMENDED)
-npx prettier --write -- <file>
+node scripts/run-prettier.js --write -- <file>
 
 # Verify a specific file
-npx prettier --check -- <file>
+node scripts/run-prettier.js --check -- <file>
 
 # Check all files for formatting issues
-npx prettier --check -- .
+node scripts/run-prettier.js --check -- .
 
 # Format all files (use only if needed)
-npx prettier --write -- .
+node scripts/run-prettier.js --write -- .
 ```
 
 ### Examples
 
 ```bash
-npx prettier --write -- .llm/skills/create-test.md
-npx prettier --write -- package.json
-npx prettier --write -- .github/workflows/ci.yml
+node scripts/run-prettier.js --write -- .llm/skills/create-test.md
+node scripts/run-prettier.js --write -- package.json
+node scripts/run-prettier.js --write -- .github/workflows/ci.yml
 ```
 
 ### Line Endings
@@ -168,7 +168,7 @@ npm run lint:yaml
 
 ```bash
 # Step 1: Format with Prettier
-npx prettier --write -- <file>
+node scripts/run-prettier.js --write -- <file>
 
 # Step 2: Run yamllint
 npm run lint:yaml
@@ -250,7 +250,7 @@ npm run lint:spelling
 #    - Add valid terms to cspell.json
 
 # 3. Format cspell.json
-npx prettier --write -- cspell.json
+node scripts/run-prettier.js --write -- cspell.json
 
 # 4. Re-run to verify
 npm run lint:spelling

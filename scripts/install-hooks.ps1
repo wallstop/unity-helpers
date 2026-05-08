@@ -243,7 +243,7 @@ function Test-Status {
         # Check specific packages
         if (Test-Path (Join-Path $nodeModulesPath "prettier")) {
             try {
-                $prettierVer = npx --no-install prettier --version 2>$null
+                $prettierVer = node (Join-Path $RepoRoot "scripts/run-prettier.js") --version 2>$null
                 Write-Success "prettier: $prettierVer"
             }
             catch {
@@ -404,7 +404,7 @@ function Install-NodeDeps {
         Write-Info "Installed tools:"
         
         try {
-            $prettierVer = npx --no-install prettier --version 2>$null
+            $prettierVer = node (Join-Path $RepoRoot "scripts/run-prettier.js") --version 2>$null
             if ($prettierVer) {
                 Write-Success "  prettier: $prettierVer"
             }
@@ -412,7 +412,7 @@ function Install-NodeDeps {
         catch { }
         
         try {
-            $mdlintVer = npx --no-install markdownlint --version 2>$null
+            $mdlintVer = node (Join-Path $RepoRoot "scripts/run-node-bin.js") markdownlint --version 2>$null
             if ($mdlintVer) {
                 Write-Success "  markdownlint-cli: $mdlintVer"
             }
@@ -420,7 +420,7 @@ function Install-NodeDeps {
         catch { }
         
         try {
-            $cspellVer = npx --no-install cspell --version 2>$null
+            $cspellVer = node (Join-Path $RepoRoot "scripts/run-node-bin.js") cspell --version 2>$null
             if ($cspellVer) {
                 Write-Success "  cspell: $cspellVer"
             }

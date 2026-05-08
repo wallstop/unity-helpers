@@ -42,10 +42,13 @@
   // 1. Fix volume mount permissions (Docker named volumes are root-owned)
   // 2. Restore .NET tools (CSharpier, etc.)
   // 3. Install npm dependencies (markdownlint-cli, cspell, prettier)
-  // 4. Install git hooks
-  // 5. Mark workspace as safe directory
-  // 6. Pre-pull Unity Docker image (background, non-blocking)
+  // 4. Install/update OpenAI Codex CLI (latest via npm)
+  // 5. Install git hooks
+  // 6. Mark workspace as safe directory
+  // 7. Pre-pull Unity Docker image (background, non-blocking)
   "postCreateCommand": "bash .devcontainer/post-create.sh",
+  // Runs on every container start to verify/repair Codex CLI availability.
+  "postStartCommand": "bash .devcontainer/post-start.sh",
   // VS Code customizations
   "customizations": {
     "vscode": {
@@ -436,8 +439,16 @@
     "source=unity-helpers-docker-cache,target=/var/lib/docker,type=volume",
     "source=unity-helpers-unity-project,target=/home/vscode/.unity-test-project,type=volume"
   ],
-  // Forwarded ports (if needed for debugging)
-  "forwardPorts": [],
+  // Forwarded ports
+  // 1455 is Codex CLI's default OAuth callback listener. Forwarding it allows
+  // host-browser redirects to reach the container login server.
+  "forwardPorts": [1455],
+  "portsAttributes": {
+    "1455": {
+      "label": "Codex OAuth callback",
+      "onAutoForward": "silent"
+    }
+  },
   // Run as non-root user
   "remoteUser": "vscode"
 }

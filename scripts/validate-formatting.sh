@@ -78,7 +78,7 @@ run_check() {
 
     if [[ $FIX_MODE -eq 1 ]]; then
         print_info "$label: auto-fixing..."
-        if npx --no-install prettier --write -- "$pattern" 2>/dev/null; then
+        if node scripts/run-prettier.js --write -- "$pattern" 2>/dev/null; then
             print_success "$label"
             CHECKS_PASSED=$((CHECKS_PASSED + 1))
         else
@@ -86,17 +86,17 @@ run_check() {
             FAILED=1
         fi
     else
-        if npx --no-install prettier --check -- "$pattern" >/dev/null 2>&1; then
+        if node scripts/run-prettier.js --check -- "$pattern" >/dev/null 2>&1; then
             print_success "$label"
             CHECKS_PASSED=$((CHECKS_PASSED + 1))
         else
             print_fail "$label"
             # Show which files failed
             echo -e "         Failing files:"
-            npx --no-install prettier --list-different -- "$pattern" 2>/dev/null | while IFS= read -r file; do
+            node scripts/run-prettier.js --list-different -- "$pattern" 2>/dev/null | while IFS= read -r file; do
                 echo -e "           ${RED}-${NC} $file"
             done
-            echo -e "         Fix with: ${YELLOW}npx prettier --write -- \"$pattern\"${NC}"
+            echo -e "         Fix with: ${YELLOW}node scripts/run-prettier.js --write -- \"$pattern\"${NC}"
             FAILED=1
         fi
     fi
@@ -205,8 +205,8 @@ esac
 cd "$REPO_ROOT"
 
 # Verify prerequisites
-if ! command -v npx >/dev/null 2>&1; then
-    echo -e "${RED}Error: npx is not available. Install Node.js first.${NC}"
+if ! command -v node >/dev/null 2>&1; then
+    echo -e "${RED}Error: node is not available. Install Node.js first.${NC}"
     exit 1
 fi
 
@@ -215,7 +215,7 @@ if [[ ! -d "node_modules" ]]; then
     exit 1
 fi
 
-if ! npx --no-install prettier --version >/dev/null 2>&1; then
+if ! node scripts/run-prettier.js --version >/dev/null 2>&1; then
     echo -e "${RED}Error: prettier not found. Run 'npm install' first.${NC}"
     exit 1
 fi

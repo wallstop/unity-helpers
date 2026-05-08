@@ -10,6 +10,7 @@
 #   - Dockerfile pre-creates the same volume mount directories
 #   - devcontainer.json postCreateCommand references the script
 #   - No hardcoded user IDs (should use $(id -u) pattern)
+#   - Codex installer and wrapper contracts are enforced
 #
 # This is a data-driven test: volume mount definitions are extracted from
 # devcontainer.json and cross-checked against both the setup script and
@@ -41,10 +42,22 @@ case "${1:-}" in
     --verbose|-v) VERBOSE=1 ;;
 esac
 
+# Ensure temporary directories are removed even on early failures.
+cleanup_temp_dirs() {
+    [[ -n "${tmp_bin_dir:-}" && -d "$tmp_bin_dir" ]] && rm -rf "$tmp_bin_dir" 2>/dev/null || true
+    [[ -n "${tmp_yolo_bin_dir:-}" && -d "$tmp_yolo_bin_dir" ]] && rm -rf "$tmp_yolo_bin_dir" 2>/dev/null || true
+}
+trap cleanup_temp_dirs EXIT
+
 # Files under test
 POST_CREATE="$REPO_ROOT/.devcontainer/post-create.sh"
+POST_START="$REPO_ROOT/.devcontainer/post-start.sh"
+INSTALL_CODEX="$REPO_ROOT/.devcontainer/install-codex.sh"
+CODEX_LOGIN_WRAPPER="$REPO_ROOT/scripts/codex-login.sh"
+CODEX_YOLO_WRAPPER="$REPO_ROOT/scripts/codex-yolo.sh"
 DEVCONTAINER_JSON="$REPO_ROOT/.devcontainer/devcontainer.json"
 DOCKERFILE="$REPO_ROOT/.devcontainer/Dockerfile"
+PACKAGE_JSON="$REPO_ROOT/package.json"
 
 # Counters
 tests_run=0
@@ -87,6 +100,34 @@ if [[ ! -f "$POST_CREATE" ]]; then
     exit 1
 fi
 
+if [[ ! -f "$POST_START" ]]; then
+    fail "post-start.sh exists" "File not found: .devcontainer/post-start.sh"
+    echo ""
+    echo -e "${RED}Cannot continue without post-start.sh${NC}"
+    exit 1
+fi
+
+if [[ ! -f "$INSTALL_CODEX" ]]; then
+    fail "install-codex.sh exists" "File not found: .devcontainer/install-codex.sh"
+    echo ""
+    echo -e "${RED}Cannot continue without install-codex.sh${NC}"
+    exit 1
+fi
+
+if [[ ! -f "$CODEX_LOGIN_WRAPPER" ]]; then
+    fail "codex-login.sh exists" "File not found: scripts/codex-login.sh"
+    echo ""
+    echo -e "${RED}Cannot continue without codex-login.sh${NC}"
+    exit 1
+fi
+
+if [[ ! -f "$CODEX_YOLO_WRAPPER" ]]; then
+    fail "codex-yolo.sh exists" "File not found: scripts/codex-yolo.sh"
+    echo ""
+    echo -e "${RED}Cannot continue without codex-yolo.sh${NC}"
+    exit 1
+fi
+
 if [[ ! -f "$DEVCONTAINER_JSON" ]]; then
     fail "devcontainer.json exists" "File not found: .devcontainer/devcontainer.json"
     echo ""
@@ -98,6 +139,13 @@ if [[ ! -f "$DOCKERFILE" ]]; then
     fail "Dockerfile exists" "File not found: .devcontainer/Dockerfile"
     echo ""
     echo -e "${RED}Cannot continue without Dockerfile${NC}"
+    exit 1
+fi
+
+if [[ ! -f "$PACKAGE_JSON" ]]; then
+    fail "package.json exists" "File not found: package.json"
+    echo ""
+    echo -e "${RED}Cannot continue without package.json${NC}"
     exit 1
 fi
 
@@ -142,6 +190,106 @@ else
     fail "post-create.sh uses 'set -euo pipefail'" "Missing strict error handling"
 fi
 
+if bash -n "$POST_START" 2>/dev/null; then
+    pass "post-start.sh passes bash -n syntax check"
+else
+    fail "post-start.sh passes bash -n syntax check" "$(bash -n "$POST_START" 2>&1)"
+fi
+
+if [[ -x "$POST_START" ]]; then
+    pass "post-start.sh is executable"
+else
+    fail "post-start.sh is executable" "Missing +x permission"
+fi
+
+SHEBANG=$(head -1 "$POST_START")
+if [[ "$SHEBANG" == "#!/usr/bin/env bash" ]] || [[ "$SHEBANG" == "#!/bin/bash" ]]; then
+    pass "post-start.sh has valid bash shebang"
+else
+    fail "post-start.sh has valid bash shebang" "Got: $SHEBANG"
+fi
+
+if grep -q 'set -euo pipefail' "$POST_START"; then
+    pass "post-start.sh uses 'set -euo pipefail'"
+else
+    fail "post-start.sh uses 'set -euo pipefail'" "Missing strict error handling"
+fi
+
+if bash -n "$INSTALL_CODEX" 2>/dev/null; then
+    pass "install-codex.sh passes bash -n syntax check"
+else
+    fail "install-codex.sh passes bash -n syntax check" "$(bash -n "$INSTALL_CODEX" 2>&1)"
+fi
+
+if [[ -x "$INSTALL_CODEX" ]]; then
+    pass "install-codex.sh is executable"
+else
+    fail "install-codex.sh is executable" "Missing +x permission"
+fi
+
+SHEBANG=$(head -1 "$INSTALL_CODEX")
+if [[ "$SHEBANG" == "#!/usr/bin/env bash" ]] || [[ "$SHEBANG" == "#!/bin/bash" ]]; then
+    pass "install-codex.sh has valid bash shebang"
+else
+    fail "install-codex.sh has valid bash shebang" "Got: $SHEBANG"
+fi
+
+if grep -q 'set -euo pipefail' "$INSTALL_CODEX"; then
+    pass "install-codex.sh uses 'set -euo pipefail'"
+else
+    fail "install-codex.sh uses 'set -euo pipefail'" "Missing strict error handling"
+fi
+
+if bash -n "$CODEX_LOGIN_WRAPPER" 2>/dev/null; then
+    pass "codex-login.sh passes bash -n syntax check"
+else
+    fail "codex-login.sh passes bash -n syntax check" "$(bash -n "$CODEX_LOGIN_WRAPPER" 2>&1)"
+fi
+
+if [[ -x "$CODEX_LOGIN_WRAPPER" ]]; then
+    pass "codex-login.sh is executable"
+else
+    fail "codex-login.sh is executable" "Missing +x permission"
+fi
+
+SHEBANG=$(head -1 "$CODEX_LOGIN_WRAPPER")
+if [[ "$SHEBANG" == "#!/usr/bin/env bash" ]] || [[ "$SHEBANG" == "#!/bin/bash" ]]; then
+    pass "codex-login.sh has valid bash shebang"
+else
+    fail "codex-login.sh has valid bash shebang" "Got: $SHEBANG"
+fi
+
+if grep -q 'set -euo pipefail' "$CODEX_LOGIN_WRAPPER"; then
+    pass "codex-login.sh uses 'set -euo pipefail'"
+else
+    fail "codex-login.sh uses 'set -euo pipefail'" "Missing strict error handling"
+fi
+
+if bash -n "$CODEX_YOLO_WRAPPER" 2>/dev/null; then
+    pass "codex-yolo.sh passes bash -n syntax check"
+else
+    fail "codex-yolo.sh passes bash -n syntax check" "$(bash -n "$CODEX_YOLO_WRAPPER" 2>&1)"
+fi
+
+if [[ -x "$CODEX_YOLO_WRAPPER" ]]; then
+    pass "codex-yolo.sh is executable"
+else
+    fail "codex-yolo.sh is executable" "Missing +x permission"
+fi
+
+SHEBANG=$(head -1 "$CODEX_YOLO_WRAPPER")
+if [[ "$SHEBANG" == "#!/usr/bin/env bash" ]] || [[ "$SHEBANG" == "#!/bin/bash" ]]; then
+    pass "codex-yolo.sh has valid bash shebang"
+else
+    fail "codex-yolo.sh has valid bash shebang" "Got: $SHEBANG"
+fi
+
+if grep -q 'set -euo pipefail' "$CODEX_YOLO_WRAPPER"; then
+    pass "codex-yolo.sh uses 'set -euo pipefail'"
+else
+    fail "codex-yolo.sh uses 'set -euo pipefail'" "Missing strict error handling"
+fi
+
 # ── Test 5: No hardcoded UID/GID ─────────────────────────────────────────────
 
 echo -e "${BLUE}Checking for hardcoded UIDs...${NC}"
@@ -163,6 +311,367 @@ else
     fail "devcontainer.json postCreateCommand references post-create.sh" \
         "postCreateCommand should call bash .devcontainer/post-create.sh"
 fi
+
+if grep -q 'post-start\.sh' "$DEVCONTAINER_JSON"; then
+    pass "devcontainer.json postStartCommand references post-start.sh"
+else
+    fail "devcontainer.json postStartCommand references post-start.sh" \
+        "postStartCommand should call bash .devcontainer/post-start.sh"
+fi
+
+if grep -q 'install-codex\.sh" --force-latest-check' "$POST_CREATE"; then
+    pass "post-create.sh forces latest Codex install check"
+else
+    fail "post-create.sh forces latest Codex install check" \
+        "post-create.sh should call install-codex.sh --force-latest-check"
+fi
+
+if grep -q 'CODEX_VERSION_TIMEOUT_SECONDS' "$POST_CREATE"; then
+    pass "post-create.sh defines Codex version timeout"
+else
+    fail "post-create.sh defines Codex version timeout" \
+        "Expected CODEX_VERSION_TIMEOUT_SECONDS in post-create.sh"
+fi
+
+if grep -qE 'timeout[[:space:]]+"\$\{CODEX_VERSION_TIMEOUT_SECONDS\}"[[:space:]]+codex --version' "$POST_CREATE"; then
+    pass "post-create.sh bounds codex --version check with timeout"
+else
+    fail "post-create.sh bounds codex --version check with timeout" \
+        "Expected timeout-wrapped codex --version in post-create.sh"
+fi
+
+if grep -q 'CODEX_LOGIN_STATUS_TIMEOUT_SECONDS' "$POST_CREATE"; then
+    pass "post-create.sh defines Codex login status timeout"
+else
+    fail "post-create.sh defines Codex login status timeout" \
+        "Expected CODEX_LOGIN_STATUS_TIMEOUT_SECONDS in post-create.sh"
+fi
+
+if grep -qE 'timeout[[:space:]]+"\$\{CODEX_LOGIN_STATUS_TIMEOUT_SECONDS\}"[[:space:]]+codex login status' "$POST_CREATE"; then
+    pass "post-create.sh bounds codex login status check with timeout"
+else
+    fail "post-create.sh bounds codex login status check with timeout" \
+        "Expected timeout-wrapped codex login status in post-create.sh"
+fi
+
+if grep -q 'install-codex\.sh' "$POST_START"; then
+    pass "post-start.sh calls install-codex.sh"
+else
+    fail "post-start.sh calls install-codex.sh" \
+        "post-start.sh should call install-codex.sh for runtime repair"
+fi
+
+if grep -q 'CODEX_VERSION_TIMEOUT_SECONDS' "$POST_START"; then
+    pass "post-start.sh defines Codex version timeout"
+else
+    fail "post-start.sh defines Codex version timeout" \
+        "Expected CODEX_VERSION_TIMEOUT_SECONDS in post-start.sh"
+fi
+
+if grep -qE 'timeout[[:space:]]+"\$\{CODEX_VERSION_TIMEOUT_SECONDS\}"[[:space:]]+codex --version' "$POST_START"; then
+    pass "post-start.sh bounds codex --version check with timeout"
+else
+    fail "post-start.sh bounds codex --version check with timeout" \
+        "Expected timeout-wrapped codex --version in post-start.sh"
+fi
+
+if grep -q '@openai/codex' "$INSTALL_CODEX"; then
+    pass "install-codex.sh targets @openai/codex"
+else
+    fail "install-codex.sh targets @openai/codex" \
+        "install-codex.sh must install @openai/codex"
+fi
+
+if grep -q 'NPM_CONFIG_PREFIX' "$INSTALL_CODEX"; then
+    pass "install-codex.sh uses user-global npm prefix"
+else
+    fail "install-codex.sh uses user-global npm prefix" \
+        "Expected NPM_CONFIG_PREFIX usage in install-codex.sh"
+fi
+
+if grep -Eq 'timeout[[:space:]]+"\$\{VIEW_TIMEOUT_SECONDS\}"[[:space:]]+npm view' "$INSTALL_CODEX"; then
+    pass "install-codex.sh uses timeout for npm latest lookup"
+else
+    fail "install-codex.sh uses timeout for npm latest lookup" \
+        "Expected timeout wrapping npm view"
+fi
+
+if grep -Eq 'timeout[[:space:]]+"\$\{INSTALL_TIMEOUT_SECONDS\}"[[:space:]]+npm install -g' "$INSTALL_CODEX"; then
+    pass "install-codex.sh uses timeout for npm install"
+else
+    fail "install-codex.sh uses timeout for npm install" \
+        "Expected timeout wrapping npm install"
+fi
+
+if grep -q 'for attempt in 1 2 3' "$INSTALL_CODEX"; then
+    pass "install-codex.sh retries transient failures"
+else
+    fail "install-codex.sh retries transient failures" \
+        "Expected three-attempt retry loop in install-codex.sh"
+fi
+
+if grep -q 'sudo npm install' "$INSTALL_CODEX"; then
+    fail "install-codex.sh avoids sudo npm install" \
+        "install-codex.sh should use writable user prefix instead of sudo"
+else
+    pass "install-codex.sh avoids sudo npm install"
+fi
+
+if grep -q 'hash -r' "$INSTALL_CODEX"; then
+    pass "install-codex.sh refreshes command cache after install"
+else
+    fail "install-codex.sh refreshes command cache after install" \
+        "Expected hash -r usage in install-codex.sh"
+fi
+
+if grep -q 'codex-install-failure-state' "$POST_START"; then
+    pass "post-start.sh tracks Codex failure state"
+else
+    fail "post-start.sh tracks Codex failure state" \
+        "Expected codex-install-failure-state usage in post-start.sh"
+fi
+
+if grep -q 'Skipping Codex retry' "$POST_START"; then
+    pass "post-start.sh defers retries after repeated failures"
+else
+    fail "post-start.sh defers retries after repeated failures" \
+        "Expected retry deferral log in post-start.sh"
+fi
+
+forward_ports_block="$(awk '/"forwardPorts"[[:space:]]*:/,/\]/ { print }' "$DEVCONTAINER_JSON")"
+if grep -q '1455' <<<"$forward_ports_block"; then
+    pass "devcontainer.json forwards Codex OAuth callback port 1455"
+else
+    fail "devcontainer.json forwards Codex OAuth callback port 1455" \
+        "Expected forwardPorts to include 1455 for browser callback routing"
+fi
+
+if grep -q '"codex:login"' "$PACKAGE_JSON" && grep -q 'scripts/codex-login\.sh' "$PACKAGE_JSON"; then
+    pass "package.json exposes codex:login wrapper command"
+else
+    fail "package.json exposes codex:login wrapper command" \
+        "Expected codex:login script mapped to scripts/codex-login.sh"
+fi
+
+if grep -q '"codex:login:browser"' "$PACKAGE_JSON" && grep -q 'codex-login\.sh --browser' "$PACKAGE_JSON"; then
+    pass "package.json exposes codex:login:browser override"
+else
+    fail "package.json exposes codex:login:browser override" \
+        "Expected codex:login:browser script with --browser override"
+fi
+
+if grep -q '"codex:yolo"' "$PACKAGE_JSON" && grep -q 'codex-yolo\.sh' "$PACKAGE_JSON"; then
+    pass "package.json exposes codex:yolo safe wrapper"
+else
+    fail "package.json exposes codex:yolo safe wrapper" \
+        "Expected codex:yolo script mapped to scripts/codex-yolo.sh"
+fi
+
+if grep -q 'device-auth' "$CODEX_LOGIN_WRAPPER"; then
+    fail "codex-login.sh avoids device-auth defaults" \
+        "Wrapper should remain browser-first and not auto-select device auth"
+else
+    pass "codex-login.sh avoids device-auth defaults"
+fi
+
+echo -e "${BLUE}Checking codex-login wrapper behavior...${NC}"
+
+tmp_bin_dir="$(mktemp -d)"
+cat >"$tmp_bin_dir/codex" <<'EOF'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >"${CODEX_TEST_OUTPUT_FILE:?}"
+EOF
+chmod +x "$tmp_bin_dir/codex"
+
+remote_out="$tmp_bin_dir/remote.out"
+if CODEX_TEST_OUTPUT_FILE="$remote_out" PATH="$tmp_bin_dir:$PATH" REMOTE_CONTAINERS=1 \
+    bash "$CODEX_LOGIN_WRAPPER" >/dev/null 2>&1; then
+    if [[ "$(cat "$remote_out")" == "login" ]]; then
+        pass "codex-login.sh keeps browser login default in remote context"
+    else
+        fail "codex-login.sh keeps browser login default in remote context" \
+            "Expected 'login', got '$(cat "$remote_out")'"
+    fi
+else
+    fail "codex-login.sh keeps browser login default in remote context" \
+        "Wrapper command failed in remote simulation"
+fi
+
+browser_out="$tmp_bin_dir/browser.out"
+if CODEX_TEST_OUTPUT_FILE="$browser_out" PATH="$tmp_bin_dir:$PATH" REMOTE_CONTAINERS=1 \
+    bash "$CODEX_LOGIN_WRAPPER" --browser >/dev/null 2>&1; then
+    if [[ "$(cat "$browser_out")" == "login" ]]; then
+        pass "codex-login.sh honors --browser override"
+    else
+        fail "codex-login.sh honors --browser override" \
+            "Expected 'login', got '$(cat "$browser_out")'"
+    fi
+else
+    fail "codex-login.sh honors --browser override" \
+        "Wrapper command failed with --browser override"
+fi
+
+status_out="$tmp_bin_dir/status.out"
+if CODEX_TEST_OUTPUT_FILE="$status_out" PATH="$tmp_bin_dir:$PATH" REMOTE_CONTAINERS=1 \
+    bash "$CODEX_LOGIN_WRAPPER" status >/dev/null 2>&1; then
+    if [[ "$(cat "$status_out")" == "login status" ]]; then
+        pass "codex-login.sh forwards explicit login subcommands"
+    else
+        fail "codex-login.sh forwards explicit login subcommands" \
+            "Expected 'login status', got '$(cat "$status_out")'"
+    fi
+else
+    fail "codex-login.sh forwards explicit login subcommands" \
+        "Wrapper command failed for explicit subcommand"
+fi
+
+local_out="$tmp_bin_dir/local.out"
+if CODEX_TEST_OUTPUT_FILE="$local_out" REMOTE_CONTAINERS='' CODESPACES='' VSCODE_IPC_HOOK_CLI='' PATH="$tmp_bin_dir:$PATH" \
+    bash "$CODEX_LOGIN_WRAPPER" >/dev/null 2>&1; then
+    if [[ "$(cat "$local_out")" == "login" ]]; then
+        pass "codex-login.sh keeps browser login default in local context"
+    else
+        fail "codex-login.sh keeps browser login default in local context" \
+            "Expected 'login', got '$(cat "$local_out")'"
+    fi
+else
+    fail "codex-login.sh keeps browser login default in local context" \
+        "Wrapper command failed in local simulation"
+fi
+
+rm -rf "$tmp_bin_dir"
+
+if grep -qE 'timeout[[:space:]]+"\$\{AUTH_STATUS_TIMEOUT_SECONDS\}"[[:space:]]+codex login status' "$CODEX_YOLO_WRAPPER"; then
+    pass "codex-yolo.sh checks auth status with timeout"
+else
+    fail "codex-yolo.sh checks auth status with timeout" \
+        "Expected timeout-wrapped codex login status check"
+fi
+
+if grep -qE 'run_with_timeout[[:space:]]+"\$\{EXEC_TIMEOUT_SECONDS\}"[[:space:]]+codex exec --dangerously-bypass-approvals-and-sandbox' "$CODEX_YOLO_WRAPPER"; then
+    pass "codex-yolo.sh bounds non-interactive exec duration with timeout"
+else
+    fail "codex-yolo.sh bounds non-interactive exec duration with timeout" \
+        "Expected helper-based timeout wrapper for codex exec fallback"
+fi
+
+if grep -qE 'run_with_timeout[[:space:]]+"\$\{EXEC_TIMEOUT_SECONDS\}"[[:space:]]+codex --dangerously-bypass-approvals-and-sandbox' "$CODEX_YOLO_WRAPPER"; then
+    pass "codex-yolo.sh bounds interactive yolo duration with timeout"
+else
+    fail "codex-yolo.sh bounds interactive yolo duration with timeout" \
+        "Expected helper-based timeout wrapper for interactive codex yolo"
+fi
+
+if grep -qE '\-t 0' "$CODEX_YOLO_WRAPPER" && grep -qE '\-t 1' "$CODEX_YOLO_WRAPPER" && grep -qE '\-t 2' "$CODEX_YOLO_WRAPPER"; then
+    pass "codex-yolo.sh detects interactive terminal via tty checks"
+else
+    fail "codex-yolo.sh detects interactive terminal via tty checks" \
+        "Expected -t checks for stdin/stdout/stderr"
+fi
+
+if grep -q 'codex exec --dangerously-bypass-approvals-and-sandbox' "$CODEX_YOLO_WRAPPER"; then
+    pass "codex-yolo.sh uses codex exec fallback for non-interactive mode"
+else
+    fail "codex-yolo.sh uses codex exec fallback for non-interactive mode" \
+        "Expected codex exec fallback command"
+fi
+
+if grep -q 'codex --dangerously-bypass-approvals-and-sandbox' "$CODEX_YOLO_WRAPPER"; then
+    pass "codex-yolo.sh keeps interactive yolo mode for tty terminals"
+else
+    fail "codex-yolo.sh keeps interactive yolo mode for tty terminals" \
+        "Expected interactive codex --dangerously-bypass-approvals-and-sandbox command"
+fi
+
+if grep -q 'device-auth' "$CODEX_YOLO_WRAPPER"; then
+    fail "codex-yolo.sh avoids device-auth defaults" \
+        "Wrapper should remain browser-first and not auto-select device auth"
+else
+    pass "codex-yolo.sh avoids device-auth defaults"
+fi
+
+echo -e "${BLUE}Checking codex-yolo wrapper behavior...${NC}"
+
+tmp_yolo_bin_dir="$(mktemp -d)"
+cat >"$tmp_yolo_bin_dir/codex" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ "$#" -ge 2 && "$1" == "login" && "$2" == "status" ]]; then
+    case "${CODEX_TEST_LOGIN_STATUS:-logged-in}" in
+        logged-in)
+            echo "Logged in"
+            exit 0
+            ;;
+        *)
+            echo "Not logged in"
+            exit 1
+            ;;
+    esac
+fi
+
+printf '%s\n' "$*" >"${CODEX_TEST_OUTPUT_FILE:?}"
+EOF
+chmod +x "$tmp_yolo_bin_dir/codex"
+
+yolo_exec_out="$tmp_yolo_bin_dir/yolo-exec.out"
+if CODEX_TEST_LOGIN_STATUS="logged-in" CODEX_TEST_OUTPUT_FILE="$yolo_exec_out" PATH="$tmp_yolo_bin_dir:$PATH" \
+    bash "$CODEX_YOLO_WRAPPER" "say hello" >/dev/null 2>&1; then
+    if [[ "$(cat "$yolo_exec_out")" == "exec --dangerously-bypass-approvals-and-sandbox say hello" ]]; then
+        pass "codex-yolo.sh routes non-tty prompts through codex exec"
+    else
+        fail "codex-yolo.sh routes non-tty prompts through codex exec" \
+            "Expected codex exec fallback, got '$(cat "$yolo_exec_out")'"
+    fi
+else
+    fail "codex-yolo.sh routes non-tty prompts through codex exec" \
+        "Wrapper command failed in non-tty simulation"
+fi
+
+no_args_err="$tmp_yolo_bin_dir/no-args.err"
+if CODEX_TEST_LOGIN_STATUS="logged-in" CODEX_TEST_OUTPUT_FILE="$tmp_yolo_bin_dir/no-args.out" PATH="$tmp_yolo_bin_dir:$PATH" \
+    bash "$CODEX_YOLO_WRAPPER" >/dev/null 2>"$no_args_err"; then
+    fail "codex-yolo.sh rejects non-tty invocation without prompt" \
+        "Wrapper should fail when no prompt is provided in non-tty mode"
+else
+    if grep -qi 'non-interactive usage requires a prompt' "$no_args_err"; then
+        pass "codex-yolo.sh rejects non-tty invocation without prompt"
+    else
+        fail "codex-yolo.sh rejects non-tty invocation without prompt" \
+            "Expected prompt guidance, got '$(cat "$no_args_err")'"
+    fi
+fi
+
+unauth_err="$tmp_yolo_bin_dir/unauth.err"
+unauth_out="$tmp_yolo_bin_dir/unauth.out"
+if CODEX_TEST_LOGIN_STATUS="not-logged-in" CODEX_TEST_OUTPUT_FILE="$unauth_out" PATH="$tmp_yolo_bin_dir:$PATH" \
+    bash "$CODEX_YOLO_WRAPPER" "say hello" >/dev/null 2>"$unauth_err"; then
+    fail "codex-yolo.sh fails fast when not authenticated" \
+        "Wrapper should reject yolo invocation when not logged in"
+else
+    if grep -qi 'authentication is required' "$unauth_err" && [[ ! -s "$unauth_out" ]]; then
+        pass "codex-yolo.sh fails fast when not authenticated"
+    else
+        fail "codex-yolo.sh fails fast when not authenticated" \
+            "Expected auth guidance without codex execution"
+    fi
+fi
+
+api_key_out="$tmp_yolo_bin_dir/api-key.out"
+if OPENAI_API_KEY="test-key" CODEX_TEST_LOGIN_STATUS="not-logged-in" CODEX_TEST_OUTPUT_FILE="$api_key_out" PATH="$tmp_yolo_bin_dir:$PATH" \
+    bash "$CODEX_YOLO_WRAPPER" "say hello" >/dev/null 2>&1; then
+    if [[ "$(cat "$api_key_out")" == "exec --dangerously-bypass-approvals-and-sandbox say hello" ]]; then
+        pass "codex-yolo.sh allows API key auth without login status"
+    else
+        fail "codex-yolo.sh allows API key auth without login status" \
+            "Expected codex exec fallback with API key"
+    fi
+else
+    fail "codex-yolo.sh allows API key auth without login status" \
+        "Wrapper command failed with API key override"
+fi
+
+rm -rf "$tmp_yolo_bin_dir"
 
 # ── Test 7: Data-driven volume mount cross-check ─────────────────────────────
 # Extract volume mount targets from devcontainer.json and verify they are
@@ -186,10 +695,10 @@ is_system_managed() {
 }
 
 # Extract volume mount target paths from devcontainer.json
-# Matches: "source=...,target=/some/path,type=volume"
+# Matches entries containing both type=volume and target=/some/path
 VOLUME_TARGETS=()
 while IFS= read -r line; do
-    if [[ "$line" =~ target=([^,\"]+),type=volume ]]; then
+    if [[ "$line" =~ type=volume ]] && [[ "$line" =~ target=([^,\"]+) ]]; then
         VOLUME_TARGETS+=("${BASH_REMATCH[1]}")
     fi
 done < "$DEVCONTAINER_JSON"

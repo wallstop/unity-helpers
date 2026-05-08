@@ -308,13 +308,13 @@ See [ObjectsHashCodePattern.cs](../code-samples/patterns/ObjectsHashCodePattern.
 
 When passing file arguments to CLI tools, a `--` (end-of-options) separator MUST appear before all file/glob arguments. Without this, attacker-controlled filenames (e.g., `--plugin=./evil.js`) are interpreted as CLI flags.
 
-| Forbidden                                                  | Use Instead                                                   | Reason                                       |
-| ---------------------------------------------------------- | ------------------------------------------------------------- | -------------------------------------------- |
-| `prettier --write "**/*.md"`                               | `prettier --write -- "**/*.md"`                               | Glob results could contain option-like names |
-| `markdownlint "**/*.md" --config .markdownlint.json --fix` | `markdownlint --config .markdownlint.json --fix -- "**/*.md"` | Options must precede `--`                    |
-| `npx --yes prettier@3.7.4 --write "**/*.{yml,yaml}"`       | `npx --yes prettier@3.7.4 --write -- "**/*.{yml,yaml}"`       | Applies to npx invocations too               |
-| `yamllint -c .yamllint.yaml "${FILES[@]}"`                 | `yamllint -c .yamllint.yaml -- "${FILES[@]}"`                 | Array expansion can contain malicious names  |
-| `lychee --no-progress "**/*.md"`                           | `lychee --no-progress -- "**/*.md"`                           | Any tool accepting file lists is vulnerable  |
+| Forbidden                                                                               | Use Instead                                                                                | Reason                                       |
+| --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ | -------------------------------------------- |
+| `node scripts/run-prettier.js --write "**/*.md"`                                        | `node scripts/run-prettier.js --write -- "**/*.md"`                                        | Glob results could contain option-like names |
+| `node scripts/run-node-bin.js markdownlint "**/*.md" --config .markdownlint.json --fix` | `node scripts/run-node-bin.js markdownlint --config .markdownlint.json --fix -- "**/*.md"` | Options must precede `--`                    |
+| `third-party-formatter --write "**/*.{yml,yaml}"`                                       | `node scripts/run-prettier.js --write -- "**/*.{yml,yaml}"`                                | Use the repo-pinned local tool               |
+| `yamllint -c .yamllint.yaml "${FILES[@]}"`                                              | `yamllint -c .yamllint.yaml -- "${FILES[@]}"`                                              | Array expansion can contain malicious names  |
+| `lychee --no-progress "**/*.md"`                                                        | `lychee --no-progress -- "**/*.md"`                                                        | Any tool accepting file lists is vulnerable  |
 
 ### Key Rules
 

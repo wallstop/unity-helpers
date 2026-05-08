@@ -110,11 +110,26 @@ else
   fi
 fi
 
-# 4) Format staged Markdown/JSON/YAML with Prettier and re-stage
-if ! command -v npx >/dev/null 2>&1; then
-  echo "npx is required for formatting. Please install Node.js." >&2
-  exit 1
-fi
+run_node_tool() {
+  node scripts/run-node-bin.js "$@"
+}
+
+run_prettier() {
+  node scripts/run-prettier.js "$@"
+}
+
+require_node_tool() {
+  local tool="$1"
+  local purpose="$2"
+  if ! command -v node >/dev/null 2>&1; then
+    echo "Node.js is required for $purpose. Install Node.js/npm and run npm install." >&2
+    exit 1
+  fi
+  if ! run_node_tool "$tool" --version >/dev/null 2>&1; then
+    echo "Repo-local $tool is unavailable for $purpose. Run 'npm install' on the same host that runs git hooks." >&2
+    exit 1
+  fi
+}
 
 # ============================================================================
 # SECURITY: Safe file list handling
@@ -244,10 +259,14 @@ done
 # ============================================================================
 
 # Prettier format and re-add using retry logic to handle index.lock contention
+if [ ${#MD_FILES_ARRAY[@]} -gt 0 ] || [ ${#JSON_FILES_ARRAY[@]} -gt 0 ] || [ ${#YAML_FILES_ARRAY[@]} -gt 0 ] || [ ${#JS_FILES_ARRAY[@]} -gt 0 ]; then
+  require_node_tool prettier "Prettier formatting"
+fi
+
 if [ ${#MD_FILES_ARRAY[@]} -gt 0 ]; then
-  npx --no-install prettier --write --log-level warn -- "${MD_FILES_ARRAY[@]}"
+  run_prettier --write --log-level warn -- "${MD_FILES_ARRAY[@]}"
   # Verify formatting was successful before re-staging
-  if ! npx --no-install prettier --check -- "${MD_FILES_ARRAY[@]}" >/dev/null 2>&1; then
+  if ! run_prettier --check -- "${MD_FILES_ARRAY[@]}" >/dev/null 2>&1; then
     echo "Error: Prettier formatting verification failed for Markdown files." >&2
     exit 1
   fi
@@ -256,9 +275,9 @@ if [ ${#MD_FILES_ARRAY[@]} -gt 0 ]; then
 fi
 
 if [ ${#JSON_FILES_ARRAY[@]} -gt 0 ]; then
-  npx --no-install prettier --write --log-level warn -- "${JSON_FILES_ARRAY[@]}"
+  run_prettier --write --log-level warn -- "${JSON_FILES_ARRAY[@]}"
   # Verify formatting was successful before re-staging
-  if ! npx --no-install prettier --check -- "${JSON_FILES_ARRAY[@]}" >/dev/null 2>&1; then
+  if ! run_prettier --check -- "${JSON_FILES_ARRAY[@]}" >/dev/null 2>&1; then
     echo "Error: Prettier formatting verification failed for JSON files." >&2
     exit 1
   fi
@@ -267,9 +286,9 @@ if [ ${#JSON_FILES_ARRAY[@]} -gt 0 ]; then
 fi
 
 if [ ${#YAML_FILES_ARRAY[@]} -gt 0 ]; then
-  npx --no-install prettier --write --log-level warn -- "${YAML_FILES_ARRAY[@]}"
+  run_prettier --write --log-level warn -- "${YAML_FILES_ARRAY[@]}"
   # Verify formatting was successful before re-staging
-  if ! npx --no-install prettier --check -- "${YAML_FILES_ARRAY[@]}" >/dev/null 2>&1; then
+  if ! run_prettier --check -- "${YAML_FILES_ARRAY[@]}" >/dev/null 2>&1; then
     echo "Error: Prettier formatting verification failed for YAML files." >&2
     exit 1
   fi
@@ -278,9 +297,9 @@ if [ ${#YAML_FILES_ARRAY[@]} -gt 0 ]; then
 fi
 
 if [ ${#JS_FILES_ARRAY[@]} -gt 0 ]; then
-  npx --no-install prettier --write --log-level warn -- "${JS_FILES_ARRAY[@]}"
+  run_prettier --write --log-level warn -- "${JS_FILES_ARRAY[@]}"
   # Verify formatting was successful before re-staging
-  if ! npx --no-install prettier --check -- "${JS_FILES_ARRAY[@]}" >/dev/null 2>&1; then
+  if ! run_prettier --check -- "${JS_FILES_ARRAY[@]}" >/dev/null 2>&1; then
     echo "Error: Prettier formatting verification failed for JS files." >&2
     exit 1
   fi
@@ -301,12 +320,13 @@ fi
 
 # 7) Markdown lint for staged Markdown files
 if [ ${#MD_FILES_ARRAY[@]} -gt 0 ]; then
+  require_node_tool markdownlint "markdownlint validation"
   # First, auto-fix what can be fixed
-  npx --no-install markdownlint --fix --config .markdownlint.json --ignore-path .markdownlintignore -- "${MD_FILES_ARRAY[@]}" || true
+  run_node_tool markdownlint --fix --config .markdownlint.json --ignore-path .markdownlintignore -- "${MD_FILES_ARRAY[@]}" || true
   # Re-stage the fixed files
   stage_with_retry_or_fail "markdownlint auto-fix re-stage" "${MD_FILES_ARRAY[@]}"
   # Then run markdownlint again to catch any remaining unfixable issues
-  npx --no-install markdownlint --config .markdownlint.json --ignore-path .markdownlintignore -- "${MD_FILES_ARRAY[@]}"
+  run_node_tool markdownlint --config .markdownlint.json --ignore-path .markdownlintignore -- "${MD_FILES_ARRAY[@]}"
 fi
 
 # 7b) CHANGELOG lint when CHANGELOG.md is staged
@@ -371,42 +391,42 @@ fi
 # 9) Spell check staged files with cspell
 # Runs on markdown, code, and config files
 if [ ${#SPELL_FILES_ARRAY[@]} -gt 0 ]; then
-  if npx --no-install cspell --version >/dev/null 2>&1; then
-    echo "Running spell check on staged files..."
-    # Use a temp file to avoid Windows command length limits with large staged sets
-    SPELL_FILE_LIST="$(mktemp 2>/dev/null || true)"
-    if [ -z "$SPELL_FILE_LIST" ]; then
-      echo "Error: Failed to create temporary file for spell check file list." >&2
-      exit 1
-    fi
+  require_node_tool cspell "spell checking"
+  echo "Running spell check on staged files..."
+  # Use a temp file to avoid Windows command length limits with large staged sets
+  SPELL_FILE_LIST="$(mktemp 2>/dev/null || true)"
+  if [ -z "$SPELL_FILE_LIST" ]; then
+    echo "Error: Failed to create temporary file for spell check file list." >&2
+    exit 1
+  fi
 
-    trap 'rm -f "$SPELL_FILE_LIST"' EXIT
-    printf '%s\n' "${SPELL_FILES_ARRAY[@]}" > "$SPELL_FILE_LIST"
-    # Capture cspell output so we can both display it AND scan it for
-    # lint-error-code-shaped tokens (the most common source of regression;
-    # see 2026-04-19 PWS001 incident documented in .githooks/pre-merge-commit).
-    # Use --no-must-find-files to avoid errors when files are filtered by cspell config.
-    SPELL_CAPTURE="$(mktemp 2>/dev/null || true)"
-    if [ -z "$SPELL_CAPTURE" ]; then
-      echo "Error: Failed to create temporary file for spell check output." >&2
-      exit 1
-    fi
-    # Extend the existing trap so both temp files are cleaned up.
-    trap 'rm -f "$SPELL_FILE_LIST" "$SPELL_CAPTURE"' EXIT
-    # IMPORTANT: do NOT use `if ! cspell ... | tee "$SPELL_CAPTURE"; then`.
-    # Even with pipefail enabled on the top of the file, keeping the
-    # explicit-exit-code form below is the paranoid belt-and-braces guard
-    # against a future revert of pipefail in this hook. The pattern is:
-    #   1. capture cspell output directly to the temp file,
-    #   2. capture cspell's exit status in SPELL_EXIT,
-    #   3. cat the capture so the user still sees the diagnostics,
-    #   4. branch on SPELL_EXIT only.
-    # This is the regression guard against P0-1 (Round 1 shipped the tee form
-    # on a `set -e`-only hook and silently passed every spelling failure).
-    SPELL_EXIT=0
-    npx --no-install cspell lint --no-must-find-files --no-progress --show-suggestions --file-list "$SPELL_FILE_LIST" >"$SPELL_CAPTURE" 2>&1 || SPELL_EXIT=$?
-    cat "$SPELL_CAPTURE"
-    if [ "$SPELL_EXIT" -ne 0 ]; then
+  trap 'rm -f "$SPELL_FILE_LIST"' EXIT
+  printf '%s\n' "${SPELL_FILES_ARRAY[@]}" > "$SPELL_FILE_LIST"
+  # Capture cspell output so we can both display it AND scan it for
+  # lint-error-code-shaped tokens (the most common source of regression;
+  # see 2026-04-19 PWS001 incident documented in .githooks/pre-merge-commit).
+  # Use --no-must-find-files to avoid errors when files are filtered by cspell config.
+  SPELL_CAPTURE="$(mktemp 2>/dev/null || true)"
+  if [ -z "$SPELL_CAPTURE" ]; then
+    echo "Error: Failed to create temporary file for spell check output." >&2
+    exit 1
+  fi
+  # Extend the existing trap so both temp files are cleaned up.
+  trap 'rm -f "$SPELL_FILE_LIST" "$SPELL_CAPTURE"' EXIT
+  # IMPORTANT: do NOT use `if ! cspell ... | tee "$SPELL_CAPTURE"; then`.
+  # Even with pipefail enabled on the top of the file, keeping the
+  # explicit-exit-code form below is the paranoid belt-and-braces guard
+  # against a future revert of pipefail in this hook. The pattern is:
+  #   1. capture cspell output directly to the temp file,
+  #   2. capture cspell's exit status in SPELL_EXIT,
+  #   3. cat the capture so the user still sees the diagnostics,
+  #   4. branch on SPELL_EXIT only.
+  # This is the regression guard against P0-1 (Round 1 shipped the tee form
+  # on a `set -e`-only hook and silently passed every spelling failure).
+  SPELL_EXIT=0
+  run_node_tool cspell lint --no-must-find-files --no-progress --show-suggestions --file-list "$SPELL_FILE_LIST" >"$SPELL_CAPTURE" 2>&1 || SPELL_EXIT=$?
+  cat "$SPELL_CAPTURE"
+  if [ "$SPELL_EXIT" -ne 0 ]; then
       echo "" >&2
       echo "=== Spelling errors detected ===" >&2
       echo "Fix typos or add valid terms to the appropriate dictionary in cspell.json:" >&2
@@ -441,9 +461,6 @@ if [ ${#SPELL_FILES_ARRAY[@]} -gt 0 ]; then
       echo "Re-run locally: npm run lint:spelling" >&2
       echo "" >&2
       exit 1
-    fi
-  else
-    echo "cspell not found; skipping spell check (run 'npm install' to install)." >&2
   fi
 fi
 

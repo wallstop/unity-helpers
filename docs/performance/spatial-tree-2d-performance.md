@@ -41,7 +41,7 @@ This document contains performance benchmarks for the 2D spatial tree implementa
     </tr>
   </thead>
   <tbody>
-    <tr><td align="left">1,000,000 entries</td><td align="right">3 (0.312s)</td><td align="right">6 (0.151s)</td><td align="right">4 (0.221s)</td><td align="right">3 (0.314s)</td></tr>
+    <tr><td align="left">1,000,000 entries</td><td align="right">2 (0.339s)</td><td align="right">6 (0.163s)</td><td align="right">4 (0.225s)</td><td align="right">3 (0.274s)</td></tr>
   </tbody>
 </table>
 
@@ -58,10 +58,10 @@ This document contains performance benchmarks for the 2D spatial tree implementa
     </tr>
   </thead>
   <tbody>
-    <tr><td align="left">Full (~span/2) (r=499.5)</td><td align="right">59</td><td align="right">59</td><td align="right">58</td><td align="right">7</td></tr>
-    <tr><td align="left">Half (~span/4) (r=249.8)</td><td align="right">238</td><td align="right">238</td><td align="right">217</td><td align="right">28</td></tr>
-    <tr><td align="left">Quarter (~span/8) (r=124.9)</td><td align="right">946</td><td align="right">946</td><td align="right">813</td><td align="right">119</td></tr>
-    <tr><td align="left">Tiny (~span/1000) (r=1)</td><td align="right">99,724</td><td align="right">101,966</td><td align="right">137,096</td><td align="right">99,994</td></tr>
+    <tr><td align="left">Full (~span/2) (r=499.5)</td><td align="right">59</td><td align="right">59</td><td align="right">55</td><td align="right">7</td></tr>
+    <tr><td align="left">Half (~span/4) (r=249.8)</td><td align="right">238</td><td align="right">231</td><td align="right">204</td><td align="right">28</td></tr>
+    <tr><td align="left">Quarter (~span/8) (r=124.9)</td><td align="right">945</td><td align="right">927</td><td align="right">813</td><td align="right">119</td></tr>
+    <tr><td align="left">Tiny (~span/1000) (r=1)</td><td align="right">98,293</td><td align="right">99,231</td><td align="right">136,859</td><td align="right">98,699</td></tr>
   </tbody>
 </table>
 
@@ -78,10 +78,10 @@ This document contains performance benchmarks for the 2D spatial tree implementa
     </tr>
   </thead>
   <tbody>
-    <tr><td align="left">Full (size=999.0x999.0)</td><td align="right">407</td><td align="right">411</td><td align="right">366</td><td align="right">19</td></tr>
-    <tr><td align="left">Half (size=499.5x499.5)</td><td align="right">1,795</td><td align="right">1,802</td><td align="right">1,221</td><td align="right">88</td></tr>
-    <tr><td align="left">Quarter (size=249.8x249.8)</td><td align="right">7,115</td><td align="right">6,980</td><td align="right">3,798</td><td align="right">380</td></tr>
-    <tr><td align="left">Unit (size=1)</td><td align="right">141,664</td><td align="right">144,487</td><td align="right">183,791</td><td align="right">104,753</td></tr>
+    <tr><td align="left">Full (size=999.0x999.0)</td><td align="right">270</td><td align="right">394</td><td align="right">359</td><td align="right">17</td></tr>
+    <tr><td align="left">Half (size=499.5x499.5)</td><td align="right">1,774</td><td align="right">1,812</td><td align="right">1,224</td><td align="right">69</td></tr>
+    <tr><td align="left">Quarter (size=249.8x249.8)</td><td align="right">6,874</td><td align="right">7,157</td><td align="right">3,820</td><td align="right">361</td></tr>
+    <tr><td align="left">Unit (size=1)</td><td align="right">141,582</td><td align="right">145,100</td><td align="right">184,680</td><td align="right">101,563</td></tr>
   </tbody>
 </table>
 
@@ -98,10 +98,10 @@ This document contains performance benchmarks for the 2D spatial tree implementa
     </tr>
   </thead>
   <tbody>
-    <tr><td align="left">500 neighbors</td><td align="right">8,206</td><td align="right">16,253</td><td align="right">12,254</td><td align="right">59,120</td></tr>
-    <tr><td align="left">100 neighbors</td><td align="right">67,908</td><td align="right">66,022</td><td align="right">66,565</td><td align="right">123,474</td></tr>
-    <tr><td align="left">10 neighbors</td><td align="right">202,943</td><td align="right">190,315</td><td align="right">149,013</td><td align="right">170,797</td></tr>
-    <tr><td align="left">1 neighbor</td><td align="right">267,876</td><td align="right">241,162</td><td align="right">175,228</td><td align="right">177,513</td></tr>
+    <tr><td align="left">500 neighbors</td><td align="right">8,170</td><td align="right">16,230</td><td align="right">12,171</td><td align="right">59,089</td></tr>
+    <tr><td align="left">100 neighbors</td><td align="right">67,998</td><td align="right">66,044</td><td align="right">66,325</td><td align="right">123,678</td></tr>
+    <tr><td align="left">10 neighbors</td><td align="right">203,190</td><td align="right">195,156</td><td align="right">145,400</td><td align="right">170,276</td></tr>
+    <tr><td align="left">1 neighbor</td><td align="right">263,680</td><td align="right">261,576</td><td align="right">143,886</td><td align="right">176,123</td></tr>
   </tbody>
 </table>
 
@@ -120,7 +120,7 @@ This document contains performance benchmarks for the 2D spatial tree implementa
     </tr>
   </thead>
   <tbody>
-    <tr><td align="left">100,000 entries</td><td align="right">50 (0.020s)</td><td align="right">83 (0.012s)</td><td align="right">50 (0.020s)</td><td align="right">9 (0.109s)</td></tr>
+    <tr><td align="left">100,000 entries</td><td align="right">49 (0.020s)</td><td align="right">84 (0.012s)</td><td align="right">49 (0.020s)</td><td align="right">50 (0.020s)</td></tr>
   </tbody>
 </table>
 
@@ -137,10 +137,10 @@ This document contains performance benchmarks for the 2D spatial tree implementa
     </tr>
   </thead>
   <tbody>
-    <tr><td align="left">Full (~span/2) (r=199.5)</td><td align="right">600</td><td align="right">601</td><td align="right">599</td><td align="right">74</td></tr>
-    <tr><td align="left">Half (~span/4) (r=99.75)</td><td align="right">1,351</td><td align="right">1,356</td><td align="right">1,246</td><td align="right">185</td></tr>
-    <tr><td align="left">Quarter (~span/8) (r=49.88)</td><td align="right">4,642</td><td align="right">5,154</td><td align="right">4,293</td><td align="right">722</td></tr>
-    <tr><td align="left">Tiny (~span/1000) (r=1)</td><td align="right">122,543</td><td align="right">122,801</td><td align="right">168,775</td><td align="right">132,560</td></tr>
+    <tr><td align="left">Full (~span/2) (r=199.5)</td><td align="right">600</td><td align="right">601</td><td align="right">585</td><td align="right">74</td></tr>
+    <tr><td align="left">Half (~span/4) (r=99.75)</td><td align="right">1,354</td><td align="right">1,324</td><td align="right">1,202</td><td align="right">185</td></tr>
+    <tr><td align="left">Quarter (~span/8) (r=49.88)</td><td align="right">4,641</td><td align="right">5,036</td><td align="right">4,274</td><td align="right">721</td></tr>
+    <tr><td align="left">Tiny (~span/1000) (r=1)</td><td align="right">120,657</td><td align="right">120,129</td><td align="right">168,546</td><td align="right">130,169</td></tr>
   </tbody>
 </table>
 
@@ -157,10 +157,10 @@ This document contains performance benchmarks for the 2D spatial tree implementa
     </tr>
   </thead>
   <tbody>
-    <tr><td align="left">Full (size=399.0x249.0)</td><td align="right">4,453</td><td align="right">4,549</td><td align="right">4,563</td><td align="right">238</td></tr>
-    <tr><td align="left">Half (size=199.5x124.5)</td><td align="right">9,453</td><td align="right">11,770</td><td align="right">7,930</td><td align="right">964</td></tr>
-    <tr><td align="left">Quarter (size=99.75x62.25)</td><td align="right">26,044</td><td align="right">31,978</td><td align="right">19,472</td><td align="right">3,795</td></tr>
-    <tr><td align="left">Unit (size=1)</td><td align="right">172,836</td><td align="right">173,333</td><td align="right">224,605</td><td align="right">140,946</td></tr>
+    <tr><td align="left">Full (size=399.0x249.0)</td><td align="right">4,494</td><td align="right">4,508</td><td align="right">4,609</td><td align="right">236</td></tr>
+    <tr><td align="left">Half (size=199.5x124.5)</td><td align="right">9,417</td><td align="right">11,739</td><td align="right">7,955</td><td align="right">957</td></tr>
+    <tr><td align="left">Quarter (size=99.75x62.25)</td><td align="right">25,018</td><td align="right">31,756</td><td align="right">19,444</td><td align="right">3,787</td></tr>
+    <tr><td align="left">Unit (size=1)</td><td align="right">172,229</td><td align="right">173,621</td><td align="right">226,206</td><td align="right">136,957</td></tr>
   </tbody>
 </table>
 
@@ -177,10 +177,10 @@ This document contains performance benchmarks for the 2D spatial tree implementa
     </tr>
   </thead>
   <tbody>
-    <tr><td align="left">500 neighbors</td><td align="right">9,740</td><td align="right">9,685</td><td align="right">11,231</td><td align="right">59,001</td></tr>
-    <tr><td align="left">100 neighbors</td><td align="right">44,921</td><td align="right">77,959</td><td align="right">48,783</td><td align="right">147,429</td></tr>
-    <tr><td align="left">10 neighbors</td><td align="right">225,534</td><td align="right">200,018</td><td align="right">163,465</td><td align="right">192,974</td></tr>
-    <tr><td align="left">1 neighbor</td><td align="right">225,465</td><td align="right">276,002</td><td align="right">161,053</td><td align="right">201,342</td></tr>
+    <tr><td align="left">500 neighbors</td><td align="right">9,746</td><td align="right">9,649</td><td align="right">11,279</td><td align="right">59,259</td></tr>
+    <tr><td align="left">100 neighbors</td><td align="right">45,035</td><td align="right">78,375</td><td align="right">48,623</td><td align="right">141,809</td></tr>
+    <tr><td align="left">10 neighbors</td><td align="right">224,805</td><td align="right">201,634</td><td align="right">161,243</td><td align="right">191,622</td></tr>
+    <tr><td align="left">1 neighbor</td><td align="right">204,442</td><td align="right">272,235</td><td align="right">186,148</td><td align="right">199,245</td></tr>
   </tbody>
 </table>
 
@@ -199,7 +199,7 @@ This document contains performance benchmarks for the 2D spatial tree implementa
     </tr>
   </thead>
   <tbody>
-    <tr><td align="left">10,000 entries</td><td align="right">233 (0.004s)</td><td align="right">835 (0.001s)</td><td align="right">541 (0.002s)</td><td align="right">508 (0.002s)</td></tr>
+    <tr><td align="left">10,000 entries</td><td align="right">547 (0.002s)</td><td align="right">205 (0.005s)</td><td align="right">534 (0.002s)</td><td align="right">510 (0.002s)</td></tr>
   </tbody>
 </table>
 
@@ -216,10 +216,10 @@ This document contains performance benchmarks for the 2D spatial tree implementa
     </tr>
   </thead>
   <tbody>
-    <tr><td align="left">Full (~span/2) (r=49.50)</td><td align="right">5,875</td><td align="right">5,924</td><td align="right">5,920</td><td align="right">734</td></tr>
-    <tr><td align="left">Half (~span/4) (r=24.75)</td><td align="right">22,210</td><td align="right">22,289</td><td align="right">13,798</td><td align="right">2,918</td></tr>
-    <tr><td align="left">Quarter (~span/8) (r=12.38)</td><td align="right">43,481</td><td align="right">50,510</td><td align="right">37,612</td><td align="right">12,063</td></tr>
-    <tr><td align="left">Tiny (~span/1000) (r=1)</td><td align="right">158,679</td><td align="right">152,879</td><td align="right">217,222</td><td align="right">151,558</td></tr>
+    <tr><td align="left">Full (~span/2) (r=49.50)</td><td align="right">5,835</td><td align="right">5,923</td><td align="right">5,910</td><td align="right">716</td></tr>
+    <tr><td align="left">Half (~span/4) (r=24.75)</td><td align="right">22,309</td><td align="right">22,365</td><td align="right">13,492</td><td align="right">2,851</td></tr>
+    <tr><td align="left">Quarter (~span/8) (r=12.38)</td><td align="right">43,600</td><td align="right">50,531</td><td align="right">36,923</td><td align="right">11,864</td></tr>
+    <tr><td align="left">Tiny (~span/1000) (r=1)</td><td align="right">158,469</td><td align="right">150,623</td><td align="right">212,018</td><td align="right">149,034</td></tr>
   </tbody>
 </table>
 
@@ -236,10 +236,10 @@ This document contains performance benchmarks for the 2D spatial tree implementa
     </tr>
   </thead>
   <tbody>
-    <tr><td align="left">Full (size=99.00x99.00)</td><td align="right">43,343</td><td align="right">44,704</td><td align="right">45,372</td><td align="right">2,406</td></tr>
-    <tr><td align="left">Half (size=49.50x49.50)</td><td align="right">158,570</td><td align="right">140,495</td><td align="right">36,370</td><td align="right">9,239</td></tr>
-    <tr><td align="left">Quarter (size=24.75x24.75)</td><td align="right">73,307</td><td align="right">98,718</td><td align="right">73,266</td><td align="right">34,653</td></tr>
-    <tr><td align="left">Unit (size=1)</td><td align="right">222,078</td><td align="right">213,762</td><td align="right">286,948</td><td align="right">162,138</td></tr>
+    <tr><td align="left">Full (size=99.00x99.00)</td><td align="right">44,427</td><td align="right">44,160</td><td align="right">45,629</td><td align="right">2,400</td></tr>
+    <tr><td align="left">Half (size=49.50x49.50)</td><td align="right">138,733</td><td align="right">137,563</td><td align="right">36,764</td><td align="right">9,208</td></tr>
+    <tr><td align="left">Quarter (size=24.75x24.75)</td><td align="right">71,422</td><td align="right">99,969</td><td align="right">73,188</td><td align="right">34,689</td></tr>
+    <tr><td align="left">Unit (size=1)</td><td align="right">217,195</td><td align="right">215,448</td><td align="right">288,202</td><td align="right">161,586</td></tr>
   </tbody>
 </table>
 
@@ -256,10 +256,10 @@ This document contains performance benchmarks for the 2D spatial tree implementa
     </tr>
   </thead>
   <tbody>
-    <tr><td align="left">500 neighbors</td><td align="right">12,580</td><td align="right">12,647</td><td align="right">13,889</td><td align="right">55,797</td></tr>
-    <tr><td align="left">100 neighbors</td><td align="right">46,902</td><td align="right">50,902</td><td align="right">78,242</td><td align="right">148,788</td></tr>
-    <tr><td align="left">10 neighbors</td><td align="right">184,894</td><td align="right">207,390</td><td align="right">178,180</td><td align="right">211,248</td></tr>
-    <tr><td align="left">1 neighbor</td><td align="right">282,350</td><td align="right">285,939</td><td align="right">207,301</td><td align="right">224,225</td></tr>
+    <tr><td align="left">500 neighbors</td><td align="right">12,737</td><td align="right">12,616</td><td align="right">13,946</td><td align="right">55,527</td></tr>
+    <tr><td align="left">100 neighbors</td><td align="right">55,274</td><td align="right">49,313</td><td align="right">78,099</td><td align="right">148,808</td></tr>
+    <tr><td align="left">10 neighbors</td><td align="right">227,411</td><td align="right">158,790</td><td align="right">169,058</td><td align="right">209,840</td></tr>
+    <tr><td align="left">1 neighbor</td><td align="right">223,606</td><td align="right">265,422</td><td align="right">200,809</td><td align="right">221,366</td></tr>
   </tbody>
 </table>
 
@@ -278,7 +278,7 @@ This document contains performance benchmarks for the 2D spatial tree implementa
     </tr>
   </thead>
   <tbody>
-    <tr><td align="left">1,000 entries</td><td align="right">5,291 (0.000s)</td><td align="right">7,668 (0.000s)</td><td align="right">4,816 (0.000s)</td><td align="right">4,595 (0.000s)</td></tr>
+    <tr><td align="left">1,000 entries</td><td align="right">5,151 (0.000s)</td><td align="right">7,776 (0.000s)</td><td align="right">4,694 (0.000s)</td><td align="right">4,555 (0.000s)</td></tr>
   </tbody>
 </table>
 
@@ -295,10 +295,10 @@ This document contains performance benchmarks for the 2D spatial tree implementa
     </tr>
   </thead>
   <tbody>
-    <tr><td align="left">Full (~span/2) (r=24.50)</td><td align="right">57,007</td><td align="right">56,693</td><td align="right">56,124</td><td align="right">7,330</td></tr>
-    <tr><td align="left">Half (~span/4) (r=12.25)</td><td align="right">59,134</td><td align="right">74,131</td><td align="right">56,058</td><td align="right">14,528</td></tr>
-    <tr><td align="left">Quarter (~span/8) (r=6.13)</td><td align="right">92,781</td><td align="right">104,908</td><td align="right">92,734</td><td align="right">36,895</td></tr>
-    <tr><td align="left">Tiny (~span/1000) (r=1)</td><td align="right">222,860</td><td align="right">220,260</td><td align="right">303,674</td><td align="right">216,071</td></tr>
+    <tr><td align="left">Full (~span/2) (r=24.50)</td><td align="right">56,995</td><td align="right">56,230</td><td align="right">55,896</td><td align="right">7,058</td></tr>
+    <tr><td align="left">Half (~span/4) (r=12.25)</td><td align="right">59,112</td><td align="right">74,559</td><td align="right">55,979</td><td align="right">13,922</td></tr>
+    <tr><td align="left">Quarter (~span/8) (r=6.13)</td><td align="right">92,658</td><td align="right">104,920</td><td align="right">92,486</td><td align="right">35,680</td></tr>
+    <tr><td align="left">Tiny (~span/1000) (r=1)</td><td align="right">222,202</td><td align="right">220,277</td><td align="right">297,368</td><td align="right">206,152</td></tr>
   </tbody>
 </table>
 
@@ -315,10 +315,10 @@ This document contains performance benchmarks for the 2D spatial tree implementa
     </tr>
   </thead>
   <tbody>
-    <tr><td align="left">Full (size=49.00x19.00)</td><td align="right">430,126</td><td align="right">429,961</td><td align="right">459,090</td><td align="right">23,704</td></tr>
-    <tr><td align="left">Half (size=24.50x9.5)</td><td align="right">157,744</td><td align="right">263,111</td><td align="right">120,855</td><td align="right">71,562</td></tr>
-    <tr><td align="left">Quarter (size=12.25x4.75)</td><td align="right">247,926</td><td align="right">262,495</td><td align="right">181,191</td><td align="right">158,034</td></tr>
-    <tr><td align="left">Unit (size=1)</td><td align="right">305,499</td><td align="right">302,558</td><td align="right">400,384</td><td align="right">237,879</td></tr>
+    <tr><td align="left">Full (size=49.00x19.00)</td><td align="right">426,624</td><td align="right">431,008</td><td align="right">373,813</td><td align="right">23,621</td></tr>
+    <tr><td align="left">Half (size=24.50x9.5)</td><td align="right">156,916</td><td align="right">256,359</td><td align="right">117,824</td><td align="right">71,241</td></tr>
+    <tr><td align="left">Quarter (size=12.25x4.75)</td><td align="right">246,321</td><td align="right">255,452</td><td align="right">181,493</td><td align="right">157,622</td></tr>
+    <tr><td align="left">Unit (size=1)</td><td align="right">299,240</td><td align="right">298,725</td><td align="right">399,346</td><td align="right">236,769</td></tr>
   </tbody>
 </table>
 
@@ -335,10 +335,10 @@ This document contains performance benchmarks for the 2D spatial tree implementa
     </tr>
   </thead>
   <tbody>
-    <tr><td align="left">500 neighbors</td><td align="right">42,223</td><td align="right">42,920</td><td align="right">36,490</td><td align="right">59,756</td></tr>
-    <tr><td align="left">100 neighbors</td><td align="right">69,426</td><td align="right">67,325</td><td align="right">75,633</td><td align="right">164,039</td></tr>
-    <tr><td align="left">10 neighbors</td><td align="right">222,227</td><td align="right">243,970</td><td align="right">195,434</td><td align="right">236,157</td></tr>
-    <tr><td align="left">1 neighbor</td><td align="right">278,527</td><td align="right">245,828</td><td align="right">195,817</td><td align="right">250,082</td></tr>
+    <tr><td align="left">500 neighbors</td><td align="right">41,173</td><td align="right">42,778</td><td align="right">36,594</td><td align="right">59,730</td></tr>
+    <tr><td align="left">100 neighbors</td><td align="right">68,908</td><td align="right">67,186</td><td align="right">74,762</td><td align="right">162,066</td></tr>
+    <tr><td align="left">10 neighbors</td><td align="right">229,540</td><td align="right">233,936</td><td align="right">192,974</td><td align="right">227,546</td></tr>
+    <tr><td align="left">1 neighbor</td><td align="right">306,128</td><td align="right">230,085</td><td align="right">193,384</td><td align="right">228,793</td></tr>
   </tbody>
 </table>
 
@@ -357,7 +357,7 @@ This document contains performance benchmarks for the 2D spatial tree implementa
     </tr>
   </thead>
   <tbody>
-    <tr><td align="left">100 entries</td><td align="right">41,322 (0.000s)</td><td align="right">32,362 (0.000s)</td><td align="right">27,322 (0.000s)</td><td align="right">20,703 (0.000s)</td></tr>
+    <tr><td align="left">100 entries</td><td align="right">39,370 (0.000s)</td><td align="right">22,675 (0.000s)</td><td align="right">14,641 (0.000s)</td><td align="right">21,231 (0.000s)</td></tr>
   </tbody>
 </table>
 
@@ -374,10 +374,10 @@ This document contains performance benchmarks for the 2D spatial tree implementa
     </tr>
   </thead>
   <tbody>
-    <tr><td align="left">Full (~span/2) (r=4.5)</td><td align="right">438,910</td><td align="right">439,298</td><td align="right">438,875</td><td align="right">69,290</td></tr>
-    <tr><td align="left">Half (~span/4) (r=2.25)</td><td align="right">378,963</td><td align="right">382,697</td><td align="right">237,452</td><td align="right">205,575</td></tr>
-    <tr><td align="left">Quarter (~span/8) (r=1.13)</td><td align="right">379,230</td><td align="right">382,620</td><td align="right">494,646</td><td align="right">277,996</td></tr>
-    <tr><td align="left">Tiny (~span/1000) (r=1)</td><td align="right">379,206</td><td align="right">382,740</td><td align="right">496,709</td><td align="right">278,197</td></tr>
+    <tr><td align="left">Full (~span/2) (r=4.5)</td><td align="right">424,908</td><td align="right">350,023</td><td align="right">429,776</td><td align="right">68,536</td></tr>
+    <tr><td align="left">Half (~span/4) (r=2.25)</td><td align="right">368,298</td><td align="right">327,663</td><td align="right">232,135</td><td align="right">198,728</td></tr>
+    <tr><td align="left">Quarter (~span/8) (r=1.13)</td><td align="right">361,799</td><td align="right">333,252</td><td align="right">484,465</td><td align="right">270,330</td></tr>
+    <tr><td align="left">Tiny (~span/1000) (r=1)</td><td align="right">366,765</td><td align="right">339,049</td><td align="right">491,007</td><td align="right">271,447</td></tr>
   </tbody>
 </table>
 
@@ -394,10 +394,10 @@ This document contains performance benchmarks for the 2D spatial tree implementa
     </tr>
   </thead>
   <tbody>
-    <tr><td align="left">Full (size=9x9)</td><td align="right">1,272,354</td><td align="right">1,354,621</td><td align="right">1,394,343</td><td align="right">195,271</td></tr>
-    <tr><td align="left">Half (size=4.5x4.5)</td><td align="right">476,706</td><td align="right">472,738</td><td align="right">323,833</td><td align="right">299,443</td></tr>
-    <tr><td align="left">Quarter (size=2.25x2.25)</td><td align="right">493,145</td><td align="right">500,843</td><td align="right">622,143</td><td align="right">314,123</td></tr>
-    <tr><td align="left">Unit (size=1)</td><td align="right">493,109</td><td align="right">499,483</td><td align="right">620,950</td><td align="right">314,175</td></tr>
+    <tr><td align="left">Full (size=9x9)</td><td align="right">1,213,305</td><td align="right">1,199,091</td><td align="right">1,381,012</td><td align="right">193,676</td></tr>
+    <tr><td align="left">Half (size=4.5x4.5)</td><td align="right">366,200</td><td align="right">390,340</td><td align="right">324,182</td><td align="right">296,281</td></tr>
+    <tr><td align="left">Quarter (size=2.25x2.25)</td><td align="right">389,918</td><td align="right">419,365</td><td align="right">622,169</td><td align="right">304,900</td></tr>
+    <tr><td align="left">Unit (size=1)</td><td align="right">377,223</td><td align="right">449,661</td><td align="right">606,231</td><td align="right">303,985</td></tr>
   </tbody>
 </table>
 
@@ -414,9 +414,9 @@ This document contains performance benchmarks for the 2D spatial tree implementa
     </tr>
   </thead>
   <tbody>
-    <tr><td align="left">100 neighbors (max)</td><td align="right">123,698</td><td align="right">123,197</td><td align="right">135,888</td><td align="right">180,194</td></tr>
-    <tr><td align="left">10 neighbors</td><td align="right">250,243</td><td align="right">208,673</td><td align="right">255,381</td><td align="right">271,081</td></tr>
-    <tr><td align="left">1 neighbor</td><td align="right">244,327</td><td align="right">312,085</td><td align="right">267,884</td><td align="right">290,000</td></tr>
+    <tr><td align="left">100 neighbors (max)</td><td align="right">85,200</td><td align="right">110,718</td><td align="right">130,989</td><td align="right">171,955</td></tr>
+    <tr><td align="left">10 neighbors</td><td align="right">175,016</td><td align="right">222,050</td><td align="right">233,907</td><td align="right">270,041</td></tr>
+    <tr><td align="left">1 neighbor</td><td align="right">178,877</td><td align="right">289,379</td><td align="right">231,762</td><td align="right">284,316</td></tr>
   </tbody>
 </table>
 <!-- tabs:end -->

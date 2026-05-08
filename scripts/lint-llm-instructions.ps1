@@ -323,7 +323,7 @@ if ($normalizedExpected -ne $normalizedCurrent) {
         Write-Info "Running prettier to format context.md..."
         Push-Location $repoRoot
         try {
-            $prettierOutput = npx --no-install prettier --write -- .llm/context.md 2>&1
+            $prettierOutput = node scripts/run-prettier.js --write -- .llm/context.md 2>&1
             if ($LASTEXITCODE -ne 0) {
                 Write-ErrorMsg "Prettier formatting failed (exit code $LASTEXITCODE):"
                 Write-Host $prettierOutput -ForegroundColor Red

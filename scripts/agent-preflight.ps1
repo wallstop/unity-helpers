@@ -407,6 +407,182 @@ function Test-MetaRequiredPath {
     return $true
 }
 
+function Test-NodeToolAvailable {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$RepoRoot,
+        [Parameter(Mandatory = $true)]
+        [string]$ToolName,
+        [Parameter(Mandatory = $true)]
+        [string]$Purpose,
+        [Parameter(Mandatory = $true)]
+        [switch]$Fix,
+        [Parameter(Mandatory = $true)]
+        [ref]$FailureCount
+    )
+
+    if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
+        Write-ErrorMsg "Node.js is required for $Purpose. Install Node.js/npm and run npm install."
+        $FailureCount.Value++
+        return $false
+    }
+
+    Push-Location $RepoRoot
+    try {
+        $toolOutput = & node (Join-Path $RepoRoot 'scripts/run-node-bin.js') $ToolName --version 2>&1
+        if ($LASTEXITCODE -eq 0) {
+            Write-Info "npm tool available for ${Purpose}: $ToolName"
+            return $true
+        }
+    }
+    finally {
+        Pop-Location
+    }
+
+    Write-ErrorMsg "Required npm tool '$ToolName' is not installed for $Purpose."
+    foreach ($line in $toolOutput) {
+        Write-Host $line -ForegroundColor DarkGray
+    }
+    Write-Host 'Run: npm install' -ForegroundColor Cyan
+    $rerunScript = if ($Fix) { 'agent:preflight:fix' } else { 'agent:preflight' }
+    Write-Host "Then re-run: npm run $rerunScript" -ForegroundColor Cyan
+    $FailureCount.Value++
+    return $false
+}
+
+function Invoke-NodeToolOnPaths {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$RepoRoot,
+        [Parameter(Mandatory = $true)]
+        [string]$ToolName,
+        [Parameter(Mandatory = $true)]
+        [string[]]$Arguments,
+        [Parameter(Mandatory = $true)]
+        [string[]]$Paths
+    )
+
+    $existingPaths = @()
+    foreach ($path in $Paths) {
+        $fullPath = Join-Path -Path $RepoRoot -ChildPath $path
+        if (Test-Path -LiteralPath $fullPath -PathType Leaf) {
+            $existingPaths += $path
+        }
+    }
+
+    if ($existingPaths.Count -eq 0) {
+        return 0
+    }
+
+    Push-Location $RepoRoot
+    try {
+        $output = & node (Join-Path $RepoRoot 'scripts/run-node-bin.js') $ToolName @Arguments -- $existingPaths 2>&1
+        $exitCode = $LASTEXITCODE
+        foreach ($line in $output) {
+            Write-Host $line
+        }
+        return $exitCode
+    }
+    finally {
+        Pop-Location
+    }
+}
+
+function Invoke-Prettier {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$RepoRoot,
+        [Parameter(Mandatory = $true)]
+        [string[]]$Arguments,
+        [switch]$SuppressOutput
+    )
+
+    $prettierCommand = [Environment]::GetEnvironmentVariable('AGENT_PREFLIGHT_PRETTIER_COMMAND')
+    Push-Location $RepoRoot
+    try {
+        if (-not [string]::IsNullOrWhiteSpace($prettierCommand)) {
+            $output = & $prettierCommand @Arguments 2>&1
+        }
+        else {
+            $output = & node (Join-Path $RepoRoot 'scripts/run-prettier.js') @Arguments 2>&1
+        }
+
+        $exitCode = $LASTEXITCODE
+        if (-not $SuppressOutput) {
+            foreach ($line in $output) {
+                Write-Host $line
+            }
+        }
+        return $exitCode
+    }
+    finally {
+        Pop-Location
+    }
+}
+
+function Test-PrettierAvailable {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$RepoRoot,
+        [Parameter(Mandatory = $true)]
+        [switch]$Fix,
+        [Parameter(Mandatory = $true)]
+        [ref]$FailureCount
+    )
+
+    $prettierCommand = [Environment]::GetEnvironmentVariable('AGENT_PREFLIGHT_PRETTIER_COMMAND')
+    if ([string]::IsNullOrWhiteSpace($prettierCommand) -and -not (Get-Command node -ErrorAction SilentlyContinue)) {
+        Write-ErrorMsg 'Node.js is required to run the repo-local Prettier launcher.'
+        Write-Host 'Install Node.js/npm, then run: npm install' -ForegroundColor Cyan
+        $FailureCount.Value++
+        return $false
+    }
+
+    if ((-not [string]::IsNullOrWhiteSpace($prettierCommand)) -and -not (Get-Command $prettierCommand -ErrorAction SilentlyContinue)) {
+        Write-ErrorMsg "Configured Prettier command '$prettierCommand' was not found."
+        $FailureCount.Value++
+        return $false
+    }
+
+    $exitCode = Invoke-Prettier -RepoRoot $RepoRoot -Arguments @('--version') -SuppressOutput
+    if ($exitCode -eq 0) {
+        Write-Info 'repo-local Prettier launcher is available.'
+        return $true
+    }
+
+    Write-ErrorMsg 'Repo-local Prettier is unavailable.'
+    Write-Host 'Run: npm install' -ForegroundColor Cyan
+    $rerunScript = if ($Fix) { 'agent:preflight:fix' } else { 'agent:preflight' }
+    Write-Host "Then re-run: npm run $rerunScript" -ForegroundColor Cyan
+    $FailureCount.Value++
+    return $false
+}
+
+function Invoke-PrettierOnPaths {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$RepoRoot,
+        [Parameter(Mandatory = $true)]
+        [string[]]$Arguments,
+        [Parameter(Mandatory = $true)]
+        [string[]]$Paths
+    )
+
+    $existingPaths = @()
+    foreach ($path in $Paths) {
+        $fullPath = Join-Path -Path $RepoRoot -ChildPath $path
+        if (Test-Path -LiteralPath $fullPath -PathType Leaf) {
+            $existingPaths += $path
+        }
+    }
+
+    if ($existingPaths.Count -eq 0) {
+        return 0
+    }
+
+    return Invoke-Prettier -RepoRoot $RepoRoot -Arguments (@($Arguments) + @('--') + @($existingPaths))
+}
+
 $repoRoot = (Get-Item $PSScriptRoot).Parent.FullName
 $sourceRoots = @('Runtime', 'Editor', 'Tests', 'Samples~', 'Shaders', 'Styles', 'URP', 'docs', 'scripts')
 
@@ -416,6 +592,8 @@ if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
 }
 
 $failureCount = 0
+$availableNodeTools = @{}
+$prettierAvailable = $false
 
 Test-GitPushConfig -RepoRoot $repoRoot -FailureCount ([ref]$failureCount) -Fix:$Fix
 Test-StrayArtifactFiles -RepoRoot $repoRoot -FailureCount ([ref]$failureCount) -Fix:$Fix
@@ -462,8 +640,65 @@ $llmSizeTargets = @(
         $_ -eq '.llm/context.md' -or $_ -like '.llm/skills/*.md'
     }
 )
+$prettierTargets = @(
+    $relativePaths | Where-Object {
+        $_ -like '*.md' -or
+        $_ -like '*.markdown' -or
+        $_ -like '*.json' -or
+        $_ -like '*.jsonc' -or
+        $_ -like '*.asmdef' -or
+        $_ -like '*.asmref' -or
+        $_ -like '*.yml' -or
+        $_ -like '*.yaml' -or
+        $_ -like '*.js'
+    }
+)
+$markdownTargets = @(
+    $relativePaths | Where-Object {
+        $_ -like '*.md' -or $_ -like '*.markdown'
+    }
+)
+$spellingTargets = @(
+    $relativePaths | Where-Object {
+        $_ -like '*.md' -or
+        $_ -like '*.markdown' -or
+        $_ -like '*.json' -or
+        $_ -like '*.jsonc' -or
+        $_ -like '*.asmdef' -or
+        $_ -like '*.asmref' -or
+        $_ -like '*.yml' -or
+        $_ -like '*.yaml' -or
+        $_ -like '*.js' -or
+        $_ -like '*.cs'
+    }
+)
 $testFiles = @($relativePaths | Where-Object { $_ -like 'Tests/*.cs' })
 $metaRelevantPaths = @($relativePaths | Where-Object { Test-MetaRequiredPath -RelativePath $_ })
+
+$requiredNodeTools = [ordered]@{}
+if ($markdownTargets.Count -gt 0) {
+    $requiredNodeTools['markdownlint'] = 'markdownlint validation for changed Markdown files'
+}
+if ($spellingTargets.Count -gt 0) {
+    $requiredNodeTools['cspell'] = 'spelling validation for changed Markdown/JSON/YAML/JavaScript/C# files'
+}
+
+if ($prettierTargets.Count -gt 0) {
+    Write-Host '[agent-preflight] Verifying repo-local Prettier...' -ForegroundColor Blue
+    $prettierAvailable = Test-PrettierAvailable -RepoRoot $repoRoot -Fix:$Fix -FailureCount ([ref]$failureCount)
+}
+
+if ($requiredNodeTools.Count -gt 0) {
+    Write-Host '[agent-preflight] Verifying local npm hook tools...' -ForegroundColor Blue
+    foreach ($toolName in $requiredNodeTools.Keys) {
+        $availableNodeTools[$toolName] = Test-NodeToolAvailable `
+            -RepoRoot $repoRoot `
+            -ToolName $toolName `
+            -Purpose $requiredNodeTools[$toolName] `
+            -Fix:$Fix `
+            -FailureCount ([ref]$failureCount)
+    }
+}
 
 if ($metaRelevantPaths.Count -gt 0 -and -not (Invoke-EnsureNoIndexLock)) {
     if ($Fix) {
@@ -491,20 +726,95 @@ if ($llmFiles.Count -gt 0) {
     }
 }
 
-# Validate changed markdown spelling early; full-repo spelling still runs in validate:prepush.
-$spellingTargets = @(
-    $relativePaths | Where-Object {
-        $_ -like '*.md' -or $_ -like '*.markdown'
+if ($prettierTargets.Count -gt 0) {
+    if ($prettierAvailable) {
+        if ($Fix) {
+            Write-Host '[agent-preflight] Formatting changed Markdown/JSON/YAML/JavaScript files with Prettier...' -ForegroundColor Blue
+            $prettierExit = Invoke-PrettierOnPaths `
+                -RepoRoot $repoRoot `
+                -Arguments @('--write', '--log-level', 'warn') `
+                -Paths $prettierTargets
+            if ($prettierExit -ne 0) {
+                Write-ErrorMsg "Prettier formatting failed with exit code $prettierExit."
+                $failureCount++
+            }
+            else {
+                $stagedPaths = Get-GitStagedPaths -RepoRoot $repoRoot
+                $stagedPrettierTargets = @($prettierTargets | Where-Object { $stagedPaths.Contains($_) })
+                if ($stagedPrettierTargets.Count -gt 0) {
+                    if (-not (Add-PathsToGitIndexWithRetry -RepoRoot $repoRoot -Paths $stagedPrettierTargets)) {
+                        Write-ErrorMsg 'Failed to stage Prettier-formatted files. Git index.lock contention or another git error is likely.'
+                        foreach ($path in $stagedPrettierTargets) {
+                            Write-Host "  $path" -ForegroundColor Yellow
+                        }
+                        Write-Host 'Close other git operations, then re-run npm run agent:preflight:fix.' -ForegroundColor Cyan
+                        $failureCount++
+                    }
+                }
+            }
+        }
+        else {
+            Write-Host '[agent-preflight] Checking changed Markdown/JSON/YAML/JavaScript formatting with Prettier...' -ForegroundColor Blue
+            $prettierExit = Invoke-PrettierOnPaths `
+                -RepoRoot $repoRoot `
+                -Arguments @('--check') `
+                -Paths $prettierTargets
+            if ($prettierExit -ne 0) {
+                Write-ErrorMsg 'Prettier found formatting issues in changed files.'
+                Write-Host 'Run: npm run agent:preflight:fix' -ForegroundColor Cyan
+                $failureCount++
+            }
+        }
     }
-)
+}
+
+if ($markdownTargets.Count -gt 0) {
+    if ($availableNodeTools.ContainsKey('markdownlint') -and $availableNodeTools['markdownlint']) {
+        if ($Fix) {
+            Write-Host '[agent-preflight] Auto-fixing changed Markdown files with markdownlint...' -ForegroundColor Blue
+            $markdownFixExit = Invoke-NodeToolOnPaths `
+                -RepoRoot $repoRoot `
+                -ToolName 'markdownlint' `
+                -Arguments @('--fix', '--config', '.markdownlint.json', '--ignore-path', '.markdownlintignore') `
+                -Paths $markdownTargets
+            if ($markdownFixExit -ne 0) {
+                Write-ErrorMsg "markdownlint auto-fix failed with exit code $markdownFixExit."
+                $failureCount++
+            }
+            else {
+                $stagedPaths = Get-GitStagedPaths -RepoRoot $repoRoot
+                $stagedMarkdownTargets = @($markdownTargets | Where-Object { $stagedPaths.Contains($_) })
+                if ($stagedMarkdownTargets.Count -gt 0) {
+                    if (-not (Add-PathsToGitIndexWithRetry -RepoRoot $repoRoot -Paths $stagedMarkdownTargets)) {
+                        Write-ErrorMsg 'Failed to stage markdownlint-fixed files. Git index.lock contention or another git error is likely.'
+                        foreach ($path in $stagedMarkdownTargets) {
+                            Write-Host "  $path" -ForegroundColor Yellow
+                        }
+                        Write-Host 'Close other git operations, then re-run npm run agent:preflight:fix.' -ForegroundColor Cyan
+                        $failureCount++
+                    }
+                }
+            }
+        }
+
+        Write-Host '[agent-preflight] Linting changed Markdown files with markdownlint...' -ForegroundColor Blue
+        $markdownLintExit = Invoke-NodeToolOnPaths `
+            -RepoRoot $repoRoot `
+            -ToolName 'markdownlint' `
+            -Arguments @('--config', '.markdownlint.json', '--ignore-path', '.markdownlintignore') `
+            -Paths $markdownTargets
+        if ($markdownLintExit -ne 0) {
+            Write-ErrorMsg 'markdownlint found issues in changed Markdown files.'
+            Write-Host 'Run: npm run agent:preflight:fix' -ForegroundColor Cyan
+            $failureCount++
+        }
+    }
+}
 
 if ($spellingTargets.Count -gt 0) {
-    Write-Host '[agent-preflight] Checking spelling on changed markdown files...' -ForegroundColor Blue
-    $npxCommand = if ([string]::IsNullOrWhiteSpace($env:AGENT_PREFLIGHT_NPX_COMMAND)) { 'npx' } else { $env:AGENT_PREFLIGHT_NPX_COMMAND }
-
-    if (-not (Get-Command $npxCommand -ErrorAction SilentlyContinue)) {
-        Write-ErrorMsg 'npx is required for spelling checks. Install Node.js/npm and run npm install.'
-        $failureCount++
+    Write-Host '[agent-preflight] Checking spelling on changed spell-checkable files...' -ForegroundColor Blue
+    if (-not $availableNodeTools.ContainsKey('cspell') -or -not $availableNodeTools['cspell']) {
+        Write-Info 'Skipping cspell execution because the required npm tool availability check already failed.'
     }
     else {
         $spellingFileList = $null
@@ -521,55 +831,48 @@ if ($spellingTargets.Count -gt 0) {
             try {
                 Push-Location $repoRoot
                 try {
-                    & $npxCommand --no-install cspell --version *> $null
-                    if ($LASTEXITCODE -ne 0) {
-                        Write-ErrorMsg 'cspell is not installed in this repository. Run npm install to enable spelling checks.'
-                        $failureCount++
-                    }
-                    else {
-                        # Capture cspell output so we can (a) surface it
-                        # verbatim to the caller and (b) extract lint-error-
-                        # code-shaped unknown tokens and print a copy-pasteable
-                        # cspell.json patch. This makes the agent preflight
-                        # the EARLIEST point at which a new lint-error-code
-                        # family without a cspell entry is caught — before
-                        # any hook runs.
-                        $spellingOutput = & $npxCommand --no-install cspell lint --no-must-find-files --no-progress --show-suggestions --file-list $spellingFileList 2>&1
-                        $spellingExit = $LASTEXITCODE
-                        foreach ($line in $spellingOutput) { Write-Host $line }
-                        if ($spellingExit -ne 0) {
-                            Write-ErrorMsg 'Spelling errors detected in changed markdown files.'
-                            $unknownPrefixes = @()
-                            foreach ($line in $spellingOutput) {
-                                $text = [string]$line
-                                # Width: unbounded (>=2) because cspell never
-                                # emits monster tokens and a narrow upper
-                                # bound (originally 5) let prefixes longer
-                                # than 5 chars slip past the patch emitter —
-                                # the exact fragility reviewed in P0-3.
-                                $codeMatch = [regex]::Match($text, 'Unknown word \(([A-Z]{2,})\)')
-                                if ($codeMatch.Success) {
-                                    $unknownPrefixes += $codeMatch.Groups[1].Value
-                                }
+                    # Capture cspell output so we can (a) surface it
+                    # verbatim to the caller and (b) extract lint-error-
+                    # code-shaped unknown tokens and print a copy-pasteable
+                    # cspell.json patch. This makes the agent preflight
+                    # the EARLIEST point at which a new lint-error-code
+                    # family without a cspell entry is caught — before
+                    # any hook runs.
+                    $spellingOutput = & node (Join-Path $repoRoot 'scripts/run-node-bin.js') cspell lint --no-must-find-files --no-progress --show-suggestions --file-list $spellingFileList 2>&1
+                    $spellingExit = $LASTEXITCODE
+                    foreach ($line in $spellingOutput) { Write-Host $line }
+                    if ($spellingExit -ne 0) {
+                        Write-ErrorMsg 'Spelling errors detected in changed spell-checkable files.'
+                        $unknownPrefixes = @()
+                        foreach ($line in $spellingOutput) {
+                            $text = [string]$line
+                            # Width: unbounded (>=2) because cspell never
+                            # emits monster tokens and a narrow upper
+                            # bound (originally 5) let prefixes longer
+                            # than 5 chars slip past the patch emitter —
+                            # the exact fragility reviewed in P0-3.
+                            $codeMatch = [regex]::Match($text, 'Unknown word \(([A-Z]{2,})\)')
+                            if ($codeMatch.Success) {
+                                $unknownPrefixes += $codeMatch.Groups[1].Value
                             }
-                            $unknownPrefixes = @($unknownPrefixes | Sort-Object -Unique)
-                            if ($unknownPrefixes.Count -gt 0) {
-                                Write-Host ''
-                                Write-Host '=== Detected unregistered lint-error-code prefix(es) ===' -ForegroundColor Red
-                                Write-Host 'Copy-paste this patch into the root "words" array in cspell.json' -ForegroundColor Yellow
-                                Write-Host '(append each quoted prefix as a new array element):' -ForegroundColor Yellow
-                                Write-Host ''
-                                foreach ($prefix in $unknownPrefixes) {
-                                    Write-Host ('    "{0}",' -f $prefix) -ForegroundColor White
-                                }
-                                Write-Host ''
-                                Write-Host 'See scripts/validate-lint-error-codes.ps1 for the contract that' -ForegroundColor Cyan
-                                Write-Host 'enforces this requirement once the prefix is registered.' -ForegroundColor Cyan
-                                Write-Host ''
-                            }
-                            Write-Host 'Run: npm run lint:spelling' -ForegroundColor Cyan
-                            $failureCount++
                         }
+                        $unknownPrefixes = @($unknownPrefixes | Sort-Object -Unique)
+                        if ($unknownPrefixes.Count -gt 0) {
+                            Write-Host ''
+                            Write-Host '=== Detected unregistered lint-error-code prefix(es) ===' -ForegroundColor Red
+                            Write-Host 'Copy-paste this patch into the root "words" array in cspell.json' -ForegroundColor Yellow
+                            Write-Host '(append each quoted prefix as a new array element):' -ForegroundColor Yellow
+                            Write-Host ''
+                            foreach ($prefix in $unknownPrefixes) {
+                                Write-Host ('    "{0}",' -f $prefix) -ForegroundColor White
+                            }
+                            Write-Host ''
+                            Write-Host 'See scripts/validate-lint-error-codes.ps1 for the contract that' -ForegroundColor Cyan
+                            Write-Host 'enforces this requirement once the prefix is registered.' -ForegroundColor Cyan
+                            Write-Host ''
+                        }
+                        Write-Host 'Run: npm run lint:spelling' -ForegroundColor Cyan
+                        $failureCount++
                     }
                 }
                 finally {

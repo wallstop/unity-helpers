@@ -10,8 +10,8 @@
 #     1. The bug this test primarily guards against (PWS001 / the dependabot
 #        branch) is a CLI-arg-binding bug. Running the invocation line itself
 #        reproduces the failure exactly.
-#     2. Running the FULL hook requires pwsh + npx + prettier + markdownlint
-#        + cspell + yamllint + dotnet + node all installed, and also mutates
+#     2. Running the FULL hook requires pwsh + repo-local Node tools
+#        (Prettier, markdownlint, cspell) + yamllint + dotnet installed, and also mutates
 #        the working tree (files are formatted in place). That is fragile,
 #        slow, and noisy for a regression guard.
 #     3. This approach needs ZERO copying of config/source files and leaves
@@ -30,6 +30,8 @@
 # =============================================================================
 
 set -euo pipefail
+
+# cspell:ignore ZZQWERTYNOISE gpgsign
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -394,6 +396,8 @@ test_precommit_spellcheck_regression() {
     # Copy the real cspell.json so the fixture is scanned under the real
     # project configuration (same dictionaries, same files: restrictions).
     cp "$REPO_ROOT/cspell.json" "$sandbox/cspell.json"
+    mkdir -p "$sandbox/scripts"
+    cp "$REPO_ROOT/scripts/run-node-bin.js" "$sandbox/scripts/run-node-bin.js"
 
     # Synthetic markdown fixture under docs/ — matches cspell.json's
     # `files: ["docs/**/*.md", ...]` entry so cspell actually scans it. A
@@ -442,7 +446,7 @@ trap 'rm -f "\$SPELL_CAPTURE"' EXIT
 # Round 1 regression) would set SPELL_EXIT=0 even when cspell fails,
 # because tee always exits 0.
 SPELL_EXIT=0
-npx --no-install cspell lint --no-must-find-files --no-progress --show-suggestions -- '$fixture_rel' >"\$SPELL_CAPTURE" 2>&1 || SPELL_EXIT=\$?
+node scripts/run-node-bin.js cspell lint --no-must-find-files --no-progress --show-suggestions -- '$fixture_rel' >"\$SPELL_CAPTURE" 2>&1 || SPELL_EXIT=\$?
 cat "\$SPELL_CAPTURE"
 if [ "\$SPELL_EXIT" -ne 0 ]; then
   echo "=== Spelling errors detected ===" >&2

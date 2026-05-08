@@ -817,7 +817,8 @@
         "shebangs",
         "env",
         "instanceof",
-        "TMPDIR"
+        "TMPDIR",
+        "cwd"
       ]
     }
   ],

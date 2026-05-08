@@ -29,6 +29,8 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+# cspell:ignore HOK TST
+
 $script:TestsPassed = 0
 $script:TestsFailed = 0
 $script:FailedTests = @()
@@ -76,6 +78,7 @@ function New-FixtureRoot {
     New-Item -ItemType Directory -Path (Join-Path $root 'scripts/tests') -Force | Out-Null
     New-Item -ItemType Directory -Path (Join-Path $root '.githooks') -Force | Out-Null
     Copy-Item -LiteralPath $validatorPath -Destination (Join-Path $root 'scripts/validate-lint-error-codes.ps1')
+    Copy-Item -LiteralPath (Join-Path $repoRoot 'scripts/run-node-bin.js') -Destination (Join-Path $root 'scripts/run-node-bin.js')
     # Seed a minimal-but-valid cspell.json matching the real config shape.
     # caseSensitive:false + minWordLength:3 mirror the real config so compound
     # splitting behavior is identical.
@@ -92,14 +95,13 @@ function New-FixtureRoot {
     }
     $cspellSeed | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $root 'cspell.json') -NoNewline
 
-    # Share node_modules with the real repo so `npx --no-install cspell` works
+    # Share node_modules with the real repo so the repo-local cspell launcher works
     # inside the fixture CWD without re-downloading dependencies. A symlink is
     # safe here because the validator only reads node_modules — it never
     # writes. On platforms where symlink creation is forbidden (Windows non-
     # admin, some CI runners), fall back to a package.json that points npm at
     # the repo's node_modules directory via NODE_PATH. We prefer the symlink
-    # path because `npx --no-install` resolves through standard Node module
-    # resolution rules, which follow symlinks transparently.
+    # path because Node package resolution follows symlinks transparently.
     $fixtureNodeModules = Join-Path $root 'node_modules'
     $realNodeModules = Join-Path $repoRoot 'node_modules'
     if (Test-Path -LiteralPath $realNodeModules) {
@@ -120,7 +122,7 @@ function New-FixtureRoot {
 function Invoke-ValidatorInFixture {
     param([string]$FixtureRoot)
     $validatorCopy = Join-Path $FixtureRoot 'scripts/validate-lint-error-codes.ps1'
-    # The validator calls `npx --no-install cspell` relative to its repo root.
+    # The validator calls scripts/run-node-bin.js relative to its repo root.
     # Switching the working directory is not enough; cspell resolves the
     # nearest cspell.json from the CWD, which is what we want.
     Push-Location $FixtureRoot

@@ -33,7 +33,8 @@ function Write-TestResult {
 function New-TestRepo {
     param(
         [switch]$ConfigurePushDefaults,
-        [string[]]$GitIgnorePatterns
+        [string[]]$GitIgnorePatterns,
+        [switch]$SkipFakeCspell
     )
 
     $tempRoot = Join-Path ([System.IO.Path]::GetTempPath()) "agent-preflight-test-$([System.Guid]::NewGuid().ToString('N').Substring(0,8))"
@@ -49,12 +50,18 @@ function New-TestRepo {
     Copy-Item (Join-Path $repoRoot 'scripts/git-push-defaults-helpers.ps1') (Join-Path $scriptsDir 'git-push-defaults-helpers.ps1') -Force
     Copy-Item (Join-Path $repoRoot 'scripts/git-path-helpers.ps1') (Join-Path $scriptsDir 'git-path-helpers.ps1') -Force
     Copy-Item (Join-Path $repoRoot 'scripts/generate-meta.sh') (Join-Path $scriptsDir 'generate-meta.sh') -Force
+    Copy-Item (Join-Path $repoRoot 'scripts/run-node-bin.js') (Join-Path $scriptsDir 'run-node-bin.js') -Force
+    Copy-Item (Join-Path $repoRoot 'scripts/run-prettier.js') (Join-Path $scriptsDir 'run-prettier.js') -Force
     # configure-git-defaults.ps1 is preserved as a CLI entry point; it also
     # depends on git-push-defaults-helpers.ps1 (already copied above).
     Copy-Item (Join-Path $repoRoot 'scripts/configure-git-defaults.ps1') (Join-Path $scriptsDir 'configure-git-defaults.ps1') -Force
 
     if ($null -ne $GitIgnorePatterns -and $GitIgnorePatterns.Count -gt 0) {
         Set-Content -Path (Join-Path $tempRoot '.gitignore') -Value $GitIgnorePatterns -Encoding UTF8
+    }
+
+    if (-not $SkipFakeCspell) {
+        Add-FakeCspellPackage -RepoPath $tempRoot -Mode Pass
     }
 
     Push-Location $tempRoot
@@ -135,7 +142,46 @@ function Get-StagedPaths {
     }
 }
 
-function New-NpxStub {
+function Add-FakePrettierPackage {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$RepoPath
+    )
+
+    $prettierBinDir = Join-Path $RepoPath 'node_modules/prettier/bin'
+    New-Item -ItemType Directory -Path $prettierBinDir -Force | Out-Null
+    Set-Content -Path (Join-Path $RepoPath 'node_modules/prettier/package.json') -Value '{"bin":"./bin/prettier.cjs"}' -Encoding ascii
+    $prettierBin = Join-Path $prettierBinDir 'prettier.cjs'
+    $script = @'
+#!/usr/bin/env node
+if (process.argv.includes("--version")) {
+  console.log("3.8.3");
+}
+process.exit(0);
+'@
+    Set-Content -Path $prettierBin -Value $script -Encoding ascii
+}
+
+function Add-FakeMarkdownlintPackage {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$RepoPath
+    )
+
+    $binDir = Join-Path $RepoPath 'node_modules/markdownlint-cli'
+    New-Item -ItemType Directory -Path $binDir -Force | Out-Null
+    Set-Content -Path (Join-Path $binDir 'package.json') -Value '{"bin":{"markdownlint":"markdownlint.js"}}' -Encoding ascii
+    $script = @'
+#!/usr/bin/env node
+if (process.argv.includes("--version")) {
+  console.log("0.48.0");
+}
+process.exit(0);
+'@
+    Set-Content -Path (Join-Path $binDir 'markdownlint.js') -Value $script -Encoding ascii
+}
+
+function Add-FakeCspellPackage {
     param(
         [Parameter(Mandatory = $true)]
         [string]$RepoPath,
@@ -144,41 +190,23 @@ function New-NpxStub {
         [string]$Mode
     )
 
-    $lintExitCode = if ($Mode -eq 'FailLint') { '1' } else { '0' }
-
-    if ($IsWindows) {
-        $stubPath = Join-Path $RepoPath 'npx-stub.cmd'
-        $script = @"
-@echo off
-if "%~1"=="--no-install" if "%~2"=="cspell" if "%~3"=="--version" exit /b 0
-if "%~1"=="--no-install" if "%~2"=="cspell" if "%~3"=="lint" exit /b $lintExitCode
-exit /b 0
-"@
-        Set-Content -Path $stubPath -Value $script -Encoding ascii
-    }
-    else {
-        $stubPath = Join-Path $RepoPath 'npx-stub.sh'
-        $script = @'
-#!/usr/bin/env bash
-set -e
-
-if [[ "${1:-}" == "--no-install" && "${2:-}" == "cspell" && "${3:-}" == "--version" ]]; then
-  exit 0
-fi
-
-if [[ "${1:-}" == "--no-install" && "${2:-}" == "cspell" && "${3:-}" == "lint" ]]; then
-  exit __LINT_EXIT_CODE__
-fi
-
-exit 0
+    $exitCode = if ($Mode -eq 'FailLint') { '1' } else { '0' }
+    $binDir = Join-Path $RepoPath 'node_modules/cspell/bin'
+    New-Item -ItemType Directory -Path $binDir -Force | Out-Null
+    Set-Content -Path (Join-Path $RepoPath 'node_modules/cspell/package.json') -Value '{"bin":{"cspell":"bin/cspell.cjs"}}' -Encoding ascii
+    $script = @'
+#!/usr/bin/env node
+if (process.argv.includes("--version")) {
+  console.log("10.0.0");
+  process.exit(0);
+}
+if (process.argv.includes("lint")) {
+  process.exit(__EXIT_CODE__);
+}
+process.exit(0);
 '@
-        $script = $script.Replace('__LINT_EXIT_CODE__', $lintExitCode)
-        $script = $script -replace "`r`n", "`n"
-        Set-Content -Path $stubPath -Value $script -Encoding ascii
-        & chmod +x $stubPath | Out-Null
-    }
-
-    return $stubPath
+    $script = $script.Replace('__EXIT_CODE__', $exitCode)
+    Set-Content -Path (Join-Path $binDir 'cspell.cjs') -Value $script -Encoding ascii
 }
 
 Write-Host 'Testing agent-preflight.ps1...' -ForegroundColor White
@@ -451,13 +479,13 @@ Write-Host "`nTest group: spelling checks on changed files" -ForegroundColor Mag
 $repo8 = New-TestRepo -ConfigurePushDefaults
 try {
     Set-Content -Path (Join-Path $repo8 'README.md') -Value 'Spelling check baseline.' -Encoding UTF8
-    $npxStub8 = New-NpxStub -RepoPath $repo8 -Mode Pass
-    $result8 = Invoke-Preflight -RepoPath $repo8 -Arguments @('-Paths', 'README.md') -EnvOverrides @{
-        AGENT_PREFLIGHT_NPX_COMMAND = $npxStub8
-    }
+    Add-FakePrettierPackage -RepoPath $repo8
+    Add-FakeMarkdownlintPackage -RepoPath $repo8
+    Add-FakeCspellPackage -RepoPath $repo8 -Mode Pass
+    $result8 = Invoke-Preflight -RepoPath $repo8 -Arguments @('-Paths', 'README.md')
 
     Write-TestResult 'SpellingChecks_ExitCode0' ($result8.ExitCode -eq 0) "Expected exit code 0, got $($result8.ExitCode). Output: $($result8.Output)"
-    Write-TestResult 'SpellingChecks_Message' ($result8.Output -match 'Checking spelling on changed markdown files') 'Expected spelling check status message'
+    Write-TestResult 'SpellingChecks_Message' ($result8.Output -match 'Checking spelling on changed spell-checkable files') 'Expected spelling check status message'
 }
 finally {
     Remove-Item -Path $repo8 -Recurse -Force -ErrorAction SilentlyContinue
@@ -467,14 +495,14 @@ finally {
 Write-Host "`nTest group: spelling failure diagnostics" -ForegroundColor Magenta
 $repo9 = New-TestRepo -ConfigurePushDefaults
 try {
-    Set-Content -Path (Join-Path $repo9 'README.md') -Value 'teh typo to trigger spell failure.' -Encoding UTF8
-    $npxStub9 = New-NpxStub -RepoPath $repo9 -Mode FailLint
-    $result9 = Invoke-Preflight -RepoPath $repo9 -Arguments @('-Paths', 'README.md') -EnvOverrides @{
-        AGENT_PREFLIGHT_NPX_COMMAND = $npxStub9
-    }
+    Set-Content -Path (Join-Path $repo9 'README.md') -Value 'Synthetic spelling failure fixture.' -Encoding UTF8
+    Add-FakePrettierPackage -RepoPath $repo9
+    Add-FakeMarkdownlintPackage -RepoPath $repo9
+    Add-FakeCspellPackage -RepoPath $repo9 -Mode FailLint
+    $result9 = Invoke-Preflight -RepoPath $repo9 -Arguments @('-Paths', 'README.md')
 
     Write-TestResult 'SpellingFailure_ExitCode1' ($result9.ExitCode -eq 1) "Expected exit code 1, got $($result9.ExitCode). Output: $($result9.Output)"
-    Write-TestResult 'SpellingFailure_ErrorMessage' ($result9.Output -match 'Spelling errors detected in changed markdown files') 'Expected spelling failure message'
+    Write-TestResult 'SpellingFailure_ErrorMessage' ($result9.Output -match 'Spelling errors detected in changed spell-checkable files') 'Expected spelling failure message'
     Write-TestResult 'SpellingFailure_RecoveryHint' ($result9.Output -match 'npm run lint:spelling') 'Expected recovery command hint'
 }
 finally {
@@ -483,16 +511,33 @@ finally {
 
 # Test 10: Missing cspell should fail with an actionable dependency message
 Write-Host "`nTest group: spelling missing dependency diagnostics" -ForegroundColor Magenta
-$repo10 = New-TestRepo -ConfigurePushDefaults
+$repo10 = New-TestRepo -ConfigurePushDefaults -SkipFakeCspell
 try {
     Set-Content -Path (Join-Path $repo10 'README.md') -Value 'Spelling check baseline.' -Encoding UTF8
+    Add-FakePrettierPackage -RepoPath $repo10
+    Add-FakeMarkdownlintPackage -RepoPath $repo10
     $result10 = Invoke-Preflight -RepoPath $repo10 -Arguments @('-Paths', 'README.md')
 
     Write-TestResult 'SpellingMissingDependency_ExitCode1' ($result10.ExitCode -eq 1) "Expected exit code 1 when cspell is unavailable, got $($result10.ExitCode). Output: $($result10.Output)"
-    Write-TestResult 'SpellingMissingDependency_Message' ($result10.Output -match 'cspell is not installed in this repository') 'Expected missing-cspell diagnostic message'
+    Write-TestResult 'SpellingMissingDependency_Message' ($result10.Output -match "Required npm tool 'cspell' is not installed") 'Expected missing-cspell diagnostic message'
 }
 finally {
     Remove-Item -Path $repo10 -Recurse -Force -ErrorAction SilentlyContinue
+}
+
+# Test 10b: Missing Prettier should fail before hook-time formatting
+Write-Host "`nTest group: prettier missing dependency diagnostics" -ForegroundColor Magenta
+$repo10b = New-TestRepo -ConfigurePushDefaults
+try {
+    Set-Content -Path (Join-Path $repo10b 'package.json') -Value '{"name":"fixture"}' -Encoding UTF8
+    $result10b = Invoke-Preflight -RepoPath $repo10b -Arguments @('-Paths', 'package.json')
+
+    Write-TestResult 'PrettierMissingDependency_ExitCode1' ($result10b.ExitCode -eq 1) "Expected exit code 1 when repo-local Prettier is unavailable, got $($result10b.ExitCode). Output: $($result10b.Output)"
+    Write-TestResult 'PrettierMissingDependency_Message' ($result10b.Output -match 'Repo-local Prettier is unavailable|Prettier is not installed') 'Expected missing-Prettier diagnostic message'
+    Write-TestResult 'PrettierMissingDependency_InstallHint' ($result10b.Output -match 'npm install') 'Expected npm install remediation hint'
+}
+finally {
+    Remove-Item -Path $repo10b -Recurse -Force -ErrorAction SilentlyContinue
 }
 
 # Test 11: Missing push.autoSetupRemote should fail preflight
@@ -745,7 +790,7 @@ finally {
 Write-Host "`nTest group: configure-git-defaults.ps1 CLI contract" -ForegroundColor Magenta
 $repo19 = New-TestRepo  # Intentionally NOT -ConfigurePushDefaults — the CLI
                         # must apply the config itself.
-$nonRepo19 = Join-Path ([System.IO.Path]::GetTempPath()) "configure-git-defaults-nonrepo-$([System.Guid]::NewGuid().ToString('N').Substring(0,8))"
+$nonRepo19 = Join-Path ([System.IO.Path]::GetTempPath()) "configure-git-defaults-notgit-$([System.Guid]::NewGuid().ToString('N').Substring(0,8))"
 try {
     # --- Cli_SuccessExitCodeZero / OutputContains* ---
     $configureScript = Join-Path (Join-Path $repo19 'scripts') 'configure-git-defaults.ps1'

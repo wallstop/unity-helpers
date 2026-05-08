@@ -1048,13 +1048,12 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
 
             string resourcesFolder = GetResourcesFolderFromLoadPath(loadPath);
             string guid = AssetDatabase.AssetPathToGUID(assetPath) ?? string.Empty;
-            ScriptableObjectSingletonMetadataUtility.UpdateEntry(
+            return ScriptableObjectSingletonMetadataUtility.UpdateEntry(
                 type,
                 loadPath,
                 resourcesFolder,
                 guid
             );
-            return true;
         }
 
         private static string ToResourcesLoadPath(string assetPath)

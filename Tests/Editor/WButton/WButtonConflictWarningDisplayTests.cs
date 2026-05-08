@@ -974,6 +974,8 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
         [TestCaseSource(nameof(ExtremeScaleTestCases))]
         public IEnumerator ExtremeScaleHandledCorrectly(int drawIterations)
         {
+            TestContext.WriteLine($"ExtremeScaleHandledCorrectly drawIterations={drawIterations}");
+
             CreateAssetAndEditor<WButtonThreeWayConflictTarget>(out Editor editor);
             Dictionary<WButtonGroupKey, WButtonPaginationState> paginationStates = new();
             Dictionary<WButtonGroupKey, bool> foldoutStates = new();
@@ -997,12 +999,12 @@ namespace WallstopStudios.UnityHelpers.Tests.WButton
 
         private static IEnumerable<TestCaseData> ExtremeScaleTestCases()
         {
-            yield return new TestCaseData(250).SetName(
-                "Extreme.DrawLoop.TwoHundredFiftyIterations.Stable"
-            );
-            yield return new TestCaseData(1000).SetName(
-                "Extreme.DrawLoop.ThousandIterations.Stable"
-            );
+            yield return new TestCaseData(250)
+                .Returns(null)
+                .SetName("Extreme.DrawLoop.TwoHundredFiftyIterations.Stable");
+            yield return new TestCaseData(1000)
+                .Returns(null)
+                .SetName("Extreme.DrawLoop.ThousandIterations.Stable");
         }
     }
 }

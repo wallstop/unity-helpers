@@ -208,6 +208,36 @@ else
     fail "Found hardcoded paths (should use \${VAR:-default} pattern):" "$b1_violations"
 fi
 
+# B2: Unity test runner must not place generated test results inside the package root
+echo ""
+echo "--- B2: Unity test results stay outside imported package root ---"
+
+run_test
+unity_run_tests="$REPO_ROOT/scripts/unity/run-tests.sh"
+if grep -qE 'ln[[:space:]]+-s[f]?[[:space:]]+\$?\{?RESULTS_DIR' "$unity_run_tests"; then
+    fail "Unity test runner creates a workspace test-results symlink" \
+        "Generated result files under the package root are imported by Unity and can trigger infinite import-loop errors."
+elif grep -qE 'ln[[:space:]]+-s[f]?[[:space:]]+.*WORKSPACE_RESULTS' "$unity_run_tests"; then
+    fail "Unity test runner creates a workspace-root symlink" \
+        "Generated result files under the package root are imported by Unity and can trigger infinite import-loop errors."
+else
+    pass "Unity test runner does not create generated result symlinks in the package root"
+fi
+
+run_test
+guard_line=$(grep -n 'Refusing to write Unity test results inside the package root' "$unity_run_tests" | head -n 1 | cut -d: -f1)
+create_line=$(grep -n 'create-test-project\.sh' "$unity_run_tests" | head -n 1 | cut -d: -f1)
+mkdir_line=$(grep -n 'mkdir -p "\${RESULTS_DIR}"' "$unity_run_tests" | head -n 1 | cut -d: -f1)
+if [[ -z "$guard_line" || -z "$create_line" || -z "$mkdir_line" ]]; then
+    fail "Unity test runner package-root guard is missing expected structure" \
+        "guard_line='${guard_line}', create_line='${create_line}', mkdir_line='${mkdir_line}'"
+elif (( guard_line < create_line && guard_line < mkdir_line )); then
+    pass "Unity test runner validates results path before creating projects or result directories"
+else
+    fail "Unity test runner validates results path too late" \
+        "Guard line ${guard_line}, create-test-project line ${create_line}, mkdir line ${mkdir_line}"
+fi
+
 # =============================================================================
 # Section C: Inappropriate stderr suppression in git hooks
 # =============================================================================

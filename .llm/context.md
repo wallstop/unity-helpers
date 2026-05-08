@@ -215,7 +215,7 @@ See [create-csharp-file](./skills/create-csharp-file.md) for detailed C# rules.
 Run formatters/linters **immediately after each file change**, not batched at task end:
 
 - **C#**: `dotnet tool run csharpier format .`
-- **Non-C#** (`.md`, `.json`, `.yaml`, `.yml`): `npx prettier --write -- <file>`
+- **Non-C#** (`.md`, `.json`, `.yaml`, `.yml`): `node scripts/run-prettier.js --write -- <file>` (repo-local launcher; run `npm install` first on the host that runs hooks)
 - **Markdown**: `npm run lint:docs` + `npm run lint:markdown`
 - **YAML**: `npm run lint:yaml` (then `actionlint` for workflows)
 - **Spelling**: `npm run lint:spelling` (add valid terms to `cspell.json`). A Claude Code PostToolUse hook (`scripts/hooks/cspell-post-edit.js`, registered in the tracked [`.claude/settings.json`](../.claude/settings.json) which ships with the repo) auto-runs cspell after every Edit/Write/MultiEdit/NotebookEdit, so typos surface immediately; manual invocation before completion remains the expectation (the hook is a safety net, not a substitute -- it does not fire in CI or when editing outside Claude Code)
@@ -236,6 +236,9 @@ See [formatting](./skills/formatting.md) and [validate-before-commit](./skills/v
 - Never use `((var++))` in bash with `set -e`; use `var=$((var + 1))`
 - Line endings must be synchronized across `.gitattributes`, `.prettierrc.json`, `.yamllint.yaml`, `.editorconfig`
 - Git hook regex patterns use single backslashes, not double-escaped
+- Devcontainer Codex lifecycle changes must keep `.devcontainer/install-codex.sh`, `.devcontainer/post-create.sh`, `.devcontainer/post-start.sh`, and `scripts/tests/test-post-create.sh` in sync (package, command, retry behavior, and lifecycle wiring)
+- Codex login in this repository is browser-first (no automatic device-auth fallback). Keep this behavior aligned with `scripts/codex-login.sh`, `.devcontainer/devcontainer.json` port `1455`, and `scripts/tests/test-post-create.sh`
+- Use `npm run codex:yolo` (wrapper: `scripts/codex-yolo.sh`) for yolo flows in scripts or non-TTY contexts. Raw `codex --yolo` is interactive-only and should be avoided in automation.
 - If a script derives `REPO_ROOT` / `$repoRoot` from its own location, every `git ls-files` / `git diff --relative` / similar repo-relative git call must also be anchored there (`git -C "$REPO_ROOT" ...` or `cd "$REPO_ROOT"` first). Never combine repo-root-derived filesystem paths with caller-cwd-derived git output.
 - When adding formatter support for a new language, add explicit `[language]` entry in `devcontainer.json`
 - When adding new script calls to git hooks, update the hook's step comments AND the "What the Hook Does" list in [formatting-and-linting](./skills/formatting-and-linting.md)

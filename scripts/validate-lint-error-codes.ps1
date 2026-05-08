@@ -37,19 +37,21 @@
 .PARAMETER VerboseOutput
     Show per-script diagnostics including the error codes harvested.
 
-.PARAMETER NpxCommand
-    Override the npx command used to invoke cspell (defaults to 'npx').
+.PARAMETER NodeCommand
+    Override the node command used to invoke the repo-local cspell launcher.
 
 .EXAMPLE
     pwsh -NoProfile -File scripts/validate-lint-error-codes.ps1
 #>
 param(
     [switch]$VerboseOutput,
-    [string]$NpxCommand = $(if ($env:AGENT_PREFLIGHT_NPX_COMMAND) { $env:AGENT_PREFLIGHT_NPX_COMMAND } else { 'npx' })
+    [string]$NodeCommand = 'node'
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+
+# cspell:ignore NOVELPFX
 
 function Write-Info($msg) {
     if ($VerboseOutput) { Write-Host "[validate-lint-error-codes] $msg" -ForegroundColor Cyan }
@@ -174,19 +176,20 @@ try {
     Write-Info "Harvested $($sortedPrefixes.Count) unique prefix(es): $($sortedPrefixes -join ', ')"
 
     # ── Verify cspell is reachable ────────────────────────────────────────────
-    if (-not (Get-Command $NpxCommand -ErrorAction SilentlyContinue)) {
-        Write-ErrorMsg "$NpxCommand is required to roundtrip prefixes through cspell. Install Node.js and run 'npm install'."
+    if (-not (Get-Command $NodeCommand -ErrorAction SilentlyContinue)) {
+        Write-ErrorMsg "$NodeCommand is required to roundtrip prefixes through cspell. Install Node.js and run 'npm install'."
         exit 1
     }
 
-    $cspellVersionOutput = & $NpxCommand --no-install cspell --version 2>&1
+    $nodeBinRunner = Join-Path $PSScriptRoot 'run-node-bin.js'
+    $cspellVersionOutput = & $NodeCommand $nodeBinRunner cspell --version 2>&1
     if ($LASTEXITCODE -ne 0) {
         Write-ErrorMsg "cspell is not installed in this repository (exit $LASTEXITCODE). Run 'npm install'."
         Write-Host ($cspellVersionOutput | Out-String) -ForegroundColor DarkGray
         exit 1
     }
 
-    # ── Roundtrip each prefix through cspell ──────────────────────────────────
+    # ── Roundtrip harvested prefixes through cspell ───────────────────────────
     # We feed "<PREFIX>001" (not just "<PREFIX>") because the real-world token
     # always carries the three-digit suffix. cspell's compound splitter treats
     # these as separable tokens, so if the prefix is known via ANY mechanism
@@ -197,17 +200,35 @@ try {
     # The -Raw output from cspell --no-color is stable enough to parse:
     #   `<stdin>:<line>:<col> - Unknown word (<word>)`
     # We only care about the presence of "Unknown word" lines.
+    $probeInputLines = @()
+    foreach ($prefix in $sortedPrefixes) {
+        $probe = "${prefix}001"
+        $probeInputLines += $probe
+    }
+
+    $probeInput = ($probeInputLines -join "`n") + "`n"
+    $output = $probeInput | & $NodeCommand $nodeBinRunner cspell stdin --no-progress --no-color 2>&1
+    $exitCode = $LASTEXITCODE
+
+    $unknownPrefixes = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
+    foreach ($line in @($output)) {
+        $regexMatch = [regex]::Match([string]$line, 'Unknown word \(([A-Z]{2,})(?:[0-9]{3})?\)')
+        if ($regexMatch.Success) {
+            $unknownPrefixes.Add($regexMatch.Groups[1].Value) | Out-Null
+        }
+    }
+
+    if ($exitCode -ne 0 -and $unknownPrefixes.Count -eq 0) {
+        Write-ErrorMsg "cspell prefix roundtrip failed without parseable unknown-word output (exit $exitCode)."
+        Write-Host ($output | Out-String) -ForegroundColor DarkGray
+        exit 1
+    }
+
     $unknown = [System.Collections.Generic.List[object]]::new()
     foreach ($prefix in $sortedPrefixes) {
         $probe = "${prefix}001"
-        # Pipe the probe token to cspell stdin. `--no-color` keeps the parse
-        # brittle-but-minimal: we only look for the literal "Unknown word"
-        # marker that cspell emits on failure.
-        $output = $probe | & $NpxCommand --no-install cspell stdin --no-progress --no-color 2>&1
-        $exitCode = $LASTEXITCODE
-
-        $hasUnknown = @($output | Where-Object { $_ -match 'Unknown word' }).Count -gt 0
-        Write-Info "  cspell roundtrip: $probe => exit=$exitCode, hasUnknown=$hasUnknown"
+        $hasUnknown = $unknownPrefixes.Contains($prefix)
+        Write-Info "  cspell roundtrip: $probe => batchExit=$exitCode, hasUnknown=$hasUnknown"
 
         if ($hasUnknown) {
             $unknown.Add([PSCustomObject]@{

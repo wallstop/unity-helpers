@@ -310,13 +310,13 @@ When passing file lists to CLI tools, ALWAYS insert `--` before the file argumen
 # BAD: A filename like '--plugin=evil.js' is treated as a flag
 run: |
   set -euo pipefail
-  npx prettier --write "${FILES[@]}"
+  node scripts/run-prettier.js --write "${FILES[@]}"
 
 # GOOD: `--` stops option parsing; everything after is a filename
 run: |
   set -euo pipefail
-  npx prettier --write -- "${FILES[@]}"
-  markdownlint --fix --config .markdownlint.json -- "${FILES[@]}"
+  node scripts/run-prettier.js --write -- "${FILES[@]}"
+  node scripts/run-node-bin.js markdownlint --fix --config .markdownlint.json -- "${FILES[@]}"
   yamllint -c .yamllint.yaml -- "${FILES[@]}"
 ```
 

@@ -21,6 +21,8 @@ Param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+# cspell:ignore Eqi
+
 $script:TestsPassed = 0
 $script:TestsFailed = 0
 $script:FailedTests = @()
@@ -241,9 +243,9 @@ function Run-AgentValidationContractTests {
   $agentPreflightContent = Get-Content -Path $agentPreflightPath -Raw
 
   Write-TestResult `
-    -TestName 'agent-preflight reports changed markdown spelling checks' `
-    -Passed ($agentPreflightContent -match 'Checking spelling on changed markdown files') `
-    -Message 'Expected status message for changed markdown spelling checks was not found.'
+    -TestName 'agent-preflight reports changed spell-checkable file spelling checks' `
+    -Passed ($agentPreflightContent -match 'Checking spelling on changed spell-checkable files') `
+    -Message 'Expected status message for changed spell-checkable file spelling checks was not found.'
 
   Write-TestResult `
     -TestName 'agent-preflight runs cspell lint command' `
@@ -251,9 +253,138 @@ function Run-AgentValidationContractTests {
     -Message 'Expected cspell lint invocation was not found.'
 
   Write-TestResult `
-    -TestName 'agent-preflight supports AGENT_PREFLIGHT_NPX_COMMAND override' `
-    -Passed ($agentPreflightContent -match 'AGENT_PREFLIGHT_NPX_COMMAND') `
-    -Message 'Expected AGENT_PREFLIGHT_NPX_COMMAND override support was not found.'
+    -TestName 'agent-preflight runs cspell through repo-local Node launcher' `
+    -Passed ($agentPreflightContent -match 'run-node-bin\.js''\)\s+cspell|run-node-bin\.js"\)\s+cspell') `
+    -Message 'Expected cspell invocation through scripts/run-node-bin.js was not found.'
+}
+
+function Run-RepoLocalPrettierContractTests {
+  Write-Host ""
+  Write-Host "Repo-local Node tool invocation contracts:" -ForegroundColor Magenta
+  Write-Host ""
+
+  $repoRoot = Get-RepoRoot
+  $launcherPath = Join-Path $repoRoot 'scripts/run-prettier.js'
+  $packageJsonPath = Join-Path $repoRoot 'package.json'
+  $formatStagedPath = Join-Path $repoRoot 'scripts/format-staged-prettier.ps1'
+  $lintStagedMarkdownPath = Join-Path $repoRoot 'scripts/lint-staged-markdown.ps1'
+  $agentPreflightPath = Join-Path $repoRoot 'scripts/agent-preflight.ps1'
+  $validateLintErrorCodesPath = Join-Path $repoRoot 'scripts/validate-lint-error-codes.ps1'
+  $preCommitPath = Join-Path $repoRoot '.githooks/pre-commit'
+  $prePushPath = Join-Path $repoRoot '.githooks/pre-push'
+
+  Write-TestResult `
+    -TestName 'repo-local Prettier launcher exists' `
+    -Passed (Test-Path $launcherPath) `
+    -Message "Missing file: $launcherPath"
+
+  $packageJson = Get-Content -Path $packageJsonPath -Raw | ConvertFrom-Json
+  $formatScripts = @(
+    'format:md',
+    'format:md:check',
+    'format:json',
+    'format:json:check',
+    'format:js',
+    'format:js:check',
+    'format:yaml',
+    'format:yaml:check'
+  )
+  $formatScriptDrift = @()
+  foreach ($scriptName in $formatScripts) {
+    $scriptValue = [string]$packageJson.scripts.PSObject.Properties[$scriptName].Value
+    if ($scriptValue -notmatch 'node\s+\./scripts/run-prettier\.js') {
+      $formatScriptDrift += "${scriptName}: ${scriptValue}"
+    }
+  }
+
+  Write-TestResult `
+    -TestName 'package format scripts use repo-local Prettier launcher' `
+    -Passed ($formatScriptDrift.Count -eq 0) `
+    -Message "Drifted scripts: $($formatScriptDrift -join '; ')"
+
+  $prettierRequiredFiles = @($formatStagedPath, $agentPreflightPath, $preCommitPath, $prePushPath)
+  $requiredFiles = @($formatStagedPath, $lintStagedMarkdownPath, $agentPreflightPath, $validateLintErrorCodesPath, $preCommitPath, $prePushPath)
+  $launcherDrift = @()
+  foreach ($file in $prettierRequiredFiles) {
+    if (-not (Test-Path $file)) {
+      $launcherDrift += "missing: $file"
+      continue
+    }
+
+    $content = Get-Content -Path $file -Raw
+    if ($content -notmatch 'run-prettier\.js|run_prettier') {
+      $launcherDrift += $file
+    }
+  }
+
+  Write-TestResult `
+    -TestName 'hooks and preflight route Prettier through repo-local launcher' `
+    -Passed ($launcherDrift.Count -eq 0) `
+    -Message "Missing launcher reference: $($launcherDrift -join '; ')"
+
+  $nodeToolDrift = @()
+  foreach ($file in $requiredFiles) {
+    if (-not (Test-Path $file)) {
+      $nodeToolDrift += "missing: $file"
+      continue
+    }
+
+    $content = Get-Content -Path $file -Raw
+    if ($content -match 'markdownlint|cspell' -and $content -notmatch 'run-node-bin\.js|run_node_tool') {
+      $nodeToolDrift += $file
+    }
+  }
+
+  Write-TestResult `
+    -TestName 'hooks and preflight route cspell/markdownlint through repo-local launcher' `
+    -Passed ($nodeToolDrift.Count -eq 0) `
+    -Message "Missing node-tool launcher reference: $($nodeToolDrift -join '; ')"
+
+  $forbiddenHits = @()
+  foreach ($file in $requiredFiles + @($packageJsonPath)) {
+    if (-not (Test-Path $file)) {
+      continue
+    }
+
+    $lines = @(Get-Content -Path $file)
+    for ($i = 0; $i -lt $lines.Count; $i++) {
+      if ($lines[$i] -match 'npx\s+(--yes\s+)?(--no-install\s+)?(prettier|markdownlint|cspell)') {
+        $forbiddenHits += "${file}:$($i + 1): $($lines[$i].Trim())"
+      }
+    }
+  }
+
+  Write-TestResult `
+    -TestName 'local hooks/scripts do not invoke pinned Node tools through npx' `
+    -Passed ($forbiddenHits.Count -eq 0) `
+    -Message "Forbidden invocations: $($forbiddenHits -join '; ')"
+
+  $llmForbiddenHits = @()
+  $llmFiles = @(Get-ChildItem -LiteralPath (Join-Path $repoRoot '.llm') -Recurse -File -Filter '*.md')
+  foreach ($file in $llmFiles) {
+    $lines = @(Get-Content -Path $file.FullName)
+    for ($i = 0; $i -lt $lines.Count; $i++) {
+      $line = $lines[$i]
+      if ($line -match 'npx\s+(--yes\s+)?(--no-install\s+)?(prettier|markdownlint|cspell)') {
+        $llmForbiddenHits += "$($file.FullName):$($i + 1): $($line.Trim())"
+        continue
+      }
+
+      if ($line -match '^\s*(prettier|markdownlint|cspell)\s+(--|lint|stdin|--write|--check|--config)') {
+        $llmForbiddenHits += "$($file.FullName):$($i + 1): $($line.Trim())"
+        continue
+      }
+
+      if ($line -match '`(prettier|markdownlint|cspell)\s+(--|lint|stdin|--write|--check|--config)') {
+        $llmForbiddenHits += "$($file.FullName):$($i + 1): $($line.Trim())"
+      }
+    }
+  }
+
+  Write-TestResult `
+    -TestName 'LLM guidance does not teach host-PATH pinned Node tool invocations' `
+    -Passed ($llmForbiddenHits.Count -eq 0) `
+    -Message "Forbidden LLM guidance: $($llmForbiddenHits -join '; ')"
 }
 
 function Run-ReleaseDrafterChangelogVersionContractTests {
@@ -412,5 +543,6 @@ function Print-SummaryAndExit {
 Run-SyncScriptContractTests
 Run-CspellContractTests
 Run-AgentValidationContractTests
+Run-RepoLocalPrettierContractTests
 Run-ReleaseDrafterChangelogVersionContractTests
 Print-SummaryAndExit

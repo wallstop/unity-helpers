@@ -77,11 +77,11 @@ When passing staged file lists to CLI tools in hooks, ALWAYS place `--` between 
 
 ```bash
 # WRONG - filenames can be interpreted as options
-npx --no-install prettier --write "${FILES[@]}"
+node scripts/run-prettier.js --write "${FILES[@]}"
 
 # CORRECT - `--` prevents option injection from filenames
-npx --no-install prettier --write -- "${FILES[@]}"
-markdownlint --fix --config .markdownlint.json -- "${FILES[@]}"
+node scripts/run-prettier.js --write -- "${FILES[@]}"
+node scripts/run-node-bin.js markdownlint --fix --config .markdownlint.json -- "${FILES[@]}"
 yamllint -c .yamllint.yaml -- "${FILES[@]}"
 ```
 
@@ -95,13 +95,13 @@ yamllint -c .yamllint.yaml -- "${FILES[@]}"
 
 ```bash
 # WRONG - whitespace in filenames is split into multiple arguments
-echo "$CHANGED_MD" | xargs markdownlint --config .markdownlint.json --
+echo "$CHANGED_MD" | xargs node scripts/run-node-bin.js markdownlint --config .markdownlint.json --
 
 # CORRECT (bash) - keep paths in arrays and expand them directly
-markdownlint --config .markdownlint.json -- "${CHANGED_MD[@]}"
+node scripts/run-node-bin.js markdownlint --config .markdownlint.json -- "${CHANGED_MD[@]}"
 
 # CORRECT (generic) - if xargs is required, feed it NUL-delimited input
-printf '%s\0' "${CHANGED_MD[@]}" | xargs -0 markdownlint --config .markdownlint.json --
+printf '%s\0' "${CHANGED_MD[@]}" | xargs -0 node scripts/run-node-bin.js markdownlint --config .markdownlint.json --
 ```
 
 **Rule**: In bash hooks, prefer arrays plus `"${ARRAY[@]}"` over newline-delimited variables. Only use `xargs` with `-0` and NUL-delimited input.

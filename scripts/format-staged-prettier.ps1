@@ -21,7 +21,7 @@ if (-not (Invoke-EnsureNoIndexLock)) {
   Write-Warning "index.lock still held after waiting. Proceeding anyway, but operations may fail."
 }
 
-$prettierGlobs = @('*.md', '*.markdown', '*.json', '*.asmdef', '*.asmref', '*.yml', '*.yaml')
+$prettierGlobs = @('*.md', '*.markdown', '*.json', '*.jsonc', '*.asmdef', '*.asmref', '*.yml', '*.yaml', '*.js')
 $Paths = Get-StagedPathsForGlobs -DefaultPaths $Paths -Globs $prettierGlobs
 
 $existingPaths = Get-ExistingPaths -Candidates $Paths
@@ -30,15 +30,16 @@ if ($existingPaths.Count -eq 0) {
   exit 0
 }
 
-$npx = Get-Command npx -ErrorAction SilentlyContinue
-if (-not $npx) {
-  Write-Error "npx not found; install Node.js to run Prettier."
+$node = Get-Command node -ErrorAction SilentlyContinue
+if (-not $node) {
+  Write-Error "node not found; install Node.js and run npm install to run Prettier."
   exit 1
 }
 
-$npxArgs = @('--yes', 'prettier', '--write', '--')
-$npxArgs += $existingPaths
-& npx @npxArgs
+$prettierScript = Join-Path -Path $repositoryInfo.RepositoryRoot -ChildPath 'scripts/run-prettier.js'
+$prettierArgs = @($prettierScript, '--write', '--')
+$prettierArgs += $existingPaths
+& node @prettierArgs
 if ($LASTEXITCODE -ne 0) {
   Write-Error "Prettier formatting failed with exit code $LASTEXITCODE."
   exit $LASTEXITCODE

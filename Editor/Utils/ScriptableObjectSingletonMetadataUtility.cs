@@ -214,7 +214,7 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
             }
         }
 
-        internal static void UpdateEntry(
+        internal static bool UpdateEntry(
             Type type,
             string resourcesLoadPath,
             string resourcesPath,
@@ -241,14 +241,14 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
                 }
                 if (existing == null)
                 {
-                    return;
+                    return false;
                 }
             }
 
             ScriptableObjectSingletonMetadata metadata = LoadOrCreateMetadataAsset();
             if (metadata == null)
             {
-                return;
+                return false;
             }
 
             ScriptableObjectSingletonMetadata.Entry entry = new()
@@ -258,8 +258,13 @@ namespace WallstopStudios.UnityHelpers.Editor.Utils
                 resourcesPath = resourcesPath,
                 assetGuid = assetGuid,
             };
-            metadata.SetOrUpdateEntry(entry);
+            if (!metadata.SetOrUpdateEntry(entry))
+            {
+                return false;
+            }
+
             EditorUtility.SetDirty(metadata);
+            return true;
         }
 
         /// <summary>

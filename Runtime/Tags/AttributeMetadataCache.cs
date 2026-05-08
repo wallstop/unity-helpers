@@ -742,13 +742,14 @@ namespace WallstopStudios.UnityHelpers.Tags
 
 #if UNITY_EDITOR
         /// <summary>
-        /// Sets all serialized metadata fields and rebuilds internal lookups.
+        /// Sets all serialized metadata fields and rebuilds internal lookups when the normalized data changes.
         /// </summary>
         /// <param name="allAttributeNames">All attribute names discovered.</param>
         /// <param name="typeMetadata">Attribute field metadata per component type.</param>
         /// <param name="relationalTypeMetadata">Relational field metadata per component type.</param>
         /// <param name="autoLoadSingletons">Auto-load singleton entries.</param>
-        public void SetMetadata(
+        /// <returns><c>true</c> when the serialized cache changed; otherwise, <c>false</c>.</returns>
+        public bool SetMetadata(
             string[] allAttributeNames,
             TypeFieldMetadata[] typeMetadata,
             RelationalTypeMetadata[] relationalTypeMetadata,
@@ -764,6 +765,19 @@ namespace WallstopStudios.UnityHelpers.Tags
                 autoLoadSingletons
             );
 
+            if (
+                StringArraysEqual(_allAttributeNames, normalizedAttributeNames)
+                && TypeMetadataArraysEqual(_typeMetadata, normalizedTypeMetadata)
+                && RelationalMetadataArraysEqual(
+                    _relationalTypeMetadata,
+                    normalizedRelationalMetadata
+                )
+                && AutoLoadSingletonEntriesEqual(_autoLoadSingletons, normalizedAutoLoad)
+            )
+            {
+                return false;
+            }
+
             _allAttributeNames = normalizedAttributeNames;
             _typeMetadata = normalizedTypeMetadata;
             _relationalTypeMetadata = normalizedRelationalMetadata;
@@ -775,6 +789,7 @@ namespace WallstopStudios.UnityHelpers.Tags
             _resolvedRelationalFieldsLookup = null;
             _elementTypeLookup = null;
             UnityEditor.EditorUtility.SetDirty(this);
+            return true;
         }
 
         private static string[] SortAttributeNames(string[] attributeNames)
@@ -971,6 +986,115 @@ namespace WallstopStudios.UnityHelpers.Tags
             }
 
             return 0;
+        }
+
+        private static bool StringArraysEqual(string[] left, string[] right)
+        {
+            left ??= Array.Empty<string>();
+            right ??= Array.Empty<string>();
+            if (left.Length != right.Length)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < left.Length; i++)
+            {
+                if (!string.Equals(left[i], right[i], StringComparison.Ordinal))
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        private static bool TypeMetadataArraysEqual(
+            TypeFieldMetadata[] left,
+            TypeFieldMetadata[] right
+        )
+        {
+            left ??= Array.Empty<TypeFieldMetadata>();
+            right ??= Array.Empty<TypeFieldMetadata>();
+            if (left.Length != right.Length)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < left.Length; i++)
+            {
+                if (CompareTypeFieldMetadata(left[i], right[i]) != 0)
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        private static bool RelationalMetadataArraysEqual(
+            RelationalTypeMetadata[] left,
+            RelationalTypeMetadata[] right
+        )
+        {
+            left ??= Array.Empty<RelationalTypeMetadata>();
+            right ??= Array.Empty<RelationalTypeMetadata>();
+            if (left.Length != right.Length)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < left.Length; i++)
+            {
+                if (CompareRelationalTypeMetadata(left[i], right[i]) != 0)
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        private static bool AutoLoadSingletonEntriesEqual(
+            AutoLoadSingletonEntry[] left,
+            AutoLoadSingletonEntry[] right
+        )
+        {
+            left ??= Array.Empty<AutoLoadSingletonEntry>();
+            right ??= Array.Empty<AutoLoadSingletonEntry>();
+            if (left.Length != right.Length)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < left.Length; i++)
+            {
+                AutoLoadSingletonEntry leftEntry = left[i];
+                AutoLoadSingletonEntry rightEntry = right[i];
+                if (ReferenceEquals(leftEntry, rightEntry))
+                {
+                    continue;
+                }
+
+                if (leftEntry == null || rightEntry == null)
+                {
+                    return false;
+                }
+
+                if (
+                    !string.Equals(
+                        leftEntry.typeName,
+                        rightEntry.typeName,
+                        StringComparison.Ordinal
+                    )
+                    || leftEntry.kind != rightEntry.kind
+                    || leftEntry.loadType != rightEntry.loadType
+                )
+                {
+                    return false;
+                }
+            }
+
+            return true;
         }
 
         private static int CompareRelationalTypeMetadata(
